@@ -143,7 +143,7 @@ class SCR_CampaignInfoDisplay : SCR_InfoDisplayExtended
 			
 			winCountdown = Math.Max(0, Math.Ceil(winCountdown / 1000));
 			Faction winner = GetGame().GetFactionManager().GetFactionByIndex(winningFactionId);
-			string shownTime = SCR_Global.GetTimeFormatting(winCountdown, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);
+			string shownTime = SCR_FormatHelper.GetTimeFormatting(winCountdown, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);
 			m_wCountdown.SetText(shownTime);
 			SCR_PopUpNotification.GetInstance().Offset(true);
 			

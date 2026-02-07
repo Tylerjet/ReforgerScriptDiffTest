@@ -5,6 +5,7 @@ class SCR_Math
 	
 	//------------------------------------------------------------------------------------------------
 	//! Takes two floats and returns the remainder after division
+	// TODO: [Obsolete("Use Math.Mod instead")]
 	static float fmod(float dividend, float divisor)
 	{
 		if (divisor == 0)
@@ -23,11 +24,11 @@ class SCR_Math
 	*/
 	static float LerpAngle(float a, float b, float t)
 	{
-		float dt = SCR_Math.fmod(b - a, 360);
+		float dt = fmod(b - a, 360);
 		if (dt > 180)
 			dt -= 360;
 
-		return SCR_Math.fmod(Math.Lerp(a, a + dt, t), 360);
+		return fmod(Math.Lerp(a, a + dt, t), 360);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -39,7 +40,7 @@ class SCR_Math
 	*/
 	static float DeltaAngle(float a, float b)
 	{
-		return 180 - Math.AbsFloat(SCR_Math.fmod(Math.AbsFloat(b - a), 360) - 180);
+		return 180 - Math.AbsFloat(fmod(Math.AbsFloat(b - a), 360) - 180);
 	}
 
 	//------------------------------------------------------------------------------------------------

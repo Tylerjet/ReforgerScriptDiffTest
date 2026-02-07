@@ -4,6 +4,7 @@ class SCR_AdvancedKeybindDialogUI: DialogUI
 	//------------------------------------------------------------------------------------------------
 	protected string m_sActionPreset;
 	protected string m_sActionName;
+	protected SCR_EActionPrefixType m_eActionPrefixType;
 	protected int m_iSelectedKeybind;
 	
 	SCR_SettingsManagerKeybindModule m_SettingsKeybindModule;
@@ -35,6 +36,7 @@ class SCR_AdvancedKeybindDialogUI: DialogUI
 		SetupUnbindButton();
 		SetupPrefixesCombo();
 		SetupBindsCombo();
+		SetupCombinationCombo();
 		
 		ShowBindsForAction(m_sActionName, m_sActionPreset);
 	}
@@ -46,6 +48,14 @@ class SCR_AdvancedKeybindDialogUI: DialogUI
 		ShowBindsForAction(m_sActionName, m_sActionPreset);
 	}
 		
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(float tDelta)
+	{
+		super.OnMenuUpdate(tDelta);
+		
+		GetGame().GetInputManager().ActivateContext("InteractableDialogContext");
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void SetActionName(string actionName)
 	{
@@ -82,13 +92,25 @@ class SCR_AdvancedKeybindDialogUI: DialogUI
 		return m_iSelectedKeybind;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	void SetActionPrefixType(SCR_EActionPrefixType prefixType)
+	{
+		m_eActionPrefixType = prefixType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_EActionPrefixType GetActionPrefixType()
+	{
+		return m_eActionPrefixType;
+	}
+	
 	//-----------------------------------------------------------------------------------------------
 	void ShowBindsForAction(string actionName, string actionPreset)
 	{
 		if (!m_wRootWidget)
 			return;
 		
-		Widget contentWidget = m_wRootWidget.FindAnyWidget("ContentVerticalLayout");
+		Widget contentWidget = m_wRootWidget.FindAnyWidget("ScrollContent");
 		if (!contentWidget)
 			return;
 		
@@ -152,14 +174,14 @@ class SCR_AdvancedKeybindDialogUI: DialogUI
 	void OnBindFocusGained()
 	{
 		m_wPrefixesCombo.SetEnabled(true);
-		SCR_NavigationButtonComponent.Cast(m_DeleteBindWidget.FindHandler(SCR_NavigationButtonComponent)).SetEnabled(true);
+		SCR_InputButtonComponent.Cast(m_DeleteBindWidget.FindHandler(SCR_InputButtonComponent)).SetEnabled(true);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
 	void OnBindFocusLost()
 	{
 		m_wPrefixesCombo.SetEnabled(false);
-		SCR_NavigationButtonComponent.Cast(m_DeleteBindWidget.FindHandler(SCR_NavigationButtonComponent)).SetEnabled(false);
+		SCR_InputButtonComponent.Cast(m_DeleteBindWidget.FindHandler(SCR_InputButtonComponent)).SetEnabled(false);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -169,7 +191,7 @@ class SCR_AdvancedKeybindDialogUI: DialogUI
 		if (!m_DeleteBindWidget)
 			return;
 		
-		SCR_NavigationButtonComponent buttonComp = SCR_NavigationButtonComponent.Cast(m_DeleteBindWidget.FindHandler(SCR_NavigationButtonComponent));
+		SCR_InputButtonComponent buttonComp = SCR_InputButtonComponent.Cast(m_DeleteBindWidget.FindHandler(SCR_InputButtonComponent));
 		if (!buttonComp)
 			return;
 		
@@ -197,7 +219,7 @@ class SCR_AdvancedKeybindDialogUI: DialogUI
 		if (!buttonWidget)
 			return;
 		
-		SCR_NavigationButtonComponent imageButtonComp = SCR_NavigationButtonComponent.Cast(buttonWidget.FindHandler(SCR_NavigationButtonComponent));
+		SCR_InputButtonComponent imageButtonComp = SCR_InputButtonComponent.Cast(buttonWidget.FindHandler(SCR_InputButtonComponent));
 		if (!imageButtonComp)
 			return;
 		
@@ -220,6 +242,7 @@ class SCR_AdvancedKeybindDialogUI: DialogUI
 		if (!menu)
 			return;
 		
+		menu.SetActionRowName(m_sActionName);
 		menu.SetKeybind(m_SettingsKeybindModule.GetInputBindings());
 		menu.GetOnKeyCaptured().Insert(ShowBindsForCurrentAction);
 	}
@@ -245,11 +268,11 @@ class SCR_AdvancedKeybindDialogUI: DialogUI
 		if (!comboBoxComponent)
 			return;
 		
-		array<ref SCR_KeyBindingFilter> filters = m_SettingsKeybindModule.GetFilters();		
+		array<ref SCR_KeyBindingFilter> filters = m_SettingsKeybindModule.GetFilters(m_eActionPrefixType);		
 		
 		foreach (SCR_KeyBindingFilter filter : filters)
 		{
-			comboBoxComponent.AddItem(filter.filterDisplayName);
+			comboBoxComponent.AddItem(filter.m_sFilterDisplayName);
 		}
 		
 		comboBoxComponent.m_OnChanged.Insert(OnPrefixesComboChanged);
@@ -271,16 +294,39 @@ class SCR_AdvancedKeybindDialogUI: DialogUI
 		array<ref SCR_KeyBindingBind> binds = m_SettingsKeybindModule.GetCustomBinds();		
 		foreach (SCR_KeyBindingBind bind : binds)
 		{
-			comboBoxComponent.AddItem(bind.bindDisplayName);
+			comboBoxComponent.AddItem(bind.m_sBindDisplayName);
 		}
 		
 		comboBoxComponent.m_OnChanged.Insert(OnBindsComboChanged);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
+	void SetupCombinationCombo()
+	{
+		Widget combinationBindCombo = m_wRootWidget.FindAnyWidget("ComboKeyCombo");
+		if (!combinationBindCombo)
+		{
+			Print("SCR_AdvancedKeybindDialogUI: Combination key combo widget was not found", LogLevel.WARNING);
+			return;
+		}
+		
+		SCR_ComboBoxComponent comboBoxComponent = SCR_ComboBoxComponent.Cast(combinationBindCombo.FindHandler(SCR_ComboBoxComponent));
+		if (!comboBoxComponent)
+			return;
+		
+		array<ref SCR_KeyBindingCombo> combos = m_SettingsKeybindModule.GetCustomComboKeys();
+		foreach (SCR_KeyBindingCombo combo : combos)
+		{
+			comboBoxComponent.AddItem(combo.m_sComboDisplayName);
+		}
+		
+		comboBoxComponent.m_OnChanged.Insert(OnCombinationComboChanged);
+	}
+	
+	//-----------------------------------------------------------------------------------------------
 	void OnPrefixesComboChanged(SCR_ComboBoxComponent component, int index)
 	{
-		m_SettingsKeybindModule.SetFilterForActionByIndex(m_sActionName, m_sActionPreset, index, m_iSelectedKeybind);
+		m_SettingsKeybindModule.SetFilterForActionByIndex(m_sActionName, m_sActionPreset, index, m_iSelectedKeybind, m_eActionPrefixType);
 		ShowBindsForAction(m_sActionName, m_sActionPreset);
 	}
 	
@@ -288,6 +334,13 @@ class SCR_AdvancedKeybindDialogUI: DialogUI
 	void OnBindsComboChanged(SCR_ComboBoxComponent component, int index)
 	{
 		m_SettingsKeybindModule.AddKeybindToActionByIndex(m_sActionName, m_sActionPreset, index);
+		ShowBindsForAction(m_sActionName, m_sActionPreset);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnCombinationComboChanged(SCR_ComboBoxComponent component, int index)
+	{
+		m_SettingsKeybindModule.AddComboToActionByIndex(m_sActionName, m_sActionPreset, index, m_iSelectedKeybind);
 		ShowBindsForAction(m_sActionName, m_sActionPreset);
 	}
 }

@@ -28,7 +28,7 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 			m_MapConfigEditor = m_MapEntity.SetupMapConfig(EMapEntityMode.EDITOR, mapConfigPrefab, m_MapWidget);
 			m_MapEntity.OpenMap(m_MapConfigEditor);
 		}
-		else
+		else if (m_MapEntity.IsOpen())
 		{
 			m_MapEntity.CloseMap();
 		}
@@ -166,6 +166,8 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 		if (!m_EditorMapManager)
 			return;
 		
+		m_MapWidget = w;
+		
 		m_EditorMapManager.SetMapHandler(this);
 		m_EditorMapConfigPrefab = m_EditorMapManager.GetMapConfigPrefab();
 		
@@ -173,7 +175,6 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 
 		GetMenu().GetOnMenuUpdate().Insert(OnMenuUpdate);
 		
-		m_MapWidget = w;
 		OnEditorModeChange(m_EditorManager.GetCurrentModeEntity(), null);
 	}
 	

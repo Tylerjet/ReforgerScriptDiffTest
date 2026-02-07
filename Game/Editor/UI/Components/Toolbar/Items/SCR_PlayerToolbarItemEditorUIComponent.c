@@ -3,6 +3,9 @@ class SCR_PlayerToolbarItemEditorUIComponent: SCR_EntityToolbarItemEditorUICompo
 	[Attribute()]
 	protected string m_sPlayerNameWidgetName;
 	
+	protected TextWidget m_wPlayerName;
+	
+	//------------------------------------------------------------------------------------------------
 	override void SetEntity(SCR_EditableEntityComponent entity, Widget widget, SCR_EditableEntitySlotManagerUIComponent slotManager)
 	{
 		super.SetEntity(entity, widget, slotManager);
@@ -12,8 +15,30 @@ class SCR_PlayerToolbarItemEditorUIComponent: SCR_EntityToolbarItemEditorUICompo
 				
 		int playerID = delegate.GetPlayerID();
 		
-		TextWidget nameWidget = TextWidget.Cast(widget.FindAnyWidget(m_sPlayerNameWidgetName));
-		if (nameWidget)
-			nameWidget.SetText(GetGame().GetPlayerManager().GetPlayerName(playerID));
+		m_wPlayerName = TextWidget.Cast(widget.FindAnyWidget(m_sPlayerNameWidgetName));
+		if (m_wPlayerName)
+			m_wPlayerName.SetText(GetGame().GetPlayerManager().GetPlayerName(playerID));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		super.OnFocus(w, x, y);
+		
+		if (m_wPlayerName)
+			m_wPlayerName.SetColor(UIColors.HIGHLIGHTED);
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		super.OnFocusLost(w, x, y);
+		
+		if (m_wPlayerName)
+			m_wPlayerName.SetColor(Color.White);
+		
+		return false;
 	}
 };

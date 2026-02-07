@@ -15,6 +15,7 @@ class NavmeshCustomLinkComponentClass: GenericComponentClass
 
 class NavmeshCustomLinkComponent: GenericComponent
 {
+	proto external bool HasLinkOfNavmeshType(string navmeshName);
 }
 
 /*!

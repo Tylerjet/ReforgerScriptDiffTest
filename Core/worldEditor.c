@@ -11,6 +11,7 @@ class WorldEditorAPI
 	proto native bool UndoOrRedoIsRestoring();		//!< Check whether editor is restoring undo or redo state.
 	proto native bool IsCreatingEntityInWindow(); //!< Check whether user created an entity in editor window. Eg. drag and drop from hierarchy, etc.
 	proto native bool IsModifyingData();
+	proto native bool IsPrefabEditMode();	//!< Check whether editor is runing in a prefab edit mode where all edit actions should apply their changes directly to a prefab instead of entity instance
 	proto native external void AddTerrainFlatterEntity(IEntity entity, vector mins, vector maxs, int iPriority, float fFalloffStart, float fFalloff, bool bForceUpdate = true, array<vector> updateMins = null, array<vector> updateMaxes = null); // TODO
 	proto native void RemoveTerrainFlatterEntity(IEntity entity, bool bUpdateTerrain = true); // TODO
 	proto native IEntity SourceToEntity(IEntitySource entSrc);
@@ -213,7 +214,7 @@ class WorldEditorAPI
 	\code
 		auto containerPath = new array<ref ContainerIdPathEntry>();
 
-		auto entry1 = new ContainerIdPathEntry("Points", 1); // Take the first point
+		auto entry1 = new ContainerIdPathEntry("Points", 0); // Take the first point
 		containerPath.Insert(entry1);
 
 		auto entry2 = new ContainerIdPathEntry("Metadata"); // Go to metadata of the first point

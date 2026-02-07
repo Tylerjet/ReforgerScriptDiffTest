@@ -84,7 +84,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	const float CIRCLE_SELECTION_RANGE = 500.0;	// range in world pos
 	const float FREE_CURSOR_RESET = 3.0;		// seconds, time before free cursor resets to locked mode on controller
 	
-	const EMapCursorState CUSTOM_CURSOR_LOCKED = EMapCursorState.CS_ROTATE;
+	const EMapCursorState CUSTOM_CURSOR_LOCKED = EMapCursorState.CS_DISABLE;
 	const EMapCursorState STATE_PAN_RESTRICTED	= EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_ZOOM_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_HOVER_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_MULTI_SELECTION 
@@ -94,7 +94,8 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	const EMapCursorState STATE_DRAG_RESTRICTED	= EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_ROTATE | EMapCursorState.CS_DRAW;
 	const EMapCursorState STATE_ROTATE_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_DRAW_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
-	const EMapCursorState STATE_CTXMENU_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW;
+	const EMapCursorState STATE_CTXMENU_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_ROTATE;
+	const EMapCursorState STATE_RESET_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_ROTATE;
 	
 	// timers
 	protected float m_fPanCountdown;		// used to stop panning cursor state and refresh start position for next drag panning
@@ -492,6 +493,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		{
 			if ( ~m_CursorState & EMapCursorState.CS_ROTATE )
 			{
+				if (m_CursorState & EMapCursorState.CS_DRAG)
+					HandleDrag(false);
+
 				if (SCR_MapToolInteractionUI.StartRotate())
 					SetCursorState(EMapCursorState.CS_ROTATE);
 			}
@@ -529,7 +533,16 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		
 		return false;
 	}
-		
+	
+	//------------------------------------------------------------------------------------------------
+	void ToggleFastTravelDestinationSelection(bool enable)
+	{
+		if (enable)
+			SetCursorState(EMapCursorState.CS_ASSIGN_WP);
+		else
+			UnsetCursorState(EMapCursorState.CS_ASSIGN_WP);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Handle contextual menu
 	//! \param doClose determines whether the context menu should close
@@ -608,7 +621,10 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			// free mode
 			if (!m_CursorInfo.isFixedMode)
 			{
-				m_fFreeCursorTime += System.GetFrameTimeS();
+				if (m_CursorState & STATE_RESET_RESTRICTED)
+					m_fFreeCursorTime = 0;
+				else
+					m_fFreeCursorTime += System.GetFrameTimeS();
 				
 				if (m_fFreeCursorTime > FREE_CURSOR_RESET - 1.0)
 				{
@@ -826,50 +842,33 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	//------------------------------------------------------------------------------------------------
 	//! Digital drag
 	protected void OnInputDrag( float value, EActionTrigger reason )
-	{		
-		if (m_CursorState & EMapCursorState.CS_MODIFIER)
-		{
-			if (reason == EActionTrigger.PRESSED)
-			{
-				if (m_CursorState & EMapCursorState.CS_DRAG)
-					HandleDrag(false);
-				
-				HandleRotateTool(true);
-			}
-			else 
-				HandleRotateTool(false);
-				
+	{
+		if (!m_bIsDraggingAvailable)
 			return;
-		}
+
+		if (m_CursorState & EMapCursorState.CS_MODIFIER)
+			return;
 		
-		if (reason == EActionTrigger.PRESSED)
-		{
-			if (m_bIsDraggingAvailable)
-				HandleDrag(true); 
-		}
-		else 
-		{
-			if (m_bIsDraggingAvailable)
-				HandleDrag(false);
-		}
+		if (reason == EActionTrigger.DOWN)
+			HandleDrag(true);
+		else
+			HandleDrag(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Digital drag toggle
-	protected void OnInputDragGamepad( float value, EActionTrigger reason )
+	protected void OnInputDragToggle( float value, EActionTrigger reason )
 	{
-		// End
-		if (m_CursorState & EMapCursorState.CS_DRAG)
-		{
-			if (m_bIsDraggingAvailable)
-				HandleDrag(false);
-			
+		if (!m_bIsDraggingAvailable)
 			return;
-		}
-		
-		// Start
-		if (m_bIsDraggingAvailable)
+
+		if (m_CursorState & EMapCursorState.CS_MODIFIER)
+			return;
+
+		if (~m_CursorState & EMapCursorState.CS_DRAG)
 			HandleDrag(true);
+		else
+			HandleDrag(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -877,118 +876,17 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	protected void OnInputModifier( float value, EActionTrigger reason )
 	{
 		if (reason == EActionTrigger.DOWN)
+		{
 			SetCursorState(EMapCursorState.CS_MODIFIER);
+			if (!SCR_MapToolInteractionUI.s_bIsRotating)
+				HandleRotateTool(true);
+		}
 		else 
 		{
 			UnsetCursorState(EMapCursorState.CS_MODIFIER);
 			if (SCR_MapToolInteractionUI.s_bIsRotating)
 				HandleRotateTool(false);
 		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Analog modifier action UP
-	protected void OnInputModifRotGamepadUp( float value, EActionTrigger reason )
-	{
-		if (~m_CursorState & EMapCursorState.CS_MODIFIER || !m_CursorInfo.isGamepad)
-			return;
-		
-		OnInputModifRotGamepad(value, reason, true);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Analog modifier action DOWN
-	protected void OnInputModifRotGamepadDown( float value, EActionTrigger reason )
-	{
-		if (~m_CursorState & EMapCursorState.CS_MODIFIER || !m_CursorInfo.isGamepad)
-			return;
-		
-		OnInputModifRotGamepad(value, reason, false);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Called by OnInputModifierGamepad methods
-	protected void OnInputModifRotGamepad(float value, EActionTrigger reason, bool direction)
-	{				
-		if (m_fModifActionDelay < 0.05)	// this const servers to disable rotation state, since classic actio ntrigger cant be used here due to it being a VALUE trigger
-		{
-			m_fModifActionDelay += System.GetFrameTimeS();
-			
-			if (m_fModifActionDelay < 0.025 || value == 0)	// this const is delay between rottion calls
-				return;
-		}
-		else if (value == 0)
-		{
-			if (m_CursorState & EMapCursorState.CS_ROTATE)
-				HandleRotateTool(false);
-			
-			return;
-		}
-					
-		m_fModifActionDelay = 0;
-		
-		if (m_CursorState & STATE_ROTATE_RESTRICTED)
-			return;
-		
-		if (!SCR_MapToolInteractionUI.s_bIsRotating)
-		{
-			HandleRotateTool(true);
-			
-			if (!SCR_MapToolInteractionUI.s_bIsRotating)	// didnt find rotatable widget under cursor
-				return;
-		}
-		
-		int rotateBy = Math.Round(value * 4);	// (0-1 * 4) gives variety of movement between 1 - 4 degrees
-		if (rotateBy == 0)
-			rotateBy == 1;
-		
-		SCR_MapToolInteractionUI.RotateWidget(direction,  Math.Round(value * 4));
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Motion mouse input
-	protected void OnInputModifRotate( float value, EActionTrigger reason )
-	{	
-		if (!SCR_MapToolInteractionUI.s_bIsRotating || value == m_iRotationDirVal)
-			return;
-		
-		OnInputModifRot(value, reason, true);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Motion mouse input
-	protected void OnInputModifRotateBack( float value, EActionTrigger reason )
-	{			
-		if (!SCR_MapToolInteractionUI.s_bIsRotating || value == m_iRotationDirVal)
-			return;
-		
-		OnInputModifRot(value, reason, false);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Called by OnInputModifRotate methods
-	protected void OnInputModifRot( float value, EActionTrigger reason, bool actionDir )
-	{
-		bool dir;
-				
-		if (actionDir)
-		{
-			if (value < m_iRotationDirVal)
-				dir = true;
-		}
-		else 
-		{
-			if (value > m_iRotationDirVal)
-				dir = true;
-		}
-		
-		m_iRotationDirVal = value;
-		
-		if (m_CursorState & STATE_ROTATE_RESTRICTED)
-			return;
-		
-		SCR_MapToolInteractionUI.RotateWidget(dir,  m_iRotateSpeedMouse * System.GetFrameTimeS());
-		ForceCenterCursor();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1115,14 +1013,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	//! Trace widgets under cursor
 	protected static void TraceMapWidgets()
 	{
-		array<ref Widget> widgets = {};
-		WidgetManager.TraceWidgets(SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.x), SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.y), SCR_MapEntity.GetMapInstance().GetMapMenuRoot(), widgets);
-		
-		s_aTracedWidgets.Clear();
-		foreach(Widget w: widgets)
-		{
-			s_aTracedWidgets.Insert(w);
-		}
+		WidgetManager.TraceWidgets(SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.x), SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.y), SCR_MapEntity.GetMapInstance().GetMapMenuRoot(), s_aTracedWidgets);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1219,14 +1110,10 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			
 			m_InputManager.AddActionListener("MapModifierKey", EActionTrigger.DOWN, OnInputModifier);
 			m_InputManager.AddActionListener("MapModifierKey", EActionTrigger.UP, OnInputModifier);
-			m_InputManager.AddActionListener("MapModifRotGamepadUp", EActionTrigger.VALUE, OnInputModifRotGamepadUp);
-			m_InputManager.AddActionListener("MapModifRotGamepadDown", EActionTrigger.VALUE, OnInputModifRotGamepadDown);
-			m_InputManager.AddActionListener("MapModifRotate", EActionTrigger.PRESSED, OnInputModifRotate);
-			m_InputManager.AddActionListener("MapModifRotateBack", EActionTrigger.PRESSED, OnInputModifRotateBack);
 			m_InputManager.AddActionListener("MapModifClick", EActionTrigger.DOWN, OnInputModifClick);
-			m_InputManager.AddActionListener("MapDrag", EActionTrigger.PRESSED, OnInputDrag);
+			m_InputManager.AddActionListener("MapDrag", EActionTrigger.DOWN, OnInputDrag);
 			m_InputManager.AddActionListener("MapDrag", EActionTrigger.UP, OnInputDrag);
-			m_InputManager.AddActionListener("MapDragGamepad", EActionTrigger.PRESSED, OnInputDragGamepad);
+			m_InputManager.AddActionListener("MapDragGamepad", EActionTrigger.DOWN, OnInputDragToggle);
 		}
 		else 
 			m_bIsDraggingAvailable = false;
@@ -1261,14 +1148,10 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		
 		m_InputManager.RemoveActionListener("MapModifierKey", EActionTrigger.DOWN, OnInputModifier);
 		m_InputManager.RemoveActionListener("MapModifierKey", EActionTrigger.UP, OnInputModifier);
-		m_InputManager.RemoveActionListener("MapModifRotGamepadUp", EActionTrigger.VALUE, OnInputModifRotGamepadUp);
-		m_InputManager.RemoveActionListener("MapModifRotGamepadDown", EActionTrigger.VALUE, OnInputModifRotGamepadDown);
-		m_InputManager.RemoveActionListener("MapModifRotate", EActionTrigger.PRESSED, OnInputModifRotate);
-		m_InputManager.RemoveActionListener("MapModifRotateBack", EActionTrigger.PRESSED, OnInputModifRotateBack);
 		m_InputManager.RemoveActionListener("MapModifClick", EActionTrigger.DOWN, OnInputModifClick);
-		m_InputManager.RemoveActionListener("MapDrag", EActionTrigger.PRESSED, OnInputDrag);
+		m_InputManager.RemoveActionListener("MapDrag", EActionTrigger.DOWN, OnInputDrag);
 		m_InputManager.RemoveActionListener("MapDrag", EActionTrigger.UP, OnInputDrag);
-		m_InputManager.RemoveActionListener("MapDragGamepad", EActionTrigger.PRESSED, OnInputDragGamepad);
+		m_InputManager.RemoveActionListener("MapDragGamepad", EActionTrigger.DOWN, OnInputDragToggle);
 		
 		m_InputManager.RemoveActionListener("MapMultiSelect", EActionTrigger.PRESSED, OnInputMultiSel);
 		m_InputManager.RemoveActionListener("MapMultiSelect", EActionTrigger.UP, OnInputMultiSel);
@@ -1327,11 +1210,6 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		// crosshair grid lines
 		if (m_bEnableMapCrosshairVisuals && (m_CursorState & CUSTOM_CURSOR_LOCKED) == 0)
 			UpdateCrosshairUI();
-		
-		if (m_CursorState & EMapCursorState.CS_MODIFIER)
-		{
-			m_InputManager.ActivateContext("MapModifierContext");
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

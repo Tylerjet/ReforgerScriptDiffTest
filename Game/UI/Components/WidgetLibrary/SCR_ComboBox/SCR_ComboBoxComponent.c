@@ -39,12 +39,18 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	[Attribute("OverlayArrow")]
 	protected string m_sButton;
 	
-	[Attribute("0.022995 0.022995 0.022995 1.000000", UIWidgets.ColorPicker)]
+	[Attribute(UIColors.GetColorAttribute(UIColors.EDIT_WIDGET_BACKGROUND), UIWidgets.ColorPicker)]
 	ref Color m_BackgroundDefault;
 	
-	[Attribute("0.109468 0.109468 0.109468 1.000000", UIWidgets.ColorPicker)]
+	[Attribute(UIColors.GetColorAttribute(UIColors.IDLE_DISABLED), UIWidgets.ColorPicker)]
 	ref Color m_BackgroundInteracting;
 
+	[Attribute(UIColors.GetColorAttribute(UIColors.NEUTRAL_ACTIVE_STANDBY), UIWidgets.ColorPicker)]
+	ref Color m_ArrowDefault;
+	
+	[Attribute(UIColors.GetColorAttribute(UIColors.CONTRAST_COLOR), UIWidgets.ColorPicker)]
+	ref Color m_ArrowInteracting;
+	
 	protected InputManager m_InputManager;
 	protected ref array<Widget> m_aElementWidgets = new ref array<Widget>();
 	protected Widget m_wButton;
@@ -89,7 +95,10 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 
 		m_wArrowImage = ImageWidget.Cast(w.FindAnyWidget("ImageArrow"));
 		if (m_wArrowImage)
+		{
 			m_wArrowImage.SetRotation(m_fArrowDefaultAngle);
+			m_wArrowImage.SetColor(m_ArrowDefault);
+		}
 
 		UpdateName();
 		
@@ -99,6 +108,9 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 		
 		if(m_wTextBackground)
 			m_wTextBackground.SetColor(m_BackgroundDefault);
+		
+		if (GetGame().InPlayMode())
+			SCR_MenuHelper.GetOnMenuFocusLost().Insert(OnMenuFocusLost);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -106,6 +118,8 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	{
 		super.HandlerDeattached(w);
 		CloseList();
+		
+		SCR_MenuHelper.GetOnMenuFocusLost().Remove(OnMenuFocusLost);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -152,6 +166,13 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 
 		// Make focusable again
 		m_wRoot.ClearFlags(WidgetFlags.NOFOCUS);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnMenuFocusLost(ChimeraMenuBase menu)
+	{
+		if (menu == ChimeraMenuBase.GetOwnerMenu(m_wRoot) && m_bOpened)
+			CloseList();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -249,7 +270,8 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 
 		m_bOpened = true;
 
-	 	SCR_NavigationButtonHelper.SetActiveWidgetInteractionState(true);
+	 	SCR_MenuHelper.SetActiveWidgetInteractionState(true);
+		
 		if(m_wTextBackground)
 			AnimateWidget.Color(m_wTextBackground, m_BackgroundInteracting, m_fAnimationRate);
 		
@@ -328,7 +350,10 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 
 		// Set arrow image angle
 		if (m_wArrowImage)
-			m_wArrowImage.SetRotation(m_fArrowDefaultAngle + 180);
+		{
+			//m_wArrowImage.SetRotation(m_fArrowDefaultAngle + 180);
+			AnimateWidget.Color(m_wArrowImage, m_ArrowInteracting, m_fAnimationRate);
+		}
 
 		m_OnOpened.Invoke(this);
 	}
@@ -344,7 +369,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 		if (!m_bOpened || !m_wElementsRoot || !m_aElementNames)
 			return;
 		
-		SCR_NavigationButtonHelper.SetActiveWidgetInteractionState(false);
+		SCR_MenuHelper.SetActiveWidgetInteractionState(false);
 		if(m_wTextBackground)
 			AnimateWidget.Color(m_wTextBackground, m_BackgroundDefault, m_fAnimationRate);
 		
@@ -378,7 +403,10 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 
 		// Set arrow image angle
 		if (m_wArrowImage)
-			m_wArrowImage.SetRotation(m_fArrowDefaultAngle);
+		{
+			//m_wArrowImage.SetRotation(m_fArrowDefaultAngle);
+			AnimateWidget.Color(m_wArrowImage, m_ArrowDefault, m_fAnimationRate);
+		}
 
 		PlaySound(m_sSoundClosed);
 		m_OnClosed.Invoke(this);

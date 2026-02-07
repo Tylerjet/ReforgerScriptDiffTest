@@ -199,6 +199,15 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		if (m_HoverManager && m_MouseArea.IsMouseOn())
 			m_HoverManager.SetEntityUnderCursor(m_EntityUnderCursor, true);
 	}
+	protected void OnMenuFocusLost()
+	{
+		//--- When menu focus is lost, OnMenuUpdate is not called anymore. Keep it updating with low frequency.
+		GetGame().GetCallqueue().CallLater(OnMenuUpdate, 10, true, 0);
+	}
+	protected void OnMenuFocusGained()
+	{
+		GetGame().GetCallqueue().Remove(OnMenuUpdate);
+	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default functions
@@ -210,8 +219,15 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		if (!entityManager) return;
 			
 		MenuRootBase menu = GetMenu();
-		if (!menu) return;
+		if (!menu)
+			return;
+		
 		menu.GetOnMenuUpdate().Insert(OnMenuUpdate);
+		menu.GetOnMenuFocusLost().Insert(OnMenuFocusLost);
+		menu.GetOnMenuFocusGained().Insert(OnMenuFocusGained);
+		
+		if (!menu.IsFocused())
+			OnMenuFocusLost();
 
 		m_Workspace = w.GetWorkspace();
 		if (!m_Workspace) return;
@@ -251,7 +267,12 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		if (SCR_Global.IsEditMode()) return; //--- Run-time only
 		
 		MenuRootBase menu = GetMenu();
-		if (menu) menu.GetOnMenuUpdate().Remove(OnMenuUpdate);
+		if (menu)
+		{
+			menu.GetOnMenuUpdate().Remove(OnMenuUpdate);
+			menu.GetOnMenuFocusLost().Remove(OnMenuFocusLost);
+			menu.GetOnMenuFocusGained().Remove(OnMenuFocusGained);
+		}
 		
 		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		

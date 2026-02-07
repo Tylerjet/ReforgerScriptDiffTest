@@ -9,6 +9,27 @@ class SCR_UIName
 	[Attribute(uiwidget: UIWidgets.LocaleEditBox)]
 	protected LocalizedString Name;
 	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get The unformatted Name from SCR_HintUIInfo instance.
+	\return LocalizedString Name set in SCR_HintUIInfo instance.
+	*/
+	LocalizedString GetUnformattedName()
+	{
+		return Name;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Change the Name from SCR_HintUIInfo instance.
+	Call SCR_HintManagerComponent.Refresh() to update shown hint to display changed text.
+	\param LocalizedString text to which name should be updated to.
+	*/
+	void SetName(LocalizedString name)
+	{
+		Name = name;
+	}
+	
 	/*!
 	Get name.
 	When using it to fill TextWidget, use SetNameTo() if possible.

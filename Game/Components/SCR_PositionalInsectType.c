@@ -48,7 +48,7 @@ class SCR_PositionalInsectType
 			return;
 			
 		animComponent.Prepare(animResourceHolder.m_sAnimation, Math.RandomFloatInclusive(1, 5), 1, true);
-		animComponent.Play(entity);
+		animComponent.Play();
 	}
 	
 	//------------------------------------------------------------------------------------------------

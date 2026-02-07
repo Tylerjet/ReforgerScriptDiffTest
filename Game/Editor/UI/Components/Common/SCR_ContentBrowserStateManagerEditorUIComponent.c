@@ -97,7 +97,7 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 			if (!uiInfo)
 				continue;
 			
-			m_BrowserStateTabView.AddTab(string.Empty, uiInfo.GetName());
+			m_BrowserStateTabView.AddTab(string.Empty, uiInfo.GetName(), tabImage: uiInfo.GetIconPath());
 		}
 
 		int stateIndex = m_ContentBrowserManager.GetBrowserStateIndex();
@@ -122,7 +122,7 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		foreach (int hiddenTabIndex: hiddenStateTabs)
 			SetTabVisible(hiddenTabIndex, false);
 	}
-	
+
 	//~ Update the state tabs if search or filters changed
 	protected void UpdateStateTab(int index, string searchString, notnull array<EEditableEntityLabel> activeLabels)
 	{
@@ -199,9 +199,19 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		//~ Order Labels
 		m_ContentBrowserManager.OrderLabels(activeLabels);
 		
+		EEditorMode editorMode = 0;
+		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
+		if (editorManager) 
+		{
+			SCR_EditorModeEntity modeEntity = editorManager.GetCurrentModeEntity();
+			if (modeEntity)
+				editorMode = modeEntity.GetModeType();
+		}	
+		
 		foreach (EEditableEntityLabel label: activeLabels)
 		{
-			m_ContentBrowserManager.GetLabelUIInfo(label, labelUiInfo);
+			if (!m_ContentBrowserManager.GetLabelUIInfoIfValid(label, editorMode, labelUiInfo))
+				continue;
 			
 			if (!labelUiInfo)
 				continue;

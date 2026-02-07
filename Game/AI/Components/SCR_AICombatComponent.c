@@ -99,11 +99,6 @@ class SCR_AICombatComponent : ScriptComponent
 	
 	//-------------------------------------------------------------------------------------------------
 	// Belongs to friendly in aim check
-	protected static const float FRIENDLY_AIM_MIN_UPDATE_INTERVAL_MS = 300.0;
-	protected static const float FRIENDLY_AIM_SAFE_DISTANCE =  0.8;
-	// If IsFriendlyInAim is called more often than once per FRIENDLY_AIM_MIN_UPDATE_INTERVAL_MS, it returns a cached value.
-	// Min update interval is fixed, but first update time is randomized to desynchronize the load from many AIs calling that.
-	protected float m_fFriendlyAimNextCheckTime_ms;
 	protected bool m_bFriendlyAimLastResult;
 	protected ref array<BaseTarget> m_FriendlyTargets = {};
 	#ifdef WORKBENCH
@@ -902,22 +897,7 @@ class SCR_AICombatComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	bool IsFriendlyInAim()
 	{
-		float timeCurrent = GetGame().GetWorld().GetWorldTime();
-		
-		if (timeCurrent < m_fFriendlyAimNextCheckTime_ms)
-		{
-			//Print(string.Format("%1 Return cached %2", this, timeCurrent));
-			return m_bFriendlyAimLastResult;
-		}
-				
-		if (!m_WpnManager || !m_Perception)
-			return false;
-		
-		//Print(string.Format("%1 Update %2", this, timeCurrent));
-		
-		m_Perception.GetTargetsList(m_FriendlyTargets, ETargetCategory.FRIENDLY);
-		IEntity friendlyEntInAim = GetFriendlyFireEntity(m_FriendlyTargets);
-
+		IEntity friendlyEntInAim = m_Perception.GetFriendlyInLineOfFire();
 #ifdef WORKBENCH
 		if (friendlyEntInAim && DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_FRIENDLY_IN_AIM))
 			m_FriendlyAimShape = Shape.CreateSphere(COLOR_RED, ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, friendlyEntInAim.GetOrigin() + Vector(0, 2, 0), 0.1);	
@@ -925,49 +905,10 @@ class SCR_AICombatComponent : ScriptComponent
 			m_FriendlyAimShape = null;
 #endif		
 		m_bFriendlyAimLastResult = friendlyEntInAim != null;
-		
-		m_fFriendlyAimNextCheckTime_ms = timeCurrent + FRIENDLY_AIM_MIN_UPDATE_INTERVAL_MS;
-		
+				
 		return m_bFriendlyAimLastResult;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected IEntity GetFriendlyFireEntity(notnull array<BaseTarget> friendlies)
-	{
-		if (friendlies.IsEmpty())
-			return null;
 		
-		IEntity myVehicleEnt = m_CompartmentAccess.GetVehicle();
-		IEntity friendlyEntity;
-		
-		vector muzzleMatrix[4];
-		m_WpnManager.GetCurrentMuzzleTransform(muzzleMatrix);
-		// muzzleMatrix[3] - position vector on tip of the muzzle
-		// muzzleMatrix[2] - vector where weapon is pointing at	
-		
-		foreach (BaseTarget friendly : friendlies)
-		{
-			if (!friendly)
-				continue;
-			
-			friendlyEntity = friendly.GetTargetEntity();
-				
-			if (!friendlyEntity || friendlyEntity == myVehicleEnt)
-				continue;
-			
-			ChimeraCharacter friendlyCharacterEnt = ChimeraCharacter.Cast(friendlyEntity);
-			if (!friendlyCharacterEnt)
-				continue;
-			
-			if (Math3D.IntersectionPointCylinder(friendlyCharacterEnt.AimingPosition(), muzzleMatrix[3], muzzleMatrix[2], FRIENDLY_AIM_SAFE_DISTANCE))
-			{
-				return friendlyEntity;
-			}
-		}
-		
-		return null;
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	//! Either array of targets or target cluster must be provided
 	void SetAssignedTargets(array<IEntity> assignedTargets, SCR_AITargetClusterState clusterState)
@@ -1108,7 +1049,6 @@ class SCR_AICombatComponent : ScriptComponent
 		if (world)
 		{
 			float worldTime = world.GetWorldTime();
-			m_fFriendlyAimNextCheckTime_ms = worldTime + Math.RandomFloat(0, FRIENDLY_AIM_MIN_UPDATE_INTERVAL_MS);
 			m_fNextWeaponTargetEvaluation_ms = worldTime + Math.RandomFloat(0, WEAPON_TARGET_UPDATE_PERIOD_MS);
 		}
 		
@@ -1175,7 +1115,7 @@ class SCR_AICombatComponent : ScriptComponent
 		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_VehicleUnarmored,	99.0,	-0.08);
 		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_VehicleMedium,		150.0,	-0.15);
 		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_VehicleHeavy,		200.0,	-0.15);
-		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_Aircraft,			30.0,	-0.015);
+		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_Aircraft,			90.0,	-0.015);
 		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_Fortification,		40.0,	-0.1); // Fortifications are not used ATM
 	}
 	
@@ -1294,10 +1234,10 @@ class SCR_AICombatComponent : ScriptComponent
 		// End if no longer enemy (the case for vehicle which was occupied and became empty)
 		if (targetCategory != ETargetCategory.ENEMY)
 		{
-			#ifdef AI_DEBUG
-			AddDebugMessage(string.Format("Ending attack for target: %1. Target category is no longer ETargetCategory.ENEMY"));
+#ifdef AI_DEBUG
+			AddDebugMessage(string.Format("Ending attack for target: %1. Target category is no longer ETargetCategory.ENEMY", enemyTarget));
 			context = "Target category is no longer ETargetCategory.ENEMY";
-			#endif
+#endif
 			return true;
 		}
 		

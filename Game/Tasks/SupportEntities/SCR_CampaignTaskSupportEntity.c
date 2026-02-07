@@ -199,17 +199,28 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 	
 	//------------------------------------------------------------------------------------------------
 	//! An event called when a base has been captured.
-	void OnBaseCaptured(notnull SCR_CampaignMilitaryBaseComponent capturedBase)
+	void OnBaseCaptured(notnull SCR_MilitaryBaseComponent capturedBase, Faction faction)
 	{
 #ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EXECUTE_TASKS))
 			return;
 #endif
 		
+		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(capturedBase);
+		
+		if (!campaignBase)
+			return;
+		
 		m_aCheckedBases.Clear();
 		
 		if (!GetTaskManager().IsProxy())
-			GenerateNewTask(capturedBase);
+			GenerateNewTask(campaignBase);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnBaseSignalChanged(notnull SCR_CampaignMilitaryBaseComponent base)
+	{
+		OnBaseCaptured(base, null);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -295,7 +306,7 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 		if (!campaign)
 			return;
 		
-		campaign.GetBaseManager().GetOnSignalChanged().Insert(OnBaseCaptured);
+		campaign.GetBaseManager().GetOnSignalChanged().Insert(OnBaseSignalChanged);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -312,6 +323,6 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 		if (!campaign)
 			return;
 		
-		campaign.GetBaseManager().GetOnSignalChanged().Remove(OnBaseCaptured);
+		campaign.GetBaseManager().GetOnSignalChanged().Remove(OnBaseSignalChanged);
 	}
 };

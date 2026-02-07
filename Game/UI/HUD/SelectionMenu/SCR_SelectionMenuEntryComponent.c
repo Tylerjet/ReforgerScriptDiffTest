@@ -119,6 +119,9 @@ class SCR_SelectionMenuEntryComponent : SCR_ScriptedWidgetComponent
 	{	
 		m_bEnabled = enabled;
 		
+		if (!m_wRoot)
+			return;
+		
 		// Set visuals 
 		if (m_bEnabled)
 			m_wRoot.SetOpacity(1);	

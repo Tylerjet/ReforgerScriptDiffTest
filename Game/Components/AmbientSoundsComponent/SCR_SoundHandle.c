@@ -3,11 +3,11 @@ class SCR_SoundHandle
 {
 	//! Sound transformation
 	vector m_aMat[4];	
-	//! soundType, soundEventGroup, soundEventDefinition
+	//! Sound group defines a group of sounds. E.g. birds playing on trees close to the camera, or insects, or birds playing in the distance
 	int m_iSoundGroup;
-	//! soundEventGroup
+	//! SoundType defines a group of sounds that can be played on a given location or entity. The definition varies based on the used ESpawnMethod
 	int m_iSoundType;
-	//! soundEventDefinition
+	//! SoundDef defines basic sound behaviour such as the number of repetitions, or daytime/wind behaviour
 	int m_iSoundDef;
 	//! SoundDefinition
 	SCR_SoundDef m_SoundDef;
@@ -48,30 +48,31 @@ class SCR_SoundHandle
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetRandomInt(int value, int random)
+	protected int GetRandomInt(int value, int random)
 	{
 		if (random == 0)
 			return value;
 		
-		int rnd = Math.RandomIntInclusive(value - random, value + random);
-		
-		if (rnd < 1)
-			rnd = 1;
-		
-		return rnd;
+		int min = value - random;
+		if (min < 1)
+			min = 1;
+			
+		return Math.RandomIntInclusive(min, value + random);
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	void CreateSequence(array<ref SCR_SequenceDef> sequenceDefinition, int idx)
+	protected void CreateSequence(array<ref SCR_SequenceDef> sequenceDefinitions, int idx)
 	{
-		for (int i = 0, count = GetRandomInt(sequenceDefinition[idx].m_iRepCount, sequenceDefinition[idx].m_iRepCountRnd); i < count; i++)
+		SCR_SequenceDef sequenceDefinition = sequenceDefinitions[idx];
+		
+		for (int i = 0, count = GetRandomInt(sequenceDefinition.m_iRepCount, sequenceDefinition.m_iRepCountRnd); i < count; i++)
 		{
 			if (i > 0)
-		    	m_aRepTime.Insert(GetRandomInt(sequenceDefinition[idx].m_iRepTime, sequenceDefinition[idx].m_iRepTimeRnd) + m_aRepTime[m_aRepTime.Count() - 1]);
+		    	m_aRepTime.Insert(GetRandomInt(sequenceDefinition.m_iRepTime, sequenceDefinition.m_iRepTimeRnd) + m_aRepTime[m_aRepTime.Count() - 1]);
 			
 			int idxNew = idx - 1;
 			if (idxNew >= 0)
-				CreateSequence(sequenceDefinition, idxNew);
+				CreateSequence(sequenceDefinitions, idxNew);
 		}
 	}
 		

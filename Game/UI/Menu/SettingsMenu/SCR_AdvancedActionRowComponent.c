@@ -22,8 +22,8 @@ class SCR_AdvancedActionRowComponent : SCR_ScriptedWidgetComponent
 		//offset index by 1 so it's comfortable for humans
 		int order = m_iKeybindIndex + 1;
 
-		//todo: check how localization deals with the dot
-		indexRichText.SetText("" + order + ".");
+		//todo: check how localization deals with the dot: Updated with Wlib - removing "." 
+		indexRichText.SetText("" + order + "");
 
 		//check for conflicts and deal with them if they exist
 		array<SCR_KeyBindingEntry> conflictedActions = {};
@@ -43,12 +43,10 @@ class SCR_AdvancedActionRowComponent : SCR_ScriptedWidgetComponent
 		warningRichText.SetOpacity(1);
 		actionsRichText.SetOpacity(1);
 
-		string actionNames = conflictedActions.Get(0).displayName;
-
+		string actionNames = conflictedActions.Get(0).m_sDisplayName;
+		
 		for (int i = 1, count = conflictedActions.Count(); i < count; i++)
-		{
-			actionNames = actionNames + ", " + conflictedActions.Get(i).displayName;
-		}
+			actionNames = actionNames + ", " + conflictedActions.Get(i).m_sDisplayName;
 
 		actionsRichText.SetText(actionNames);
 	}

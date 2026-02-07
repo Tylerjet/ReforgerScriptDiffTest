@@ -66,12 +66,36 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	\param checkHasValidOccupantPrefab if true checks if compartment has valid default occupant prefab
 	\return first found compartment. Will return null if none found.
 	*/
-	BaseCompartmentSlot GetFirstFreeCompartmentsOfType(ECompartmentType compartmentType, bool checkHasValidOccupantPrefab = false)
+	BaseCompartmentSlot GetFirstFreeCompartmentOfType(ECompartmentType compartmentType, bool checkHasValidOccupantPrefab = false)
 	{
 		array<BaseCompartmentSlot> compartments = {}; GetCompartments(compartments);
 		foreach (BaseCompartmentSlot compartment: compartments)
 		{
 			if (compartment && SCR_CompartmentAccessComponent.GetCompartmentType(compartment) == compartmentType && !compartment.IsOccupied() && compartment.IsCompartmentAccessible() && (!checkHasValidOccupantPrefab || (checkHasValidOccupantPrefab && !compartment.GetDefaultOccupantPrefab().IsEmpty())))
+				return compartment;
+		}
+		
+		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get first free compartment slots of the given class
+	\param compartmentClass The compartment clas to check
+	\param checkHasValidOccupantPrefab if true checks if compartment has valid default occupant prefab
+	\return first found compartment. Will return null if none found.
+	*/
+	BaseCompartmentSlot GetFirstFreeCompartmentOfType(typename compartmentClass, bool checkHasValidOccupantPrefab = false)
+	{
+		array<BaseCompartmentSlot> compartments = {}; 
+		GetCompartments(compartments);
+		
+		foreach (BaseCompartmentSlot compartment: compartments)
+		{
+			if (compartment.Type() != compartmentClass)
+				continue;
+			
+			if (!compartment.IsOccupied() && compartment.IsCompartmentAccessible() && (!checkHasValidOccupantPrefab || !compartment.GetDefaultOccupantPrefab().IsEmpty()))
 				return compartment;
 		}
 		
@@ -132,7 +156,7 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Damage random hitzones depending on amount of damage to be applied. Must be called on authority.
-	void DamageOccupants(float damage, EDamageType damageType, IEntity instigator = null, bool gettingIn = false, bool gettingOut = false)
+	void DamageOccupants(float damage, EDamageType damageType, notnull Instigator instigator, bool gettingIn = false, bool gettingOut = false)
 	{
 		if (damage == 0)
 			return;
@@ -149,7 +173,7 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Kill all the occupants and eject them if requested. Must be called on authority.
-	void KillOccupants(IEntity instigator = null, bool eject = false, bool gettingIn = false, bool gettingOut = false)
+	void KillOccupants(notnull Instigator instigator, bool eject = false, bool gettingIn = false, bool gettingOut = false)
 	{
 		array<BaseCompartmentSlot> compartments = {}; 
 		GetCompartments(compartments);

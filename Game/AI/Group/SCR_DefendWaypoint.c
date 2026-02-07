@@ -65,4 +65,61 @@ class SCR_DefendWaypoint : SCR_TimedWaypoint
 	{
 		m_bFastInit = isFastInit;
 	}
+	
+	//----------------------------------------------------------------------------------------
+	override SCR_AIWaypointState CreateWaypointState(SCR_AIGroupUtilityComponent groupUtilityComp)
+	{
+		return new SCR_AIDefendWaypointState(groupUtilityComp, this);
+	}
 };
+
+class SCR_AIDefendWaypointState : SCR_AIWaypointState
+{
+	override void OnDeselected()
+	{
+		super.OnDeselected();
+		
+		SCR_AIGroup myGroup = m_Utility.m_Owner;
+		
+		if (!myGroup)
+			return;
+		
+		array<AIAgent> groupMembers = {};
+		myGroup.GetAgents(groupMembers);
+				
+		AICommunicationComponent mailbox = myGroup.GetCommunicationComponent();
+		if (!mailbox)
+			return;
+		
+		foreach (AIAgent receiver: groupMembers)
+		{
+			if (receiver)
+			{
+				SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(receiver);
+				if (!chimeraAgent)
+					continue;
+				
+				SCR_AIInfoComponent aiInfo = chimeraAgent.m_InfoComponent;
+				if (!aiInfo || !aiInfo.HasUnitState(EUnitState.IN_TURRET))
+					continue;
+				
+				SCR_AIMessage_AttackStaticDone msg1 = new SCR_AIMessage_AttackStaticDone();
+				
+				msg1.SetText("Waypoint was deselected");
+				msg1.SetReceiver(receiver);
+				mailbox.RequestBroadcast(msg1, receiver);
+			
+				ChimeraCharacter character = ChimeraCharacter.Cast(receiver.GetControlledEntity());
+				if (character && character.IsInVehicle())
+				{
+					SCR_AIMessage_GetOut msg2 = new SCR_AIMessage_GetOut();
+					
+					msg2.SetText("Waypoint was deselected, leave vehicle");
+					msg2.SetReceiver(receiver);
+					mailbox.RequestBroadcast(msg2, receiver);
+				}
+			}
+		}
+		myGroup.ReleaseCompartments();
+	}
+}

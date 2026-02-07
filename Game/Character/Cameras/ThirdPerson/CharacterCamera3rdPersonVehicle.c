@@ -57,26 +57,8 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 	}
 	
 	//-----------------------------------------------------------------------------
-	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
+	void InitCameraData()
 	{
-		super.OnActivate(pPrevCamera, pPrevCameraResult);
-		
-		if (pPrevCamera)
-		{
-			vector f = pPrevCamera.GetBaseAngles();
-			m_fUpDownAngle		= f[0]; 
-			m_fLeftRightAngle	= f[1]; 
-		}
-		
-		CharacterCamera1stPersonVehicle characterCamera1stPersonVehicle  = CharacterCamera1stPersonVehicle.Cast(pPrevCamera);
-		if (characterCamera1stPersonVehicle)
-		{
-			m_fRollSmooth = characterCamera1stPersonVehicle.m_fRollSmooth;
-			m_fRollSmoothVel = characterCamera1stPersonVehicle.m_fRollSmoothVel;
-			m_fPitchSmooth = characterCamera1stPersonVehicle.m_fPitchSmooth;
-			m_fPitchSmoothVel = characterCamera1stPersonVehicle.m_fPitchSmoothVel;
-		}
-		
 		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
 		{
@@ -120,10 +102,45 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			}
 		}
 	}
+	
+	//-----------------------------------------------------------------------------
+	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
+	{
+		super.OnActivate(pPrevCamera, pPrevCameraResult);
+		
+		if (pPrevCamera)
+		{
+			vector f = pPrevCamera.GetBaseAngles();
+			m_fUpDownAngle		= f[0]; 
+			m_fLeftRightAngle	= f[1]; 
+		}
+		
+		CharacterCamera1stPersonVehicle characterCamera1stPersonVehicle  = CharacterCamera1stPersonVehicle.Cast(pPrevCamera);
+		if (characterCamera1stPersonVehicle)
+		{
+			m_fRollSmooth = characterCamera1stPersonVehicle.m_fRollSmooth;
+			m_fRollSmoothVel = characterCamera1stPersonVehicle.m_fRollSmoothVel;
+			m_fPitchSmooth = characterCamera1stPersonVehicle.m_fPitchSmooth;
+			m_fPitchSmoothVel = characterCamera1stPersonVehicle.m_fPitchSmoothVel;
+		}
+		
+		InitCameraData();
+	}
 
 	//-----------------------------------------------------------------------------
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
+		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
+		if (compartmentAccess && compartmentAccess.IsInCompartment())
+		{
+			m_pCompartment = compartmentAccess.GetCompartment();
+			IEntity vehicle = m_pCompartment.GetOwner();
+			if (vehicle && vehicle != m_OwnerVehicle)
+			{
+				InitCameraData();
+			}
+		}
+		
 		//! update angles
 		float udAngle = UpdateUDAngle(m_fUpDownAngle, CONST_UD_MIN, CONST_UD_MAX, pDt);
 		m_fLeftRightAngle = UpdateLRAngle(m_fLeftRightAngle, CONST_LR_MIN, CONST_LR_MAX, pDt);
@@ -154,7 +171,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 				localAngVelocity = physics.GetAngularVelocity().InvMultiply3(vehMat);
 			}
 			
-			CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
+			//CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
 			if (compartmentAccess && PilotCompartmentSlot.Cast(compartmentAccess.GetCompartment()))
 			{
 				VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(m_OwnerVehicle.FindComponent(VehicleWheeledSimulation));
@@ -199,7 +216,6 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			//! Apply roll factor
 			SCR_Math3D.RotateAround(pOutResult.m_CameraTM, vector.Zero, pOutResult.m_CameraTM[2], -angle, pOutResult.m_CameraTM);
 		}
-		
 		// Camera offset
 		pOutResult.m_CameraTM[3] = m_vCenter + characterOffset + Vector(0, m_fHeight, 0);
 		

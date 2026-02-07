@@ -1,14 +1,29 @@
 class SCR_GroupFlagSelectionMenu : DialogUI
 {		
-	protected const int MAX_COLUMNS = 3; 
+	protected const int MAX_COLUMNS = 6;
+	protected const float ICONS_SCALE = 0.75; 
 	
-	protected const ResourceName BUTTON_IMAGE = "{6090F995F3E00970}UI/layouts/WidgetLibrary/Groups/WLib_GroupFlagButtonImage.layout";	
+	protected const ResourceName BUTTON_IMAGE = "{6BBBE8F27E385D3B}UI/layouts/WidgetLibrary/Groups/WLib_GroupFlagButtonImage.layout";	
 		
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
 		super.OnMenuOpen();
 		InitGroupFlagSelectionMenu(MAX_COLUMNS, BUTTON_IMAGE);			
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(float tDelta)
+	{
+		super.OnMenuUpdate(tDelta);
+		
+		GetGame().GetInputManager().ActivateContext("InteractableDialogContext");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnConfirm()
+	{
+		// This is handled by the tiles themselves
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -71,7 +86,7 @@ class SCR_GroupFlagSelectionMenu : DialogUI
 					continue;						
 						
 				imageButton.GetImageWidget().LoadImageTexture(0, textures[i]);	
-				imageButton.Resize();
+				imageButton.Resize(ICONS_SCALE);
 				imageButton.m_OnClicked.Insert(SetGroupFlag);
 				imageButton.SetImageID(i);
 				imageButton.SetIsFromImageset(false);
@@ -109,7 +124,7 @@ class SCR_GroupFlagSelectionMenu : DialogUI
 					continue;						
 						
 				imageButton.GetImageWidget().LoadImageFromSet(0, resource, flagNames[i]);
-				imageButton.Resize();
+				imageButton.Resize(ICONS_SCALE);
 				imageButton.m_OnClicked.Insert(SetGroupFlag);
 				imageButton.SetImageID(i);
 				imageButton.SetImageSet(flagNames[i]);
@@ -121,7 +136,7 @@ class SCR_GroupFlagSelectionMenu : DialogUI
 		
 		Widget cancelButton = GetRootWidget().FindAnyWidget("Cancel");		
 		
-		SCR_NavigationButtonComponent cancel = SCR_NavigationButtonComponent.Cast(cancelButton.FindHandler(SCR_NavigationButtonComponent));		
+		SCR_InputButtonComponent cancel = SCR_InputButtonComponent.Cast(cancelButton.FindHandler(SCR_InputButtonComponent));		
 		cancel.m_OnClicked.Insert(CloseDialog);		
 	}
 	

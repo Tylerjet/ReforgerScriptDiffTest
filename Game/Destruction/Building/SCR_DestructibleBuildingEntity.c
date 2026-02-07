@@ -243,7 +243,7 @@ class SCR_DestructibleBuildingEntity : Building
 		}
 		
 		//------------------------------------------------------------------------------------------------
-		override void OnDamage(float damage, EDamageType type, IEntity pHitEntity, inout vector outMat[3], IEntity damageSource, IEntity damageSourceParent, int colliderID, float speed)
+		override void OnDamage(float damage, EDamageType type, IEntity pHitEntity, inout vector outMat[3], IEntity damageSource, notnull Instigator instigator, int colliderID, float speed)
 		{
 			if (!m_BuildingSetup)
 				return;

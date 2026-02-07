@@ -217,6 +217,9 @@ class SCR_FactionManager : FactionManager
 	static Faction SGetLocalPlayerFaction()
 	{
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return null;
+
 		return factionManager.GetLocalPlayerFaction();
 	}
 
@@ -468,7 +471,7 @@ class SCR_FactionManager : FactionManager
 	{
 		SetEventMask(EntityEvent.INIT);
 		#ifdef ENABLE_DIAG
-		SetEventMask(EntityEvent.DIAG | EntityEvent.FRAME); // TODO: DIAG should probably activate entity?
+		ConnectToDiagSystem();
 		#endif
 		
 		//--- Save faction ancestors
@@ -492,6 +495,12 @@ class SCR_FactionManager : FactionManager
 			
 			m_aAncestors.Insert(factionKey, ancestors);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_FactionManager()
+	{
+		DisconnectFromDiagSystem();
 	}
 	
 	/*!

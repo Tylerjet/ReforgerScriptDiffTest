@@ -46,7 +46,7 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 	[Attribute(defvalue: "0.76078 0.39216 0.07843 1.0", UIWidgets.ColorPicker, desc: "Reforger default color")]
 	protected ref Color m_cReforgerColor;
 	
-	[Attribute(defvalue: "1.0 1.0 1.0 1.0", UIWidgets.ColorPicker, desc: "Color of the time bar")]
+	[Attribute(defvalue: "0.760006 0.392004 0.078004 1.000000", UIWidgets.ColorPicker, desc: "Color of the time bar")]
 	protected ref Color m_cTimerColor;
 	
 	protected Widget m_Widget;
@@ -58,10 +58,10 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 	protected Widget m_ToggleButtonWidget;
 	protected Widget m_ContextButtonWidget;
 	protected TextWidget m_PageWidget;
-	protected ProgressBarWidget m_TimeWidget;
+	protected SizeLayoutWidget m_TimeWidget;
 	protected LocalizedString m_sPageText;
 	protected ImageWidget m_BarColor;
-	protected SCR_NavigationButtonComponent m_ToggleButton;
+	protected SCR_InputButtonComponent m_ToggleButton;
 	protected MenuBase m_Menu;
 	protected SCR_WLibProgressBarComponent m_ProgressBar;
 	protected bool m_bMenuScanned;
@@ -142,12 +142,17 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 			}
 			#endif
 			
-			if (info.IsTimerVisible())
+			if (info.IsTimerVisible() && m_TimeWidget)
 			{
+				m_TimeWidget.SetVisible(true);
 				m_BarColor.SetColor(m_cTimerColor);
 				m_ProgressBar.SetValue(startvalue, false);
 				m_ProgressBar.SetAnimationTime(duration);
 				m_ProgressBar.SetValue(0);
+			}
+			else if (m_TimeWidget)
+			{
+				m_TimeWidget.SetVisible(false);
 			}
 			
 			if (!info.GetName())
@@ -219,12 +224,21 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 		}
 		return false;
 	}
+	
+	//--- Refresh hint, as it sometimes uses device-specific lines
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
+	{
+		SCR_HintManagerComponent hintManager = SCR_HintManagerComponent.GetInstance();
+		if (hintManager)
+			hintManager.Refresh();
+	}
+	
 	override void HandlerAttached(Widget w)
 	{
 		m_Widget = w;
 		
 		m_ToggleButtonWidget = m_Widget.FindAnyWidget(m_sToggleButtonWidgetName);
-		m_ToggleButton = SCR_NavigationButtonComponent.Cast(m_ToggleButtonWidget.FindHandler(SCR_NavigationButtonComponent));
+		m_ToggleButton = SCR_InputButtonComponent.Cast(m_ToggleButtonWidget.FindHandler(SCR_InputButtonComponent));
 		if (m_ToggleButton)
 			m_ToggleButton.SetLabel(m_ToggleButtonTextHide);
 		
@@ -244,7 +258,7 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 		m_ContextButtonWidget = m_Widget.FindAnyWidget(m_sContextButtonWidgetName);
 		m_PageWidget = TextWidget.Cast(m_Widget.FindAnyWidget(m_sPageWidgetName));
 		m_sPageText = m_PageWidget.GetText();
-		m_TimeWidget = ProgressBarWidget.Cast(m_Widget.FindAnyWidget(m_sTimeLeftWidgetName));
+		m_TimeWidget = SizeLayoutWidget.Cast(m_Widget.FindAnyWidget(m_sTimeLeftWidgetName));
 		m_VisibilitySelector = m_Widget.FindAnyWidget(m_sVisibilitySelectorName);
 		m_BarColor = ImageWidget.Cast(m_Widget.FindAnyWidget(m_sColorWidgetName));
 		m_ProgressBar = SCR_WLibProgressBarComponent.GetProgressBar(m_sTimeLeftWidgetName, m_Widget, true);
@@ -266,9 +280,13 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 				hintManager.Hide();
 			}
 		}
+		
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 	}
 	override void HandlerDeattached(Widget w)
 	{
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
+		
 		SCR_HintManagerComponent hintManager = SCR_HintManagerComponent.GetInstance();
 		if (!hintManager)
 			return;

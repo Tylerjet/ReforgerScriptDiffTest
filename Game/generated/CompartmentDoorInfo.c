@@ -14,4 +14,5 @@ class CompartmentDoorInfo: ScriptAndConfig
 	proto external PointInfo GetEntryPointInfo();
 	proto external PointInfo GetExitPointInfo();
 	proto external bool HasExitPointInfoDefined();
+	proto external ECharacterStanceChange GetStanceChangeOnExit();
 }

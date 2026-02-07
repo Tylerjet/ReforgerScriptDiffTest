@@ -24,4 +24,11 @@ class SCR_AIWaypoint : AIWaypoint
 	{
 		return vector.DistanceXZ(GetOrigin(), pos) < GetCompletionRadius();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Override this to create a custom waypoint state object.
+	SCR_AIWaypointState CreateWaypointState(SCR_AIGroupUtilityComponent groupUtilityComp)
+	{
+		return new SCR_AIWaypointState(groupUtilityComp, this);
+	}
 };

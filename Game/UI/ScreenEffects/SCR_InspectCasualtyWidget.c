@@ -8,8 +8,10 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 	IEntity m_Target;
 
 	protected const float UPDATE_FREQ = 0.5;
+	protected const float MAX_SHOW_DURATION = 5;
 	protected const string TARGET_BONE = "Spine4";
 	protected float m_fTimeTillUpdate;
+	protected float m_fTimeTillClose;
 	protected bool m_bShouldBeVisible;
 
 	//------------------------------------------------------------------------------------------------	
@@ -22,6 +24,11 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	override event void DisplayUpdate(IEntity owner, float timeSlice)
 	{
+		if (m_fTimeTillClose < 0)
+			DisableWidget();
+		else
+			m_fTimeTillClose -= timeSlice;
+		
 		if (m_fTimeTillUpdate > 0)
 		{
 			m_fTimeTillUpdate -= timeSlice;
@@ -51,7 +58,9 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 			return false;
 
 		UpdateTarget();
-		EnableWidget();	
+		EnableWidget();
+		
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_CHECK_INJURIES_POPUP);
 		
 		return true;
 	}
@@ -60,14 +69,17 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 	//! Check if target is still alive and update widget if so
 	void UpdateTarget()
 	{
-		if (!m_Target || !m_wCasualtyInspectWidget)
+		if (!m_Target)
+		{
+			DisableWidget();
 			return;
-		
+		}
+
 		ChimeraCharacter char = ChimeraCharacter.Cast(m_Target);
 		if (!char)
 			return;
 		
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(char.GetCharacterController());
+		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(char.FindComponent(SCR_CharacterControllerComponent));
 		if (controller.GetLifeState() == ECharacterLifeState.DEAD)
 		{
 			DisableWidget();
@@ -174,7 +186,8 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 		{
 			hZGroupsBleeding = {};
 			hZGroupsBleeding.Resize(damageMan.LIMB_GROUPS.Count());
-			foreach (EHitZoneGroup group : damageMan.LIMB_GROUPS)
+
+			foreach (ECharacterHitZoneGroup group : damageMan.LIMB_GROUPS)
 			{
 				hZGroupsBleeding[damageMan.LIMB_GROUPS.Find(group)] = damageMan.GetGroupDamageOverTime(group, EDamageType.BLEEDING) != 0;
 			}
@@ -268,6 +281,7 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 		m_Target = null;
 		SetEnabled(false);		
 		m_bShouldBeVisible = false;
+		m_fTimeTillClose = MAX_SHOW_DURATION;
 	}
 	
 	//------------------------------------------------------------------------------------------------

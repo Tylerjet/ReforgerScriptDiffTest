@@ -7,22 +7,19 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 {
 
 	private Widget							m_infoWidget;
+	private VerticalLayoutWidget			m_wHintWidget;
 	private TextWidget						m_wTextName;
 	private TextWidget						m_wTextDescription;
 	private TextWidget						m_wTextWeight;
-	private TextWidget						m_wTextWeightUnit;
 	private ImageWidget 					m_wItemIcon;
 	protected SCR_SlotUIComponent			m_pFrameSlotUI;
 	protected Widget 						m_wWidgetUnderCursor;
 	protected bool 							m_bForceShow;
 	
+	private string 							m_sHintLayout = "{9996B50BE8DFED5F}UI/layouts/Menus/Inventory/InventoryItemHintElement.layout";
+	
 					
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------							
-					
-	//------------------------------------------------------------------------------------------------	
-			
-	//------------------------------------------------------------------------------------------------
-	
 	//------------------------------------------------------------------------------------------------
 	protected void ShowInfoWidget( bool bShow )
 	{
@@ -38,7 +35,8 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 			return; //the cursor is on different position already
 		m_infoWidget.SetVisible( true );
 	}
-		
+
+	//------------------------------------------------------------------------------------------------
 	void Show( float fDelay = 0.0, Widget w = null, bool forceShow = false )
 	{
 		m_bForceShow = forceShow;
@@ -51,7 +49,8 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 			GetGame().GetCallqueue().CallLater( ShowInfoWidget, fDelay*1000, false, true );
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	void SetIcon(ResourceName iconPath, Color color = null)
 	{
 		if (iconPath.IsEmpty())
@@ -61,7 +60,8 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 		if (color)
 			m_wItemIcon.SetColor(color);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	void ShowIcon(bool isVisible)
 	{
 		m_wItemIcon.SetVisible(isVisible);
@@ -73,6 +73,14 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 		m_infoWidget.SetVisible( false );
 		m_infoWidget.SetEnabled( false );
 		m_wItemIcon.SetVisible(false);
+		
+		Widget childWidget = m_wHintWidget.GetChildren();
+		while (childWidget)
+		{
+			Widget next = childWidget.GetSibling();
+			m_wHintWidget.RemoveChild(childWidget);
+			childWidget = next;
+		}
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -83,8 +91,7 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 		m_pFrameSlotUI.SetPosX( x );
 		m_pFrameSlotUI.SetPosY( y );
 	}
-	
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetName( string sName )
 	{
@@ -105,25 +112,40 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 			m_wTextDescription.SetEnabled( false );
 			m_wTextDescription.SetVisible( false );
 		}
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	void SetItemHints(InventoryItemComponent item, array<SCR_InventoryItemHintUIInfo> itemHintArray )
+	{
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		
+		foreach (SCR_InventoryItemHintUIInfo hintUIInfo : itemHintArray)
+		{
+			if (!hintUIInfo.CanBeShown(item))
+				continue;
+			
+			Widget createdWidget = workspace.CreateWidgets(m_sHintLayout, m_wHintWidget);
+			if (!createdWidget)
+				return;
+			
+			hintUIInfo.SetItemHintNameTo(item, RichTextWidget.Cast(createdWidget.FindAnyWidget("ItemInfo_hintText")));
+			hintUIInfo.SetIconTo(ImageWidget.Cast(createdWidget.FindAnyWidget("ItemInfo_hintIcon")));
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetWeight( string sWeight )
 	{
-		if( sWeight != "" )
+		if (!sWeight.IsEmpty())
 		{
 			m_wTextWeight.SetEnabled( true );
 			m_wTextWeight.SetVisible( true );
-			m_wTextWeightUnit.SetEnabled( true );
-			m_wTextWeightUnit.SetVisible( true );
-			m_wTextWeight.SetText( sWeight );
+			m_wTextWeight.SetTextFormat("#AR-ValueUnit_Short_Kilograms", sWeight);
 		}
 		else
 		{
 			m_wTextWeight.SetEnabled( false );
 			m_wTextWeight.SetVisible( false );
-			m_wTextWeightUnit.SetEnabled( false );
-			m_wTextWeightUnit.SetVisible( false );
 		}
 	}
 	
@@ -142,10 +164,10 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 		if( !w )
 			return;
 		m_infoWidget		= w;
+		m_wHintWidget		= VerticalLayoutWidget.Cast( w.FindAnyWidget( "VerticalHintParent" ) );
 		m_wTextName 		= TextWidget.Cast( w.FindAnyWidget( "ItemInfo_name" ) );
 		m_wTextDescription 	= TextWidget.Cast( w.FindAnyWidget( "ItemInfo_description" ) );
 		m_wTextWeight 		= TextWidget.Cast( w.FindAnyWidget( "ItemInfo_weight" ) );
-		m_wTextWeightUnit	= TextWidget.Cast( w.FindAnyWidget( "ItemInfo_weightUnit" ) );
 		m_wItemIcon 		= ImageWidget.Cast(w.FindAnyWidget("ItemInfo_icon"));
 		Widget wItemInfo	= m_infoWidget.FindAnyWidget( "ItemInfo" );
 		if ( !wItemInfo )
@@ -175,7 +197,6 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 	
 			
 	//------------------------------------------------------------------------------------------------
-	
 	void SCR_InventoryItemInfoUI()
 	{
 	}	

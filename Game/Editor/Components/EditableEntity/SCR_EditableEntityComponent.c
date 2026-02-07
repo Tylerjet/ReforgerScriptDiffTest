@@ -215,10 +215,16 @@ class SCR_EditableEntityComponent : ScriptComponent
 	\param[out] isDestroyed Variable to be set to true if the entity is destroyed
 	\return True if it can be serialized
 	*/
-	bool Serialize(out SCR_EditableEntityComponent target = null, out int targetIndex = -1, out bool isDestroyed = false)
+	bool Serialize(out SCR_EditableEntityComponent outTarget = null, out int outTargetIndex = -1, out EEditableEntitySaveFlag outSaveFlags = 0)
 	{
-		isDestroyed = IsDestroyed();
-		return !HasEntityFlag(EEditableEntityFlag.LOCAL) && !HasEntityFlag(EEditableEntityFlag.NON_SERIALIZABLE);
+		if (IsDestroyed())
+			outSaveFlags |= EEditableEntitySaveFlag.DESTROYED;
+		
+		//--- Children are spawned by the link component, but they were not spawned yet (e.g., in building mode)
+		if ((m_Flags & EEditableEntityFlag.LINKED_CHILDREN) && !SCR_EditorLinkComponent.IsSpawned(this))
+			outSaveFlags |= EEditableEntitySaveFlag.NOT_SPAWNED;
+		
+		return !(m_Flags & EEditableEntityFlag.LOCAL) && !(m_Flags & EEditableEntityFlag.NON_SERIALIZABLE);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -591,7 +597,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		//BaseGameEntity baseGameEntity = BaseGameEntity.Cast(m_Owner);
 		if(!System.IsCLIParam("clientVehicles"))
 		{
-			if (m_Owner.GetPhysics() && m_Owner.IsInherited(ChimeraCharacter))
+			if (m_Owner.IsInherited(ChimeraCharacter))
 			{		
 				//--- Execute on owner, even server doesn't have the authority to do so
 				Rpc(SetTransformOwner, transform);
@@ -718,8 +724,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 			if (aiWorld)
 			{
 				array<ref Tuple2<vector, vector>> areas = {}; // min, max
-				aiWorld.GetNavmeshRebuildAreas(GetOwner(), areas);
-				GetGame().GetCallqueue().CallLater(aiWorld.RequestNavmeshRebuildAreas, 1000, false, areas); //--- Called *before* the entity is deleted with a delay, ensures the regeneration doesn't accidentaly get anything from the entity prior to full destruction
+				array<bool> redoAreas = {};
+				aiWorld.GetNavmeshRebuildAreas(GetOwner(), areas, redoAreas);
+				GetGame().GetCallqueue().CallLater(aiWorld.RequestNavmeshRebuildAreas, 1000, false, areas, redoAreas); //--- Called *before* the entity is deleted with a delay, ensures the regeneration doesn't accidentaly get anything from the entity prior to full destruction
 			}
 		}
 
@@ -728,7 +735,6 @@ class SCR_EditableEntityComponent : ScriptComponent
 			SetHierarchyAsDirtyInParents();
 
 		//--- Delete the entity
-		//delete m_Owner;
 		RplComponent.DeleteRplEntity(m_Owner, false);
 
 		return true;
@@ -940,7 +946,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		if (CanRpc())
 		{
 			int parentEntityID = Replication.FindId(m_ParentEntity);
-			Rpc(SetParentEntityBroadcastReceive, parentEntityID, parentEntityID);
+			Rpc(SetParentEntityBroadcastReceive, parentEntityID, parentEntityID, false);
 		}
 	}
 
@@ -1264,6 +1270,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void Register()
 	{
+		if (GetGame().GetWorld() != m_Owner.GetWorld())
+  			return;
+		
 		if (IsRegistered())
 			return;
 
@@ -1293,6 +1302,11 @@ class SCR_EditableEntityComponent : ScriptComponent
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		if (core)
 			core.UnRegisterEntity(this, owner);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnCreatedServer(notnull SCR_PlacingEditorComponent placedEditorComponent)
+	{
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1396,29 +1410,6 @@ class SCR_EditableEntityComponent : ScriptComponent
 			child.GetWorldTransform(transform);
 			parent.RemoveChild(child);
 			child.SetWorldTransform(transform);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void DeleteGameHierarchy(IEntity parent)
-	{
-		if (!parent)
-			return;
-
-		IEntity child = parent.GetChildren();
-		IEntity next;
-		while (child)
-		{
-			DeleteGameHierarchy(child);
-			next = child.GetSibling();
-
-			if (!GetEditableEntity(child))
-			{
-				parent.RemoveChild(child);
-				//delete child;
-				RplComponent.DeleteRplEntity(child, false);
-			}
-			child = next;
 		}
 	}
 
@@ -1558,11 +1549,14 @@ class SCR_EditableEntityComponent : ScriptComponent
 	{
 		if (!owner)
 			return;
-
-		//--- Stop on legit editable entity
-		if (owner.FindComponent(SCR_EditableEntityComponent) && owner != m_Owner)
+		
+		//~ Get editable entity
+		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(owner.FindComponent(SCR_EditableEntityComponent));
+		
+		//~ Stop on editable entity that is not owner and does not have the VIRTUAL flag
+		if (owner != m_Owner && editableEntity && !SCR_Enum.HasFlag(editableEntity.GetEntityFlags(), EEditableEntityFlag.VIRTUAL))
 			return;
-
+		
 		//--- Call event on all SCR_EditableEntityBaseChildComponent on this entity
 		if (!components)
 			components = {};
@@ -1960,6 +1954,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	*/
 	void EOnEditorSessionLoad(SCR_EditableEntityComponent parent)
 	{
+		SCR_AIWorld aiWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
+		if (aiWorld)
+			aiWorld.RequestNavmeshRebuildEntity(GetOwnerScripted());
 	}
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default functions
@@ -2002,7 +1999,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 		{
 			for (int i = m_Entities.Count() - 1; i >= 0; i--)
 			{
-				m_Entities[i].Delete(false);
+				SCR_EditableEntityComponent entity = m_Entities[i];
+				if (!entity.HasEntityFlag(EEditableEntityFlag.GAME_HIERARCHY))
+					m_Entities[i].Delete(false);
 			}
 		}
 
@@ -2011,9 +2010,6 @@ class SCR_EditableEntityComponent : ScriptComponent
 		m_ParentEntity = null; //--- Clear the variable, otherise condition in RemoveChild() would ignore this
 		RemoveFromParent(parentEntity, false);
 		Unregister(owner);
-
-		//--- Delete entities in game hierarchy
-		DeleteGameHierarchy(owner);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -1,28 +1,38 @@
 class SCR_VehicleActionBase : ScriptedUserAction
 {
 	//! Should action behave as a toggle
-	[Attribute( uiwidget: UIWidgets.CheckBox, defvalue: "1", desc: "Should action behave as a toggle")]
+	[Attribute(uiwidget: UIWidgets.CheckBox, defvalue: "1", desc: "Should action behave as a toggle")]
 	protected bool m_bIsToggle;
 
 	//! Target state of the action, ignored if toggle
-	[Attribute( uiwidget: UIWidgets.CheckBox, defvalue: "1", desc: "Target state of the action, ignored if toggle")]
+	[Attribute(uiwidget: UIWidgets.CheckBox, defvalue: "1", desc: "Target state of the action, ignored if toggle")]
 	protected bool m_bTargetState;
 
 	//! Description of action to toggle on
-	[Attribute( uiwidget: UIWidgets.Auto, defvalue: "#AR-UserAction_State_On", desc: "Description of action to toggle on")]
-	private string m_sActionStateOn;
+	[Attribute(uiwidget: UIWidgets.Auto, defvalue: "#AR-UserAction_State_On", desc: "Description of action to toggle on")]
+	protected string m_sActionStateOn;
 
 	//! Description of action to toggle off
-	[Attribute( uiwidget: UIWidgets.Auto, defvalue: "#AR-UserAction_State_Off", desc: "Description of action to toggle off")]
-	private string m_sActionStateOff;
+	[Attribute(uiwidget: UIWidgets.Auto, defvalue: "#AR-UserAction_State_Off", desc: "Description of action to toggle off")]
+	protected string m_sActionStateOff;
 
 	//! Available only for entities seated in pilot compartment
-	[Attribute( uiwidget: UIWidgets.CheckBox, defvalue: "1", desc: "Available only for entities seated in pilot compartment")]
-	private bool m_bPilotOnly;
+	[Attribute(uiwidget: UIWidgets.CheckBox, defvalue: "1", desc: "Available only for entities seated in pilot compartment")]
+	protected bool m_bPilotOnly;
 
 	//! Available only for entities seated in a vehicle
-	[Attribute( uiwidget: UIWidgets.CheckBox, desc: "Available only for entities seated in a vehicle")]
-	private bool m_bInteriorOnly;
+	[Attribute(uiwidget: UIWidgets.CheckBox, desc: "Available only for entities seated in a vehicle")]
+	protected bool m_bInteriorOnly;
+
+	protected CompartmentControllerComponent m_VehicleController; // Commonly used by inheriting actions
+
+	//------------------------------------------------------------------------------------------------
+	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
+	{
+		super.Init(pOwnerEntity, pManagerComponent);
+
+		m_VehicleController = CompartmentControllerComponent.Cast(pOwnerEntity.FindComponent(CompartmentControllerComponent));
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
@@ -48,11 +58,18 @@ class SCR_VehicleActionBase : ScriptedUserAction
 			return false;
 
 		// Check pilot only condition
-		if (m_bPilotOnly && !PilotCompartmentSlot.Cast(slot))
-			return false;
+		if (m_bPilotOnly)
+		{
+			if (!PilotCompartmentSlot.Cast(slot))
+				return false;
+
+			Vehicle vehicle = Vehicle.Cast(GetOwner().GetRootParent());
+			if (vehicle && vehicle.GetPilotCompartmentSlot() != slot)
+				return false;
+		}
 
 		// Check interior only condition
-		if (m_bInteriorOnly && slot.GetOwner() != GetOwner())
+		if (m_bInteriorOnly && slot.GetOwner().GetRootParent() != GetOwner().GetRootParent())
 			return false;
 
 		return true;
@@ -73,9 +90,7 @@ class SCR_VehicleActionBase : ScriptedUserAction
 
 	//------------------------------------------------------------------------------------------------
 	//! Script to change state of the feature
-	void SetState(bool enable)
-	{
-	}
+	void SetState(bool enable);
 
 	//------------------------------------------------------------------------------------------------
 	//! By default toggle the current state of the interaction
@@ -105,4 +120,4 @@ class SCR_VehicleActionBase : ScriptedUserAction
 
 		return true;
 	}
-};
+}

@@ -18,6 +18,12 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 
 	[Attribute("1", UIWidgets.EditBox, "Multiplies the internal value in the text. With 100 and percentage format, value 1 is visualized as 100%")]
 	protected float m_fShownValueMultiplier;
+	
+	[Attribute("0", UIWidgets.CheckBox, "Should the value text be rounded?")]
+	private bool m_bRoundValue;	
+	
+	[Attribute("0")]
+	protected int m_iDecimalPrecision;
 
 	[Attribute(SCR_SoundEvent.SOUND_FE_ITEM_CHANGE)]
 	protected string m_sChangeSound;
@@ -52,7 +58,7 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 		AddListeners();
 
 		if (m_wText)
-			m_wText.SetTextFormat(m_sFormatText, m_wSlider.GetCurrent() * m_fShownValueMultiplier);
+			m_wText.SetTextFormat(m_sFormatText, RoundValue(m_wSlider.GetCurrent() * m_fShownValueMultiplier, m_iDecimalPrecision));
 		RemoveListeners();
 	}
 
@@ -81,7 +87,7 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 			value = m_wSlider.GetCurrent();
 		
 		if (m_wText && m_wText.IsVisible())
-			m_wText.SetTextFormat(m_sFormatText, value * m_fShownValueMultiplier);
+			m_wText.SetTextFormat(m_sFormatText, RoundValue(value * m_fShownValueMultiplier, m_iDecimalPrecision));
 
 		if (m_sChangeSound != string.Empty && m_fOldValue != value)
 			PlaySound(m_sChangeSound);
@@ -92,7 +98,19 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnValueFinal(Widget w)
+	protected float RoundValue(float value, int precision)
+	{
+		if (!m_bRoundValue)
+			return value;
+		
+		float coef = Math.Pow(10, m_iDecimalPrecision);
+		value = Math.Round(value * coef) / coef;
+
+		return value;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnValueFinal(Widget w)
 	{
 		float value;
 		if (m_wSlider)
@@ -250,7 +268,7 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	float SetShownValueMultiplier()
+	float GetShownValueMultiplier()
 	{
 		return m_fShownValueMultiplier;
 	}

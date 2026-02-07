@@ -368,6 +368,25 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 		InitMatrix();
 		SortSlots();
 	}
+	
+	//------------------------------------------------------------------------------------------------	
+	override void RefreshSlot(int index)
+	{
+		if (!m_aSlots.IsIndexValid(index))
+			return;
+
+		IEntity item = m_InventoryStorage.GetItemFromQuickSlot(index);
+		if (!item)
+			return;
+
+		InventoryItemComponent itemComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (!itemComp)
+			return;
+
+		SCR_ItemAttributeCollection attributes = SCR_ItemAttributeCollection.Cast(itemComp.GetAttributes());
+		m_aSlots[index].UpdateReferencedComponent(itemComp, attributes);
+		SortSlots();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	int GetActualSlotsUsedCount()

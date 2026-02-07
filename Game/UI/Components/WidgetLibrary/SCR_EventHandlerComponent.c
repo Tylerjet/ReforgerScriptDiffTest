@@ -95,7 +95,7 @@ class SCR_EventHandlerComponent : ScriptedWidgetComponent
 	override bool OnMouseButtonUp(Widget w, int x, int y, int button)
 	{
 		if (m_OnMouseButtonUp)
-			m_OnMouseButtonUp.Invoke(w);
+			m_OnMouseButtonUp.Invoke(w, button);
 		return false;
 	}
 	

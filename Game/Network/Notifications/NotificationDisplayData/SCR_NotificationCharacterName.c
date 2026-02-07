@@ -17,7 +17,7 @@ class SCR_NotificationCharacterName : SCR_NotificationDisplayData
 		{
 			string entityName;
 			data.GetNotificationTextEntries(entityName);
-			if (!GetEditableEntityName(entityID, entityName))
+			if (!GetEditableEntityName(entityID, entityName, false))
 				return string.Empty;
 			
 			data.SetNotificationTextEntries(entityName);	

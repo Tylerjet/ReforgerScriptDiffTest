@@ -26,7 +26,7 @@ sealed class WidgetManager
 	\param rootWidget Where in the hierarchy should the tracing start. Is included in tracing.
 	\param outWidgets Array filled with traced widgets sorted from the closest to the farthest
 	*/
-	static proto void TraceWidgets(int x, int y, notnull Widget rootWidget, notnull array<ref Widget> outWidgets);
+	static proto void TraceWidgets(int x, int y, notnull Widget rootWidget, notnull array<Widget> outWidgets);
 	static proto void SetLanguage(string languageCode);
 	static proto void GetLanguage(out string languageCode);
 	static proto void SetCursor(int cursorIndex);

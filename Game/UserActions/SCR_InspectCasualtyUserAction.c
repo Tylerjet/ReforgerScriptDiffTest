@@ -18,7 +18,7 @@ class SCR_InspectCasualtyUserAction : ScriptedUserAction
 		HitZone hz = damageMan.GetDefaultHitZone();
 		if (!hz)
 			return false;
-		
+
 		if (hz.GetDamageState() == EDamageState.UNDAMAGED)
 		{		
 			SCR_CharacterBloodHitZone bloodHZ = SCR_CharacterBloodHitZone.Cast(damageMan.GetBloodHitZone());
@@ -37,8 +37,8 @@ class SCR_InspectCasualtyUserAction : ScriptedUserAction
 		IEntity userVeh = userCompAccessComp.GetVehicleIn(userChar);
 		IEntity targetVeh = targetCompAccessComp.GetVehicleIn(ownerChar);
 		
-		// If inspector and target are not in vehicle return true
-		if (!userVeh && !targetVeh)
+		// If inspector is not in vehicle return true
+		if (!userVeh)
 			return CanBePerformedScript(user);
 
 		// If inspector and target are both in vehicle, check if they're in the same one, and if so, return true

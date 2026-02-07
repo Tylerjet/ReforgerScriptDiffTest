@@ -9,7 +9,6 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 	protected ImageWidget m_wGamepadHintLarge;
 	protected RichTextWidget m_wKeybindText;
 
-	//ResourceName m_sPrimarySecondaryWeapon = "{E6BDE9DF9368C48C}UI/Textures/WeaponIcons/weapon_AK74.edds";
 	//------------------------------------------------------------------------ USER METHODS ----------------------------------------------------------------------
 
 	//------------------------------------------------------------------------------------------------
@@ -17,9 +16,6 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 	{
 		super.Init();
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(UpdateHints);
-		// preparation for the icon
-		//if ( m_iQuickSlotIndex < 2 )				//Primary or secondary weapon
-		//	SetIcon( "{E6BDE9DF9368C48C}UI/Textures/WeaponIcons/weapon_AK74.edds" );
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -80,7 +76,7 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 		if ( m_iQuickSlotIndex < 2 )
 			slotSize = ESlotSize.SLOT_2x1;
 		else
-			slotSize = m_Attributes.GetItemSize();
+			slotSize = m_Attributes.GetQuickSlotItemSize();
 		switch ( slotSize ) 
 		{
 			case ESlotSize.SLOT_1x1:	{ slotLayout = SLOT_LAYOUT_1x1; m_iSizeX = 1; m_iSizeY = 1; } break;

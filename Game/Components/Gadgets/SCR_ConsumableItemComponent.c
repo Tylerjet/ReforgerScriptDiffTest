@@ -80,7 +80,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! OnItemUseBegan event from SCR_CharacterControllerComponent
-	protected void OnUseBegan()
+	protected void OnUseBegan(IEntity item)
 	{
 		if (m_bAlternativeModelOnAction)
 			SetAlternativeModel(true);
@@ -138,7 +138,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		if (mode == EGadgetMode.IN_HAND)
 		{
 			m_CharController = SCR_CharacterControllerComponent.Cast(m_CharacterOwner.FindComponent(SCR_CharacterControllerComponent));
-			m_CharController.m_OnItemUseEndedInvoker.Insert(OnApplyToCharacter);
+			m_CharController.m_OnItemUseFinishedInvoker.Insert(OnApplyToCharacter);
 			m_CharController.m_OnItemUseBeganInvoker.Insert(OnUseBegan);
 		}
 	}
@@ -150,7 +150,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		{
 			if (m_CharController)
 			{
-				m_CharController.m_OnItemUseEndedInvoker.Remove(OnApplyToCharacter);
+				m_CharController.m_OnItemUseFinishedInvoker.Remove(OnApplyToCharacter);
 				m_CharController.m_OnItemUseBeganInvoker.Remove(OnUseBegan);
 				m_CharController = null;
 			}

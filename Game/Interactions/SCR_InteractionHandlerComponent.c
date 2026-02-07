@@ -101,6 +101,9 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		float timeSlice,
 		SCR_BaseInteractionDisplay display)
 	{
+		if (action)
+			action.SetActiveContext(context);
+
 		// Can action be performed?
 		bool isOk = action && canPerform && action == m_pLastUserAction;
 		// We want to perform and action is OK
@@ -110,6 +113,9 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			// Start the action and dispatch events.
 			if (!m_bIsPerforming && !m_bLastInput)
 			{
+				if (!GetCanInteractScript(user))
+					return;
+
 				// UI
 				if (display)
 					display.OnActionStart(user, action);
@@ -131,8 +137,11 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 				
 				// Update elapsed time
 				ScriptedSignalUserAction signalUserAction = ScriptedSignalUserAction.Cast(action);
+				SCR_ScriptedUserAction scriptedUserAction = SCR_ScriptedUserAction.Cast(action);
 				if (signalUserAction)
 					m_fCurrentProgress = signalUserAction.GetActionProgress();
+				else if (scriptedUserAction)
+					m_fCurrentProgress = scriptedUserAction.GetActionProgress(m_fCurrentProgress, timeSlice);
 				else
 					m_fCurrentProgress += timeSlice;
 				
@@ -583,9 +592,19 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			// Make sure that selected action is always within bounds
 			int actionsCount = actions.Count();
 			m_iSelectedActionIndex = Math.Clamp(m_iSelectedActionIndex, 0, actionsCount - 1);
+
 			BaseUserAction selectedAction = null;
 			bool canPerformSelectedAction = false;
-			if (actionsCount > 0)
+
+			if (m_bIsPerforming)
+			{
+				selectedAction = m_pLastUserAction;
+				if (actions.Count() > prevActionIndex && actions[prevActionIndex] == m_pLastUserAction)
+					canPerformSelectedAction = canPerform[prevActionIndex];
+				else if (m_pLastUserAction)
+					canPerformSelectedAction = m_pLastUserAction.CanBeShown(character) && m_pLastUserAction.CanBePerformed(character);
+			}
+			else if (actionsCount > 0)
 			{
 				selectedAction = actions[m_iSelectedActionIndex];
 				canPerformSelectedAction = canPerform[m_iSelectedActionIndex];
@@ -600,8 +619,17 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			if (m_pDisplay)
 			{
 				ref ActionsTuple pData = new ref ActionsTuple();
-				pData.param1 = actions;
-				pData.param2 = canPerform;
+				bool canInteract = GetCanInteractScript(character);
+
+				if (canInteract || m_bIsPerforming)
+				{
+					pData.param1 = actions;
+					pData.param2 = canPerform;
+				}
+				else
+				{
+					pData.Init();
+				}
 				
 				ActionDisplayData pDisplayData = new ActionDisplayData();
 				pDisplayData.pUser = cEntity;

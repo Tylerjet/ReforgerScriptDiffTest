@@ -64,6 +64,21 @@ class SCR_MapMarkerEntryMilitary : SCR_MapMarkerEntryConfig
 			break;	
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMapLayerChanged(SCR_MapMarkerWidgetComponent widgetComp, int layerID)
+	{
+		if (layerID > 1) 
+		{
+			widgetComp.SetTextVisible(false);
+			widgetComp.SetAuthorVisible(false);
+		}
+		else
+		{
+			widgetComp.SetTextVisible(true);	
+			widgetComp.SetAuthorVisible(true);
+		}	
+	}
 }
 
 //------------------------------------------------------------------------------------------------

@@ -11,7 +11,9 @@ class SCR_TimeAdvancementEditorAttribute : SCR_BaseEditorAttribute
 		//If opened in global attributes
 		if (!IsGameMode(item)) return null;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) return null;
 		 
 		return SCR_BaseEditorAttributeVar.CreateBool(weatherManager.GetIsDayAutoAdvanced());
@@ -28,7 +30,9 @@ class SCR_TimeAdvancementEditorAttribute : SCR_BaseEditorAttribute
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) 
 			return;
 		 

@@ -59,6 +59,9 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	//! Listener callback
 	void OnInputMenuOpen(float value, EActionTrigger reason)
 	{
+		if (m_CursorModule.GetCursorState() & EMapCursorState.CS_PAN)	// dont open + pan at the same time
+			return;
+		
 		if (m_RadialMenu && m_RadialMenu.IsOpened())
 			return;
 		
@@ -115,6 +118,14 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	//! \return false if cannot open due to not having any entries
 	bool OpenMenu()
 	{		
+		SCR_VONController controllerVON = SCR_VONController.Cast(GetGame().GetPlayerController().FindComponent(SCR_VONController));
+		if (controllerVON)
+		{
+			SCR_VONMenu menuVON = controllerVON.GetVONMenu();
+			if (menuVON)
+				menuVON.SetMenuDisabled(true);
+		}
+		
 		float wX, wY, sX, sY;
 		m_MapEntity.GetMapCursorWorldPosition(wX, wY);
 		m_MapEntity.WorldToScreen(wX, wY, sX, sY);
@@ -132,6 +143,14 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	//! SCR_RadialMenu event
 	void CloseMenu()
 	{
+		SCR_VONController controllerVON = SCR_VONController.Cast(GetGame().GetPlayerController().FindComponent(SCR_VONController));
+		if (controllerVON)
+		{
+			SCR_VONMenu menuVON = controllerVON.GetVONMenu();
+			if (menuVON)
+				menuVON.SetMenuDisabled(false);
+		}
+		
 		m_CursorModule.HandleContextualMenu(true);
 	}
 	
@@ -225,13 +244,13 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 		m_RadialController.GetOnTakeControl().Insert(OnControllerTakeControl);
 		m_RadialController.GetOnControllerChanged().Insert(OnControllerChanged);
 		
-		GetGame().GetInputManager().AddActionListener("MapContextualMenu", EActionTrigger.DOWN, OnInputMenuOpen);
+		GetGame().GetInputManager().AddActionListener("MapContextualMenu", EActionTrigger.UP, OnInputMenuOpen);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMapClose(MapConfiguration config)
 	{		
-		GetGame().GetInputManager().RemoveActionListener("MapContextualMenu", EActionTrigger.DOWN, OnInputMenuOpen);
+		GetGame().GetInputManager().RemoveActionListener("MapContextualMenu", EActionTrigger.UP, OnInputMenuOpen);
 		
 		m_RadialController.GetOnInputOpen().Remove(InputOpenMenu);
 		m_RadialController.GetOnTakeControl().Remove(OnControllerTakeControl);

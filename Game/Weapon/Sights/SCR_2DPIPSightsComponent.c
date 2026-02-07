@@ -34,7 +34,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	[Attribute("2", UIWidgets.Slider, "TODO: fill", category: "PiPSights")]
 	protected int m_iGuiIndex;
 
-	[Attribute("28.0", UIWidgets.Slider, "Camera field of view used by this PIP component. Set to 0 to use Focus FOV", params: "0 89.99 0.01", category: "PiPSights")]
+	[Attribute("21", UIWidgets.Slider, "Camera field of view used by this PIP component. Set to 0 to use Focus FOV", params: "0 89.99 0.01", category: "PiPSights")]
 	protected float m_fMainCameraFOV;
 
 	[Attribute("0.2", UIWidgets.Slider, "Camera near clipping plane", params: "0 1000 0.01", category: "PiPSights")]
@@ -288,6 +288,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		vector mat[4];
 		parent = GetCameraLocalTransform(mat);
 
+		pipCamera.SetCameraIndex(m_iCameraIndex);
 		pipCamera.SetVerticalFOV(fov);
 		pipCamera.SetNearPlane(nearPlane);
 		pipCamera.SetFarPlane(farPlane);
@@ -297,7 +298,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		// Set camera to hierarchy
 		parent.AddChild(pipCamera, -1, EAddChildFlags.AUTO_TRANSFORM);
 		pipCamera.SetLocalTransform(mat);
-		pipCamera.UpdatePIPCamera(1.0, m_iCameraIndex);
+		pipCamera.UpdatePIPCamera(1.0);
 		return pipCamera;
 	}
 
@@ -574,7 +575,14 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		if (!mainCamera)
 			return;
 
-		vector localCameraPosition = GetOwner().CoordToLocal(mainCamera.GetOrigin());
+		vector cameraMat[4];
+		mainCamera.GetLocalTransform(cameraMat);
+		vector localCameraPosition = cameraMat[3]; // Camera's position in character's model space.
+		
+		vector charaToLocalMat[4];
+		GetCharacterToLocalTransform(charaToLocalMat);
+		localCameraPosition = localCameraPosition.Multiply4(charaToLocalMat); // Camera's position in our local space.
+			
 		float distance = vector.Distance(GetSightsRearPosition(true), localCameraPosition);
 		if (distance == 0)
 			return;
@@ -635,7 +643,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		m_PIPCamera.SetLocalTransform(mat);
 
 		// Finally update camera props
-		m_PIPCamera.UpdatePIPCamera(timeSlice, m_iCameraIndex);
+		m_PIPCamera.UpdatePIPCamera(timeSlice);
 	}
 
 	//------------------------------------------------------------------------------------------------

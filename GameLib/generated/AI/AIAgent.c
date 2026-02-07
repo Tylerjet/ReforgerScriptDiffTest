@@ -19,13 +19,14 @@ class AIAgent: GenericController
 	proto external AIGroup GetParentGroup();
 	proto external void SetLOD(int newLOD);
 	proto external int GetLOD();
+	proto external void SetPermanentLOD(int lod);
+	proto external int GetPermanentLOD();
+	static proto int GetMaxLOD();
+	//Does AIAgent affects AIWorld limit of AIs
+	proto external bool CountTowardsAIWorldLimit();
 	proto external int GetDangerEventsCount();
 	proto external AIDangerEvent GetDangerEvent(int index);
 	proto external void ClearDangerEvents(int howMany);
-	proto external AIOrder GetCurrentOrder();
-	proto external void ClearOrders();
-	proto external void FinishCurrentOrder();
-	proto external bool HasOrders();
 	proto external ActionManager GetActionManager();
 	proto external AICommunicationComponent GetCommunicationComponent();
 	proto external AIControlComponent GetControlComponent();

@@ -1,15 +1,15 @@
-enum EFieldManual_ImageGalleryType
+enum SCR_EFieldManual_ImageGalleryType
 {
 	ICONS_VERTICAL,
 	ICONS_LIST,
 	GALLERY_HORIZONTAL,
 	GALLERY_VERTICAL,
-};
+}
 
 class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 {
-	[Attribute(defvalue: SCR_Enum.GetDefault(EFieldManual_ImageGalleryType.GALLERY_HORIZONTAL), uiwidget: UIWidgets.ComboBox, enums: SCR_Enum.GetList(EFieldManual_ImageGalleryType))]
-	protected EFieldManual_ImageGalleryType m_eType;
+	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EFieldManual_ImageGalleryType.GALLERY_HORIZONTAL), uiwidget: UIWidgets.ComboBox, enums: SCR_Enum.GetList(SCR_EFieldManual_ImageGalleryType))]
+	protected SCR_EFieldManual_ImageGalleryType m_eType;
 
 	[Attribute()]
 	protected ref array<ref SCR_FieldManual_ImageGalleryLayoutInfo> m_aEnumLayoutPairs;
@@ -31,15 +31,12 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 	void SCR_FieldManual_ImageGalleryComponent()
 	{
 		if (!m_aEnumLayoutPairs)
-		{
 			m_aEnumLayoutPairs = {};
-		}
+
 		AddMissingEnumLayoutPairs();
 
 		if (!m_aImagesData)
-		{
 			m_aImagesData = {};
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -47,24 +44,25 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 	{
 		super.HandlerAttached(w);
 		m_wRoot = w;
-		Rebuild();
+		Rebuild(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void Init(EFieldManual_ImageGalleryType type, string text, array<ref SCR_FieldManual_ImageData> imagesData)
+	void Init(SCR_EFieldManual_ImageGalleryType type, string text, array<ref SCR_FieldManual_ImageData> imagesData)
 	{
 		m_eType = type;
 		m_sText = text;
 		if (imagesData)
 			m_aImagesData = imagesData;
-		Rebuild();
+
+		Rebuild(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void ClearImages()
 	{
 		m_aImagesData.Clear();
-		Rebuild();
+		Rebuild(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -72,8 +70,9 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 	{
 		if (!imagesData || imagesData.IsEmpty())
 			return;
+
 		m_aImagesData = imagesData;
-		Rebuild();
+		Rebuild(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -90,14 +89,16 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetType(EFieldManual_ImageGalleryType type)
+	void SetType(SCR_EFieldManual_ImageGalleryType type)
 	{
 		m_eType = type;
-		Rebuild();
+		Rebuild(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void Rebuild()
+	//! Delete and recreate all child widgets
+	//! Used e.g on input changes (keyboard/controller)
+	void Rebuild(bool isGamepad)
 	{
 		if (!m_wRoot || !m_aEnumLayoutPairs)
 			return;
@@ -112,12 +113,12 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 			}
 		}
 
-		if (!galleryInfo || galleryInfo.m_GalleryLayout.IsEmpty() || galleryInfo.m_ImageLayout.IsEmpty())
+		if (!galleryInfo || galleryInfo.m_sGalleryLayout.IsEmpty() || galleryInfo.m_sImageLayout.IsEmpty())
 			return;
 
 		SCR_WidgetHelper.RemoveAllChildren(m_wRoot);
 
-		m_wGallery = GetGame().GetWorkspace().CreateWidgets(galleryInfo.m_GalleryLayout, m_wRoot);
+		m_wGallery = GetGame().GetWorkspace().CreateWidgets(galleryInfo.m_sGalleryLayout, m_wRoot);
 		if (!m_wGallery)
 			return;
 
@@ -129,10 +130,19 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 		if (!imagesParent)
 			return;
 
+		array<SCR_EInputTypeCondition> conditions = { SCR_EInputTypeCondition.ALL_INPUTS };
+		if (isGamepad)
+			conditions.Insert(SCR_EInputTypeCondition.GAMEPAD_ONLY);
+		else
+			conditions.Insert(SCR_EInputTypeCondition.KEYBOARD_ONLY);
+
 		Widget image;
 		foreach (SCR_FieldManual_ImageData imageData : m_aImagesData)
 		{
-			image = GetGame().GetWorkspace().CreateWidgets(galleryInfo.m_ImageLayout, imagesParent);
+			if (!conditions.Contains(imageData.m_eInputDisplayCondition))
+				continue;
+
+			image = GetGame().GetWorkspace().CreateWidgets(galleryInfo.m_sImageLayout, imagesParent);
 			if (!image)
 				continue;
 
@@ -159,65 +169,65 @@ class SCR_FieldManual_ImageGalleryComponent : ScriptedWidgetComponent
 
 		TextWidget captionWidget = TextWidget.Cast(widget.FindAnyWidget(S_CAPTION_WIDGET_NAME));
 		if (captionWidget)
-		 	captionWidget.SetText(imageData.m_sCaption);
+			captionWidget.SetText(imageData.m_sCaption);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void AddMissingEnumLayoutPairs()
 	{
-		set<EFieldManual_ImageGalleryType> foundEnums = new set<EFieldManual_ImageGalleryType>();
+		set<SCR_EFieldManual_ImageGalleryType> foundEnums = new set<SCR_EFieldManual_ImageGalleryType>();
 		foreach (SCR_FieldManual_ImageGalleryLayoutInfo pair : m_aEnumLayoutPairs)
 		{
 			foundEnums.Insert(pair.m_eType);
 		}
 
-		if (!foundEnums.Contains(EFieldManual_ImageGalleryType.ICONS_VERTICAL))
+		if (!foundEnums.Contains(SCR_EFieldManual_ImageGalleryType.ICONS_VERTICAL))
 		{
 			SCR_FieldManual_ImageGalleryLayoutInfo info = new SCR_FieldManual_ImageGalleryLayoutInfo();
-			info.m_eType = EFieldManual_ImageGalleryType.ICONS_VERTICAL;
-			info.m_GalleryLayout = "{912B608D2650F8B9}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/ICONS_VERTICAL_ImageGallery.layout";
-			info.m_ImageLayout = "{BF790BE149822E0F}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/ICONS_VERTICAL_Image.layout";
+			info.m_eType = SCR_EFieldManual_ImageGalleryType.ICONS_VERTICAL;
+			info.m_sGalleryLayout = "{912B608D2650F8B9}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/ICONS_VERTICAL_ImageGallery.layout";
+			info.m_sImageLayout = "{BF790BE149822E0F}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/ICONS_VERTICAL_Image.layout";
 			m_aEnumLayoutPairs.Insert(info);
 		}
 
-		if (!foundEnums.Contains(EFieldManual_ImageGalleryType.ICONS_LIST))
+		if (!foundEnums.Contains(SCR_EFieldManual_ImageGalleryType.ICONS_LIST))
 		{
 			SCR_FieldManual_ImageGalleryLayoutInfo info = new SCR_FieldManual_ImageGalleryLayoutInfo();
-			info.m_eType = EFieldManual_ImageGalleryType.ICONS_LIST;
-			info.m_GalleryLayout = "{B4DF69D7D553CFBC}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/ICONS_LIST_ImageGallery.layout";
-			info.m_ImageLayout = "{3194AFE59F1B877E}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/ICONS_LIST_Image.layout";
+			info.m_eType = SCR_EFieldManual_ImageGalleryType.ICONS_LIST;
+			info.m_sGalleryLayout = "{B4DF69D7D553CFBC}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/ICONS_LIST_ImageGallery.layout";
+			info.m_sImageLayout = "{3194AFE59F1B877E}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/ICONS_LIST_Image.layout";
 			m_aEnumLayoutPairs.Insert(info);
 		}
 
-		if (!foundEnums.Contains(EFieldManual_ImageGalleryType.GALLERY_HORIZONTAL))
+		if (!foundEnums.Contains(SCR_EFieldManual_ImageGalleryType.GALLERY_HORIZONTAL))
 		{
 			SCR_FieldManual_ImageGalleryLayoutInfo info = new SCR_FieldManual_ImageGalleryLayoutInfo();
-			info.m_eType = EFieldManual_ImageGalleryType.GALLERY_HORIZONTAL;
-			info.m_GalleryLayout = "{D8E4A2905F167C53}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/GALLERY_HORIZONTAL_ImageGallery.layout";
-			info.m_ImageLayout = "{D08B8D5E3209D733}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/GALLERY_HORIZONTAL_Image.layout";
+			info.m_eType = SCR_EFieldManual_ImageGalleryType.GALLERY_HORIZONTAL;
+			info.m_sGalleryLayout = "{D8E4A2905F167C53}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/GALLERY_HORIZONTAL_ImageGallery.layout";
+			info.m_sImageLayout = "{D08B8D5E3209D733}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/GALLERY_HORIZONTAL_Image.layout";
 			m_aEnumLayoutPairs.Insert(info);
 		}
 
-		if (!foundEnums.Contains(EFieldManual_ImageGalleryType.GALLERY_VERTICAL))
+		if (!foundEnums.Contains(SCR_EFieldManual_ImageGalleryType.GALLERY_VERTICAL))
 		{
 			SCR_FieldManual_ImageGalleryLayoutInfo info = new SCR_FieldManual_ImageGalleryLayoutInfo();
-			info.m_eType = EFieldManual_ImageGalleryType.GALLERY_VERTICAL;
-			info.m_GalleryLayout = "{856A53946CA73978}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/GALLERY_VERTICAL_ImageGallery.layout";
-			info.m_ImageLayout = "{D077D7EA510D2FC5}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/GALLERY_VERTICAL_Image.layout";
+			info.m_eType = SCR_EFieldManual_ImageGalleryType.GALLERY_VERTICAL;
+			info.m_sGalleryLayout = "{856A53946CA73978}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/GALLERY_VERTICAL_ImageGallery.layout";
+			info.m_sImageLayout = "{D077D7EA510D2FC5}UI/layouts/Menus/FieldManual/Pieces/ImageGallery/GALLERY_VERTICAL_Image.layout";
 			m_aEnumLayoutPairs.Insert(info);
 		}
 	}
-};
+}
 
-[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(enumType: EFieldManual_ImageGalleryType, propertyName: "m_eType", format: "Image Gallery %1")]
+[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(enumType: SCR_EFieldManual_ImageGalleryType, propertyName: "m_eType", format: "Image Gallery %1")]
 class SCR_FieldManual_ImageGalleryLayoutInfo
 {
-	[Attribute(defvalue: SCR_Enum.GetDefault(EFieldManual_ImageGalleryType.GALLERY_HORIZONTAL), uiwidget: UIWidgets.ComboBox, enums: SCR_Enum.GetList(EFieldManual_ImageGalleryType))]
-	EFieldManual_ImageGalleryType m_eType;
+	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EFieldManual_ImageGalleryType.GALLERY_HORIZONTAL), uiwidget: UIWidgets.ComboBox, enums: SCR_Enum.GetList(SCR_EFieldManual_ImageGalleryType))]
+	SCR_EFieldManual_ImageGalleryType m_eType;
 
 	[Attribute()]
-	ResourceName m_GalleryLayout;
+	ResourceName m_sGalleryLayout;
 
 	[Attribute()]
-	ResourceName m_ImageLayout;
-};
+	ResourceName m_sImageLayout;
+}

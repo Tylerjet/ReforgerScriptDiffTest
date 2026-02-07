@@ -31,6 +31,71 @@ class SCR_VotingBase
 	
 	protected int m_iLocalValue = DEFAULT_VALUE;
 	
+	//~ How many players have voted in favour
+	protected int m_iCurrentVoteCount;
+	
+	//~ Keep track of who voted (server only)
+	protected ref array<int> m_aPlayersVoted_Server = {};
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	A player has voted to approve (server only)
+	\param playerID Id of player who voted
+	\return True if player had not yet voted to approve
+	*/
+	bool AddPlayerVotedServer(int playerID)
+	{
+		if (m_aPlayersVoted_Server.Contains(playerID))
+			return false;
+		
+		m_aPlayersVoted_Server.Insert(playerID);
+		SetCurrentVoteCount(m_aPlayersVoted_Server.Count());
+		
+		//~ Vote debug
+		Print("Player '" + playerID + "' approved vote | Vote Type: '" + typename.EnumToString(EVotingType, m_Type) + "' | Vote value: '" + m_iLocalValue + "' | Count (" + GetCurrentVoteCount() + "/" + GetVoteCountRequired() + ")");
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	A player has voted to remove or abstain (server only)
+	\param playerID Id of player who voted to remove or abstain
+	\return True if player had previously voted to approve and the vote was removed
+	*/
+	bool RemovePlayerVotedServer(int playerID)
+	{
+		if (!m_aPlayersVoted_Server.Contains(playerID))
+			return false;
+		
+		m_aPlayersVoted_Server.RemoveItem(playerID);
+		SetCurrentVoteCount(m_aPlayersVoted_Server.Count());
+		
+		//~ Vote debug
+		Print("Player '" + playerID + "' removed vote | Vote Type: '" + typename.EnumToString(EVotingType, m_Type) + "' | Vote value: '" + m_iLocalValue + "' | Count (" + GetCurrentVoteCount() + "/" + GetVoteCountRequired() + ")");
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Set the current amount of votes this vote has
+	\param currentVoteCount New current vote amount
+	*/
+	void SetCurrentVoteCount(int currentVoteCount)
+	{
+		m_iCurrentVoteCount = currentVoteCount;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	\return Current total votes the vote has received
+	*/
+	int GetCurrentVoteCount()
+	{
+		return m_iCurrentVoteCount;
+	}
+	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public, server
 	/*!
@@ -215,13 +280,37 @@ class SCR_VotingBase
 		else
 			m_fDuration = remainingDuration;
 	}
-		
-	////////////////////////////////////////////////////////////////////////////////////////////////
-	//--- Protected
-	protected int GetPlayerCount()
+	
+	/*!
+	Get total player count of players that are valid to vote for the issue
+	return Total count
+	*/
+	int GetPlayerCount()
 	{
 		return Math.Max(GetGame().GetPlayerManager().GetPlayerCount(), 1);
 	}
+	
+	/*!
+	Get total players needed to make sure the vote is successfull
+	return Total votes needed
+	*/
+	int GetVoteCountRequired()
+	{
+		float playersRequired = GetPlayerCount() * m_fThreshold;
+		int playersRequiredInt = Math.Ceil(playersRequired);
+		
+		//~ Vote succeeds when vote count is GREATER than threshold. If players requered is == to playersRequired ceil than it means that there is 1 more player needed for the vote to succeed as otherwise the vote is equal
+		if (playersRequired == playersRequiredInt)
+			playersRequiredInt++;
+		
+		if (playersRequiredInt < m_iMinVotes)
+			return m_iMinVotes;
+		
+		return playersRequiredInt;
+	}
+		
+	////////////////////////////////////////////////////////////////////////////////////////////////
+	//--- Protected
 	protected bool EvaluateParticipation(int voteCount)
 	{
 		return

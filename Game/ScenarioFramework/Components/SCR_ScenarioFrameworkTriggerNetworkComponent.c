@@ -11,23 +11,23 @@ class SCR_ScenarioFrameworkTriggerNetworkComponent : ScriptComponent
 	void ReplicateTriggerState(SCR_CharacterTriggerEntity trigger, bool left)
 	{
 		if (!left)
-			Rpc(RpcDo_InvokeTriggerUpdated, trigger.GetActivationCountdownTimer(), trigger.GetActivationCountdownTimerTemp(), trigger.GetPlayersCountByFactionInsideTrigger(trigger.GetOwnerFaction()), trigger.GetPlayersCountByFaction(), trigger.GetPlayerActivationNotificationTitle(), trigger.GetTriggerConditionsStatus());
+			Rpc(Rpc_InvokeTriggerUpdated, trigger.GetActivationCountdownTimer(), trigger.GetActivationCountdownTimerTemp(), trigger.GetPlayersCountByFactionInsideTrigger(trigger.GetOwnerFaction()), trigger.GetPlayersCountByFaction(), trigger.GetPlayerActivationNotificationTitle(), trigger.GetTriggerConditionsStatus(), trigger.GetMinimumPlayersNeededPercentage());
 		else
-			Rpc(RpcDo_InvokePlayerLeftTrigger);
+			Rpc(Rpc_InvokePlayerLeftTrigger);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Invokes OnTriggerUpdated
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	void RpcDo_InvokeTriggerUpdated(float activationCountdownTimer, float tempWaitTime, int playersCountByFactionInside, int playersCountByFaction, string playerActivationNotificationTitle, bool triggerConditionsStatus)
+	void Rpc_InvokeTriggerUpdated(float activationCountdownTimer, float tempWaitTime, int playersCountByFactionInside, int playersCountByFaction, string playerActivationNotificationTitle, bool triggerConditionsStatus, float minimumPlayersNeededPercentage)
 	{
-		SCR_CharacterTriggerEntity.s_OnTriggerUpdated.Invoke(activationCountdownTimer, tempWaitTime, playersCountByFactionInside, playersCountByFaction, playerActivationNotificationTitle, triggerConditionsStatus);
+		SCR_CharacterTriggerEntity.s_OnTriggerUpdated.Invoke(activationCountdownTimer, tempWaitTime, playersCountByFactionInside, playersCountByFaction, playerActivationNotificationTitle, triggerConditionsStatus, minimumPlayersNeededPercentage);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Invokes OnTriggerUpdatedPlayerNotPresent to the player who just left the trigger
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	void RpcDo_InvokePlayerLeftTrigger()
+	void Rpc_InvokePlayerLeftTrigger()
 	{
 		SCR_CharacterTriggerEntity.s_OnTriggerUpdatedPlayerNotPresent.Invoke(0);
 	}

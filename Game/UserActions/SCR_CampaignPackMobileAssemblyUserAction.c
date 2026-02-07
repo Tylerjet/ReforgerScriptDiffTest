@@ -45,7 +45,11 @@ class SCR_CampaignPackMobileAssemblyUserAction : SCR_CampaignDeployMobileAssembl
 		if (SCR_FactionManager.SGetLocalPlayerFaction() != m_AssemblyComponent.GetParentFaction())
 			return false;
 		
-		int basesCovered = m_AssemblyComponent.GetCountOfExclusivelyLinkedBases();
+		int basesCovered;
+		SCR_CampaignMobileAssemblyStandaloneComponent standaloneComponent = m_AssemblyComponent.GetStandaloneComponent();
+		
+		if (standaloneComponent)
+			basesCovered = standaloneComponent.GetCountOfExclusivelyLinkedBases();
 
 		if (basesCovered == 0)
 			return false;

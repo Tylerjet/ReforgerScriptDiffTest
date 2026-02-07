@@ -10,8 +10,13 @@ class SCR_LightsHazardUserAction : LightUserAction
 		if (!lightManager)
 			return;
 		
-		bool lightsState = !lightManager.GetLightsState(ELightType.Hazard);
+		bool lightsState;	
 		
+		lightsState = lightManager.GetLightsState(ELightType.Hazard);
+
+		if (RplSession.Mode() != RplMode.Client)
+			lightsState = !lightsState;
+
 		lightManager.SetLightsState(ELightType.Hazard, lightsState);
 				
 		// Sound		

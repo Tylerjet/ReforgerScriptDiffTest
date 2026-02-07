@@ -5,14 +5,20 @@ class SCR_LightsPresenceUserAction : LightUserAction
 	{
 		if (!pOwnerEntity || !pUserEntity)
 			return;
-
+		
 		BaseLightManagerComponent lightManager = GetLightManager();
 		if (!lightManager)
 			return;
-		
-		bool lightsState = !lightManager.GetLightsState(ELightType.Presence);
+
+		bool lightsState;
+				
+		lightsState = lightManager.GetLightsState(ELightType.Presence);
+
+		if (RplSession.Mode() != RplMode.Client)
+			lightsState = !lightsState;
+
 		lightManager.SetLightsState(ELightType.Presence, lightsState);
-		
+
 		// Sound		
 		PlaySound(pOwnerEntity, lightsState);
 	}

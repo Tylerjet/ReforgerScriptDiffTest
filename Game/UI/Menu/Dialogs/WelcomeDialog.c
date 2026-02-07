@@ -14,8 +14,8 @@ class WelcomeDialogUI: DialogUI
 	protected ref array<ref Widget> m_wLinkButtons = new array<ref Widget>;
 	protected Widget m_wLastFocusedLinkButton;
 	protected SCR_SelectionHintComponent m_SelectionHint;
-	protected SCR_NavigationButtonComponent m_Previous;
-	protected SCR_NavigationButtonComponent m_Next;
+	protected SCR_InputButtonComponent m_Previous;
+	protected SCR_InputButtonComponent m_Next;
 
 	protected int m_iCurrentIndex;
 	protected int m_iMaxIndex;
@@ -57,11 +57,11 @@ class WelcomeDialogUI: DialogUI
 			}
 		}
 		
-		m_Previous = SCR_NavigationButtonComponent.GetNavigationButtonComponent(m_sPreviousName, w);
+		m_Previous = SCR_InputButtonComponent.GetInputButtonComponent(m_sPreviousName, w);
 		if (m_Previous)
 			m_Previous.m_OnActivated.Insert(OnPrevious);
 
-		m_Next = SCR_NavigationButtonComponent.GetNavigationButtonComponent(m_sNextName, w);
+		m_Next = SCR_InputButtonComponent.GetInputButtonComponent(m_sNextName, w);
 		if (m_Next)
 			m_Next.m_OnActivated.Insert(OnNext);
 
@@ -79,6 +79,14 @@ class WelcomeDialogUI: DialogUI
 		ShowIndex(0);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(float tDelta)
+	{
+		super.OnMenuUpdate(tDelta);
+		
+		GetGame().GetInputManager().ActivateContext("InteractableDialogContext");
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnConfirm()
 	{

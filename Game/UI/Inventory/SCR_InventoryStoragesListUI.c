@@ -149,6 +149,14 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 									GridSlot.SetRow( w, iLoadoutArea );	
 								}
 							}
+							
+							SCR_CharacterInventoryStorageComponent characterStorage = SCR_CharacterInventoryStorageComponent.Cast(m_Storage);
+							
+							if (characterStorage)
+							{
+								pSlot.SetSlotBlocked(characterStorage.IsAreaBlocked(pSlot.GetLoadoutArea().Type()));
+							}
+							
 							GridSlot.SetColumnSpan( w, iWidgetColumnSize );
 							GridSlot.SetRowSpan( w, iWidgetRowSize );
 							iCol += iWidgetColumnSize;			
@@ -180,6 +188,15 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 				ResourceName icon = m_pInventoryUIConfig.GetIconByRow( aCoordinates[1] );
 				if ( icon != ResourceName.Empty )
 					pSlot.SetIcon( icon );
+				
+				SCR_CharacterInventoryStorageComponent characterStorage = SCR_CharacterInventoryStorageComponent.Cast(m_Storage);
+				if (characterStorage)
+				{
+					LoadoutAreaType loadoutArea = m_pInventoryUIConfig.GetAreaByRow(aCoordinates[1]);
+					
+					if (loadoutArea)
+						pSlot.SetSlotBlocked(characterStorage.IsAreaBlocked(loadoutArea.Type()));
+				}
 			}	
 			else
 			{

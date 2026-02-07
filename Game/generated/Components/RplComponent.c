@@ -41,16 +41,6 @@ class RplComponent: BaseRplComponent
 	*/
 	proto external void GiveExt(RplIdentity newOwner, bool alwaysNotify);
 	/*!
-	Enable owner streaming.
-	This is useful for situations such as with player characters. Once valid for streaming
-	out we want to keep them untouched. Otherwise, players would have nothing to play with.
-
-	\warning Works only if Network Dynamic Simulation is enabled
-
-	\param enable If true streaming is enabled.
-	*/
-	proto external void EnableOwnerStreaming(bool enable);
-	/*!
 	Force scheduler to move node
 	This is useful for nodes that do not have networked movement component, but are
 	forcefully moved. To be used only in special cases.
@@ -89,6 +79,22 @@ class RplComponent: BaseRplComponent
 	\param enable If true streaming is enabled.
 	*/
 	static proto void EnableStreamingForConnection(RplIdentity identity, bool enable);
+	/*
+	Insert MPObserver at position, for identity.
+	Allows for static observer that then streams in/preloads replicated entities
+
+	\warning Ensure you delete these observers after usage, they can cause performance issues.
+	\param identity Client connection.
+	\param x Position of observer.
+	\param z Position of observer.
+	*/
+	static proto void InsertMPObserver(RplIdentity identity, float x, float z);
+	/*
+	Remove MPObserver for identity.
+
+	\param identity Client connection.
+	*/
+	static proto void RemoveMPObserver(RplIdentity identity);
 }
 
 /*!

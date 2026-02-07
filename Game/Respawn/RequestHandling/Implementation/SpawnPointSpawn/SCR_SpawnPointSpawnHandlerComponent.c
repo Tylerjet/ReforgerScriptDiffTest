@@ -68,18 +68,26 @@ class SCR_SpawnPointSpawnHandlerComponent : SCR_SpawnHandlerComponent
 	/*!
 		Authority side check for whether provided request can be processed on provided spawn point.
 	*/
-	protected override bool CanRequestSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data)
+	protected override bool CanRequestSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, out SCR_ESpawnResult result)
 	{
 		SCR_SpawnPointSpawnData spawnPointData = SCR_SpawnPointSpawnData.Cast(data);
 		SCR_SpawnPoint spawnPoint = spawnPointData.GetSpawnPoint();
 		if (!spawnPoint)
+		{
+			result = SCR_ESpawnResult.SPAWN_NOT_ALLOWED;
 			return false;
+		}
+			
 		
 		// Cannot reserve = will not be able to spawn
-		if (!spawnPoint.CanReserveFor_S(requestComponent.GetPlayerId()))
+		if (!spawnPoint.CanReserveFor_S(requestComponent.GetPlayerId(), result))
+		{
+			//result = SCR_ESpawnResult.SPAWN_NOT_ALLOWED;
 			return false;
+		}
+			
 
-		return super.CanRequestSpawn_S(requestComponent, data);
+		return super.CanRequestSpawn_S(requestComponent, data, result);
 	}
 
 	/*!

@@ -2,19 +2,43 @@ class SCR_PlayerControllerClass : PlayerControllerClass
 {
 };
 
+//------------------------------------------------------------------------------------------------
+void OnControlledEntityChangedPlayerController(IEntity from, IEntity to);
+typedef func OnControlledEntityChangedPlayerController;
+typedef ScriptInvokerBase<OnControlledEntityChangedPlayerController> OnControlledEntityChangedPlayerControllerInvoker;
+
+//------------------------------------------------------------------------------------------------
 void OwnershipChangedDelegate(bool isChanging, bool becameOwner);
 typedef func OwnershipChangedDelegate;
 typedef ScriptInvokerBase<OwnershipChangedDelegate> OnOwnershipChangedInvoker;
+
+//------------------------------------------------------------------------------------------------
+void OnDestroyedPlayerController(Instigator killer, IEntity killerEntity);
+typedef func OnDestroyedPlayerController;
+typedef ScriptInvokerBase<OnDestroyedPlayerController> OnDestroyedPlayerControllerInvoker;
+
+//------------------------------------------------------------------------------------------------
+void OnPossessed(IEntity entity);
+typedef func OnPossessed;
+typedef ScriptInvokerBase<OnPossessed> OnPossessedInvoker;
+
+//------------------------------------------------------------------------------------------------
+void OnBeforePossessed(IEntity entity);
+typedef func OnBeforePossessed;
+typedef ScriptInvokerBase<OnBeforePossessed> OnBeforePossessedInvoker;
 
 //------------------------------------------------------------------------------------------------
 class SCR_PlayerController : PlayerController
 {
 	static PlayerController s_pLocalPlayerController;
 	static const float WALK_SPEED = 0.5;
-	static const float FOCUS_THRESHOLD = 0.01;
-	static const float FOCUS_TIMEOUT = 0.2;
+	static const float FOCUS_ACTIVATION = 0.1;
+	static const float FOCUS_DEACTIVATION = 0.05;
+	static const float FOCUS_TIMEOUT = 0.3;
+	static const float FOCUS_TOLERANCE = 0.005;
 	static float s_fADSFocus = 0.7;
 	static float s_fFocusTimeout;
+	static float s_fFocusAnalogue;
 
 	CharacterControllerComponent m_CharacterController;
 	private bool m_bIsLocalPlayerController;
@@ -32,12 +56,11 @@ class SCR_PlayerController : PlayerController
 	[RplProp()]
 	protected bool m_bIsPossessing;
 
-	ref ScriptInvoker<IEntity> m_OnDestroyed = new ScriptInvoker();		// main entity is destroyed
-	ref ScriptInvoker<IEntity> m_OnBeforePossess = new ScriptInvoker();		// Before an entity becomes possesed.
-	ref ScriptInvoker<IEntity> m_OnPossessed = new ScriptInvoker();		// when entity becomes possessed or control returns to the main entity
-	ref ScriptInvoker<IEntity, IEntity> m_OnControlledEntityChanged = new ScriptInvoker();
-	
-	private ref OnOwnershipChangedInvoker m_OnOwnershipChangedInvoker = new OnOwnershipChangedInvoker();
+	ref OnBeforePossessedInvoker m_OnBeforePossess = new OnBeforePossessedInvoker();		// Before an entity becomes possesed.
+	ref OnPossessedInvoker m_OnPossessed = new OnPossessedInvoker();		// when entity becomes possessed or control returns to the main entity
+	ref OnControlledEntityChangedPlayerControllerInvoker m_OnControlledEntityChanged = new OnControlledEntityChangedPlayerControllerInvoker();
+	ref OnDestroyedPlayerControllerInvoker m_OnDestroyed = new OnDestroyedPlayerControllerInvoker();		// main entity is destroyed
+	ref OnOwnershipChangedInvoker m_OnOwnershipChangedInvoker = new OnOwnershipChangedInvoker();
 	//------------------------------------------------------------------------------------------------
 	/*!
 		\see PlayerController.OnOwnershipChanged for more information.
@@ -108,6 +131,10 @@ class SCR_PlayerController : PlayerController
 			bool stickyGadgets = true;
 			if (gameplaySettings.Get("m_bStickyGadgets", stickyGadgets))
 				m_CharacterController.SetStickyGadget(stickyGadgets);
+			
+			bool mouseControlAircraft = true;
+			if (gameplaySettings.Get("m_bMouseControlAircraft", mouseControlAircraft))
+				m_CharacterController.SetMouseControlAircraft(mouseControlAircraft);
 
 			EVehicleDrivingAssistanceMode drivingAssistance;
 			if(GetGame().GetIsClientAuthority())
@@ -155,7 +182,10 @@ class SCR_PlayerController : PlayerController
 				{
 					RplComponent rpl = RplComponent.Cast(controlledEntity.FindComponent(RplComponent));
 					if (rpl)
+					{
+						rpl.GiveExt(RplIdentity.Local(), false);
 						m_MainEntityID = rpl.Id();
+					}
 				}
 
 				OnRplMainEntityFromID(); //--- ToDo: Remove? BumpMe should call it automatically.
@@ -200,6 +230,14 @@ class SCR_PlayerController : PlayerController
 						rpl.GiveExt(RplIdentity.Local(), false);
 
 					SetAIActivation(controlledEntity, true);
+				}
+				
+				//--- Switch control
+				if (m_MainEntity)
+				{
+					RplComponent rpl = RplComponent.Cast(m_MainEntity.FindComponent(RplComponent));
+					if (rpl)
+						rpl.GiveExt(GetRplIdentity(), false);
 				}
 				SetControlledEntity(m_MainEntity);
 				m_OnPossessed.Invoke(m_MainEntity);
@@ -375,12 +413,15 @@ class SCR_PlayerController : PlayerController
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnDestroyed(IEntity killer)
+	override void OnDestroyed(notnull Instigator killer)
 	{
-		m_OnDestroyed.Invoke(killer);
+		super.OnDestroyed(killer);
+		IEntity killerEntity = killer.GetInstigatorEntity();
+		m_OnDestroyed.Invoke(killer, killerEntity);
 	}
 
-	override void EOnFrame(IEntity owner, float timeSlice)
+	//------------------------------------------------------------------------------------------------
+	override void OnUpdate(float timeSlice)
 	{
 		if (!s_pLocalPlayerController)
 			UpdateLocalPlayerController();
@@ -487,13 +528,6 @@ class SCR_PlayerController : PlayerController
 		characterController.SetDisableMovementControls(value)
 	}
 
-	override void OnPrepareTestCase(ActionManager am, float dt, IEntity characterEntity)
-	{
-		// condition from character controller
-		if (characterEntity == null)
-			return;
-	}
-
 	//------------------------------------------------------------------------------------------------
 	/*! Focus input degree for analogue input
 	\param adsProgress ADS focus percentage
@@ -546,27 +580,40 @@ class SCR_PlayerController : PlayerController
 
 		// Ground vehicles have different focus action to prevent conflict with brakes
 		float inputAnalogue;
-		if (!inputManager.IsContextActive("CarContext"))
-			inputAnalogue = inputManager.GetActionValue("FocusAnalog");
+		if (!inputManager.IsContextActive("CarContext") && !inputManager.IsContextActive("HelicopterContext"))
+		{
+			// Square root input to focus mapping results in linear change of picture area
+			float focusAnalogue = Math.Sqrt(inputManager.GetActionValue("FocusAnalog"));
+
+			// Tolerance to prevent jittering
+			if (focusAnalogue < FOCUS_DEACTIVATION)
+				s_fFocusAnalogue = 0;
+			else if (!float.AlmostEqual(s_fFocusAnalogue, focusAnalogue, FOCUS_TOLERANCE))
+				s_fFocusAnalogue = focusAnalogue;
+
+			inputAnalogue = s_fFocusAnalogue;
+		}
 
 		// Prevent focus warping back while toggling ADS on controller
 		// analogue: track timeout as we have no input filter that has thresholds or delays and returns axis value yet
-		if (inputAnalogue < FOCUS_THRESHOLD)
-			s_fFocusTimeout = FOCUS_TIMEOUT;
-		else if (dt > 0 && !m_bFocusToggle)
-			s_fFocusTimeout -= dt;
+		if (inputAnalogue < FOCUS_DEACTIVATION)
+			s_fFocusTimeout = FOCUS_TIMEOUT; // Below deactivation threshold
+		else if (inputAnalogue < FOCUS_ACTIVATION && s_fFocusTimeout > 0)
+			s_fFocusTimeout = FOCUS_TIMEOUT;  // Below activation threshold and not active
+		else if (s_fFocusTimeout > dt)
+			s_fFocusTimeout -= dt; // Not yet active, decrementing
 		else
-			s_fFocusTimeout = -1;
+			s_fFocusTimeout = 0; // Activated
 
 		// Cancel toggle focus with analogue input
-		if (m_bFocusToggle && s_fFocusTimeout < 0)
+		if (m_bFocusToggle && s_fFocusTimeout == 0)
 			m_bFocusToggle = false;
 
 		// Combine all valid input sources
 		float input;
 		if (m_bFocusToggle || inputDigital)
 			input = 1;
-		else if (s_fFocusTimeout < 0)
+		else if (s_fFocusTimeout == 0)
 			input = inputAnalogue;
 
 		if (input > 0)

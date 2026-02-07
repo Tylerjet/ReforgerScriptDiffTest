@@ -51,6 +51,17 @@ class SCR_PressureTriggerComponent : SCR_BaseTriggerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	/*!
+	Manually trigger the entity (Server Only)
+	*/
+	void TriggerManuallyServer()
+	{
+		//~ Delay it to next frame, cannot trigger entity at the same time as Rpc
+		GetGame().GetCallqueue().CallLater(RPC_DoTrigger);
+		Rpc(RPC_DoTrigger);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// Only call this on the server
 	override void ActivateTrigger()
 	{
@@ -61,7 +72,6 @@ class SCR_PressureTriggerComponent : SCR_BaseTriggerComponent
 		if (!rplComponent || rplComponent.IsProxy())
 			return;
 		
-		owner.Activate();
 		SetEventMask(owner, EntityEvent.CONTACT);
 	}
 	

@@ -38,6 +38,7 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 
 		//! yaw pitch roll vector
 		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
+		lookAngles[1] = lookAngles[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
 		//! apply to rotation matrix
 		Math3D.AnglesToMatrix(lookAngles, pOutResult.m_CameraTM);
 								
@@ -93,10 +94,6 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		msOffset = msOffset + m_v3rd_VelocityAdd * -0.05;
 		// ls offset + ms offset + shoulder width			
 		pOutResult.m_CameraTM[3]		= pOutResult.m_CameraTM[3] + pOutResult.m_CameraTM[0] * lsOffset[0] + pOutResult.m_CameraTM[1] * lsOffset[1] + pOutResult.m_CameraTM[2] * lsOffset[2] + msOffset;
-		
-		// Hard limit to stop camera pivot from being too much behind the character (it can bypass the camera collision).
-		if (pOutResult.m_CameraTM[3][2] < -0.2)
-			pOutResult.m_CameraTM[3][2] = -0.2;
 		
 		float currY = pOutResult.m_CameraTM[3][1];
 		if (m_fYoffsetPrevFrame == 0)

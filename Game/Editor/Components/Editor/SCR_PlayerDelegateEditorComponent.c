@@ -95,15 +95,15 @@ class SCR_PlayerDelegateEditorComponent : SCR_BaseEditorComponent
 		if (m_PlayerDelegate && m_iPlayerID == playerID) 
 			m_PlayerDelegate.SetControlledEntity(controlledEntity);
 	}
-	protected void OnDeathServer(int playerID, IEntity controlledEntity, IEntity killer)
+	protected void OnDeathServer(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		if (m_PlayerDelegate && m_iPlayerID == playerID) 
+		if (m_PlayerDelegate && m_iPlayerID == playerId) 
 			m_PlayerDelegate.SetControlledEntity(null);
 	}
 	
 	protected void OnPlayerDeletedServer(int playerID, IEntity controlledEntity)
 	{
-		OnDeathServer(playerID, controlledEntity, null);
+		OnDeathServer(playerID, controlledEntity, null, Instigator.CreateInstigator(null));
 	}
 	
 	override void EOnEditorInitServer()
@@ -156,9 +156,9 @@ class SCR_PlayerDelegateEditorComponent : SCR_BaseEditorComponent
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
 		{
-			if (gameMode.GetOnPlayerSpawned()) gameMode.GetOnPlayerSpawned().Remove(OnSpawnServer);
-			if (gameMode.GetOnPlayerKilled()) gameMode.GetOnPlayerKilled().Remove(OnDeathServer);
-			if (gameMode.GetOnPlayerDeleted()) gameMode.GetOnPlayerDeleted().Remove(OnPlayerDeletedServer);
+			gameMode.GetOnPlayerSpawned().Remove(OnSpawnServer);
+			gameMode.GetOnPlayerKilled().Remove(OnDeathServer);
+			gameMode.GetOnPlayerDeleted().Remove(OnPlayerDeletedServer);
 		}
 	}
 };

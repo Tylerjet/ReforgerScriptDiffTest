@@ -14,7 +14,9 @@ enum EGadgetType
 	RADIO = 16,
 	RADIO_BACKPACK = 32,
 	WRISTWATCH = 64,
-	CONSUMABLE = 128
+	CONSUMABLE = 128,
+	BUILDING_TOOL = 256,
+	SUPPORT_STATION = 512
 };
 
 //------------------------------------------------------------------------------------------------
@@ -286,19 +288,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 		else
 			m_bFocused = false;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Get prefab resource name
-	//! \return returns prefab ResourceName
-	ResourceName GetPrefabResource()
-	{		
-		EntityPrefabData prefabData = GetOwner().GetPrefabData();		
-		if (!prefabData)
-			return string.Empty;
-			
-		return prefabData.GetPrefabName();
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	//! Get IEntity in possession of this Gadget
 	//! \return returns entity m_CharacterOwner
@@ -363,6 +353,29 @@ class SCR_GadgetComponent : ScriptGameComponent
 		return false;
 	}
 	
+	//Called by Gadgets system
+	void Update(float timeSlice);
+	
+	protected void ConnectToGadgetsSystem()
+	{
+		World world = GetOwner().GetWorld();
+		GadgetsSystem gadgetSystem = GadgetsSystem.Cast(world.FindSystem(GadgetsSystem));
+		if (!gadgetSystem)
+			return;
+		
+		gadgetSystem.Register(this);
+	}
+	
+	protected void DisconnectFromGadgetsSystem()
+	{
+		World world = GetOwner().GetWorld();
+		GadgetsSystem gadgetSystem = GadgetsSystem.Cast(world.FindSystem(GadgetsSystem));
+		if (!gadgetSystem)
+			return;
+		
+		gadgetSystem.Unregister(this);
+	}
+	
 	//------------------------------------------------------------------------------------------------	
 	override bool RplSave(ScriptBitWriter writer)
 	{
@@ -379,6 +392,14 @@ class SCR_GadgetComponent : ScriptGameComponent
 		UpdateVisibility(m_iMode);
 			
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		DisconnectFromGadgetsSystem();
+		
+		super.OnDelete(owner);
 	}
 						
 	//------------------------------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-const int DAY_TIME_CURVE_COUNT = 6;
+const int DAY_TIME_CURVE_COUNT = 7;
 
 enum EDayTimeCurve
 {
@@ -8,6 +8,7 @@ enum EDayTimeCurve
 	MORNING,
 	NOON,
 	AFTERNOON,
+	NOTAFTERNOON,
 };
 
 /*

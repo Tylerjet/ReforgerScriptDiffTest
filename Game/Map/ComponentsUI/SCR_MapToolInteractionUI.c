@@ -19,11 +19,13 @@ class SCR_MapElementMoveComponent : ScriptedWidgetComponent
 //! Component for interacting with map tools
 class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 {
+	protected const float ROTATION_DEADZONE = 0.02;
 	static bool s_bIsDragging = false;
 	static bool s_bIsRotating = false;
 	static bool s_bCanDragOffScreen = false;
 	
 	static protected ref ScriptInvoker<Widget> s_OnDragWidget = new ScriptInvoker();
+	static protected ref ScriptInvoker<Widget> s_OnDragEnd = new ScriptInvoker();
 	static protected ref ScriptInvoker<Widget> s_OnActivateTool = new ScriptInvoker();
 	
 	static protected Widget s_DraggedWidget;
@@ -35,6 +37,7 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	// Invokers
 	static ScriptInvoker GetOnDragWidgetInvoker() { return s_OnDragWidget; }
+	static ScriptInvoker GetOnDragEndInvoker() { return s_OnDragEnd; }
 	static ScriptInvoker GetOnActivateToolInvoker() { return s_OnActivateTool; }
 			
 	//------------------------------------------------------------------------------------------------
@@ -150,6 +153,8 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	static void EndDrag()
 	{
 		s_bIsDragging = false;
+		s_OnDragEnd.Invoke(s_DraggedWidget);
+		
 		s_DraggedWidget = null;
 		s_OnDragWidget.Invoke(null);
 		
@@ -208,22 +213,53 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Rotate widget
-	//! /param direction true is clockwise, false is counter-clockwise
-	//! /param deg is ignored if 0, if not rotates the widget by the set amount of degrees
-	static void RotateWidget(bool direction, int deg)
-	{		
-		ImageWidget img = ImageWidget.Cast(s_RotatedWidget.GetChildren());
-		if (img)
-		{
-			if (deg == 0)
-				deg = 1;
+	//! Rotate widget based on mouse movement
+	static void RotateWidget(notnull Widget widget, SCR_MapCursorInfo cursorInfo)
+	{
+		ImageWidget image = ImageWidget.Cast(widget.GetChildren());
+		if (!image)
+			return;
 
-			if (direction)
-				deg *= -1;
-			
-			img.SetRotation(img.GetRotation() + deg);
-		}
+		// TODO ImageWidget.GetPivot(float x, float y)
+		float fx, fy, minX, minY, maxX, maxY;
+
+		// mouse position difference
+		fx = cursorInfo.x - cursorInfo.lastX; 
+		fy = cursorInfo.y - cursorInfo.lastY;
+
+		// no change
+		if (fx == 0 && fy == 0)
+			return;
+
+		//! get widget size
+		float widgetX, widgetY, widgetH, widgetV, centerX, centerY;
+		widget.GetScreenPos(widgetX, widgetY);
+		widget.GetScreenSize(widgetH, widgetV);
+		centerX = widgetX + widgetH/2;
+		centerY = widgetY + widgetV/2;
+
+		// Get current angle versus previous angle
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		widgetH = workspace.DPIUnscale(widgetH);
+		centerX = workspace.DPIUnscale(centerX);
+		centerY = workspace.DPIUnscale(centerY);
+
+		float newAngle = Math.RAD2DEG * Math.Atan2(cursorInfo.x - centerX, cursorInfo.y - centerY);
+		float lastAngle = Math.RAD2DEG * Math.Atan2(cursorInfo.lastX - centerX, cursorInfo.lastY - centerY);
+
+		float rotation = fixAngle_180_180(newAngle - lastAngle);
+		
+
+		// Slow down rotation near the center
+		vector grip = Vector(cursorInfo.x - centerX, cursorInfo.y - centerY, 0);
+		float rotationScale = 1;
+		if (widgetH > 0 && ROTATION_DEADZONE > 0)
+			rotationScale = Math.Clamp(grip.Length() / (widgetH * ROTATION_DEADZONE), 0, 1);
+		
+		rotation *= rotationScale * rotationScale;
+
+		// Apply new rotation
+		image.SetRotation(image.GetRotation() - rotation);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -239,6 +275,7 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	override void OnMapClose(MapConfiguration config)
 	{
 		s_OnDragWidget.Clear();
+		s_OnDragEnd.Clear();
 		s_OnActivateTool.Clear();
 		s_DraggedWidget = null;
 		s_RotatedWidget = null;
@@ -252,8 +289,8 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	override void Update(float timeSlice)
 	{
 		if (s_bIsDragging)
-		{
 			DragWidget(s_DraggedWidget, m_CursorInfo);
-		}
+		else if (s_bIsRotating)
+			RotateWidget(s_RotatedWidget, m_CursorInfo);
 	}
 };

@@ -19,7 +19,7 @@ class SCR_ContentBrowser_GalleryDialogWidgets
 	SCR_SpinBoxComponent m_SpinBoxComponent;
 
 	ButtonWidget m_BackButton;
-	SCR_NavigationButtonComponent m_BackButtonComponent;
+	SCR_InputButtonComponent m_BackButtonComponent;
 
 	ButtonWidget m_CloseButton;
 	SCR_ModularButtonComponent m_CloseButtonComponent;
@@ -39,7 +39,7 @@ class SCR_ContentBrowser_GalleryDialogWidgets
 		m_SpinBoxComponent = SCR_SpinBoxComponent.Cast(m_SpinBox.FindHandler(SCR_SpinBoxComponent));
 
 		m_BackButton = ButtonWidget.Cast(root.FindWidget("Overlay.BottomRowFrame.BottomRowFrame.ButtonsLayout.m_BackButton"));
-		m_BackButtonComponent = SCR_NavigationButtonComponent.Cast(m_BackButton.FindHandler(SCR_NavigationButtonComponent));
+		m_BackButtonComponent = SCR_InputButtonComponent.Cast(m_BackButton.FindHandler(SCR_InputButtonComponent));
 
 		m_CloseButton = ButtonWidget.Cast(root.FindWidget("Overlay.CloseButtonSize.m_CloseButton"));
 		m_CloseButtonComponent = SCR_ModularButtonComponent.Cast(m_CloseButton.FindHandler(SCR_ModularButtonComponent));

@@ -33,8 +33,6 @@ class SCR_AttributeButtonUIComponent: ScriptedWidgetComponent
 	{
 		if (!value)
 			return;
-		
-		OnMouseEnter(null, -1, -1);
 	}
 	
 	override bool OnMouseEnter(Widget w, int x, int y)

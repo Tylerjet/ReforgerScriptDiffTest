@@ -29,12 +29,12 @@ sealed class typename
 	proto external bool IsInherited(typename baseType);
 	/*!
 	Dynamic variant to `new` keyword. It creates new instance of class.
-	\returns \p volatile instance of class
+	\returns \p instance of class
 	\code
 		???
 	\endcode
 	*/
-	proto external volatile Class Spawn();
+	proto external ref Managed Spawn();
 	proto external int GetVariableCount();
 	proto external owned string GetVariableName(int vIdx);
 	proto external typename GetVariableType(int vIdx);

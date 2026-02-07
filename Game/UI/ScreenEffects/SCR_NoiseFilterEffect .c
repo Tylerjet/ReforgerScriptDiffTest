@@ -78,10 +78,28 @@ class SCR_NoiseFilterEffect : SCR_BaseScreenEffect
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnRespawnMenuOpen()
+	{
+		LowPassFilterEffect(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void DisplayInit(IEntity owner)
+	{
+		SCR_DeployMenuBase.SGetOnMenuOpen().Insert(OnRespawnMenuOpen);
+	}	
+	
+	//------------------------------------------------------------------------------------------------
 	protected override void ClearEffects()
 	{
 		
 		if (m_pDamageManager)
 			m_pDamageManager.GetOnDamageStateChanged().Remove(OnDamageStateChanged);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_NoiseFilterEffect()
+	{
+		SCR_DeployMenuBase.SGetOnMenuOpen().Remove(OnRespawnMenuOpen);
 	}
 };

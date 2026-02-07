@@ -31,7 +31,7 @@ class SCR_TreeHitZoneV2 : ScriptedHitZone
 							IEntity pHitEntity,
 							inout vector outMat[3],
 							IEntity damageSource,
-							IEntity damageSourceParent,
+							notnull Instigator instigator,
 							int colliderID,
 							float speed)
 	{

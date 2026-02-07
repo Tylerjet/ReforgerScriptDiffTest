@@ -82,6 +82,7 @@ class SCR_FactionPlayerList : SCR_PlayerList
 			return;
 		
 		factionManager.GetOnPlayerFactionCountChanged().Insert(UpdatePagination);
+		factionManager.GetOnPlayerFactionCountChanged().Insert(UpdatePlayerList);
 		
 		Widget spinboxW = m_wRoot.FindAnyWidget(m_sSpinBoxElementName);
 		if (!spinboxW)
@@ -199,13 +200,14 @@ class SCR_FactionPlayerList : SCR_PlayerList
 
 		array<int> players = {};
 		m_Faction.GetPlayersInFaction(players);
-			
-		if (m_wPlayerCount)
-			m_wPlayerCount.SetText(m_aPlayerNames.Count().ToString());
 		
 		int startIndex = GetStartingIndex();
 		if (players.IsEmpty() || startIndex < 0)
+		{
+			if (m_wPlayerCount)
+				m_wPlayerCount.SetText("0");
 			return;
+		}
 
 		int maxIndex = startIndex + (m_iEntriesPerPage-1);
 		for (int i = startIndex; i <= maxIndex; i++)
@@ -216,6 +218,9 @@ class SCR_FactionPlayerList : SCR_PlayerList
 			if (m_Faction && (SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(players[i])) == m_Faction))
 				CreatePlayerName(players[i]);
 		}
+
+		if (m_wPlayerCount)
+			m_wPlayerCount.SetText(players.Count().ToString());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -225,7 +230,10 @@ class SCR_FactionPlayerList : SCR_PlayerList
 		
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (factionManager)
+		{
 			factionManager.GetOnPlayerFactionCountChanged().Remove(UpdatePagination);
+			factionManager.GetOnPlayerFactionCountChanged().Remove(UpdatePlayerList);		
+		}
 	}
 };
 

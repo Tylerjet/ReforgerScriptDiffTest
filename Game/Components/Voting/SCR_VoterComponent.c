@@ -19,6 +19,8 @@ class SCR_VoterComponent: ScriptComponent
 		else
 			return null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Instantly cast vote to the only ongoing voting.
 	Ignored if number of votings is not exactly 1.
@@ -35,8 +37,70 @@ class SCR_VoterComponent: ScriptComponent
 		
 		array<EVotingType> votingTypes = {};
 		array<int> votingValues = {};
-		if (manager.GetAllVotingsWithValue(votingTypes, votingValues, false, true) == 1)
+		
+		int count = manager.GetAllVotingsWithValue(votingTypes, votingValues, false, true);
+		
+		for (int i = count - 1; i >= 0; i--)
+		{
+			if (manager.HasAbstainedLocally(votingTypes[i], votingValues[i]))
+			{
+				votingTypes.Remove(i);
+				votingValues.Remove(i);
+				continue;
+			}
+			
+			if (manager.IsLocalVote(votingTypes[i], votingValues[i]))
+			{
+				votingTypes.Remove(i);
+				votingValues.Remove(i);
+				continue;
+			}
+		}
+		
+		if (votingTypes.Count() == 1)
 			voterComponent.Vote(votingTypes[0], votingValues[0]);
+
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Instantly cast remove vote to the only ongoing voting and will set self to abstaining as well
+	Ignored if number of votings is not exactly 1.
+	*/
+	static void InstantRemoveAndAbstainVote()
+	{
+		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
+		if (!manager)
+			return;
+		
+		SCR_VoterComponent voterComponent = GetInstance();
+		if (!voterComponent)
+			return;
+		
+		array<EVotingType> votingTypes = {};
+		array<int> votingValues = {};
+		
+		int count = manager.GetAllVotingsWithValue(votingTypes, votingValues, false, true);
+		
+		for (int i = count - 1; i >= 0; i--)
+		{
+			if (manager.HasAbstainedLocally(votingTypes[i], votingValues[i]))
+			{
+				votingTypes.Remove(i);
+				votingValues.Remove(i);
+				continue;
+			}
+			
+			if (manager.IsLocalVote(votingTypes[i], votingValues[i]))
+			{
+				votingTypes.Remove(i);
+				votingValues.Remove(i);
+				continue;
+			}
+		}
+		
+		if (votingTypes.Count() == 1)
+			voterComponent.RemoveVote(votingTypes[0], votingValues[0]);
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,6 +119,8 @@ class SCR_VoterComponent: ScriptComponent
 		Rpc(VoteServer, type, value);
 		manager.VoteLocal(type, value);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Remove previously cast vote.
 	\param type Type of the vote
@@ -66,9 +132,36 @@ class SCR_VoterComponent: ScriptComponent
 		if (!manager)
 			return;
 		
+		//~ Abstain vote (Local only)
+		AbstainVote(type, value);
+		
 		Rpc(RemoveVoteServer, type, value);
 		manager.RemoveVoteLocal(type, value);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Player abstained from voting. Eg: Did not vote yes or removes vote yes
+	\param type Type of the vote
+	\param value Voted value, depends on the type (e.g., for KICK it's player ID)
+	*/
+	void AbstainVote(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
+	{
+		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
+		if (!manager)
+			return;
+		
+		//~ Vote is active so remove it
+		if (manager.IsLocalVote(type, value))
+		{
+			Rpc(RemoveVoteServer, type, value);
+			manager.RemoveVoteLocal(type, value);
+		}
+	
+		manager.AbstainVoteLocally(type, value);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Check if player did cast the vote.
 	\param type Type of the vote
@@ -80,6 +173,22 @@ class SCR_VoterComponent: ScriptComponent
 		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
 		if (manager)
 			return manager.IsLocalVote(type, value);
+		else
+			return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Check if player abstained from voting
+	\param type Type of the vote
+	\param value Voted value, depends on the type (e.g., for KICK it's player ID)
+	\return True if the player abstained
+	*/
+	bool HasAbstained(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
+	{
+		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
+		if (manager)
+			return manager.HasAbstainedLocally(type, value);
 		else
 			return false;
 	}

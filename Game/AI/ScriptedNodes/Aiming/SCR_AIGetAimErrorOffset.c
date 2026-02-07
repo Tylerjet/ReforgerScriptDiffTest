@@ -3,20 +3,23 @@ enum EAimingPreference
 	NONE,
 	RANDOM,
 	AUTOMATIC,
-	FIXED,	
+	FIXED,
 };
 
 class SCR_AIGetAimErrorOffset: AITaskScripted
 {
 	static const string PORT_ERROR_OFFSET = "ErrorOffset";
-	static const string PORT_ANGULAR_SIZE = "AngularSize";
 	static const string PORT_BASE_TARGET = "BaseTargetIn";
 	static const string PORT_AIM_POINT = "AimPoint";
+	static const string PORT_TOLERANCE = "AimingTolerance";
 	static const float CLOSE_RANGE_THRESHOLD = 15.0;
 	static const float LONG_RANGE_THRESHOLD = 200.0;
 	static const float AIMING_ERROR_SCALE = 1.0; // TODO: game master and server option
 	static const float AIMING_ERROR_FACTOR_MIN = 0.4; 
-	static const float AIMING_ERROR_FACTOR_MAX = 1.4; 
+	static const float AIMING_ERROR_CLOSE_RANGE_FACTOR_MIN = 0.05;
+	static const float AIMING_ERROR_FACTOR_MAX = 1.4;
+	static const float MAXIMAL_TOLERANCE = 10.0;
+	static const float MINIMAL_TOLERANCE = 0.003;
 	
 	protected SCR_AICombatComponent m_CombatComponent;
 	// private SCR_AIInfoComponent m_InfoComponent;		temporary removed (adding threat effect later)
@@ -50,8 +53,8 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {
 		PORT_ERROR_OFFSET,
-		PORT_ANGULAR_SIZE,
-		PORT_AIM_POINT
+		PORT_AIM_POINT,
+		PORT_TOLERANCE
 	};
     override array<string> GetVariablesOut()
     {
@@ -111,25 +114,31 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 					m_aDebugShapes.Insert(Shape.CreateSphere(COLOR_YELLOW_A, ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP, aimPoint.GetPosition(),aimPoint.GetDimension()));
 #endif
 				vector offsetX, offsetY;
-				float angularSize, distance, distanceFactor;
+				float angularSize, distance, distanceFactor, tolerance;
 				
 				GetTargetAngularBounds(entity, aimPoint, offsetX, offsetY, angularSize, distance);
+
 				// correct aim point size based on distance to target
 				distanceFactor = GetDistanceFactor(distance);
 				
 				offsetX = GetRandomFactor(currentSkill, 0) * offsetX * AIMING_ERROR_SCALE * distanceFactor;
 				offsetY = GetRandomFactor(currentSkill, 0) * offsetY * AIMING_ERROR_SCALE * distanceFactor;
 				
+				tolerance = GetTolerance(entity, targetEntity, angularSize, distance);
+				
 				SetVariableOut(PORT_ERROR_OFFSET, offsetX + offsetY);
-				SetVariableOut(PORT_ANGULAR_SIZE, angularSize);
 				SetVariableOut(PORT_AIM_POINT, aimPoint);
+				SetVariableOut(PORT_TOLERANCE, tolerance);
+#ifdef WORKBENCH
+				// PrintFormat("Target size - used in tolerance: %1 target aimpointPosition: %2", distance * Math.Tan(tolerance * Math.DEG2RAD), aimPoint.GetPosition());
+#endif
 				return ENodeResult.SUCCESS;
 			}
 			else
 			{
 				ClearVariable(PORT_ERROR_OFFSET);
-				ClearVariable(PORT_ANGULAR_SIZE);
 				ClearVariable(PORT_AIM_POINT);
+				ClearVariable(PORT_TOLERANCE);
 			}
 		}
 		return ENodeResult.FAIL;
@@ -141,14 +150,14 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 	{
 		
 		vector shooterCenter, joinNorm, join, min, max;
-		float dimension = targetAimpoint.GetDimension();
+		float dimension = 2 * targetAimpoint.GetDimension();
 		shooter.GetWorldBounds(min,max);
+		
 		// we wanted to use muzzle transform but that is unrelyable (when weapon switches, on init of fight, and so on)
 		shooterCenter = (min + max) * 0.5;
 		join = targetAimpoint.GetPosition() - shooterCenter;
 		distance = join.Length();
 		angularSize = Math.Atan2(dimension, distance) * Math.RAD2DEG;
-		float angularSize2 = angularSize;
 		
 		joinNorm = join.Normalized();
 		sizeVectorX = (vector.Up * joinNorm).Normalized();
@@ -172,10 +181,8 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 	float GetDistanceFactor(float distance)
 	{
 		if (distance < CLOSE_RANGE_THRESHOLD)
-		{
-			return AIMING_ERROR_FACTOR_MIN;
-		}
-		
+			return Math.Map(distance, 0, CLOSE_RANGE_THRESHOLD, AIMING_ERROR_CLOSE_RANGE_FACTOR_MIN, AIMING_ERROR_FACTOR_MIN);
+
 		float distanceCl = Math.Clamp((distance - CLOSE_RANGE_THRESHOLD) / LONG_RANGE_THRESHOLD, 0, 1);
 		return Math.Lerp(AIMING_ERROR_FACTOR_MIN, AIMING_ERROR_FACTOR_MAX, distanceCl);
 	}
@@ -328,6 +335,120 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 			}	
 		}	
 		return EAISkill.NONE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! basic tolerance based on angular size of target in degrees
+	float GetTolerance(IEntity observer, IEntity target, float angularSize, float distance)
+	{
+		float tolerance;
+		bool setMaxTolerance;
+	
+		// Always use max tolerance in close range
+		if (distance < CLOSE_RANGE_THRESHOLD)
+			return MAXIMAL_TOLERANCE;
+			
+		tolerance = angularSize / 2; // half of the size
+		// angular speed
+		tolerance *= GetAngularSpeedFactor(observer, target, setMaxTolerance);
+				
+		if (setMaxTolerance)
+			tolerance = MAXIMAL_TOLERANCE;
+		else 
+		{
+			// weapon type tolerance modifier
+			tolerance *= GetWeaponTypeFactor(m_CombatComponent.GetCurrentWeaponType());
+		};
+		return Math.Clamp(tolerance, MINIMAL_TOLERANCE, MAXIMAL_TOLERANCE);
+	}	
+	
+	//------------------------------------------------------------------------------------------------	
+	float GetAngularSpeedFactor(IEntity observer, IEntity enemy, out bool setBigTolerance)
+	{
+		IEntity parent = enemy.GetParent(); // getting the vehicle for character inside vehicle
+		if (parent)
+		{
+			enemy = parent;					// case of driver
+			parent = enemy.GetParent();
+			if (parent)						// case of turret
+				enemy = parent;
+		}
+		Physics ph = enemy.GetPhysics();
+		if (ph)
+		{
+			vector positionVector = enemy.GetOrigin() - observer.GetOrigin();
+			vector angularVelocity = positionVector * ph.GetVelocity() / positionVector.LengthSq();  // omega = (r x v) / ||r||^2 
+			float angularSpeed = angularVelocity.Length();			
+			
+			if (angularSpeed < 0.07) // rougly 4 degs in radians
+				return 1.0;
+			else if (angularSpeed < 0.17) // roughly 10 degs in radians
+				return 2;
+		}	
+		setBigTolerance = true;
+		return 0;
+	}
+
+	//------------------------------------------------------------------------------------------------	
+	float GetSuppressionFactor(EAIThreatState threat, out bool setBigTolerance)
+	{
+		switch (threat)
+		{
+			case EAIThreatState.THREATENED : 
+			{		 
+				setBigTolerance = true;
+				return 0;
+				break;
+			}
+			case EAIThreatState.ALERTED :
+			{
+				return 2.0;
+				break;
+			}
+			default :
+			{
+				return 1.0;	
+				break;
+			}
+		}
+		return 0;
+	}
+
+	//------------------------------------------------------------------------------------------------		
+	float GetWeaponTypeFactor(EWeaponType weaponType)
+	{
+		switch(weaponType)
+		{
+			case EWeaponType.WT_RIFLE:
+			{
+				return 1.0;
+			}
+			case EWeaponType.WT_MACHINEGUN:
+			{
+				return 2.0;
+			}
+			case EWeaponType.WT_HANDGUN:
+			{
+				return 1.5;
+			}
+			case EWeaponType.WT_FRAGGRENADE:
+			{
+				return 3.0;
+			}
+			case EWeaponType.WT_SMOKEGRENADE:
+			{
+				return 4.0;
+			}
+			case EWeaponType.WT_ROCKETLAUNCHER:
+			{
+				return 0.5;
+			}
+			case EWeaponType.WT_SNIPERRIFLE:
+			{
+				return 0.5;
+			}
+		}
+		return 1.0;
 	}
 		
 	//------------------------------------------------------------------------------------------------

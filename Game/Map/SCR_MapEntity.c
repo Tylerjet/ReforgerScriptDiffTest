@@ -68,7 +68,7 @@ class SCR_MapEntity: MapEntity
 	protected static ref ScriptInvokerBase<MapConfigurationInvoker> s_OnMapOpen = new ScriptInvokerBase<MapConfigurationInvoker>();	// map open, called after map is properly initialized
 	protected static ref ScriptInvokerBase<MapConfigurationInvoker> s_OnMapClose = new ScriptInvokerBase<MapConfigurationInvoker>();// map close
 	protected static ref ScriptInvokerBase<ScriptInvokerFloat2Bool> s_OnMapPan 	= new ScriptInvokerBase<ScriptInvokerFloat2Bool>;	// map pan, passes UNSCALED x & y
-	protected static ref ScriptInvoker<float, float> s_OnMapPanEnd 				= new ScriptInvoker();						// map pan interpolated end
+	protected static ref ScriptInvokerFloat2 s_OnMapPanEnd 						= new ScriptInvokerFloat2();						// map pan interpolated end
 	protected static ref ScriptInvokerFloat s_OnMapZoom							= new ScriptInvokerFloat();							// map zoom
 	protected static ref ScriptInvokerFloat s_OnMapZoomEnd 						= new ScriptInvokerFloat();							// map zoom interpolated end
 	protected static ref ScriptInvokerVector s_OnSelection 						= new ScriptInvokerVector();						// any click/selection on map
@@ -93,7 +93,7 @@ class SCR_MapEntity: MapEntity
 	//! Get on map pan invoker
 	static ScriptInvokerBase<ScriptInvokerFloat2Bool> GetOnMapPan() { return s_OnMapPan; }
 	//! Get on map pan interpolated end invoker
-	static ScriptInvoker GetOnMapPanEnd() { return s_OnMapPanEnd; }
+	static ScriptInvokerFloat2 GetOnMapPanEnd() { return s_OnMapPanEnd; }
 	//! Get on map zoom invoker
 	static ScriptInvokerFloat GetOnMapZoom() { return s_OnMapZoom; }
 	//! Get on map zoom interpolated end invoker
@@ -228,7 +228,11 @@ class SCR_MapEntity: MapEntity
 		{			
 			ChimeraCharacter char = ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
 			if (char)
-				SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).m_OnPlayerDeathWithParam.Insert(OnPlayerDeath);
+				SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).GetOnPlayerDeath().Insert(OnPlayerDeath);
+			
+			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+			if (gameMode)
+				gameMode.GetOnPlayerDeleted().Insert(OnPlayerDeleted);
 		}
 		
 		InitLayers(config.LayerCount, config.LayerConfigs);
@@ -248,6 +252,9 @@ class SCR_MapEntity: MapEntity
 	//! Close the map
 	void CloseMap()
 	{
+		if (!m_bIsOpen)
+			return;
+		
 		OnMapClose();
 		
 		m_iLayerIndex = -1;
@@ -308,8 +315,12 @@ class SCR_MapEntity: MapEntity
 			{
 				ChimeraCharacter char = ChimeraCharacter.Cast(controller.GetControlledEntity());
 				if (char)
-					SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).m_OnPlayerDeathWithParam.Remove(OnPlayerDeath);
+					SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).GetOnPlayerDeath().Remove(OnPlayerDeath);
 			}
+			
+			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+			if (gameMode)
+				gameMode.GetOnPlayerDeleted().Remove(OnPlayerDeleted);
 		}
 		
 		if ( m_ActiveMapCfg.OtherComponents & EMapOtherComponents.LEGEND_SCALE)
@@ -323,7 +334,7 @@ class SCR_MapEntity: MapEntity
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CharacterControllerComponent event
 	//! Called only in case of a fullscreen map
-	protected void OnPlayerDeath(SCR_CharacterControllerComponent charController, IEntity instigator)
+	protected void OnPlayerDeath()
 	{		
 		SCR_GadgetManagerComponent gadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(GetGame().GetPlayerController().GetControlledEntity());
 		if (!gadgetMgr)
@@ -335,6 +346,18 @@ class SCR_MapEntity: MapEntity
 		
 		SCR_MapGadgetComponent mapComp = SCR_MapGadgetComponent.Cast(mapGadget.FindComponent(SCR_MapGadgetComponent));
 		mapComp.SetMapMode(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_BaseGameMode event
+	//! Called only in case of a fullscreen map
+	protected void OnPlayerDeleted(int playerId, IEntity player)
+	{
+		if (playerId != GetGame().GetPlayerController().GetPlayerId())
+			return;
+		
+		MenuManager menuManager = g_Game.GetMenuManager();
+		menuManager.CloseMenuByPreset(ChimeraMenuPreset.MapMenu);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -874,26 +897,36 @@ class SCR_MapEntity: MapEntity
 	\return Grid coordinates
 	*/
 	//--- ToDo: Use grid sizes configured in layers in case someone will define non-metric grid
-	static string GetGridPos(vector pos, int resMin = 2, int resMax = 4, string delimiter = " ")
+	static string GetGridLabel(vector pos, int resMin = 2, int resMax = 4, string delimiter = " ")
+	{
+		int gridX, gridZ;
+		GetGridPos(pos, gridX, gridZ, resMin, resMax);
+		return gridX.ToString() + delimiter + gridZ.ToString();
+	}
+	
+	/*!
+	Get grid coordinates for given position.
+	\param pos World position
+	\param resMin Minimum grid resolution as 10^x, e.g., 2 = 100, 3 = 1000, etc.
+	\param resMax Maximum grid resolution as 10^x
+	\return gridX, gridZ coordinates
+	*/
+	static void GetGridPos(vector pos, out int gridX, out int gridZ, int resMin = 2, int resMax = 4)
 	{
 		//--- Convert to int so we can use native mod operator %
 		int posX = pos[0];
 		int posZ = pos[2];
-		
-		string gridX, gridZ; //--- ToDo: Use [out] params instead?
 		
 		for (int i = resMax; i >= resMin; i--)
 		{
 			int mod = Math.Pow(10, i);
 			int modX = posX - posX % mod;
 			int modZ = posZ - posZ % mod;
-			gridX += (modX / mod).ToString();
-			gridZ += (modZ / mod).ToString();
+			gridX = gridX * 10 + (modX / mod);
+			gridZ = gridZ * 10 + (modZ / mod);
 			posX -= modX;
 			posZ -= modZ;
 		}
-		
-		return gridX + delimiter + gridZ;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1242,17 +1275,19 @@ class SCR_MapEntity: MapEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Deactivate module 
+	//! Deactivate module, removing it from loadable list until config is reloaded
 	void DeactivateModule(SCR_MapModuleBase module)
 	{
 		m_aActiveModules.RemoveItem(module);
+		m_aLoadedModules.RemoveItem(module);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Deactivate UI component 
+	//! Deactivate UI component, removing it from loadable list until config is reloaded
 	void DeactivateComponent(SCR_MapUIBaseComponent component)
 	{
 		m_aActiveComponents.RemoveItem(component);
+		m_aLoadedComponents.RemoveItem(component);
 	}	
 	
 	//------------------------------------------------------------------------------------------------
@@ -1436,6 +1471,10 @@ class SCR_MapEntity: MapEntity
 			m_iMapSize[0] = 1024;
 			m_iMapSize[1] = 1024;
 		}
+		
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world)
+			world.RegisterEntityToBeUpdatedWhileGameIsPaused(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1461,6 +1500,10 @@ class SCR_MapEntity: MapEntity
 	{
 		if (m_bIsOpen)
 			CloseMap();
+		
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world)
+			world.UnregisterEntityToBeUpdatedWhileGameIsPaused(this);
 		
 		s_OnMapInit.Clear();
 		s_OnMapOpen.Clear();

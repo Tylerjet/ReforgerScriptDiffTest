@@ -3,8 +3,16 @@ class SCR_GroupFlagImageComponent : SCR_ButtonImageComponent
 	protected int m_iPicID = -1;
 	protected ResourceName m_sImageSet;
 	protected bool m_bIsFromImageset;
-	protected const float IMAGE_HEIGHT = 90;
-	protected const float IMAGE_WIDTH = 160;	
+
+	[Attribute("145 100 0")]
+	protected vector m_vImageSize; //160 90 old values, caused stretching
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+		Resize();	
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetFlagButtonFromImageSet(string name)
@@ -47,9 +55,9 @@ class SCR_GroupFlagImageComponent : SCR_ButtonImageComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Resize()
+	void Resize(float scale = 1)
 	{
-		m_wImage.SetSize(IMAGE_WIDTH, IMAGE_HEIGHT);		
+		m_wImage.SetSize(m_vImageSize[0] * scale, m_vImageSize[1] * scale);		
 	}
 	
 	//------------------------------------------------------------------------------------------------		

@@ -69,16 +69,43 @@ class SCR_AIMoveFromUnknownFire : SCR_AIMoveFromDangerBehavior
 			
 		return GetPriority();
 	}
+	
+	//-----------------------------------------------------------------------------------------------------
+	override void OnActionSelected()
+	{
+		super.OnActionSelected();
+		
+		if (!m_Utility.m_CommsHandler.CanBypass())
+		{
+			SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_UNDER_FIRE, null, vector.Zero, 0, false, SCR_EAITalkRequestPreset.IRRELEVANT);
+			m_Utility.m_CommsHandler.AddRequest(rq);
+		}
+	}
 }
 
 class SCR_AIMoveFromGrenadeBehavior : SCR_AIMoveFromDangerBehavior
 {
+	static const float MAX_GRENADE_LOOKAT_TIMEOUT_MS = 600;
+	
+	float m_fBehaviorTimeout = 0;
+	
 	//-----------------------------------------------------------------------------------------------------
-	void SCR_AIMoveFromGrenadeBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
+	void SCR_AIMoveFromGrenadeBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity, float behaviorDelay)
 	{
+		m_bAllowLook = false;
+		m_fBehaviorTimeout = GetGame().GetWorld().GetWorldTime() + behaviorDelay;
 		m_sBehaviorTree = "{478811D2295EAF3E}AI/BehaviorTrees/Chimera/Soldier/MoveFromDanger_Grenade.bt";
 		m_MovementType.m_Value = EMovementType.SPRINT;
-		SetPriority(PRIORITY_BEHAVIOR_MOVE_FROM_DANGER);
+		SetPriority(0);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------
+	override float CustomEvaluate()
+	{
+		if (GetGame().GetWorld().GetWorldTime() > m_fBehaviorTimeout)
+			return PRIORITY_BEHAVIOR_MOVE_FROM_DANGER;
+		
+		return 0;
 	}
 }
 

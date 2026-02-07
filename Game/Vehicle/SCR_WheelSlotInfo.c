@@ -9,8 +9,6 @@ class SCR_WheelSlotInfo : RegisteringComponentSlotInfo
 	//------------------------------------------------------------------------------------------------
 	override void OnAttachedEntity(IEntity entity)
 	{
-		super.OnAttachedEntity(entity);
-
 		HitZoneContainerComponent hitzoneContainer = HitZoneContainerComponent.Cast(entity.FindComponent(HitZoneContainerComponent));
 		if (!hitzoneContainer)
 			return;
@@ -23,8 +21,6 @@ class SCR_WheelSlotInfo : RegisteringComponentSlotInfo
 	//------------------------------------------------------------------------------------------------
 	override void OnDetachedEntity(IEntity entity)
 	{
-		super.OnDetachedEntity(entity);
-
 		HitZoneContainerComponent hitzoneContainer = HitZoneContainerComponent.Cast(entity.FindComponent(HitZoneContainerComponent));
 		if (!hitzoneContainer)
 			return;

@@ -1,12 +1,14 @@
 //------------------------------------------------------------------------------------------------
 class ReportDialogUI: DialogUI
 {
-	ContentBrowserDetailsMenu m_DetailsMenu;
+	protected ContentBrowserDetailsMenu m_DetailsMenu;
 		
-	SCR_ComboBoxComponent m_ReasonCombo;
-	SCR_EditBoxComponent m_InputField;
+	protected SCR_ComboBoxComponent m_ReasonCombo;
+	protected SCR_EditBoxComponent m_InputField;
 	
-	Widget m_wDialogWindow;
+	protected Widget m_wDialogWindow;
+	
+	protected SCR_LoadingOverlayDialog m_Overlay;
 	
 	protected bool m_bAcceptInput = true;
 	
@@ -16,6 +18,13 @@ class ReportDialogUI: DialogUI
 	
 	//! Available categories of feedback
 	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(float tDelta)
+	{
+		super.OnMenuUpdate(tDelta);
+		
+		GetGame().GetInputManager().ActivateContext("InteractableDialogContext");
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected void OnConfirm()
@@ -35,42 +44,27 @@ class ReportDialogUI: DialogUI
 		if (m_ReasonCombo)
 		{
 			category = m_ReasonCombo.GetCurrentIndex();
-			switch (category)
-			{
-				case 0:
-					reason = EWorkshopReportType.EWREPORT_INAPPROPRIATE_CONTENT;
-					break;
-				
-				case 1:
-					reason = EWorkshopReportType.EWREPORT_OFFENSIVE_LANGUAGE;
-					break;
-				
-				case 2:
-					reason = EWorkshopReportType.EWREPORT_MISLEADING;
-					break;
-				
-				case 3:
-					reason = EWorkshopReportType.EWREPORT_OTHER;
-					break;
-			}
+			reason = category;
 		}
 		
 		if (m_InputField)
 			content = m_InputField.GetValue();
 		
 		// Show loading screen
-		SCR_LoadingOverlay overlay = SCR_LoadingOverlay.ShowForWidget(m_wDialogWindow, string.Empty);
+		m_Overlay = SCR_LoadingOverlayDialog.Create();
 		
-		// Disable writing mode so that user can press escape again
-		if(overlay)
-			overlay.SetFocus();
-		
-		SetAcceptInput(false);
+		// Reactivating previous report 
+		if (m_ReportAction)
+		{
+			m_ReportAction.Reactivate();
+			return;
+		}
 		
 		// Report
 		m_ReportAction = m_DetailsMenu.m_WorkshopItem.Report(reason, content);
 		
 		m_ReportAction.m_OnCompleted.Insert(OnReportSuccess);
+		m_ReportAction.m_OnFailed.Insert(OnReportFailed);
 		
 		m_ReportAction.Activate();
 	}
@@ -91,10 +85,15 @@ class ReportDialogUI: DialogUI
 				action.Cancel();
 		}
 		
+		m_Overlay.Close();
 		this.Close();
 	}
 	
-	
+	//------------------------------------------------------------------------------------------------
+	protected void OnReportFailed(SCR_WorkshopItemAction action)
+	{
+		m_Overlay.Close();
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void SetAcceptInput(bool accept)
@@ -161,19 +160,19 @@ class ReportDialogUI: DialogUI
 			m_InputField.m_OnTextChange.Insert(OnTextChange);
 		}
 		
-		SCR_NavigationButtonComponent tos = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ToS", GetRootWidget());
+		SCR_InputButtonComponent tos = SCR_InputButtonComponent.GetInputButtonComponent("ToS", GetRootWidget());
 		if (tos)
 			tos.m_OnActivated.Insert(OnTos);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnWriteModeLeave()
+	protected void OnWriteModeLeave(string text)
 	{
-		OnTextChange();
+		OnTextChange(text);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnTextChange()
+	protected void OnTextChange(string text)
 	{
 		if (!m_Confirm || !m_InputField)
 			return;
@@ -183,7 +182,7 @@ class ReportDialogUI: DialogUI
 	
 	
 	//------------------------------------------------------------------------------------------------
-	void OnFieldChanged(SCR_EditBoxComponent comp, string text)
+	protected void OnFieldChanged(SCR_EditBoxComponent comp, string text)
 	{
 		if (m_Confirm)
 			m_Confirm.SetEnabled(text.Length() > 0);
@@ -196,7 +195,7 @@ class ReportDialogUI: DialogUI
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnTos()
+	protected void OnTos()
 	{
 		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_PrivacyPolicy"));
 	}

@@ -10,6 +10,15 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 	[Attribute("1")]
 	protected bool m_bEnablePlayerSpawnPoints;
 	
+	[Attribute("0", desc: "If true players are able to spawn at stationary command truck vehicles")]
+	protected bool m_bRadioVehicleSpawningEnabled;
+	
+	[Attribute("1", desc: "It allows players to deploy their radiobackpack and create a deployable radio spawn point. It still allows existing deployed radio spawnpoints to be deconstructed by players if this bool is false")]
+	protected bool m_bDeployableSpawnPointsEnabled;
+	
+	protected ref ScriptInvokerBool m_OnRadioVehicleSpawningChanged;
+	protected ref ScriptInvokerBool m_OnSpawnPointDeployingEnabledChanged;
+	
 	protected ref map<int, SCR_PlayerSpawnPoint> m_SpawnPoints = new map<int, SCR_PlayerSpawnPoint>();
 	
 	//------------------------------------------------------------------------------------------------
@@ -18,9 +27,9 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 	When enabled, a spawn point will be created for every connected player, even those who connect later.
 	When disabled, all existing player spawn points will be deleted.
 	\param enable True to enable the system
-	\param notifcationPlayerID if not -1 then a notification will be shown to all players that spawning on players is enabled/disabled
+	\param notificationPlayerID if not -1 then a notification will be shown to all players that spawning on players is enabled/disabled
 	*/
-	void EnablePlayerSpawnPoints(bool enable, int notifcationPlayerID = -1)
+	void EnablePlayerSpawnPoints(bool enable, int notificationPlayerID = -1)
 	{
 		if (enable == m_bEnablePlayerSpawnPoints)
 			return;
@@ -47,12 +56,12 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 			m_SpawnPoints.Clear();
 		}
 		
-		if (notifcationPlayerID > 0)
+		if (notificationPlayerID > 0)
 		{
 			if (enable)
-				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_ENABLE_RESPAWN_ON_PLAYER, notifcationPlayerID);
+				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_ENABLE_RESPAWN_ON_PLAYER, notificationPlayerID);
 			else 
-				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_DISABLE_RESPAWN_ON_PLAYER, notifcationPlayerID);
+				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_DISABLE_RESPAWN_ON_PLAYER, notificationPlayerID);
 		}
 	}
 	
@@ -105,6 +114,102 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	/*!
+	Set if Radio vehicle Respawning is enabled for specific respawn vehicles eg: Command Trucks (Server)
+	\param enable True to enable the system
+	\param notificationPlayerID if not -1 then a notification will be shown to all players that spawning on stationary vehicles is enabled/disabled
+	*/
+	void EnableRadioVehicleSpawning(bool enable, int notificationPlayerID = -1)
+	{
+		if (enable == m_bRadioVehicleSpawningEnabled)
+			return;
+		
+		Rpc(RPC_EnableRadioVehicleSpawning, enable);
+		RPC_EnableRadioVehicleSpawning(enable);
+		
+		if (notificationPlayerID > 0)
+		{
+			if (enable)
+				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_ENABLE_RESPAWN_ON_RADIO_VEHICLE, notificationPlayerID);
+			else 
+				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_DISABLE_RESPAWN_ON_RADIO_VEHICLE, notificationPlayerID);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RPC_EnableRadioVehicleSpawning(bool enable)
+	{
+		m_bRadioVehicleSpawningEnabled = enable;
+		
+		if (m_OnRadioVehicleSpawningChanged)
+			m_OnRadioVehicleSpawningChanged.Invoke(m_bRadioVehicleSpawningEnabled);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsRadioVehicleSpawningEnabled()
+	{
+		return m_bRadioVehicleSpawningEnabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerBool GetOnRadioVehicleSpawningChanged()
+	{
+		if (!m_OnRadioVehicleSpawningChanged)
+			m_OnRadioVehicleSpawningChanged = new ScriptInvokerBool();
+		
+		return m_OnRadioVehicleSpawningChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Set if players are allowed to deploy their radio backpack. (Server only)
+	\param enable True to enable the system
+	\param notificationPlayerID if not -1 then a notification will be shown to all players that deployable radio logic is enabled/disabled
+	*/
+	void EnableDeployableSpawnPoints(bool enable, int notificationPlayerID = -1)
+	{
+		if (enable == m_bDeployableSpawnPointsEnabled)
+			return;
+		
+		Rpc(RPC_EnableDeployableSpawnPoints, enable);
+		RPC_EnableDeployableSpawnPoints(enable);
+		
+		if (notificationPlayerID > 0)
+		{
+			if (enable)
+				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_ENABLE_DEPLOYABLE_RADIO_SPAWNPOINT, notificationPlayerID);
+			else 
+				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_DISABLE_DEPLOYABLE_RADIO_SPAWNPOINT, notificationPlayerID);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RPC_EnableDeployableSpawnPoints(bool enable)
+	{
+		m_bDeployableSpawnPointsEnabled = enable;
+		
+		if (m_OnSpawnPointDeployingEnabledChanged)
+			m_OnSpawnPointDeployingEnabledChanged.Invoke(m_bDeployableSpawnPointsEnabled);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsDeployingSpawnPointsEnabled()
+	{
+		return m_bDeployableSpawnPointsEnabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerBool GetOnSpawnPointDeployingEnabledChanged()
+	{
+		if (!m_OnSpawnPointDeployingEnabledChanged)
+			m_OnSpawnPointDeployingEnabledChanged = new ScriptInvokerBool();
+		
+		return m_OnSpawnPointDeployingEnabledChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnPlayerConnected(int playerId)
 	{
 		AddSpawnPoint(playerId);
@@ -126,7 +231,7 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		if (!m_pGameMode.IsMaster())
 			return;
@@ -135,6 +240,29 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 		if (m_SpawnPoints.Find(playerId, playerPoint))
 			playerPoint.DisablePoint(playerId);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool RplSave(ScriptBitWriter writer)
+    {	
+        writer.WriteBool(m_bRadioVehicleSpawningEnabled); 
+        writer.WriteBool(m_bDeployableSpawnPointsEnabled);
+		
+        return true;
+    }
+     
+	//------------------------------------------------------------------------------------------------
+    override bool RplLoad(ScriptBitReader reader)
+    {		
+		bool radioVehicleSpawningEnabled, deployableSpawnPointsEnabled;
+		
+        reader.ReadBool(radioVehicleSpawningEnabled);
+        reader.ReadBool(deployableSpawnPointsEnabled);
+
+		RPC_EnableRadioVehicleSpawning(radioVehicleSpawningEnabled);
+		RPC_EnableDeployableSpawnPoints(deployableSpawnPointsEnabled);
+		
+        return true;
+    }
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void OnDelete(IEntity owner)

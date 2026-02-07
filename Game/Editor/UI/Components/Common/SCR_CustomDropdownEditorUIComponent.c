@@ -85,6 +85,7 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnDropDownClicked(SCR_ButtonImageComponent button)
 	{
 		if (m_bIsOpened)
@@ -93,6 +94,7 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 			OpenDropdown();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnItemClicked(SCR_ButtonImageComponent button)
 	{
 		int index = m_aItemButtons.Find(button);
@@ -103,6 +105,20 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		SetCurrentItem(index, true);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDropDownFocus()
+	{
+		if (!m_bIsOpened)
+			OpenDropdown();
+		
+		GetGame().GetWorkspace().SetFocusedWidget(m_aItemButtons[0].GetRootWidget());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnMenuActionLeft()
+	{
+		CloseDropdown();
+	}
 	
 	void AddItem(SCR_EditorModeUIInfo uiInfo, Color color)
 	{
@@ -205,6 +221,9 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		
 			workspace.SetFocusedWidget(m_aItemButtons[focusIndex].GetRootWidget());
 		}		
+		
+		// Setup action listeners
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnMenuActionLeft);
 	}
 	
 	/*!
@@ -237,6 +256,9 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		}
 		if (m_ListWidgetStripeFadeComponent)
 			m_ListWidgetStripeFadeComponent.CancelFade(false);
+		
+		// Remove action listeners
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnMenuActionLeft);
 	}
 	
 	protected void OnLMB()
@@ -374,7 +396,7 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		return false;
 	}
 	
-	////////////////////////////////////////////////////////////////////////////
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		if (SCR_Global.IsEditMode()) 
@@ -410,6 +432,7 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		
 		m_DropdownButton = SCR_ButtonImageComponent.Cast(dropDownWidget.FindHandler(SCR_ButtonImageComponent));
 		m_DropdownButton.m_OnClicked.Insert(OnDropDownClicked);
+		m_DropdownButton.m_OnFocus.Insert(OnDropDownFocus);
 		
 		ScriptInvoker invoker = GetGame().OnInputDeviceIsGamepadInvoker();
 		if (invoker)
@@ -418,6 +441,7 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		ScriptInvoker invoker = GetGame().OnInputDeviceIsGamepadInvoker();

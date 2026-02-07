@@ -1,14 +1,7 @@
 class MainMenuUI : ChimeraMenuBase
 {
-	protected const string EXPERIMENTAL_LABEL = "#AR-Experimental_WelcomeLabel";
-	protected const string EXPERIMENTAL_MESSAGE = "#AR-Experimental_WelcomeMessage";
-	
-	protected const string WIDGET_GRID = "Grid";
-	
 	protected SCR_MenuTileComponent m_FocusedTile;
-	protected SCR_AccountWidgetComponent m_AccountComponent;
 	protected DialogUI m_BannedDetectionDialog;
-	protected SCR_ConfigurableDialogUi m_ExperimentalDialog;
 
 	protected ref array<string> m_aBannedItems = {};
 	protected static ref array<ref SCR_NewsEntry> m_aNews = {};
@@ -19,44 +12,7 @@ class MainMenuUI : ChimeraMenuBase
 	protected static const int SERVICES_STATUS_CHECK_DELAY = 2000; // needed for backend API to prepare
 	protected bool m_bFirstLoad;
 
-	//------------------------------------------------------------------------------------------------
-	protected override void OnMenuInit()
-	{
-		super.OnMenuInit();
-		
-		// Diable buttons interactivity to prevent cliking during fadein anim, eneble afterwhile
-		if (!SplashScreenSequence.s_Sequence)
-			return;
-		
-		//TODO: Fixme! Disabled, because enable event was never called. Possibly because its update rely on GetCallqueue().CallLater
-		//EanbleButtonsInGrid(false);
-		SplashScreenSequence.s_Sequence.GetEventOnClose().Insert(OnSplashScreenClose);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void OnSplashScreenClose()
-	{
-		EanbleButtonsInGrid(true);
-		SplashScreenSequence.s_Sequence.GetEventOnClose().Remove(OnSplashScreenClose);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void EanbleButtonsInGrid(bool enable)
-	{
-		// FIXME/TODO: This disables the large tiles in the mian menu, but not other buttons up and bottom
-		Widget grid = GetRootWidget().FindAnyWidget(WIDGET_GRID);
-		if (!grid)
-			return;
-		
-		if (m_aTiles.IsEmpty())
-			SCR_WidgetHelper.GetAllChildren(grid, m_aTiles);
-	
-		// Setup buttons 
-		for (int i = 0, count = m_aTiles.Count(); i < count; i++)
-		{
-			m_aTiles[i].SetEnabled(enable)	
-		}
-	}
+
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuOpen()
@@ -90,26 +46,26 @@ class MainMenuUI : ChimeraMenuBase
 		}
 
 		// Subscribe to buttons
-		SCR_NavigationButtonComponent back = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Back", footer);
+		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent("Back", footer);
 		if (back)
 			back.m_OnActivated.Insert(OnBack);
 
 		// Services Status button
-		SCR_NavigationButtonComponent servicesStatus = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ServicesStatus", footer);
+		SCR_InputButtonComponent servicesStatus = SCR_InputButtonComponent.GetInputButtonComponent("ServicesStatus", footer);
 		if (servicesStatus)
 			servicesStatus.m_OnActivated.Insert(OnServicesStatus);
 
-		SCR_NavigationButtonComponent feedback = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Feedback", footer);
+		SCR_InputButtonComponent feedback = SCR_InputButtonComponent.GetInputButtonComponent("Feedback", footer);
 		if (feedback)
 			feedback.m_OnActivated.Insert(OnFeedback);
 
-		SCR_NavigationButtonComponent credits = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Credits", footer);
+		SCR_InputButtonComponent credits = SCR_InputButtonComponent.GetInputButtonComponent("Credits", footer);
 		if (credits)
 			credits.m_OnActivated.Insert(OnCredits);
 
-#ifdef WORKBENCH
+		#ifdef WORKBENCH
 		GetGame().GetInputManager().AddActionListener("MenuBackWB", EActionTrigger.DOWN, OnBack);
-#endif
+		#endif
 
 		// Get the entries for the first time
 		GetNewsEntries(null);
@@ -122,14 +78,13 @@ class MainMenuUI : ChimeraMenuBase
 			GetGame().GetCallqueue().CallLater(CheckServicesStatusIfFocused, SERVICES_STATUS_CHECK_DELAY);
 		}
 
-		// Activate account widget
-		Widget account = w.FindAnyWidget("AccountWidget");
-		if (account)
-			m_AccountComponent = SCR_AccountWidgetComponent.Cast(account.FindHandler(SCR_AccountWidgetComponent));
-
-		SCR_ButtonImageComponent logo = SCR_ButtonImageComponent.GetButtonImage("LogoButton", w);
+		Widget logoWidget = w.FindAnyWidget("LogoButton");
+		if (logoWidget)
+		{
+			SCR_ModularButtonComponent logo = SCR_ModularButtonComponent.FindComponent(logoWidget);
 		if (logo)
 			logo.m_OnClicked.Insert(OnLogoClicked);
+		}
 		
 		// Check ping sites 
 		GetGame().GetBackendApi().GetClientLobby().MeasureLatency(null);
@@ -138,69 +93,57 @@ class MainMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuOpened()
 	{
+		super.OnMenuOpened();
+		
 		// Opening Last menu
 		SCR_MenuLoadingComponent.LoadLastMenu();
 		SCR_MenuLoadingComponent.ClearLastMenu();
 
 		BaseContainer cont = GetGame().GetGameUserSettings().GetModule("SCR_RecentGames");
 		if (cont)
-			cont.Get("m_bFirstTimePlay", m_bFirstLoad);
-		
-		// Update on opened
-		cont.Set("m_bFirstTimePlay", false);
-		
-		// Check first start of session
-		bool firstLoadSession = GameSessionStorage.s_Data["m_bMenuFirstOpening"].IsEmpty();
-		if (!firstLoadSession)
-			return;
-		
-		// Show experimental dialog 
-		if (GetGame().IsExperimentalBuild())
 		{
-			m_ExperimentalDialog = SCR_CommonDialogs.CreateDialog("experimental_build");
-			m_ExperimentalDialog.m_OnConfirm.Insert(OnExperitementalDialogClose);
+			cont.Get("m_bFirstTimePlay", m_bFirstLoad);
+			cont.Set("m_bFirstTimePlay", false);	
 		}
 		
+		//PrintFormat("[OnMenuOpened] m_bFirstLoad: %1", m_bFirstLoad);
+
+		// Save changes to the settings
+		GetGame().UserSettingsChanged();
+		GetGame().SaveUserSettings();		
+				
+		// Check first start of session
+		bool firstLoadInSession = GameSessionStorage.s_Data["m_bMenuFirstOpening"].IsEmpty();
 		GameSessionStorage.s_Data["m_bMenuFirstOpening"] = "false";
 		
-		if (!m_bFirstLoad)
+		//PrintFormat("[OnMenuOpened] firstLoadInSession: %1", firstLoadInSession);
+		
+		if (!firstLoadInSession)
 			return;
 		
-		// Complete the first load, show welcome screen, save into settings
-		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
-		
-		// Prevent opening of welcome dialog - should be displayed on closing experimental dialog 
-		if (!GetGame().IsExperimentalBuild())
-			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.WelcomeDialog);
+		if (!m_bFirstLoad)
+			return;		
+				
+		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.WelcomeDialog);
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	protected void OnExperitementalDialogClose()
-	{
-		m_ExperimentalDialog.m_OnConfirm.Remove(OnExperitementalDialogClose);	
-		
-		if (m_bFirstLoad)
-			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.WelcomeDialog);
-	}
-
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuFocusLost()
 	{
 		GetRootWidget().SetEnabled(false);
+
+		super.OnMenuFocusLost();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! add all input listeners
 	protected override void OnMenuFocusGained()
 	{
 		GetRootWidget().SetEnabled(true);
 
-		if (m_AccountComponent)
-			m_AccountComponent.UpdateNotifications();
-
 		if (m_FocusedTile)
 			GetGame().GetWorkspace().SetFocusedWidget(m_FocusedTile.GetRootWidget(), true);
+
+		super.OnMenuFocusGained();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -258,7 +201,7 @@ class MainMenuUI : ChimeraMenuBase
 		if (!IsFocused())
 			return;
 
-		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ServicesStatusDialog);
+		SCR_CommonDialogs.CreateServicesStatusDialog();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -351,7 +294,7 @@ class MainMenuUI : ChimeraMenuBase
 		return count;
 	}
 
-	//---------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Shows exit game dialog, or some other dialog if something should
 	//! prevent user from exiting the game through the main menu
 	protected static void TryExitGame()
@@ -376,4 +319,4 @@ class MainMenuUI : ChimeraMenuBase
 
 		SCR_ServicesStatusDialogUI.OpenIfServicesAreNotOK();
 	}
-};
+}

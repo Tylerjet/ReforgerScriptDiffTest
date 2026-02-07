@@ -140,8 +140,9 @@ class SCR_DestructibleEntity: DestructibleEntity
 			return;
 		
 		array<ref Tuple2<vector, vector>> areas = {};
-		aiWorld.GetNavmeshRebuildAreas(this, areas); // Get area with current phase
-		GetGame().GetCallqueue().CallLater(aiWorld.RequestNavmeshRebuildAreas, 1000, false, areas); // Rebuild later with new phase/when this object is destroyed
+		array<bool> redoAreas = {};
+		aiWorld.GetNavmeshRebuildAreas(this, areas, redoAreas); // Get area with current phase
+		GetGame().GetCallqueue().CallLater(aiWorld.RequestNavmeshRebuildAreas, 1000, false, areas, redoAreas); // Rebuild later with new phase/when this object is destroyed
 	}
 	
 	//------------------------------------------------------------------------------------------------

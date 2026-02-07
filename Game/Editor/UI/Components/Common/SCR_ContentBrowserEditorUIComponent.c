@@ -75,7 +75,7 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 	protected bool m_bSearchIsToggled;
 	protected bool m_bContentLoadingWidgetActive;
 	protected bool m_bAnimateEntries;
-	protected SCR_NavigationButtonComponent m_wToggleCardFilterButton;
+	protected SCR_InputButtonComponent m_wToggleCardFilterButton;
 	
 	//Widget refs
 	protected Widget m_wToggleSearchButton;
@@ -181,7 +181,9 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 			
 			SCR_UIInfo blockingBudgetInfo;
 			array<ref SCR_EntityBudgetValue> budgetCosts = { };
-			m_ContentBrowserManager.CanPlace(prefabID, budgetCosts, blockingBudgetInfo);
+			
+			if (!m_PlacingManager.HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER))
+				m_ContentBrowserManager.CanPlace(prefabID, budgetCosts, blockingBudgetInfo);
 			
 			//Set card focus
 			if (firstCard == null)
@@ -586,7 +588,7 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		if (toggleBetweenCardAndFilter)
 		{
 			ButtonActionComponent.GetOnAction(toggleBetweenCardAndFilter, false, 0).Insert(ToggleBetweenCardsAndFilters);
-			m_wToggleCardFilterButton = SCR_NavigationButtonComponent.Cast(toggleBetweenCardAndFilter.FindHandler(SCR_NavigationButtonComponent));
+			m_wToggleCardFilterButton = SCR_InputButtonComponent.Cast(toggleBetweenCardAndFilter.FindHandler(SCR_InputButtonComponent));
 		}
 		
 		// Disable budget preview update during loading, prevent OnCardHover callbacks during init
@@ -672,6 +674,9 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		m_bAnimateEntries = true;
 		
 		SetPage(m_ContentBrowserManager.GetPageIndex());
+
+		if (m_BudgetManager)
+			m_BudgetManager.DemandBudgetUpdateFromServer();
 	}
 	
 	override protected void HandlerDeattached(Widget w)

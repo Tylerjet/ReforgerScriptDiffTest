@@ -38,7 +38,7 @@ class SCR_NotificationPlayerAndLocation : SCR_NotificationPlayer
 		if (nearestLocation)
 			location = nearestLocation.GetDisplayName();
 		else
-			location = SCR_MapEntity.GetGridPos(position);
+			location = SCR_MapEntity.GetGridLabel(position);
 		
 		data.SetNotificationTextEntries(playerName, distance.ToString(), location);
 		return super.GetText(data);

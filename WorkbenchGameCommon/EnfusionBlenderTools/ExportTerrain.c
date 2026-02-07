@@ -55,6 +55,7 @@ class ExportTerrain: NetApiHandler
 		
 		array<float> coords = CoordsFromBin(req.path, req.count);
 		ModifyTerrain(api, coords);
+
 		response.Output = true;
 		return response;
 	}
@@ -65,17 +66,8 @@ class ExportTerrain: NetApiHandler
 		FileHandle bin = FileIO.OpenFile(path, FileMode.READ);
 		float x,y,z;
 		array<float> coords = new array<float>;
-		
-		// read and insert coords from bin
-		for(int i = 0; i < size; i+=3)
-		{
-			bin.Read(x, 4);
-			bin.Read(z, 4);
-			bin.Read(y, 4);
-			coords.Insert(x);
-			coords.Insert(z);
-			coords.Insert(y);
-		}
+
+		bin.ReadArray(coords,4,size);
 		bin.Close();
 		FileIO.DeleteFile(path);
 		return coords;

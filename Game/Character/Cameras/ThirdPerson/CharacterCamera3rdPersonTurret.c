@@ -24,11 +24,10 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 	{
 		m_bLRAngleNoLimit = true;
 	}
+	
 	//-----------------------------------------------------------------------------
-	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
+	void InitCameraData()
 	{
-		super.OnActivate(pPrevCamera, pPrevCameraResult);
-		
 		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
 		{
@@ -68,10 +67,28 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 			}
 		}
 	}
+	
+	//-----------------------------------------------------------------------------
+	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
+	{
+		super.OnActivate(pPrevCamera, pPrevCameraResult);
+		
+		InitCameraData();
+	}
 	//-----------------------------------------------------------------------------
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
-		if (!m_pControlledTurret)
+		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();	
+		if (compartmentAccess && compartmentAccess.IsInCompartment() )
+		{
+			auto compartment = compartmentAccess.GetCompartment();
+			if (m_OwnerVehicle != compartment.GetVehicle()) 
+			{
+				InitCameraData();
+			}
+		}
+		
+		if (!m_pControlledTurret || !m_pTurretController)
 			return;
 		
 		// character matrix
@@ -92,7 +109,7 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 		CharacterControllerComponent charController = m_OwnerCharacter.GetCharacterController();
 		
 		//! apply to rotation matrix
-		if (charController.IsInFreeLook() || m_pTurretController.GetCanAimOnlyInADS())
+		if (charController.IsFreeLookEnabled() || m_pTurretController.GetCanAimOnlyInADS())
 		{
 			m_vLastCameraAngles[0] = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles()[0];
 			Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles + lookAngles, pOutResult.m_CameraTM);
@@ -110,10 +127,10 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 		if (!(cac && (cac.IsGettingOut() || cac.IsGettingIn())))
 		{
 			// Offset by character height, height is not the same when entities are rotated, this is why we revert position without any rotation. Then we can do the height diff.
-			float charHeight = charMat[3].InvMultiply3(charMat)[1] - turretMat[3].InvMultiply3(turretMat)[1];
+			float charHeight = (charMat[3] - turretMat[3]).InvMultiply3(turretMat)[1];
 			cameraPositionLS[1] = cameraPositionLS[1] - charHeight;
 		}
-		
+			
 		// This is our pivot point
 		pOutResult.m_CameraTM[3] = cameraPositionLS;
 		

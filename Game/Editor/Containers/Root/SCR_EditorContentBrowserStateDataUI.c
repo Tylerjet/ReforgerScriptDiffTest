@@ -6,6 +6,14 @@ class SCR_EditorContentBrowserSaveStateDataUI : SCR_EditorContentBrowserSaveStat
 {
 	[Attribute(desc: "UI info for browser state")]
 	protected ref SCR_UIInfo m_BrowserStateUIInfo;
+		
+	/*!
+	To be overriden in inherited classes. Adds a custom condition that allows to show the tab only with given conditions.
+	*/
+	bool CanBeShown()
+	{
+		return true;
+	}
 	
 	/*!
 	Get UI Info

@@ -23,7 +23,7 @@ class SCR_JumpOutAction : SCR_CompartmentUserAction
 			return;
 		
 		// Should become JumpOut when available
-		if (!compartmentAcess.GetOutVehicle(GetRelevantDoorIndex(pUserEntity)))
+		if (!compartmentAcess.GetOutVehicle(GetRelevantDoorIndex(pUserEntity), true))
 			return;
 		
 		super.PerformAction(pOwnerEntity, pUserEntity);

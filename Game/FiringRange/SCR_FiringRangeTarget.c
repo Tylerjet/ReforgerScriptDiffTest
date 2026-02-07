@@ -124,7 +124,7 @@ class SCR_FiringRangeTarget : BaseBuilding
 				  IEntity pHitEntity, 
 				  inout vector outMat[3], // Hit position/direction/normal
 				  IEntity damageSource, 
-				  IEntity damageSourceParent, 
+				  notnull Instigator instigator, 
 				  int colliderID, 
 				  float speed)
 	{
@@ -136,7 +136,7 @@ class SCR_FiringRangeTarget : BaseBuilding
 		if (!IsHitValid(CoordToLocal(outMat[0])))
 			return;
 		
-		super.OnDamage(damage,type,pHitEntity,outMat,damageSource,damageSourceParent,colliderID,speed);
+		super.OnDamage(damage,type,pHitEntity,outMat,damageSource,instigator,colliderID,speed);
 		
 		// check if target is in erected state
 		if (GetState() != ETargetState.TARGET_UP)
@@ -154,7 +154,7 @@ class SCR_FiringRangeTarget : BaseBuilding
 		
 		// get lobby
 		// get ID of the player who hits the target	
-		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(damageSourceParent);
+		int playerID = instigator.GetInstigatorPlayerID();
 		
 		// check if the player is also the owner of the target or the target is in training mode
 		if (m_iTargetOwner == playerID || m_iTargetMode == ETargetMode.TRAINING)

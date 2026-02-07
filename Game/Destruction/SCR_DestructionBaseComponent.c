@@ -26,7 +26,7 @@ class SCR_DestructionBaseComponentClass: ScriptedDamageManagerComponentClass
 class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 {
 #ifdef ENABLE_BASE_DESTRUCTION
-	protected static ref ScriptInvoker s_OnDestructibleDestroyed = new ScriptInvoker();
+	static protected ref ScriptInvoker s_OnDestructibleDestroyed = new ScriptInvoker();
 	protected static bool s_bReadingInit = false; //Used to determine whether we are in gameplay or synchronization state
 	
 #ifdef WORKBENCH
@@ -39,6 +39,9 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	private static ref array<ref SCR_DestructionBaseData> s_aDestructionBaseData = {};
 	
 	private int m_iDestructionBaseDataIndex = -1;
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvoker GetOnDestructibleDestroyedInvoker() { return s_OnDestructibleDestroyed; }
 	
 	//------------------------------------------------------------------------------------------------
 	static bool GetReadingInit(bool readingInit)
@@ -195,8 +198,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		if (!hitZone)
 			return;
 		
-		hitZone.SetMaxHealth(baseHealth);
-		hitZone.SetHealth(baseHealth);
+		hitZone.SetMaxHealth(baseHealth, ESetMaxHealthFlags.FULLHEAL);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -268,8 +270,9 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 			return;
 		
 		array<ref Tuple2<vector, vector>> areas = {};
-		aiWorld.GetNavmeshRebuildAreas(GetOwner(), areas); // Get area with current phase
-		GetGame().GetCallqueue().CallLater(aiWorld.RequestNavmeshRebuildAreas, 1000, false, areas); // Rebuild later with new phase/when this object is destroyed
+		array<bool> redoRoads = {};
+		aiWorld.GetNavmeshRebuildAreas(GetOwner(), areas, redoRoads); // Get area with current phase
+		GetGame().GetCallqueue().CallLater(aiWorld.RequestNavmeshRebuildAreas, 1000, false, areas, redoRoads); // Rebuild later with new phase/when this object is destroyed
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -374,7 +377,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void PassDamageToChildren(EDamageType type, float damage, inout vector outMat[3], IEntity damageSource, IEntity damageSourceParent, float speed, int colliderID)
+	protected void PassDamageToChildren(EDamageType type, float damage, inout vector outMat[3], IEntity damageSource, notnull Instigator damageSourceParent, float speed, int colliderID)
 	{
 		IEntity child = GetOwner().GetChildren();
 		while (child)
@@ -388,7 +391,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 			
 			IEntity currentChild = child;
 			child = child.GetSibling();
-			destructionComponent.HandleDamage(type, damage, outMat, currentChild, null, damageSource, null, colliderID, -1);
+			destructionComponent.HandleDamage(type, damage, outMat, currentChild, null, damageSourceParent, null, colliderID, -1);
 		}
 	}
 	
@@ -485,7 +488,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		//If vehicle response index is the same or higher -> automatically destroy
 		if (otherResponseIndex - MIN_MOMENTUM_RESPONSE_INDEX >= ownerReponseIndex - MIN_DESTRUCTION_RESPONSE_INDEX)
 		{
-			HandleDamage(EDamageType.COLLISION, GetMaxHealth(), outMat, GetOwner(), null, other, null, -1, -1); //Immediately destroy, otherwise the other object goes right through
+			HandleDamage(EDamageType.COLLISION, GetMaxHealth(), outMat, GetOwner(), null,Instigator.CreateInstigator(other), null, -1, -1); //Immediately destroy, otherwise the other object goes right through
 		}
 		else
 		{	
@@ -494,7 +497,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 			float damage = momentum * componentData.m_fMomentumToDamageScale;
 			
 			// Send damage to damage handling
-			HandleDamage(EDamageType.COLLISION, damage, outMat, GetOwner(), null, other, null, -1, -1);
+			HandleDamage(EDamageType.COLLISION, damage, outMat, GetOwner(), null,Instigator.CreateInstigator(other), null, -1, -1);
 		}
 
 		return true;
@@ -506,7 +509,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 				  EDamageType type,
 				  float damage,
 				  HitZone pHitZone,
-				  IEntity instigator, 
+				  notnull Instigator instigator, 
 				  inout vector hitTransform[3], 
 				  float speed,
 				  int colliderID, 

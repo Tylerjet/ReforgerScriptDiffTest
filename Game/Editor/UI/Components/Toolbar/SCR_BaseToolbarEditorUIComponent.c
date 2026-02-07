@@ -123,6 +123,11 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 		
 		SetToolbarVisible(hasContent);
 	}
+	void MarkForRefresh()
+	{
+		GetGame().GetCallqueue().Remove(Refresh); //--- Remove the previous queued call, to guarantee there will be the only one
+		GetGame().GetCallqueue().CallLater(Refresh, 1); //--- Call with a delay, in case whatever called this is not ready yet and the toolbar would reflect incorrect state
+	}
 	protected void OnPageChanged(int page)
 	{
 		m_iPage = page;

@@ -22,16 +22,16 @@ class SCR_DownloadManager_MiniDialogWidgets
 	TextWidget m_ProgressText;
 
 	ButtonWidget m_BackButton;
-	SCR_NavigationButtonComponent m_BackButtonComponent;
+	SCR_InputButtonComponent m_BackButtonComponent;
 
 	ButtonWidget m_PauseButton;
-	SCR_NavigationButtonComponent m_PauseButtonComponent;
+	SCR_InputButtonComponent m_PauseButtonComponent;
 
 	ButtonWidget m_CancelButton;
-	SCR_NavigationButtonComponent m_CancelButtonComponent;
+	SCR_InputButtonComponent m_CancelButtonComponent;
 
 	ButtonWidget m_PauseAllButton;
-	SCR_NavigationButtonComponent m_PauseAllButtonComponent;
+	SCR_InputButtonComponent m_PauseAllButtonComponent;
 
 	bool Init(Widget root)
 	{
@@ -51,16 +51,16 @@ class SCR_DownloadManager_MiniDialogWidgets
 		m_ProgressText = TextWidget.Cast(root.FindAnyWidget("m_ProgressOverlay.m_ProgressText"));
 
 		m_BackButton = ButtonWidget.Cast(root.FindAnyWidget("m_BackButton"));
-		m_BackButtonComponent = SCR_NavigationButtonComponent.Cast(m_BackButton.FindHandler(SCR_NavigationButtonComponent));
+		m_BackButtonComponent = SCR_InputButtonComponent.Cast(m_BackButton.FindHandler(SCR_InputButtonComponent));
 
 		m_PauseButton = ButtonWidget.Cast(root.FindAnyWidget("m_PauseButton"));
-		m_PauseButtonComponent = SCR_NavigationButtonComponent.Cast(m_PauseButton.FindHandler(SCR_NavigationButtonComponent));
+		m_PauseButtonComponent = SCR_InputButtonComponent.Cast(m_PauseButton.FindHandler(SCR_InputButtonComponent));
 
 		m_CancelButton = ButtonWidget.Cast(root.FindAnyWidget("m_CancelButton"));
-		m_CancelButtonComponent = SCR_NavigationButtonComponent.Cast(m_CancelButton.FindHandler(SCR_NavigationButtonComponent));
+		m_CancelButtonComponent = SCR_InputButtonComponent.Cast(m_CancelButton.FindHandler(SCR_InputButtonComponent));
 
 		m_PauseAllButton = ButtonWidget.Cast(root.FindAnyWidget("m_PauseAllButton"));
-		m_PauseAllButtonComponent = SCR_NavigationButtonComponent.Cast(m_PauseAllButton.FindHandler(SCR_NavigationButtonComponent));
+		m_PauseAllButtonComponent = SCR_InputButtonComponent.Cast(m_PauseAllButton.FindHandler(SCR_InputButtonComponent));
 
 		return true;
 	}

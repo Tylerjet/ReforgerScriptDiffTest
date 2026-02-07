@@ -258,17 +258,17 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 		if (m_CameraData)
 			m_CameraData.SaveComponents(m_Camera);
 		
-		if (GetOwner())
-			ClearEventMask(GetOwner(), EntityEvent.FRAME);
-		
 		if (m_Camera)
 			m_Camera.Terminate();
 	}
 	override protected void EOnEditorPostDeactivate()
 	{
+		if (GetOwner())
+			ClearEventMask(GetOwner(), EntityEvent.FRAME);
+		
 		if (m_Camera)
 		{
-			m_Camera.SwitchToPreviousCamera();
+			m_Camera.TrySwitchToControlledEntityCamera();
 			delete m_Camera;
 		}
 	}

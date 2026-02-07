@@ -161,6 +161,21 @@ class SCR_AIInvestigateClusterActivity : SCR_AIFireteamsClusterActivity
 				comms.RequestBroadcast(msg, agent);
 			}
 		}
+		
+		foreach (SCR_AIGroupFireteamLock ft : m_aFireteamsCover)
+		{	
+			ft.GetFireteam().GetMembers(agents);
+			foreach (AIAgent agent : agents)
+			{
+				if (!agent)
+					continue;
+				
+				SCR_AIMessage_CoverCluster msg = new SCR_AIMessage_CoverCluster();
+				msg.m_RelatedGroupActivity = this;
+				msg.SetReceiver(agent);
+				comms.RequestBroadcast(msg, agent);
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------
@@ -181,10 +196,12 @@ class SCR_AIInvestigateClusterActivity : SCR_AIFireteamsClusterActivity
 	{
 		// List all assigned fireteams
 		string str = "FTs: (";
-		foreach (SCR_AIGroupFireteamLock ftLock : m_aAssignedFireteams)
-		{
+		foreach (SCR_AIGroupFireteamLock ftLock : m_aFireteamsInvestigate)
 			str = str + string.Format("%1, ", m_Utility.m_FireteamMgr.GetFireteamId(ftLock.GetFireteam()));
-		}
+		str = str + "| ";
+		foreach (SCR_AIGroupFireteamLock ftLock : m_aFireteamsCover)
+			str = str + string.Format("%1, ", m_Utility.m_FireteamMgr.GetFireteamId(ftLock.GetFireteam()));
+		
 		str = str + string.Format(") => C: %1", m_Utility.m_Perception.GetTargetClusterStateId(m_ClusterState));
 		
 		return str;

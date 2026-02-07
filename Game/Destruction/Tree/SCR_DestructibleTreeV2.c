@@ -504,7 +504,7 @@ class SCR_DestructibleTreeV2 : Tree
 	override void OnDamage(EDamageType type,
 				  float damage,
 				  HitZone pHitZone,
-				  IEntity instigator, 
+				  notnull Instigator instigator, 
 				  inout vector hitTransform[3], 
 				  float speed,
 				  int colliderID, 

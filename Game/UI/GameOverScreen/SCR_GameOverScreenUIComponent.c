@@ -134,7 +134,7 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 		Widget returnToMenuBtn = m_wRoot.FindAnyWidget(m_sBackButtonName);
 		if (returnToMenuBtn)
 		{
-			SCR_NavigationButtonComponent returnToMenuButton = SCR_NavigationButtonComponent.Cast(returnToMenuBtn.FindHandler(SCR_NavigationButtonComponent));
+			SCR_InputButtonComponent returnToMenuButton = SCR_InputButtonComponent.Cast(returnToMenuBtn.FindHandler(SCR_InputButtonComponent));
 			if (returnToMenuButton)
 				returnToMenuButton.m_OnActivated.Insert(ReturnToMenu);
 		}
@@ -152,7 +152,7 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 				SCR_DebriefingScreenComponent debriefingScreen = SCR_DebriefingScreenComponent.Cast(gameMode.FindComponent(SCR_DebriefingScreenComponent));
 				if (debriefingScreen)
 				{
-					SCR_NavigationButtonComponent debriefingButton = SCR_NavigationButtonComponent.Cast(debriefingWidgetButton.FindHandler(SCR_NavigationButtonComponent));
+					SCR_InputButtonComponent debriefingButton = SCR_InputButtonComponent.Cast(debriefingWidgetButton.FindHandler(SCR_InputButtonComponent));
 					if (debriefingButton)
 						debriefingButton.m_OnActivated.Insert(OpenDebriefingScreenMenu);
 					}

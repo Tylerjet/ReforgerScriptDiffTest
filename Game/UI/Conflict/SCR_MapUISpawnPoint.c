@@ -14,6 +14,13 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 	protected SCR_MilitarySymbolUIComponent m_MilitarySymbolComponent;
 	protected ButtonWidget m_wButton;
 	protected SizeLayoutWidget m_wSizeLayout;
+	protected Widget m_wSupplies;
+	protected RichTextWidget m_wSuppliesText
+	
+	protected SCR_ResourceComponent	m_ResourceComponent;
+	protected SCR_ResourceConsumer m_ResourceConsumer;
+	protected ref SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandleConsumer;
+	protected RplId m_ResourceInventoryPlayerComponentRplId;
 
 	//------------------------------------------------------------------------------
 	void Init(notnull SCR_SpawnPoint spawnPoint)
@@ -24,11 +31,40 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 		// TODO@AS: Api?
 		m_wSpawnPointName.SetText(spawnPoint.GetSpawnPointName());
 		UpdateIcon();
+
+		if (!m_wSuppliesText)
+			return;
+
+		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(spawnPoint);
+		
+		if (!m_ResourceComponent)
+			return;
+
+		m_ResourceConsumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+
+		if (!m_ResourceConsumer)
+			return;
+
+		m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+		m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(m_ResourceConsumer, m_ResourceInventoryPlayerComponentRplId);
+		
+		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(UpdateResources);
+		UpdateResources();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override vector GetPos()
 	{
 		return m_SpawnPoint.GetOrigin();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateResources()
+	{
+		if (!m_ResourceComponent || !m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES, m_ResourceConsumer))
+			return;
+
+		m_wSuppliesText.SetText(string.ToString(m_ResourceConsumer.GetAggregatedResourceValue()));
 	}
 
 	//------------------------------------------------------------------------------
@@ -108,14 +144,32 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 		m_wSizeLayout = SizeLayoutWidget.Cast(w.FindAnyWidget("SizeLayout"));
 		m_wSpawnPointName = TextWidget.Cast(w.FindAnyWidget("Name"));
 		m_wSymbolOverlay = OverlayWidget.Cast(m_wImageOverlay.FindWidget("Symbol"));
+
 		if (!m_wSymbolOverlay)
 			return;
 		
 		m_MilitarySymbolComponent = SCR_MilitarySymbolUIComponent.Cast(m_wSymbolOverlay.FindHandler(SCR_MilitarySymbolUIComponent));
 		
 		m_wButton = ButtonWidget.Cast(w.FindAnyWidget("Button"));
+
 		if (m_wButton)
 			m_wButton.SetEnabled(false);
+
+		m_wSupplies = w.FindAnyWidget("w_Supplies");
+		
+		if (m_wSupplies)
+			m_wSuppliesText = RichTextWidget.Cast(m_wSupplies.FindAnyWidget("SuppliesText"));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+
+		if (m_ResourceComponent)
+			m_ResourceComponent.TEMP_GetOnInteractorReplicated().Remove(UpdateResources);
+		
+		m_ResourceSubscriptionHandleConsumer = null;
 	}
 
 	//------------------------------------------------------------------------------
@@ -170,12 +224,16 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 		super.OnMouseEnter(w, x, y);
 		m_wRoot.SetZOrder(1);
 		m_wHighlightImg.SetVisible(true);
+
 		if (m_wGradient)
 			m_wGradient.SetVisible(true);
+
 		if (!m_bIsSelected)
-		{
 			AnimExpand();
-		}
+		
+		if (m_ResourceConsumer)
+			m_wSupplies.SetVisible(true);
+
 		return false;
 	}
 
@@ -195,6 +253,9 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 		if (RenderTargetWidget.Cast(enterW) && m_wButton.IsEnabled())
 			m_wButton.SetEnabled(false);
 		
+		if (m_ResourceConsumer)
+			m_wSupplies.SetVisible(false);
+
 		return false;
 	}
 

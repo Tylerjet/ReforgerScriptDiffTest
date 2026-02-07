@@ -135,6 +135,8 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	private ref set<SCR_EditableEntityComponent> m_Recipients;
 	private ref SCR_EditorPreviewParams m_InstantPlacingParam;
 	
+	protected bool m_bBlockPlacing;
+	
 	private ref ScriptInvoker Event_OnSelectedPrefabChange = new ScriptInvoker;
 	private ref ScriptInvoker Event_OnPlacingPlayerChange = new ScriptInvoker;
 	private ref ScriptInvoker Event_OnPlacingFlagsChange = new ScriptInvoker;
@@ -143,6 +145,14 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	private ref ScriptInvoker Event_OnPlaceEntity = new ScriptInvoker;
 	
 	private ref ScriptInvoker Event_OnPlaceEntityServer = new ScriptInvoker;
+	
+	protected static SCR_EditableEntityComponent m_DelayedSpawnEntity;
+	protected static ref SCR_EditorPreviewParams m_DelayedSpawnPreviewParams;
+	
+	void SetPlacingBlocked(bool blocked)
+	{
+		m_bBlockPlacing = blocked;
+	}
 	
 	/*
 	Get registered prefab with given index.
@@ -225,12 +235,20 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		}
 		
 		//--- Create packet
-		SCR_LayersEditorComponent layersManager = SCR_LayersEditorComponent.Cast(GetInstance(SCR_LayersEditorComponent));
 		SCR_EditorPreviewParams params;
 		if (m_InstantPlacingParam)
+		{
 			params = m_InstantPlacingParam;
+		}
 		else
-			params = SCR_EditorPreviewParams.CreateParamsFromPreview(m_PreviewManager, layersManager.GetCurrentLayer(), true);
+		{
+			SCR_EditableEntityComponent parent;
+			SCR_LayersEditorComponent layersManager = SCR_LayersEditorComponent.Cast(GetInstance(SCR_LayersEditorComponent));
+			if (layersManager)
+				parent = layersManager.GetCurrentLayer();
+			
+			params = SCR_EditorPreviewParams.CreateParamsFromPreview(m_PreviewManager, parent, true);
+		}
 		
 		if (!params)
 			return false;
@@ -256,10 +274,6 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			}
 		}
 		
-		//--- Stop placing (only after packet was created)
-		if (unselectPrefab || m_InstantPlacingParam)
-			SetSelectedPrefab(ResourceName.Empty, true);
-		
 		//--- Send request to server
 		m_StatesManager.SetIsWaiting(true);
 		Event_OnRequestEntity.Invoke(prefabID, params.m_vTransform, null);
@@ -275,6 +289,10 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		m_Slot = null;
 		m_InstantPlacingParam = null;
 		
+		//--- Stop placing (only after packet was created)
+		if (unselectPrefab || m_InstantPlacingParam)
+			SetSelectedPrefab(ResourceName.Empty, true);
+		
 		return true;
 	}
 	/*!
@@ -288,14 +306,21 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	*/
 	bool CreateEntity(ResourceName prefab, SCR_EditorPreviewParams param, bool unselectPrefab = true, bool canBePlayer = false, set<SCR_EditableEntityComponent> recipients = null)
 	{
+		if (m_bBlockPlacing)
+			return false;
+
 		m_SelectedPrefab = prefab;
 		m_Recipients = recipients;
 		SetInstantPlacing(param);
 		return CreateEntity(unselectPrefab, canBePlayer);
 	}
+	
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void CreateEntityServer(SCR_EditorPreviewParams params, RplId prefabID, int playerID, int entityIndex, bool isQueue, array<RplId> recipientIds)
 	{
+		if (m_bBlockPlacing)
+			return;
+
 		SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
 		if (RplSession.Mode() == RplMode.Client || !prefabData) return;
 		
@@ -303,7 +328,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		
 		if (!CanCreateEntity() || !params.Deserialize())
 		{
-			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex);
+			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 			return;
 		}
 		
@@ -312,28 +337,29 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		if (prefab.IsEmpty())
 		{
 			Print("Cannot create entity, prefab not defined!", LogLevel.ERROR);
-			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex);
+			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 			return;
 		}
 		Resource prefabResource = Resource.Load(prefab);
 		if (!prefabResource || !prefabResource.IsValid())
 		{
 			Print(string.Format("Cannot create entity, error when loading prefab '%1'!", prefab), LogLevel.ERROR);
-			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex);
+			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 			return;
 		}
 		IEntityComponentSource editableEntitySource = SCR_EditableEntityComponentClass.GetEditableEntitySource(prefabResource);
 		if (!editableEntitySource)
 		{
 			Print(string.Format("Cannot create entity, prefab '%1' does not contain SCR_EditableEntityComponent!", prefab), LogLevel.ERROR);
-			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex);
+			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 			return;
 		}
+		
 		EEditableEntityBudget blockingBudget;
 		if (!CanPlaceEntityServer(editableEntitySource, blockingBudget, false, false))
 		{
 			Print(string.Format("Entity budget exceeded for player!"), LogLevel.ERROR);
-			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex);
+			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 			return;
 		}
 		
@@ -393,6 +419,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			currentLayerID = Replication.FindId(params.m_CurrentLayer);
 		}
 		
+		entity.OnCreatedServer(this);
 		OnEntityCreatedServer(entities);
 		
 		Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, isQueue, hasRecipients, currentLayerID, 0);
@@ -400,7 +427,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void CreateEntityOwner(int prefabID, array<RplId> entityIds, int entityIndex, int isQueue, bool hasRecipients, RplId currentLayerID, int attempt)
-	{				
+	{
 		//~ Remove placing flag player
 		if (HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER))
 			SetPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER, false);
@@ -447,6 +474,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 				SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
 				Print(string.Format("Error when creating entity from prefab '%1' (id = %2)!", prefabData.GetPrefab(prefabID), prefabID), LogLevel.ERROR);
 			}
+
 			return;
 		}
 		
@@ -491,9 +519,9 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	\param[out] outNotification Notification to be sent when attempting to place the entity
 	\return True to allow placing, false to prevent it
 	*/
-	bool CanCreateEntity(out ENotification outNotification = -1)
+	bool CanCreateEntity(out ENotification outNotification = -1, inout SCR_EPreviewState previewStateToShow = SCR_EPreviewState.PLACEABLE)
 	{
-		return true;
+		return !m_bBlockPlacing;
 	}
 	/*!
 	Function called right before entities are created on server.
@@ -598,7 +626,12 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.GetEditableEntity(owner);
 		if (!entity)
 			return null;
-		
+
+		SCR_EditableCommentComponent comment = SCR_EditableCommentComponent.Cast(params.m_Target);
+		SCR_CompositionSlotManagerComponent slotManager = SCR_CompositionSlotManagerComponent.GetInstance();
+		if (comment && slotManager)
+			slotManager.SetOccupant(comment.GetOwnerScripted(), owner);
+
 		//--- Assign faction when placed for a recipient
 		if (recipient)
 			SCR_FactionAffiliationComponent.SetFaction(entity.GetOwner(), recipient.GetFaction());
@@ -637,7 +670,26 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	
 		//--- Orient according to vertical settings
 		if (!entity.HasEntityFlag(EEditableEntityFlag.STATIC_POSITION))
-			SCR_RefPreviewEntity.SpawnAndApplyReference(entity, params);
+		{
+			SCR_EditableGroupComponent groupComp = SCR_EditableGroupComponent.Cast(entity);
+			
+			if (groupComp)
+			{
+				//GetGame().GetCallqueue().CallLater(SCR_RefPreviewEntity.SpawnAndApplyReference, 500, false, entity, params);
+				
+				SCR_AIGroup group = SCR_AIGroup.Cast(groupComp.GetOwnerScripted());
+				if (group)
+				{
+					m_DelayedSpawnEntity = entity;
+					m_DelayedSpawnPreviewParams = params;
+					group.GetOnAllDelayedEntitySpawned().Insert(OnAIGroupAllEntitiesSpawned);
+				}
+			}
+			else
+			{
+				SCR_RefPreviewEntity.SpawnAndApplyReference(entity, params);
+			}
+		}
 		
 		//--- Log message. Important for identifying problematic prefabs!
 		vector logTransform[4];
@@ -655,7 +707,19 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			Print(string.Format("@\"%1\" placed at %2", "Entity", logTransform), LogLevel.VERBOSE);	
 		
 		return entity;
-	}	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Callback reacting to all delayed spawned entities being created
+	protected static void OnAIGroupAllEntitiesSpawned(SCR_AIGroup group)
+	{
+		SCR_RefPreviewEntity.SpawnAndApplyReference(m_DelayedSpawnEntity, m_DelayedSpawnPreviewParams);
+		
+		// Cleanup 
+		m_DelayedSpawnEntity = null;
+		m_DelayedSpawnPreviewParams = null;
+		group.GetOnAllDelayedEntitySpawned().Remove(OnAIGroupAllEntitiesSpawned);
+	}
 	
 	protected static EEditorPlacingFlags GetCompatiblePlacingFlags(Resource prefabResource)
 	{
@@ -694,7 +758,12 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	
 	protected bool CanPlaceEntityServer(IEntityComponentSource editableEntitySource, out EEditableEntityBudget blockingBudget, bool updatePreview, bool showNotification)
 	{
-		if (!m_BudgetManager) return true;
+		if (!m_BudgetManager)
+		{
+			m_BudgetManager = SCR_BudgetEditorComponent.Cast(FindEditorComponent(SCR_BudgetEditorComponent, false, true));
+			if (!m_BudgetManager)
+				return true;
+		}
 		
 		return m_BudgetManager.CanPlaceEntitySource(editableEntitySource, blockingBudget, HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER), updatePreview, showNotification);
 	}
@@ -769,7 +838,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	bool SetSelectedPrefab(ResourceName prefab = "", bool onConfirm = false, bool showBudgetMaxNotification = true, set<SCR_EditableEntityComponent> recipients = null)
 	{
 		if (prefab == m_SelectedPrefab) return true;
-		
+
 		//--- Check if entity is within budget
 		EEditableEntityBudget blockingBudget;
 		if (!prefab.IsEmpty() && !CanSelectEntityPrefab(prefab, blockingBudget, showBudgetMaxNotification))
@@ -780,7 +849,8 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		//--- Place instantly
 		if (m_InstantPlacingParam && !prefab.IsEmpty())
 		{
-			m_StatesManager.SetSafeDialog(true); //--- This will prevent m_StatesManager.SetIsWaiting(false) from failing in CreateEntityOwner()
+			//--- This will prevent m_StatesManager.SetIsWaiting(false) from failing in CreateEntityOwner()
+			m_StatesManager.SetSafeDialog(true);
 			m_SelectedPrefab = prefab;
 			m_Recipients = recipients;
 			CreateEntity();

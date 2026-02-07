@@ -7,7 +7,7 @@ class SCR_CareerProfileMenuUI: SCR_SuperMenuBase
 	{
 		super.OnMenuOpen();
 
-		SCR_NavigationButtonComponent comp = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Back",GetRootWidget());
+		SCR_InputButtonComponent comp = SCR_InputButtonComponent.GetInputButtonComponent("Back",GetRootWidget());
 		if (comp)
 			comp.m_OnActivated.Insert(OnBack);
 

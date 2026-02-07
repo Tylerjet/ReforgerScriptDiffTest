@@ -2,7 +2,7 @@
 Plays a sound.
 */
 
-[BaseContainerProps(), SCR_ButtonEffectTitleAttribute("Sound", "")]
+[BaseContainerProps(configRoot : true), SCR_ButtonEffectTitleAttribute("Sound", "")]
 class SCR_ButtonEffectSound : SCR_ButtonEffectBase
 {
 	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox, "")]

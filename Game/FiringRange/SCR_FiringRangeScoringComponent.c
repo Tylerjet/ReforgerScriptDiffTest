@@ -30,7 +30,7 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! What happens when a player is killed. 
-	void OnKill(int playerId, IEntity player, IEntity killer)
+	void OnKill(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		// Remove player from assigned firing line
 		s_Manager.RemoveAssignedPlayerFromFireline(playerId);	

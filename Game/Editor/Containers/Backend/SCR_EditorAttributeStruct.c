@@ -27,7 +27,7 @@ class SCR_EditorAttributeStruct: JsonApiStruct
 		for (int i = 0, count = attributeList.GetAttributesCount(); i < count; i++)
 		{
 			attribute = attributeList.GetAttribute(i);
-			if (!attribute.IsServer())
+			if (!attribute.IsServer() || !attribute.IsSerializable())
 				continue;
 			
 			var = attribute.ReadVariable(item, null);
@@ -57,6 +57,9 @@ class SCR_EditorAttributeStruct: JsonApiStruct
 		foreach (SCR_EditorAttributeStruct entry: entries)
 		{
 			attribute = attributeList.GetAttribute(entry.id);
+			if (!attribute.IsSerializable())
+				continue;
+			
 			var = SCR_BaseEditorAttributeVar.CreateVector(Vector(entry.v0, entry.v1, entry.v2));
 			attribute.WriteVariable(item, var, null, -1);
 		}

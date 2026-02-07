@@ -7,7 +7,12 @@ Will set notification target position to first enity only
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(ENotification, "m_NotificationKey")]
 class SCR_NotificationPlayerTargetTwoEditableEntity : SCR_NotificationDisplayData
 {
-
+	[Attribute("0", desc: "If true will get target Character name (first, alias and surname) if the entity is a NPC otherwise will get the entity type name eg: Rifleman")]
+	protected bool m_bGetTargetOneCharacterName;
+	
+	[Attribute("0", desc: "If true will get target Character name (first, alias and surname) if the entity is a NPC otherwise will get the entity type name eg: Rifleman")]
+	protected bool m_bGetTargetTwoCharacterName;
+	
 	override string GetText(SCR_NotificationData data)
 	{
 		int playerID, firstTargetID, secondTargetID;
@@ -15,7 +20,7 @@ class SCR_NotificationPlayerTargetTwoEditableEntity : SCR_NotificationDisplayDat
 		
 		string playerName, firstEntityName, secondEntityName;
 		data.GetNotificationTextEntries(playerName, firstEntityName, secondEntityName);
-		if (!GetPlayerName(playerID, playerName) || !GetEditableEntityName(firstTargetID, firstEntityName) || !GetEditableEntityName(secondTargetID, secondEntityName))
+		if (!GetPlayerName(playerID, playerName) || !GetEditableEntityName(firstTargetID, firstEntityName, m_bGetTargetOneCharacterName) || !GetEditableEntityName(secondTargetID, secondEntityName, m_bGetTargetTwoCharacterName))
 			return string.Empty;
 		
 		data.SetNotificationTextEntries(playerName, firstEntityName, secondEntityName);

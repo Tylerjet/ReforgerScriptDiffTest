@@ -38,6 +38,11 @@ class SCR_InfoDisplayLayerHandler : SCR_InfoDisplayHandler
 		}
 
 		Widget rootWidget = workspace.CreateWidgets(display.m_LayoutPath, layerSlotWidget);
+		if (!rootWidget)
+		{
+			Print("Can't initialize Info Display on provided Slot Widget: " + m_sLayerName, LogLevel.ERROR);
+			return;
+		}
 
 		display.SetRootWidget(rootWidget);
 		display.SetContentWidget(rootWidget);

@@ -146,6 +146,18 @@ class SCR_RadialMenuController
 		if (!HasControl())
 			Control(m_Owner, m_RadialMenuToControl);
 		
+		// Check owner character concious state
+		if (!m_RMControls.m_bShowWhileUnconcious)
+		{	
+			IEntity controllerEntity = SCR_PlayerController.GetLocalControlledEntity();
+			if (controllerEntity)
+			{
+				CharacterControllerComponent characterControler = CharacterControllerComponent.Cast(controllerEntity.FindComponent(CharacterControllerComponent));
+				if (characterControler && characterControler.IsUnconscious())
+					return;
+			}
+		}
+		
 		// Setup and open menu 
 		if (!m_RadialMenu)
 			return;
@@ -235,7 +247,7 @@ class SCR_RadialMenuController
 	//------------------------------------------------------------------------------------------------
 	void SCR_RadialMenuController()
 	{
-		if (m_RMControls)
+		if (m_RMControls && !m_RMControls.m_sOpenAction.IsEmpty())
 			GetGame().GetInputManager().AddActionListener(m_RMControls.m_sOpenAction, EActionTrigger.DOWN, OnInputOpen);
 	}
 }

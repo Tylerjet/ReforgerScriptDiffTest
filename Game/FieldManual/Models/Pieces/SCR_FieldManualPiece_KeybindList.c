@@ -10,15 +10,6 @@ class SCR_FieldManualPiece_KeybindList : SCR_FieldManualPiece
 	protected ref Widget m_KeybindsLayout;
 
 	//------------------------------------------------------------------------------------------------
-	void SCR_FieldManualPieceKeybindList()
-	{
-		if (!m_aKeybinds) // can be config-provided
-		{
-			m_aKeybinds = {};
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	override void CreateWidget(notnull Widget parent)
 	{
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
@@ -48,25 +39,18 @@ class SCR_FieldManualPiece_KeybindList : SCR_FieldManualPiece
 		if (!m_aKeybinds || m_aKeybinds.IsEmpty())
 			return;
 
-
 		array<SCR_EInputTypeCondition> conditions = { SCR_EInputTypeCondition.ALL_INPUTS };
 
 		if (isGamepad)
-		{
 			conditions.Insert(SCR_EInputTypeCondition.GAMEPAD_ONLY);
-		}
 		else
-		{
 			conditions.Insert(SCR_EInputTypeCondition.KEYBOARD_ONLY);
-		}
 
 		array<ref SCR_FieldManualPiece_Keybind> arrayCopy = {};
-		for (int i = 0; i < m_aKeybinds.Count(); i++)
+		foreach (SCR_FieldManualPiece_Keybind keybind : m_aKeybinds)
 		{
-			if (conditions.Contains(m_aKeybinds[i].m_InputDisplayCondition))
-			{
-				arrayCopy.Insert(m_aKeybinds[i]);
-			}
+			if (conditions.Contains(keybind.m_eInputDisplayCondition))
+				arrayCopy.Insert(keybind);
 		}
 
 		if (arrayCopy.IsEmpty())
@@ -81,10 +65,18 @@ class SCR_FieldManualPiece_KeybindList : SCR_FieldManualPiece
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
+	void SCR_FieldManualPiece_KeybindList()
+	{
+		if (!m_aKeybinds) // can be config-provided
+			m_aKeybinds = {};
+	}
+
+	//------------------------------------------------------------------------------------------------
 	// destructor
 	void ~SCR_FieldManualPiece_KeybindList()
 	{
 		if (GetGame().OnInputDeviceIsGamepadInvoker())
 			GetGame().OnInputDeviceIsGamepadInvoker().Remove(CreateKeybinds);
 	}
-};
+}

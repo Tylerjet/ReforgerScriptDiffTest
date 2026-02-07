@@ -16,7 +16,7 @@ class SCR_PlayerListEntry
 	SCR_ButtonBaseComponent m_Mute;
 	SCR_ButtonBaseComponent m_Block;
 	SCR_ButtonBaseComponent m_Friend;
-	SCR_ComboBoxComponent m_VotingCombo;
+	SCR_ComboBoxComponent m_PlayerActionList;
 
 	TextWidget m_wName;
 	TextWidget m_wKills;
@@ -39,11 +39,12 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected ref map<int, SCR_ScoreInfo> m_aAllPlayersInfo = new ref map<int, SCR_ScoreInfo>();
 	protected ref array<Faction> m_aFactions = {null};
 
-	protected SCR_NavigationButtonComponent m_Mute;
-	protected SCR_NavigationButtonComponent m_Block;
-	protected SCR_NavigationButtonComponent m_Friend;
-	protected SCR_NavigationButtonComponent m_Vote;
-	protected SCR_NavigationButtonComponent m_Invite;
+	protected SCR_InputButtonComponent m_Mute;
+	protected SCR_InputButtonComponent m_Block;
+	protected SCR_InputButtonComponent m_Friend;
+	protected SCR_InputButtonComponent m_Vote;
+	protected SCR_InputButtonComponent m_Invite;
+	protected SCR_InputButtonComponent m_ViewProfile;
 
 	protected SCR_VotingManagerComponent m_VotingManager;
 	protected SCR_VoterComponent m_VoterComponent;
@@ -67,15 +68,10 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected const string BLOCK = "#AR-PlayerList_Block";
 	protected const string UNBLOCK = "#AR-PlayerList_Unblock";
 	protected const string INVITE_PLAYER_VOTE = "#AR-PlayerList_Invite";
-	protected const string START_KICK_VOTE = "#AR-Voting_KICK_StartVotingName";
-	protected const string CANCEL_KICK_VOTE = "#AR-Voting_KICK_CancelVotingName";
 	protected const string MUTE_TEXTURE = "sound-off";
 	protected const string OPTIONS_COMBO_ACCEPT = "#AR-Group_AcceptJoinPrivateGroup";
 	protected const string OPTIONS_COMBO_CANCEL = "#AR-Group_RefuseJoinPrivateGroup";
-	protected const string OPTIONS_COMBO_VOTE_TO_BECOME_GM = "#AR-Voting_EDITOR_IN_StartVotingName";
-	protected const string OPTIONS_COMBO_VOTE_TO_REMOVE_GM = "#AR-Voting_EDITOR_OUT_StartVotingName";
-	protected const string OPTIONS_COMBO_RELINQUISH_GM = "#AR-Voting_EDITOR_WIDRAW_Name";
-	protected const string OPTIONS_COMBO_VOTE_FOR_GM = "#AR-Voting_EDITOR_IN_AddVoteName";
+	protected const string VOTING_PLAYER_COUNT_FORMAT = "#AR-Voting_PlayerCountFormatting";
 
 	protected const string FILTER_FAV = "Favourite";
 	protected const string FILTER_NAME = "Name";
@@ -91,7 +87,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected const int DEFAULT_SORT_INDEX = 1;
 
 	protected string m_sGameMasterIndicatorName = "GameMasterIndicator";
-	protected ref array<EVotingType> m_aVotingTypes = {};
 
 	protected static ref ScriptInvoker s_OnPlayerListMenu = new ScriptInvoker();
 
@@ -402,7 +397,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		if (!m_SelectedEntry)
 			return;
 
-		SCR_ComboBoxComponent comp = m_SelectedEntry.m_VotingCombo;
+		SCR_ComboBoxComponent comp = m_SelectedEntry.m_PlayerActionList;
 		if (!comp)
 			return;
 
@@ -420,6 +415,15 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent().InvitePlayer(m_SelectedEntry.m_iID);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void OnViewProfile()
+	{
+		if (!m_SelectedEntry)
+			return;
+		
+		GetGame().GetPlayerManager().ShowUserProfile(m_SelectedEntry.m_iID);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void OnMuteClick(SCR_ButtonBaseComponent comp, bool selected)
 	{		
@@ -506,7 +510,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		bool enableFriend;
 		bool enableBlock;
 		bool enableMute;
-		bool enableVoting = CanOpenVoteList(m_SelectedEntry);
+		bool enablePlayerOptionList = CanOpenPlayerActionList(m_SelectedEntry);
 
 		if (m_SelectedEntry)
 		{
@@ -522,12 +526,13 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				else
 					m_Friend.SetLabel(ADD_FRIEND);
 			}
-			if (m_SelectedEntry.m_VotingCombo)
-				m_SelectedEntry.m_VotingCombo.SetEnabled(enableVoting);
+			if (m_SelectedEntry.m_PlayerActionList)
+				m_SelectedEntry.m_PlayerActionList.SetEnabled(enablePlayerOptionList);
 		}
 
 		if (m_Friend)
 			m_Friend.SetEnabled(enableFriend);
+		
 		if (m_Block)
 		{
 			m_Block.SetEnabled(enableBlock);
@@ -539,6 +544,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			else
 				m_Block.SetLabel(BLOCK);
 		}
+		
 		if (m_Mute)
 		{
 			m_Mute.SetEnabled(enableMute);
@@ -547,13 +553,23 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			else
 				m_Mute.SetLabel(MUTE);
 		}
+		
 		if (m_Vote)
-			m_Vote.SetEnabled(enableVoting);
+			m_Vote.SetEnabled(enablePlayerOptionList);
+		
 		if (m_Invite && m_PlayerGroupController)
 			m_Invite.SetEnabled(m_PlayerGroupController.CanInvitePlayer(m_SelectedEntry.m_iID));
 
+		if (m_SelectedEntry)
+			UpdateViewProfileButton(m_SelectedEntry.m_iID);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void OnEntryFocusLost(Widget w)
+	{
+		UpdateViewProfileButton(0, true);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void FocusFirstItem()
 	{
@@ -575,9 +591,18 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		if (firstEntry)
 			GetGame().GetWorkspace().SetFocusedWidget(firstEntry);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	protected void SetupVoteComboBox(SCR_ComboBoxComponent combo)
+	protected void UpdateViewProfileButton(int playerId, bool forceHidden = false)
+	{
+		if (!m_ViewProfile)
+			return;
+
+		m_ViewProfile.SetVisible(!forceHidden && GetGame().GetPlayerManager().IsUserProfileAvailable(playerId), false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetupPlayerActionList(notnull SCR_ComboBoxComponent combo)
 	{
 		if (!m_VotingManager || !m_VoterComponent)
 			return;
@@ -586,28 +611,62 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 		int playerID = GetVotingPlayerID(combo);
 		SCR_VotingUIInfo info;
-		for (int i, count = m_VotingManager.GetVotingsAboutPlayer(playerID, m_aVotingTypes, true, true); i < count; i++)
+		array<EVotingType> votingTypes = {};
+		for (int i, count = m_VotingManager.GetVotingsAboutPlayer(playerID, votingTypes, true, true); i < count; i++)
 		{
-			EVotingType votingType = m_aVotingTypes[i];
+			EVotingType votingType = votingTypes[i];
 			info = m_VotingManager.GetVotingInfo(votingType);
-
-			if (!m_VotingManager.IsVoting(votingType, playerID))
+			
+			if (!info)
 			{
-				//--- Voting not in progress, start it
-				combo.AddItem(info.GetStartVotingName());
+				Print("'SCR_PlayerListMenu' function 'SetupPlayerActionList' could not find votingInfo for vote: '" + typename.EnumToString(EVotingType, votingType) + "' is it added to the voting component?", LogLevel.ERROR); 
+				continue;
 			}
+				
+			if (!m_VotingManager.IsVoting(votingType, playerID))
+			{				
+				//--- Voting not in progress, start it
+				combo.AddItem(info.GetStartVotingName(), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.START_VOTE));				
+			}
+			//--- Voting in progress
 			else
 			{
-				//--- Voting in progress
+				//~ Did cast a vote, withdraw it
 				if (m_VoterComponent.DidVote(votingType, playerID))
 				{
-					//--- Did cast a vote, withdraw it
-					combo.AddItem(info.GetCancelVotingName());
+					int currentVotes, VotesRequired;
+					if (m_VotingManager.GetVoteCounts(votingType, playerID, currentVotes, VotesRequired))
+						combo.AddItem(WidgetManager.Translate(VOTING_PLAYER_COUNT_FORMAT, info.GetCancelVotingName(), currentVotes, VotesRequired), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.CANCEL_VOTE));
+					else 
+						combo.AddItem(info.GetCancelVotingName(), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.CANCEL_VOTE));
 				}
 				else
 				{
-					//--- Did not cast a vote, do it now
-					combo.AddItem(info.GetName());
+					//~ The player did not abstain from voting
+					if (!m_VoterComponent.HasAbstained(votingType, playerID))
+					{
+						//~ Did not cast a vote, do it or abstain from doing it
+						int currentVotes, VotesRequired;
+						if (m_VotingManager.GetVoteCounts(votingType, playerID, currentVotes, VotesRequired))
+						{
+							combo.AddItem(WidgetManager.Translate(VOTING_PLAYER_COUNT_FORMAT, info.GetName(), currentVotes, VotesRequired), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.VOTE));
+							combo.AddItem(info.GetAbstainVoteName(), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.ABSTAIN_VOTE));
+						}
+						else 
+						{
+							combo.AddItem(info.GetName(), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.VOTE));
+							combo.AddItem(info.GetAbstainVoteName(), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.ABSTAIN_VOTE));
+						}
+					}
+					//~ The Player abstained from voting. Revote again
+					else 
+					{
+						int currentVotes, VotesRequired;
+						if (m_VotingManager.GetVoteCounts(votingType, playerID, currentVotes, VotesRequired))
+							combo.AddItem(WidgetManager.Translate(VOTING_PLAYER_COUNT_FORMAT, info.GetRevoteName(), currentVotes, VotesRequired), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.VOTE));
+						else 
+							combo.AddItem(info.GetRevoteName(), new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.VOTE));
+					}
 				}
 			}
 		}
@@ -625,60 +684,65 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 		if (requesters.Contains(playerID))
 		{
-			combo.AddItem(OPTIONS_COMBO_ACCEPT);
-			combo.AddItem(OPTIONS_COMBO_CANCEL);
+			combo.AddItem(OPTIONS_COMBO_ACCEPT, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.COMFIRM_JOIN_PRIVATE_GROUP));
+			combo.AddItem(OPTIONS_COMBO_CANCEL, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.CANCEL_JOIN_PRIVATE_GROUP));
 		}
 		else if (m_PlayerGroupController.CanInvitePlayer(playerID))
-			combo.AddItem(INVITE_PLAYER_VOTE);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnComboBoxConfirm(SCR_ComboBoxComponent combo, int index)
-	{
-		if (!m_VoterComponent)
-			return;
-
-		if (combo.GetItemName(index) == OPTIONS_COMBO_ACCEPT)
-		{
-			// accept request for joining to private group
-			m_PlayerGroupController.AcceptJoinPrivateGroup(GetVotingPlayerID(combo), true);
-		}
-
-		if (combo.GetItemName(index) == OPTIONS_COMBO_CANCEL)
-		{
-			// refuse request for joining to private group
-			m_PlayerGroupController.AcceptJoinPrivateGroup(GetVotingPlayerID(combo), false);
-		}
-
-		if (combo.GetItemName(index) == INVITE_PLAYER_VOTE)
-		{
-			SCR_PlayerControllerGroupComponent groupComponent = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
-			if (groupComponent)
-				groupComponent.InvitePlayer(GetVotingPlayerID(combo));
-		}
-
-		if (ComboboxHasOptions(combo, index))
-		{
-			EVotingType votingType = m_aVotingTypes[index];
-			int playerID = GetVotingPlayerID(combo);
-
-			if (m_VoterComponent.DidVote(votingType, playerID))
-				m_VoterComponent.RemoveVote(votingType, playerID);
-			else
-				m_VoterComponent.Vote(votingType, playerID);
-		}
-		combo.SetCurrentItem(-1, false, false);
+			combo.AddItem(INVITE_PLAYER_VOTE, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.INVITE_TO_GROUP));
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected bool ComboboxHasOptions(notnull SCR_ComboBoxComponent combo, int index)
+	protected void OnComboBoxConfirm(notnull SCR_ComboBoxComponent combo, int index)
 	{
-		switch (combo.GetItemName(index))
+		if (!m_VoterComponent)
+			return;
+		
+		int playerID = GetVotingPlayerID(combo);
+		
+		SCR_PlayerListComboEntryData comboData = SCR_PlayerListComboEntryData.Cast(combo.GetItemData(index));
+		if (comboData)
 		{
-		    case START_KICK_VOTE: case CANCEL_KICK_VOTE: case OPTIONS_COMBO_VOTE_TO_REMOVE_GM: case OPTIONS_COMBO_VOTE_TO_BECOME_GM: case OPTIONS_COMBO_RELINQUISH_GM: case OPTIONS_COMBO_VOTE_FOR_GM:
-		    return true;
+			switch (comboData.GetComboEntryAction())
+			{
+				case SCR_EPlayerListComboAction.VOTE: case SCR_EPlayerListComboAction.START_VOTE:
+				{
+					m_VoterComponent.Vote(comboData.GetComboEntryType(), playerID);
+					break;
+				}
+				case SCR_EPlayerListComboAction.CANCEL_VOTE:
+				{
+					if (m_VoterComponent.DidVote(comboData.GetComboEntryType(), playerID))
+						m_VoterComponent.RemoveVote(comboData.GetComboEntryType(), playerID);
+					
+					break;
+				}	
+				case SCR_EPlayerListComboAction.ABSTAIN_VOTE:
+				{
+					m_VoterComponent.AbstainVote(comboData.GetComboEntryType(), playerID);
+					break;
+				}
+				case SCR_EPlayerListComboAction.INVITE_TO_GROUP:
+				{
+					SCR_PlayerControllerGroupComponent groupComponent = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+					if (groupComponent)
+						groupComponent.InvitePlayer(playerID);
+					
+					break;
+				}
+				case SCR_EPlayerListComboAction.COMFIRM_JOIN_PRIVATE_GROUP:
+				{
+					m_PlayerGroupController.AcceptJoinPrivateGroup(playerID, true);
+					break;
+				}
+				case SCR_EPlayerListComboAction.CANCEL_JOIN_PRIVATE_GROUP:
+				{
+					m_PlayerGroupController.AcceptJoinPrivateGroup(playerID, false);
+					break;
+				}
+			}
 		}
-		return false;
+
+		combo.SetCurrentItem(-1, false, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -686,7 +750,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	{
 		for (int i, count = m_aEntries.Count(); i < count; i++)
 		{
-			if (m_aEntries[i].m_VotingCombo == combo)
+			if (m_aEntries[i].m_PlayerActionList == combo)
 				return m_aEntries[i].m_iID;
 		}
 		return 0;
@@ -748,24 +812,27 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		entry.m_wRow = w;
 
 		//--- Initialize voting combo box
-		entry.m_VotingCombo = SCR_ComboBoxComponent.GetComboBoxComponent("VotingCombo", w);
+		entry.m_PlayerActionList = SCR_ComboBoxComponent.GetComboBoxComponent("VotingCombo", w);
 		if (m_VotingManager)
 		{
-			entry.m_VotingCombo.m_OnOpened.Insert(SetupVoteComboBox);
-			entry.m_VotingCombo.m_OnChanged.Insert(OnComboBoxConfirm);
-			entry.m_VotingCombo.SetEnabled(CanOpenVoteList(entry));
+			entry.m_PlayerActionList.m_OnOpened.Insert(SetupPlayerActionList);
+			entry.m_PlayerActionList.m_OnChanged.Insert(OnComboBoxConfirm);
+			entry.m_PlayerActionList.SetEnabled(CanOpenPlayerActionList(entry));
 
 			entry.m_wVotingNotification = entry.m_wRow.FindAnyWidget("VotingNotification");
 			entry.m_wVotingNotification.SetVisible(IsVotedAbout(entry));
 		}
 		else
 		{
-			entry.m_VotingCombo.SetVisible(false);
+			entry.m_PlayerActionList.SetVisible(false);
 		}
 
 		SCR_ButtonBaseComponent handler = SCR_ButtonBaseComponent.Cast(w.FindHandler(SCR_ButtonBaseComponent));
 		if (handler)
+		{
 			handler.m_OnFocus.Insert(OnEntryFocused);
+			handler.m_OnFocusLost.Insert(OnEntryFocusLost);
+		}
 
 		if (m_aAllPlayersInfo)
 		{
@@ -1088,12 +1155,12 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	{
 		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
-			entry.m_VotingCombo.SetEnabled(CanOpenVoteList(entry));
+			entry.m_PlayerActionList.SetEnabled(CanOpenPlayerActionList(entry));
 			entry.m_wVotingNotification.SetVisible(IsVotedAbout(entry));
 		}
 
 		if (m_SelectedEntry)
-			m_Vote.SetEnabled(CanOpenVoteList(m_SelectedEntry));
+			m_Vote.SetEnabled(CanOpenPlayerActionList(m_SelectedEntry));
 	}
 	protected bool IsVotedAbout(SCR_PlayerListEntry entry)
 	{
@@ -1101,16 +1168,60 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			return false;
 
 		array<EVotingType> votingTypes = {};
-		int count = m_VotingManager.GetVotingsAboutPlayer(entry.m_iID, votingTypes);
-		return count > 0;
+		int  count = m_VotingManager.GetVotingsAboutPlayer(entry.m_iID, votingTypes, false, true);
+		int validEntries = count;
+		
+		//~ Remove any votes that cannot be shown to the player. Eg faction specific votes
+		foreach (EVotingType voteType : votingTypes)
+		{
+			if (!m_VotingManager.IsVotingAvailable(voteType, entry.m_iID))
+				validEntries--;
+		}
+		
+		return validEntries > 0;
 	}
 	
-	protected bool CanOpenVoteList(SCR_PlayerListEntry entry)
+	protected bool CanOpenPlayerActionList(SCR_PlayerListEntry entry)
 	{
-		if (!entry || !m_VotingManager)
+		if (!entry)
 			return false;
-
-		return true;
+		
+		if (m_VotingManager)
+		{
+			//~ Check if can vote, if yes return true
+			array<EVotingType> votingTypes = {};
+			m_VotingManager.GetVotingsAboutPlayer(entry.m_iID, votingTypes, true, true);
+			
+			//~ Check if UI info can be found
+			foreach(EVotingType votingType : votingTypes)
+			{
+				if (m_VotingManager.GetVotingInfo(votingType))
+					return true;
+			}
+		}
+		
+		//~ Can invite the player so return true
+		if (m_PlayerGroupController.CanInvitePlayer(entry.m_iID))
+			return true;
+		
+		//~ Check if Player actions have group dropdown
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (groupManager)
+		{
+			//~ No group so no drop down
+			SCR_AIGroup group = groupManager.GetPlayerGroup(SCR_PlayerController.GetLocalPlayerId());
+			if (group)
+			{
+				array<int> requesters = {};
+				group.GetRequesterIDs(requesters);
+		
+				if (requesters.Contains(entry.m_iID))
+					return true;
+			}
+		}
+		
+		//~ None of the conditions met
+		return false;
 	}
 	//------------------------------------------------------------------------------------------------
 
@@ -1196,36 +1307,36 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		// Create navigation buttons
 		Widget footer = m_wRoot.FindAnyWidget("FooterLeft");
 		Widget footerBack = m_wRoot.FindAnyWidget("Footer");
-		SCR_NavigationButtonComponent back = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Back", footerBack);
+		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent("Back", footerBack);
 		if (back)
 			back.m_OnActivated.Insert(OnBack);
 
-		m_Friend = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Friend", footer);
+		m_Friend = SCR_InputButtonComponent.GetInputButtonComponent("Friend", footer);
 		if (m_Friend)
 		{
 			m_Friend.SetEnabled(false);
 			m_Friend.m_OnActivated.Insert(OnAddFriend);
 		}
 
-		m_Block = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Block", footer);
+		m_Block = SCR_InputButtonComponent.GetInputButtonComponent("Block", footer);
 		if (m_Block)
 		{
 			m_Block.SetEnabled(false);
 			m_Block.m_OnActivated.Insert(OnBlock);
 		}
 
-		m_Mute = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Mute", footer);
+		m_Mute = SCR_InputButtonComponent.GetInputButtonComponent("Mute", footer);
 		if (m_Mute)
 		{
 			m_Mute.SetEnabled(false);
 			m_Mute.m_OnActivated.Insert(OnMute);
 		}
 
-		SCR_NavigationButtonComponent filter = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Filter", footer);
+		SCR_InputButtonComponent filter = SCR_InputButtonComponent.GetInputButtonComponent("Filter", footer);
 		if (filter)
 			filter.m_OnActivated.Insert(OnFilter);
 
-		m_Vote = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Vote", footer);
+		m_Vote = SCR_InputButtonComponent.GetInputButtonComponent("Vote", footer);
 		if (m_Vote)
 		{
 			if (m_VotingManager)
@@ -1234,7 +1345,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				m_Vote.SetVisible(false,false);
 		}
 
-		m_Invite = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Invite", footer);
+		m_Invite = SCR_InputButtonComponent.GetInputButtonComponent("Invite", footer);
 		if (m_Invite)
 		{
 			if (m_PlayerGroupController)
@@ -1243,6 +1354,12 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				m_Invite.SetVisible(false, false);
 		}
 
+		m_ViewProfile = SCR_InputButtonComponent.GetInputButtonComponent("ViewProfile", footer);
+		if (m_ViewProfile)
+		{
+			UpdateViewProfileButton(0, true);
+			m_ViewProfile.m_OnActivated.Insert(OnViewProfile);
+		}
 
 		// Create table
 		if (!m_wTable || m_sScoreboardRow == string.Empty)
@@ -1511,8 +1628,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	{
 		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
-			if (entry.m_VotingCombo && entry.m_VotingCombo.IsOpened())
-				entry.m_VotingCombo.CloseList();
+			if (entry.m_PlayerActionList && entry.m_PlayerActionList.IsOpened())
+				entry.m_PlayerActionList.CloseList();
 		}
 	}
 
@@ -1558,4 +1675,57 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		
 		playerCount.SetText(scriptedFaction.GetPlayerCount().ToString());
 	}
+};
+
+//------------------------------------------------------------------------------------------------
+//~ Holds the data of the player list combo entry
+class SCR_PlayerListComboEntryData : Managed
+{
+	protected SCR_EPlayerListComboType m_eComboEntryType;
+	protected SCR_EPlayerListComboAction m_eComboEntryAction;
+	
+	void SCR_PlayerListComboEntryData(SCR_EPlayerListComboType comboEntryType, SCR_EPlayerListComboAction comboEntryAction)
+	{
+		m_eComboEntryType = comboEntryType;
+		m_eComboEntryAction = comboEntryAction;
+	}
+	
+	/*!
+	\return Type of Player List Combo Entry Data
+	*/
+	SCR_EPlayerListComboType GetComboEntryType()
+	{
+		return m_eComboEntryType;
+	}
+	
+	/*!
+	\return Action for type of Player List Combo Entry Data
+	*/
+	SCR_EPlayerListComboAction GetComboEntryAction()
+	{
+		return m_eComboEntryAction;
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+//~ Types of combo list data entry, inherents from Voting as voting is the main type used
+enum SCR_EPlayerListComboType : EVotingType
+{
+	GROUP, //~ Makes sure System knows the combo data is regarding group
+};
+
+//------------------------------------------------------------------------------------------------
+//~ Available actions valid for the player combo box data types
+enum SCR_EPlayerListComboAction
+{
+	//~ Voting
+	VOTE = 0,
+	START_VOTE, 
+	CANCEL_VOTE, 
+	ABSTAIN_VOTE, 
+	
+	//Group
+	INVITE_TO_GROUP,
+	COMFIRM_JOIN_PRIVATE_GROUP,
+	CANCEL_JOIN_PRIVATE_GROUP,
 };

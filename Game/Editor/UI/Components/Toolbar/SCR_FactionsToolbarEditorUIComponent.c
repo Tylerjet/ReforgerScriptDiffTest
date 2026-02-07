@@ -59,6 +59,7 @@ class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
 		Refresh();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void HandlerAttachedScripted(Widget w)
 	{
 		m_State = -1; //--- Reset the value so no entities are added by the parent class
@@ -86,7 +87,12 @@ class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
 		m_wNoPlayerFactionsActive = parent.FindAnyWidget(m_sNoPlayerFactionsActiveName);
 		m_wButtonHint = parent.FindAnyWidget(m_sButtonHintName);
 		m_wHeader = parent.FindAnyWidget(m_sHeaderName);
+		
+		// Add listeners 
+		GetGame().GetInputManager().AddActionListener("EditorTransformToggle", EActionTrigger.DOWN, OnEditorMenuConfirmInput);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override protected void Refresh()
 	{
 		SCR_DelegateFactionManagerComponent delegatesManager = SCR_DelegateFactionManagerComponent.GetInstance();
@@ -122,7 +128,7 @@ class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
 		super.Refresh();
 	}
 	
-
+	//------------------------------------------------------------------------------------------------
 	override protected void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -141,6 +147,20 @@ class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
 			
 			if (scrFaction)
 				scrFaction.GetOnFactionPlayableChanged().Remove(FactionPlayabilityChanged);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnEditorMenuConfirmInput()
+	{
+		if (!m_HoverEntity)
+			return;
+		
+		// Open attribute manager
+		SCR_AttributesManagerEditorComponent attributesManager = SCR_AttributesManagerEditorComponent.Cast(SCR_AttributesManagerEditorComponent.GetInstance(SCR_AttributesManagerEditorComponent));
+		if (attributesManager)
+		{
+			attributesManager.StartEditing(m_HoverEntity);
 		}
 	}
 };

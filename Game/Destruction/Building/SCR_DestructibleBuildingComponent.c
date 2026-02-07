@@ -960,7 +960,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 		if (!aiWorld)
 			return;
 		
-		aiWorld.RequestNavmeshRebuildAreas(data.m_aNavmeshAreas);
+		aiWorld.RequestNavmeshRebuildAreas(data.m_aNavmeshAreas, data.m_aRedoRoads);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -979,7 +979,8 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 			return;
 		
 		data.m_aNavmeshAreas = {};
-		aiWorld.GetNavmeshRebuildAreas(GetOwner(), data.m_aNavmeshAreas); // Get area with current phase
+		data.m_aRedoRoads = {};
+		aiWorld.GetNavmeshRebuildAreas(GetOwner(), data.m_aNavmeshAreas, data.m_aRedoRoads); // Get area with current phase
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1208,7 +1209,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 		float damage = momentum * 0.05; // Todo replace with attribute
 		
 		// Send damage to damage handling
-		HandleDamage(EDamageType.COLLISION, damage, outMat, GetOwner(), null, other, null, -1, -1);
+		HandleDamage(EDamageType.COLLISION, damage, outMat, GetOwner(), null, Instigator.CreateInstigator(other), null, -1, -1);
 		
 		return true;
 	}

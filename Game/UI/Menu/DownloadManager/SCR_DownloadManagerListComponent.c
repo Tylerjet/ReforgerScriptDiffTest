@@ -20,10 +20,10 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	
 	protected bool m_bInitialized = false;
 	
-	protected SCR_NavigationButtonComponent m_NavPauseResume;
-	protected SCR_NavigationButtonComponent m_NavPauseResumeAll;
-	protected SCR_NavigationButtonComponent m_NavCancel;
-	protected SCR_NavigationButtonComponent m_NavRetry;
+	protected SCR_InputButtonComponent m_NavPauseResume;
+	protected SCR_InputButtonComponent m_NavPauseResumeAll;
+	protected SCR_InputButtonComponent m_NavCancel;
+	protected SCR_InputButtonComponent m_NavRetry;
 	
 	protected ref array<ref SCR_DownloadManagerEntry> m_aAddonLines = {};
 	
@@ -50,6 +50,8 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 		
 		// Show fallback if list is empty 
 		ShowFallbackText(m_wList.GetChildren() == null);
+		
+		GetGame().GetWorkspace().SetFocusedWidget(null);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -1,13 +1,23 @@
 class SCR_AIIsFriendlyInAim : DecoratorScripted
 {
-	protected SCR_AICombatComponent m_CombatComponent;
-	
+	protected PerceptionComponent m_PerceptionComponent;
+	#ifdef WORKBENCH
+	protected ref Shape m_FriendlyAimShape;
+	#endif
 	protected override bool TestFunction(AIAgent owner)
 	{
-		if (!m_CombatComponent)
+		if (!m_PerceptionComponent)
 			return false;
+	
+		IEntity friendlyEntInAim = m_PerceptionComponent.GetFriendlyInLineOfFire();
+#ifdef WORKBENCH
+		if (friendlyEntInAim && DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_FRIENDLY_IN_AIM))
+			m_FriendlyAimShape = Shape.CreateSphere(COLOR_RED, ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, friendlyEntInAim.GetOrigin() + Vector(0, 2, 0), 0.1);	
+		else 
+			m_FriendlyAimShape = null;
+#endif		
 		
-		return m_CombatComponent.IsFriendlyInAim();
+		return friendlyEntInAim != null;
 	}
 		
 	override protected void OnInit(AIAgent owner)
@@ -17,10 +27,10 @@ class SCR_AIIsFriendlyInAim : DecoratorScripted
 		if (!ent)
 			NodeError(this, owner, "SCR_AIIsFriendlyInAim must be used with soldiers");
 		
-		m_CombatComponent = SCR_AICombatComponent.Cast(ent.FindComponent(SCR_AICombatComponent));
+		m_PerceptionComponent = PerceptionComponent.Cast(ent.FindComponent(PerceptionComponent));
 		
-		if (!m_CombatComponent)
-			NodeError(this, owner, "Didn't find SCR_AICombatComponent");
+		if (!m_PerceptionComponent)
+			NodeError(this, owner, "Didn't find PerceptionComponent");
 	}
 	
 	protected override string GetOnHoverDescription()

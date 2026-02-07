@@ -261,10 +261,10 @@ class LocParserManager
 				BaseContainerList list = container.GetObjectArray(varName);
 				if (list)
 				{
-					int index;
+					int index2;
 					for (int l = 0, listCount = list.Count(); l < listCount; l++)
 					{
-						ProcessContainer(list.Get(l), foundCount, objectsCopy, indexesCopy, path + string.Format(" > %1[%2]", varName, l), index);
+						ProcessContainer(list.Get(l), foundCount, objectsCopy, indexesCopy, path + string.Format(" > %1[%2]", varName, l), index2);
 					}
 				}
 			}

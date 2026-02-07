@@ -3,13 +3,14 @@
 [BaseContainerProps()]
 class SCR_VehicleSpeedCondition : SCR_AvailableActionCondition
 {
-	[Attribute("3", UIWidgets.ComboBox, "Cond operator", "", ParamEnumArray.FromEnum(SCR_ComparerOperator) )]
-	private SCR_ComparerOperator m_eOperator;
+	[Attribute("3", UIWidgets.ComboBox, "Comparison operator", "", ParamEnumArray.FromEnum(SCR_ComparerOperator) )]
+	protected SCR_ComparerOperator m_eOperator;
 
-	[Attribute("2", UIWidgets.EditBox, "Speed compare value in km/h", "")]
-	private float m_fValue;
+	[Attribute("2", UIWidgets.EditBox, "Speed compare value\n[km/h]", "")]
+	protected float m_fValue;
 
-	int m_iSpeedID = -1;
+	protected SignalsManagerComponent m_Signals;
+	protected int m_iSpeedID = -1;
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when current controlled vehicle speed matches the condition by operator
@@ -19,10 +20,10 @@ class SCR_VehicleSpeedCondition : SCR_AvailableActionCondition
 		if (!data)
 			return false;
 
-		// TODO: get from vehicle controller or simulation instead
 		SignalsManagerComponent signals = data.GetCurrentVehicleSignals();
-		if (!signals)
+		if (!signals || m_Signals != signals)
 		{
+			m_Signals = signals;
 			m_iSpeedID = -1;
 			return false;
 		}

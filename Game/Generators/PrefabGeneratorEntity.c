@@ -1,141 +1,128 @@
-//-----------------------------------------------------------------------
-class PrefabGeneratorPointData : ShapePointDataScriptBase
+class PrefabGeneratorPointData : ShapePointDataScriptBase // cannot be renamed SCR_ without changing terrain layers
 {
-	[Attribute("", UIWidgets.CheckBox, "Generete Assets On This Segment", "")]
+	[Attribute(desc: "Generate assets on this segment")]
 	bool m_bGenerate;
-};
-//-----------------------------------------------------------------------
-class PrefabGeneratorPointMeta
+}
+
+class SCR_PrefabGeneratorPointMeta
 {
 	bool m_bGenerate;
 	vector m_vPos;
-};
-//-----------------------------------------------------------------------
-class PrefabGeneratorAssetPoint
+}
+
+class SCR_PrefabGeneratorAssetPoint
 {
-	vector Pos;
-	vector Forward;
+	vector m_vPos;
+	vector m_vForward;
 	float m_fPerlinWeight;
 	bool m_bDraw = true;
-};
-//-----------------------------------------------------------------------
-[EntityEditorProps(category: "GameLib/Scripted/Generator", description: "PrefabGeneratorEntity", dynamicBox: true, visible: false)]
-class PrefabGeneratorEntityClass: SCR_GeneratorBaseEntityClass
-{
-};
+}
 
-//-----------------------------------------------------------------------
-class PrefabGeneratorEntity : SCR_GeneratorBaseEntity
+[EntityEditorProps(category: "GameLib/Scripted/Generator", description: "PrefabGeneratorEntity", dynamicBox: true, visible: false)]
+class PrefabGeneratorEntityClass : SCR_GeneratorBaseEntityClass
 {
-	[Attribute("", UIWidgets.None, "Prefab list", "et")]//! OBSOLETE, LEGACY PARAM
-	ResourceName m_PrefabName;
-	
+}
+
+class PrefabGeneratorEntity : SCR_GeneratorBaseEntity // TODO: make it use SCR_ObstacleDetector
+{
 	[Attribute("", UIWidgets.ResourceNamePicker, "Prefab list", "et")]
-	ref array<ResourceName> m_PrefabNames;
+	protected ref array<ResourceName> m_PrefabNames;
 
 	[Attribute("", UIWidgets.EditBox, "Weights", "et")]
-	ref array<float> m_Weights;
-	
-	[Attribute("0", UIWidgets.CheckBox, "If checked prefabs are placed only to vertices")]
-	bool m_bOnlyToVertices;
+	protected ref array<float> m_Weights;
+
+	[Attribute(desc: "If checked prefabs are placed only to vertices")]
+	protected bool m_bOnlyToVertices;
 
 	[Attribute("5", UIWidgets.EditBox, "Dinstance between spawned assets along the spline/polyline")]
-	float m_fDistance;
+	protected float m_fDistance;
 
 	[Attribute("1", UIWidgets.CheckBox, "If checked prefabs are aligned with the shape")]
-	bool m_bAlignWithShape;
+	protected bool m_bAlignWithShape;
 
-	[Attribute("0", UIWidgets.CheckBox, "Only when aligning with shape")]
-	bool m_bUseXAsForward;
+	[Attribute(desc: "Only when aligning with shape")]
+	protected bool m_bUseXAsForward;
 
-	[Attribute("0", UIWidgets.CheckBox, "Flip Forward")]
-	bool m_bFlipForward;
-	
+	[Attribute(desc: "Flip forward")]
+	protected bool m_bFlipForward;
+
 	[Attribute("0", UIWidgets.EditBox, "How much we offset from center to the side")]
-	float m_fOffsetRight;
-	
+	protected float m_fOffsetRight;
+
 	[Attribute("0", UIWidgets.EditBox, "How much offset variability we want in meters when using offset from the center")]
-	float m_fOffsetVariance;
-	
+	protected float m_fOffsetVariance;
+
 	[Attribute("0", UIWidgets.EditBox, "Gap from the centerline")]
-	float m_fGap;
+	protected float m_fGap;
 
 	[Attribute("0", UIWidgets.EditBox, "Random Spacing Offset")]
-	bool m_fRandomSpacing;
+	protected bool m_fRandomSpacing;
 
 	[Attribute("0", UIWidgets.EditBox, "How much we offset in world up vector")]
-	float m_fOffsetUp;
-	
+	protected float m_fOffsetUp;
+
 	[Attribute("0", UIWidgets.EditBox, "Forward offset")]
-	float m_fOffsetForward;
-	
-	[Attribute("0", UIWidgets.CheckBox, "Prefab spawn density uses Perlin distribution")]
-	bool m_bPerlinDens;
-	
+	protected float m_fOffsetForward;
+
+	[Attribute(desc: "Prefab spawn density uses Perlin distribution")]
+	protected bool m_bPerlinDens;
+
 	[Attribute("0", UIWidgets.EditBox, "Spawns prefabs if perlin value is above this threshold", "-1 1")]
-	float m_fPerlinThreshold;
-	
-	[Attribute("0", UIWidgets.CheckBox, "Prefab spawn type uses Perlin distribution. Prefabs in the prefab array are stacked up from lower to higher indicies on the Y axis")]
-	bool m_bPerlinAssetDistribution;
-	
-	[Attribute("0", UIWidgets.CheckBox, "Prefab size uses Perlin")]
-	bool m_bPerlinSize;
-	
+	protected float m_fPerlinThreshold;
+
+	[Attribute(desc: "Prefab spawn type uses Perlin distribution. Prefabs in the prefab array are stacked up from lower to higher indicies on the Y axis")]
+	protected bool m_bPerlinAssetDistribution;
+
+	[Attribute(desc: "Prefab size uses Perlin")]
+	protected bool m_bPerlinSize;
+
 	[Attribute("40", UIWidgets.EditBox, "Perlin frequency, higher values mean smoother transitions")]
-	float m_fPerlinFrequency;
-	
+	protected float m_fPerlinFrequency;
+
 	[Attribute("0", UIWidgets.EditBox, "Perlin seed", "0 1000")]
-	float m_fPerlinSeed;
-	
+	protected float m_fPerlinSeed;
+
 	[Attribute("1", UIWidgets.EditBox, "Perlin Amplitude")]
-	float m_fPerlinAmplitude;
-	
+	protected float m_fPerlinAmplitude;
+
 	[Attribute("0", UIWidgets.EditBox, "Perlin Phase Offset")]
-	float m_fPerlinOffset;
-	
-	[Attribute("0", UIWidgets.CheckBox, "Disables asset generation bellow perlin threshold")]
-	bool m_fPerlinThrowAway;
-	
+	protected float m_fPerlinOffset;
+
+	[Attribute(desc: "Disables asset generation bellow perlin threshold")]
+	protected bool m_fPerlinThrowAway;
+
 	[Attribute("0", UIWidgets.EditBox, "Draw developer debug")]
-	bool m_bDrawDebug;
-	
+	protected bool m_bDrawDebug;
 
-	
-	
-	private ref array<vector> m_PerlinCurveDebug = new array<vector>;
-	private ref array<ref PrefabGeneratorAssetPoint> m_Points = new array<ref PrefabGeneratorAssetPoint>();
-	private vector m_vPrevPoint;
-	static ref array<ref Shape> m_DebugShapes = new array<ref Shape>;
-	//bool m_bDraw;
-	#ifdef WORKBENCH
+#ifdef WORKBENCH
 
-	
-	//-----------------------------------------------------------------------
-	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
+	protected ref array<ref SCR_PrefabGeneratorAssetPoint> m_aPoints = {};
+
+	protected static ref array<ref Shape> s_aDebugShapes = {};
+
+	//------------------------------------------------------------------------------------------------
+	protected override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
 		super._WB_OnKeyChanged(src, key, ownerContainers, parent);
-		
+
 		if (key == "coords")
 			return false;
-		
-		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (api == null || api.UndoOrRedoIsRestoring())
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
 			return false;
 
 		IEntitySource entSrc = src.ToEntitySource();
 
-		IEntitySource parentSrc;
-
-		IEntitySource thisSrc = api.EntityToSource(this);
-		parentSrc = thisSrc.GetParent();
+		IEntitySource thisSrc = worldEditorAPI.EntityToSource(this);
+		IEntitySource parentSrc = thisSrc.GetParent();
 		BaseContainerTools.WriteToInstance(this, thisSrc);
-		
-	
+
 		OnShapeChanged(parentSrc, ShapeEntity.Cast(parent), {}, {});
 		return true;
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected vector GetPos(BaseContainerList points, int i)
 	{
 		BaseContainer point = points.Get(i);
@@ -144,55 +131,52 @@ class PrefabGeneratorEntity : SCR_GeneratorBaseEntity
 		return pos;
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected override void OnShapeInitInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity)
 	{
 		super.OnShapeInitInternal(shapeEntitySrc, shapeEntity);
-		
+
 		if (!shapeEntity)
 			shapeEntity = ShapeEntity.Cast(_WB_GetEditorAPI().SourceToEntity(shapeEntitySrc));
-		
+
 		OnShapeChanged(shapeEntitySrc, shapeEntity, {}, {});
 	}
 
-	//Offsets the points in the 'points' array
-	void OffsetPointsMeta(array<ref PrefabGeneratorPointMeta> metas, float offset, bool debugAllowed = false)
+	//------------------------------------------------------------------------------------------------
+	//! Offsets the points in the 'points' array
+	protected void OffsetPointsMeta(notnull array<ref SCR_PrefabGeneratorPointMeta> metas, float offset)
 	{
-		ref auto metasTemp = new array<ref PrefabGeneratorPointMeta>;
+		array<ref SCR_PrefabGeneratorPointMeta> metasTemp = {};
 
-		for (int i = 0; i < metas.Count();i++)
+		SCR_PrefabGeneratorPointMeta tmpMeta;
+		foreach (SCR_PrefabGeneratorPointMeta meta : metas)
 		{
-			auto meta = new PrefabGeneratorPointMeta;
-			meta.m_vPos = metas.Get(i).m_vPos;
-			meta.m_bGenerate = metas.Get(i).m_bGenerate;
-			metasTemp.Insert(meta);
+			tmpMeta = new SCR_PrefabGeneratorPointMeta();
+			tmpMeta.m_vPos = meta.m_vPos;
+			tmpMeta.m_bGenerate = meta.m_bGenerate;
+			metasTemp.Insert(tmpMeta);
 		}
+
 		vector forwardPrev = "1 1 1";
-		for (int i = 0; i < metas.Count(); i++)
+		for (int i, count = metas.Count(); i < count; i++)
 		{
 			vector forwardNext;
-			
-			if ( i < metas.Count() - 1)
-			{
+
+			if (i < count - 1)
 				forwardNext = metas.Get(i + 1).m_vPos - metas.Get(i).m_vPos;
-			}
 			else
-			{
 				forwardNext = -forwardPrev;
-			}
-		
+
 			if (i == 0)
-			{
 				forwardPrev = -forwardNext;
-			}
-		
+
 			forwardNext.Normalize();
 			forwardPrev.Normalize();
-		
+
 			float dotProductPrevNext = vector.Dot(forwardPrev, forwardNext);
 			bool almostLine = dotProductPrevNext < -0.95;
 			vector diagonal = forwardNext + forwardPrev;
-		
+
 			vector normalRight = -forwardPrev * "0 1 0";
 			normalRight.Normalize();
 			float dotProductNormNext = vector.Dot(normalRight, forwardNext);
@@ -205,12 +189,10 @@ class PrefabGeneratorEntity : SCR_GeneratorBaseEntity
 				diff = offset / dist;
 
 			diagonal *= diff;
-			
+
 			if (!isLeft)
-			{
 				diagonal = diagonal * -1;
-			}
-			
+
 			if (almostLine)
 			{
 				vector vec = forwardNext - forwardPrev;
@@ -218,77 +200,70 @@ class PrefabGeneratorEntity : SCR_GeneratorBaseEntity
 				right.Normalize();
 				diagonal = right * offset;
 			}
-			
+
 			metas.Get(i).m_vPos = metasTemp.Get(i).m_vPos + diagonal;
 			forwardPrev = -forwardNext;
 
-		
-			//debug
-			if (m_bDrawDebug && debugAllowed)
+			// debug
+			if (m_bDrawDebug)
 			{
 				vector matWrld[4];
 				GetWorldTransform(matWrld);
-			
-				m_DebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 255, 255, 255), ShapeFlags.NOZBUFFER, metas.Get(i).m_vPos.Multiply4(matWrld), metas.Get(i).m_vPos.Multiply4(matWrld) + forwardNext));
-				m_DebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 0, 255, 0), ShapeFlags.NOZBUFFER, metas.Get(i).m_vPos.Multiply4(matWrld), metas.Get(i).m_vPos.Multiply4(matWrld) + forwardPrev));
-				m_DebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, metasTemp.Get(i).m_vPos.Multiply4(matWrld), metas.Get(i).m_vPos.Multiply4(matWrld)));
 
+				s_aDebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 255, 255, 255), ShapeFlags.NOZBUFFER, metas.Get(i).m_vPos.Multiply4(matWrld), metas.Get(i).m_vPos.Multiply4(matWrld) + forwardNext));
+				s_aDebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 0, 255, 0), ShapeFlags.NOZBUFFER, metas.Get(i).m_vPos.Multiply4(matWrld), metas.Get(i).m_vPos.Multiply4(matWrld) + forwardPrev));
+				s_aDebugShapes.Insert(Shape.Create(ShapeType.LINE, ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, metasTemp.Get(i).m_vPos.Multiply4(matWrld), metas.Get(i).m_vPos.Multiply4(matWrld)));
 			}
 		}
-	};
-
-	//! Get a perlin value given specific parameters
-	float SamplePerlin(float time, float frequency = 20, float seed = 1, float amplitude = 1, float phaseOffset = 0)
-	{
-		if( frequency == 0 )//division by zero protection
-			return 0;
-
-		float result = Math.PerlinNoise(time / frequency, seed * 100, seed * 1000);
-		result *= amplitude;
-		return result;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Get a perlin value given specific parameters
+	protected float SamplePerlin(float time, float frequency = 20, float seed = 1, float amplitude = 1, float phaseOffset = 0)
+	{
+		if (frequency == 0 || amplitude == 0) // division/multiplication by zero protection
+			return 0;
+
+		return Math.PerlinNoise(time / frequency, seed * 100, seed * 1000) * amplitude;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! generates array of positions(+other data) where each asset is supposed to spawn
-	void GenerateAssetPoints(array<ref PrefabGeneratorPointMeta> metas )
+	protected void GenerateAssetPoints(array<ref SCR_PrefabGeneratorPointMeta> metas)
 	{
 		float stepDistance = m_fDistance;
-	
+
 		if (m_bPerlinDens)
-		{
-			stepDistance = 0.01;//TODO:make constant
-		}
-	
+			stepDistance = 0.01; // TODO:make constant
+
 		float distanceWalked = 0;
-		if(m_fOffsetForward)
+		if (m_fOffsetForward)
 			stepDistance = m_fOffsetForward;
-		
+
 		float space = 0;
 		float moveDist = 0;
 		vector lastPos = "0 0 0";
 		bool firstPoint = true;
 		bool draw = true;
-		
-		for (int i = 0; i < metas.Count() - 1; i++)
+
+		for (int i = 0, countMinusOne = metas.Count() - 1; i < countMinusOne; i++)
 		{
 			vector posThis = metas[i].m_vPos;
 			//Print(posThis);
 			lastPos = posThis;
-			vector forward = metas[i+1].m_vPos - posThis;
+			vector forward = metas[i + 1].m_vPos - posThis;
 			float dist = forward.Length();
 			space += dist;
 
 			// check for disabled generation on line segment
-			if ( metas )
-			{
-				draw = metas.Get(i).m_bGenerate;
-			}
+			draw = metas.Get(i).m_bGenerate;
 
 			while (space >= stepDistance)
 			{
 				float leftOver = space - dist;
 				if (leftOver < 0)
 					leftOver = 0;
-			
+
 				if (firstPoint)
 				{
 					moveDist = 0;
@@ -298,23 +273,22 @@ class PrefabGeneratorEntity : SCR_GeneratorBaseEntity
 					{
 						stepDistance = m_fOffsetForward;
 						moveDist = dist - (space - stepDistance);
-						
 					}
 				}
 				else
 				{
 					stepDistance = m_fDistance;
-				
+
 					if (m_fRandomSpacing)
 					{
-						stepDistance = m_fDistance + Math.RandomFloat(-m_fDistance / 2, m_fDistance / 2);
-						if( leftOver> stepDistance)
+						stepDistance = m_fDistance + Math.RandomFloat(-m_fDistance * 0.5, m_fDistance * 0.5);
+						if (leftOver> stepDistance)
 							leftOver = 0;
 					}
-				
+
 					moveDist = stepDistance - leftOver;
 				}
-				
+
 				space -= moveDist + leftOver;
 				distanceWalked += stepDistance;
 				vector newPos;
@@ -322,46 +296,46 @@ class PrefabGeneratorEntity : SCR_GeneratorBaseEntity
 
 				newPos = lastPos + forward.Normalized() * moveDist;
 				lastPos = newPos;
-				auto genPoint = new PrefabGeneratorAssetPoint();
-				genPoint.Pos = newPos;
-				genPoint.Forward = forward;
+				SCR_PrefabGeneratorAssetPoint genPoint = new SCR_PrefabGeneratorAssetPoint();
+				genPoint.m_vPos = newPos;
+				genPoint.m_vForward = forward;
 				genPoint.m_fPerlinWeight = valuePerlin;
 
 				if (m_bPerlinDens)
 				{
 					float invValue = Math.InverseLerp(m_fPerlinThreshold, 1, valuePerlin);
-					invValue = Math.Clamp(invValue, 0,1);
-					stepDistance = Math.Lerp(m_fDistance, 1, invValue);//TODO: expose values
+					invValue = Math.Clamp(invValue, 0, 1);
+					stepDistance = Math.Lerp(m_fDistance, 1, invValue); // TODO: expose values
 				}
-			
+
 				bool throwAway = false;
 				if (m_fPerlinThrowAway)
 				{
-					if (valuePerlin < m_fPerlinThreshold )
+					if (valuePerlin < m_fPerlinThreshold)
 					{
 						stepDistance = 0.01;
 						throwAway = true;
 					}
 				}
-				
-				genPoint.m_bDraw = draw && !throwAway;
-				m_Points.Insert(genPoint);
 
+				genPoint.m_bDraw = draw && !throwAway;
+				m_aPoints.Insert(genPoint);
 			}
 		}
 	}
-	
-	void GenerateMetaListLine(BaseContainerList points, array<ref PrefabGeneratorPointMeta> pointsMeta )
-	{
 
-		for(int i = 0; i < points.Count(); i++)
+	//------------------------------------------------------------------------------------------------
+	protected void GenerateMetaListLine(BaseContainerList points, array<ref SCR_PrefabGeneratorPointMeta> pointsMeta)
+	{
+		SCR_PrefabGeneratorPointMeta meta;
+		for (int i = 0, count = points.Count(); i < count; i++)
 		{
 			BaseContainer point = points.Get(i);
 			BaseContainerList dataArr = point.GetObjectArray("Data");
 			bool generate = true;
 			vector pos;
 			point.Get("Position", pos);
-			
+
 			if (dataArr)
 			{
 				int dataCount = dataArr.Count();
@@ -375,136 +349,127 @@ class PrefabGeneratorEntity : SCR_GeneratorBaseEntity
 					}
 				}
 			}
-			
-			PrefabGeneratorPointMeta meta = new PrefabGeneratorPointMeta;
+
+			meta = new SCR_PrefabGeneratorPointMeta();
 			meta.m_bGenerate = generate;
 			meta.m_vPos = pos;
 			pointsMeta.Insert(meta);
 		}
 	}
-	
-	void GenerateMetaListSpline( array<ref PrefabGeneratorPointMeta> pointsMetaLine, array<vector> teselatedPoints, array<ref PrefabGeneratorPointMeta> pointsMetaSpline )
-	{
-		if( teselatedPoints )
-		{
-			bool generate = true;
-			for(int i = 0; i < teselatedPoints.Count(); i++)
-			{
-				for (int j = 0; j < pointsMetaLine.Count(); j++)
-				{
-					PrefabGeneratorPointMeta meta = pointsMetaLine.Get(j);
-				
-					if( teselatedPoints.Get(i) == meta.m_vPos )//matching point on the spline with a point on the polyline to ascertain whether asset generation is disabled in point data or not for this segment
-					{
-						generate = meta.m_bGenerate;
-						break;
-					}
-				}
-			
-			PrefabGeneratorPointMeta meta = new PrefabGeneratorPointMeta;
-			meta.m_bGenerate = generate;
-			meta.m_vPos = teselatedPoints.Get(i);
-			pointsMetaSpline.Insert(meta);
-			}
-		}
 
+	//------------------------------------------------------------------------------------------------
+	protected void GenerateMetaListSpline(array<ref SCR_PrefabGeneratorPointMeta> pointsMetaLine, array<vector> tesselatedPoints, array<ref SCR_PrefabGeneratorPointMeta> pointsMetaSpline)
+	{
+		if (!tesselatedPoints)
+			return;
+
+		bool generate = true;
+		SCR_PrefabGeneratorPointMeta tmpMeta;
+		foreach (vector tesselatedPoint : tesselatedPoints)
+		{
+			foreach (SCR_PrefabGeneratorPointMeta meta : pointsMetaLine)
+			{
+				if (tesselatedPoint == meta.m_vPos) // matching point on the spline with a point on the polyline to ascertain whether asset generation is disabled in point data or not for this segment
+				{
+					generate = meta.m_bGenerate;
+					break;
+				}
+			}
+
+			tmpMeta = new SCR_PrefabGeneratorPointMeta();
+			tmpMeta.m_bGenerate = generate;
+			tmpMeta.m_vPos = tesselatedPoint;
+			pointsMetaSpline.Insert(tmpMeta);
+		}
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
 	{
-		m_DebugShapes.Clear();
-		m_Points.Clear();
+		s_aDebugShapes.Clear();
+		m_aPoints.Clear();
+
 		if (!shapeEntitySrc)
 			return;
+
 		BaseContainerList points = shapeEntitySrc.GetObjectArray("Points");
 		if (points != null)
 		{
-			auto pointsMetaLine = new array<ref PrefabGeneratorPointMeta>;		
+			array<ref SCR_PrefabGeneratorPointMeta> pointsMetaLine = {};
 			GenerateMetaListLine(points, pointsMetaLine);
-			
+
 			int pointCount = points.Count();
 			if (pointCount == 0)
 				return;
-		
+
 			bool isShapeClosed;
 			shapeEntitySrc.Get("IsClosed", isShapeClosed);
 
 			if (pointCount > 2 && isShapeClosed)
-			{
 				pointsMetaLine.Insert(pointsMetaLine[0]);
-			}
-		
+
 			if (m_fOffsetRight != 0)
-			{
-				OffsetPointsMeta(pointsMetaLine, m_fOffsetRight, true);
-			}
+				OffsetPointsMeta(pointsMetaLine, m_fOffsetRight);
 
 			if (!m_bOnlyToVertices && m_fDistance > 0 && shapeEntitySrc.GetClassName() == "PolylineShapeEntity")
 			{
 				GenerateAssetPoints(pointsMetaLine);
-				if (m_bDrawDebug )
+				if (m_bDrawDebug)
 					DrawCurveDebug(pointsMetaLine);
 			}
-
 			else if (!m_bOnlyToVertices && m_fDistance > 0 && shapeEntitySrc.GetClassName() == "SplineShapeEntity")
 			{
-				array<vector> pointsCurve = new array<vector>();
+				array<vector> pointsCurve = {};
 				shapeEntity.GenerateTesselatedShape(pointsCurve);
-			
-				auto pointsMetaSpline = new array<ref PrefabGeneratorPointMeta>;	
+
+				array<ref SCR_PrefabGeneratorPointMeta> pointsMetaSpline = {};
 
 				GenerateMetaListSpline(pointsMetaLine, pointsCurve, pointsMetaSpline);
-	
+
 				if (pointCount > 2 && isShapeClosed)
-				{
 					pointsMetaSpline.Insert(pointsMetaSpline[0]);
-				}
-			
+
 				if (m_fOffsetRight != 0)
-				{
-					OffsetPointsMeta(pointsMetaSpline, m_fOffsetRight, true);
-				}
-			
+					OffsetPointsMeta(pointsMetaSpline, m_fOffsetRight);
+
 				GenerateAssetPoints(pointsMetaSpline);
-				if (m_bDrawDebug )
+
+				if (m_bDrawDebug)
 					DrawCurveDebug(pointsMetaSpline);
 			}
 			else if (m_bOnlyToVertices)
 			{
-				if (m_bDrawDebug )
+				if (m_bDrawDebug)
 					DrawCurveDebug(pointsMetaLine);
+
 				// First point special care
-				auto genPoint = new PrefabGeneratorAssetPoint();
-				genPoint.Pos = pointsMetaLine[0].m_vPos;
-			
-				if ( pointsMetaLine )
-				{
+				SCR_PrefabGeneratorAssetPoint genPoint = new SCR_PrefabGeneratorAssetPoint();
+				genPoint.m_vPos = pointsMetaLine[0].m_vPos;
+
+				if (pointsMetaLine)
 					genPoint.m_bDraw = pointsMetaLine.Get(0).m_bGenerate;
-				}
 
 				if (isShapeClosed && pointCount > 2)
-					genPoint.Forward = pointsMetaLine[1].m_vPos - pointsMetaLine[pointCount - 1].m_vPos.Normalized();
+					genPoint.m_vForward = pointsMetaLine[1].m_vPos - pointsMetaLine[pointCount - 1].m_vPos.Normalized();
 				else if (pointCount > 1)
-					genPoint.Forward = (pointsMetaLine[1].m_vPos - pointsMetaLine[0].m_vPos).Normalized();
+					genPoint.m_vForward = (pointsMetaLine[1].m_vPos - pointsMetaLine[0].m_vPos).Normalized();
 
-				m_Points.Insert(genPoint);
+				m_aPoints.Insert(genPoint);
 
 				// Middle points
-				for (int i = 1; i < pointsMetaLine.Count(); i++)
+				for (int i = 1, count = pointsMetaLine.Count(); i < count; i++)
 				{
-					genPoint = new PrefabGeneratorAssetPoint();
-					genPoint.Pos = pointsMetaLine[i % pointCount].m_vPos;
-				
-					if ( pointsMetaLine )
-					{
-						genPoint.m_bDraw = pointsMetaLine.Get(i).m_bGenerate;
-					}
-					if (i < pointsMetaLine.Count() - 1 || isShapeClosed)
-						genPoint.Forward = (pointsMetaLine[(i + 1) % pointCount].m_vPos - pointsMetaLine[i - 1].m_vPos).Normalized();
-					else if (i == pointsMetaLine.Count() - 1)
-						genPoint.Forward = (pointsMetaLine[i % pointCount].m_vPos - pointsMetaLine[i - 1].m_vPos).Normalized();
-					m_Points.Insert(genPoint);
+					genPoint = new SCR_PrefabGeneratorAssetPoint();
+					genPoint.m_vPos = pointsMetaLine[i % pointCount].m_vPos;
+
+					genPoint.m_bDraw = pointsMetaLine.Get(i).m_bGenerate;
+
+					if (i < count - 1 || isShapeClosed)
+						genPoint.m_vForward = (pointsMetaLine[(i + 1) % pointCount].m_vPos - pointsMetaLine[i - 1].m_vPos).Normalized();
+					else if (i == count - 1)
+						genPoint.m_vForward = (pointsMetaLine[i % pointCount].m_vPos - pointsMetaLine[i - 1].m_vPos).Normalized();
+
+					m_aPoints.Insert(genPoint);
 				}
 			}
 			else
@@ -512,129 +477,131 @@ class PrefabGeneratorEntity : SCR_GeneratorBaseEntity
 				return;
 			}
 		}
+
 		Generate();
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Generate the assets
-	void Generate()
+	protected void Generate()
 	{
-		WorldEditorAPI api = _WB_GetEditorAPI();
-	
-		array<string> prefabs = new array<string>();
-	
-		for (int i = 0; i < m_PrefabNames.Count(); i++)
-		{
-			if (m_PrefabNames[i] != "")
-				prefabs.Insert(m_PrefabNames[i]);
-		}
-
-		if (api == null || prefabs.Count() == 0 || api.UndoOrRedoIsRestoring())
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
 			return;
 
-		IEntitySource entSrc = api.EntityToSource(this);
-		int childCount = entSrc.GetNumChildren();
-	
-		for (int i = childCount - 1; i >= 0; --i)
+		array<string> prefabs = {};
+		foreach (ResourceName prefabName : m_PrefabNames)
 		{
-			IEntitySource childSrc = entSrc.GetChild(i);
-			IEntity child = api.SourceToEntity(childSrc);
-			api.DeleteEntity(child);
+			if (prefabName != string.Empty)
+				prefabs.Insert(prefabName);
 		}
 
-		bool isGeneratorVisible = api.IsEntityVisible(this);
+		if (prefabs.IsEmpty()) // after that, prefabs is not used anymore - this because of m_Weights usage
+			return;
+
+		IEntitySource entSrc = worldEditorAPI.EntityToSource(this);
+
+		IEntitySource childSrc;
+		IEntity child;
+		for (int i = entSrc.GetNumChildren() - 1; i >= 0; --i)
+		{
+			childSrc = entSrc.GetChild(i);
+			child = worldEditorAPI.SourceToEntity(childSrc);
+			worldEditorAPI.DeleteEntity(child);
+		}
+
+		bool isGeneratorVisible = worldEditorAPI.IsEntityVisible(this);
 		vector worldMat[4];
 		GetWorldTransform(worldMat);
-		auto localPoints = m_Points;
-		foreach (int i, PrefabGeneratorAssetPoint p: localPoints)
+
+		foreach (SCR_PrefabGeneratorAssetPoint localPoint : m_aPoints)
 		{
-			if (!p.m_bDraw)
+			if (!localPoint.m_bDraw)
 				continue;
-			vector worldPos = p.Pos.Multiply4(worldMat);
-			
+
+			vector worldPos = localPoint.m_vPos.Multiply4(worldMat);
+
 			vector rot = "0 0 0";
 			vector mat[4];
-			vector up = {0, 1, 0};
-			Math3D.DirectionAndUpMatrix(p.Forward, up, mat);
+			Math3D.DirectionAndUpMatrix(localPoint.m_vForward, vector.Up, mat);
 			vector right = mat[0];
 			vector angles = Math3D.MatrixToAngles(mat);
 
 			if (m_fOffsetVariance != 0)
 			{
-				float offsetRandom = Math.RandomFloat(-m_fOffsetVariance/2 + m_fGap/2, m_fOffsetVariance/2 - m_fGap/2);
+				float offsetRandom = Math.RandomFloat(-m_fOffsetVariance * 0.5 + m_fGap * 0.5, m_fOffsetVariance * 0.5 - m_fGap * 0.5);
 				if (offsetRandom < 0)
-				{
-					offsetRandom -= m_fGap/2;
-				}
+					offsetRandom -= m_fGap * 0.5;
 				else
-				{
-					offsetRandom += m_fGap/2;
-				}
-				
+					offsetRandom += m_fGap * 0.5;
+
 				worldPos = worldPos + offsetRandom * right;
 			}
-		
+
 			if (m_bAlignWithShape)
 			{
-
 				if (m_bUseXAsForward)
 					angles[0] = angles[0] - 90;
+
 				if (m_bFlipForward)
 					angles[0] = angles[0] + 180;
 
-				rot = {angles[1], angles[0], angles[2]};
+				rot = { angles[1], angles[0], angles[2] };
 			}
-		
+
 			int index;
-			index = Math.Clamp(SCR_ArrayHelper.GetWeightedIndex(m_Weights, Math.RandomFloat01()),0, m_PrefabNames.Count() - 1);
-		
+
 			if (m_bPerlinAssetDistribution)
 			{
-				float value = Math.Clamp(p.m_fPerlinWeight, m_fPerlinThreshold, 1);
+				float value = Math.Clamp(localPoint.m_fPerlinWeight, m_fPerlinThreshold, 1);
 				float invValue = Math.InverseLerp(m_fPerlinThreshold, 1, value);
-				
-				index = Math.Clamp(SCR_ArrayHelper.GetWeightedIndex(m_Weights, invValue),0, m_PrefabNames.Count() - 1);
+
+				index = Math.Clamp(SCR_ArrayHelper.GetWeightedIndex(m_Weights, invValue), 0, m_PrefabNames.Count() - 1);
 			}
-			
+			else
+			{
+				index = Math.Clamp(SCR_ArrayHelper.GetWeightedIndex(m_Weights, Math.RandomFloat01()), 0, m_PrefabNames.Count() - 1);
+			}
+
 			string asset = m_PrefabNames[index];
-		
-		
-			IEntity ent = api.CreateEntityExt(asset, "", 0, null, worldPos, rot, TraceFlags.WORLD);
-			IEntitySource src = api.EntityToSource(ent);
-		
+
+			IEntity ent = worldEditorAPI.CreateEntityExt(asset, "", 0, null, worldPos, rot, TraceFlags.WORLD);
+			IEntitySource src = worldEditorAPI.EntityToSource(ent);
+
 			if (m_bPerlinSize)
 			{
 				BaseContainerList editorData = src.GetObjectArray("editorData");
-			
-                if (editorData && editorData.Count())
-                {
-					float valuePrln = Math.Clamp(p.m_fPerlinWeight, m_fPerlinThreshold, 1);
-					//Print("raw perlin:" +p.m_fPerlinWeight);
+
+				if (editorData && editorData.Count() > 0)
+				{
+					float valuePrln = Math.Clamp(localPoint.m_fPerlinWeight, m_fPerlinThreshold, 1);
+					//Print("raw perlin:" +localPoint.m_fPerlinWeight);
 					float invValue = Math.InverseLerp(m_fPerlinThreshold, 1, valuePrln);
 					vector val;
-                    editorData[0].Get("randomScale", val);
-					
-					string scale = (Math.Lerp(val[0], val[1], invValue )).ToString();
-					api.ModifyEntityKey(ent, "scale", scale);
-                }
+					editorData.Get(0).Get("randomScale", val);
+
+					string scale = (Math.Lerp(val[0], val[1], invValue)).ToString();
+					worldEditorAPI.ModifyEntityKey(ent, "scale", scale);
+				}
 			}
-		
+
 			if (m_fOffsetUp != 0)
 			{
 				vector entPos;
 				src.Get("coords", entPos);
 				entPos[1] = entPos[1] + m_fOffsetUp;
 				string coords = entPos[0].ToString() + " " + entPos[1].ToString() + " " + entPos[2].ToString();
-				api.ModifyEntityKey(ent, "coords", coords);
+				worldEditorAPI.ModifyEntityKey(ent, "coords", coords);
 			}
-			api.SetEntityVisible(ent, isGeneratorVisible, false);
-			api.ParentEntity(this, ent, true);
+
+			worldEditorAPI.SetEntityVisible(ent, isGeneratorVisible, false);
+			worldEditorAPI.ParentEntity(this, ent, true);
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	//! Draws debug curve
-	//void DrawCurveDebug(array<vector> points)
-	void DrawCurveDebug(array<ref PrefabGeneratorPointMeta> metas)
+	protected void DrawCurveDebug(array<ref SCR_PrefabGeneratorPointMeta> metas)
 	{
 		const int DEBUG_CURVE_LINE_SIZE = 8192;
 		const float DEBUG_Y_MULTIPLIER = 5;
@@ -642,61 +609,59 @@ class PrefabGeneratorEntity : SCR_GeneratorBaseEntity
 		static vector m_ZeroDebugLine[DEBUG_CURVE_LINE_SIZE];
 		static vector m_EdgeDebugLine[DEBUG_CURVE_LINE_SIZE];
 		static vector m_ThresholdDebugLine[DEBUG_CURVE_LINE_SIZE];
-		
-		
+
 		float stepDistance = 0.1;
 		float distanceWalked = 0;
 		vector lastPos = "0 0 0";
 		float space = 0;
 		float moveDist = 0;
-		
-		array<vector> line = new array<vector>;
+
+		array<vector> line = {};
 		int itemsNum = 0;
 
 		vector matWrld[4];
 		GetWorldTransform(matWrld);
-		
+
 		int i = 0;
-		for (; i < metas.Count() - 1; i++)
+		for (int countMinusOne = metas.Count() - 1; i < countMinusOne; i++)
 		{
 			vector posThis = metas[i].m_vPos;
 			lastPos = posThis;
-			vector forward = metas[i+1].m_vPos - posThis;
+			vector forward = metas[i + 1].m_vPos - posThis;
 			float dist = forward.Length();
 			space += dist;
-			
+
 			m_ZeroDebugLine[i] = posThis.Multiply4(matWrld);
-			
-			if (i == metas.Count() - 2)
-				m_ZeroDebugLine[i+1] = metas[i+1].m_vPos.Multiply4(matWrld);
-			
-			
+
+			if (i == countMinusOne - 1)
+				m_ZeroDebugLine[i + 1] = metas[i + 1].m_vPos.Multiply4(matWrld);
+
 			while (space >= stepDistance)
 			{
 				float leftOver = space - dist;
 				if (leftOver < 0)
 					leftOver = 0;
-			
+
 				moveDist = stepDistance - leftOver;
 
 				space -= moveDist + leftOver;
 				distanceWalked += stepDistance;
 				vector stepPos;
 				vector perlinPointPos;
-				
+
 				stepPos = lastPos + forward.Normalized() * moveDist;
 				lastPos = stepPos;
-				
+
 				vector mat[4];
 				vector up = {0, 1, 0};
 				Math3D.DirectionAndUpMatrix(forward, up, mat);
 				vector right = mat[0];
-				
+
 				float valuePerlin = SamplePerlin(distanceWalked + m_fPerlinOffset, m_fPerlinFrequency, m_fPerlinSeed, m_fPerlinAmplitude);
 				//Print(distanceWalked);
 				//Print(valuePerlin);
 				perlinPointPos = stepPos + right * valuePerlin * DEBUG_Y_MULTIPLIER;
-				
+
 				if (itemsNum < DEBUG_CURVE_LINE_SIZE)
 				{
 					m_PerlinDebugLine[itemsNum] = perlinPointPos.Multiply4(matWrld);
@@ -706,54 +671,51 @@ class PrefabGeneratorEntity : SCR_GeneratorBaseEntity
 				}
 			}
 		}
-		
-		m_DebugShapes.Insert(Shape.CreateLines(ARGB(255, 255, 255, 0), ShapeFlags.NOZBUFFER, m_PerlinDebugLine, itemsNum));
-		m_DebugShapes.Insert(Shape.CreateLines(ARGB(255, 0, 255, 0), ShapeFlags.NOZBUFFER, m_ZeroDebugLine, i+1));
-		m_DebugShapes.Insert(Shape.CreateLines(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, m_EdgeDebugLine, itemsNum));
-		m_DebugShapes.Insert(Shape.CreateLines(ARGB(255, 0, 0, 255), ShapeFlags.NOZBUFFER, m_ThresholdDebugLine, itemsNum));
+
+		s_aDebugShapes.Insert(Shape.CreateLines(ARGB(255, 255, 255, 0), ShapeFlags.NOZBUFFER, m_PerlinDebugLine, itemsNum));
+		s_aDebugShapes.Insert(Shape.CreateLines(ARGB(255, 0, 255, 0), ShapeFlags.NOZBUFFER, m_ZeroDebugLine, i+ 1));
+		s_aDebugShapes.Insert(Shape.CreateLines(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, m_EdgeDebugLine, itemsNum));
+		s_aDebugShapes.Insert(Shape.CreateLines(ARGB(255, 0, 0, 255), ShapeFlags.NOZBUFFER, m_ThresholdDebugLine, itemsNum));
 	}
-	
-	// ! saves perlin in an image for debug purposes
-	void PerlinDebug()
+
+	//------------------------------------------------------------------------------------------------
+	//! saves perlin in an image for debug purposes
+	// unused
+	protected void PerlinDebug()
 	{
-			string filePath = "d:\\test.dds";
-			ref array<int> data = new array<int>;
-		
-			const int WIDTH = 1024;
-			const int HEIGHT = 1024;
-		
-			for (int y = 0; y < HEIGHT; y++) for (int x = 0; x < WIDTH; x++)
+		string filePath = "d:\\test.dds";
+		array<int> data = {};
+
+		const int WIDTH = 1024;
+		const int HEIGHT = 1024;
+
+		for (int y = 0; y < HEIGHT; y++)
+		{
+			for (int x = 0; x < WIDTH; x++)
 			{
 				int count = x * y;
-			
-				float perlinVal = Math.PerlinNoise(x/m_fPerlinFrequency, y/m_fPerlinFrequency);
+
+				float perlinVal = Math.PerlinNoise(x / m_fPerlinFrequency, y / m_fPerlinFrequency);
 				//Print(perlinVal);
-					
-				int pixel = ARGB(255, perlinVal * 255, perlinVal * 255, perlinVal * 255 );
+
+				int pixel = ARGB(255, perlinVal * 255, perlinVal * 255, perlinVal * 255);
 				data.Insert(pixel);
 			}
+		}
 
-			// save dds to file
-			if (TexTools.SaveImageData(filePath, WIDTH, HEIGHT, data) == false)
-			{
-				//Print("Can't save image", LogLevel.ERROR);
-				return;
-			}
+		// save dds to file
+		if (!TexTools.SaveImageData(filePath, WIDTH, HEIGHT, data))
+		{
+			//Print("Can't save image", LogLevel.ERROR);
+			return;
+		}
 	}
-	
-	//-----------------------------------------------------------------------
+
+#endif // WORKBENCH
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
 	protected void PrefabGeneratorEntity(IEntitySource src, IEntity parent)
 	{
-		SetEventMask(EntityEvent.INIT);
 	}
-	
-	//-----------------------------------------------------------------------
-	protected void ~PrefabGeneratorEntity()
-	{
-		
-	}
-	
-	
-	#endif
-	
-};
+}

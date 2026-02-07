@@ -1,13 +1,22 @@
 /*!
 Component which must be attached to tooltip which lists dependencies or dependent mods.
 */
-class SCR_ContentBrowser_AddonsTooltipComponent : ScriptedWidgetComponent
+class SCR_ContentBrowser_AddonsTooltipComponent : SCR_ScriptedWidgetComponent
 {
-	[Attribute("{30907DAA2D89E065}UI/layouts/Menus/ContentBrowser/Tile/AddonsTooltipLineNoBG.layout")]
+	[Attribute("{30907DAA2D89E065}UI/layouts/Menus/Tooltips/Tooltip_ListLine_NoBG.layout")]
 	protected ResourceName m_sAddonLineLayout;
-	
-	VerticalLayoutWidget m_wAddonsList;
-	
+
+	protected VerticalLayoutWidget m_wAddonsList;
+
+	//------------------------------------------------------------------------------------------------
+	protected override void HandlerAttached(Widget w)
+	{
+		m_wAddonsList = VerticalLayoutWidget.Cast(w.FindAnyWidget("AddonsList"));
+
+		super.HandlerAttached(w);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void Init(array<ref SCR_WorkshopItem> addons)
 	{
 		foreach (SCR_WorkshopItem addon : addons)
@@ -18,9 +27,10 @@ class SCR_ContentBrowser_AddonsTooltipComponent : ScriptedWidgetComponent
 				wText.SetText(addon.GetName());
 		}
 	}
-	
-	protected override void HandlerAttached(Widget w)
+
+	//------------------------------------------------------------------------------------------------
+	static SCR_ContentBrowser_AddonsTooltipComponent FindComponent(notnull Widget w)
 	{
-		m_wAddonsList = VerticalLayoutWidget.Cast(w.FindAnyWidget("AddonsList"));
+		return SCR_ContentBrowser_AddonsTooltipComponent.Cast(w.FindHandler(SCR_ContentBrowser_AddonsTooltipComponent));
 	}
-};
+}

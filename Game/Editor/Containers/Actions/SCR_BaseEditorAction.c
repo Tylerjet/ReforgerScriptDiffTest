@@ -7,9 +7,10 @@ enum EEditorActionType
 enum EEditorActionGroup
 {
 	NONE,
-	ACTION,
-	TOGGLE_DEFAULT,
-	TOGGLE_CONDITION,
+	SIMULATION,
+	SAVING,
+	TOOLS,
+	DYNAMIC,
 	COMMAND_WAYPOINT, ///< Waypoints in command bar
 	COMMAND_TASK, ///< Tasks in command bar
 	COMMAND_SPAWN_POINT, ///< Spawn points in command bar

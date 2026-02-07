@@ -52,14 +52,22 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 	{	
 		SetGameOverVarriables(GetGameMode().GetEndGameData());
 		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		if (!hudManager)
+			return;
+		
 		m_EndScreenFade = hudManager.CreateLayout(m_sGameOverScreenBasePrefab, EHudLayers.ALWAYS_TOP, 0);
 		SCR_FadeUIComponent fadeComponent = SCR_FadeUIComponent.Cast(m_EndScreenFade.FindHandler(SCR_FadeUIComponent));
+		
+		if (!fadeComponent)
+		{
+			Debug.Error2("SCR_GameOverScreenManagerComponent", "StartEndGameFade, could not find FadeUIComponent!");
+			return;
+		}
 		fadeComponent.GetOnFadeDone().Insert(OnEndScreenFadeDone);
 		fadeComponent.FadeIn();
 		
 		// Hide other HUD elements
-		if (hudManager)
-			hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~(EHudLayers.HIGH));
+		hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~(EHudLayers.HIGH));
 		
 		//Play game over audio if has any and non are playing
 		if (m_bIsPlayingGameOverAudio)

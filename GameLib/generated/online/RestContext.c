@@ -22,6 +22,7 @@ class RestContext
 	proto external string PUT_now(string request, string data);
 	proto external int DELETE(RestCallback cb, string request, string data);
 	proto external string DELETE_now(string request, string data);
+	proto external bool SetHeaders( string definition );
 	proto external void reset();
 }
 

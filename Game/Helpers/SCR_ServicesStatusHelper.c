@@ -1,11 +1,65 @@
 //! This class may become obsolete on BackendAPI update
+enum SCR_ECommStatus
+{
+	NOT_EXECUTED = 0,	// No backend
+	RUNNING,			// Still pinging
+	FINISHED,			// Success
+	FAILED				// Lost connection
+}
+
+void ScriptInvokerCommStatusMethod(SCR_ECommStatus status, float responseTime, float lastSuccessTime, float lastFailTime);
+typedef func ScriptInvokerCommStatusMethod;
+typedef ScriptInvokerBase<ScriptInvokerCommStatusMethod> ScriptInvokerCommStatus;
+
+//------------------------------------------------------------------------------------------------
 class SCR_ServicesStatusHelper
 {
 	protected static int s_iLastPingUpdate = -1;
 	protected static int s_iLastStatusUpdate = -1;
 	protected static ServiceStatusItem s_MainStatus;
 	protected static const ref array<ServiceStatusItem> SERVICE_STATUSES = {};
-
+	
+	// Timers
+	protected static const int COMM_STATUS_CHECK_FREQUENCY_MS = 500;	// frequency of checking for comm test response
+	protected static const int FIRST_REFRESH_DELAY = 1000;				// wait a bit for the very first refresh
+	
+	static const int REFRESH_COOLDOWN = 10000;							// minimum ping age to allow for refreshing
+	static const int CONNECTION_CHECK_EXPIRE_TIME = 15000;				// fallback in case pinging hangs, considered failed after this time has passed
+	static const int AUTOMATIC_REFRESH_RATE = 60000;					// time after which a refresh request is automatically triggered
+	
+	// Statuses
+	static const string STATUS_OK = "ok";
+	static const string STATUS_ERROR = "error";
+	
+	// Services
+	static const string SERVICE_ACCOUNT_PROFILE = 			"game-identity";
+	static const string SERVICE_XBOX =						"game-identity";
+	static const string SERVICE_BI_BACKEND_MULTIPLAYER =	"game-api";
+	static const string SERVICE_WORKSHOP =					"reforger-workshop-api";
+	
+	// Ping thresholds
+	static const int PING_MAX = 999;
+	static const int PING_THRESHOLD_GOOD = 100;
+	static const int PING_THRESHOLD_BAD = 300;
+	static const int PING_THRESHOLD_AWFUL = 600;
+	
+	protected static SCR_ECommStatus s_eLastReceivedCommStatus = SCR_ECommStatus.RUNNING;
+	protected static bool s_bIsCheckingCommStatus;
+	protected static float s_fLastReceivedCommResponseTime;
+	
+	protected static float s_fPingStartTime;
+	
+	protected static bool s_bFirstRefresh = true;
+	
+	// Invokers
+	protected static ref ScriptInvokerCommStatus s_OnCommStatusCheckFinished;
+	protected static ref ScriptInvokerVoid s_OnCommStatusCheckStart;
+	
+	// Connection related icons
+	static const string ICON_SERVICES_ISSUES = "connection-issues";
+	static const string ICON_CONNECTION = "connection";
+	static const string ICON_DISCONNECTION = "disconnection";
+	
 	//------------------------------------------------------------------------------------------------
 	static bool IsBackendEnabled()
 	{
@@ -19,81 +73,196 @@ class SCR_ServicesStatusHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	static bool IsBackendInitializing()
+	{
+		return GetGame().GetBackendApi() && GetGame().GetBackendApi().IsInitializing();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// PING
 	//------------------------------------------------------------------------------------------------
-
 	//------------------------------------------------------------------------------------------------
-	static bool DidPingHappen()
+	protected static bool IsPinging()
 	{
-		if (!IsBackendReady())
-			return false;
-
-		return GetGame().GetBackendApi().GetCommTestStatus() > 0;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static bool IsPinging()
-	{
-		if (!IsBackendReady())
-			return false;
-
 		return GetGame().GetBackendApi() && GetGame().GetBackendApi().GetCommTestStatus() == 1;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static bool IsPingReady()
-	{
-		if (!IsBackendReady())
-			return false;
-
-		return GetGame().GetBackendApi() && GetGame().GetBackendApi().GetCommTestStatus() == 2;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static bool IsPingFailed()
-	{
-		if (!IsBackendReady())
-			return false;
-
-		return GetGame().GetBackendApi() && GetGame().GetBackendApi().GetCommTestStatus() == 3;
-	}
-
-	//------------------------------------------------------------------------------------------------
+	//! ---> This is the function to call if you want to update the connection state <---
 	//! Refresh ping value - won't do anything if is already pinging and waiting for the result
+	// TODO: add a force refresh for when certain important menus are opened? eg we want to disable buttons to open multiplayer or workshop
 	static void RefreshPing()
 	{
-		if (!IsBackendReady() || IsPinging())
+		if (!GetGame() || !GetGame().InPlayMode())
 			return;
+		
+		if (!s_bFirstRefresh && !CanRefresh())
+		{
+			// If we receive a refresh request while in cooldown (for example when a new menu is opened), refresh automatically to update the UI asap
+			if (IsInRefreshCooldown())
+			{
+				ClearRefreshQueue();
+				GetGame().GetCallqueue().CallLater(RefreshPing, (REFRESH_COOLDOWN - GetPingAge()) + 100);
+			}
+			
+			return;
+		}
 
-		GetGame().GetBackendApi().RefreshCommStatus();
-		s_iLastPingUpdate = System.GetTickCount();
+		ClearRefreshQueue();
+		
+		if (s_bFirstRefresh)
+		{
+			s_bFirstRefresh = false;
+			s_bIsCheckingCommStatus = true;
+			
+			// TODO: when testing without workbench, immediatly refreshing will cause GetCommTestStatus() to return 0 even if backend is initialized?!
+			GetGame().GetCallqueue().CallLater(RefreshPing_Internal, FIRST_REFRESH_DELAY);
+			return;
+		}
+		
+		RefreshPing_Internal();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected static void RefreshPing_Internal()
+	{
+		// Start pinging to get the current status
+		if (IsBackendReady())
+			GetGame().GetBackendApi().RefreshCommStatus();
+		else
+			s_eLastReceivedCommStatus = SCR_ECommStatus.RUNNING;
+
+		s_fPingStartTime = System.GetTickCount();
+
+		StartStatusCheck();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected static void StartStatusCheck()
+	{
+		s_bIsCheckingCommStatus = true;
+
+		if (s_OnCommStatusCheckStart)
+			s_OnCommStatusCheckStart.Invoke();
+		
+		// This will perform regular checks for backend initialization or communication status, untill a result is obtained or a set amount of time has passed
+		GetGame().GetCallqueue().CallLater(CheckStatus, COMM_STATUS_CHECK_FREQUENCY_MS);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected static void CheckStatus()
+	{
+		s_bIsCheckingCommStatus = false;
+		
+		if (IsBackendReady())
+			CheckCommStatus();
+		else
+			CheckBackendStatus();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Try to give a definitive result
+	// Once a result is out, this is also where the refresh cooldown starts, as it's based on s_iLastPingUpdate
+	protected static void CheckCommStatus()
+	{	
+		BackendApi backend = GetGame().GetBackendApi();
+		
+		// Still pinging, need to wait some more to get definitive results
+		if (IsPinging() && !IsPingingStuck())
+		{
+			s_eLastReceivedCommStatus = SCR_ECommStatus.RUNNING;
+			
+			StartStatusCheck();
+			return;
+		}
+		
+		// At this point, the comm test result should be either 0, 2 or 3
+		if (!backend || IsPingingStuck() || !IsBackendReady())
+			s_eLastReceivedCommStatus = SCR_ECommStatus.NOT_EXECUTED;
+		else
+			s_eLastReceivedCommStatus = backend.GetCommTestStatus();
+
+		// If the comm test went well, update statuses
+		if (s_eLastReceivedCommStatus == SCR_ECommStatus.FINISHED)
+			RefreshStatuses();
+		
+		s_iLastPingUpdate = System.GetTickCount();
+		s_fLastReceivedCommResponseTime = backend.GetCommResponseTime();
+		
+		// Notify that results are out
+		if (s_OnCommStatusCheckFinished)
+			s_OnCommStatusCheckFinished.Invoke(s_eLastReceivedCommStatus, s_fLastReceivedCommResponseTime, backend.GetCommTimeLastSuccess(), backend.GetCommTimeLastFail());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Wait for backend to be ready and then try again
+	protected static void CheckBackendStatus()
+	{
+		// After some time stop checking and move on to giving a result
+		if (!GetGame().GetBackendApi() || IsPingingStuck())
+		{
+			CheckCommStatus();
+			return;
+		}
+		
+		if (IsBackendReady())
+			RefreshPing_Internal();
+		else
+			StartStatusCheck();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void ClearRefreshQueue()
+	{
+		GetGame().GetCallqueue().Remove(RefreshPing);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_ECommStatus GetLastReceivedCommStatus()
+	{
+		return s_eLastReceivedCommStatus;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Return ping value
 	//! \return ping in milliseconds
 	static int GetPingValue()
 	{
-		if (!IsBackendReady())
+		if (!IsBackendReady() || s_eLastReceivedCommStatus == SCR_ECommStatus.FAILED)
 			return -1;
 
-		return Math.Round(GetGame().GetBackendApi().GetCommResponseTime());
+		return Math.Round(s_fLastReceivedCommResponseTime);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Return the last ping's age in milliseconds
 	static int GetPingAge()
 	{
-		if (!IsBackendReady())
-			return -1;
-
 		return System.GetTickCount() - s_iLastPingUpdate;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// We want to still allow attempting a refresh if backend is not initialized
+	static bool CanRefresh()
+	{
+		return !s_bIsCheckingCommStatus && !IsInRefreshCooldown();
 	}
 
 	//------------------------------------------------------------------------------------------------
+	static bool IsInRefreshCooldown()
+	{
+		return GetPingAge() < REFRESH_COOLDOWN;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static bool IsPingingStuck()
+	{
+		return System.GetTickCount() - s_fPingStartTime >= CONNECTION_CHECK_EXPIRE_TIME;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// STATUSES
 	//------------------------------------------------------------------------------------------------
-
 	//------------------------------------------------------------------------------------------------
 	static void RefreshStatuses()
 	{
@@ -113,8 +282,9 @@ class SCR_ServicesStatusHelper
 
 		s_iLastStatusUpdate = System.GetTickCount();
 
-		if (GetGame().IsDev())
+		#ifdef SERVICES_DEBUG
 			DEBUG();
+		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -168,6 +338,119 @@ class SCR_ServicesStatusHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	static bool SkipConsoleService(SCR_BackendServiceDisplay service)
+	{
+		return !GetGame().IsPlatformGameConsole() && service.m_bConsoleExclusive;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static bool IsServiceActive(string serviceName)
+	{
+		if (s_eLastReceivedCommStatus != SCR_ECommStatus.FINISHED)
+			return false;
+		
+		ServiceStatusItem serviceStatus = GetStatusByName(serviceName);
+		if (!serviceStatus)
+			return false;
+		
+		return serviceStatus.Status() == STATUS_OK;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Check if all conditions for multiplayer are fine in here
+	static bool AreMultiplayerServicesAvailable()
+	{
+		return IsServiceActive(SERVICE_BI_BACKEND_MULTIPLAYER);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static bool IsBackendConnectionAvailable()
+	{
+		return s_eLastReceivedCommStatus != SCR_ECommStatus.NOT_EXECUTED && s_eLastReceivedCommStatus != SCR_ECommStatus.RUNNING && IsBackendReady();
+	}
+	
+	// Input Buttons helper methods
+	//------------------------------------------------------------------------------------------------
+	// Updates the button based on the state of services
+	static bool SetConnectionButtonEnabled(SCR_InputButtonComponent button, string serviceName, bool forceDisabled = false, bool animate = true)
+	{
+		if (!button)
+			return false;
+
+		bool serviceActive = IsServiceActive(serviceName);
+		bool enabled = serviceActive && !forceDisabled;
+		button.SetEnabled(enabled, animate);
+		
+		if (forceDisabled && serviceActive)
+		{
+			button.ResetTexture();
+			return true;
+		}
+		
+		SetConnectionButtonTexture(button, enabled);
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Forces the button into the desired state irrelevant of services
+	static bool ForceConnectionButtonEnabled(SCR_InputButtonComponent button, bool enabled, bool animate = true)
+	{
+		if (!button)
+			return false;
+		
+		button.SetEnabled(enabled, animate);
+		SetConnectionButtonTexture(button, enabled);
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void SetConnectionButtonTexture(SCR_InputButtonComponent button, bool enabled)
+	{
+		if (!button)
+			return;
+		
+		if (enabled)
+		{
+			button.ResetTexture();
+			return;
+		}
+
+		string icon = ICON_SERVICES_ISSUES;
+		Color color = UIColors.WARNING;
+		
+		// No connection
+		if (GetLastReceivedCommStatus() == SCR_ECommStatus.FAILED)
+		{
+			icon = ICON_DISCONNECTION;
+			color = UIColors.HIGHLIGHTED;
+		}
+		
+		button.SetTexture(UIConstants.ICONS_IMAGE_SET, icon, color);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// INVOKERS
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerCommStatus GetOnCommStatusCheckFinished()
+	{
+		if (!s_OnCommStatusCheckFinished)
+			s_OnCommStatusCheckFinished = new ScriptInvokerCommStatus();
+		
+		return s_OnCommStatusCheckFinished;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerVoid GetOnCommStatusCheckStart()
+	{
+		if (!s_OnCommStatusCheckStart)
+			s_OnCommStatusCheckStart = new ScriptInvokerVoid();
+		
+		return s_OnCommStatusCheckStart;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	static void DEBUG()
 	{
 		Print("--------------------------------------------------");
@@ -195,4 +478,40 @@ class SCR_ServicesStatusHelper
 
 		Print("--------------------------------------------------");
 	}
+}
+
+//------------------------------------------------------------------------------------------------
+//! Class for a .conf file with multiple service display presets.
+[BaseContainerProps(configRoot : true)]
+class SCR_BackendServiceDisplayPresets
+{
+	[Attribute()]
+	protected ref array<ref SCR_BackendServiceDisplay> m_aServices;
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_BackendServiceDisplay> GetServices()
+	{
+		array<ref SCR_BackendServiceDisplay> services = {}; 
+		if (m_aServices)
+			services = m_aServices;
+		
+		return services;
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sId")]
+class SCR_BackendServiceDisplay
+{
+	[Attribute(desc: "internal tag")]
+	string m_sId;
+
+	[Attribute(desc: "the id used to query backend")]
+	string m_sServiceId;
+
+	[Attribute(desc: "displayed name")]
+	string m_sTitle;
+	
+	[Attribute("0", desc: "set true if this service should be ignored when on PC")]
+	bool m_bConsoleExclusive;
 };

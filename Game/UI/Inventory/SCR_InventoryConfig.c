@@ -61,6 +61,13 @@ class SCR_InventoryConfig
 		return m_aLoadoutAreas[ iIndex ].m_sIcon;
 	}
 	
+	LoadoutAreaType GetAreaByRow( int iIndex )
+	{
+		if (!m_aLoadoutAreas.IsIndexValid(iIndex))
+			return null;
+		return m_aLoadoutAreas[iIndex].m_LoadoutArea;
+	}
+	
 	void ~SCR_InventoryConfig()
 	{
 		m_aLoadoutAreas = null;

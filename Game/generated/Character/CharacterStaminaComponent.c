@@ -15,6 +15,8 @@ class CharacterStaminaComponentClass: BaseStaminaComponentClass
 
 class CharacterStaminaComponent: BaseStaminaComponent
 {
+	/*void SCR_OnBreathStateChanged(float breathValue)
+	SCR_CALLBACK("protected void OnBreathStateChanged(float breathValue)");*/
 	/* EXAMPLE
 	class SCR_CharacterStaminaComp : CharacterStaminaComponent
 	{
@@ -54,12 +56,6 @@ class CharacterStaminaComponent: BaseStaminaComponent
 	\param pDrain How much stamina has recovered/drained.
 	*/
 	event void OnStaminaDrain(float pDrain);
-	/*!
-	Called when breath progress reaches minimum or maximum value.
-	(Lo = 0, Hi = 1)
-	\param breathValue Value that breath progress has reached.
-	*/
-	event protected void OnBreathStateChanged(float breathValue);
 }
 
 /*!

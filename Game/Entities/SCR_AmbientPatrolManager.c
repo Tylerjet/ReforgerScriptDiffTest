@@ -1,5 +1,6 @@
 #include "scripts/Game/config.c"
 //------------------------------------------------------------------------------------------------
+[EntityEditorProps(insertable: false)]
 class SCR_AmbientPatrolManagerClass : GenericEntityClass
 {
 }
@@ -180,12 +181,12 @@ class SCR_AmbientPatrolManager : GenericEntity
 		
 		if (aiWorld)
 		{
-			int maxChars = aiWorld.GetMaxNumOfCharacters();
+			int maxChars = aiWorld.GetAILimit();
 			
 			if (maxChars <= 0)
 				isAIOverLimit = true;
 			else
-				isAIOverLimit = ((float)aiWorld.GetCurrentNumOfCharacters() / (float)maxChars) > spawnpoint.GetAILimitThreshold();
+				isAIOverLimit = ((float)aiWorld.GetCurrentAmountOfLimitedAIs() / (float)maxChars) > spawnpoint.GetAILimitThreshold();
 		}
 
 		if (!isAIOverLimit && !playersVeryNear)
@@ -275,7 +276,7 @@ class SCR_AmbientPatrolManager : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		RefreshPlayerList();
 	}
@@ -297,6 +298,12 @@ class SCR_AmbientPatrolManager : GenericEntity
 			return;
 
 		m_fTimer = 0;
+		
+		// HOTFIX: Don't process spawning at the very start - wait for a save to be applied if it exists
+		// Otherwise full-size groups get spawned even if they are marked as eliminated in the save file
+		// TODO: Come up with a better solution
+		if (GetGame().GetWorld().GetWorldTime() < SCR_GameModeCampaign.BACKEND_DELAY)
+			return;
 
 		ProcessSpawnpoint(m_iIndexToCheck);
 		m_iIndexToCheck++;

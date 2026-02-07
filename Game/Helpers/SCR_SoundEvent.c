@@ -5,13 +5,17 @@ class SCR_SoundEvent
 	static const string SOUND_CP_TARGET = "SOUND_CP_TARGET";
 	static const string SOUND_CP_MOVE_MID = "SOUND_CP_MOVE_MID";
 	static const string SOUND_CP_MOVE_CLOSE = "SOUND_CP_MOVE_CLOSE";
+	static const string SOUND_CP_MOVE_LONG = "SOUND_CP_MOVE_LONG";
 	static const string SOUND_CP_RETURN = "SOUND_CP_RETURN";
 	static const string SOUND_CP_MOUNT_BOARD = "SOUND_CP_MOUNT_BOARD";
 	static const string SOUND_CP_MOUNT_ROLE = "SOUND_CP_MOUNT_ROLE";
 	static const string SOUND_CP_MOUNT_GETOUT = "SOUND_CP_MOUNT_GETOUT";
+	static const string SOUND_CP_MOUNT_NEAREST = "SOUND_CP_MOUNT_NEAREST_VEHICLE";
 	static const string SOUND_CP_STOP = "SOUND_CP_STOP";
 	static const string SOUND_CP_FLANK = "SOUND_CP_FLANK";
+	static const string SOUND_CP_SPOTTED_CLOSE = "SOUND_CP_SPOTTED_CLOSE";
 	static const string SOUND_CP_SPOTTED_MID = "SOUND_CP_SPOTTED_MID";
+	static const string SOUND_CP_SPOTTED_LONG = "SOUND_CP_SPOTTED_LONG";
 	static const string SOUND_REPORTS_STATUS_NOAMMO = "SOUND_REPORTS_STATUS_NOAMMO";
 	static const string SOUND_REPORTS_STATUS_CLEAR = "SOUND_REPORTS_STATUS_CLEAR";
 	static const string SOUND_REPORTS_STATUS_ENGAGING = "SOUND_REPORTS_STATUS_ENGAGING";
@@ -22,6 +26,10 @@ class SCR_SoundEvent
 	static const string SOUND_CP_DEFEND_POSITION = "SOUND_CP_DEFEND_POSITION";
 	static const string SOUND_CP_FOLLOW_LEADER = "SOUND_CP_FOLLOW_LEADER";
 	static const string SOUND_CP_POSITIVEFEEDBACK = "SOUND_CP_POSITIVEFEEDBACK";
+	static const string SOUND_CP_SEARCH_AND_DESTROY = "SOUND_CP_SEARCH_AND_DESTROY";
+	static const string SOUND_CP_IDLE_SPEECH = "SOUND_CP_IDLE_SPEECH";
+	static const string SOUND_CP_REPORTS_AREACLEAR = "SOUND_CP_REPORTS_AREACLEAR";
+	static const string SOUND_CP_REPORTS_UNDER_FIRE = "SOUND_REPORTS_STATUS_UNDERFIRE";	
 
 	//Communication protocol - Campaign
 	static const string SOUND_HQ_MOB = "SOUND_HQ_MOB";
@@ -73,6 +81,8 @@ class SCR_SoundEvent
 	static const string SOUND_HQ_PMC = "SOUND_HQ_PMC";
 	static const string SOUND_HQ_PML = "SOUND_HQ_PML";
 	static const string SOUND_HQ_HCB = "SOUND_HQ_HCB";
+	static const string SOUND_HQ_RRL = "SOUND_HQ_RRL";
+	static const string SOUND_HQ_BHA = "SOUND_HQ_BHA";
 
 	//Combat Ops
 	static const string	SOUND_CP_IPL_1 = "SOUND_CP_IPL_1";				//Insertion plan
@@ -192,6 +202,18 @@ class SCR_SoundEvent
 	static const string SOUND_VEHICLE_TRUNK_CLOSE = "SOUND_VEHICLE_TRUNK_CLOSE";
 	static const string SOUND_VEHICLE_CLOSE_LIGHT_ON = "SOUND_VEHICLE_CLOSE_LIGHT_ON";
 	static const string SOUND_VEHICLE_CLOSE_LIGHT_OFF = "SOUND_VEHICLE_CLOSE_LIGHT_OFF";
+	
+	//Supplies Sounds
+	static const string SOUND_SUPPLIES_PARTIAL_LOAD = "SOUND_SUPPLIES_PARTIAL_LOAD";
+	static const string SOUND_SUPPLIES_PARTIAL_UNLOAD = "SOUND_SUPPLIES_PARTIAL_UNLOAD";
+	static const string SOUND_SUPPLIES_VEH_CONTAINER_APPEAR = "SOUND_SUPPLIES_VEH_CONTAINER_APPEAR";
+	static const string SOUND_SUPPLIES_VEH_CONTAINER_DISAPPEAR = "SOUND_SUPPLIES_VEH_CONTAINER_DISAPPEAR";
+	static const string SOUND_SUPPLIES_VEH_FULL = "SOUND_SUPPLIES_VEH_FULL";
+	
+	//Helicopters
+	static const string SOUND_AUTOHOVER_ON = "SOUND_AUTOHOVER_ON";
+	static const string SOUND_AUTOHOVER_OFF = "SOUND_AUTOHOVER_OFF";
+	static const string SOUND_ROTOR_WASH_LP = "SOUND_ROTOR_WASH_LP";
 
 	//Campaign
 	static const string SOUND_RADIO_ESTABLISH_ACTION = "SOUND_RADIO_ESTABLISH_ACTION";
@@ -220,6 +242,8 @@ class SCR_SoundEvent
 	static const string SOUND_ITEM_RADIO_TUNE_UP = "SOUND_ITEM_RADIO_TUNE_UP";
 	static const string SOUND_ITEM_RADIO_TUNE_DOWN = "SOUND_ITEM_RADIO_TUNE_DOWN";
 	static const string SOUND_ITEM_RADIO_TUNE_ERROR = "SOUND_ITEM_RADIO_TUNE_ERROR";
+	static const string SOUND_DEPLOYED_RADIO_DEPLOY = "SOUND_DEPLOYED_RADIO_DEPLOY";
+	static const string SOUND_DEPLOYED_RADIO_UNDEPLOY = "SOUND_DEPLOYED_RADIO_UNDEPLOY";
 
 
 	//BellSoundComponent
@@ -242,6 +266,11 @@ class SCR_SoundEvent
 	// Character
 	static const string SOUND_MELEE_IMPACT = "SOUND_MELEE_IMPACT";
 	static const string SOUND_INJURED_PLAYERCHARACTER = "SOUND_INJURED_PLAYERCHARACTER";
+	static const string SOUND_HIT = "SOUND_HIT";
+	static const string SOUND_DEATH = "SOUND_DEATH";
+	static const string SOUND_KNOCKOUT = "SOUND_BREATH_OUT";
+	static const string SOUND_VOICE_PAIN_RELIEVE = "SOUND_VOICE_PAIN_RELIEVE";
+	static const string SOUND_CHECK_INJURIES_POPUP = "SOUND_CHECK_INJURIES_POPUP";
 	
 	// Weapon
 	static const string SOUND_SCOPE_ILLUM_ON = "SOUND_SCOPE_ILLUM_ON";
@@ -251,6 +280,7 @@ class SCR_SoundEvent
 
 	// Actions
 	static const string SOUND_EQUIP = "SOUND_EQUIP";
+	static const string SOUND_UNEQUIP = "SOUND_UNEQUIP";
 	static const string SOUND_PICK_UP = "SOUND_PICK_UP";
 	static const string SOUND_DROP = "SOUND_DROP";
 	static const string SOUND_TURN_ON = "SOUND_TURN_ON";
@@ -277,4 +307,7 @@ class SCR_SoundEvent
 	static const string SOUND_ONSPAWN = "SOUND_ONSPAWN";
 	static const string SOUND_ONDEATH = "SOUND_ONDEATH";
 	static const string SOUND_ONBASECAPTURE = "SOUND_ONBASECAPTURE";
+	
+	// Music Instruments
+	static const string SOUND_STOP_PLAYING = "SOUND_STOP_PLAYING";
 };

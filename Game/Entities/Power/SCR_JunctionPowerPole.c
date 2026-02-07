@@ -1,12 +1,12 @@
 [EntityEditorProps(category: "GameScripted/Power", description: "This is the power pole entity.", color: "0 255 0 255", visible: false, dynamicBox: true)]
 class SCR_JunctionPowerPoleClass: SCR_PowerPoleClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_JunctionPowerPole : SCR_PowerPole
 {
-	[Attribute(desc: "Slots of this power pole for connecting with other power poles - Junction slots.")]
+	[Attribute(desc: "Slots for connecting with other power poles in a junction", category: "Power Cable Slots")]
 	protected ref array<ref SCR_PowerPoleSlotBase> m_aJunctionSlots;
 
 	//------------------------------------------------------------------------------------------------
@@ -47,19 +47,31 @@ class SCR_JunctionPowerPole : SCR_PowerPole
 		if (sameLine)
 			return super.TryGetSlot(index, otherSlot, sameLine);
 
-		if (index >= m_aJunctionSlots.Count())
-		{
-			return m_aJunctionSlots[index % m_aJunctionSlots.Count()].m_vSlotA;
-			return vector.Zero;
-		}
+		int junctionCount = m_aJunctionSlots.Count();
+		if (index >= junctionCount)
+			index = index % junctionCount;
 
 		SCR_PowerPoleSlot dualSlot = SCR_PowerPoleSlot.Cast(m_aJunctionSlots[index]);
 		if (dualSlot)
 		{
-			if (vector.Distance(otherSlot, CoordToParent(dualSlot.m_vSlotA)) > vector.Distance(otherSlot, CoordToParent(dualSlot.m_vSlotB)))
-				return CoordToParent(dualSlot.m_vSlotB);
-			else
+			vector avgSideA;
+			vector avgSideB;
+			SCR_PowerPoleSlot powerPoleJunction;
+			for (int i; i < junctionCount; i++)
+			{
+				avgSideA += m_aJunctionSlots[i].m_vSlotA;
+				powerPoleJunction = SCR_PowerPoleSlot.Cast(m_aJunctionSlots[i]);
+				if (powerPoleJunction)
+					avgSideB += powerPoleJunction.m_vSlotB;
+			}
+
+			avgSideA /= (float)junctionCount;
+			avgSideB /= (float)junctionCount;
+
+			if (avgSideB == vector.Zero || vector.Distance(otherSlot, CoordToParent(avgSideA)) <= vector.Distance(otherSlot, CoordToParent(avgSideB)))
 				return CoordToParent(dualSlot.m_vSlotA);
+			else
+				return CoordToParent(dualSlot.m_vSlotB);
 		}
 
 		SCR_PowerPoleSlotSingle singleSlot = SCR_PowerPoleSlotSingle.Cast(m_aJunctionSlots[index]);
@@ -70,7 +82,8 @@ class SCR_JunctionPowerPole : SCR_PowerPole
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_JunctionPowerPole(IEntitySource src, IEntity parent)
 	{
 	}
-};
+}

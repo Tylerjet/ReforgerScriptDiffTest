@@ -10,6 +10,10 @@ class SCR_TeleportPlayerHereContextAction : SCR_BaseContextAction
 		if (!controlledEntity)
 			return false;
 		
+		// Check faction entity
+		if (SCR_EditableFactionComponent.Cast(hoveredEntity))
+			return false;
+		
 		DamageManagerComponent damageManager = DamageManagerComponent.Cast(controlledEntity.FindComponent(DamageManagerComponent));
 		if (!damageManager)
 			return true;

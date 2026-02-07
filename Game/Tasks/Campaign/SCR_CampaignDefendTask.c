@@ -327,7 +327,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 			for (int i = characters.Count() - 1; i >= 0; i--)
 			{
 				if (IsCharacterInDefendTaskRange(characters[i]))
-					comp.AwardXP(characters[i], SCR_EXPRewards.TASK_DEFEND, 1.0);
+					comp.AwardXP(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(characters[i]), SCR_EXPRewards.TASK_DEFEND, 1.0);
 			}
 		};
 	}

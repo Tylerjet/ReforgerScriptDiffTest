@@ -29,8 +29,14 @@ class SCR_CommonDialogs
 	{
 		return SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "timeout_try_again_cancel");
 	}
+	
+	//---------------------------------------------------------------------------------------------
+	static SCR_ServicesStatusDialogUI CreateServicesStatusDialog()
+	{
+		SCR_ServicesStatusDialogUI dialog = new SCR_ServicesStatusDialogUI();
+		return SCR_ServicesStatusDialogUI.Cast(SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "services_status", dialog));
+	}
 };
-
 
 
 
@@ -47,7 +53,6 @@ class SCR_ExitGameDialog : SCR_ConfigurableDialogUi
 	override void OnConfirm()
 	{		
 		GetGame().RequestClose();
-		SCR_AllFilterSetsStorage.ResetAllToDefault();
 	}
 };
 
@@ -74,7 +79,6 @@ class SCR_ExitGameWhileDownloadingDialog : SCR_ConfigurableDialogUi
 		
 		// Exit the game
 		GetGame().RequestClose();
-		SCR_AllFilterSetsStorage.ResetAllToDefault();
 	}
 };
 
@@ -125,6 +129,7 @@ class SCR_StartScenarioWhileDownloadingDialog : SCR_ConfigurableDialogUi
 class SCR_NotEnoughStorageDialog : SCR_ConfigurableDialogUi
 {
 	protected float m_fSizeBytes;
+	protected string m_sPresetMessage;
 	
 	//------------------------------------------------------------------------------------------------
 	static SCR_NotEnoughStorageDialog Create(float sizeBytes)
@@ -139,14 +144,27 @@ class SCR_NotEnoughStorageDialog : SCR_ConfigurableDialogUi
 		return dlg;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Increase size displayed in dialog
+	void AddToSize(float sizeBytes)
+	{
+		m_fSizeBytes += sizeBytes;
+		
+		string sizeStr = SCR_ByteFormat.GetReadableSize(m_fSizeBytes);
+		string messageStr = WidgetManager.Translate(m_sPresetMessage, sizeStr);
+		
+		SetMessage(messageStr);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
 		// Set the message with formatted size
 		string sizeStr = SCR_ByteFormat.GetReadableSize(m_fSizeBytes);
-		string messageStr = WidgetManager.Translate(preset.m_sMessage, sizeStr);
-		this.SetMessage(messageStr);
+		
+		m_sPresetMessage = preset.m_sMessage;
+		string messageStr = WidgetManager.Translate(m_sPresetMessage, sizeStr);
+		SetMessage(messageStr);
 	}
 	
 	

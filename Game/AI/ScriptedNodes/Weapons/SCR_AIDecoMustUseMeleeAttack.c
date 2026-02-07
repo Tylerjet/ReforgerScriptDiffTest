@@ -2,7 +2,7 @@ class SCR_AIDecoMustUseMeleeAttack: DecoratorScripted
 {
 	protected static const string PORT_TARGET_POS = "TargetPos";
 	
-	protected const float MELEE_MAX_DISTANCE_SQ = 1.5*1.5;
+	protected const float MELEE_MAX_DISTANCE_SQ = 2*2;
 	
 	// This amount of updates will be skipped when TestFunction is called and it will return the previous value
 	protected const int N_UPDATES_SKIP = 2;
@@ -35,6 +35,8 @@ class SCR_AIDecoMustUseMeleeAttack: DecoratorScripted
 		
 		vector targetPos;
 		GetVariableIn(PORT_TARGET_POS, targetPos);
+		
+		//Print(string.Format("dist: %1", vector.Distance(m_Controlled.GetOrigin(), targetPos)));
 		
 		m_bPrevResult = (vector.DistanceSq(m_Controlled.GetOrigin(), targetPos) < MELEE_MAX_DISTANCE_SQ) &&
 				(!m_Controller.CanFire()) &&

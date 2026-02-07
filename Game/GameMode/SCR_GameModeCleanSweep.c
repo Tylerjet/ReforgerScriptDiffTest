@@ -318,12 +318,13 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 		Called after a player gets killed.
 		\param playerId PlayerId of victim player.
 		\param player Entity of victim player if any.
-		\param killer Entity of killer instigator if any.
+		\param killerEntity Entity of killer instigator if any.
+		\param killer instigator of the kill
 	*/
-	protected override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	protected override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		super.OnPlayerKilled(playerId, player, killer);
-		m_aEnemySoldiers.RemoveItemOrdered(player);
+		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
+		m_aEnemySoldiers.RemoveItemOrdered(playerEntity);
 	}
 	
 	//------------------------------------------------------------------------------------------------

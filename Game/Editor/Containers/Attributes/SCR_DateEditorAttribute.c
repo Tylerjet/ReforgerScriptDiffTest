@@ -27,12 +27,14 @@ class SCR_DateEditorAttribute : SCR_BaseEditorAttribute
 	
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
-		//return null;
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
-		if (!timeManager) return null;
-		
 		//If opened in global attributes
 		if (!IsGameMode(item)) 
+			return null;
+		
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
+		if (!timeManager)
 			return null;
 		
 		//Get date
@@ -44,7 +46,9 @@ class SCR_DateEditorAttribute : SCR_BaseEditorAttribute
 	{
 		if (!var) return;
 		
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		if (!timeManager) return;
 
 		CreateYearArray();
@@ -86,9 +90,13 @@ class SCR_DateEditorAttribute : SCR_BaseEditorAttribute
 	
 	protected void CreateYearArray()
 	{
-		if (m_aYearArray.Count() != 0) return;
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
-		if (!timeManager) return;
+		if (m_aYearArray.Count() != 0)
+			return;
+		
+		ChimeraWorld world = GetGame().GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
+		if (!timeManager)
+			return;
 		
 		int currentYear = timeManager.GetYear();
 		

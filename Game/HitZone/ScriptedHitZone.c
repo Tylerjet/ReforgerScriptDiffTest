@@ -5,6 +5,16 @@ class ScriptedHitZone : HitZone
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
+	Hitzone group getter to be overriden
+	\return Get Hitzone group
+	*/
+	EHitZoneGroup GetHitZoneGroup()
+	{
+		return EHitZoneGroup.VIRTUAL;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
 	Get event called when hitzone damage changes.
 	\return Script invoker
 	*/
@@ -55,13 +65,14 @@ class ScriptedHitZone : HitZone
 	\param damage Amount of damage received
 	\param pOriginalHitzone Original hitzone that got dealt damage, as this might be transmitted damage.
 	\param damageSource Projectile object
-	\param instigator Damage source parent entity (soldier, vehicle, ...)
+	\param killerEntity Damage source entity (soldier, vehicle, ...)
+	\param killer Damage source (soldier, vehicle, ...)
 	\param hitTransform [hitPosition, hitDirection, hitNormal]
 	\param speed Projectile speed in time of impact
 	\param colliderID ID of the collider receiving damage
 	\param nodeID ID of the node of the collider receiving damage
 	*/
-	void OnLocalDamage(EDamageType type, float damage, HitZone pOriginalHitzone, IEntity damageSource, IEntity instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID);
+	void OnLocalDamage(EDamageType type, float damage, HitZone pOriginalHitzone, IEntity damageSource, IEntity killerEntity, notnull Instigator killer, inout vector hitTransform[3], float speed, int colliderID, int nodeID);
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -76,7 +87,7 @@ class ScriptedHitZone : HitZone
 	\param colliderID ID of the collider receiving damage
 	\param nodeID ID of the node of the collider receiving damage
 	*/
-	void OnDamage(EDamageType type, float damage, HitZone pOriginalHitzone, IEntity instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID);
+	void OnDamage(EDamageType type, float damage, HitZone pOriginalHitzone, notnull Instigator instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID);
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -106,22 +117,20 @@ class ScriptedHitZone : HitZone
 	
 	/*!
 	Calculates the amount of damage a hitzone will receive.
-		
-	\param EDamageType damageType, damage type
-	\param float rawDamage, incoming damage, without any modifiers taken into account
-	\param IEntity hitEntity, damaged entity
-	\param HitZone struckHitZone, hitzone to damage
-	\param IEntity damageSource, projectile
-	\param IEntity damageSourceGunner, damage source instigator 
-	\param IEntity damageSourceParent, damage source parent entity (soldier, vehicle)
-	\param const GameMaterial hitMaterial, hit surface physics material
-	\param int colliderID, collider ID - if it exists
-	\param const inout vector hitTransform[3], hit position, direction and normal
-	\param const vector impactVelocity, projectile velocity in time of impact
-	\param int nodeID, bone index in mesh obj
-	\param bool isDOT, true if this is a calculation for DamageOverTime 
+	\param damageType Damage type
+	\param rawDamage Incoming damage, without any modifiers taken into account
+	\param hitEntity Damaged entity
+	\param struckHitZone Hitzone to be damaged
+	\param damageSource Projectile
+	\param instigator Instigator
+	\param hitMaterial Surface physics material
+	\param colliderID Collider ID if provided
+	\param hitTransform Position, direction and normal
+	\param impactVelocity Projectile velocity at impact
+	\param nodeID Bone index in mesh object
+	\param isDOT True if this is a calculation for DamageOverTime
 	*/
-	float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, IEntity damageSourceGunner, IEntity damageSourceParent, const GameMaterial hitMaterial, int colliderID, inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
+	float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, notnull Instigator instigator, const GameMaterial hitMaterial, int colliderID, inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
 	{
 		if (rawDamage == 0)
 			return 0;
@@ -184,4 +193,9 @@ class ScriptedHitZone : HitZone
 		else
 			SetDamageOverTime(EDamageType.HEALING, (GetDamageOverTime(EDamageType.HEALING) + itemRegenerationSpeed));
 	}
-};
+
+#ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
+	void DrawDebug();
+#endif
+}

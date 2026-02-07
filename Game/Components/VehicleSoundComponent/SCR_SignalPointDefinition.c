@@ -1,10 +1,10 @@
 [BaseContainerProps()]
 class SCR_SignalPointDefinition
 {
-	[Attribute("", UIWidgets.EditBox, "[ms]")]
+	[Attribute("1", UIWidgets.EditBox, "[ms]", params: "1 60000 0.001")]
 	float m_fTimeMin;
 	
-	[Attribute("", UIWidgets.EditBox, "[ms]")]
+	[Attribute("1", UIWidgets.EditBox, "[ms]", params: "1 60000 0.001")]
 	float m_fTimeMax;
 	
 	[Attribute("", UIWidgets.EditBox, "")]
@@ -12,10 +12,17 @@ class SCR_SignalPointDefinition
 	
 	[Attribute("", UIWidgets.EditBox, "")]
 	float m_fValueMax;
-	
-	void GenerateRandom(out SCR_SignalPoint signalPoint)
+		
+	//------------------------------------------------------------------------------------------------
+	float GetValue()
 	{
-		signalPoint.m_fTime = Math.RandomFloat(m_fTimeMin, m_fTimeMax);
-		signalPoint.m_fValue = Math.RandomFloat(m_fValueMin, m_fValueMax);
+		return Math.RandomFloat(m_fValueMin, m_fValueMax);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetTime()
+	{
+		return Math.RandomFloat(m_fTimeMin, m_fTimeMax);
+	}
+	
 };

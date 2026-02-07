@@ -5,9 +5,12 @@ class SCR_CampaignBuildingBudgetEditorComponentClass : SCR_BudgetEditorComponent
 
 class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 {
-	SCR_CampaignBuildingEditorComponent m_CampaignBuildingComponent;
-	SCR_CampaignSuppliesComponent m_SuppliesComponent;
-	SCR_ECharacterRank m_eHighestRank;
+	protected SCR_ResourceComponent m_ResourceComponent;
+	protected SCR_CampaignBuildingEditorComponent m_CampaignBuildingComponent;
+	protected SCR_CampaignSuppliesComponent m_SuppliesComponent;
+	protected SCR_ECharacterRank m_eHighestRank;
+	
+	protected static const int UNLIMITED_PROP_BUDGET = -1; 
 
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnEditorActivateServer()
@@ -30,7 +33,8 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 			return;
 
 		m_eHighestRank = highestRankID.GetRankID();
-
+		
+		RefreshBudgetSettings();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -57,9 +61,21 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 		budgets.Insert(EEditableEntityBudget.CAMPAIGN);
 		budgets.Insert(EEditableEntityBudget.RANK_CORPORAL);
 		budgets.Insert(EEditableEntityBudget.RANK_SERGEANT);
+		
+		if (!m_CampaignBuildingComponent)
+			return;
+		
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_CampaignBuildingComponent.GetProviderComponent());
+		if (!providerComponent)
+			return;
+		
+		if (providerComponent.GetMaxPropValue() != UNLIMITED_PROP_BUDGET)
+			budgets.Insert(EEditableEntityBudget.PROPS);
+		
 	}
 
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("SCR_CampaignBuildingBudgetEditorComponent.RefreshResourcesComponent() should be used instead.")]
 	protected bool RefreshSuppliesComponent()
 	{
 		if (!m_CampaignBuildingComponent)
@@ -87,9 +103,16 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void OnBaseResourcesChanged(SCR_ResourceConsumer consumer, int previousValue)
+	{
+		RefreshResourcesComponent();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[Obsolete("SCR_CampaignBuildingBudgetEditorComponent.OnBaseResourcesChanged() should be used instead.")]
 	protected void OnBaseSuppliesChanged(int supplies)
 	{
-		RefreshSuppliesComponent();
+		RefreshResourcesComponent();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -104,25 +127,27 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 		switch (type)
 		{
 			case EEditableEntityBudget.CAMPAIGN:
-			{
-				if (m_SuppliesComponent)
-					maxBudget = m_SuppliesComponent.GetSuppliesMax();
+				if (!m_ResourceComponent)
 					return true;
-			};
+				
+				SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+				
+				if (consumer)
+					maxBudget = consumer.GetAggregatedMaxResourceValue();
+				
+				return true;
 			case EEditableEntityBudget.RANK_CORPORAL:
-			{
 				maxBudget = m_eHighestRank;
 				return true;
-			};
 			case EEditableEntityBudget.RANK_SERGEANT:
-			{
 				maxBudget = m_eHighestRank;
 				return true;
-			};
+			case EEditableEntityBudget.PROPS:
+				maxBudget = GetProviderMaxPropValue();
+				return true;
 		}
 
 		return true;
-
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -131,20 +156,52 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 		switch (type)
 		{
 			case EEditableEntityBudget.CAMPAIGN:
-			{
-				return m_SuppliesComponent.GetSuppliesMax() - m_SuppliesComponent.GetSupplies();
-			};
+				if (!m_ResourceComponent)
+					return -1;
+				
+				SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+				
+				if (!consumer)
+					return -1;
+				
+				return consumer.GetAggregatedMaxResourceValue() - consumer.GetAggregatedResourceValue();
 			case EEditableEntityBudget.RANK_CORPORAL:
-			{
 				return m_eHighestRank - GetUserRank();
-			};
 			case EEditableEntityBudget.RANK_SERGEANT:
-			{
 				return m_eHighestRank - GetUserRank();
-			};
+			case EEditableEntityBudget.PROPS:
+				return GetCurrentProviderPropValue();
 		}
 
 		return -1;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Return max prop value for a current provider. This number limits the number of prefabs (compositions) buildable with this provider.
+	int GetProviderMaxPropValue()
+	{
+		if (!m_CampaignBuildingComponent)
+			return UNLIMITED_PROP_BUDGET;
+		
+		SCR_CampaignBuildingProviderComponent providerComponent = m_CampaignBuildingComponent.GetProviderComponent();
+		if (!providerComponent)
+			return UNLIMITED_PROP_BUDGET;
+		
+		return providerComponent.GetMaxPropValue();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Return current prop value for a current provider. This number limits the number of prefabs (compositions) buildable with this provider.
+	int GetCurrentProviderPropValue()
+	{
+		if (!m_CampaignBuildingComponent)
+			return UNLIMITED_PROP_BUDGET;
+		
+		SCR_CampaignBuildingProviderComponent providerComponent = m_CampaignBuildingComponent.GetProviderComponent();
+		if (!providerComponent)
+			return UNLIMITED_PROP_BUDGET;
+		
+		return providerComponent.GetCurrentPropValue();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -163,33 +220,77 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected override void OnEntityCoreBudgetUpdatedOwner(EEditableEntityBudget entityBudget, int budgetValue, int budgetChange, bool sendBudgetMaxEvent, bool budgetMaxReached)
 	{
+		int maxBudget;
+		GetMaxBudgetValue(EEditableEntityBudget.PROPS, maxBudget);
+		Event_OnBudgetUpdated.Invoke(EEditableEntityBudget.PROPS, GetCurrentBudgetValue(EEditableEntityBudget.PROPS), budgetValue, maxBudget);
+		
 		if (entityBudget != EEditableEntityBudget.CAMPAIGN)
 			return;
 
-		if (m_SuppliesComponent && m_SuppliesComponent.GetSupplies() - budgetChange <= 0)
+		if (!m_ResourceComponent)
+			return;
+		
+		SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+		
+		if (!consumer)
+			return;
+		
+		if (consumer.GetAggregatedResourceValue() - budgetChange <= 0)
 			Event_OnBudgetMaxReached.Invoke(entityBudget, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected bool RefreshResourcesComponent()
+	{
+		if (!m_CampaignBuildingComponent)
+			return false;
+
+		SCR_ResourceComponent providerResourceComponent;
+		
+		if (m_CampaignBuildingComponent.GetProviderResourceComponent(providerResourceComponent))
+		{
+			SCR_ResourceConsumer consumerNew = providerResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+			SCR_ResourceConsumer consumerOld;
+			
+			if (m_ResourceComponent)
+				consumerOld = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+			
+			if (consumerNew && consumerOld)
+			{
+				if (consumerNew != consumerOld)
+					consumerOld.GetOnResourcesChanged().Remove(OnBaseResourcesChanged);
+			}
+			else if (consumerNew)
+				consumerNew.GetOnResourcesChanged().Insert(OnBaseResourcesChanged);
+		}
+
+		m_ResourceComponent = providerResourceComponent;
+
+		return m_ResourceComponent;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected override void RefreshBudgetSettings()
 	{
 		array<ref EEditableEntityBudget> budgetsType = {};
+		
 		GetMainBudgetType(budgetsType);
 
 		SCR_EditableEntityCoreBudgetSetting budget;
+		
 		for (int i = budgetsType.Count() - 1; i >= 0; i--)
 		{
 			EEditableEntityBudget budgetType = budgetsType[i];
+			
 			int maxBudgetValue;
+			
 			if (m_EntityCore.GetBudget(budgetType, budget) && GetMaxBudgetValue(budgetType, maxBudgetValue))
-			{
 				m_BudgetSettingsMap.Insert(budgetType, budget);
-			}
 		}
 
-		RefreshSuppliesComponent();
+		RefreshResourcesComponent();
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override bool CanPlaceEntitySource(IEntityComponentSource editableEntitySource, out EEditableEntityBudget blockingBudget, bool isPlacingPlayer = false, bool updatePreview = true, bool showNotification = true)
 	{
@@ -249,6 +350,11 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_SERGEANT_NEEDED, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.SERGEANT);
 					break;
 				};
+				case EEditableEntityBudget.PROPS:
+				{
+					GetManager().SendNotification(ENotification.EDITOR_PLACING_NO_MORE_COMPOSITIONS_AT_BASE);
+					break;
+				};
 			}
 		}
 	}
@@ -258,33 +364,83 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 	{
 		foreach	(SCR_EntityBudgetValue maxBudget : m_MaxBudgets)
 		{
-			if (maxBudget.GetBudgetType() == type)
-			{
-				int newMaxBudget;
-				switch (type)
-				{
-					case EEditableEntityBudget.CAMPAIGN:
-					{
-						newMaxBudget = m_SuppliesComponent.GetSupplies();
-						break;
-					};
-					case EEditableEntityBudget.RANK_CORPORAL:
-					{
-						newMaxBudget = GetUserRank();
-						break;
-					};
-					case EEditableEntityBudget.RANK_SERGEANT:
-					{
-						newMaxBudget = GetUserRank();
-						break;
-					};
-				}
+			if (maxBudget.GetBudgetType() != type)
+				continue;
+			
+			int newMaxBudget;
 
-				maxBudget.SetBudgetValue(newMaxBudget);
-				budget = maxBudget;
-				return true;
+			switch (type)
+			{
+				case EEditableEntityBudget.CAMPAIGN:
+				{
+					if (!m_ResourceComponent)
+						break;
+					
+					SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+					
+					if (!consumer)
+						break;
+					
+					newMaxBudget = consumer.GetAggregatedResourceValue();
+					
+					break;
+				};
+				case EEditableEntityBudget.RANK_CORPORAL:
+				{
+					newMaxBudget = GetUserRank();
+					break;
+				};
+				case EEditableEntityBudget.RANK_SERGEANT:
+				{
+					newMaxBudget = GetUserRank();
+					break;
+				};
+				case EEditableEntityBudget.PROPS:
+				{					
+					newMaxBudget = GetProviderMaxPropValue();
+					break;
+				};
 			}
+
+			maxBudget.SetBudgetValue(newMaxBudget);
+
+			budget = maxBudget;
+
+			return true;
 		}
+
 		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the composition can be placed. 
+	override bool CanPlace(notnull array<ref SCR_EntityBudgetValue> budgetCosts, out EEditableEntityBudget blockingBudget)
+	{
+		if (!IsBudgetCapEnabled() || budgetCosts.IsEmpty()) 
+			return true;
+		
+		foreach (SCR_EntityBudgetValue budgetCost : budgetCosts)
+		{
+			if (!CanPlace(budgetCost, blockingBudget))
+			{
+				if (IsBudgetCapEnabled(blockingBudget))
+					return false;
+			};
+		}
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the given budget is on the list of budgets used by a provider.
+	bool IsBudgetCapEnabled(EEditableEntityBudget blockingBudget)
+	{
+		if (!m_CampaignBuildingComponent)
+			return true;
+		
+		SCR_CampaignBuildingProviderComponent providerComponent = m_CampaignBuildingComponent.GetProviderComponent();
+		if (!providerComponent)
+			return true;
+		
+		return providerComponent.IsBudgetToEvaluate(blockingBudget);
 	}
 };

@@ -81,7 +81,7 @@ class SCR_ServerListComponent : SCR_ButtonListViewComponent
 		if (!entryComp)
 			return;
 		
-		entryComp.Event_OnFocusEnter.Insert(OnRoomEntryFocus);
+		entryComp.GetOnFocus().Insert(OnRoomEntryFocus);
 		entryComp.m_OnClick.Insert(OnRoomEntryClick);
 		
 		// Insert to list
@@ -133,8 +133,8 @@ class SCR_ServerListComponent : SCR_ButtonListViewComponent
 		// Remove entyr actions  
 		foreach (SCR_ServerBrowserEntryComponent entry : m_aRoomEntries)
 		{
-			entry.Event_OnFocusEnter.Clear();
-			entry.Event_OnFocusLeave.Clear();
+			entry.GetOnFocus().Clear();
+			entry.GetOnFocusLost().Clear();
 		}
 		
 		// Clear list 
@@ -188,10 +188,12 @@ class SCR_ServerListComponent : SCR_ButtonListViewComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call this when entry in list is focused
-	protected void OnRoomEntryFocus(SCR_ServerBrowserEntryComponent entry)
+	protected void OnRoomEntryFocus(SCR_ScriptedWidgetComponent entry)
 	{
+		SCR_ServerBrowserEntryComponent serverEntry = SCR_ServerBrowserEntryComponent.Cast(entry);
+		
 		// Get entry room
-		Room room = entry.GetRoomInfo();
+		Room room = serverEntry.GetRoomInfo();
 		
 		if (room)
 			m_OnEntryFocus.Invoke(room);

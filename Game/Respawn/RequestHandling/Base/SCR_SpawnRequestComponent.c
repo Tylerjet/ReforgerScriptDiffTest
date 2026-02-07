@@ -107,6 +107,9 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	{
 		super.OnPostInit(owner);
 
+		if (!GetGame().InPlayMode())
+			return;
+
 		m_PlayerController = SCR_PlayerController.Cast(owner);
 		if (!m_PlayerController)
 		{
@@ -171,7 +174,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, false))
 		{
-			Debug.Error("Caught request on locked player!");
+			//Debug.Error("Caught request on locked player!"); //~ No need to error as it simply returns on locked. As requests can be made in various situations
 			return false;
 		}
 		
@@ -316,7 +319,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, false))
 		{
-			Debug.Error("Caught request on locked player!");
+			Print("Caught request spawn on locked player!", LogLevel.WARNING);
 			return false;
 		}
 		
@@ -534,7 +537,9 @@ class SCR_SpawnRequestComponent : ScriptComponent
 
 	void StartSpawnPreload(vector position)
 	{
-		NotifyPreloadStarted_S();		
+		NotifyPreloadStarted_S();
+		if (m_PlayerController)		
+			RplComponent.InsertMPObserver(m_PlayerController.GetRplIdentity(), position[0], position[2]);
 		Rpc(Rpc_StartPreload_O, position);
 	}
 
@@ -560,6 +565,8 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	protected void Rpc_NotifyPreloadFinished_S()
 	{
 		m_bIsPreloading = false;
+		if (m_PlayerController)
+			RplComponent.RemoveMPObserver(m_PlayerController.GetRplIdentity());
 	}
 
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
@@ -591,9 +598,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		// Notify client
 		SCR_RespawnComponent respawnComponent = GetRespawnComponent();
 		respawnComponent.GetOnRespawnResponseInvoker_O().Invoke(this, response, m_ConfirmationPendingData);
-		
-		// Temporary
-		respawnComponent.SGetOnSpawn().Invoke();
+		SCR_RespawnComponent.SGetOnLocalPlayerSpawned().Invoke();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -613,6 +618,16 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		}
 		
 		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Destructor.
+	*/
+	void ~SCR_SpawnRequestComponent()
+	{
+		if(m_PlayerController)
+			RplComponent.RemoveMPObserver(m_PlayerController.GetRplIdentity());
 	}
 
 	#ifdef ENABLE_DIAG

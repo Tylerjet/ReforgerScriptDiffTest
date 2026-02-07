@@ -4,8 +4,8 @@ class DialogUI : ChimeraMenuBase
 
 	protected Widget m_wCancelButton;
 	protected Widget m_wConfirmButton;
-	protected SCR_NavigationButtonComponent m_Cancel;
-	protected SCR_NavigationButtonComponent m_Confirm;
+	protected SCR_InputButtonComponent m_Cancel;
+	protected SCR_InputButtonComponent m_Confirm;
 
 	protected ImageWidget m_wImgTopLine;
 	protected ImageWidget m_wImgTitleIcon;
@@ -18,6 +18,8 @@ class DialogUI : ChimeraMenuBase
 
 	protected EDialogType m_iDialogType;
 	
+	protected SCR_DynamicFooterComponent m_DynamicFooter;
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
@@ -29,7 +31,7 @@ class DialogUI : ChimeraMenuBase
 		m_wCancelButton = w.FindAnyWidget("Cancel");
 		if(m_wCancelButton)
 		{
-			m_Cancel = SCR_NavigationButtonComponent.FindComponent(m_wCancelButton);
+			m_Cancel = SCR_InputButtonComponent.FindComponent(m_wCancelButton);
 			if (m_Cancel)
 				m_Cancel.m_OnActivated.Insert(OnCancel);
 		}
@@ -38,7 +40,7 @@ class DialogUI : ChimeraMenuBase
 		m_wConfirmButton = w.FindAnyWidget("Confirm");
 		if(m_wConfirmButton)
 		{
-			m_Confirm = SCR_NavigationButtonComponent.FindComponent(m_wConfirmButton);
+			m_Confirm = SCR_InputButtonComponent.FindComponent(m_wConfirmButton);
 			if (m_Confirm)
 				m_Confirm.m_OnActivated.Insert(OnConfirm);
 		}
@@ -50,11 +52,11 @@ class DialogUI : ChimeraMenuBase
 		// Texts
 		m_wTitle = TextWidget.Cast(w.FindAnyWidget("Title"));
 		m_wContent = TextWidget.Cast(w.FindAnyWidget("Message"));
-
+/*
 		// Play animation
 		w.SetOpacity(0);
 		AnimateWidget.Opacity(w, 1, m_fAnimationRate);
-
+*/
 		// Find dialog component
 		m_DialogData = SCR_DialogDataComponent.Cast( w.FindHandler(SCR_DialogDataComponent));
 
@@ -62,28 +64,46 @@ class DialogUI : ChimeraMenuBase
 		if (m_DialogData)
 			SetDialogType(m_DialogData.m_iDialogType);
 		
-		SCR_NavigationButtonHelper.OnDialogOpen(this);
+		SCR_MenuHelper.OnDialogOpen(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuInit()
+	{
+		super.OnMenuInit();
+		
+		m_DynamicFooter = SCR_DynamicFooterComponent.FindComponentInHierarchy(GetRootWidget());
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose() 
 	{
 		super.OnMenuClose();
-		SCR_NavigationButtonHelper.OnDialogClose(this);
+		SCR_MenuHelper.OnDialogClose(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(float tDelta)
+	{
+		super.OnMenuUpdate(tDelta);
+		
+		GetGame().GetInputManager().ActivateContext("DialogContext");
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnConfirm()
 	{
 		m_OnConfirm.Invoke();
-		CloseAnimated();
+		//CloseAnimated();
+		Close();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnCancel()
 	{
 		m_OnCancel.Invoke();
-		CloseAnimated();
+		//CloseAnimated();
+		Close();
 	}
 
 
@@ -108,6 +128,10 @@ class DialogUI : ChimeraMenuBase
 
 			case EDialogType.WARNING:
 				color = UIColors.WARNING;
+				break;
+			
+			case EDialogType.POSITIVE:
+				color = UIColors.CONFIRM;
 				break;
 		}
 
@@ -203,6 +227,12 @@ class DialogUI : ChimeraMenuBase
 		GetGame().GetCallqueue().CallLater(Close, delay);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	SCR_DynamicFooterComponent GetFooterComponent()
+	{
+		return m_DynamicFooter;
+	}
+	
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 	// --- Static functions to create common dialog types ----
 	//////////////////////////////////////////////////////////////////////////////////////////////////
@@ -241,4 +271,5 @@ enum EDialogType
 	MESSAGE,
 	ACTION,
 	WARNING,
+	POSITIVE
 };

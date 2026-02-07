@@ -49,7 +49,7 @@ class SCR_DamageBlurEffect : SCR_BaseScreenEffect
 	void OnDamage(EDamageType type,
 				  float damage,
 				  HitZone pHitZone,
-				  IEntity instigator,
+				  notnull Instigator instigator,
 				  inout vector hitTransform[3],
 				  float speed,
 				  int colliderID,

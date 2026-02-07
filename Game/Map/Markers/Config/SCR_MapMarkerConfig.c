@@ -73,7 +73,13 @@ class SCR_MapMarkerEntryConfig
 		int ownerID = marker.GetMarkerOwnerID();
 		
 		if (ownerID > 0)
-			widgetComp.SetAuthor("(" + GetGame().GetPlayerManager().GetPlayerName(ownerID) + ")");
+		{
+			if (GetGame().GetPlayerController().GetPlayerId() == ownerID)
+				widgetComp.SetModeIcon(true, marker.GetMarkerID() != -1);
+			else
+				widgetComp.SetAuthor("(" + GetGame().GetPlayerManager().GetPlayerName(ownerID) + ")");
+
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -86,6 +92,18 @@ class SCR_MapMarkerEntryConfig
 	//------------------------------------------------------------------------------------------------
 	//! Override this to set up server side logic & event behavior for dynamic markers
 	void InitServerLogic()
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Override this to set up client side behavior for when map changes zoom layers
+	void OnMapLayerChanged(SCR_MapMarkerWidgetComponent widgetComp, int layerID)
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Override this to set up client side behavior for when map changes zoom layers
+	void OnMapLayerChangedDynamic(SCR_MapMarkerDynamicWComponent widgetComp, int layerID)
 	{
 	}
 }

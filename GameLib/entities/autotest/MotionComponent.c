@@ -172,7 +172,7 @@ class MotionAutoTest: GenericEntity
 		
 		m_timeLastStatsSnapshot = 0;
 
-		System.GetCLIParam("screenshot-autotest-output-dir", m_directory);
+		System.GetCLIParam("autotest-output-dir", m_directory);
 
 		if (m_directory.Length() == 0)
 		{
@@ -315,17 +315,17 @@ class MotionAutoTest: GenericEntity
 			int sizeX = g_Game.GetWorkspace().GetWidth();
 			int sizeY = g_Game.GetWorkspace().GetHeight();
 			descrFile.WriteLine(string.Format("MOTION AUTO TEST"));
-			descrFile.WriteLine(string.Format("Resolution: %1 x %2 px", sizeX, sizeY));
+			descrFile.WriteLine(string.Format("Resolution (px): %1x%2", sizeX, sizeY));
 #ifdef WORKBENCH
-			descrFile.WriteLine(string.Format("Entering playmode time: %1 s", g_Game.GetLoadTime() / 1000));
+			descrFile.WriteLine(string.Format("Entering playmode time (s): %1", g_Game.GetLoadTime() / 1000));
 #else
-			descrFile.WriteLine(string.Format("Load time: %1 s", g_Game.GetLoadTime() / 1000));
+			descrFile.WriteLine(string.Format("Load time (s): %1", g_Game.GetLoadTime() / 1000));
 #endif
-			descrFile.WriteLine(string.Format("Duration: %1 s", m_timeFromStart));
+			descrFile.WriteLine(string.Format("Duration (s): %1", m_timeFromStart));
 			
-			descrFile.WriteLine(string.Format("FPS average (s): %1", m_MeasureFPS.ComputeAverage()));
-			descrFile.WriteLine(string.Format("FPS min (s): %1", m_MeasureFPS.m_Min));
-			descrFile.WriteLine(string.Format("FPS max (s): %1", m_MeasureFPS.m_Max));
+			descrFile.WriteLine(string.Format("FPS average: %1", m_MeasureFPS.ComputeAverage()));
+			descrFile.WriteLine(string.Format("FPS min: %1", m_MeasureFPS.m_Min));
+			descrFile.WriteLine(string.Format("FPS max: %1", m_MeasureFPS.m_Max));
 			
 			int count = MemoryStatsSnapshot.GetStatsCount();
 			for (int i = 0; i < count; i++)
@@ -336,9 +336,48 @@ class MotionAutoTest: GenericEntity
 				descrFile.WriteLine(string.Format("%1 max: %2", name, (int)m_MeasurementMemory[i].m_Max));
 			}
 			
+			descrFile.WriteLine(string.Format("Timestamp: %1", GetCurrentTimestamp()));
+			
 			descrFile.Close();
 			Print("Summary file successfully saved into " + filename);
 		}
+	}
+	
+	private void MakeCSVFile(string filename)
+	{
+		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
+		
+		if (!descrFile)
+			return;
+		
+		int sizeX = g_Game.GetWorkspace().GetWidth();
+		int sizeY = g_Game.GetWorkspace().GetHeight();
+		
+		string CSVFormatString = "Resolution (px),Load time (s),Duration (s),FPS average (s),FPS min (s),FPS max (s)";
+		string CSVResultString = string.Format("%1x%2,%3,%4,%5,%6,%7", sizeX, sizeY, g_Game.GetLoadTime() * 0.001, m_timeFromStart, m_MeasureFPS.ComputeAverage(), m_MeasureFPS.m_Min, m_MeasureFPS.m_Max);
+		
+		int count = MemoryStatsSnapshot.GetStatsCount();
+		for (int i = 0; i < count; i++)
+		{
+			CSVFormatString += string.Format(",%1 average,%1 min,%1 max", MemoryStatsSnapshot.GetStatName(i));
+			CSVResultString += string.Format(",%1,%2,%3", (int)m_MeasurementMemory[i].ComputeAverage(), (int)m_MeasurementMemory[i].m_Min, (int)m_MeasurementMemory[i].m_Max);
+		}
+		
+		CSVFormatString += ",Timestamp";
+		CSVResultString += string.Format(",%1", GetCurrentTimestamp());
+		
+		descrFile.WriteLine(CSVFormatString);
+		descrFile.WriteLine(CSVResultString);
+		
+		descrFile.Close();
+		Print("CSV file successfully saved into " + filename);
+	}
+	
+	private string GetCurrentTimestamp()
+	{
+		int year, month, day;
+		System.GetYearMonthDay(year, month, day);
+		return string.Format("%1-%2-%3", year.ToString(4), month.ToString(2), day.ToString(2));
 	}
 	
 	override void EOnFrame(IEntity owner, float timeSlice) //!EntityEvent.FRAME
@@ -368,10 +407,12 @@ class MotionAutoTest: GenericEntity
 		
 		if (m_iCurrentPointsI > m_Points.Count())
 		{
-			string summeryFilename = string.Format("%1/%2", m_directory, "summary.txt");
-			Print("Autotest Finished; result in " + summeryFilename);
 			FileIO.MakeDirectory(m_directory);
+			string summeryFilename = string.Format("%1/%2", m_directory, "summary.txt");
 			MakeSummeryFile(summeryFilename);
+			string csvFilename = string.Format("%1/%2", m_directory, "summary.csv");
+			MakeCSVFile(csvFilename);
+			Print("Autotest Finished; result in " + m_directory);
 			g_Game.RequestClose();
 		}
 		

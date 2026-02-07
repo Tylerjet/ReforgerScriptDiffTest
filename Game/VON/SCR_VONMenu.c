@@ -10,6 +10,7 @@ class SCR_VONMenu
 	
 	const float ADJUST_COOLDOWN = 0.175;	// seconds
 	
+	protected bool m_bIsDisabled;			
 	protected bool m_bIsModifierActive;
 	protected float m_fAdjustCooldown;		// cooldown before you can cycle up/down by holding a button
 	protected float m_FrequencyListTimer;	// timer before frequency list is hidden 
@@ -25,7 +26,13 @@ class SCR_VONMenu
 	{
 		return m_RadialMenu;
 	}
-		
+	
+	//------------------------------------------------------------------------------------------------
+	void SetMenuDisabled(bool state)
+	{
+		m_bIsDisabled = state;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Get channel name tied to a frequency
 	//! \param frequency is the subject frequency
@@ -140,7 +147,7 @@ class SCR_VONMenu
 			m_RadialMenu.SetMenuDisplay(m_Display);
 		}*/
 		
-		if (!hasControl)	
+		if (!hasControl && !m_bIsDisabled)	
 		{
 			m_RadialController.Control(GetGame().GetPlayerController(), m_RadialMenu);
 			
@@ -148,18 +155,13 @@ class SCR_VONMenu
 			m_Display = SCR_VONRadialDisplay.Cast(hud.FindInfoDisplay(SCR_VONRadialDisplay));
 			m_RadialMenu.SetMenuDisplay(m_Display);
 		}
-		else if (m_RadialMenu.IsOpened())
+		else if (m_bIsDisabled || m_RadialMenu.IsOpened())
 		{
 			m_RadialMenu.Close();
 			m_RadialController.SetEnableControl(false);
 			return;
 		}
-		
-		#ifdef RADIO_RADIAL
-			m_RadialController.SetEnableControl(false);
-			return;
-		#endif
-		
+				
 		m_RadialController.SetEnableControl(true);
 		
 		if (!m_VONController.GetVONComponent())
@@ -223,14 +225,10 @@ class SCR_VONMenu
 			m_ActiveEntry = m_VONController.GetActiveEntry();
 			m_ActiveEntry.SetActive(true);
 		}
-		
-	 	GetGame().GetCallqueue().CallLater(UpdateEntries);	// TODO something within setcontrol/setdisplay sequencing logic prevents this fucntioning this frame, move it to the next
-		
+				
 		InputManager inputMgr = GetGame().GetInputManager();
-		inputMgr.AddActionListener("VONMenuAdjust", EActionTrigger.DOWN, OnMenuAdjustBase);	
-		inputMgr.AddActionListener("VONMenuAdjustAlter", EActionTrigger.DOWN, OnMenuAdjustAlter);	
-		inputMgr.AddActionListener("VONMenuModifier", EActionTrigger.DOWN, OnMenuModifier);
-		inputMgr.AddActionListener("VONMenuModifier", EActionTrigger.UP, OnMenuModifier);
+		inputMgr.AddActionListener("VONMenuTuneFrequency", EActionTrigger.VALUE, ActionTuneFrequency);
+		inputMgr.AddActionListener("VONMenuCycleChannel", EActionTrigger.VALUE, ActionCycleChannel);
 		inputMgr.AddActionListener("VONMenuAction", EActionTrigger.DOWN, OnMenuToggle);
 	}
 	
@@ -239,10 +237,8 @@ class SCR_VONMenu
 	protected void OnCloseMenu(SCR_SelectionMenu menu)
 	{	
 		InputManager inputMgr = GetGame().GetInputManager();
-		inputMgr.RemoveActionListener("VONMenuAdjust", EActionTrigger.DOWN, OnMenuAdjustBase);	
-		inputMgr.RemoveActionListener("VONMenuAdjustAlter", EActionTrigger.DOWN, OnMenuAdjustAlter);	
-		inputMgr.RemoveActionListener("VONMenuModifier", EActionTrigger.DOWN, OnMenuModifier);
-		inputMgr.RemoveActionListener("VONMenuModifier", EActionTrigger.UP, OnMenuModifier);	
+		inputMgr.RemoveActionListener("VONMenuTuneFrequency", EActionTrigger.VALUE, ActionTuneFrequency);
+		inputMgr.RemoveActionListener("VONMenuCycleChannel", EActionTrigger.VALUE, ActionCycleChannel);
 		inputMgr.RemoveActionListener("VONMenuAction", EActionTrigger.DOWN, OnMenuToggle);
 	}
 	
@@ -303,48 +299,6 @@ class SCR_VONMenu
 	//------------------------------------------------------------------------------------------------
 	// ACTION LISTENER CALLBACKS
 	//------------------------------------------------------------------------------------------------
-	//! Menu item configuration callback
-	protected void OnMenuAdjustBase(float value, EActionTrigger reason)
-	{
-		int dir;
-		if (value >= 100)
-			dir = 1;
-		else 
-			dir = -1;
-		
-		if (m_bIsModifierActive)
-			OnAdjustModif(dir);
-		else
-			OnAdjust(dir);
-	}	
-		
-	//------------------------------------------------------------------------------------------------
-	//! Alternate menu adjust used by controller
-	protected void OnMenuAdjustAlter(float value, EActionTrigger reason)
-	{		
-		if (value == 1)
-			OnAdjustModif(-1);
-		else 
-			OnAdjustModif(1);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Menu entry was adjusted, update entry
-	//! \param input is any integer which is interepreted later in AdjustEntry according to its needs
-	void OnAdjust(int input)
-	{
-		OnAdjustEntry(input, false);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Menu entry was adjusted with modifier, update entry
-	//! \param input is any integer which is interepreted later in AdjustEntry according to its needs
-	void OnAdjustModif(int input)
-	{
-		OnAdjustEntry(input, true);
-	}	
-	
-	//------------------------------------------------------------------------------------------------
 	protected void OnAdjustEntry(int input, bool isModif)
 	{
 		if (!m_RadialMenu.GetSelectionEntry())
@@ -368,19 +322,34 @@ class SCR_VONMenu
 			radioEntry.SetChannelText(GetKnownChannel(radioEntry.GetEntryFrequency()));
 			radioEntry.Update();
 		}
-	}	
-	
-	
-	//------------------------------------------------------------------------------------------------
-	//! Menu modifier input callback
-	protected void OnMenuModifier(float value, EActionTrigger reason)
-	{
-		if (reason == EActionTrigger.DOWN)
-			m_bIsModifierActive = true;
-		else 
-			m_bIsModifierActive = false;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Menu item configuration callback
+	protected void ActionTuneFrequency(float value, EActionTrigger reason)
+	{
+		if (value == 0)
+			return;
+
+		if (value < 0)
+			OnAdjustEntry(-1, true);
+		else if (value > 0)
+			OnAdjustEntry(1, true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Menu item configuration callback
+	protected void ActionCycleChannel(float value, EActionTrigger reason)
+	{
+		if (value == 0)
+			return;
+
+		if (value < 0)
+			OnAdjustEntry(-1, false);
+		else if (value > 0)
+			OnAdjustEntry(1, false);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Entry toggle callback
 	protected void OnMenuToggle(float value, EActionTrigger reason)

@@ -141,6 +141,7 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		return m_eHitZoneGroup;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	string GetHitZoneName()
 	{
 		switch (m_eHitZoneGroup)
@@ -184,13 +185,12 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		return string.Empty;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void InitializeHitZoneUI(BaseInventoryStorageComponent storage, SCR_InventoryMenuUI menuManager, int hitZoneId, IEntity player)
 	{
 		m_pStorage = storage;
 		m_pInventoryMenu = menuManager;
 		m_Player = player;
-		m_eHitZoneGroup = hitZoneId;
-		m_pDamageHandler.SetParentContainer(this);
 		
 		m_TourniquetStorage = SCR_TourniquetStorageComponent.Cast(m_Player.FindComponent(SCR_TourniquetStorageComponent));
 		m_TourniquetStorage.GetOnTourniquetMoved().Insert(OnTourniquetMoved);
@@ -199,6 +199,9 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		if (!m_pCharDmgManager)
 			return;
 
+		m_eHitZoneGroup = m_pCharDmgManager.LIMB_GROUPS.Get( hitZoneId  );
+		m_pDamageHandler.SetParentContainer(this);
+		
 		m_pBloodHitZone = SCR_CharacterBloodHitZone.Cast(m_pCharDmgManager.GetBloodHitZone());
 		m_pBloodHitZone.GetOnDamageStateChanged().Insert(UpdateHitZoneState);
 		m_aGroupHitZones.Insert(m_pBloodHitZone);
@@ -207,7 +210,7 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 
 		m_pCharDmgManager.GetOnDamageOverTimeAdded().Insert(UpdateHitZoneDOTAdded);
 		m_pCharDmgManager.GetOnDamageOverTimeRemoved().Insert(UpdateHitZoneDOTRemoved);
-		m_pCharDmgManager.GetGroupHitZones(m_eHitZoneGroup, m_aGroupHitZones);
+		m_pCharDmgManager.GetHitZonesOfGroup(m_eHitZoneGroup, m_aGroupHitZones);
 		string boneName = m_pCharDmgManager.GetBoneName(m_eHitZoneGroup);
 		m_iBoneIndex = m_Player.GetAnimation().GetBoneIndex(boneName);
 
@@ -233,21 +236,24 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 	protected void OnTourniquetMoved(int hzGroupId)
 	{
 		array<HitZone> hzs = {};
-		m_pCharDmgManager.GetGroupHitZones(hzGroupId, hzs);
+		m_pCharDmgManager.GetHitZonesOfGroup(hzGroupId, hzs);
 		UpdateHitZoneState(ScriptedHitZone.Cast(hzs[0]));
 		
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateHitZoneDOTAdded(EDamageType dType, float dps, HitZone hz = null)
 	{
 		UpdateHitZoneState(ScriptedHitZone.Cast(hz));
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateHitZoneDOTRemoved(EDamageType dType, HitZone hz = null)
 	{
 		UpdateHitZoneState(ScriptedHitZone.Cast(hz));
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateBleedingHitZone(EDamageType dType, float dps, HitZone hz = null)
 	{
 		if (dType != EDamageType.BLEEDING)
@@ -256,6 +262,7 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		UpdateHitZoneState(ScriptedHitZone.Cast(hz));
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateBleedingHitZoneRemoved(EDamageType dType, HitZone hz = null)
 	{
 		if (dType != EDamageType.BLEEDING)
@@ -264,6 +271,7 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		UpdateHitZoneState(ScriptedHitZone.Cast(hz));
 	}	
 	
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateHitZoneState(ScriptedHitZone hz)
 	{
 		if (!hz || !m_aGroupHitZones.Contains(hz))

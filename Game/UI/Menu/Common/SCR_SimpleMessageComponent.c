@@ -140,7 +140,17 @@ class SCR_SimpleMessageComponent : ScriptedWidgetComponent
 	}
 	
 	//----------------------------------------------------------------------------------
-	Widget GetRootWidget() { return m_wRoot; }
+	Widget GetRootWidget()
+	{
+		return m_wRoot;
+	}
+	
+	//----------------------------------------------------------------------------------
+	void SetVisible(bool visible)
+	{
+		if (m_wRoot)
+			m_wRoot.SetVisible(visible);
+	}
 };
 
 [BaseContainerProps(), BaseContainerCustomTitleField("m_sTag")]

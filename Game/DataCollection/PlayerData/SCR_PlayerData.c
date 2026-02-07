@@ -8,6 +8,10 @@ class SCR_PlayerData : JsonApiStruct
 	Stats that we keep updating
 	*/
 	protected ref array<float> m_aStats = {};
+	
+	//temporal stats single-session based that are only tracked for analytic purposes and not stored in the backend storage
+	protected int m_iSecondsAsController = 0, m_iSecondsAsKeyboard = 0;
+	protected int m_iLastEvaluationCurrentController = 0;
 
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -24,6 +28,12 @@ class SCR_PlayerData : JsonApiStruct
 	protected int m_iLatestActionTick;
 	protected int m_iLatestCriminalScoreUpdateTick;
 	protected float m_fCriminalScore;
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	TimeOut in case the player is kicked or banned on the current session for notification purposes
+	*/
+	protected int m_iTimeOut = 0;
 
 
 	//------------------------------------------------------------------------------------------------
@@ -79,6 +89,7 @@ class SCR_PlayerData : JsonApiStruct
 	
 	/* TODO: Finish rework of player data using StoreDataModule */
 	
+	//Accumulation of stats in order to look for warcrimes on time slices
 	bool accumulationEnabled = false;
 
 	//------------------------------------------------------------------------------------------------
@@ -105,7 +116,47 @@ class SCR_PlayerData : JsonApiStruct
 		else if (!hasPlayerBeenAuditted)
 			LoadEmptyProfile();
 		
+		if (!GetGame().GetDataCollector())
+			return;
+		
 		accumulationEnabled = GetGame().GetDataCollector().FindModule(SCR_DataCollectorCrimesModule) != null;
+		
+		m_iLastEvaluationCurrentController = m_iSessionStartedTickCount;
+		EInputDeviceType device = GetGame().GetInputManager().GetLastUsedInputDevice();
+		UpdateTrackingController(device, device);
+		GetGame().OnInputDeviceUserChangedInvoker().Insert(UpdateTrackingController);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Called manually from the SCR_DataCollectorCrimesModule
+	void SetTimeOut(int time)
+	{
+		m_iTimeOut = time;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetTimeOut()
+	{
+		return m_iTimeOut;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateTrackingController(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	{
+		int currentTickCount = System.GetTickCount();
+		
+		int newTime = (currentTickCount - m_iLastEvaluationCurrentController) * 0.001;
+		switch (oldDevice)
+		{
+			case EInputDeviceType.GAMEPAD: case EInputDeviceType.JOYSTICK:
+				m_iSecondsAsController += newTime;
+				break;
+			case EInputDeviceType.MOUSE: case EInputDeviceType.KEYBOARD: 
+				m_iSecondsAsKeyboard += newTime;
+				break;
+		}
+		
+		m_iLastEvaluationCurrentController = currentTickCount;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -262,6 +313,12 @@ class SCR_PlayerData : JsonApiStruct
 			Print("Maybe a problem: DataProgression is not ready but the analytics event was requested", LogLevel.WARNING);
 			CalculateStatsChange();
 		}
+		
+		EInputDeviceType device = GetGame().GetInputManager().GetLastUsedInputDevice();
+		UpdateTrackingController(device, device);
+		
+		Print("Time with gamepad was " + m_iSecondsAsController, LogLevel.DEBUG);
+		Print("Time with keyboard was " + m_iSecondsAsKeyboard, LogLevel.DEBUG);
 
 		dataEvent.amt_time_mission = m_aStatsGained[SCR_EDataStats.SESSION_DURATION];
 		dataEvent.amt_distance_on_foot = m_aStatsGained[SCR_EDataStats.DISTANCE_WALKED];
@@ -311,7 +368,9 @@ class SCR_PlayerData : JsonApiStruct
 		dataEvent.gt3_points = m_aStatsGained[SCR_EDataStats.SPPOINTS2];
 		dataEvent.gt3_total_points = m_aStats[SCR_EDataStats.SPPOINTS2];
 		dataEvent.gt_global_points = (m_aStatsGained[SCR_EDataStats.SPPOINTS0] + m_aStatsGained[SCR_EDataStats.SPPOINTS1] + m_aStatsGained[SCR_EDataStats.SPPOINTS2]);
-
+		dataEvent.seconds_as_controller = m_iSecondsAsController;
+		dataEvent.seconds_as_keyboard = m_iSecondsAsKeyboard;
+		
 		return dataEvent;
 	}
 

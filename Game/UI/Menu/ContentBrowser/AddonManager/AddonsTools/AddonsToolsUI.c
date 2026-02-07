@@ -8,7 +8,7 @@ Might get extended with other mod related tools
 //------------------------------------------------------------------------------------------------
 class AddonsToolsUI : SCR_TabDialog
 {
-	protected SCR_NavigationButtonComponent m_NavOpenWorkshop;
+	protected SCR_InputButtonComponent m_NavOpenWorkshop;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
@@ -19,7 +19,7 @@ class AddonsToolsUI : SCR_TabDialog
 		Widget wsBtn = GetRootWidget().FindAnyWidget("NavOpenWorkshop");
 		
 		if (wsBtn)
-			m_NavOpenWorkshop = SCR_NavigationButtonComponent.Cast(wsBtn.FindHandler(SCR_NavigationButtonComponent));
+			m_NavOpenWorkshop = SCR_InputButtonComponent.Cast(wsBtn.FindHandler(SCR_InputButtonComponent));
 		
 		if (m_NavOpenWorkshop)
 		{
@@ -39,6 +39,14 @@ class AddonsToolsUI : SCR_TabDialog
 		
 		SCR_AddonManager.GetInstance().m_OnAddonsEnabledChanged.Remove(EnableExportTabs);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(float tDelta)
+	{
+		super.OnMenuUpdate(tDelta);
+		
+		GetGame().GetInputManager().ActivateContext("InteractableDialogContext");
+	}	
 	
 	//------------------------------------------------------------------------------------------------	
 	//! Return true if workshop is opened on tab "Mod manager"

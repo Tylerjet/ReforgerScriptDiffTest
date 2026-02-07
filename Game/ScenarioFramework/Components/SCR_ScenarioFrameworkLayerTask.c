@@ -17,7 +17,6 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	//[Attribute("Type of task", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_ESFTaskType), category: "Task")];
 	protected SCR_ESFTaskType 	m_eTypeOfTask = SCR_ESFTaskType.DEFAULT;
 	
-	
 	[Attribute(desc: "Task prefab", category: "Task")]		
 	protected ResourceName	m_sTaskPrefab;
 	
@@ -30,7 +29,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	[Attribute(category: "OnTaskFinished")];
 	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActionsOnFinish;
 	
-	protected SCR_ScenarioFrameworkSlotTask	m_TaskSubject; 				//storing this one in order to get the task title and description
+	protected SCR_ScenarioFrameworkSlotTask	m_TaskSubject; //storing this one in order to get the task title and description
 	protected SCR_ScenarioFrameworkTask	m_Task;
 	protected SCR_ScenarioFrameworkTaskSupportEntity m_SupportEntity;
 	protected SCR_TaskState m_eLayerTaskState;
@@ -102,11 +101,44 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT, bool bInit = true)
+	override void DynamicReinit()
 	{
-		if (m_eActivationType != activation)
+		Init(null, SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DynamicDespawn()
+	{
+		if (!m_bInitiated || m_bExcludeFromDynamicDespawn)
 			return;
-
+		
+		m_bInitiated = false;
+		m_bDynamicallyDespawned = true;
+		foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
+		{
+			child.DynamicDespawn();
+		}
+		
+		foreach (IEntity entity : m_aSpawnedEntities)
+		{
+			SCR_EntityHelper.DeleteEntityAndChildren(entity);
+		}
+		
+		m_TaskSubject = null;
+		m_aSpawnedEntities.Clear();
+		
+		GetOnAllChildrenSpawned().Remove(InitTask);
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
+	{
+		if (m_bInitiated)
+			return;
+		
+		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
+			return;
+		
 		if (!area)
 		{
 			SCR_GameModeSFManager gameModeComp = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
@@ -123,38 +155,19 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 		// Handles inheritance of faction settings from parents
 		if (m_sFactionKey.IsEmpty() && m_ParentLayer && !m_ParentLayer.GetFactionKey().IsEmpty())
 			SetFactionKey(m_ParentLayer.GetFactionKey());
-
-		GetChildren();
-		
-		SpawnChildren(bInit, previouslyRandomized);
-		ActivateLogic();
-		
-		foreach(SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)
-		{
-			plugin.Init(this);
-		}
-		
-		m_bInitiated = true;		//used to let know this slot was already initiated (to prevent spawning objects twice)
-		
-		if (m_fRepeatedSpawnTimer >= 0)
-		{
-			#ifndef AR_SCENARIO_FRAMEWORK_TIMESTAMP
-			m_fRepeatSpawnTimeStart = Replication.Time();
-			m_fRepeatSpawnTimeEnd = m_fRepeatSpawnTimeStart + (m_fRepeatedSpawnTimer * 1000);
-			#else
-			ChimeraWorld world = GetOwner().GetWorld();
-			m_fRepeatSpawnTimeStart = world.GetServerTimestamp();
-			m_fRepeatSpawnTimeEnd = m_fRepeatSpawnTimeStart.PlusSeconds(m_fRepeatedSpawnTimer);
-			#endif
-			m_bRepeatedSpawningSet = true;
-		}	
 		
 		if (!GetTaskManager())
 		{
 			Print("ScenarioFramework: Task manager not found in the world, tasks won't be created!", LogLevel.ERROR);
 			return;
 		}
-		InitTask();
+		
+		GetOnAllChildrenSpawned().Insert(InitTask);
+		GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawned);
+
+		GetChildren();
+		
+		SpawnChildren(previouslyRandomized);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -212,6 +225,64 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	
 	void InitTask()
 	{
+		if (m_Task)
+		{
+			// We need to make sure that we have m_TaskSubject to work with 
+			if (!m_TaskSubject)
+				m_TaskSubject = m_Task.GetSlotTask();
+			
+			if (!m_TaskSubject)
+			{
+				if (!m_aRandomlySpawnedChildren.IsEmpty())
+					m_TaskSubject = GetSlotTask(m_aRandomlySpawnedChildren);
+				else
+					m_TaskSubject = GetSlotTask(m_aChildren);
+			}
+			
+			if (!m_TaskSubject)
+			{
+				PrintFormat("ScenarioFramework: %1 could not reinit task due to missing m_TaskSubject!", GetOwner().GetName(), LogLevel.ERROR);
+				return;
+			}
+			
+			//Update task position
+			vector vOrigin;
+			if (m_bPlaceMarkerOnSubjectSlot && m_TaskSubject)
+				vOrigin = m_TaskSubject.GetOwner().GetOrigin();
+			else
+				vOrigin = GetOwner().GetOrigin();
+			
+			m_SupportEntity.MoveTask(vOrigin, m_Task.GetTaskID());
+			m_Task.RehookTaskSubject(m_Entity);
+			
+			if (m_TaskSubject.GetIsTerminated() || m_bIsTerminated)
+			{
+				if (m_eLayerTaskState == SCR_TaskState.FINISHED)
+				{
+					m_bTaskResolvedBeforeLoad = true;
+					m_TaskSubject.SetTaskResolvedBeforeLoad(true);
+					m_SupportEntity.FinishTask(m_Task);
+				}
+				else if (m_eLayerTaskState == SCR_TaskState.CANCELLED)
+				{
+					m_TaskSubject.SetTaskResolvedBeforeLoad(true);
+					m_SupportEntity.FailTask(m_Task);
+				}
+				else if (m_eLayerTaskState == SCR_TaskState.REMOVED)
+				{
+					m_TaskSubject.SetTaskResolvedBeforeLoad(true);
+					m_SupportEntity.CancelTask(m_Task.GetTaskID());
+				}
+				
+				SCR_EntityHelper.DeleteEntityAndChildren(m_TaskSubject.GetSpawnedEntity());
+			}
+			
+			if (m_eLayerTaskState != SCR_TaskState.FINISHED)
+				m_Task.Init();
+			
+			return;
+		}
+		
 		if (SetSupportEntity() && SetTaskPrefab() && CreateTask())
 		{
 			SetupTask();
@@ -240,7 +311,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 					m_SupportEntity.CancelTask(m_Task.GetTaskID());
 				}
 				
-				delete m_TaskSubject.GetSpawnedEntity();
+				SCR_EntityHelper.DeleteEntityAndChildren(m_TaskSubject.GetSpawnedEntity());
 			}
 		}
 	}
@@ -276,6 +347,12 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 
 			if (SCR_Faction.Cast(faction).IsPlayable())
 			{
+				if (m_sFactionKey == "")
+				{
+					factionSelected = SCR_Faction.Cast(faction);
+					break;
+				}
+				
 				if (faction == testFaction)
 				{
 					factionSelected = SCR_Faction.Cast(faction);
@@ -286,7 +363,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 		
 		if (!factionSelected)
 		{
-			PrintFormat("ScenarioFramework: Creating of task %1 failed! No playable faction available", m_sTaskTitle, LogLevel.ERROR);
+			Print(string.Format("ScenarioFramework: Creating of task %1 failed for %2! No playable faction available", m_sTaskTitle, GetOwner().GetName()), LogLevel.ERROR);
 			return false;
 		}
 				
@@ -320,15 +397,16 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 			
 			if (!m_TaskSubject.GetTaskDescription().IsEmpty())
 				m_SupportEntity.SetTaskDescription(GetTask(), m_TaskSubject.GetTaskDescription());
+			
+			m_SupportEntity.SetTaskExecutionBriefing(GetTask(), string.Format(WidgetManager.Translate(m_TaskSubject.GetTaskExecutionBriefing()), m_TaskSubject.GetSpawnedEntityDisplayName()));
 		}
 		else
 		{
-			Print("ScenarioFramework: ->Task: Task Subject not found doesn't exist", LogLevel.ERROR);
+			Print(string.Format("ScenarioFramework - LayerTask: Task Subject not found doesn't exist for %1. Task won't be spawned!", GetOwner().GetName()), LogLevel.ERROR);
 		}
 		
 		s_OnTaskSetup.Invoke(m_Task);
-		
-		PrintFormat("ScenarioFramework: ->Task: Generating task %1. Description: %2", string.Format(WidgetManager.Translate(m_Task.GetTitle())), string.Format(WidgetManager.Translate(m_Task.GetDescription())), LogLevel.ERROR);
+		PrintFormat("ScenarioFramework: -> LayerTask: SlotTask %1 - generating task %2. Description: %3", m_TaskSubject.GetOwner().GetName(), WidgetManager.Translate(m_Task.GetTitle()), WidgetManager.Translate(m_Task.GetDescription()));
 	}
 	
 #ifdef WORKBENCH

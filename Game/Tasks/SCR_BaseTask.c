@@ -87,6 +87,12 @@ class SCR_BaseTask : GenericEntity
 	protected Widget m_wTaskListDescription;
 	protected bool m_bIsPriority;
 	
+	const string TASK_BG_M = "Icon_M_Task_BG";
+	const string TASK_O_M = "Icon_M_Task_Outline";
+	const string TASK_BG = "Icon_Task_BG";
+	const string TASK_O = "Icon_Task_Outline";
+	const string TASK_H = "Icon_M_Task_Hover";
+	
 	//***************************//
 	//PUBLIC MEMBER EVENT METHODS//
 	//***************************//
@@ -221,15 +227,26 @@ class SCR_BaseTask : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void UpdateMapTaskIcon()
 	{
-		if (!GetTaskIconkWidget())
+		if (!m_wMapTaskIcon)
 			return;
 		
-		if (IsAssignedToLocalPlayer() || SCR_EditorManagerEntity.IsOpenedInstance(false))
-			GetTaskIconkWidget().SetColor(m_TargetFaction.GetFactionColor());
-		else if (m_bIsPriority)
-			GetTaskIconkWidget().SetColor(Color.DarkMagenta);
-		else
-			GetTaskIconkWidget().SetColor(Color.White);
+		m_wMapTaskIcon.SetColor(Color.White);
+		if (m_TargetFaction && (IsAssignedToLocalPlayer() || SCR_EditorManagerEntity.IsOpenedInstance(false)))
+			m_wMapTaskIcon.SetColor(m_TargetFaction.GetFactionColor());
+		
+		ImageWidget outline = ImageWidget.Cast(m_wMapTaskIcon.GetParent().FindAnyWidget("TaskIconOutline"));
+		ImageWidget background = ImageWidget.Cast(m_wMapTaskIcon.GetParent().FindAnyWidget("TaskIconBackground"));
+		ImageWidget hover = ImageWidget.Cast(m_wMapTaskIcon.GetParent().FindAnyWidget("TaskIconHover"));
+		
+		if (!outline || !background || !hover)
+			return;
+	
+		if (m_bIsPriority)
+		{
+			background.LoadImageFromSet(0, m_sIconImageset,TASK_BG_M);
+			outline.LoadImageFromSet(0, m_sIconImageset,TASK_O_M);
+			hover.LoadImageFromSet(0,m_sIconImageset,TASK_H);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -796,7 +813,7 @@ class SCR_BaseTask : GenericEntity
 		{
 			SCR_CharacterControllerComponent characterControllerComponent = SCR_CharacterControllerComponent.Cast(assigneeEntity.FindComponent(SCR_CharacterControllerComponent));
 			if (characterControllerComponent)
-				characterControllerComponent.m_OnPlayerDeath.Insert(OnAssigneeKilled);
+				characterControllerComponent.GetOnPlayerDeath().Insert(OnAssigneeKilled);
 		}
 		else
 		{
@@ -833,7 +850,7 @@ class SCR_BaseTask : GenericEntity
 	{
 		SCR_CharacterControllerComponent charCtrlComp = SCR_CharacterControllerComponent.Cast(ent.FindComponent(SCR_CharacterControllerComponent));
 		if (charCtrlComp)
-			charCtrlComp.m_OnPlayerDeath.Insert(OnAssigneeKilled);
+			charCtrlComp.GetOnPlayerDeath().Insert(OnAssigneeKilled);
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
 			gameMode.GetOnPlayerSpawned().Remove(InitOnSpawn);
@@ -941,7 +958,7 @@ class SCR_BaseTask : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	//! Changes the state of this task to the parameter.
 	//! Don't use this directly, use the following methods instead: SCR_BaseTaskManager.FinishTask/CancelTask/FailTask
-	protected void SetState(SCR_TaskState state)
+	void SetState(SCR_TaskState state)
 	{
 		if (state == m_eState)
 			return;

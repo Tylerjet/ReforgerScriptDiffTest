@@ -111,7 +111,9 @@ enum ESoundName
 	BIRD_LEAFY_DIST_NIGHTINGALE5,
 	
 	
-	// Leafy domestic
+	// Houses
+	BIRD_HOUSES_DIST_SWALLOW = 200,
+	
 	// Insect
 	INSECT_INSECT = 300,
 	INSECT_GRASSHOPPER,
@@ -295,4 +297,8 @@ class SCR_SoundDef
 	EDayTimeCurve m_eDayTimeCurve;
 	
 	float m_fCoolDownEnd;
+	
+#ifdef ENABLE_DIAG
+	int m_iCount;	
+#endif
 };

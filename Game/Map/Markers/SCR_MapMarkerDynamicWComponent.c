@@ -33,6 +33,12 @@ class SCR_MapMarkerDynamicWComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetTextVisible(bool state)
+	{
+		m_wMarkerText.SetVisible(state);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetColor(Color color)
 	{
 		m_wMarkerIcon.SetColor(color);

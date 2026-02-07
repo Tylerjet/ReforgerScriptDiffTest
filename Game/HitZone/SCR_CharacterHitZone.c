@@ -80,30 +80,32 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	\param type Type of damage
 	\param damage Amount of damage received
 	\param pOriginalHitzone Original hitzone that got dealt damage, as this might be transmitted damage.
-	\param instigator Damage source parent entity (soldier, vehicle, ...)
+	\param instigator Damage source instigator (soldier, vehicle, ...)
 	\param hitTransform [hitPosition, hitDirection, hitNormal]
 	\param speed Projectile speed in time of impact
 	\param colliderID ID of the collider receiving damage
 	\param nodeID ID of the node of the collider receiving damage
 	*/
-	override void OnDamage(EDamageType type, float damage, HitZone pOriginalHitzone, IEntity instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID)
+	override void OnDamage(EDamageType type, float damage, HitZone pOriginalHitzone, notnull Instigator instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID)
 	{
 		super.OnDamage(type, damage, pOriginalHitzone, instigator, hitTransform, speed, colliderID, nodeID);
 		
 		if (this != pOriginalHitzone)
 			return;
+				
+		// Request impact sound from damage manager
+		bool critical = type == EDamageType.FIRE || damage >= GetCriticalDamageThreshold() * GetMaxHealth();
 		
-		// Update last instigator
-		SCR_DamageManagerComponent manager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
+		SCR_CharacterDamageManagerComponent manager = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
 		if (manager)
-			manager.SetInstigatorEntity(instigator);
-		
+			manager.SoundHit(critical, type);
+
 		// FireDamage shouldn't start bleedings
 		if (type == EDamageType.FIRE)
 			return;
 		
 		// Only serious hits should cause bleeding
-		if (damage < GetCriticalDamageThreshold()*GetMaxHealth())
+		if (!critical)
 			return;
 		
 		// Adding immediately some blood to the clothes - currently it's based on the damage dealt.
@@ -135,7 +137,7 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	\param nodeID - bone index in mesh obj
 	\param isDOT - true if this is a calculation for DamageOverTime 
 	*/
-	override float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, IEntity damageSourceGunner, IEntity damageSourceParent, const GameMaterial hitMaterial, int colliderID, inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
+	override float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, notnull Instigator instigator, const GameMaterial hitMaterial, int colliderID, inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
 	{
 		if (rawDamage > 0 && !isDOT)
 		{
@@ -143,7 +145,7 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 			rawDamage = Math.Max(rawDamage - protectionValue, 0);
 		}
 		
-		return super.ComputeEffectiveDamage(damageType, rawDamage, hitEntity, struckHitZone, damageSource, damageSourceGunner, damageSourceParent, hitMaterial, colliderID, hitTransform, impactVelocity, nodeID, isDOT);
+		return super.ComputeEffectiveDamage(damageType, rawDamage, hitEntity, struckHitZone, damageSource, instigator, hitMaterial, colliderID, hitTransform, impactVelocity, nodeID, isDOT);
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -209,7 +211,7 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 		if (manager)
 			manager.AddBleedingHitZone(this, colliderDescriptorIndex);
 	}
-
+	
 	//-----------------------------------------------------------------------------------------------------------
 	override void OnDamageStateChanged()
 	{
@@ -218,7 +220,7 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 		UpdateSubmeshes();
 		SCR_CharacterDamageManagerComponent manager = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
 		if (manager)
-			manager.UpdateGroupDamage(GetHitZoneGroup());
+			manager.UpdateCharacterGroupDamage(GetHitZoneGroup());
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -290,7 +292,7 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	}	
 	
 	//-----------------------------------------------------------------------------------------------------------
-	ECharacterHitZoneGroup GetHitZoneGroup()
+	override EHitZoneGroup GetHitZoneGroup()
 	{
 		return m_eHitZoneGroup;
 	}	
@@ -324,7 +326,7 @@ class SCR_RegeneratingHitZone : ScriptedHitZone
 	\param colliderID ID of the collider receiving damage
 	\param speed Projectile speed in time of impact
 	*/
-	override void OnDamage(EDamageType type, float damage, HitZone pOriginalHitzone, IEntity instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID)
+	override void OnDamage(EDamageType type, float damage, HitZone pOriginalHitzone, notnull Instigator instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID)
 	{
 		super.OnDamage(type, damage, pOriginalHitzone, instigator, hitTransform, speed, colliderID, nodeID);
 		
@@ -385,14 +387,14 @@ class SCR_RegeneratingHitZone : ScriptedHitZone
 		
 		if (GetDamageOverTime(EDamageType.REGENERATION))
 			SetDamageOverTime(EDamageType.REGENERATION, 0)
-	}
+		}
 	
 	//-----------------------------------------------------------------------------------------------------------
 	protected void UpdatePassiveRegeneration()
 	{
 		float regenerationRate = CalculatePassiveRegeneration();
 		SetDamageOverTime(EDamageType.REGENERATION, regenerationRate);
-	}
+		}
 
 	//-----------------------------------------------------------------------------------------------------------
 	override void OnDamageStateChanged()
@@ -540,5 +542,24 @@ class SCR_CharacterHeadHitZone : SCR_CharacterHitZone
 		SCR_CharacterDamageManagerComponent manager = SCR_CharacterDamageManagerComponent.Cast(pManagerComponent);
 		if (manager)
 			manager.SetHeadHitZone(this);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	override void OnDamageStateChanged()
+	{
+		super.OnDamageStateChanged();
+		SoundKnockout();
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	//! Interrupt screaming when shot in head
+	void SoundKnockout()
+	{
+		if (GetDamageState() != EDamageState.DESTROYED)
+			return;
+
+		SCR_CharacterDamageManagerComponent manager = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
+		if (manager)
+			manager.SoundKnockout();
 	}
 };

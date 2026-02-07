@@ -20,6 +20,9 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 	[Attribute("SOUND_E_TOGGLE_FLASHLIGHT", desc: "SFX when local editor nightMode is enabled/disabled", category: "Sound")]
 	protected string m_sLocalEditorNightModeToggledSound;
 	
+	[Attribute("ManualCameraLight", desc: "Local nightmode shortcut. Toggle On and off")]
+	protected string m_sToggleLocalNightModeShortcut;
+	
 	//~ States
 	protected bool m_bLocalEditorNightModeEnabled; ///< Can only be true if editor is open and unlimited
 	protected bool m_bLocalEditorNightModeOnEditorClose; ///< Saved local nightmode value when editor is closed to enable it again when opened
@@ -87,13 +90,18 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 		return m_bLocalEditorNightModeEnabled;
 	}
 	
+	protected void ToggleLocalNightModeShortcut()
+	{
+		EnableLocalEditorNightMode(!m_bLocalEditorNightModeEnabled);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Enable local editor night mode
 	Note that enable might fail if the conditions are not met
 	\param enable To enable or not
 	*/
-	void EnableLocalEditorNightMode(bool enable)
+	void EnableLocalEditorNightMode(bool enable, bool playSound = true)
 	{		
 		if (m_bLocalEditorNightModeEnabled == enable)
 			return;
@@ -106,7 +114,7 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 		
 		EnableNightMode(enable);
 		
-		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(m_sLocalEditorNightModeToggledSound)) 
+		if (playSound && !SCR_StringHelper.IsEmptyOrWhiteSpace(m_sLocalEditorNightModeToggledSound)) 
 			SCR_UISoundEntity.SoundEvent(m_sLocalEditorNightModeToggledSound);
 		
 		//~ Global night mode state changed
@@ -403,6 +411,8 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 		if (SCR_Global.IsEditMode())
 			return;
 		
+		GetGame().GetInputManager().AddActionListener(m_sToggleLocalNightModeShortcut, EActionTrigger.DOWN, ToggleLocalNightModeShortcut);
+		
 		//~ Get world
 		m_World = GetOwner().GetWorld();
 		if (!m_World)
@@ -415,7 +425,11 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 		}
 		
 		//~ Get time manager
-		m_TimeAndWeatherManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = ChimeraWorld.CastFrom(m_World);
+		if (!world)
+			return;
+		
+		m_TimeAndWeatherManager = world.GetTimeAndWeatherManager();
 		if (!m_TimeAndWeatherManager)
 		{
 			Print("'SCR_NightModeGameModeComponent' could not find TimeAndWeatherEntity this means nightmode can never be enabled!", LogLevel.ERROR);
@@ -474,6 +488,8 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 			m_TimeAndWeatherManager.GetOnWindPreview().Remove(OnWindPreview);
 			m_TimeAndWeatherManager.GetOnDateTimePreview().Remove(OnDateTimePreview);
 		}
+		
+		GetGame().GetInputManager().RemoveActionListener(m_sToggleLocalNightModeShortcut, EActionTrigger.DOWN, ToggleLocalNightModeShortcut);
 	}
 	
 	//------------------------------------------------------------------------------------------------

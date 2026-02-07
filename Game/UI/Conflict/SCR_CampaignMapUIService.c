@@ -140,11 +140,17 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 				m_sServiceName = "#AR-Campaign_Building_Armory";
 			} break;
 
-			/*case SCR_EServicePointType.FUEL_DEPOT:
+			case SCR_EServicePointType.FUEL_DEPOT:
 			{
 				SetImage(m_sFuelDepot);
 				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_Fueldepot_US";
-			} break;*/
+			} break;
+
+			case SCR_EServicePointType.HELIPAD:
+			{
+				SetImage(m_sHelipad);
+				m_sServiceName = "#AR-EditableEntity_Helipad_L_US_01_Name";
+			} break;
 
 			/*case SCR_EServicePointType.VEHICLE_DEPOT:
 			{
@@ -161,7 +167,7 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------
-	void SetService(EEditableEntityLabel type, SCR_ServicePointComponent service)
+	void SetService(EEditableEntityLabel type, SCR_ServicePointDelegateComponent service)
 	{
 		m_bEnabled = service != null;
 		m_eServiceType = type;

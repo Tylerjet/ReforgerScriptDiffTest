@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
+[BaseContainerProps("", "Entry of one command"), SCR_BaseGroupCommandTitleField("m_sCommandName")]
 class SCR_BaseGroupCommand
 {
 	[Attribute("", UIWidgets.EditBox, "Unique name of the command")]
@@ -56,6 +56,12 @@ class SCR_BaseGroupCommand
 	bool CanShowOnMap()
 	{
 		return m_bShowOnMap;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool CanBePerformed()
+	{
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

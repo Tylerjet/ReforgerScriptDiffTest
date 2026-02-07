@@ -15,6 +15,9 @@ class SCR_NotificationDisplayData
 	[Attribute(desc: "Holds the display information of the notification, Fill in Name and Color. Optional: Icon")]
 	ref SCR_UINotificationInfo m_info;	
 	
+	//Max amount of Characters a username can be. (Xbox = 12, Playstation = 16, Steam = 32)
+	const int MAX_USERNAME_CHARACTERS = 32;
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Sets the initial display data such as initial notification position and faction related color of notification
@@ -164,33 +167,71 @@ class SCR_NotificationDisplayData
 				playerName = notificationsManager.GetPlayerNameFromHistory(playerID);
 		}
 			
+		if (playerName.Length() > MAX_USERNAME_CHARACTERS)
+		{
+			string trimedName = playerName.Substring(0, MAX_USERNAME_CHARACTERS);
+			playerName = trimedName + "...";
+		}
+		
 		return !playerName.IsEmpty();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected bool GetEditableEntityName(int enditableEntityID, out string entityName)
+	protected bool GetEditableEntityName(int entityRplID, out string entityName, bool useCharacterName = false)
 	{
 		//~ Name already assigned
 		if (!entityName.IsEmpty())
 			return true;
 		
-		//Get target Entity
-		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.Cast(Replication.FindItem(enditableEntityID));
-		
-		if (entity)
+		//Get target Entity. Also works with non-editable entity iD
+		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(Replication.FindItem(entityRplID));
+		if (!editableEntity)
 		{
-			if (entity.GetEntityType() != EEditableEntityType.TASK)
+			IEntity entity = IEntity.Cast(Replication.FindItem(entityRplID));
+			if (!entity)
 			{
-				entityName = entity.GetDisplayName();
+				RplComponent rplComponent = RplComponent.Cast(Replication.FindItem(entityRplID));
+				if (rplComponent)
+					entity = rplComponent.GetEntity();
+			}
+			if (entity)
+				editableEntity = SCR_EditableEntityComponent.Cast(entity.FindComponent(SCR_EditableEntityComponent));
+		}
+		
+		//~ Editable entity component
+		if (editableEntity)
+		{
+			if (editableEntity.GetEntityType() != EEditableEntityType.TASK)
+			{
+				//~ Entity is a player so use that name instead
+				if (editableEntity.GetPlayerID() > 0)
+					return GetPlayerName(editableEntity.GetPlayerID(), entityName);
+				
+				if (useCharacterName)
+				{
+					if (SCR_EditableCharacterComponent.Cast(editableEntity))
+					{
+						string format, firstname, alias, surname;
+						if (GetCharacterName(entityRplID, format, firstname, alias, surname))
+						{
+							entityName = WidgetManager.Translate(format, firstname, alias, surname);
+							if (!entityName.IsEmpty())
+								return true;
+						}
+					}
+				}
+				
+				//~ Use entity name
+				entityName = editableEntity.GetDisplayName();
 			}
 			//~ Get objective type name
 			else 
 			{
-				SCR_EditableTaskComponentClass taskPrefabData = SCR_EditableTaskComponentClass.Cast(entity.GetComponentData(entity.GetOwner()));
+				SCR_EditableTaskComponentClass taskPrefabData = SCR_EditableTaskComponentClass.Cast(editableEntity.GetComponentData(editableEntity.GetOwner()));
 				if (taskPrefabData)
 					entityName = taskPrefabData.GetObjectiveTypeName();
 				else 
-					entityName = entity.GetDisplayName();
+					entityName = editableEntity.GetDisplayName();
 			}
 		}
 
@@ -218,14 +259,27 @@ class SCR_NotificationDisplayData
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected bool GetCharacterName(int enditableEntityID, out string format, out string firstname, out string alias, out string surname)
+	protected bool GetCharacterName(int entityRplID, out string format, out string firstname, out string alias, out string surname)
 	{
-		//Get target Entity
-		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.Cast(Replication.FindItem(enditableEntityID));
-		if (!entity)
-    		return false;
+		//Get target Entity. Also works with non-editable entity iD
+		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(Replication.FindItem(entityRplID));
+		if (!editableEntity)
+		{
+			IEntity entity = IEntity.Cast(Replication.FindItem(entityRplID));
+			if (!entity)
+			{
+				RplComponent rplComponent = RplComponent.Cast(Replication.FindItem(entityRplID));
+				if (rplComponent)
+					entity = rplComponent.GetEntity();
+			}
+			if (entity)
+				editableEntity = SCR_EditableEntityComponent.Cast(entity.FindComponent(SCR_EditableEntityComponent));
+			
+			if (!editableEntity)
+				return false;
+		}
 
-		SCR_CharacterIdentityComponent charIdentity = SCR_CharacterIdentityComponent.Cast(entity.GetOwner().FindComponent(SCR_CharacterIdentityComponent));
+		SCR_CharacterIdentityComponent charIdentity = SCR_CharacterIdentityComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_CharacterIdentityComponent));
 		if (!charIdentity)
     		return false;
 		

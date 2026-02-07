@@ -22,6 +22,8 @@ class SCR_MapMarkerEntity : GenericEntity
 	protected bool m_bIsGlobalVisible; 					// is this marker visible based on server main conditions, such as it having assigned target
 	
 	protected bool m_bIsLocalVisible = true;			// is this marker visible to the player based on custom local conditions
+	protected int m_iScreenX;
+	protected int m_iScreenY;
 	protected float m_fUpdateDelay = 1;
 	protected float m_fTimeTracker;
 	
@@ -208,6 +210,10 @@ class SCR_MapMarkerEntity : GenericEntity
 		m_MarkerWidgetComp = SCR_MapMarkerDynamicWComponent.Cast(m_wRoot.FindHandler(SCR_MapMarkerDynamicWComponent));
 		m_MarkerWidgetComp.SetMarkerEntity(this);	// todo needs base class
 		m_ConfigEntry.InitClientSettingsDynamic(this, m_MarkerWidgetComp);
+		
+		SCR_MapEntity.GetOnMapClose().Insert(OnMapClosed);
+		SCR_MapEntity.GetOnLayerChanged().Insert(OnMapLayerChanged);
+		OnMapLayerChanged(m_MapEntity.GetLayerIndex());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -218,16 +224,28 @@ class SCR_MapMarkerEntity : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnMapClosed(MapConfiguration config)
+	{
+		SCR_MapEntity.GetOnMapClose().Remove(OnMapClosed);
+		SCR_MapEntity.GetOnLayerChanged().Remove(OnMapLayerChanged);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnMapLayerChanged(int layerID)
+	{
+		if (m_ConfigEntry && m_MarkerWidgetComp)
+			m_ConfigEntry.OnMapLayerChangedDynamic(m_MarkerWidgetComp, layerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Called from SCR_MapMarkerManagerComponent
 	void OnUpdate()
 	{
 		if (!m_wRoot)
 			return;
 		
-		int screenX, screenY;
-
-		m_MapEntity.WorldToScreen(m_vPos[0], m_vPos[2], screenX, screenY, true);
-		FrameSlot.SetPos(m_wRoot, GetGame().GetWorkspace().DPIUnscale(screenX), GetGame().GetWorkspace().DPIUnscale(screenY));	// needs unscaled coords
+		m_MapEntity.WorldToScreen(m_vPos[0], m_vPos[2], m_iScreenX, m_iScreenY, true);
+		FrameSlot.SetPos(m_wRoot, GetGame().GetWorkspace().DPIUnscale(m_iScreenX), GetGame().GetWorkspace().DPIUnscale(m_iScreenY));	// needs unscaled coords
 	}
 	
 	//------------------------------------------------------------------------------------------------

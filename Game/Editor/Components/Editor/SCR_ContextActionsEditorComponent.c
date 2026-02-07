@@ -32,63 +32,47 @@ class SCR_ContextActionsEditorComponent : SCR_BaseActionsEditorComponent
 		//--- Evaluate selected/hovered-on entities only when selecting, not when placing or transforming
 		if (!m_StateManager || m_StateManager.GetState() == EEditorState.SELECTING)
 		{
-			//--- With gamepad, when the first selected entity does not have a position, don't clear selection if the cursor is not on one of selected entities
-			//--- Important to allow opening menu on position-less entities like factions
-			bool selectedWithoutPosition;
-			if (m_SelectedManager && !GetGame().GetInputManager().IsUsingMouseAndKeyboard())
+
+			if (m_HoverManager)
 			{
-				vector pos;
-				SCR_EditableEntityComponent firstSelected = m_SelectedManager.GetFirstEntity();
-				selectedWithoutPosition = firstSelected && !firstSelected.GetPos(pos);
-				if (selectedWithoutPosition)
-					m_HoveredEntity = firstSelected;
-			}
-			
-			if (!selectedWithoutPosition)
-			{
-				if (m_HoverManager)
+				m_HoveredEntity = m_HoverManager.GetFirstEntity();
+				
+				//--- If the entity is inside a composition, make the composition the hovered entity
+				if (m_LayerManager)
+					m_HoveredEntity = m_LayerManager.GetParentBelowCurrentLayer(m_HoveredEntity);
+	
+				//--- Update selection
+				if (m_SelectedManager)
 				{
-					m_HoveredEntity = m_HoverManager.GetFirstEntity();
-					
-					//--- If the entity is inside a composition, make the composition the hovered entity
-					if (m_LayerManager)
-						m_HoveredEntity = m_LayerManager.GetParentBelowCurrentLayer(m_HoveredEntity);
-		
-					//--- Update selection (not when the action was activated instantly, i.e., by a shortcut)
-					if (!isInstant && m_SelectedManager)
+					if (m_HoveredEntity)
 					{
-						if (m_HoveredEntity)
-						{
-							//--- Open menu over entity outside of the current selection - select it instead
-							if (!m_SelectedManager.Contains(m_HoveredEntity))
-								m_SelectedManager.Replace(m_HoveredEntity);
-						}
-						else if (m_SelectedManager)
-						{
-							//--- Opened menu without any entity under cursor - clear the selection
-							m_SelectedManager.Clear();
-						}
+						//--- Open menu over entity outside of the current selection - select it instead
+						if (!m_SelectedManager.Contains(m_HoveredEntity))
+							m_SelectedManager.Replace(m_HoveredEntity);
+					}
+					else if (!isInstant)
+					{
+						//--- Opened menu without any entity under cursor - clear the selection
+						//--- (not when the action was activated instantly, i.e., by a shortcut; it would prevent. e.g., deleting selected entity when cursor is on empty space)
+						m_SelectedManager.Clear();
 					}
 				}
-				else
-				{
-					m_HoveredEntity = null;
-				}
-				
-				//--- Clear previously cached entities
-				m_SelectedEntities.Clear();
+			}
+			else
+			{
+				m_HoveredEntity = null;
 			}
 			
-			//--- Get selected entities	(when the action is activated instantly, e.g., by a shortcut, get selection only if nothing is under cursor)
-			if (!isInstant || !m_HoveredEntity)
-			{
-				if (m_SelectedManager)
-					m_SelectedManager.GetEntities(m_SelectedEntities);
-			}
-			else if (m_HoveredEntity)
-			{
+			//--- Clear previously cached entities
+			m_SelectedEntities.Clear();
+			
+			//--- Get selected entities
+			if (m_SelectedManager)
+				m_SelectedManager.GetEntities(m_SelectedEntities);
+			
+			//--- No entities selected, use the entity under cursor (needed for example when deleting composition while hovering over one of its child entities)
+			if (m_HoveredEntity && m_SelectedEntities.IsEmpty())
 				m_SelectedEntities.Insert(m_HoveredEntity);
-			}
 		}
 		else
 		{

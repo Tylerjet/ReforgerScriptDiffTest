@@ -1,24 +1,15 @@
 //------------------------------------------------------------------------------------------------
-class SCR_SubMenuBase : ScriptedWidgetComponent
+class SCR_SubMenuBase : SCR_ScriptedWidgetComponent
 {
 	protected SCR_SuperMenuBase m_ParentMenu;
 	//! Alternative super menu component used when menu is not available
 	protected SCR_SuperMenuComponent m_AltParentMenuComponent;
-	protected Widget m_wRoot;
-	protected ref array<SCR_NavigationButtonComponent> m_aNavigationButtons  = new ref array<SCR_NavigationButtonComponent>();
+	protected ref array<SCR_InputButtonComponent> m_aNavigationButtons  = new ref array<SCR_InputButtonComponent>();
 	protected bool m_bShown;
 	protected bool m_bFocused;
 
 	//------------------------------------------------------------------------------------------------
-	override void HandlerAttached(Widget w)
-	{
-		m_wRoot = w;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta)
-	{
-	}
+	void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta);
 
 	//------------------------------------------------------------------------------------------------
 	void OnMenuOpen(SCR_SuperMenuBase parentMenu)
@@ -26,12 +17,12 @@ class SCR_SubMenuBase : ScriptedWidgetComponent
 		m_ParentMenu = parentMenu;
 
 		//! Invoker for menu focus
-		if(m_ParentMenu)
+		if (m_ParentMenu)
 		{
 			m_ParentMenu.GetOnMenuFocusGained().Insert(OnMenuFocusGained);
 			m_ParentMenu.GetOnMenuFocusLost().Insert(OnMenuFocusLost);
 		}
-		
+
 		// Add navigation buttons through parent menu and insert into a listener
 	}
 
@@ -52,7 +43,7 @@ class SCR_SubMenuBase : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void OnMenuClose(SCR_SuperMenuBase parentMenu)
 	{
-		foreach (SCR_NavigationButtonComponent comp : m_aNavigationButtons)
+		foreach (SCR_InputButtonComponent comp : m_aNavigationButtons)
 		{
 			if (!comp)
 				continue;
@@ -70,18 +61,15 @@ class SCR_SubMenuBase : ScriptedWidgetComponent
 	{
 		m_bFocused = true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnMenuFocusLost()
 	{
 		m_bFocused = false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	Widget GetRootWidget()
-	{
-		return m_wRoot;
-	}
+	void OnTabChange(SCR_SuperMenuBase parentMenu);
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when this submenu is shown.
@@ -89,7 +77,7 @@ class SCR_SubMenuBase : ScriptedWidgetComponent
 	{
 		return m_bShown;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Set super menu component used as alternative when super menu is not based on chimera menu
 	void SetParentMenuComponent(SCR_SuperMenuComponent superMenu)
@@ -107,7 +95,7 @@ class SCR_SubMenuBase : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void ShowNavigationButtons(bool show)
 	{
-		foreach (SCR_NavigationButtonComponent comp : m_aNavigationButtons)
+		foreach (SCR_InputButtonComponent comp : m_aNavigationButtons)
 		{
 			if (!comp)
 				continue;
@@ -135,19 +123,19 @@ class SCR_SubMenuBase : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected SCR_NavigationButtonComponent CreateNavigationButton(string actionName, string label, bool rightFooter = false)
+	protected SCR_InputButtonComponent CreateNavigationButton(string actionName, string label, bool rightFooter = false)
 	{
-		SCR_NavigationButtonComponent comp = null;
-		
+		SCR_InputButtonComponent comp = null;
+
 		if (m_ParentMenu)
 			comp = m_ParentMenu.AddNavigationButton(actionName, label, rightFooter);
 		else if (m_AltParentMenuComponent)
 			comp = 	m_AltParentMenuComponent.AddNavigationButton(actionName, label, rightFooter);
-		
+
 		if (!comp)
 			return null;
 
 		m_aNavigationButtons.Insert(comp);
 		return comp;
 	}
-};
+}

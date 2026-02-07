@@ -61,6 +61,9 @@ class SCR_InventoryAttachmentStorageUI : SCR_InventoryStorageBaseUI
 
 	override void Refresh()
 	{
+		if (!m_wGrid)
+			return;
+		
 		InitPaging();
 		SetRowsAndColumns();
 		CreateEmptyLayout();
@@ -153,7 +156,7 @@ class SCR_InventoryAttachmentPointUI : SCR_InventoryStorageBaseUI
 //------------------------------------------------------------------------------------------------
 class SCR_InventoryAttachmentSlotUI : SCR_InventorySlotUI
 {
-	override void UpdateReferencedComponent(InventoryItemComponent pComponent)
+	override void UpdateReferencedComponent(InventoryItemComponent pComponent, SCR_ItemAttributeCollection attributes = null)
 	{
 		Widget wGrid = m_pStorageUI.GetStorageGrid();
 		m_widget = GetGame().GetWorkspace().CreateWidgets("{F437ACE2BD5F11E1}UI/layouts/Menus/Inventory/InventoryItemSlot.layout", wGrid);

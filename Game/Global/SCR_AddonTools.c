@@ -49,12 +49,10 @@ class SCR_AddonTool
 	protected static const ref array<string> CORE_ADDONS = { "core", "ArmaReforger" };
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Returns an array of addons where given resource is present or modified.
-	\param prefab Prefab path
-	\param ignoreCoreAddons if true then ArmaReforger and Core are ignored
-	\return array of addon ID strings
-	*/
+	//! Returns an array of addons where given resource is present or modified.
+	//! \param prefab Prefab path
+	//! \param ignoreCoreAddons if true then ArmaReforger and Core are ignored
+	//! \return array of addon ID strings
 	static array<string> GetResourceAddons(ResourceName prefab, bool ignoreCoreAddons = false)
 	{
 		array<string> addonNames = {};
@@ -89,11 +87,9 @@ class SCR_AddonTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Returns last addon where given resource is present.
-	\param prefab Prefab path
-	\return Class name
-	*/
+	//! Returns last addon where given resource is present.
+	//! \param prefab Prefab path
+	//! \return Class name
 	static string GetResourceLastAddon(ResourceName prefab)
 	{
 		array<string> addonNames = GetResourceAddons(prefab);
@@ -104,12 +100,10 @@ class SCR_AddonTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get addon name by providing index of the addon.
-	Can be used in tandem with ParamEnumAddons.
-	\param index Index number
-	\return Addon ID
-	*/
+	//! Get addon name by providing index of the addon.
+	//! Can be used in tandem with ParamEnumAddons.
+	//! \param index Index number
+	//! \return Addon ID
 	static string GetAddonIndex(int index)
 	{
 		array<string> addons = {};
@@ -119,12 +113,39 @@ class SCR_AddonTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Convert addon name to file system format.
-	For instance, "ArmaReforger" will get converted to "$ArmaReforger:".
-	\param addon Addon ID
-	\return Class name
-	*/
+	//! Return the FileSystem prefix-stripped path
+	//! e.g from $ArmaReforger:scripts/Game/Global/SCR_AddonTools.c to scripts/Game/Global/SCR_AddonTools.c
+	//! $abc:test -> test
+	//! $:test -> test
+	//! :test -> :test
+	//! $abc -> $abc
+	//! $abc: -> <empty string>
+	//! \return path without addon prefix, or untouched provided path if the format is wrong (proper format = $addonName:somethingElse)
+	static string StripFileSystem(string fileSystemPath)
+	{
+		int length = fileSystemPath.Length();
+		if (fileSystemPath.IsEmpty())
+			return fileSystemPath;
+
+		if (!fileSystemPath.StartsWith("$"))
+			return fileSystemPath;
+
+		int colonIndex /* ha, ha */ = fileSystemPath.IndexOf(":");
+		if (colonIndex < 0)
+			return fileSystemPath;
+
+		colonIndex++;
+		if (colonIndex == length)
+			return string.Empty;
+
+		return fileSystemPath.Substring(colonIndex, length - colonIndex);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!  Convert addon name to file system format.
+	//! For instance, "ArmaReforger" will get converted to "$ArmaReforger:".
+	//! \param addon Addon ID
+	//! \return Class name
 	static string ToFileSystem(string addon)
 	{
 		return "$" + addon + ":";

@@ -9,8 +9,8 @@ class SCR_CareerSpecializationsUI : ScriptedWidgetComponent
 
 	//Controller navigation buttons
 	protected Widget m_wPagingButtons;
-	SCR_NavigationButtonComponent m_HandlerChangeSpLeft;
-	SCR_NavigationButtonComponent m_HandlerChangeSpRight;
+	SCR_InputButtonComponent m_HandlerChangeSpLeft;
+	SCR_InputButtonComponent m_HandlerChangeSpRight;
 
 	protected SCR_PlayerData m_PlayerData;
 
@@ -62,8 +62,8 @@ class SCR_CareerSpecializationsUI : ScriptedWidgetComponent
 		if (!navLeft || !navRight)
 			return;
 
-		m_HandlerChangeSpLeft = SCR_NavigationButtonComponent.Cast(navLeft.FindHandler(SCR_NavigationButtonComponent));
-		m_HandlerChangeSpRight = SCR_NavigationButtonComponent.Cast(navRight.FindHandler(SCR_NavigationButtonComponent));
+		m_HandlerChangeSpLeft = SCR_InputButtonComponent.Cast(navLeft.FindHandler(SCR_InputButtonComponent));
+		m_HandlerChangeSpRight = SCR_InputButtonComponent.Cast(navRight.FindHandler(SCR_InputButtonComponent));
 
 		if (!m_HandlerChangeSpLeft || !m_HandlerChangeSpRight)
 			return;
@@ -74,7 +74,7 @@ class SCR_CareerSpecializationsUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void NavLeft(SCR_NavigationButtonComponent handler, string action)
+	protected void NavLeft(SCR_InputButtonComponent handler, string action)
 	{
 		int next = m_iSelectedLegend + 1;
 		if (next >= m_aSpLegendButtonHandlers.Count())
@@ -83,7 +83,7 @@ class SCR_CareerSpecializationsUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void NavRight(SCR_NavigationButtonComponent handler, string action)
+	protected void NavRight(SCR_InputButtonComponent handler, string action)
 	{
 		int prev = m_iSelectedLegend - 1;
 		if (prev < 0)

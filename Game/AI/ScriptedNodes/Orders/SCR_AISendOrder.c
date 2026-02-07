@@ -1,3 +1,4 @@
+// Obsolete! Use SCR_AISendOrder_... instead!
 class SCR_AISendOrder: SCR_AISendMessageGeneric
 {
 	static const string ORDER_TYPE = "OrderTypeIn";
@@ -11,32 +12,8 @@ class SCR_AISendOrder: SCR_AISendMessageGeneric
 	
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
     {
-		if (!InitSendMessageInputs(owner) || !m_Mailbox)
-			return ENodeResult.FAIL;
-		
-		EOrderType_Character orderType;
-	
-		if (!GetVariableIn(ORDER_TYPE, orderType))
-			orderType = m_orderType;
-		
-		SCR_AIOrderBase msg = SCR_AIOrderBase.Cast(m_Mailbox.CreateMessage(m_aiWorld.GetOrderMessageOfType(orderType)));
-						
-		if ( !msg )
-		{
-			Print("Unable to create valid message!", LogLevel.ERROR);
-			return ENodeResult.FAIL;
-		}	
-		
-		msg.SetOrderType(EAIOrderType.AIOrder_Custom);
-		msg.SetOrderParameters(this);
-				
-		if (m_Mailbox.RequestBroadcast(msg, m_Receiver))
-			return ENodeResult.SUCCESS;
-		else
-		{
-			PrintFormat("Unable to send message from %1 to %2",owner,m_Receiver);
-			return ENodeResult.FAIL;
-    	};		
+		Print("SCR_AISendOrder is obsolete!", LogLevel.WARNING);
+		return ENodeResult.FAIL;
 	}
 	
 	protected static ref TStringArray s_aVarsIn2 = {
@@ -49,21 +26,9 @@ class SCR_AISendOrder: SCR_AISendMessageGeneric
     {
         return s_aVarsIn2;
     }
-		
-	
-	override protected string GetNodeMiddleText()
-	{
-		return "Order type: " + typename.EnumToString(EOrderType_Character, m_orderType) + "\n" + "Order value: " + m_string;	
-	}
 	
 	override string GetOnHoverDescription() 
 	{ 
-		return "Send Order : Send scripted orders to agents";	
+		return "Obsolete! Use SCR_AISendOrder_... instead!";	
 	};
-	
-	override bool VisibleInPalette()
-	{
-		return true;
-	}  
-	
 };

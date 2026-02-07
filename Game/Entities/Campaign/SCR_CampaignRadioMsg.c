@@ -6,7 +6,7 @@ class SCR_CampaignRadioMsg : ScriptedRadioMessage
 	
 	protected SCR_ERadioMsg m_iRadioMsg;
 	protected int m_iFactionId;
-	protected int m_iBaseCallsign =  SCR_CampaignMilitaryBaseComponent.INVALID_BASE_CALLSIGN;
+	protected int m_iBaseCallsign =  SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN;
 	protected int m_iCallerCompanyID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
 	protected int m_iCallerPlatoonID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
 	protected int m_iCallerSquadID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
@@ -184,6 +184,7 @@ enum SCR_ERadioMsg
 	BUILT_BARRACKS,
 	BUILT_ANTENNA,
 	BUILT_FIELD_HOSPITAL,
+	BUILT_HELIPAD,
 	DESTROYED_ARMORY,
 	DESTROYED_FUEL,
 	DESTROYED_REPAIR,

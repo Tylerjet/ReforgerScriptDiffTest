@@ -1179,7 +1179,7 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Updates faction playability when playability of said faction changes
-	protected void UpdateFactionPlayability(Faction faction)
+	protected void UpdateFactionPlayability(Faction faction, bool playable)
 	{
 		SCR_Faction factionScripted = SCR_Faction.Cast(faction);
 		if (!factionScripted)

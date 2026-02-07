@@ -27,6 +27,18 @@ class SCR_EditorSettingsEntity : SCR_EditorBaseEntity
 	protected EEditorMode m_BaseModes;
 	
 	/*!
+	\return Local instance of the editor settings entity
+	*/
+	static SCR_EditorSettingsEntity GetInstance()
+	{
+		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		if (core)
+			return core.GetSettingsEntity();
+		else
+			return null;
+	}
+	
+	/*!
 	Get editor manager prefab.
 	\param basePrefab Prefab used when the entity doesn't define custom prefab
 	\return Editor manager prefab.

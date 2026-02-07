@@ -26,7 +26,7 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 	{
 		//--- Player avatar exists - 'Play' button
 		IEntity localPlayer = SCR_PlayerController.GetLocalMainEntity();
-		if (localPlayer)
+		if (localPlayer && !localPlayer.IsDeleted())
 		{
 			DamageManagerComponent damageManager = DamageManagerComponent.Cast(localPlayer.FindComponent(DamageManagerComponent));
 			if (!damageManager)
@@ -76,7 +76,7 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	protected void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		Refresh();
 	}

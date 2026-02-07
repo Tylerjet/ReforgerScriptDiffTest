@@ -11,17 +11,39 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 	// ! creates the slot
 	protected override SCR_InventorySlotUI CreateSlotUI( InventoryItemComponent pComponent, SCR_ItemAttributeCollection pAttributes = null )
 	{
-		if ( WeaponAttachmentsStorageComponent.Cast( pComponent ) )
+		BaseInventoryStorageComponent inventoryStorageComponent = GetCurrentNavigationStorage();
+		
+		if (inventoryStorageComponent)
 		{
-			return SCR_InventorySlotWeaponUI( pComponent, this, true );						//creates the slot 
+			IEntity storageOwner = inventoryStorageComponent.GetOwner();
+			
+			if (!storageOwner || !storageOwner.FindComponent(SCR_ArsenalInventoryStorageManagerComponent))
+				return new SCR_InventorySlotUI(pComponent, this, true);
+			
+			SCR_ArsenalInventorySlotUI slotUI = SCR_ArsenalInventorySlotUI(pComponent, this, false, -1, null);
+			
+			if (inventoryStorageComponent)
+			{
+				slotUI.SetArsenalResourceComponent(SCR_ResourceComponent.FindResourceComponent(inventoryStorageComponent.GetOwner()));
+				SCR_InventoryStorageBaseUI.ARSENAL_SLOT_STORAGES.Insert(slotUI, inventoryStorageComponent.GetOwner());
+			}
+			return slotUI;
 		}
-		else if ( BaseInventoryStorageComponent.Cast( pComponent ) )
+		else if (WeaponAttachmentsStorageComponent.Cast(pComponent))
 		{
-			return SCR_InventorySlotStorageEmbeddedUI( pComponent, this, true );			//creates the slot 
+			return SCR_InventorySlotWeaponUI(pComponent, this, true);
+		}
+		else if (SCR_ResourceComponent.FindResourceComponent(pComponent.GetOwner()))
+		{
+			return SCR_SupplyInventorySlotUI(pComponent, this, true);
+		}
+		else if (BaseInventoryStorageComponent.Cast( pComponent))
+		{
+			return SCR_InventorySlotStorageEmbeddedUI(pComponent, this, true);
 		}
 		else
 		{
-			return new SCR_InventorySlotUI( pComponent, this, true );			//creates the slot 
+			return new SCR_InventorySlotUI(pComponent, this, true);
 		}
 	}
 
@@ -71,32 +93,14 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void GetAllItems( out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null )
-	{
+	{	
 		if( !m_Vicinity )
 			return;
 		
-		if ( !pStorage )
-			m_Vicinity.GetAvailableItems(pItemsInStorage);
+		if (pStorage)
+			super.GetAllItems(pItemsInStorage, pStorage);
 		else
-		{
-			array<BaseInventoryStorageComponent> pStorages = new array<BaseInventoryStorageComponent>();
-			array<IEntity> pItems = new array<IEntity>();
-			pStorage.GetOwnedStorages( pStorages, 1, false );
-
-			if (!ClothNodeStorageComponent.Cast(pStorage) || pStorages.IsEmpty())
-			{
-				pStorage.GetAll(pItemsInStorage);
-				return;
-			}
-			
-			foreach ( BaseInventoryStorageComponent pStor : pStorages )
-			{
-				if (! pStor )
-					continue;
-				pStor.GetAll( pItems );
-				pItemsInStorage.Copy( pItems );
-			}
-		}
+			m_Vicinity.GetAvailableItems(pItemsInStorage);
 	}
 	
 	//------------------------------------------------------------------------------------------------

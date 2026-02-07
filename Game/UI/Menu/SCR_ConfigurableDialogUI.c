@@ -4,9 +4,17 @@
 //!
 //! If you add buttons "confirm" or "cancel", they are automatically bound
 //! to methods OnCancel and OnConfirm
+#define DEBUG_CONFIGURABLE_DIALOGS
+
+//-------------------------------------------------------------------------------------------
+void ScriptInvokerConfigurableDialogMethod(SCR_ConfigurableDialogUi dialog);
+typedef func ScriptInvokerConfigurableDialogMethod;
+typedef ScriptInvokerBase<ScriptInvokerConfigurableDialogMethod> ScriptInvokerConfigurableDialog;
+
+//-------------------------------------------------------------------------------------------
 class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 {
-	static const ResourceName NAVIGATION_BUTTON_LAYOUT = "{87037226B1A2064B}UI/layouts/WidgetLibrary/Buttons/WLib_NavigationButtonSuperSmall_Regular.layout";
+	static const ResourceName NAVIGATION_BUTTON_LAYOUT = "{87037226B1A2064B}UI/layouts/WidgetLibrary/Buttons/WLib_NavigationButtonSuperSmall.layout";
 	
 	// Attributes
 	[Attribute((1/UIConstants.FADE_RATE_FAST).ToString(), UIWidgets.Auto, "Duration of fade in and fade out animations")]
@@ -39,8 +47,9 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	protected VerticalLayoutWidget m_wContentVerticalLayout;
 	
 	// Other
-	protected ref map<string, SCR_NavigationButtonComponent> m_aButtonComponents = new map<string, SCR_NavigationButtonComponent>;
+	protected ref map<string, SCR_InputButtonComponent> m_aButtonComponents = new map<string, SCR_InputButtonComponent>;
 	protected Widget m_wRoot;
+	protected OverlayWidget m_wDialogBase;
 	
 	// Menu handler which performs menu-specific actions.
 	protected MenuBase m_ProxyMenu;
@@ -53,6 +62,11 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	
 	// Prevents Close() to be called multiple times
 	protected bool m_bIsClosing;
+	
+	protected static SCR_ConfigurableDialogUi m_CurrentDialog;
+	
+	static const string BUTTON_CONFIRM = "confirm";
+	static const string BUTTON_CANCEL = "cancel";
 
 	
 	//-------------------------------------------------------------------------------------------------------------------------
@@ -79,6 +93,10 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		
 		
 		SCR_ConfigurableDialogUi dialog = CreateByPreset(preset, customDialogObj);
+
+		#ifdef DEBUG_CONFIGURABLE_DIALOGS
+			Print(string.Format("[SCR_ConfigurableDialogUi] presetsResourceName: %1, tag: %2, customDialogObj: %3", presetsResourceName, tag, customDialogObj));
+		#endif
 		
 		return dialog;
 	}
@@ -98,8 +116,6 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			return null;
 		}
 		
-		//Print(string.Format("This is indeed a Configurable Widget"), LogLevel.WARNING);
-		
 		// Create the content layout inside the content area of the base layout, if there should be one
 		if(!preset.m_sContentLayout.IsEmpty())
 		{
@@ -115,7 +131,6 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			
 			AlignableSlot.SetHorizontalAlign(contentWidget, LayoutHorizontalAlign.Stretch);
 		}
-		
 		
 		SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.Cast(internalWidget.FindHandler(SCR_ConfigurableDialogUi));
 		
@@ -140,8 +155,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		// Call dialog's events manually
 		dialog.OnMenuOpen(preset);
 		
-		//Print(string.Format("The class that takes care of me is %1!", dialog), LogLevel.WARNING);
-		
+		m_CurrentDialog = dialog;
 		return dialog;
 	}
 	
@@ -185,18 +199,33 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		dialog.Init(widget, preset, menu);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	static SCR_ConfigurableDialogUi GetCurrentDialog()
+	{
+		return m_CurrentDialog;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static string GetCurrentDialogTag()
+	{
+		if (m_CurrentDialog)
+			return m_CurrentDialog.GetDialogPreset().m_sTag;
+
+		return string.Empty;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	// Closes the dialogue with a fade-out animation
 	void Close()
 	{
-		if(m_bIsClosing)
+		if (m_bIsClosing)
 			return;
 		
 		m_bIsClosing = true;
-		AnimateWidget.Opacity(GetRootWidget(), 0, 1 / m_fFadeInTime);
-		GetGame().GetCallqueue().CallLater(Internal_Close, m_fFadeInTime * 1000.0);
+		//AnimateWidget.Opacity(GetRootWidget(), 0, 1 / m_fFadeInTime);
+		//GetGame().GetCallqueue().CallLater(Internal_Close, m_fFadeInTime * 1000.0);
 		m_OnCloseStart.Invoke(this);
+		Internal_Close();
 	}
 	
 	
@@ -245,6 +274,15 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			m_wImgTitleIcon.LoadImageTexture(0, image);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Set title icons with custom image 
+	void SetIconColor(Color color)
+	{
+		if (!m_wImgTitleIcon)
+			return;
+		
+		m_wImgTitleIcon.SetColor(color);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Sets colors based on style
@@ -260,11 +298,15 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		switch (type)
 		{
 			case EConfigurableDialogStyle.ACTION:
-			color = UIColors.CONTRAST_CLICKED_HOVERED;
+			color = UIColors.CONTRAST_COLOR;
 			break;
 			
 			case EConfigurableDialogStyle.WARNING:
 			color = UIColors.WARNING;
+			break;
+			
+			case EConfigurableDialogStyle.POSITIVE:
+			color = UIColors.CONFIRM;
 			break;
 		}
 		
@@ -273,10 +315,9 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		m_wImgTitleIcon.SetColor(color);
 	}
 	
-	
 	//----------------------------------------------------------------------------------------
 	//! Returns the container in which to place the content layout. Container must be called ContentLayoutContainer
-	static	Widget GetContentWidget(Widget baseWidget)
+	static Widget GetContentWidget(Widget baseWidget)
 	{
 		if(!baseWidget)
 		{
@@ -293,37 +334,76 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		}
 		
 		return contentContainer;
-		
 	}
-	
 	
 	//----------------------------------------------------------------------------------------
 	//! Returns the root of the content layout
-	static	Widget GetContentLayoutRoot(Widget baseWidget)
-	{
-		
+	static Widget GetContentLayoutRoot(Widget baseWidget)
+	{	
 		return GetContentWidget(baseWidget).GetChildren();
-	
 	}
-	
 
 	//----------------------------------------------------------------------------------------
-	//! Allows to register a custom button to call OnConfirm (i.e. one not in the conf files but placed by hand in the layout)
-	void BindButtonConfirm(SCR_NavigationButtonComponent button)
+	//! Returns the base dialog overlay (the rectangle covered by the background). Useful for dialog wide darkening (e.g. by SCR_LoadingOverlay)
+	OverlayWidget GetDialogBaseOverlay()
 	{
-		if(button)
-			button.m_OnActivated.Insert(OnConfirm);
+		return m_wDialogBase;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	//! Allows to register a custom button to call OnConfirm (i.e. one not in the conf files but placed by hand in the layout)
+	void BindButtonConfirm(SCR_InputButtonComponent button)
+	{
+		if (!button)
+			return;
+		
+		button.m_OnActivated.Insert(OnConfirm);
+		
+		//! Cache
+		if(m_aButtonComponents.Contains(BUTTON_CONFIRM))
+			m_aButtonComponents.Set(BUTTON_CONFIRM, button);
+		else
+			m_aButtonComponents.Insert(BUTTON_CONFIRM, button);
 	}
 	
 	
 	//----------------------------------------------------------------------------------------
 	//! Allows to register a custom button to call OnCancel (i.e. one not in the conf files but placed by hand in the layout)
-	void BindButtonCancel(SCR_NavigationButtonComponent button)
+	void BindButtonCancel(SCR_InputButtonComponent button)
 	{
-		if(button)
-			button.m_OnActivated.Insert(OnCancel);
+		if (!button)
+			return;
+		
+		button.m_OnActivated.Insert(OnCancel);
+		
+		//! Cache
+		if(m_aButtonComponents.Contains(BUTTON_CANCEL))
+			m_aButtonComponents.Set(BUTTON_CANCEL, button);
+		else
+			m_aButtonComponents.Insert(BUTTON_CANCEL, button);
 	}
 	
+	
+	//----------------------------------------------------------------------------------------
+	//! Allows to register a custom button to call OnButtonPressed (i.e. one not in the conf files but placed by hand in the layout). An empty tag will result in the widget's name being used instead
+	void BindButtonGeneric(SCR_InputButtonComponent button, string tag = string.Empty)
+	{
+		if (!button)
+			return;
+		
+		button.m_OnActivated.Insert(OnButtonPressed);
+		
+		//! Cache
+		Widget root = button.GetRootWidget();
+		string buttonTag = tag;
+		if (root && buttonTag.IsEmpty())
+			buttonTag = root.GetName();
+		
+		if(m_aButtonComponents.Contains(buttonTag))
+			m_aButtonComponents.Set(buttonTag, button);
+		else
+			m_aButtonComponents.Insert(buttonTag, button);
+	}
 	
 	//-------------------------------------------------------------------------------------------------------------------------
 	//                                       P R O T E C T E D   M E T H O D S
@@ -336,7 +416,6 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	{
 		Close();
 		m_OnConfirm.Invoke(this);
-		//Print(string.Format("[SCR_ConfigurableDialogUi] OnConfirm"), LogLevel.WARNING);
 	}
 	
 	
@@ -345,16 +424,14 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	{
 		Close();
 		m_OnCancel.Invoke(this);
-		//Print(string.Format("[SCR_ConfigurableDialogUi] OnCancel"), LogLevel.WARNING);
 	}
 	
 	
 	//----------------------------------------------------------------------------------------
-	protected void OnButtonPressed(SCR_NavigationButtonComponent button)
+	protected void OnButtonPressed(SCR_InputButtonComponent button)
 	{
 		m_sLastPressedButtonTag = GetButtonTag(button);
 		m_OnButtonPressed.Invoke(this, m_sLastPressedButtonTag);
-		//Print(string.Format("[SCR_ConfigurableDialogUi] OnButtonPressed"), LogLevel.WARNING);
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -362,13 +439,25 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	//! Here you can perform custom initialization.
 	protected void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset);
 	
-	
 	//----------------------------------------------------------------------------------------
 	void OnMenuUpdate(float tDelta);
 
+	//----------------------------------------------------------------------------------------
+	void OnMenuFocusGained();
 	
 	//----------------------------------------------------------------------------------------
-	//! Returns a button with given tag
+	void OnMenuFocusLost();
+	
+	//----------------------------------------------------------------------------------------
+	void OnMenuShow();
+	
+	//----------------------------------------------------------------------------------------
+	void OnMenuHide();
+	
+	//----------------------------------------------------------------------------------------
+	void OnMenuClose();
+	
+	//----------------------------------------------------------------------------------------
 	void CreateButton(SCR_ConfigurableDialogUiButtonPreset buttonPreset)
 	{
 		HorizontalLayoutWidget wLayout;
@@ -408,7 +497,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		AlignableSlot.SetPadding(wButton, paddingLeft, 0.0, paddingRight, 0.0);
 		
 		//! Button setup
-		SCR_NavigationButtonComponent comp = SCR_NavigationButtonComponent.Cast(wButton.FindHandler(SCR_NavigationButtonComponent));
+		SCR_InputButtonComponent comp = SCR_InputButtonComponent.Cast(wButton.FindHandler(SCR_InputButtonComponent));
 			
 		if (!comp)
 			return;
@@ -428,7 +517,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	
 	//----------------------------------------------------------------------------------------
 	//! Returns a button with given tag
-	SCR_NavigationButtonComponent FindButton(string tag)
+	SCR_InputButtonComponent FindButton(string tag)
 	{
 		return m_aButtonComponents.Get(tag);
 	}
@@ -436,7 +525,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	
 	//----------------------------------------------------------------------------------------
 	//! Returns a button's tag
-	string GetButtonTag(SCR_NavigationButtonComponent button)
+	string GetButtonTag(SCR_InputButtonComponent button)
 	{
 		if(!button)
 			return string.Empty;
@@ -457,7 +546,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	{
 		m_ProxyMenu = proxyMenu;
 		m_DialogPreset = preset;
-		m_wRoot = root;		
+		m_wRoot = root;
 		
 		InitWidgets();
 		
@@ -493,10 +582,10 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		}
 		
 		// Bind actions to default buttons (if they were created)
-		SCR_NavigationButtonComponent buttonConfirm = FindButton("confirm");
+		SCR_InputButtonComponent buttonConfirm = FindButton(BUTTON_CONFIRM);
 		BindButtonConfirm(buttonConfirm);
 		
-		SCR_NavigationButtonComponent buttonCancel = FindButton("cancel");
+		SCR_InputButtonComponent buttonCancel = FindButton(BUTTON_CANCEL);
 		BindButtonCancel(buttonCancel);
 	}
 	
@@ -517,9 +606,13 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		// Verical layout widget
 		m_wContentVerticalLayout = VerticalLayoutWidget.Cast(w.FindAnyWidget("ContentVerticalLayout"));
 		
+		// Base Overlay
+		m_wDialogBase = OverlayWidget.Cast(w.FindAnyWidget("DialogBase"));
+		
+		/*
 		// Play animation
 		w.SetOpacity(0);
-		AnimateWidget.Opacity(w, 1, 1 / m_fFadeInTime);
+		AnimateWidget.Opacity(w, 1, 1 / m_fFadeInTime);*/
 	}
 	
 	
@@ -579,10 +672,52 @@ class SCR_ConfigurableDialogUiProxy : DialogUI
 		m_Dlg = dlg;
 	}
 	
+	//-------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
 	{
 		super.OnMenuUpdate(tDelta);
 		m_Dlg.OnMenuUpdate(tDelta);
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	override void OnMenuFocusGained()
+	{
+		super.OnMenuFocusGained();
+		
+		if (m_Dlg)
+			m_Dlg.OnMenuFocusGained();
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	override void OnMenuFocusLost()
+	{
+		super.OnMenuFocusLost();
+		
+		if (m_Dlg)
+			m_Dlg.OnMenuFocusLost();
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	override void OnMenuShow()
+	{
+		super.OnMenuShow();
+		
+		if (m_Dlg)
+			m_Dlg.OnMenuShow();
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	override void OnMenuHide()
+	{
+		super.OnMenuHide();
+		m_Dlg.OnMenuHide();
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	override void OnMenuClose()
+	{
+		super.OnMenuClose();
+		m_Dlg.OnMenuClose();
 	}
 };
 
@@ -604,6 +739,7 @@ enum EConfigurableDialogStyle
 	NEUTRAL,
 	ACTION,
 	WARNING,
+	POSITIVE
 };
 
 
@@ -612,7 +748,7 @@ enum EConfigurableDialogStyle
 //-------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------
 //! Configuration for a button
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sTag")]
 class SCR_ConfigurableDialogUiButtonPreset
 {
 	[Attribute("", UIWidgets.Auto, "Custom tag, used for finding this button at run time")]
@@ -654,7 +790,7 @@ class SCR_ConfigurableDialogUiPreset
 	[Attribute("0", UIWidgets.ComboBox, "Visual style. Affects color of elements.", "", ParamEnumArray.FromEnum(EDialogType))]
 	EDialogType m_eVisualStyle;
 	
-	[Attribute("{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset", UIWidgets.ResourcePickerThumbnail, "Texture or imageset for title icon", "edds imageset")]
+	[Attribute(UIConstants.ICONS_IMAGE_SET, UIWidgets.ResourcePickerThumbnail, "Texture or imageset for title icon", "edds imageset")]
 	ResourceName m_sTitleIconTexture;
 	
 	[Attribute("1")]

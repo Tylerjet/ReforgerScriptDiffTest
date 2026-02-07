@@ -44,6 +44,15 @@ class SCR_ScenarioFrameworkSlotPick : SCR_ScenarioFrameworkSlotTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void DynamicDespawn()
+	{
+		if (!m_bInitiated || m_bExcludeFromDynamicDespawn)
+			return;
+		
+		m_bDynamicallyDespawned = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override string GetTaskDescription(int iState = 0)	
 	{ 
 		if (iState == 0)
@@ -63,21 +72,40 @@ class SCR_ScenarioFrameworkSlotPick : SCR_ScenarioFrameworkSlotTask
 	
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT, bool bInit = true)
+	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
-		if (m_eActivationType != activation)
-			return;
+		if (m_bInitiated)
+		{
+			StoreTaskSubjectToParentTaskLayer();
 			
-		super.Init(area, activation);
-		SCR_ScenarioFrameworkLayerTaskDeliver layer = SCR_ScenarioFrameworkLayerTaskDeliver.Cast(GetParentTaskLayer());
-		if (!layer)
+			if (m_ParentLayer)
+				m_ParentLayer.CheckAllChildrenSpawned(this);
+			
+			GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawned);
+			InvokeAllChildrenSpawned();
 			return;
-
-		string sTaskName;
-		SCR_ScenarioFrameworkTask task = layer.GetTask();
-		if (!task)
-			sTaskName = layer.GetOwner().GetName();
-		else
-			sTaskName = task.GetTitle();
+		}
+		
+		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
+			return;
+		
+		super.Init(area, activation);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void AfterAllChildrenSpawned()
+	{
+		super.AfterAllChildrenSpawned();
+		
+		if (!m_Entity)
+			return;
+		
+		ChimeraWorld world = m_Entity.GetWorld();
+		if (!world)
+			return;
+		
+		GarbageSystem garbageSystem = world.GetGarbageSystem();
+		if (garbageSystem && garbageSystem.IsInserted(m_Entity))
+			garbageSystem.Withdraw(m_Entity);
 	}
 };

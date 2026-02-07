@@ -109,6 +109,8 @@ class SCR_WeaponRackSlotEntity : GenericEntity
 			itemComp.DisablePhysics();
 		}
 		
+		item.Update();
+		
 		m_eCurrentItemType = arsenalData.GetItemType();
 		m_eCurrentItemMode = arsenalData.GetItemMode();
 	}

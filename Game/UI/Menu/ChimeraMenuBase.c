@@ -27,7 +27,6 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	EditorBrowserDialog,
 	EditorSaveDialog,
 	EditorLoadDialog,
-	ServicesStatusDialog,
 	FeedbackDialog,
 	Inventory20Menu,
 	ReportItemDialog,
@@ -40,7 +39,6 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	DebriefingScreenMenu,
 	SettingsSuperMenu,
 	PlayerListMenu,
-	LogoutDialog,
 	FieldManualDialog,
 	WidgetLibraryMenu,
 	PickAssignee,
@@ -67,7 +65,8 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	GroupMenu,
 	GroupFlagDialog,
 	AdvancedKeybindDialog,
-	RoleSelectionDialog
+	RoleSelectionDialog,
+	GamepadRemovalDialog
 };
 
 //------------------------------------------------------------------------------------------------
@@ -84,24 +83,6 @@ class ChimeraMenuBase : MenuBase
 	ref ScriptInvoker m_OnUpdate = new ScriptInvoker; // (float tDelta)
 
 	protected static ChimeraMenuBase m_ThisMenu;
-
-	//------------------------------------------------------------------------------------------------
-	static MenuBase OpenFeedbackDialog()
-	{
-		ArmaReforgerScripted game = GetGame();
-		if (!game)
-			return null;
-
-		MenuManager menuManager = game.GetMenuManager();
-		if (!menuManager)
-			return null;
-
-		MenuBase dialog = menuManager.FindMenuByPreset(ChimeraMenuPreset.FeedbackDialog);
-		if (!dialog)
-			dialog = menuManager.OpenDialog(ChimeraMenuPreset.FeedbackDialog, DialogPriority.INFORMATIVE, 0, true);
-
-		return dialog;
-	}
 
 	//------------------------------------------------------------------------------------------------
 	static ChimeraMenuBase CurrentChimeraMenu()
@@ -127,7 +108,49 @@ class ChimeraMenuBase : MenuBase
 		// Invoke OnUpdate
 		m_OnUpdate.Invoke(tDelta);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuOpen()
+	{
+		super.OnMenuOpened();
+		SCR_MenuHelper.OnMenuOpen(this);
+	}
 
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuClose()
+	{
+		super.OnMenuClose();
+		SCR_MenuHelper.OnMenuClose(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuFocusGained()
+	{
+		super.OnMenuFocusGained();
+		SCR_MenuHelper.OnMenuFocusGained(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuFocusLost()
+	{
+		super.OnMenuFocusLost();
+		SCR_MenuHelper.OnMenuFocusLost(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuShow()
+	{
+		super.OnMenuShow();
+		SCR_MenuHelper.OnMenuShow(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuHide()
+	{
+		super.OnMenuHide();
+		SCR_MenuHelper.OnMenuHide(this);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Returns parent menu of a widget
 	static ChimeraMenuBase GetOwnerMenu(Widget w)

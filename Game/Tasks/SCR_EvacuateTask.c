@@ -173,7 +173,6 @@ class SCR_EvacuateTask : SCR_RequestedTask
 		if (SCR_Global.IsEditMode(this))
 			return;
 		
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.FRAME);
 		SetIndividual(true);
 		

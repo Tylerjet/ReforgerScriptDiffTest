@@ -26,7 +26,7 @@ class TerrainExportTool : WorldEditorTool
 
 	
 	
-	//-----------------------------------------------------------------------------------------------
+	//-----------------------------------------------------------------------------------------------	
 	[ButtonAttribute("Import To Blender")]
 	protected void Execute()
 	{
@@ -62,17 +62,12 @@ class TerrainExportTool : WorldEditorTool
 			
 			WorldEditor we = Workbench.GetModule(WorldEditor);
 			WBProgressDialog progress = new WBProgressDialog("Processing", we);
+			
 			FileHandle bin = FileIO.OpenFile(path, FileMode.WRITE);
-			int count = height.Count();
-			for(int x = 0; x < height.Count(); x++)
-			{
-				bin.Write(height[x]);
-				if(x % 1000 == 0)
-				{
-					progress.SetProgress(x / count);
-				}
-			}
+			bin.WriteArray(height);
 			bin.Close();
+			
+			
 			string worldpath;
 			m_API.GetWorldPath(worldpath);
 			string coords = string.Format("%1|%2",SnapToVertex(xMin, cellSize), SnapToVertex(zMin, cellSize));
@@ -90,38 +85,7 @@ class TerrainExportTool : WorldEditorTool
 
 
 	//------------------------------------------------------------------------------------------------
-	/*[ButtonAttribute("Import To Blender")]
-	protected void Execute()
-	{
-		Print(Workbench.GetPackedUtcTime());
-		float zMax = line[0][2];
-		float xMin = line[0][0];
-		float zMin = line[4][2];
-		float xMax = line[4][0];
-		int cellSize = m_API.GetTerrainUnitScale();
-		if(zMax < zMin)
-		{
-			zMin = zMin + zMax;
-			zMax = zMin - zMax;
-			zMin = zMin - zMax;
-		}
-		if(xMax < xMin)
-		{
-			xMin = xMin + xMax;
-			xMax = xMin - xMax;
-			xMin = xMin - xMax;
-		}
 
-		if(startPosition != "0 0 0")
-		{
-			Workbench.RunProcess(string.Format("\"%1\" --python-expr \"import bpy;bpy.ops.scene.ebt_import_terrain()\" -- -zMax %2 -xMin %3 -zMin %4 -xMax %5",m_sBlenderPath,zMax,xMin,zMin,xMax));
-			Print("Blender is starting");
-		}
-		else
-		{
-			Print("No area selected!");
-		}
-	}*/
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Use Coords")]
 	protected void CoordsReload()
@@ -274,7 +238,7 @@ class TerrainExportTool : WorldEditorTool
 	array<float> GetHeightArray(float xMax, float zMax, float xMin, float zMin, WorldEditorAPI api, float cellSize)
 	{	
 		WorldEditor we = Workbench.GetModule(WorldEditor);
-		WBProgressDialog progress = new WBProgressDialog("Calculating height", we);
+		WBProgressDialog progress = new WBProgressDialog("Processing...", we);
 		int diff = (zMax - zMin) / cellSize;
 		int count = 0;
 		// setting constant to fix Floating Point Error when iterating with floats 

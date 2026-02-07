@@ -131,6 +131,22 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		UpdateNearestLocation();
 	}
 	
+	override bool Serialize(out SCR_EditableEntityComponent outTarget = null, out int outTargetIndex = -1, out EEditableEntitySaveFlag outSaveFlags = 0)
+	{
+		outTargetIndex = GetGame().GetFactionManager().GetFactionIndex(m_TargetFaction);
+		return super.Serialize(outTarget, outTargetIndex, outSaveFlags);
+	}
+	override void Deserialize(SCR_EditableEntityComponent target, int targetValue)
+	{
+		super.Deserialize(target, targetValue);
+		
+		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
+		if (!supportEntity)
+			return;
+		
+		m_TargetFaction = GetGame().GetFactionManager().GetFactionByIndex(targetValue);
+		supportEntity.SetTargetFaction(m_Task, m_TargetFaction);
+	}
 	override ScriptInvoker GetOnUIRefresh()
 	{
 		return Event_OnUIRefresh;

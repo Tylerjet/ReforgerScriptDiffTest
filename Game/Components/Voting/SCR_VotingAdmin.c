@@ -1,4 +1,4 @@
-[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EVotingType, "m_Type")]
+[BaseContainerProps(configRoot:true), SCR_BaseContainerCustomTitleEnum(EVotingType, "m_Type")]
 class SCR_VotingAdmin: SCR_VotingReferendum
 {
 	override bool IsAvailable(int value, bool isOngoing)

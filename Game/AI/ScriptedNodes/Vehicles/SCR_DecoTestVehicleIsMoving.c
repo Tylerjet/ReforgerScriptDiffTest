@@ -1,7 +1,9 @@
 class SCR_AIDecoTestVehicleIsMoving : DecoratorTestScripted
 {
-	private const float MIN_SPEED_MPS = 0.5;
-	private const float MIN_SPEED_KMH = 1.8;
+	protected const float MIN_SPEED_MPS = 0.5;
+	protected const float MIN_SPEED_RADS = 0.5;	
+	protected BaseVehicle m_vehicle;
+	protected VehicleHelicopterSimulation m_heliSimulation;
 	
 	protected override bool TestFunction(AIAgent agent, IEntity controlled)
 	{
@@ -11,6 +13,7 @@ class SCR_AIDecoTestVehicleIsMoving : DecoratorTestScripted
 		// Iterate parents of entity until we find first Vehicle entity
 		IEntity parent = controlled;
 		BaseVehicle vehicle = BaseVehicle.Cast(controlled);
+		bool isMoving, isRotating, isInAir;
 		
 		while (vehicle == null && parent != null)
 		{
@@ -22,17 +25,26 @@ class SCR_AIDecoTestVehicleIsMoving : DecoratorTestScripted
 		if (!vehicle)
 			return false;
 		
-		VehicleBaseSimulation simulation = VehicleBaseSimulation.Cast(vehicle.FindComponent(VehicleBaseSimulation));
-		if (simulation)
+		if (m_vehicle != vehicle)
 		{
-			// TODO: Move GetSpeedKmh to base simulation, it seems to be a very generic feature
-			VehicleWheeledSimulation wheeledSimulation = VehicleWheeledSimulation.Cast(simulation);
-			if (wheeledSimulation)
-				return Math.AbsFloat(wheeledSimulation.GetSpeedKmh()) > MIN_SPEED_KMH;
-		}
-		
-		// In case there is no simulation, try to get value from physics
+			m_vehicle = vehicle;
+			m_heliSimulation = VehicleHelicopterSimulation.Cast(vehicle.FindComponent(VehicleHelicopterSimulation));			
+		}	
+				
 		Physics ph = controlled.GetPhysics();
-		return ph && ph.IsActive() && ph.GetVelocity().Length() > MIN_SPEED_MPS;
+		if (!ph || !ph.IsActive())
+			return false;
+		
+		isMoving = ph.GetVelocity().Length() > MIN_SPEED_MPS;
+		isRotating = ph.GetAngularVelocity().Length() > MIN_SPEED_RADS;
+		
+		if (m_heliSimulation)
+		{
+			vector positionActual;
+			positionActual = vehicle.GetOrigin();
+			isInAir = !m_heliSimulation.HasAnyGroundContact();		
+			return isInAir || isMoving || isRotating;
+		}
+		return isMoving || isRotating;
 	}
 };

@@ -58,9 +58,11 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	
 	[Attribute(params: "0 inf", desc: "Custom supplies value.", category: "Supplies")]
 	protected int m_iCustomSupplies;
-
+	
 	protected RplComponent m_RplComponent;
 	protected SCR_CampaignSuppliesComponent m_SupplyComponent; //TODO: Temporary until supply sandbox rework
+	protected SCR_ResourceComponent m_ResourceComponent;
+	protected SCR_SpawnerAIGroupManagerComponent m_GroupSpawningManager;
 	#ifndef AR_DEFENDER_SPAWN_TIMESTAMP
 	protected float m_fNextRespawnTime;
 	#else
@@ -81,7 +83,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	protected static const int SPAWN_CHECK_INTERVAL = 1000;
 	protected static const int SPAWN_RADIUS_MIN = Math.Pow(500, 2);
 	protected static const int SPAWN_RADIUS_MAX = Math.Pow(1000, 2);
-
+	
 	//------------------------------------------------------------------------------------------------
 	SCR_Faction GetCurrentFaction()
 	{
@@ -166,20 +168,50 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	//! Get available supplies
 	float GetSpawnerSupplies()
 	{
-		if (!m_SupplyComponent)
+		if (!m_ResourceComponent)
 			return m_iCustomSupplies;
-
-		return m_SupplyComponent.GetSupplies();
+		
+		SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+			
+		if (!consumer)
+			return 0.0;
+		
+		if (m_RplComponent && !m_RplComponent.IsProxy())
+			GetGame().GetResourceGrid().UpdateInteractor(consumer);
+		
+		return consumer.GetAggregatedResourceValue();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Set the spawner supplies value
 	void AddSupplies(float value)
 	{
-		if (m_SupplyComponent)
+		if (m_ResourceComponent)
 		{
-			m_SupplyComponent.AddSupplies(value);
-			return;
+			SCR_ResourceInteractor interactor;
+			
+			if (value >= 0)
+			{
+				SCR_ResourceGenerator generator = m_ResourceComponent.GetGenerator(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+				
+				if (!generator)
+					return;
+				
+				interactor = generator;
+				
+				generator.RequestGeneration(value);
+			}
+			else
+			{
+				SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+				
+				if (!consumer)
+					return;
+				
+				interactor = consumer;
+				
+				consumer.RequestConsumtion(-value);
+			}
 		}
 
 		m_iCustomSupplies = m_iCustomSupplies + value;
@@ -219,7 +251,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	{
 		return (m_RplComponent && m_RplComponent.IsProxy());
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Spawn Units with given ResourceName and assign it to group
 	//! \param unitResource resource name of unit to be spawned
@@ -270,26 +302,37 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 			return;
 		
 		SCR_EntityLabelPointComponent rallyPointEntity = slot.GetRallyPoint();
-		if (!rallyPointEntity)
-			return;
+		if (rallyPointEntity)
+		{
+			// Create temporary group for unit and later rally point waypoint
+			SCR_AIGroup group = CreateTemporaryGroup();
+			if (!group)
+			{
+				m_AIgroup.AddAgent(agent);
+				return;
+			}
 		
-		// Create temporary group for unit and later rally point waypoint
-		SCR_AIGroup group = CreateTemporaryGroup();
-		if (!group)
-			return;
-		
-		SCR_AIWaypoint wp = CreateRallyPointWaypoint(rallyPointEntity);
-		if (!wp)
-			return;
-		
-		if (!m_aGroupWaypoints)
-			m_aGroupWaypoints = {};
-
-		group.AddAgent(agent);
-		group.AddWaypoint(wp);
-		m_aGroupWaypoints.Insert(new Tuple2<AIWaypoint, SCR_AIGroup>(wp, group));
-		group.GetOnWaypointCompleted().Insert(OnGroupWaypointFinished);
-		group.GetOnAgentRemoved().Insert(OnAIAgentRemoved);
+			SCR_AIWaypoint wp = CreateRallyPointWaypoint(rallyPointEntity);
+			if (!wp)
+			{
+				m_AIgroup.AddAgent(agent);
+				return;
+			}
+			
+			if (!m_aGroupWaypoints)
+				m_aGroupWaypoints = {};
+			
+			group.AddAgent(agent);
+			group.AddWaypoint(wp);
+			m_aGroupWaypoints.Insert(new Tuple2<AIWaypoint, SCR_AIGroup>(wp, group));
+			group.GetOnWaypointCompleted().Insert(OnGroupWaypointFinished);
+			group.GetOnAgentRemoved().Insert(OnAIAgentRemoved);
+		}
+		else
+		{
+			// Rally point not found, add spawned ai directly to controlled group
+			m_AIgroup.AddAgent(agent);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -561,6 +604,25 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		ChimeraWorld world = GetOwner().GetWorld();
 		WorldTimestamp replicationTime = world.GetServerTimestamp();
 		#endif
+		
+		AIWorld aiWorld = GetGame().GetAIWorld();
+		if (!aiWorld)
+			return;
+		
+		//If another Ai would be over limit, stop requesting and prevent players from enabling it again.
+		if ((aiWorld.GetCurrentAmountOfLimitedAIs() + 1) >= aiWorld.GetAILimit())
+		{
+			if (m_bEnableSpawning)
+			{
+				m_bEnableSpawning = false; //disable spawner
+				Replication.BumpMe();
+				
+				m_GroupSpawningManager.SetIsAtAILimit(true); //block requesting action 
+			}
+			
+			return;
+		}
+		
 		bool distanceCheck = PlayerDistanceCheck();
 
 		if (m_bEnableSpawning && distanceCheck)
@@ -683,19 +745,31 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 
 		super.EOnInit(owner);
 
+		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(owner);
 		m_RplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		if (!m_RplComponent)
 			return;
 
 		AssignInitialFaction();
-
+		
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return;	
+			
+		m_GroupSpawningManager = SCR_SpawnerAIGroupManagerComponent.Cast(gameMode.FindComponent(SCR_SpawnerAIGroupManagerComponent));
+		if (!m_GroupSpawningManager)
+		{
+			Print("SCR_DefenderSpawnerComponent requires SCR_SpawnerAIGroupManagerComponent attached to gamemode to work properly!", LogLevel.ERROR);	
+			return;
+		}	
+			
 		if (IsProxy())
 			return;
 
 		//Setup group handling (spawning and refilling). This delay also prevents potential JIP replication error on clients
 		GetGame().GetCallqueue().CallLater(HandleGroup, SPAWN_CHECK_INTERVAL, true);
-			
 	}
+		
 	//------------------------------------------------------------------------------------------------
 	protected override void OnPostInit(IEntity owner)
 	{
@@ -720,7 +794,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 				SCR_EntityHelper.DeleteEntityAndChildren(groupWaypoint.param2);
 			}
 		}
-
+			
 		GetGame().GetCallqueue().Remove(HandleGroup);
 	}
 };

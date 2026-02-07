@@ -29,6 +29,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 	protected ref map<Widget, SCR_MapUIElement> m_mIcons = new map<Widget, SCR_MapUIElement>();
 
 	protected SCR_PlayerFactionAffiliationComponent m_PlyFactionAffilComp;
+	protected SCR_PlayerControllerGroupComponent m_PlyGroupComp;
 	protected SCR_BaseGameMode m_GameMode;
 
 	protected ref ScriptInvoker<SCR_MapUIElement> m_OnElementSelected;
@@ -43,8 +44,15 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 
 	protected void AddSpawnPoint(SCR_SpawnPoint spawnPoint)
 	{
-		ShowSpawnPoint(spawnPoint);
-		UpdateIcons();
+		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
+		if (!spawnPoint.IsSpawnPointVisibleForPlayer(SCR_PlayerController.GetLocalPlayerId()))
+			return;
+
+		if (playerFaction && playerFaction.GetFactionKey() == spawnPoint.GetFactionKey())
+		{
+			ShowSpawnPoint(spawnPoint);
+			UpdateIcons();
+		}
 	}
 
 	protected void RemoveSpawnPoint(SCR_SpawnPoint spawnPoint)
@@ -95,11 +103,19 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		if (pc)
 		{
 			m_PlyFactionAffilComp = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
-			m_PlyFactionAffilComp.GetOnPlayerFactionResponseInvoker_O().Insert(OnPlayerFactionResponse);		
+			if (m_PlyFactionAffilComp)
+				m_PlyFactionAffilComp.GetOnPlayerFactionResponseInvoker_O().Insert(OnPlayerFactionResponse);	
+
+			m_PlyGroupComp = SCR_PlayerControllerGroupComponent.Cast(pc.FindComponent(SCR_PlayerControllerGroupComponent));
+			if (m_PlyGroupComp)
+				m_PlyGroupComp.GetOnGroupChanged().Insert(OnPlayerGroupChanged);		
 		}
 		
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(OnSpawnPointFactionChange);
+		SCR_SpawnPoint.Event_SpawnPointAdded.Insert(AddSpawnPoint);
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Insert(RemoveSpawnPoint);
+
+		SCR_BaseTaskManager.s_OnTaskUpdate.Insert(OnTaskAdded);
 
 		m_bIsDeployMap = (config.MapEntityMode == EMapEntityMode.SPAWNSCREEN);
 
@@ -118,7 +134,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 			InitSpawnPoints();
 
 		if (m_bShowTasks)
-			InitTaskMarkers(); // todo@danny: why are tasks initialized on 0,0 in conflict?
+			InitTaskMarkers();
 		
 		m_MapEntity.GetOnMapPan().Insert(OnMapPan);
 	}
@@ -126,15 +142,18 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnMapClose(MapConfiguration config)
 	{
-		PlayerController pc = GetGame().GetPlayerController();
-		if (pc)
-		{
-			m_PlyFactionAffilComp = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
-			m_PlyFactionAffilComp.GetOnPlayerFactionResponseInvoker_O().Remove(OnPlayerFactionResponse);			
-		}
+		if (m_PlyFactionAffilComp)
+			m_PlyFactionAffilComp.GetOnPlayerFactionResponseInvoker_O().Remove(OnPlayerFactionResponse);
+
+		if (m_PlyGroupComp)
+			m_PlyGroupComp.GetOnGroupChanged().Remove(OnPlayerGroupChanged);
 		
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Remove(OnSpawnPointFactionChange);
+		SCR_SpawnPoint.Event_SpawnPointAdded.Remove(AddSpawnPoint);
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Remove(RemoveSpawnPoint);
+
+		SCR_BaseTaskManager.s_OnTaskUpdate.Remove(OnTaskAdded);
+
 		m_MapEntity.GetOnMapPan().Remove(OnMapPan);
 
 		foreach(Widget w, SCR_MapUIElement e : m_mIcons)
@@ -225,6 +244,9 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		if (!m_bIsDeployMap && spawnPoint.GetVisibleInDeployMapOnly())
 			return;
 
+		if (!spawnPoint.IsSpawnPointVisibleForPlayer(SCR_PlayerController.GetLocalPlayerId()))
+			return;
+
 		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sSpawnPointElement, m_wIconsContainer);
 		SCR_MapUISpawnPoint handler = SCR_MapUISpawnPoint.Cast(w.FindHandler(SCR_MapUISpawnPoint));
 		if (!handler)
@@ -258,22 +280,49 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 
 		for (int i = 0; i < taskCount; ++i)
 		{
-			Widget w = GetGame().GetWorkspace().CreateWidgets(m_sTaskElement, m_wIconsContainer);
-			if (!w)
-				continue;
-
-			SCR_MapUITask handler = SCR_MapUITask.Cast(w.FindHandler(SCR_MapUITask));
-			if (!handler)
-				continue;
-
-			handler.SetParent(this);
-			handler.InitTask(availableTasks[i]);
-			m_mIcons.Set(w, handler);
-
-			FrameSlot.SetSizeToContent(w, true);
-			FrameSlot.SetAlignment(w, 0.5, 0.5);
+			InitTaskIcon(availableTasks[i]);
 		}
 
+		UpdateIcons();
+	}
+
+	protected void InitTaskIcon(SCR_BaseTask task)
+	{
+		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sTaskElement, m_wIconsContainer);
+		if (!w)
+			return;
+
+		SCR_MapUITask handler = SCR_MapUITask.Cast(w.FindHandler(SCR_MapUITask));
+		if (!handler)
+			return;
+
+		handler.SetParent(this);
+		handler.InitTask(task);
+		m_mIcons.Set(w, handler);
+
+		FrameSlot.SetSizeToContent(w, true);
+		FrameSlot.SetAlignment(w, 0.5, 0.5);
+	}
+
+	protected void OnTaskAdded(SCR_BaseTask task)
+	{
+		if (!m_bShowTasks)
+			return;
+
+		if (task.GetTargetFaction() != SCR_FactionManager.SGetLocalPlayerFaction())
+			return;
+
+		foreach (Widget w, SCR_MapUIElement e : m_mIcons)
+		{
+			SCR_MapUITask t = SCR_MapUITask.Cast(e);
+			if (!t)
+				continue;
+
+			if (t.GetTask() == task)
+				return;
+		}
+
+		InitTaskIcon(task);
 		UpdateIcons();
 	}
 
@@ -321,6 +370,50 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 	void OnSpawnPointSelected(RplId spId = RplId.Invalid())
 	{
 		GetOnSpawnPointSelected().Invoke(spId);
+	}
+	
+	protected void OnPlayerGroupChanged(SCR_AIGroup group)
+	{
+		int pid = SCR_PlayerController.GetLocalPlayerId();
+		foreach (Widget w, SCR_MapUIElement e : m_mIcons)
+		{
+			SCR_MapUISpawnPoint spIcon = SCR_MapUISpawnPoint.Cast(e);
+			if (!spIcon)
+				continue;
+
+			SCR_SpawnPoint sp = SCR_SpawnPoint.GetSpawnPointByRplId(spIcon.GetSpawnPointId());
+			if (!sp)
+				continue;
+
+			if (!sp.IsSpawnPointVisibleForPlayer(pid))
+				RemoveSpawnPoint(sp);
+		}
+
+		array<SCR_SpawnPoint> playerSpawnPoints = SCR_SpawnPoint.GetSpawnPointsForFaction(m_PlyFactionAffilComp.GetAffiliatedFaction().GetFactionKey());
+		foreach (SCR_SpawnPoint sp : playerSpawnPoints)
+		{
+			SCR_MapUISpawnPoint spIcon = FindSpawnPoint(sp.GetRplId()); // this is pretty bad sorry
+			if (spIcon)
+				continue;
+
+			if (sp.IsSpawnPointVisibleForPlayer(SCR_PlayerController.GetLocalPlayerId()))
+				AddSpawnPoint(sp);
+		}
+	}
+	
+	SCR_MapUISpawnPoint FindSpawnPoint(RplId id)
+	{
+		foreach (Widget w, SCR_MapUIElement e : m_mIcons)
+		{
+			SCR_MapUISpawnPoint sp = SCR_MapUISpawnPoint.Cast(e);
+			if (!sp)
+				continue;
+
+			if (sp.GetSpawnPointId() == id)
+				return sp;
+		}
+
+		return null;
 	}
 
 	ScriptInvoker GetOnSpawnPointSelected()

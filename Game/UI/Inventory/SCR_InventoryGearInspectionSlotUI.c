@@ -275,7 +275,7 @@ class SCR_InventorySlotGearInspectionUI : SCR_InventorySlotUI
 	bool m_bIsSelected;
 	
 	//------------------------------------------------------------------------------------------------
-	override void UpdateReferencedComponent(InventoryItemComponent pComponent)
+	override void UpdateReferencedComponent(InventoryItemComponent pComponent, SCR_ItemAttributeCollection attributes = null)
 	{
 		if (m_widget)
 			Destroy();

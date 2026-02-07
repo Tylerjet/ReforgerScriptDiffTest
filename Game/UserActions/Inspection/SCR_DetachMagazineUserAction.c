@@ -22,7 +22,10 @@ class SCR_DetachMagazineUserAction : SCR_InspectionUserAction
 		IEntity currentMag = m_WeaponComponent.GetCurrentMagazine().GetOwner();
 		InventoryItemComponent magInventory = InventoryItemComponent.Cast(currentMag.FindComponent(InventoryItemComponent));
 		BaseInventoryStorageComponent magStorage = magInventory.GetParentSlot().GetStorage();
-		
+		WeaponAttachmentsStorageComponent wasc = WeaponAttachmentsStorageComponent.Cast(magStorage);
+		if (!wasc)
+			return false; // Must be a WeaponAttachmentsStorageComponent
+
 		return m_InventoryManager.CanRemoveItemFromStorage(currentMag, magStorage);
 	}
 
@@ -31,6 +34,14 @@ class SCR_DetachMagazineUserAction : SCR_InspectionUserAction
 		IEntity currentMag = m_WeaponComponent.GetCurrentMagazine().GetOwner();
 		InventoryItemComponent magInventory = InventoryItemComponent.Cast(currentMag.FindComponent(InventoryItemComponent));
 		BaseInventoryStorageComponent magStorage = magInventory.GetParentSlot().GetStorage();
+		
+		WeaponAttachmentsStorageComponent wasc = WeaponAttachmentsStorageComponent.Cast(magStorage);
+		if (!wasc)
+		{
+			Print("ERROR: Magazine is no longer in the weapon", LogLevel.ERROR);
+			return; // Must be a WeaponAttachmentsStorageComponent
+		}
+		
 		BaseInventoryStorageComponent suitableStorage = m_InventoryManager.FindStorageForItem(currentMag);
 
 		if (suitableStorage)

@@ -15,13 +15,13 @@ class SCR_AddonsExportDialogWidgets
 	TextWidget m_GenContent;
 
 	ButtonWidget m_NavGenCli;
-	SCR_NavigationButtonComponent m_NavGenCliComponent;
+	SCR_InputButtonComponent m_NavGenCliComponent;
 
 	ButtonWidget m_NavGenJson;
-	SCR_NavigationButtonComponent m_NavGenJsonComponent;
+	SCR_InputButtonComponent m_NavGenJsonComponent;
 
 	ButtonWidget m_NavCopy;
-	SCR_NavigationButtonComponent m_NavCopyComponent;
+	SCR_InputButtonComponent m_NavCopyComponent;
 
 	bool Init(Widget root)
 	{
@@ -34,13 +34,13 @@ class SCR_AddonsExportDialogWidgets
 		m_GenContent = TextWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.AddonsExportRoot.Overlay.m_ScrollLayout.m_GenContent"));
 
 		m_NavGenCli = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Footer.m_NavGenCli"));
-		m_NavGenCliComponent = SCR_NavigationButtonComponent.Cast(m_NavGenCli.FindHandler(SCR_NavigationButtonComponent));
+		m_NavGenCliComponent = SCR_InputButtonComponent.Cast(m_NavGenCli.FindHandler(SCR_InputButtonComponent));
 
 		m_NavGenJson = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Footer.m_NavGenJson"));
-		m_NavGenJsonComponent = SCR_NavigationButtonComponent.Cast(m_NavGenJson.FindHandler(SCR_NavigationButtonComponent));
+		m_NavGenJsonComponent = SCR_InputButtonComponent.Cast(m_NavGenJson.FindHandler(SCR_InputButtonComponent));
 
 		m_NavCopy = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Footer.m_NavCopy"));
-		m_NavCopyComponent = SCR_NavigationButtonComponent.Cast(m_NavCopy.FindHandler(SCR_NavigationButtonComponent));
+		m_NavCopyComponent = SCR_InputButtonComponent.Cast(m_NavCopy.FindHandler(SCR_InputButtonComponent));
 
 		return true;
 	}

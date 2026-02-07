@@ -185,8 +185,12 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanReserveFor_S(int playerId)
+	override bool CanReserveFor_S(int playerId, out SCR_ESpawnResult result = SCR_ESpawnResult.SPAWN_NOT_ALLOWED)
 	{
+		//~ Check if super fails or not if the spawnpoint can be reserved
+		if (!super.CanReserveFor_S(playerId))
+			return false; 
+		
 		Vehicle targetVehicle = GetTargetVehicle();
 		if (targetVehicle)
 		{
@@ -202,11 +206,12 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 			}
 			
 			// No slots available
+			result = SCR_ESpawnResult.NOT_ALLOWED_VEHICLE_FULL;
 			return false;
 		}
 		
-		// No vehicle, standard behaviour
-		return super.CanReserveFor_S(playerId);
+		// No vehicle and all other tests passed
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -216,6 +221,10 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 		PrintFormat("%1::PrepareSpawnedEntity_S(playerId: %2, data: %3, entity: %4)", Type().ToString(),
 					requestComponent.GetPlayerId(),	data, entity);
 		#endif
+		
+		//~ Check if can prepare spawn from super
+		if (!super.PrepareSpawnedEntity_S(requestComponent, data, entity))
+			return false;
 		
 		// Spawned entity must have a compartment access component
 		SCR_CompartmentAccessComponent compartmentAccessPlayer = SCR_CompartmentAccessComponent.Cast(entity.FindComponent(SCR_CompartmentAccessComponent));
@@ -227,8 +236,8 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 		if (targetVehicle)
 			return PrepareSpawnedEntityForVehicle_S(requestComponent, data, entity, targetVehicle);
 		
-		// No preparation otherwise?
-		return super.PrepareSpawnedEntity_S(requestComponent, data, entity);
+		// All checks succeed
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -257,6 +266,9 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 	//------------------------------------------------------------------------------------------------
 	override bool CanFinalizeSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{
+		if (!super.CanFinalizeSpawn_S(requestComponent, data, entity))
+			return false;
+		
 		// Do not finalize if character is in the middle of entering a vehicle, leave that to be resolved on the authority first
 		SCR_CompartmentAccessComponent accessComponent = SCR_CompartmentAccessComponent.Cast(entity.FindComponent(SCR_CompartmentAccessComponent));
 		if (accessComponent && accessComponent.IsGettingIn())

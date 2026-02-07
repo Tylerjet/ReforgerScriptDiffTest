@@ -24,6 +24,9 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 	proto external void SetReserved(IEntity ent);
 	proto external EntitySlotInfo GetPassengerPointInfo();
 	proto external bool GetForceFreeLook();
+	proto external bool GetMouseSteering();
+	// Otherwise they will stay in the compartment and play the unconscious animation.
+	proto external bool ShouldEjectUnconsciousDeadCharacters();
 	//! Returns the manager ID of the compartment. To uniquely identify the compartment, use both GetCompartmentMgrID and GetCompartmentSlotID
 	proto external int GetCompartmentMgrID();
 	//! Returns the slot ID of the compartment. To uniquely identify the compartment, use both GetCompartmentMgrID and GetCompartmentSlotID

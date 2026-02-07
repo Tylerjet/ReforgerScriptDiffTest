@@ -229,6 +229,7 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		
 		m_Widgets.m_DownloadStateText.SetText(msg);
 		m_Widgets.m_DownloadIcon.LoadImageFromSet(0, m_sIconImageset, imgName);
+		m_Widgets.m_DownloadIconShadow.LoadImageFromSet(0, m_sIconImageset, imgName);
 		
 		if (col)
 		{

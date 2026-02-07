@@ -6,6 +6,11 @@ enum ESlotSize
 	SLOT_3x3
 };
 
+enum SCR_EQuickSlotSize : ESlotSize
+{
+	DEFAULT = 0,
+};
+
 enum ESlotID
 {
 	SLOT_ANY 			= -1,

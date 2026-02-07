@@ -9,7 +9,7 @@ class SCR_ConfigHelper
 	//! if empty, returns the provided container
 	//! \param removeEntryPart if true, removes the last path element \
 	//! examples: path/to/entryName → path/to (to target the parent container itself)
-	//! \return found child BaseContainer, or null if path is incorrect
+	//! \return found child BaseContainer, or null if path is incorrect or if base container is invalid
 	static BaseContainer GetBaseContainer(ResourceName configPath, string subChildPath = "", bool removeEntryPart = false)
 	{
 		if (configPath.IsEmpty())

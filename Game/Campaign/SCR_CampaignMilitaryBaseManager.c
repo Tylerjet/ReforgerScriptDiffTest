@@ -28,12 +28,12 @@ class SCR_CampaignMilitaryBaseManager
 	protected static const int DEPOT_PLAYER_PRESENCE_CHECK_INTERVAL = 2000;		//ms
 	protected static const float CP_AVG_DISTANCE_TOLERANCE = 0.25;				//highest relative distance tolerance to control points when evaluating main HQs
 	protected static const string ICON_NAME_SUPPLIES = "Slot_Supplies";
+	protected static const float MAX_DIST_TO_BASE = 300;
+	protected static const float PARKED_LIFETIME = 3600;
 
 	protected SCR_GameModeCampaign m_Campaign;
-	
-	protected SCR_CampaignFaction m_LocalPlayerFaction;
 
-	protected SCR_CampaignSuppliesComponent m_SupplyDepotWithPlayer;
+	protected SCR_CampaignFaction m_LocalPlayerFaction;
 
 	protected ref array<SCR_CampaignMilitaryBaseComponent> m_aBases = {};
 	protected ref array<SCR_CampaignMilitaryBaseComponent> m_aControlPoints = {};
@@ -61,12 +61,6 @@ class SCR_CampaignMilitaryBaseManager
 	int GetTargetActiveBasesCount()
 	{
 		return m_iTargetActiveBases;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_CampaignSuppliesComponent GetSupplyDepotWithPlayer()
-	{
-		return m_SupplyDepotWithPlayer;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -149,9 +143,10 @@ class SCR_CampaignMilitaryBaseManager
 		if (m_Campaign.IsProxy())
 			return;
 
+		SCR_MilitaryBaseManager.GetInstance().GetOnLogicRegisteredInBase().Insert(DisableExtraSeizingComponents);
 		ProcessRemnantsPresence();
-		RecalculateRadioConverage(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
-		RecalculateRadioConverage(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR));
+		RecalculateRadioCoverage(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
+		RecalculateRadioCoverage(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -159,13 +154,20 @@ class SCR_CampaignMilitaryBaseManager
 	{
 		return m_bAllBasesInitialized;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	protected void DisableExtraSeizingComponents(SCR_MilitaryBaseComponent base, SCR_MilitaryBaseLogicComponent logic)
+	{
+		if (logic.Type() == SCR_SeizingComponent)
+			SCR_SeizingComponent.Cast(logic).Disable();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	void SetLocalPlayerFaction(notnull SCR_CampaignFaction faction)
 	{
 		m_LocalPlayerFaction = faction;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	SCR_CampaignFaction GetLocalPlayerFaction()
 	{
@@ -205,6 +207,12 @@ class SCR_CampaignMilitaryBaseManager
 	//! Picks Main Operating Bases from a list of candidates by checking average distance to active control points
 	void SelectHQs(notnull array<SCR_CampaignMilitaryBaseComponent> candidates, notnull array<SCR_CampaignMilitaryBaseComponent> controlPoints, out notnull array<SCR_CampaignMilitaryBaseComponent> selectedHQs)
 	{
+		// Pick the same HQs every time when debugging
+#ifdef TDM_CLI_SELECTION
+		SelectHQsSimple(candidates, selectedHQs);
+		return;
+#endif
+
 		int candidatesCount = candidates.Count();
 
 		// If only two HQs are set up, don't waste time with processing
@@ -290,6 +298,12 @@ class SCR_CampaignMilitaryBaseManager
 	//! If there are only two candidates for main HQ or the main process fails, HQs are selected simply and cheaply
 	protected void SelectHQsSimple(notnull array<SCR_CampaignMilitaryBaseComponent> candidates, out notnull array<SCR_CampaignMilitaryBaseComponent> selectedHQs)
 	{
+		// Pick the same HQs every time when debugging
+#ifdef TDM_CLI_SELECTION
+		selectedHQs = {candidates[0], candidates[1]};
+		return;
+#endif
+
 		// In Tutorial mode, we always want to use the same HQs
 		if (m_Campaign.IsTutorial())
 		{
@@ -537,7 +551,7 @@ class SCR_CampaignMilitaryBaseManager
 					suppliesBufferBLUFOR.Insert(suppliesToAdd);
 			}
 
-			base.AddSupplies(suppliesToAdd - base.GetSupplies(), false);
+			base.SetStartingSupplies(suppliesToAdd);
 		}
 	}
 
@@ -551,7 +565,7 @@ class SCR_CampaignMilitaryBaseManager
 			if (base.IsInitialized() && base.GetCallsignDisplayName().IsEmpty())
 				base.GetMapDescriptor().HandleMapInfo();
 		}
-		
+
 		SCR_BaseTaskManager taskManager = GetTaskManager();
 
 		if (!taskManager)
@@ -635,30 +649,6 @@ class SCR_CampaignMilitaryBaseManager
 	void RegisterRemnantSupplyDepot(notnull SCR_CampaignSuppliesComponent comp)
 	{
 		m_aRemnantSupplyDepots.Insert(comp);
-
-		IEntity child = comp.GetOwner().GetChildren();
-		SCR_SiteSlotEntity slot;
-
-		while (child && !slot)
-		{
-			slot = SCR_SiteSlotEntity.Cast(child);
-
-			if (!slot)
-				child = child.GetSibling();
-		}
-
-		if (slot)
-		{
-			SCR_CampaignFaction fia = SCR_CampaignFaction.Cast(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.INDFOR));
-
-			if (fia)
-			{
-				Resource res = Resource.Load(fia.GetBuildingPrefab(EEditableEntityLabel.SERVICE_SUPPLY_STORAGE));
-
-				if (res)
-					slot.SpawnEntityInSlot(res);
-			}
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -688,7 +678,7 @@ class SCR_CampaignMilitaryBaseManager
 
 	//------------------------------------------------------------------------------------------------
 	//! Determine the radio coverage of all bases (no coverage / can be reached / can respond / both ways)
-	void RecalculateRadioConverage(notnull SCR_CampaignFaction faction)
+	void RecalculateRadioCoverage(notnull SCR_CampaignFaction faction)
 	{
 		SCR_CampaignMilitaryBaseComponent hq = faction.GetMainBase();
 
@@ -712,7 +702,7 @@ class SCR_CampaignMilitaryBaseManager
 		map<SCR_CampaignMilitaryBaseComponent, SCR_ECampaignHQRadioComms> newSettings = new map<SCR_CampaignMilitaryBaseComponent, SCR_ECampaignHQRadioComms>();
 		array<SCR_CampaignMilitaryBaseComponent> canReceiveHQ = {};
 		array<SCR_CampaignMilitaryBaseComponent> canReachHQ = {};
-		SCR_CampaignMobileAssemblyComponent mobileHQComponent = faction.GetMobileAssembly();
+		SCR_CampaignMobileAssemblyStandaloneComponent mobileHQComponent = faction.GetMobileAssembly();
 		SCR_ECampaignHQRadioComms connectionMHQ = SCR_ECampaignHQRadioComms.NONE;
 		bool processedMHQ;
 		int noMHQNeeded;
@@ -772,7 +762,7 @@ class SCR_CampaignMilitaryBaseManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void CheckBaseRadioCoverage(inout int i, notnull SCR_CampaignMilitaryBaseComponent base, notnull SCR_CampaignMilitaryBaseComponent hq, SCR_CampaignMobileAssemblyComponent mobileHQComponent, inout SCR_ECampaignHQRadioComms connectionMHQ, notnull SCR_CampaignFaction faction, inout notnull array<SCR_CampaignMilitaryBaseComponent> canReceiveHQ, inout notnull array<SCR_CampaignMilitaryBaseComponent> canReachHQ, inout notnull map<SCR_CampaignMilitaryBaseComponent, SCR_ECampaignHQRadioComms> newSettings)
+	void CheckBaseRadioCoverage(inout int i, notnull SCR_CampaignMilitaryBaseComponent base, notnull SCR_CampaignMilitaryBaseComponent hq, SCR_CampaignMobileAssemblyStandaloneComponent mobileHQComponent, inout SCR_ECampaignHQRadioComms connectionMHQ, notnull SCR_CampaignFaction faction, inout notnull array<SCR_CampaignMilitaryBaseComponent> canReceiveHQ, inout notnull array<SCR_CampaignMilitaryBaseComponent> canReachHQ, inout notnull map<SCR_CampaignMilitaryBaseComponent, SCR_ECampaignHQRadioComms> newSettings)
 	{
 		bool processedReceive = canReceiveHQ.Contains(base);
 		bool processedReach = canReachHQ.Contains(base);
@@ -892,7 +882,7 @@ class SCR_CampaignMilitaryBaseManager
 		{
 			if (!canReachHQ.Contains(connectedBase))
 				canReachHQ.Insert(connectedBase);
-			
+
 			canReach = true;
 		}
 
@@ -903,8 +893,10 @@ class SCR_CampaignMilitaryBaseManager
 			else
 				newSettings.Set(connectedBase, SCR_ECampaignHQRadioComms.RECEIVE);
 		}
-		else if (canReach)
+		else if (canReach || coverage == SCR_ECampaignHQRadioComms.SEND)
+		{
 			newSettings.Set(connectedBase, SCR_ECampaignHQRadioComms.BOTH_WAYS);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1029,17 +1021,18 @@ class SCR_CampaignMilitaryBaseManager
 	//! Bump supply truck lifetime in garbage manager if it's parked near a base
 	void OnSupplyTruckLeft(IEntity vehicle, BaseCompartmentManagerComponent mgr, IEntity occupant, int managerId, int slotID)
 	{
-		SCR_CampaignGarbageManager garbageManager = SCR_CampaignGarbageManager.Cast(GetGame().GetGarbageManager());
+		ChimeraWorld world = vehicle.GetWorld();
+		GarbageSystem garbageSystem = world.GetGarbageSystem();
 
-		if (!garbageManager)
+		if (!garbageSystem)
 			return;
 
-		if (!garbageManager.IsInserted(vehicle))
+		if (!garbageSystem.IsInserted(vehicle))
 			return;
 
-		int baseDistanceSq = Math.Pow(SCR_CampaignGarbageManager.MAX_BASE_DISTANCE, 2);
+		int baseDistanceSq = Math.Pow(MAX_DIST_TO_BASE, 2);
 		vector vehPos = vehicle.GetOrigin();
-		float curLifetime = garbageManager.GetRemainingLifetime(vehicle);
+		float curLifetime = garbageSystem.GetRemainingLifetime(vehicle);
 
 		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
 		{
@@ -1048,11 +1041,11 @@ class SCR_CampaignMilitaryBaseManager
 
 			if (vector.DistanceSqXZ(vehPos, base.GetOwner().GetOrigin()) <= baseDistanceSq)
 			{
-				float curLifeTime = garbageManager.GetRemainingLifetime(vehicle);
+				float curLifeTime = garbageSystem.GetRemainingLifetime(vehicle);
 
-				if (curLifetime < SCR_CampaignGarbageManager.PARKED_SUPPLY_TRUCK_LIFETIME)
+				if (curLifetime < PARKED_LIFETIME)
 				{
-					garbageManager.Bump(vehicle, SCR_CampaignGarbageManager.PARKED_SUPPLY_TRUCK_LIFETIME - curLifetime);
+					garbageSystem.Bump(vehicle, PARKED_LIFETIME - curLifetime);
 					return;
 				}
 			}
@@ -1148,7 +1141,7 @@ class SCR_CampaignMilitaryBaseManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnEnemyDetectedByDefenders(SCR_AIGroup group, SCR_AITargetInfo target)
+	void OnEnemyDetectedByDefenders(SCR_AIGroup group, SCR_AITargetInfo target, AIAgent reporter)
 	{
 		// Identify the base under attack, notify about it
 		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
@@ -1190,7 +1183,7 @@ class SCR_CampaignMilitaryBaseManager
 	//------------------------------------------------------------------------------------------------
 	SCR_CampaignMilitaryBaseComponent FindBaseByCallsign(int callsign)
 	{
-		if (callsign == SCR_CampaignMilitaryBaseComponent.INVALID_BASE_CALLSIGN)
+		if (callsign == SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN)
 			return null;
 
 		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
@@ -1223,28 +1216,19 @@ class SCR_CampaignMilitaryBaseManager
 			return false;
 
 		// Check if the entity is within range of deployed mobile HQ which is able to relay the signal
-		SCR_CampaignMobileAssemblyComponent mobileHQ = factionC.GetMobileAssembly();
+		SCR_CampaignMobileAssemblyStandaloneComponent mobileHQ = factionC.GetMobileAssembly();
 
 		if (mobileHQ && mobileHQ.GetOwner() != entity && mobileHQ.IsInRadioRange())
 		{
-			IEntity truck = mobileHQ.GetOwner().GetParent();
-
-			if (truck)
-			{
-				BaseRadioComponent comp = BaseRadioComponent.Cast(truck.FindComponent(BaseRadioComponent));
-
-				if (comp && comp.TransceiversCount() > 0)
-				{
-					BaseTransceiver tsv = comp.GetTransceiver(0);
-
-					if (vector.DistanceSq(entity.GetOrigin(), truck.GetOrigin()) < Math.Pow(tsv.GetRange(), 2))
-						return true;
-				}
-			}
+			if (vector.DistanceSq(entity.GetOrigin(), mobileHQ.GetOwner().GetOrigin()) < Math.Pow(mobileHQ.GetRadioRange(), 2))
+				return true;
 		}
 
 		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
 		{
+			if (!base)
+				continue;
+
 			if (faction != base.GetFaction())
 				continue;
 
@@ -1387,34 +1371,6 @@ class SCR_CampaignMilitaryBaseManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Check player's presence in FIA supply depots for supply load action handling
-	void CheckPlayerPresenceInSupplyDepots()
-	{
-		m_SupplyDepotWithPlayer = null;
-
-		ChimeraCharacter localPlayer = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
-
-		if (!localPlayer)
-			return;
-
-		vector playerOrigin = localPlayer.GetOrigin();
-
-		foreach (SCR_CampaignSuppliesComponent depot : m_aRemnantSupplyDepots)
-		{
-			if (!depot)
-				continue;
-
-			float maxDistance = Math.Pow(depot.GetOperationalRadius(), 2);
-
-			if (maxDistance > vector.DistanceSqXZ(playerOrigin, depot.GetOwner().GetOrigin()))
-			{
-				m_SupplyDepotWithPlayer = depot;
-				return;
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	void OnLocalPlayerPresenceChanged(notnull SCR_CampaignMilitaryBaseComponent base, bool present)
 	{
 		if (present)
@@ -1436,27 +1392,26 @@ class SCR_CampaignMilitaryBaseManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnServiceBuilt(notnull SCR_MilitaryBaseComponent base, notnull SCR_ServicePointComponent service)
+	void OnServiceBuilt(SCR_EServicePointStatus state, notnull SCR_ServicePointComponent serviceComponent)
 	{
-		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
+		switch (state)
+		{
+			case SCR_EServicePointStatus.ONLINE:
+			{
+				if (m_Campaign.IsProxy())
+					return;
 
-		if (!campaignBase)
-			return;
+				SCR_CatalogEntitySpawnerComponent spawner = SCR_CatalogEntitySpawnerComponent.Cast(serviceComponent);
 
-		campaignBase.OnServiceBuilt(service);
+				if (spawner)
+					spawner.GetOnEntitySpawned().Insert(m_Campaign.OnEntityRequested);
 
-		if (m_Campaign.IsProxy())
-			return;
+				SCR_DefenderSpawnerComponent defenderSpawner = SCR_DefenderSpawnerComponent.Cast(serviceComponent);
 
-		SCR_CatalogEntitySpawnerComponent spawner = SCR_CatalogEntitySpawnerComponent.Cast(service);
-
-		if (spawner)
-			spawner.GetOnEntitySpawned().Insert(m_Campaign.OnEntityRequested);
-
-		SCR_DefenderSpawnerComponent defenderSpawner = SCR_DefenderSpawnerComponent.Cast(service);
-
-		if (defenderSpawner)
-			defenderSpawner.GetOnDefenderGroupSpawned().Insert(OnDefenderGroupSpawned);
+				if (defenderSpawner)
+					defenderSpawner.GetOnDefenderGroupSpawned().Insert(OnDefenderGroupSpawned);
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1485,7 +1440,7 @@ class SCR_CampaignMilitaryBaseManager
 		if (!comp)
 			return;
 
-		ScriptInvokerBase<SCR_AIGroupPerceptionOnEnemyDetected> onEnemyDetected = comp.m_Perception.GetOnEnemyDetected();
+		ScriptInvokerBase<SCR_AIGroupPerceptionOnEnemyDetectedFiltered> onEnemyDetected = comp.m_Perception.GetOnEnemyDetectedFiltered();
 
 		if (!onEnemyDetected)
 			return;
@@ -1509,9 +1464,6 @@ class SCR_CampaignMilitaryBaseManager
 	//------------------------------------------------------------------------------------------------
 	void OnConflictStarted()
 	{
-		// Periodically check player's presence in FIA supply depots for supply load action handling
-		if (RplSession.Mode() != RplMode.Dedicated)
-			GetGame().GetCallqueue().CallLater(CheckPlayerPresenceInSupplyDepots, DEPOT_PLAYER_PRESENCE_CHECK_INTERVAL, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1523,7 +1475,6 @@ class SCR_CampaignMilitaryBaseManager
 		if (!baseManager)
 			return;
 
-		baseManager.GetOnServiceRegisteredInBase().Insert(OnServiceBuilt);
 		baseManager.GetOnServiceUnregisteredInBase().Insert(OnServiceRemoved);
 		baseManager.GetOnBaseFactionChanged().Insert(OnBaseFactionChanged);
 
@@ -1538,7 +1489,6 @@ class SCR_CampaignMilitaryBaseManager
 
 		if (baseManager)
 		{
-			baseManager.GetOnServiceRegisteredInBase().Remove(OnServiceBuilt);
 			baseManager.GetOnServiceUnregisteredInBase().Remove(OnServiceRemoved);
 			baseManager.GetOnBaseFactionChanged().Remove(OnBaseFactionChanged);
 		}
@@ -1546,7 +1496,7 @@ class SCR_CampaignMilitaryBaseManager
 		if (m_Campaign)
 			m_Campaign.GetOnStarted().Remove(OnConflictStarted);
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 enum SCR_ECampaignHQRadioComms
@@ -1555,4 +1505,4 @@ enum SCR_ECampaignHQRadioComms
 	RECEIVE,
 	SEND,
 	BOTH_WAYS
-};
+}

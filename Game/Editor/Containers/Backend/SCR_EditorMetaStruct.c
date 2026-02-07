@@ -49,6 +49,16 @@ class SCR_EditorMetaStruct: JsonApiStruct
 				core.Event_OnEditorManagerInitOwner.Insert(OnEditorManagerCreated);
 		}
 	}
+	void ClearCache()
+	{
+		pX = 0;
+		pY = 0;
+		pZ = 0;
+		qX = 0;
+		qY = 0;
+		qZ = 0;
+		qW = 0;
+	}
 	protected void OnEditorManagerCreated(SCR_EditorManagerEntity editorManager)
 	{
 		//--- Wait one frame for editor modes to be initialized

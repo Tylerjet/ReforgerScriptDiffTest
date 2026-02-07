@@ -48,7 +48,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		
 		if (m_sDeliveryTriggerName.IsEmpty())
 		{
-			Print("ScenarioFramework: Task Deliver trigger is set with empty attribute", LogLevel.ERROR);
+			Print("ScenarioFramework: Task Deliver trigger is set with empty attribute SetDeliveryTrigger", LogLevel.ERROR);
 			return;
 		}	
 
@@ -74,7 +74,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	{
 		if (triggerName.IsEmpty())
 		{
-			Print("ScenarioFramework: Task Deliver trigger is set with empty attribute", LogLevel.ERROR);
+			Print("ScenarioFramework: Task Deliver trigger is set with empty attribute SetTriggerNameToDeliver", LogLevel.ERROR);
 			return;
 		}
 		
@@ -90,7 +90,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	//------------------------------------------------------------------------------------------------	
 	void OnDeliveryTriggerActivated(notnull SCR_CharacterTriggerEntity trigger)
 	{
-		if (!m_SupportEntity)
+		if (!m_SupportEntity || !m_Asset)
 			return;
 		
 		array<IEntity> entitiesInside = {};
@@ -112,17 +112,12 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		{
 			InventoryStorageManagerComponent inventoryComponent = InventoryStorageManagerComponent.Cast(character.FindComponent(InventoryStorageManagerComponent));
 			if (!inventoryComponent)
-				return;
-	
-			array<IEntity> aItems = {};
-			inventoryComponent.GetItems(aItems);
-			if (aItems.IsEmpty())
-				return;
+				continue;
 			
-			foreach (IEntity itemEntity : aItems)
+			if (inventoryComponent.Contains(m_Asset))
 			{
-				if (itemEntity == m_Asset)
-					m_SupportEntity.FinishTask(this);
+				m_SupportEntity.FinishTask(this);
+				break;
 			}
 		}
 	}
@@ -147,9 +142,10 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		if(!item || item != m_Asset)
 			return;
 		
-		GarbageManager garbageManager = GetGame().GetGarbageManager();
-		if (garbageManager && garbageManager.IsInserted(item))
-			garbageManager.Withdraw(item);
+		ChimeraWorld world = item.GetWorld();
+		GarbageSystem garbageSystem = world.GetGarbageSystem();
+		if (garbageSystem && garbageSystem.IsInserted(item))
+			garbageSystem.Withdraw(item);
 		
 		SetState(SCR_TaskState.UPDATED);
 		UpdateTaskTitleAndDescription(0);
@@ -199,15 +195,19 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 					UpdateDroppedTaskMarker();
 			}
 		}
+		
+		if (!m_Layer)
+			return;
 								
 		SCR_ScenarioFrameworkSlotTask subject = m_Layer.GetTaskSubject();
 		if (!subject)
 			return;
 		
-		m_SupportEntity.SetTaskTitle(this, subject.GetTaskTitle(m_iObjectState));
-		m_SupportEntity.SetTaskDescription(this, subject.GetTaskDescription(m_iObjectState));	
+		if (GetTitle() != subject.GetTaskTitle(m_iObjectState))
+			m_SupportEntity.SetTaskTitle(this, subject.GetTaskTitle(m_iObjectState));
 		
-		//m_Layer.OnTaskStateChanged(GetTaskState(), GetTaskState());			
+		if (GetDescription() != subject.GetTaskDescription(m_iObjectState))
+			m_SupportEntity.SetTaskDescription(this, subject.GetTaskDescription(m_iObjectState));	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -226,7 +226,10 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	protected void MoveTaskMarkerPosition()
 	{
 		m_bTaskPositionUpdated = false;
-		m_SupportEntity.MoveTask(m_Asset.GetOrigin(), this.GetTaskID());
+		if (m_Asset)
+			m_SupportEntity.MoveTask(m_Asset.GetOrigin(), this.GetTaskID());
+		else
+			Print("ScenarioFramework: Task Deliver does not have m_Asset properly assigned for MoveTaskMarkerPosition", LogLevel.ERROR);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -273,6 +276,9 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		if (!destroyedEntity)
 			return;
 		
+		if (!m_Asset)
+			return;
+		
 		InventoryItemComponent invComp = InventoryItemComponent.Cast(m_Asset.FindComponent(InventoryItemComponent));
 		if (!invComp)
 			return;
@@ -285,19 +291,11 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		if (!inventoryComponent)
 			return;
 		
-		array<IEntity> entityItems = {};
-		inventoryComponent.GetItems(entityItems);
-		if (!entityItems.IsEmpty())
-			return;
-		
-		foreach (IEntity entity : entityItems)
+		if (inventoryComponent.Contains(m_Asset))
 		{
-			if (entity == m_Asset)
-			{
-				inventoryComponent.TryRemoveItemFromStorage(m_Asset, parentSlot.GetStorage());
-				m_Asset.SetOrigin(destroyedEntity.GetOrigin());
-				return;	
-			}
+			inventoryComponent.TryRemoveItemFromStorage(m_Asset, parentSlot.GetStorage());
+			m_Asset.SetOrigin(destroyedEntity.GetOrigin());
+			return;	
 		}
 	}
 	
@@ -349,9 +347,6 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	{
 		super.Init();
 					
-		//Register all players to invoke the callback when any of them takes or drop the items from the inventory
-		//TODO: add event to players on JIP
-		
 		if (!m_Asset)
 			return;
 			
@@ -369,12 +364,17 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 			RegisterPlayer(i, null);
 		}
 		
-		SetDeliveryTrigger();
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (!gameMode)
 			return;
 		
 		gameMode.GetOnPlayerSpawned().Insert(RegisterPlayer);
 		gameMode.GetOnPlayerDisconnected().Insert(OnDisconnected);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void InvokedSetDeliveryTrigger()
+	{
+		SetDeliveryTrigger();
 	}
 }

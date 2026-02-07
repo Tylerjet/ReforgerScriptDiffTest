@@ -3,9 +3,9 @@ Element of a listbox.
 */
 class SCR_ListBoxElementComponent : SCR_ModularButtonComponent
 {
-	protected const string WIDGET_IMAGE = "Image";
-	protected const string WIDGET_TEXT = "Text";
-	
+	[Attribute("Image")]
+	protected string m_sWidgetImageName;
+
 	[Attribute("Text")]
 	protected string m_sWidgetTextName;
 	
@@ -19,7 +19,7 @@ class SCR_ListBoxElementComponent : SCR_ModularButtonComponent
 	
 	void SetImage(ResourceName imageOrImageset, string iconName)
 	{
-		ImageWidget w = ImageWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_IMAGE));
+		ImageWidget w = ImageWidget.Cast(m_wRoot.FindAnyWidget(m_sWidgetImageName));
 		
 		if (imageOrImageset.IsEmpty())
 			return;
@@ -43,5 +43,4 @@ class SCR_ListBoxElementComponent : SCR_ModularButtonComponent
 		if (w)
 			w.SetText(text);
 	}
-	
-};
+}

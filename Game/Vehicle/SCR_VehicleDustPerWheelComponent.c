@@ -19,6 +19,15 @@ class SCR_VehicleDustPerWheelClass : ScriptGameComponentClass
 	float m_fMaxDistanceVisible;
 	
 	float m_fMaxDistanceVisibleSqr;
+	
+	override static array<typename> Requires(IEntityComponentSource src)
+	{
+		array<typename> requires = new array<typename>;
+		
+		requires.Insert(RplComponent);
+		
+		return requires;
+	}
 };
 
 //! Vehicle dust per wheel data;
@@ -38,6 +47,8 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 
 	protected VehicleWheeledSimulation			m_Simulation;
 	protected VehicleWheeledSimulation_SA		m_Simulation_SA;
+	protected Physics							m_Physics;
+	protected NwkMovementComponent				m_NwkMovementComponent;
 	protected SCR_VehicleDustPerWheelClass		m_ComponentData;
 	protected RplComponent						m_RplComponent;
 	protected ref array<ref VehicleDust>		m_aVehicleDusts = {};
@@ -67,6 +78,12 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 		{
 			m_ComponentData.m_fMaxDistanceVisibleSqr = m_ComponentData.m_fMaxDistanceVisible * m_ComponentData.m_fMaxDistanceVisible;
 		}
+		
+		m_NwkMovementComponent = NwkMovementComponent.Cast(m_pOwner.FindComponent(NwkMovementComponent));
+		
+		m_Physics = m_pOwner.GetPhysics();
+		
+		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 
 		if(GetGame().GetIsClientAuthority())
 		{
@@ -87,12 +104,17 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 			}
 		}
 
-		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
-
 		m_fUpdateTime = UPDATE_TIME;
 		m_fTime = 0.0;
 
-		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
+		SetEventMask(owner, EntityEvent.INIT);
+	}
+	
+	override void OnDelete(IEntity owner)
+	{
+		DisconnectFromVehiclesDustSystem();
+		
+		super.OnDelete(owner);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -105,6 +127,8 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 	override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
+		
+		ConnectToVehiclesDustSystem();
 
 		int count;
 		if(GetGame().GetIsClientAuthority())
@@ -120,10 +144,40 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_PARTICLES_VEHICLE_DUST, "", "Show dust materials", "Vehicles");
 #endif
 	}
+	
+	protected void ConnectToVehiclesDustSystem()
+	{
+		World world = GetOwner().GetWorld();
+		VehiclesDustSystem updateSystem = VehiclesDustSystem.Cast(world.FindSystem(VehiclesDustSystem));
+		if (!updateSystem)
+			return;
+		
+		updateSystem.Register(this);
+	}
+	
+	protected void DisconnectFromVehiclesDustSystem()
+	{
+		World world = GetOwner().GetWorld();
+		VehiclesDustSystem updateSystem = VehiclesDustSystem.Cast(world.FindSystem(VehiclesDustSystem));
+		if (!updateSystem)
+			return;
+		
+		updateSystem.Unregister(this);
+	}
 
 	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
+	void Update(float timeSlice)
 	{
+		if (!m_RplComponent.IsProxy() || m_RplComponent.IsOwner())
+		{
+			if ((!m_Physics || !m_Physics.IsActive()))
+				return;
+		}
+		else if (m_NwkMovementComponent && !m_NwkMovementComponent.IsInterpolating())
+		{
+			return;
+		}
+		
 		if(GetGame().GetIsClientAuthority())
 		{
 			if (m_Simulation.GetSpeedKmh() < m_ComponentData.m_fDustStartSpeed)

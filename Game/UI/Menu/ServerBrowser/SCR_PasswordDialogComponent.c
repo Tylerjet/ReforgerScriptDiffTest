@@ -17,19 +17,6 @@ class SCR_PasswordDialogComponent : ScriptedWidgetComponent
 		super.HandlerAttached(w);
 		
 		m_EditBox = SCR_EditBoxComponent.GetEditBoxComponent(EDIT_BOX, w);
-			
-		// Focus password editbox next frame to ensure activation will happened over UI behavior
-		GetGame().GetCallqueue().CallLater(ActivateWriteMode);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void ActivateWriteMode()
-	{
-		if (!m_EditBox)
-			return;
-		
-		GetGame().GetWorkspace().SetFocusedWidget(m_EditBox.GetRootWidget());
-		m_EditBox.ActivateWriteMode();
 	}
 };
 

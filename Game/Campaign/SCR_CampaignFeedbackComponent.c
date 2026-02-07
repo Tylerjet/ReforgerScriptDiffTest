@@ -2,11 +2,14 @@
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignFeedbackComponentClass : ScriptComponentClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignFeedbackComponent : ScriptComponent
 {
+	[Attribute("{3EE26F4747B6E99D}Configs/Hints/Conflict/ConflictHints.conf", params: "conf class=SCR_CampaignHintStorage")]
+	protected ResourceName m_sHintsConfig;
+
 	protected SCR_GameModeCampaign m_Campaign;
 
 	protected SCR_PlayerController m_PlayerController;
@@ -21,8 +24,17 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 	protected ref TimeContainer m_SpawnTime;
 
+	protected ref SCR_CampaignHintStorage m_HintsConfig;
+
+	protected ref array<int> m_aShownHints = {};
+	protected ref array<int> m_aHintQueue = {};
+
 	protected bool m_bIsPlayerInRadioRange = true;
-	protected bool m_bXPInfoOnKillsHintShown;
+	protected bool m_bCanShowSpawnPosition;
+	protected bool m_bWasMapOpened;
+	protected bool m_bIsConscious;
+
+	protected float m_fNextAllowedHintTimestamp;
 
 	#ifndef AR_CAMPAIGN_TIMESTAMP
 	protected float m_fBaseWithPlayerCaptureStart;
@@ -32,21 +44,12 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	protected WorldTimestamp m_fBaseWithPlayerCaptureEnd;
 	#endif
 
-	protected static const int HINTS_LIMIT_SUPPLIES = 5;
-	protected static const int HINTS_LIMIT_SEIZING = 5;
 	protected static const float ICON_FLASH_DURATION = 20;
 	protected static const float ICON_FLASH_PERIOD = 0.5;
 
-	protected bool m_bStartupHintsShown;
-	protected bool m_bRespawnHintShown;
-	protected bool m_bReinforcementsHintShown;
-	protected bool m_bTicketsHintShown;
-	protected bool m_bBaseLostHintShown;
-	protected bool m_bCanShowSpawnPosition;
-	protected bool m_bWasMapOpened;
-
-	protected int m_iBaseSeizingHintsShown;
-	protected int m_iSuppliesHintsShown;
+	protected static const int AFTER_RESPAWN_HINT_DELAY_MS = 16500;
+	protected static const int DELAY_BETWEEN_HINTS_MS = 1000;
+	protected static const int FEATURE_HINT_DELAY = 120000;
 
 	//------------------------------------------------------------------------------------------------
 	static SCR_CampaignFeedbackComponent GetInstance()
@@ -96,7 +99,8 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void SetSpawnTime()
 	{
-		TimeAndWeatherManagerEntity manager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = m_PlayerController.GetWorld();
+		TimeAndWeatherManagerEntity manager = world.GetTimeAndWeatherManager();
 
 		if (manager)
 				m_SpawnTime = manager.GetTime();
@@ -185,13 +189,89 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	{
 		SCR_PopUpNotification.GetInstance().HideCurrentMsg();
 		GetGame().GetInputManager().RemoveActionListener("TasksOpen", EActionTrigger.DOWN, RegisterTasksShown);
-		GetGame().GetInputManager().RemoveActionListener("GadgetMap", EActionTrigger.DOWN, RegisterTasksShown);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void SetIsPlayerInRadioRange(bool status)
 	{
 		m_bIsPlayerInRadioRange = status;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void GroupLeaderHint()
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+
+		if (!groupsManager)
+			return;
+
+		SCR_AIGroup group = groupsManager.GetPlayerGroup(m_PlayerController.GetPlayerId());
+
+		if (!group)
+			return;
+
+		IEntity leader = GetGame().GetPlayerManager().GetPlayerControlledEntity(group.GetLeaderID());
+
+		if (leader != m_PlayerController.GetControlledEntity())
+			return;
+
+		GetGame().GetCallqueue().Remove(GroupLeaderHint);
+		ShowHint(EHint.GAMEPLAY_GROUPS);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void LoneDriverHint()
+	{
+		SCR_ChimeraCharacter player = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
+
+		if (!player)
+			return;
+
+		if (!player.IsInVehicle())
+			return;
+
+		Vehicle vehicle = Vehicle.Cast(SCR_EntityHelper.GetMainParent(player));
+
+		if (!vehicle)
+			return;
+
+		SCR_EditableVehicleComponent comp = SCR_EditableVehicleComponent.Cast(vehicle.FindComponent(SCR_EditableVehicleComponent));
+
+		if (!comp)
+			return;
+
+		array<CompartmentAccessComponent> compartments = {};
+
+		if (comp.GetCrew(compartments, false) > 1)
+			return;
+
+		GetGame().GetCallqueue().Remove(LoneDriverHint);
+
+		ShowHint(EHint.CONFLICT_DRIVER);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void BaseOutOfRangeHint(SCR_CampaignMilitaryBaseComponent base)
+	{
+		SCR_CampaignFaction playerFaction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
+
+		if (!playerFaction || base.GetFaction() != playerFaction)
+			return;
+
+		if (base.GetHQRadioCoverage(playerFaction) != SCR_ECampaignHQRadioComms.RECEIVE)
+			return;
+
+		ShowHint(EHint.CONFLICT_NO_CONNECTION);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnMapOpen(MapConfiguration config)
+	{
+		if (GetGame().GetWorld().GetWorldTime() < FEATURE_HINT_DELAY)
+			return;
+
+		SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
+		ShowHint(EHint.CONFLICT_GROUP_ICONS);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -260,141 +340,142 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void ShowHint(SCR_ECampaignHints hintID)
+	//! Hints are displayed with a delay after respawn so player has time to find their bearings
+	void OnRespawn()
+	{
+		m_fNextAllowedHintTimestamp = 0;
+		GetGame().GetCallqueue().CallLater(ProcessHintQueue, SCR_GameModeCampaign.UI_UPDATE_DELAY);	// Delay so we show the hint after the deploy menu has closed
+
+		if (!m_aShownHints.Contains(EHint.CONFLICT_TRANSPORT_REQUEST))
+			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_TRANSPORT_REQUEST, false);
+
+		 if (!m_aShownHints.Contains(EHint.CONFLICT_SERVICE_DEPOTS))
+			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_SERVICE_DEPOTS, false);
+		else if (!m_aShownHints.Contains(EHint.CONFLICT_RESPAWN))
+			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_RESPAWN, false);
+		else if (!m_aShownHints.Contains(EHint.CONFLICT_VETERANCY))
+			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_VETERANCY, false);
+		else if (!m_aShownHints.Contains(EHint.GAMEPLAY_WEAPON_INSPECTION))
+			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.GAMEPLAY_WEAPON_INSPECTION, false);
+		else if (!m_aShownHints.Contains(EHint.GAMEPLAY_VEHICLE_INVENTORY))
+			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.GAMEPLAY_VEHICLE_INVENTORY, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ShowHint(EHint hintID, bool showImmediately = false)
 	{
 		if (m_Campaign.IsTutorial())
 			return;
 
-		switch (hintID)
+		if (RplSession.Mode() == RplMode.Dedicated)
+			return;
+
+		SCR_HintUIInfo info = m_HintsConfig.GetHintByEnum(hintID);
+
+		if (!info)
+			return;
+
+		bool showAlways = false;
+
+#ifdef WORKBENCH
+		showAlways = true;
+#endif
+
+		if (m_aShownHints.Contains(hintID) || m_aHintQueue.Contains(hintID))
+			return;
+
+		float currentTime = GetGame().GetWorld().GetWorldTime();
+
+		if (currentTime < m_fNextAllowedHintTimestamp && !showImmediately)
 		{
-			case SCR_ECampaignHints.SIGNAL:
-			{
-				if (!m_bStartupHintsShown)
-				{
-					m_bStartupHintsShown = true;
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_Signal_Text", "#AR-Campaign_GamemodeName", 30, fieldManualEntry: EFieldManualEntryId.CONFLICT_OVERVIEW);
-					GetGame().GetCallqueue().CallLater(ShowHint, 32000, false, SCR_ECampaignHints.SERVICES);
-				}
-				else
-				{
-					if (!m_bRespawnHintShown)
-					{
-						m_bRespawnHintShown = true;
-						ShowHint(SCR_ECampaignHints.RESPAWN);
-					}
-				}
+			m_aHintQueue.Insert(hintID);
+		}
+		else
+		{
+			m_aShownHints.Insert(hintID);
+			SCR_HintManagerComponent.ShowHint(info, ignoreShown: showAlways);
 
-				return;
-			}
-
-			case SCR_ECampaignHints.SERVICES:
-			{
-				string hintString = "#AR-Campaign_Hint_ServicesText <h1 align='center' scale='4'><color rgba='0,112,20,255'><image set='{F7E8D4834A3AFF2F}UI/Imagesets/Conflict/conflict-icons-bw.imageset' name='Slot_Supplies'/></color></h1>";
-				SCR_HintManagerComponent.ShowCustomHint(hintString, "#AR-Campaign_Hint_Services_Title", 30, fieldManualEntry: EFieldManualEntryId.CONFLICT_SERVICES);
-				return;
-			}
-
-			case SCR_ECampaignHints.RESPAWN:
-			{
-				SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_Respawn_Text", "#AR-Campaign_Hint_Respawn_Title", 20, fieldManualEntry: EFieldManualEntryId.CONFLICT_RESPAWN);
-				return;
-			}
-
-			case SCR_ECampaignHints.SEIZING:
-			{
-				SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_EnteringEnemyBase_Presence_Text", "#AR-Campaign_EnteringEnemyBase", 15, fieldManualEntry: EFieldManualEntryId.CONFLICT_SEIZING_BASES);
-				m_iBaseSeizingHintsShown++;
-				return;
-			}
-
-			case SCR_ECampaignHints.RECONFIGURING:
-			{
-				SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_EnteringEnemyRelay_Text", "#AR-EditableEntity_TransmitterTower_01_Name", 15);
-				return;
-			}
-
-			case SCR_ECampaignHints.SUPPLY_RUNS:
-			{
-				SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_SupplyRun_Text", "#AR-Campaign_Hint_SupplyRun_Title", 30, fieldManualEntry: EFieldManualEntryId.CONFLICT_SUPPLIES);
-				return;
-			}
-
-			case SCR_ECampaignHints.SUPPLIES_UNLOADING:
-			{
-				SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_SupplyRunUnload_Text", "#AR-Campaign_Hint_SupplyRun_Title", 10, fieldManualEntry: EFieldManualEntryId.CONFLICT_SUPPLIES);
-				m_iSuppliesHintsShown++;
-				return;
-			}
-
-			case SCR_ECampaignHints.KILL_XP:
-			{
-				SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_KillXP_Text", "#AR-Campaign_Hint_KillXP_Title", 10, fieldManualEntry: EFieldManualEntryId.CONFLICT_RANKS);
-				return;
-			}
-
-			case SCR_ECampaignHints.MOBILE_ASSEMBLY:
-			{
-				SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_MobileAssembly_Text", "#AR-Vehicle_MobileAssembly_Name", 30, fieldManualEntry: EFieldManualEntryId.CONFLICT_MHQ);
-				return;
-			}
-
-			case SCR_ECampaignHints.REINFORCEMENTS:
-			{
-				if (!m_bReinforcementsHintShown)
-				{
-					m_bReinforcementsHintShown = true;
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_Reinforcements_Text", "#AR-Campaign_Hint_Reinforcements_Title", 20, fieldManualEntry: EFieldManualEntryId.CONFLICT_REINFORCEMENTS);
-				}
-
-				return;
-			}
-
-			case SCR_ECampaignHints.TICKETS:
-			{
-				if (!m_bTicketsHintShown)
-				{
-					m_bTicketsHintShown = true;
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_Supplies_Text", "#AR-Campaign_Hint_Services_Title", 30, fieldManualEntry: EFieldManualEntryId.CONFLICT_RESPAWN);
-				}
-
-				return;
-			}
-
-			case SCR_ECampaignHints.BASE_LOST:
-			{
-				if (!m_bBaseLostHintShown)
-				{
-					m_bBaseLostHintShown = true;
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_BaseLost_Text", "#AR-Campaign_Hint_BaseLost_Title", 15, fieldManualEntry: EFieldManualEntryId.CONFLICT_SEIZING_BASES);
-				}
-
-				return;
-			}
+			// Show the next hint in queue after this hint's duration expires
+			float durationMs = 1000 * info.GetDuration();
+			m_fNextAllowedHintTimestamp = currentTime + durationMs;
+			GetGame().GetCallqueue().Remove(ProcessHintQueue);
+			GetGame().GetCallqueue().CallLater(ProcessHintQueue, durationMs + DELAY_BETWEEN_HINTS_MS);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	protected void ProcessHintQueue()
 	{
-		if (player != SCR_PlayerController.GetLocalControlledEntity())
+		if (m_aHintQueue.IsEmpty())
+			return;
+
+		int hintId = m_aHintQueue[0];
+		m_aHintQueue.RemoveOrdered(0);
+
+		ShowHint(hintId);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void PauseHintQueue()
+	{
+		GetGame().GetCallqueue().Remove(ProcessHintQueue);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Upon death, the unconscious state is no longer detectable, we need to cache it
+	void OnConsciousnessChanged(bool conscious)
+	{
+		m_bIsConscious = conscious;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsConscious()
+	{
+		return m_bIsConscious;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	{
+		if (playerEntity != SCR_PlayerController.GetLocalControlledEntity())
 			return;
 
 		if (m_BaseWithPlayer)
 			OnBaseLeft(m_BaseWithPlayer);
 
 		SCR_PopUpNotification.GetInstance().HideCurrentMsg();
+		GetGame().GetCallqueue().Remove(ShowHint);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void OnBaseFactionChanged(notnull SCR_MilitaryBaseComponent base, Faction faction)
 	{
-		IEntity player;
-		
-		if (m_PlayerController)
-			player = m_PlayerController.GetControlledEntity();
+		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
 
-		if (player && faction == SCR_FactionManager.SGetLocalPlayerFaction())
-			ShowHint(SCR_ECampaignHints.TICKETS);
+		if (!campaignBase || campaignBase.GetType() != SCR_ECampaignBaseType.BASE)
+			return;
+
+		if (faction == SCR_FactionManager.SGetLocalPlayerFaction() && GetGame().GetWorld().GetWorldTime() > FEATURE_HINT_DELAY)
+		{
+			SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance();
+			array<SCR_MilitaryBaseComponent> bases = {};
+			baseManager.GetBases(bases);
+			int friendlyBases;
+
+			foreach (SCR_MilitaryBaseComponent currentBase : bases)
+			{
+				if (currentBase.GetOwner() != faction)
+					continue;
+
+				friendlyBases++;
+
+				if (friendlyBases == 3)
+				{
+					ShowHint(EHint.CONFLICT_SUPPLIES);
+					break;
+				}
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -426,58 +507,42 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 		if (m_BaseWithPlayer.GetFaction() != playerFaction)
 		{
-			if ((m_iBaseSeizingHintsShown < HINTS_LIMIT_SEIZING || m_BaseWithPlayer.GetType() == SCR_ECampaignBaseType.RELAY) && m_BaseWithPlayer.IsHQRadioTrafficPossible(playerFaction))
+			if (m_BaseWithPlayer.IsHQRadioTrafficPossible(playerFaction))
 			{
 				if (m_BaseWithPlayer.GetType() == SCR_ECampaignBaseType.RELAY)
-					ShowHint(SCR_ECampaignHints.RECONFIGURING);
+					ShowHint(EHint.CONFLICT_TOWER_SEIZING);
 				else
-					ShowHint(SCR_ECampaignHints.SEIZING);
+					ShowHint(EHint.CONFLICT_BASE_SEIZING);
 			}
 		}
-		else if (m_iSuppliesHintsShown < HINTS_LIMIT_SUPPLIES)
+		else
 		{
-			// Entering a friendly base in a supply truck
+			// Entering a friendly base in a vehicle
 			ChimeraCharacter player = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
 
-			if (!player || !player.IsInVehicle())
-				return;
-
-			CompartmentAccessComponent compartmentAccessComponent = CompartmentAccessComponent.Cast(player.FindComponent(CompartmentAccessComponent));
-
-			if (!compartmentAccessComponent)
-				return;
-
-			BaseCompartmentSlot compartmentSlot = compartmentAccessComponent.GetCompartment();
-
-			if (!compartmentSlot)
-				return;
-
-			Vehicle vehicle = Vehicle.Cast(compartmentSlot.GetOwner());
-
-			if (!vehicle)
-				return;
-
-			SCR_CampaignSuppliesComponent suppliesComponent = SCR_CampaignSuppliesComponent.Cast(vehicle.FindComponent(SCR_CampaignSuppliesComponent));
-
-			if (!suppliesComponent)
-				return;
-
-			if (m_BaseWithPlayer.GetType() == SCR_ECampaignBaseType.BASE && !m_BaseWithPlayer.IsHQ())
+			if (player && player.IsInVehicle())
 			{
-				if (suppliesComponent.GetSupplies() != 0)
-					ShowHint(SCR_ECampaignHints.SUPPLIES_UNLOADING);
+				if (m_BaseWithPlayer.GetType() == SCR_ECampaignBaseType.BASE && !m_BaseWithPlayer.IsHQ())
+					ShowHint(EHint.CONFLICT_SUPPLY_RUNS);
 			}
+
+			// Entering a friendly base with an armory
+			if (GetGame().GetWorld().GetWorldTime() > SCR_GameModeCampaign.BACKEND_DELAY && m_BaseWithPlayer.GetServiceDelegateByType(SCR_EServicePointType.ARMORY))
+			{
+				ShowHint(EHint.CONFLICT_LOADOUTS);
+				ShowHint(EHint.GAMEPLAY_RADIO_RESPAWN);
+			}
+
+			// Entering a friendly base covered by enemy radio signal
+			bool covered;
+
+			if (SCR_FactionManager.SGetLocalPlayerFaction() == m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR))
+				covered = base.IsHQRadioTrafficPossible(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR));
 			else
-			{
-				if (m_BaseWithPlayer.GetType() != SCR_ECampaignBaseType.RELAY)
-				{
-					if (suppliesComponent.GetSupplies() != suppliesComponent.GetSuppliesMax())
-					{
-						m_iSuppliesHintsShown++;
-						SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_SupplyRunLoad_Text", "#AR-Campaign_Hint_SupplyRun_Title", 10, fieldManualEntry: EFieldManualEntryId.CONFLICT_SUPPLIES);
-					}
-				}
-			}
+				covered = base.IsHQRadioTrafficPossible(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
+
+			if (covered)
+				ShowHint(EHint.CONFLICT_DEFENDING_BASES);
 		}
 	}
 
@@ -491,6 +556,18 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 		if (m_BaseWithPlayer == base)
 			m_BaseWithPlayer = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnMatchSituationChanged()
+	{
+		Faction winner = GetGame().GetFactionManager().GetFactionByIndex(m_Campaign.GetWinningFactionId());
+
+		if (!winner || winner == SCR_FactionManager.SGetLocalPlayerFaction())
+			return;
+
+		m_Campaign.GetOnMatchSituationChanged().Remove(OnMatchSituationChanged);
+		ShowHint(EHint.CONFLICT_LOSING);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -605,14 +682,13 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 		if (base)
 		{
-			SCR_CampaignBaseCallsign callsignInfo;
-			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+			SCR_MilitaryBaseCallsign callsignInfo;
 
-			if (faction == campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR))
+			if (faction == m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR))
 				callsignInfo = faction.GetBaseCallsignByIndex(base.GetCallsign());
 			else
-				callsignInfo = faction.GetBaseCallsignByIndex(base.GetCallsign(), campaign.GetCallsignOffset());
-	
+				callsignInfo = faction.GetBaseCallsignByIndex(base.GetCallsign(), m_Campaign.GetCallsignOffset());
+
 			if (callsignInfo)
 				signalComp.SetSignalValue(signalBase, callsignInfo.GetSignalIndex());
 		}
@@ -852,7 +928,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 			case SCR_ERadioMsg.RELAY_LOST:
 			{
-				msgName = SCR_SoundEvent.SOUND_HQ_CTL;
+				msgName = SCR_SoundEvent.SOUND_HQ_RRL;
 				break;
 			}
 
@@ -933,6 +1009,12 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 			case SCR_ERadioMsg.BUILT_FIELD_HOSPITAL:
 			{
 				msgName = SCR_SoundEvent.SOUND_HQ_HCB;
+				break;
+			}
+
+			case SCR_ERadioMsg.BUILT_HELIPAD:
+			{
+				msgName = SCR_SoundEvent.SOUND_HQ_BHA;
 				break;
 			}
 
@@ -1031,10 +1113,18 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnXPChanged(int totalXP, SCR_EXPRewards rewardID, int XP, bool volunteer, bool profileUsed, int skillLevel)
 	{
-		if (!m_bXPInfoOnKillsHintShown && (rewardID == SCR_EXPRewards.ENEMY_KILL || rewardID == SCR_EXPRewards.ENEMY_KILL_VEH))
+		if (rewardID == SCR_EXPRewards.ENEMY_KILL || rewardID == SCR_EXPRewards.ENEMY_KILL_VEH)
 		{
-			m_bXPInfoOnKillsHintShown = true;
-			GetGame().GetCallqueue().CallLater(ShowHint, 30000 + Math.RandomIntInclusive(0, 30000), false, SCR_ECampaignHints.KILL_XP);
+			GetGame().GetCallqueue().CallLater(ShowHint, 30000 + Math.RandomIntInclusive(0, 30000), false, EHint.CONFLICT_ELIMINATING_ENEMIES, false);
+		}
+
+		if (XP > 0)
+		{
+			if (rewardID != SCR_EXPRewards.ENEMY_KILL && rewardID != SCR_EXPRewards.ENEMY_KILL_VEH)
+				ShowHint(EHint.CONFLICT_PROMOTIONS);
+
+			if (rewardID == SCR_EXPRewards.VETERANCY)
+				ShowHint(EHint.CONFLICT_VETERANCY);
 		}
 	}
 
@@ -1077,14 +1167,18 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	{
 		GetGame().GetCallqueue().Remove(CheckPlayerInsideRadioRange);
 		GetGame().GetCallqueue().Remove(RefreshCurrentPopupMessage);
+		GetGame().GetCallqueue().Remove(GroupLeaderHint);
+		GetGame().GetCallqueue().Remove(LoneDriverHint);
 
 		if (activate)
 		{
 			GetGame().GetCallqueue().CallLater(CheckPlayerInsideRadioRange, 3000, true);
 			GetGame().GetCallqueue().CallLater(RefreshCurrentPopupMessage, 500, true);
+			GetGame().GetCallqueue().CallLater(GroupLeaderHint, FEATURE_HINT_DELAY, true);
+			GetGame().GetCallqueue().CallLater(LoneDriverHint, FEATURE_HINT_DELAY, true);
 
 			GetGame().GetInputManager().AddActionListener("TasksOpen", EActionTrigger.DOWN, RegisterTasksShown);
-			GetGame().GetInputManager().AddActionListener("GadgetMap", EActionTrigger.DOWN, RegisterTasksShown);
+			SCR_UITaskManagerComponent.s_OnTaskListVisible.Insert(ShowVolunteerHint);
 
 			SCR_MilitaryBaseManager.GetInstance().GetOnBaseFactionChanged().Insert(OnBaseFactionChanged);
 
@@ -1093,17 +1187,26 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 				m_Campaign.GetOnPlayerKilled().Insert(OnPlayerKilled);
 				m_Campaign.GetBaseManager().GetOnLocalPlayerEnteredBase().Insert(OnBaseEntered);
 				m_Campaign.GetBaseManager().GetOnLocalPlayerLeftBase().Insert(OnBaseLeft);
+				m_Campaign.GetBaseManager().GetOnSignalChanged().Insert(BaseOutOfRangeHint);
+				m_Campaign.GetOnMatchSituationChanged().Insert(OnMatchSituationChanged);
 			}
 
 			SCR_PlayerXPHandlerComponent comp = SCR_PlayerXPHandlerComponent.Cast(m_PlayerController.FindComponent(SCR_PlayerXPHandlerComponent));
 
 			if (comp)
 				comp.GetOnXPChanged().Insert(OnXPChanged);
+
+			SCR_ResourcePlayerControllerInventoryComponent inventoryComp = SCR_ResourcePlayerControllerInventoryComponent.Cast(m_PlayerController.FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
+
+			if (inventoryComp)
+				inventoryComp.GetOnPlayerInteraction().Insert(OnPlayerSuppliesInteraction);
+
+			SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
 		}
 		else
 		{
 			GetGame().GetInputManager().RemoveActionListener("TasksOpen", EActionTrigger.DOWN, RegisterTasksShown);
-			GetGame().GetInputManager().RemoveActionListener("GadgetMap", EActionTrigger.DOWN, RegisterTasksShown);
+			SCR_UITaskManagerComponent.s_OnTaskListVisible.Remove(ShowVolunteerHint);
 
 			SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
 
@@ -1113,13 +1216,15 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 			if (m_Campaign)
 			{
 				m_Campaign.GetOnPlayerKilled().Remove(OnPlayerKilled);
-				
+				m_Campaign.GetOnMatchSituationChanged().Remove(OnMatchSituationChanged);
+
 				SCR_CampaignMilitaryBaseManager campaignBaseManager = m_Campaign.GetBaseManager();
-				
+
 				if (campaignBaseManager)
 				{
 					campaignBaseManager.GetOnLocalPlayerEnteredBase().Remove(OnBaseEntered);
 					campaignBaseManager.GetOnLocalPlayerLeftBase().Remove(OnBaseLeft);
+					campaignBaseManager.GetOnSignalChanged().Remove(BaseOutOfRangeHint);
 				}
 			}
 
@@ -1129,7 +1234,14 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 				if (comp)
 					comp.GetOnXPChanged().Remove(OnXPChanged);
+
+				SCR_ResourcePlayerControllerInventoryComponent inventoryComp = SCR_ResourcePlayerControllerInventoryComponent.Cast(m_PlayerController.FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
+
+				if (inventoryComp)
+					inventoryComp.GetOnPlayerInteraction().Remove(OnPlayerSuppliesInteraction);
 			}
+
+			SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
 		}
 	}
 
@@ -1140,6 +1252,32 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 			return;
 
 		ProcessEvents(becameOwner);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ShowVolunteerHint()
+	{
+		if (GetGame().GetWorld().GetWorldTime() < FEATURE_HINT_DELAY)
+			return;
+
+		SCR_UITaskManagerComponent.s_OnTaskListVisible.Remove(ShowVolunteerHint);
+
+		ShowHint(EHint.CONFLICT_VOLUNTEERING);
+		ShowHint(EHint.CONFLICT_PRIMARY_OBJECTIVES);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnPlayerSuppliesInteraction(EResourcePlayerInteractionType interactionType, PlayerController playerController, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue)
+	{
+		if (interactionType != EResourcePlayerInteractionType.VEHICLE_UNLOAD)
+			return;
+
+		SCR_ResourcePlayerControllerInventoryComponent comp = SCR_ResourcePlayerControllerInventoryComponent.Cast(m_PlayerController.FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
+
+		if (comp)
+			comp.GetOnPlayerInteraction().Remove(OnPlayerSuppliesInteraction);
+
+		ShowHint(EHint.CONFLICT_BUILDING);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1169,6 +1307,13 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 		SetEventMask(owner, EntityEvent.INIT);
 
 		m_PlayerController = SCR_PlayerController.Cast(owner);
+
+		if (RplSession.Mode() == RplMode.Dedicated)
+			return;
+
+		//Parse & register hints list
+		Resource container = BaseContainerTools.LoadContainer(m_sHintsConfig);
+		m_HintsConfig = SCR_CampaignHintStorage.Cast(BaseContainerTools.CreateInstanceFromContainer(container.GetResource().ToBaseContainer()));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1176,25 +1321,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	{
 		ProcessEvents(false);
 	}
-};
-
-//------------------------------------------------------------------------------------------------
-enum SCR_ECampaignHints
-{
-	NONE,
-	SIGNAL,
-	SERVICES,
-	RESPAWN,
-	SEIZING,
-	RECONFIGURING,
-	SUPPLY_RUNS,
-	KILL_XP,
-	MOBILE_ASSEMBLY,
-	SUPPLIES_UNLOADING,
-	REINFORCEMENTS,
-	TICKETS,
-	BASE_LOST
-};
+}
 
 //------------------------------------------------------------------------------------------------
 //! Popup message priorities sorted from lowest to highest
@@ -1211,11 +1338,11 @@ enum SCR_ECampaignPopupPriority
 	BASE_UNDER_ATTACK,
 	RESPAWN,
 	MATCH_END
-};
+}
 
 enum SCR_ECampaignSeizingMessagePrio
 {
 	NONE,
 	SEIZING_YOU = 998,
 	SEIZING_ENEMY = 999
-};
+}

@@ -53,6 +53,10 @@ class BaseGameTriggerEntity: GenericEntity
 	proto external void AddClassType(typename classType);
 	//! Remove a class type from the filter
 	proto external bool RemoveClassType(typename classType);
+	//! Add a prefab filter to the filters
+	proto external void AddPrefabFilter(PrefabFilter prefabFilter);
+	//! Remove a prefab filter from the filters
+	proto external bool RemovePrefabFilter(PrefabFilter prefabFilter);
 	//! Get flag(s) from the traces done by the the trigger
 	proto external EQueryEntitiesFlags GetTraceMask();
 	/*!

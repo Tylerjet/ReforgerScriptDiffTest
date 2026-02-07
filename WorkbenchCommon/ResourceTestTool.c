@@ -41,7 +41,7 @@ class ResourceTestPlugin: WorkbenchPlugin
 		rb.GetCmdLine("-resources", ids);
 		
 		string directory;
-		rb.GetCmdLine("-screenshot-autotest-output-dir", directory);
+		rb.GetCmdLine("-autotest-output-dir", directory);
 		if (directory.Length() == 0)
 		{
 			directory = "$logs:ResourceTestTool";

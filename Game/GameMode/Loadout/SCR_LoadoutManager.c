@@ -511,13 +511,14 @@ class SCR_LoadoutManager : GenericEntity
 		GetGame().RegisterLoadoutManager(this);
 		
 		#ifdef ENABLE_DIAG
-		SetEventMask(EntityEvent.DIAG | EntityEvent.FRAME); // TODO: DIAG should probably activate entity?
+		ConnectToDiagSystem();
 		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_LoadoutManager()
 	{
+		DisconnectFromDiagSystem();
 		GetGame().UnregisterLoadoutManager(this);
 	}
 };

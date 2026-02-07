@@ -30,29 +30,81 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	protected ref array<ResourceName>			m_aAIPrefabsForRemoval = {};
 
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT, bool bInit = true)
+	override void DynamicDespawn()
 	{
-
-		if (activation == SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
+		GetOnAllChildrenSpawned().Remove(DynamicDespawn);
+		if (!m_Entity && !SCR_StringHelper.IsEmptyOrWhiteSpace(m_sObjectToSpawn))
 		{
-			if (m_aWaypointGroupNames.IsEmpty() && !m_sWPToSpawn)
-				return;
-
-			ScriptInvoker invoker;
-			if (area)
-				invoker = area.GetOnAreaInit();
-
-			if (invoker)
-				invoker.Insert(SetWPGroup);
-		}
-
-		if (m_eActivationType != activation)
+			GetOnAllChildrenSpawned().Insert(DynamicDespawn);
 			return;
-
+		}
+		
+		if (!m_bInitiated || m_bExcludeFromDynamicDespawn)
+			return;
+		
+		m_bInitiated = false;
+		m_bDynamicallyDespawned = true;
+		if (m_Entity)
+			m_vPosition = m_Entity.GetOrigin();
+		
+		foreach (IEntity entity : m_aSpawnedEntities)
+		{
+			if (!entity)
+				continue;
+			
+			m_vPosition = entity.GetOrigin();
+			SCR_EntityHelper.DeleteEntityAndChildren(entity);
+		}
+		
+		m_aSpawnedEntities.Clear();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
+	{
+		if (m_bIsTerminated)
+			return;
+		
+		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
+			return;
+		
 		SCR_AIGroup.IgnoreSpawning(true);
-		super.Init(area, activation);
-		if (activation != SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
-			SetWPGroup();
+		if (m_eActivationType == SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT && !m_aWaypointGroupNames.IsEmpty())
+		{
+			if (!m_sWPToSpawn)
+			{
+				Print(string.Format("ScenarioFramework - SlotAI: WPToSpawn not defined for %1, AI on this slot won't be spawned!", GetOwner().GetName()), LogLevel.ERROR);
+				InvokeAllChildrenSpawned();
+				return;
+			}
+			
+			foreach (SCR_WaypointSet waypointSet : m_aWaypointGroupNames)
+			{
+				string layerName = waypointSet.m_sName;
+				if (!layerName)
+					continue;
+				
+				IEntity layerEntity = GetGame().GetWorld().FindEntityByName(layerName);
+				if (!layerEntity)
+					continue;
+						
+				SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(layerEntity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+				if (!layer)
+					continue;
+				
+				if (layer.GetIsInitiated())
+					GetOnAllChildrenSpawned().Insert(ProcessWaypoints);
+				else
+					layer.GetOnAllChildrenSpawned().Insert(ProcessWaypoints);
+			}
+			
+			super.Init(area, activation);
+		}
+		else
+		{
+			GetOnAllChildrenSpawned().Insert(ProcessWaypoints);
+			super.Init(area, activation);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -97,12 +149,13 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	{
 		EntitySpawnParams paramsPatrol = new EntitySpawnParams();
 		paramsPatrol.TransformMode = ETransformMode.WORLD;
+		
 		paramsPatrol.Transform[3] = m_Entity.GetOrigin();
 		Resource groupResource = Resource.Load(m_sGroupPrefab);
 		if (!groupResource.IsValid())
 			return;
 		
-		m_AIGroup = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(groupResource, null, paramsPatrol));
+		m_AIGroup = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(groupResource, GetGame().GetWorld(), paramsPatrol));
 		if (!m_AIGroup)
 			return;
 		
@@ -111,7 +164,10 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 			return;
 
 		m_AIGroup.SetFaction(facComp.GetAffiliatedFaction());
-		m_AIGroup.AddAIEntityToGroup(m_Entity, 0);
+		m_AIGroup.AddAIEntityToGroup(m_Entity);
+		
+		if (m_vPosition != vector.Zero)
+			m_Entity.SetOrigin(m_vPosition);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -128,7 +184,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		if (!resWP)
 			return null;
 
-		AIWaypoint waypoint = AIWaypoint.Cast(GetGame().SpawnEntityPrefab(resWP, null, paramsPatrolWP));
+		AIWaypoint waypoint = AIWaypoint.Cast(GetGame().SpawnEntityPrefab(resWP, GetGame().GetWorld(), paramsPatrolWP));
 		if (!waypoint)
 			return null;
 
@@ -143,7 +199,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		array<IEntity> aEnts = layer.GetSpawnedEntities();
 		if (aEnts.IsEmpty())
 		{
-			Print("ScenarioFramework: no waypoints found!", LogLevel.WARNING);
+			Print(string.Format("ScenarioFramework - SlotAI: no waypoints found for %1!", GetOwner().GetName()), LogLevel.ERROR);
 			return;
 		}
 		m_aWaypoints.Resize(aEnts.Count());
@@ -177,46 +233,95 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	{
 		EntitySpawnParams paramsPatrolWP = new EntitySpawnParams();
 		paramsPatrolWP.TransformMode = ETransformMode.WORLD;
+		AIWaypoint waypoint = m_aWaypoints[0];
+		if (!waypoint)
+			return;
+		
 		paramsPatrolWP.Transform[3] = m_aWaypoints[0].GetOrigin();
 
 		Resource resWP = Resource.Load(m_sCycleWPPrefab);
 		if (resWP)
-			m_aWaypoints.Insert(AIWaypoint.Cast(GetGame().SpawnEntityPrefab(resWP, null, paramsPatrolWP)));
+			m_aWaypoints.Insert(AIWaypoint.Cast(GetGame().SpawnEntityPrefab(resWP, GetGame().GetWorld(), paramsPatrolWP)));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ProcessWaypoints()
+	{
+		foreach (SCR_WaypointSet waypointSet : m_aWaypointGroupNames)
+		{
+			string layerName = waypointSet.m_sName;
+			if (!layerName)
+				continue;
+				
+			IEntity layerEntity = GetGame().GetWorld().FindEntityByName(layerName);
+			if (!layerEntity)
+				continue;
+						
+			SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(layerEntity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+			if (layer)
+				layer.GetOnAllChildrenSpawned().Remove(ProcessWaypoints);
+		}
+
+		if (m_bInitiated)
+			SetWPGroup();
+		else
+			GetOnAllChildrenSpawned().Insert(SetWPGroup);	
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void SetWPGroup()
 	{
+		GetOnAllChildrenSpawned().Remove(SetWPGroup);
+		
 		if (!m_Entity)
 		{
-			Print("ScenarioFramework: Trying to add waypoints to non existing entity! Did you select the object to spawn?", LogLevel.WARNING);
+			Print(string.Format("ScenarioFramework: Trying to add waypoints to non existing entity! Did you select the object to spawn for %1?", GetOwner().GetName()), LogLevel.ERROR);
 			SCR_AIGroup.IgnoreSpawning(false);
 			return;
 		}
-
+		
 		if (!m_aWaypointGroupNames.IsEmpty())
 		{
 			//Select random layer which holds the waypoints (defined in the layer setting)
-
+			Math.Randomize(-1);
 			SCR_WaypointSet wrapper = m_aWaypointGroupNames.GetRandomElement();
 			IEntity entity = GetGame().GetWorld().FindEntityByName(wrapper.m_sName);
 			if (entity)
 			{
-
-				SCR_ScenarioFrameworkSlotBase waypoint = SCR_ScenarioFrameworkSlotBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkSlotBase));
-				if (waypoint)
+				SCR_ScenarioFrameworkLayerBase waypointLayer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+				if (waypointLayer)
 				{
-					if (AIWaypoint.Cast(waypoint.GetSpawnedEntity()))
-						m_aWaypoints.Insert(AIWaypoint.Cast(waypoint.GetSpawnedEntity()));
+					SCR_ScenarioFrameworkSlotBase waypointSlot = SCR_ScenarioFrameworkSlotBase.Cast(waypointLayer);
+					if (waypointSlot)
+					{
+						if (AIWaypoint.Cast(waypointSlot.GetSpawnedEntity()))
+							m_aWaypoints.Insert(AIWaypoint.Cast(waypointSlot.GetSpawnedEntity()));
+					}
+					else
+					{
+						array<SCR_ScenarioFrameworkLayerBase> childSlots = {};
+						childSlots = waypointLayer.GetChildrenEntities();
+				
+						foreach (SCR_ScenarioFrameworkLayerBase child : childSlots)
+						{
+							SCR_ScenarioFrameworkSlotBase waypoint = SCR_ScenarioFrameworkSlotBase.Cast(child);
+							if (waypoint)
+							{
+								if (AIWaypoint.Cast(waypoint.GetSpawnedEntity()))
+									m_aWaypoints.Insert(AIWaypoint.Cast(waypoint.GetSpawnedEntity()));
+							}
+							else
+							{
+								SCR_ScenarioFrameworkLayerBase WPGroupLayer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+								if (WPGroupLayer)
+									GetWaypointsFromLayer(WPGroupLayer, wrapper.m_bUseRandomOrder);
+							}
+						}
+					
+						if (wrapper.m_bCycleWaypoints && !m_aWaypoints.IsEmpty())
+						AddCycleWaypoint();
+					}
 				}
-				else
-				{
-					SCR_ScenarioFrameworkLayerBase WPGroupLayer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
-					if (WPGroupLayer)
-						GetWaypointsFromLayer(WPGroupLayer, wrapper.m_bUseRandomOrder);
-				}
-				if (wrapper.m_bCycleWaypoints && !m_aWaypoints.IsEmpty())
-					AddCycleWaypoint();
 			}
 		}
 		else
@@ -250,7 +355,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		
 		if (waypointsWithoutCycle.IsEmpty()) 
 		{
-			Print("ScenarioFramework SlotAI: There are not enough waypoints!", LogLevel.WARNING);
+			Print(string.Format("ScenarioFramework - SlotAI: There are not enough waypoints for %1!", GetOwner().GetName()), LogLevel.ERROR);
 			return;
 		}
 		
@@ -278,9 +383,15 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		{
 			foreach (ResourceName prefabToRemove : m_aAIPrefabsForRemoval)
 			{
-				m_AIGroup.m_aUnitPrefabSlots.RemoveItem(prefabToRemove);
+				for (int i = m_AIGroup.m_aUnitPrefabSlots.Count() - 1; i >= 0; i--)
+				{
+					if (m_AIGroup.m_aUnitPrefabSlots[i] != prefabToRemove)
+						continue;
+					
+					m_AIGroup.m_aUnitPrefabSlots.Remove(i);
+					break;
+				}
 			}
-			m_AIGroup.SetMaxUnitsToSpawn(m_AIGroup.GetMaxMembers() - m_aAIPrefabsForRemoval.Count());
 		}
 		else if (m_bBalanceOnPlayersCount)
 		{
@@ -289,8 +400,32 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 			m_AIGroup.SetMaxUnitsToSpawn(iUnitsToSpawn);
 		}
 
+		m_AIGroup.SetMemberSpawnDelay(200);
 		m_AIGroup.SpawnUnits();
 		m_AIGroup.GetOnAgentRemoved().Insert(DecreaseAIGroupMemberCount);
+		
+		if (m_vPosition == vector.Zero)
+			return;
+		
+		array<AIAgent> agents = {};
+		m_AIGroup.GetAgents(agents);
+		
+		AIFormationComponent formComp = AIFormationComponent.Cast(m_AIGroup.FindComponent(AIFormationComponent));
+		if (!formComp)
+			return;
+		
+		AIFormationDefinition formDef = formComp.GetFormation();
+		if (!formDef)
+			return;
+		
+		foreach (int i, AIAgent agent : agents)
+		{
+			IEntity agentEntity = agent.GetControlledEntity();
+			if (!agentEntity)
+				continue;
+			
+			agentEntity.SetOrigin(m_vPosition + formDef.GetOffsetPosition(i))
+		}
 	}
 
 #ifdef WORKBENCH

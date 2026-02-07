@@ -1,7 +1,11 @@
+[BaseContainerProps()]
 class SCR_ItemAttributeCollection: ItemAttributeCollection
 {
 	[Attribute("2", UIWidgets.ComboBox, "Slot size", "", ParamEnumArray.FromEnum(ESlotSize))]
 	protected ESlotSize m_Size;
+	
+	[Attribute(SCR_EQuickSlotSize.DEFAULT.ToString(), desc: "Slot size when item is equipped in quickbar. Set default to keep original slot size", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EQuickSlotSize))]
+	protected SCR_EQuickSlotSize m_eQuickSlotSize;
 	
 	[Attribute("2", UIWidgets.ComboBox, "Slot size", "", ParamEnumArray.FromEnum(ESlotID))]
 	protected ESlotID m_SlotType;
@@ -11,6 +15,9 @@ class SCR_ItemAttributeCollection: ItemAttributeCollection
 
 	[Attribute("1", UIWidgets.CheckBox, "Sets item visible in inventory")]
 	protected bool m_bVisible;
+	
+	[Attribute("1", UIWidgets.CheckBox, "Sets item stackable in inventory")]
+	protected bool m_bStackable;
 
 	private ItemPhysicalAttributes m_PhysAttributes;
 	
@@ -46,11 +53,23 @@ class SCR_ItemAttributeCollection: ItemAttributeCollection
 	{
 		return m_bVisible;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsStackable()
+	{
+		return m_bStackable;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void SetSlotSize( ESlotSize slotSize ) 	
 	{
 		m_Size = slotSize; 
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetDraggable(bool isDraggable)
+	{
+		m_bDraggable = isDraggable;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -78,7 +97,19 @@ class SCR_ItemAttributeCollection: ItemAttributeCollection
 			
 	//------------------------------------------------------------------------------------------------
 	//! size of the slot the item fits in
-	ESlotSize GetItemSize()	{ return m_Size; }
+	ESlotSize GetItemSize()	
+	{ 
+		return m_Size; 
+	}
+	
+	//! Size of item when added to the quickbar
+	ESlotSize GetQuickSlotItemSize()	
+	{ 
+		if (m_eQuickSlotSize == SCR_EQuickSlotSize.DEFAULT)
+			return GetItemSize();
+		
+		return m_eQuickSlotSize; 
+	}
 
 	override protected void OnInitCollection(IEntityComponentSource src)
 	{

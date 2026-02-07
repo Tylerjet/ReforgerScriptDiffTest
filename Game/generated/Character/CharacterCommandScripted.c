@@ -15,6 +15,7 @@ class CharacterCommandScripted: ScriptedCommand
 	event bool IsRootMotionControlled();
 	event void UpdateTransformNoRootMotion(out vector transform[4], float dt);
 	event bool TerminateCommand();
+	event void OnPossess();
 }
 
 /*!

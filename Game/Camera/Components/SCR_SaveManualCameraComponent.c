@@ -27,18 +27,23 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 	protected void SaveCamera6() { SaveCamera(6); }
 	protected void SaveCamera7() { SaveCamera(7); }
 	protected void SaveCamera8() { SaveCamera(8); }
-	protected void SaveCamera9() { SaveCamera(9); }
+	//protected void SaveCamera9() { SaveCamera(9); }
 	protected void SaveCamera(int index)
 	{
+		SCR_ManualCamera camera = GetCameraEntity();
+		ResourceName worldPath = GetGame().GetWorldFile();// SCR_Global.GetRootWorld(); //--- Does not return ResourceName, TODO: use it again when it does
+		if (!worldPath)
+		{
+			Print("Unable to save camera data, world path not found!", LogLevel.WARNING);
+			return;
+		}
+		
 		SCR_ManualCameraSettings settings = new SCR_ManualCameraSettings();
 		BaseContainer settingsContainer = GetGame().GetGameUserSettings().GetModule("SCR_ManualCameraSettings");
 		BaseContainerTools.WriteToInstance(settings, settingsContainer);
 		
 		if (!settings.m_aSavedData)
 			settings.m_aSavedData = {};
-		
-		SCR_ManualCamera camera = GetCameraEntity();
-		ResourceName worldPath = SCR_Global.GetRootWorld();
 		
 		//--- Find existing save, and override it if found
 		SCR_ManualCameraSave save;
@@ -79,20 +84,30 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 	protected void LoadCamera6() { LoadCamera(6); }
 	protected void LoadCamera7() { LoadCamera(7); }
 	protected void LoadCamera8() { LoadCamera(8); }
-	protected void LoadCamera9() { LoadCamera(9); }
+	//protected void LoadCamera9() { LoadCamera(9); }
 	protected void LoadCamera(int index)
 	{
+		ResourceName worldPath = GetGame().GetWorldFile();// SCR_Global.GetRootWorld(); //--- Does not return ResourceName, TODO: use it again when it does
+		if (!worldPath)
+		{
+			Print("Unable to save camera data, world path not found!", LogLevel.WARNING);
+			return;
+		}
+		
 		SCR_ManualCameraSettings settings = new SCR_ManualCameraSettings();
 		BaseContainer settingsContainer = GetGame().GetGameUserSettings().GetModule("SCR_ManualCameraSettings");
 		BaseContainerTools.WriteToInstance(settings, settingsContainer);
+		
 		if (!settings.m_aSavedData)
 			return;
 		
+		settings.m_aSavedData.Debug();
+		
 		//--- Apply saved values to components
 		SCR_ManualCamera camera = GetCameraEntity();
-		ResourceName worldPath = SCR_Global.GetRootWorld();
 		foreach (SCR_ManualCameraSave saveCandidate: settings.m_aSavedData)
 		{
+			PrintFormat("%1 == %2 && %3 == %4", saveCandidate.m_iIndex, index, saveCandidate.m_sWorldPath, worldPath);
 			if (saveCandidate.m_iIndex == index && saveCandidate.m_sWorldPath == worldPath)
 			{
 				camera.LoadComponents(saveCandidate.m_aComponentData);
@@ -122,7 +137,7 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 		inputManager.AddActionListener("ManualCameraSave6", EActionTrigger.DOWN, SaveCamera6);
 		inputManager.AddActionListener("ManualCameraSave7", EActionTrigger.DOWN, SaveCamera7);
 		inputManager.AddActionListener("ManualCameraSave8", EActionTrigger.DOWN, SaveCamera8);
-		inputManager.AddActionListener("ManualCameraSave9", EActionTrigger.DOWN, SaveCamera9);
+		//inputManager.AddActionListener("ManualCameraSave9", EActionTrigger.DOWN, SaveCamera9);
 		
 		inputManager.AddActionListener("ManualCameraLoad1", EActionTrigger.DOWN, LoadCamera1);
 		inputManager.AddActionListener("ManualCameraLoad2", EActionTrigger.DOWN, LoadCamera2);
@@ -132,7 +147,7 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 		inputManager.AddActionListener("ManualCameraLoad6", EActionTrigger.DOWN, LoadCamera6);
 		inputManager.AddActionListener("ManualCameraLoad7", EActionTrigger.DOWN, LoadCamera7);
 		inputManager.AddActionListener("ManualCameraLoad8", EActionTrigger.DOWN, LoadCamera8);
-		inputManager.AddActionListener("ManualCameraLoad9", EActionTrigger.DOWN, LoadCamera9);
+		//inputManager.AddActionListener("ManualCameraLoad9", EActionTrigger.DOWN, LoadCamera9);
 		
 		if (m_LayoutSave)
 		{
@@ -170,7 +185,7 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 		inputManager.RemoveActionListener("ManualCameraSave6", EActionTrigger.DOWN, SaveCamera6);
 		inputManager.RemoveActionListener("ManualCameraSave7", EActionTrigger.DOWN, SaveCamera7);
 		inputManager.RemoveActionListener("ManualCameraSave8", EActionTrigger.DOWN, SaveCamera8);
-		inputManager.RemoveActionListener("ManualCameraSave9", EActionTrigger.DOWN, SaveCamera9);
+		//inputManager.RemoveActionListener("ManualCameraSave9", EActionTrigger.DOWN, SaveCamera9);
 		
 		inputManager.RemoveActionListener("ManualCameraLoad1", EActionTrigger.DOWN, LoadCamera1);
 		inputManager.RemoveActionListener("ManualCameraLoad2", EActionTrigger.DOWN, LoadCamera2);
@@ -180,7 +195,7 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 		inputManager.RemoveActionListener("ManualCameraLoad6", EActionTrigger.DOWN, LoadCamera6);
 		inputManager.RemoveActionListener("ManualCameraLoad7", EActionTrigger.DOWN, LoadCamera7);
 		inputManager.RemoveActionListener("ManualCameraLoad8", EActionTrigger.DOWN, LoadCamera8);
-		inputManager.RemoveActionListener("ManualCameraLoad9", EActionTrigger.DOWN, LoadCamera9);
+		//inputManager.RemoveActionListener("ManualCameraLoad9", EActionTrigger.DOWN, LoadCamera9);
 		
 		if (m_WidgetSave)
 			m_WidgetSave.RemoveFromHierarchy();

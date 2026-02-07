@@ -80,6 +80,8 @@ class SCR_RegenerationScreenEffect : SCR_BaseScreenEffect
 		if (m_fRegenEffectTimeRemaining <= 0)
 		{
 			m_bRegenerationEffect = false;
+			m_fRegenEffectTimeRemaining = 0;
+			s_fChromAberPower = 0;
 		}
 	}
 	
@@ -96,6 +98,9 @@ class SCR_RegenerationScreenEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	protected override void ClearEffects()
 	{
+		m_fRegenEffectTimeRemaining = 0;
+		s_fChromAberPower = 0;
+		
 		if (m_pDamageManager)
 			m_pDamageManager.GetOnDamageOverTimeAdded().Remove(OnDamageOverTimeAdded);
 	}

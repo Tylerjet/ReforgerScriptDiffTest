@@ -39,4 +39,15 @@ class SCR_EditableEntityCoreLabelSetting
 	{
 		return m_bFilterEnabled;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Override function for inherited classes to check if label can be shown
+	Is checked when calling GetLabelUIInfoIfValid
+	\return true if the label is valid and can be shown
+	*/
+	bool IsValid(EEditorMode currentMode)
+	{
+		return true;
+	}
 };

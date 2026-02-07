@@ -48,7 +48,7 @@ class SCR_ToggleLocalEditorNightModeToolbarAction : SCR_BaseToggleToolbarAction
 			return;
 		
 		//~ Toggle Local Editor Nightmode
-		m_NightModeComponent.EnableLocalEditorNightMode(!m_NightModeComponent.IsLocalEditorNightModeEnabled());
+		m_NightModeComponent.EnableLocalEditorNightMode(!m_NightModeComponent.IsLocalEditorNightModeEnabled(), false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

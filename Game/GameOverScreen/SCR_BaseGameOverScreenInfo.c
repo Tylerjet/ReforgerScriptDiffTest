@@ -10,7 +10,7 @@ class SCR_BaseGameOverScreenInfo
 	[Attribute(desc: "Optional parameters to be displayed in the game over screen. Note that many of these settings are set by the inherent class like faction flag and icon in FactionGameOverScreenInfo")]
 	protected ref SCR_BaseGameOverScreenInfoOptional m_OptionalParams;
 	
-	[Attribute(desc: "Params for if the end screen van be displayed in editor. Can be left null if cannot be called by GM")]
+	[Attribute(desc: "Params for if the end screen can be displayed in editor. Can be left null if cannot be called by GM")]
 	protected ref SCR_BaseGameOverScreenInfoEditor m_OptionalEditorParams;
 	
 	/*!
@@ -38,6 +38,15 @@ class SCR_BaseGameOverScreenInfo
 	bool HasOptionalParams()
 	{
 		return m_OptionalParams != null;
+	}
+	
+	/*!
+	Returns m_OptionalParams with params to be displayed in the game over screen
+	\return m_OptionalParams
+	*/
+	SCR_BaseGameOverScreenInfoOptional GetOptionalParams()
+	{
+		return m_OptionalParams;
 	}
 	
 	/*!

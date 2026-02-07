@@ -49,6 +49,12 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 		super.OnPostInit(owner);
 		
 		InitiateCommandMaps();
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gameMode)
+			return;
+		
+		gameMode.GetOnPlayerSpawned().Insert(ResetSlaveGroupWaypoints);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -63,6 +69,78 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 		foreach (int i, SCR_BaseGroupCommand command : m_aCommands)
 			m_mNameCommand.Insert(command.GetCommandName(), command);
 			
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! gets called when player respawns so the newly recruited AIs dont follow the old waypoints from orders
+	void ResetSlaveGroupWaypoints(int playerId, IEntity player)
+	{	
+		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		if (!pc)
+			return;
+		
+		//do nothing if player is not a leader of group
+		SCR_PlayerControllerGroupComponent groupComponent = SCR_PlayerControllerGroupComponent.Cast(pc.FindComponent(SCR_PlayerControllerGroupComponent));
+		if (!groupComponent || !groupComponent.IsPlayerLeaderOwnGroup())
+			return;
+		
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return;
+		
+		SCR_AIGroup masterGroup = groupsManager.GetPlayerGroup(playerId);
+		if (!masterGroup)
+			return;
+		
+		//no need to do this for empty group because there are no AIs to mess things up
+		SCR_AIGroup slaveGroup = masterGroup.GetSlave();
+		if (!slaveGroup || slaveGroup.GetAgentsCount() <= 0)
+			return;
+		
+		//reset the waypoints for slave group, so they go to their default behavior
+		array<AIWaypoint> currentWaypoints = {};
+		slaveGroup.GetWaypoints(currentWaypoints);
+		foreach (AIWaypoint currentwp : currentWaypoints)
+		{
+			slaveGroup.RemoveWaypoint(currentwp);
+		}
+		
+		AIFormationComponent slaveGroupFormationComp = slaveGroup.GetFormationComponent();
+		if (slaveGroupFormationComp)
+			slaveGroupFormationComp.SetFormationDisplacement(0);
+		
+		//remove master-slave connection from slave
+		slaveGroup.SetMaster(null);
+		
+		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
+		if (!commandingManager)
+			return;
+		
+		//prepare new slave group for player
+		Resource groupPrefabRes = Resource.Load(commandingManager.GetGroupPrefab());
+		if (!groupPrefabRes.IsValid())
+			return;
+		
+		IEntity groupEntity = GetGame().SpawnEntityPrefab(groupPrefabRes);
+		
+		if (!groupEntity)
+			return;
+		
+		SCR_AIGroup newSlaveGroup = SCR_AIGroup.Cast(groupEntity);
+		if (!newSlaveGroup)
+			return;
+		
+		RplComponent RplComp = RplComponent.Cast(newSlaveGroup.FindComponent(RplComponent));
+		if (!RplComp)
+			return;
+		
+		RplId slaveGroupRplID = RplComp.Id();
+		
+		RplComp = RplComponent.Cast(masterGroup.FindComponent(RplComponent));
+		if (!RplComp)
+			return;
+		
+		groupsManager.RequestSetGroupSlave(RplComp.Id(), slaveGroupRplID);
 	}
 	
 	//------------------------------------------------------------------------------------------------

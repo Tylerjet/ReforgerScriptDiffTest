@@ -56,7 +56,6 @@ class SCR_PlayerHubAreaTriggerEntity : ScriptedGameTriggerEntity
 	void SCR_PlayerHubAreaTriggerEntity(IEntitySource src, IEntity parent)
 	{
 		//SetEventMask(EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, true);
 	}
 
 	//------------------------------------------------------------------------------------------------

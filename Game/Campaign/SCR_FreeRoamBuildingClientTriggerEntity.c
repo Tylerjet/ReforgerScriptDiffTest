@@ -43,6 +43,6 @@ class SCR_FreeRoamBuildingClientTriggerEntity : SCR_FreeRoamBuildingBaseTriggerE
 	void SCR_FreeRoamBuildingClientTriggerEntity(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
-		SetFlags(EntityFlags.NO_TREE | EntityFlags.ACTIVE);
+		SetFlags(EntityFlags.NO_TREE);
 	}
 };

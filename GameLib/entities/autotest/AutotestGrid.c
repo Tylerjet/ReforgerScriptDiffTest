@@ -124,7 +124,7 @@ class AutotestGrid: GenericEntity
 		m_FirstRotationSignal = new SimpleTimeSignal(m_FirstRotationTime);
 		m_SecondRotationSignal = new SimpleTimeSignal(m_SecondRotationTime);
 
-		System.GetCLIParam("screenshot-autotest-output-dir", m_directory);
+		System.GetCLIParam("autotest-output-dir", m_directory);
 
 		if (m_directory.Length() == 0)
 		{

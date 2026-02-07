@@ -29,7 +29,7 @@ class SCR_HUDManagerEditorVisibilityHandler : SCR_HUDManagerHandler
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnCharacterPossesed()
+	protected void OnCharacterPossesed(IEntity entity)
 	{
 		if (!m_bIsEditorOpen)
 			return;

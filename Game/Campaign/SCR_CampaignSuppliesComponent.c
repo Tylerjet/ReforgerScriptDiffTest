@@ -43,6 +43,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	// Returns first player from loading/unloading arrays 
 	// Use True parameters, to return from Unloading array. Otherwise, it will look in loading players
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	int GetLoadingPlayer(bool unloading = false)
 	{
 		array<int> loadingArray;
@@ -60,6 +61,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	//------------------------------------------------------------------------------------------------
 	// Setter for Loading players array
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void SetSupplyLoadingPlayer(int playerID)
 	{
 		if(!m_aLoadingPlayerIDs.Contains(playerID))
@@ -71,6 +73,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	// Deletes from loading players array
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void DeleteSupplyLoadingPlayer(int playerID)
 	{
 		if(m_aLoadingPlayerIDs.Contains(playerID))
@@ -82,14 +85,15 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//~ Called on player killed
-	protected void OnPlayerKilled(int playerID, IEntity player = null, IEntity killer = null)
+	protected void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		DeleteSupplyLoadingPlayer(playerID);
-		DeleteSupplyUnloadingPlayer(playerID);
+		/*DeleteSupplyLoadingPlayer(playerId);
+		DeleteSupplyUnloadingPlayer(playerId);*/
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	// Setter for Unloading players array
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void SetSupplyUnloadingPlayer(int playerID)
 	{
 		if(!m_aUnloadingPlayerIDs.Contains(playerID))
@@ -101,6 +105,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	// Deletes from Unloading players array
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void DeleteSupplyUnloadingPlayer(int playerID)
 	{
 		if(m_aUnloadingPlayerIDs.Contains(playerID))
@@ -111,6 +116,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void OnSuppliesChanged()
 	{
 		// script invoker executed when ammout of supplies in vehicle changed. m_iSupplies is ammout of currently loaded supplies.
@@ -118,18 +124,21 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	int GetSupplies()
 	{
 		return m_iSupplies;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	int GetSuppliesMax()
 	{
 		return m_iSuppliesMax;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void SetSuppliesMax(int suppliesMax)
 	{
 		m_iSuppliesMax = suppliesMax;
@@ -142,6 +151,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	// Get the load / unload radius. If set custom use this. if it's set to zero, use default.
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	float GetOperationalRadius()
 	{
 		if (m_fOperationalRadius != 0)
@@ -151,18 +161,21 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void SetIsPlayerInRange(bool status)
 	{
 		m_bIsPlayerInRange = status;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	bool GetIsPlayerInRange()
 	{
 		return m_bIsPlayerInRange;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void SetLastLoadedAt(SCR_CampaignMilitaryBaseComponent base)
 	{
 		m_LastLoadedAt = base;
@@ -174,6 +187,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void SetLastUnloadedAt(SCR_CampaignMilitaryBaseComponent base)
 	{
 		m_LastUnloadedAt = base;
@@ -185,12 +199,14 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	bool AwardXP()
 	{
 		return m_bAwardUnloadXP;
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	void AddSupplies(int supplies, bool replicate = true)
 	{
 		int oldSupplies = m_iSupplies;
@@ -198,6 +214,9 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 		
 		if (m_iSupplies > m_iSuppliesMax)
 			m_iSupplies = m_iSuppliesMax;
+		
+		if (m_iSupplies < 0)
+			m_iSupplies = 0;
 
 		if (replicate && m_iSupplies != oldSupplies)
 			Replication.BumpMe();
@@ -206,6 +225,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_ResourceComponent operations instead")]
 	bool GetIsStandaloneDepot()
 	{
 		return m_bIsStandaloneDepot;

@@ -1,3 +1,25 @@
+enum EVehicleHitZoneGroup : EHitZoneGroup
+{
+	HULL = 10,
+	ENGINE = 20,
+	DRIVE_TRAIN = 30,
+	FUEL_TANKS = 40,
+	WHEELS = 50,
+	CARGO = 60,
+	AMMO_STORAGE = 70,
+	TURRET = 80,
+	OPTICS = 90,
+	NIGHT_OPTICS = 91,
+	VIEWPORT = 100,
+	ROTOR_ASSEMBLY = 110,
+	TAIL_ROTOR = 111,
+	LANDING_GEAR = 120,
+	PROPELLER = 130,
+	INSTRUMENTS = 140,
+	CONTROLS = 150,
+	LIGHT = 160,
+}
+
 //#define VEHICLE_DAMAGE_DEBUG
 //#define VEHICLE_DEBUG_OTHER
 class SCR_VehicleDamageManagerComponentClass : ScriptedDamageManagerComponentClass
@@ -24,29 +46,8 @@ class SCR_VehicleDamageManagerComponentClass : ScriptedDamageManagerComponentCla
 	[Attribute("100", "Speed in km/h over which will occupants die in collision", category: "Collision Damage")]
 	protected float m_fOccupantsSpeedDeath;
 
-	[Attribute("15", "Speed in km/h over which will the vehicle be dealt damage in collision", category: "Collision Damage")]
-	protected float m_fVehicleDamageSpeedThreshold;
-
-	[Attribute("120", "Speed in km/h over which will the vehicle be destroyed in collision", category: "Collision Damage")]
-	protected float m_fVehicleSpeedDestroy;
-
-	[Attribute("0 0 0", "Position for frontal impact calculation", category: "Collision Damage")]
+	[Attribute("0 0 0", "Position for frontal impact calculation", category: "Collision Damage", params: "inf inf 0 purpose=coords space=entity coordsVar=m_vFrontalImpact")]
 	protected vector m_vFrontalImpact;
-
-	protected float m_fMinImpulse = -1;
-
-	//------------------------------------------------------------------------------------------------
-	float GetMinImpulse()
-	{
-		return m_fMinImpulse;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float InitMinImpulse(float mass)
-	{
-		m_fMinImpulse = mass * 2;
-		return m_fMinImpulse;
-	}
 
 	//------------------------------------------------------------------------------------------------
 	float GetMaxSharedDamageDistance()
@@ -103,29 +104,14 @@ class SCR_VehicleDamageManagerComponentClass : ScriptedDamageManagerComponentCla
 	}
 
 	//------------------------------------------------------------------------------------------------
-	float GetVehicleDamageSpeedThreshold()
-	{
-		return m_fVehicleDamageSpeedThreshold;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetVehicleSpeedDestroy()
-	{
-		return m_fVehicleSpeedDestroy;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	vector GetFrontalImpact()
 	{
 		return m_vFrontalImpact;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SCR_VehicleDamageManagerComponentClass(BaseContainer prefab)
-	{
-
-	}
-};
+	void SCR_VehicleDamageManagerComponentClass(BaseContainer prefab);
+}
 
 enum SCR_EPhysicsResponseIndex
 {
@@ -140,7 +126,7 @@ enum SCR_EPhysicsResponseIndex
 	MEDIUM_DESTRUCTIBLE = 8,
 	LARGE_DESTRUCTIBLE = 9,
 	HUGE_DESTRUCTIBLE = 10
-};
+}
 
 class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 {
@@ -152,15 +138,94 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 	[Attribute("0", desc: "Print relative force in collisions of this vehicle? Can be used to determine ideal Collision Damage Force Threshold.", category: "Debug")]
 	protected bool m_bPrintRelativeForce;
 
-	[Attribute("", UIWidgets.Hidden, "How much damage will destroy this vehicle. Takes into account current damage multipliers! Won't work precisely when these are changed.", category: "Collision Damage")]
+	[Attribute("", UIWidgets.Hidden, "How much damage will destroy this vehicle.\nTakes into account current damage multipliers!\nWon't work precisely when these are changed.", category: "Collision Damage")]
 	protected float m_fVehicleDestroyDamage;
+
+	[Attribute("15", "Speed of collision that damages the vehicle\n[km/h]", category: "Collision Damage")]
+	protected float m_fVehicleDamageSpeedThreshold;
+
+	[Attribute("120", "Speed of collision that destroys the vehicle\n[km/h]", category: "Collision Damage")]
+	protected float m_fVehicleSpeedDestroy;
+
+	[Attribute("0.7", "Engine efficiency at which it is considered to be malfunctioning\n[x * 100%]", category: "Vehicle Damage")]
+	protected float m_fEngineMalfunctioningThreshold;
+
+	[Attribute(defvalue: "VehicleFireState", desc: "Vehicle parts fire state signal name", category: "Secondary damage")]
+	protected string m_sVehicleFireStateSignal;
+
+	[Attribute(defvalue: "FuelTankFireState", desc: "Fuel tank fire signal name", category: "Secondary damage")]
+	protected string m_sFuelTankFireStateSignal;
+
+	[Attribute(defvalue: "SuppliesFireState", desc: "Supplies fire signal name", category: "Secondary damage")]
+	protected string m_sSuppliesFireStateSignal;
+
+	[Attribute(defvalue: "0.02", desc: "Fuel tank fire damage rate\n[x * 100%]", params: "0 100 0.001", category: "Secondary damage")]
+	protected float m_fFuelTankFireDamageRate;
+
+	[Attribute(defvalue: "0.02", desc: "Supplies fire damage rate\n[x * 100%]", params: "0 100 0.001", category: "Secondary damage")]
+	protected float m_fSuppliesFireDamageRate;
+
+	[Attribute(defvalue: "1", desc: "Delay between secondary fire damage\n[s]", params: "0 10000 0.1", category: "Secondary damage")]
+	protected float m_fSecondaryFireDamageDelay;
 
 	protected bool m_bIsInContact;
 	protected float m_fMaxRelativeForce;
+	protected float m_fMinImpulse;
+	protected SCR_BaseCompartmentManagerComponent m_CompartmentManager;
+
+	protected static ref ScriptInvokerInt s_OnVehicleDestroyed;
+
+	//! Common vehicle features that will influence its simulation
+	protected ref array<HitZone> m_aVehicleHitZones = {};
+	protected CompartmentControllerComponent m_Controller;
+	protected VehicleBaseSimulation m_Simulation;
+
+	protected float m_fEngineEfficiency = 1;
+	protected bool m_bEngineFunctional = true;
+
+	protected float m_fGearboxEfficiency = 1;
+	protected bool m_bGearboxFunctional = true;
+
+	// The vehicle damage manager needs to know about all the burning hitzones that it consists of
+	protected ref array<SCR_FlammableHitZone>			m_aFlammableHitZones;
+	protected SignalsManagerComponent					m_SignalsManager;
+
+	// Fuel tanks fire
+	protected ParticleEffectEntity					m_FuelTankFireParticle; // Burning fuel particle
+	protected FuelManagerComponent					m_FuelManager;
+	protected float									m_fFuelTankFireDamageTimeout;
+
+	// Supplies fire
+	protected ParticleEffectEntity					m_SuppliesFireParticle; // Burning supplies particle
+	protected SCR_ResourceComponent					m_ResourceComponent;
+	protected float									m_fSuppliesFireDamageTimeout;
+
+	// Audio features
+	protected int									m_iVehicleFireStateSignalIdx;
+	protected int									m_iFuelTankFireStateSignalIdx;
+	protected int									m_iSuppliesFireStateSignalIdx;
+
+	[RplProp(onRplName: "OnVehicleFireStateChanged")]
+	SCR_ESecondaryExplosionScale					m_eVehicleFireState;
+
+	[RplProp(onRplName: "OnFuelTankFireStateChanged")]
+	SCR_ESecondaryExplosionScale					m_eFuelTankFireState;
+
+	[RplProp(onRplName: "OnSuppliesFireStateChanged")]
+	SCR_ESecondaryExplosionScale					m_eSuppliesFireState;
+
+	[RplProp()]
+	protected vector								m_vVehicleFireOrigin;
+
+	[RplProp()]
+	protected vector								m_vFuelTankFireOrigin;
+
+	[RplProp()]
+	protected vector								m_vSuppliesFireOrigin;
 
 	// Sound
 	static const float KM_PER_H_TO_M_PER_S = 0.277777;
-	private static const float APPROXIMATE_CHARACTER_LETHAL_DAMAGE = 150;
+	protected static const float APPROXIMATE_CHARACTER_LETHAL_DAMAGE = 150;
 
 #ifdef VEHICLE_DAMAGE_DEBUG
 	protected ref array<ref Shape> m_aDebugShapes = {};
@@ -246,26 +311,6 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	float GetVehicleSpeedDestroy()
-	{
-		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
-		if (!prefabData)
-			return 100;
-
-		return prefabData.GetVehicleSpeedDestroy();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetVehicleDamageSpeedThreshold()
-	{
-		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
-		if (!prefabData)
-			return 30;
-
-		return prefabData.GetVehicleDamageSpeedThreshold();
-	}
-
-	//------------------------------------------------------------------------------------------------
 	float GetOccupantsDamageSpeedThreshold()
 	{
 		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
@@ -333,18 +378,201 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		if (!vehicle)
 			return;
 
+		m_CompartmentManager = SCR_BaseCompartmentManagerComponent.Cast(vehicle.FindComponent(SCR_BaseCompartmentManagerComponent));
+		m_Controller = CompartmentControllerComponent.Cast(owner.FindComponent(CompartmentControllerComponent));
+		m_Simulation = VehicleBaseSimulation.Cast(owner.FindComponent(VehicleBaseSimulation));
+		m_FuelManager = FuelManagerComponent.Cast(owner.FindComponent(FuelManagerComponent));
+		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(owner);
+		m_SignalsManager = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
+
+		if (m_SignalsManager)
+		{
+			m_iVehicleFireStateSignalIdx = m_SignalsManager.AddOrFindSignal(m_sVehicleFireStateSignal);
+			m_iFuelTankFireStateSignalIdx = m_SignalsManager.AddOrFindSignal(m_sFuelTankFireStateSignal);
+			m_iSuppliesFireStateSignalIdx = m_SignalsManager.AddOrFindSignal(m_sSuppliesFireStateSignal);
+		}
+
+		UpdateVehicleState();
+
 		RplComponent rpl = vehicle.GetRplComponent();
 		if (rpl && rpl.IsProxy())
 			return;
 
-		SetEventMask(owner, EntityEvent.CONTACT);
+		Physics physics = owner.GetPhysics();
+		if (physics)
+			m_fMinImpulse = physics.GetMass() * 2;
 
-		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
-		if (prefabData && prefabData.GetMinImpulse() == -1)
+		if (m_fMinImpulse > 0)
+			SetEventMask(owner, EntityEvent.CONTACT);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Register simulation feature hitzone
+	void RegisterVehicleHitZone(notnull HitZone hitZone)
+	{
+		// Remove the hitzone if it was already registered
+		if (!m_aVehicleHitZones.Contains(hitZone))
+			m_aVehicleHitZones.Insert(hitZone);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Register simulation feature hitzone
+	void UnregisterVehicleHitZone(HitZone hitZone)
+	{
+		m_aVehicleHitZones.RemoveItem(hitZone);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Compute current simulation state of vehicle
+	// Called when hitzone damage states change
+	void UpdateVehicleState()
+	{
+		int engineCount;
+		float engineEfficiency;
+		bool engineFunctional;
+
+		int gearboxCount;
+		float gearboxEfficiency;
+		bool gearboxFunctional;
+
+		foreach (HitZone hitZone : m_aVehicleHitZones)
 		{
-			Physics physics = owner.GetPhysics();
-			if (physics)
-				prefabData.InitMinImpulse(physics.GetMass());
+			SCR_EngineHitZone engineHitZone = SCR_EngineHitZone.Cast(hitZone);
+			if (engineHitZone)
+			{
+				engineCount++;
+				engineEfficiency += engineHitZone.GetEfficiency();
+
+				if (engineHitZone.GetDamageState() != EDamageState.DESTROYED)
+					engineFunctional = true;
+
+				continue;
+			}
+
+			SCR_GearboxHitZone gearboxHitZone = SCR_GearboxHitZone.Cast(hitZone);
+			if (gearboxHitZone)
+			{
+				gearboxCount++;
+				gearboxEfficiency += gearboxHitZone.GetEfficiency();
+
+				if (gearboxHitZone.GetDamageState() != EDamageState.DESTROYED)
+					gearboxFunctional = true;
+
+				continue;
+			}
+		}
+
+		if (engineCount > 0)
+		{
+			SetEngineFunctional(engineFunctional);
+			SetEngineEfficiency(engineEfficiency / engineCount);
+		}
+
+		if (gearboxCount > 0)
+		{
+			SetGearboxFunctional(gearboxFunctional);
+			SetGearboxEfficiency(gearboxEfficiency / gearboxCount);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool GetEngineFunctional()
+	{
+		return m_bEngineFunctional;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetEngineFunctional(bool functional)
+	{
+		m_bEngineFunctional = functional;
+
+		if (functional)
+			return;
+
+		if (GetGame().GetIsClientAuthority())
+		{
+			VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_Controller);
+			if (controller && controller.IsEngineOn())
+				controller.StopEngine(false);
+		}
+		else
+		{
+			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(m_Controller);
+			if (controller && controller.IsEngineOn())
+				controller.StopEngine(false);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetEngineMalfunctionThreshold()
+	{
+		return m_fEngineMalfunctioningThreshold;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetEngineEfficiency()
+	{
+		return m_fEngineEfficiency;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetEngineEfficiency(float efficiency)
+	{
+		m_fEngineEfficiency = efficiency;
+
+		if (GetGame().GetIsClientAuthority())
+		{
+			VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(m_Simulation);
+			if (simulation && simulation.IsValid())
+			{
+				simulation.EngineSetPeakTorqueState(efficiency * simulation.EngineGetPeakTorque());
+				simulation.EngineSetPeakPowerState(efficiency * simulation.EngineGetPeakPower());
+			}
+		}
+		else
+		{
+			VehicleWheeledSimulation_SA simulation = VehicleWheeledSimulation_SA.Cast(m_Simulation);
+			if (simulation && simulation.IsValid())
+			{
+				simulation.EngineSetPeakTorqueState(efficiency * simulation.EngineGetPeakTorque());
+				simulation.EngineSetPeakPowerState(efficiency * simulation.EngineGetPeakPower());
+			}
+		}
+	}
+	//------------------------------------------------------------------------------------------------
+	void SetGearboxFunctional(bool functional)
+	{
+		m_bGearboxFunctional = functional;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool GetGearboxFunctional()
+	{
+		return m_bGearboxFunctional;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetGearboxEfficiency()
+	{
+		return m_fGearboxEfficiency;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetGearboxEfficiency(float efficiency)
+	{
+		m_fGearboxEfficiency = efficiency;
+
+		if (GetGame().GetIsClientAuthority())
+		{
+			VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(m_Simulation);
+			if (simulation && simulation.IsValid())
+				simulation.GearboxSetEfficiencyState(efficiency * simulation.GearboxGetEfficiency());
+		}
+		else
+		{
+			VehicleWheeledSimulation_SA simulation = VehicleWheeledSimulation_SA.Cast(m_Simulation);
+			if (simulation && simulation.IsValid())
+				simulation.GearboxSetEfficiencyState(efficiency * simulation.GearboxGetEfficiency());
 		}
 	}
 
@@ -457,7 +685,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 			if (damageMultiplier != 0)
 				currentDamage = Math.Clamp(currentDamage, 0, (hitzoneHealth + hitzone.GetDamageReduction()) / damageMultiplier);
 
-			HandleDamage(damageType, currentDamage, empty, GetOwner(), hitzone, null, null, -1, -1);
+			HandleDamage(damageType, currentDamage, empty, GetOwner(), hitzone, Instigator.CreateInstigator(null), null, -1, -1);
 			leftoverDamage -= currentDamage;
 		}
 
@@ -576,7 +804,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		p[0][2] = globalMaxs[2];
 		p[1] = globalMaxs;
 		p[1][2] = globalMins[2];
-		m_aDebugShapes.Insert(Shape.CreateLines(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, p, 2));*/
+		m_aDebugShapes.Insert(Shape.CreateLines(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, p, 2)); */
 
 		//Corner lines
 		p[0] = globalMins;
@@ -629,7 +857,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		p[1][2] = maxs[2];
 		/*p[0] = maxs;
 		p[1] = mins;
-		p[1][0] = mins[0];*/
+		p[1][0] = mins[0]; */
 		/*shape = Shape.Create(ShapeType.PYRAMID, ARGB(255, 0, 255, 0), ShapeFlags.NOZBUFFER, p[1], p[0]);
 		m_aDebugShapes.Insert(shape);
 		mat[0] = -vector.Up;
@@ -637,11 +865,11 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		mat[2] = vector.Forward;
 		mat[3] = owner.GetOrigin() + maxs;
 		shape.SetMatrix(mat);
-		Math3D.MatrixIdentity4(mat);*/
+		Math3D.MatrixIdentity4(mat); */
 
 		/*mat[0] = vector.Up;
 		mat[1] = -vector.Right;
-		mat[2] = vector.Forward;*/
+		mat[2] = vector.Forward; */
 #endif
 
 		//Calculating where the contact point is relative to the plane by calculating the dot product of the contact point and the planes normal
@@ -707,6 +935,9 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		if (api.UndoOrRedoIsRestoring())
 			return false;
 
+		if (!src.GetClassName().ToType().IsInherited(SCR_VehicleDamageManagerComponent))
+			return false;
+
 		array<HitZone> hitzones;
 		int count = GetSurroundingHitzones(GetOwner().CoordToParent(GetFrontalImpact()), GetOwner().GetPhysics(), GetMaxSharedDamageDistance(), hitzones);
 		hitzones.Insert(GetDefaultHitZone());
@@ -728,7 +959,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 
 		IEntitySource entitySrc = api.EntityToSource(owner);
 
-		array<ref ContainerIdPathEntry> entryPath = {ContainerIdPathEntry("SCR_VehicleDamageManagerComponent")};
+		array<ref ContainerIdPathEntry> entryPath = {ContainerIdPathEntry(src.GetClassName())};
 
 		api.SetVariableValue(entitySrc, entryPath, "m_fVehicleDestroyDamage", targetFrontalDamage.ToString());
 
@@ -739,16 +970,24 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 	//! Must be first enabled with event mask
 	override bool OnContact(IEntity owner, IEntity other, Contact contact)
 	{
-		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
-		if (prefabData)
-		{
-			if (contact.Impulse < prefabData.GetMinImpulse())
-				return false;
-		}
+		super.OnContact(owner, other, contact);
+		return CollisionDamage(owner, other, contact);
+	}
 
-		// Get the physics of the dynamic object (if owner is static, then we use the other object instead)
-		Physics physics = owner.GetPhysics();
-		if (!physics.IsDynamic())
+	//------------------------------------------------------------------------------------------------
+	bool CollisionDamage(notnull IEntity owner, notnull IEntity other, notnull Contact contact)
+	{
+		if (contact.Impulse < m_fMinImpulse)
+			return false;
+
+		// This data can be moved back to component
+		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
+		if (!prefabData)
+			return false;
+
+		// Get the physics of the dynamic object (if owner is static we ignore the collision)
+		Physics ownerPhysics = owner.GetPhysics();
+		if (!ownerPhysics.IsDynamic())
 		{
 			m_bIsInContact = false;
 			return false;
@@ -757,11 +996,11 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		Physics otherPhysics = other.GetPhysics();
 
 		// Now get the relative force, which is the impulse divided by the mass of the dynamic object
-		float relativeForce = contact.Impulse / physics.GetMass();
+		float relativeForce = contact.Impulse / ownerPhysics.GetMass();
 		// We keep relative force temporarily, until we re-calculate it to momentum
 
 		// We hit a destructible that will break, static object -> deal no damage to vehicle or occupants
-		int ownerResponseIndex = physics.GetResponseIndex();
+		int ownerResponseIndex = ownerPhysics.GetResponseIndex();
 		int otherResponseIndex = otherPhysics.GetResponseIndex();
 		if (otherPhysics && !otherPhysics.IsDynamic() && other.FindComponent(SCR_DestructionBaseComponent) && otherResponseIndex - MIN_DESTRUCTION_RESPONSE_INDEX <= ownerResponseIndex - MIN_MOMENTUM_RESPONSE_INDEX)
 			return false;
@@ -772,14 +1011,14 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		// Store information about being in contact - so we don't delete physics objects
 		m_bIsInContact = true;
 
-#ifndef VEHICLE_COLLISION_DAMAGE
+#ifdef DISABLE_VEHICLE_COLLISION_DAMAGE
 		m_bIsInContact = false;
 		return false;
 #endif
 
 		//TODOv Pre-calculate these values into prefab data, when callback of prefab data cretion is added.
-		float momentumVehicleThreshold = ownerMass * GetVehicleDamageSpeedThreshold() * KM_PER_H_TO_M_PER_S;
-		float momentumVehicleDestroy = ownerMass * GetVehicleSpeedDestroy() * KM_PER_H_TO_M_PER_S;
+		float momentumVehicleThreshold = ownerMass * m_fVehicleDamageSpeedThreshold * KM_PER_H_TO_M_PER_S;
+		float momentumVehicleDestroy = ownerMass * m_fVehicleSpeedDestroy * KM_PER_H_TO_M_PER_S;
 		float damageScaleToVehicle = m_fVehicleDestroyDamage / (momentumVehicleDestroy - momentumVehicleThreshold);
 		//TODO^
 
@@ -787,9 +1026,9 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		if (m_bPrintRelativeForce && relativeForce > m_fMaxRelativeForce)
 		{
 			m_fMaxRelativeForce = relativeForce;
-			Print(contact.Impulse);
-			Print(contact.VelocityBefore1);
-			Print(m_fMaxRelativeForce);
+			Print(contact.Impulse, LogLevel.DEBUG);
+			Print(contact.VelocityBefore1, LogLevel.DEBUG);
+			Print(m_fMaxRelativeForce, LogLevel.DEBUG);
 		}
 
 		float damageShare = 1;
@@ -807,10 +1046,10 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		float momentumB = Math.AbsFloat(MomentumBefore - MomentumAfter);
 
 		float collisionDamage = damageScaleToVehicle * (momentumA + momentumB - momentumVehicleThreshold);
+		IEntity instigatorEntity;
 
 		// Find compartment manager to damage occupants
-		SCR_BaseCompartmentManagerComponent compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(owner.FindComponent(SCR_BaseCompartmentManagerComponent));
-		if (compartmentManager)
+		if (m_CompartmentManager)
 		{
 			//TODOv Pre-calculate these values into prefab data, when callback of prefab data cretion is added.
 			float momentumOccupantsThreshold = ownerMass * GetOccupantsDamageSpeedThreshold() * KM_PER_H_TO_M_PER_S;
@@ -823,7 +1062,36 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 
 			// Deal damage if it's more that 0
 			if (momentumOverOccupantsThreshold > 0)
-				compartmentManager.DamageOccupants(momentumOverOccupantsThreshold * damageScaleToCharacter, EDamageType.COLLISION, other, true, true);
+			{
+				//If the entity is dynamic, we need to look if the entity has a driver or not.
+				//If the vehicle's speed is bigger than m_fVehicleDamageSpeedThreshold
+				if (otherPhysics.IsDynamic() && contact.VelocityBefore1.LengthSq() > m_fVehicleDamageSpeedThreshold * m_fVehicleDamageSpeedThreshold)
+				{
+					IEntity otherPilot;
+					Vehicle otherVehicle = Vehicle.Cast(other);
+					if (otherVehicle)
+						otherPilot = otherVehicle.GetPilot();
+
+					//If the entity has a driver:
+					if (otherPilot)
+					{
+						//If their speed is bigger than GetVehicleDamageSpeedThreshold and they are not running away from the vehicle
+						//(their dot product indicates that they are within 60° cone):
+						//their driver is the instigator of the damage the occupants of this vehicle's compartments receive.
+						//If not, the driver of this vehicle is the instigator.
+						vector directionToOther = (other.GetOrigin() - owner.GetOrigin()).Normalized();
+						if (vector.Dot(contact.VelocityBefore1.Normalized(), directionToOther) < 0.5)
+							instigatorEntity = otherPilot;
+					}
+				}
+
+				// If there was no other pilot to blame, blame own pilot
+				if (!instigatorEntity && Vehicle.Cast(owner))
+					instigatorEntity = Vehicle.Cast(owner).GetPilot();
+
+				//Implement instigator's logic
+				m_CompartmentManager.DamageOccupants(momentumOverOccupantsThreshold * damageScaleToCharacter, EDamageType.COLLISION, Instigator.CreateInstigator(instigatorEntity), true, true);
+			}
 		}
 
 		// Deal damage if collision damage is over threshold
@@ -840,13 +1108,22 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 			empty[2] = vector.Zero;
 
 			// finally we deal damage
-			HandleDamage(EDamageType.COLLISION, DamageSurroundingHitzones(contact.Position, collisionDamage, EDamageType.COLLISION), empty, GetOwner(), GetDefaultHitZone(), other, null, -1, -1);
+			HandleDamage(EDamageType.COLLISION, DamageSurroundingHitzones(contact.Position, collisionDamage, EDamageType.COLLISION), empty, GetOwner(), GetDefaultHitZone(), Instigator.CreateInstigator(instigatorEntity), null, -1, -1);
 		}
 
 		// Reset is in contact
 		m_bIsInContact = false;
 
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerInt GetOnVehicleDestroyed()
+	{
+		if (!s_OnVehicleDestroyed)
+			s_OnVehicleDestroyed = new ScriptInvokerInt();
+
+		return s_OnVehicleDestroyed;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -861,6 +1138,9 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		SCR_VehicleWaterPhysicsComponent waterPhysics = SCR_VehicleWaterPhysicsComponent.Cast(GetOwner().FindComponent(SCR_VehicleWaterPhysicsComponent));
 		if (waterPhysics)
 			waterPhysics.SetHealth(defaultHitZone.GetDamageStateThreshold(state));
+
+		if (s_OnVehicleDestroyed && state == EDamageState.DESTROYED)
+			s_OnVehicleDestroyed.Invoke(GetInstigator().GetInstigatorPlayerID());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -871,7 +1151,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		BaseVehicleNodeComponent vehicleNode = BaseVehicleNodeComponent.Cast(GetOwner().FindComponent(BaseVehicleNodeComponent));
 		if (vehicleNode)
 		{
-			if(GetGame().GetIsClientAuthority())
+			if (GetGame().GetIsClientAuthority())
 			{
 				VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(vehicleNode.FindComponent(VehicleControllerComponent));
 				if (vehicleController && vehicleController.GetEngineDrowned())
@@ -896,7 +1176,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		BaseVehicleNodeComponent vehicleNode = BaseVehicleNodeComponent.Cast(GetOwner().FindComponent(BaseVehicleNodeComponent));
 		if (vehicleNode)
 		{
-			if(GetGame().GetIsClientAuthority())
+			if (GetGame().GetIsClientAuthority())
 			{
 				VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(vehicleNode.FindComponent(VehicleControllerComponent));
 				if (vehicleController && vehicleController.GetEngineDrowned())
@@ -908,7 +1188,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 				if (vehicleController && vehicleController.GetEngineDrowned())
 					vehicleController.SetEngineDrowned(false);
 			}
-			
+
 		}
 
 		// Repair everything else that can be repaired
@@ -970,11 +1250,15 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 	//------------------------------------------------------------------------------------------------
 	void EOnPhysicsActive(IEntity owner, bool activeState)
 	{
-		RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
+		Vehicle vehicle = Vehicle.Cast(owner);
+		if (!vehicle)
+			return;
+
+		RplComponent rplComponent = vehicle.GetRplComponent();
 		if (!rplComponent)
 			return;
 
-		if(!System.IsCLIParam("clientVehicles"))
+		if (!GetGame().GetIsClientAuthority())
 		{
 			if (rplComponent.IsProxy() && !rplComponent.IsOwner())
 			{
@@ -998,19 +1282,288 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 				else if (rplComponent.IsOwner())
 					RPC_OnPhysicsActive(activeState);
 			}
-	
+
 			Rpc(RPC_OnPhysicsActive, activeState);
 		}
+	}
+
+
+	//------------------------------------------------------------------------------------------------
+	void RegisterFlammableHitZone(notnull SCR_FlammableHitZone hitZone)
+	{
+		if (m_aFlammableHitZones)
+			m_aFlammableHitZones.Insert(hitZone);
+		else
+			m_aFlammableHitZones = {hitZone};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void UnregisterFlammableHitZone(notnull SCR_FlammableHitZone hitZone)
+	{
+		if (m_aFlammableHitZones)
+			m_aFlammableHitZones.RemoveItem(hitZone);
+
+		if (m_aFlammableHitZones.IsEmpty())
+			m_aFlammableHitZones = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void UpdateFireDamage(float timeSlice)
+	{
+		if (!m_aFlammableHitZones)
+			return;
+
+		float fireRate;
+		float vehicleFireRate;
+		float fuelTankFireRate;
+		float suppliesFireRate;
+		foreach (SCR_FlammableHitZone hitZone : m_aFlammableHitZones)
+		{
+			if (hitZone.GetFireState() == EFireState.BURNING)
+				vehicleFireRate += hitZone.GetFireRate();
+		}
+
+		UpdateFuelTankFireState(vehicleFireRate, timeSlice);
+		UpdateSuppliesFireState(vehicleFireRate, timeSlice);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnVehicleFireStateChanged()
+	{
+		if (m_SignalsManager)
+			m_SignalsManager.SetSignalValue(m_iVehicleFireStateSignalIdx, m_eVehicleFireState);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetVehicleFireState(SCR_ESecondaryExplosionScale state, vector origin = vector.Zero)
+	{
+		if (m_eVehicleFireState == state)
+			return;
+
+		m_eVehicleFireState = state;
+		m_vVehicleFireOrigin = origin;
+		Replication.BumpMe();
+
+		OnVehicleFireStateChanged();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnFuelTankFireStateChanged()
+	{
+		if (m_SignalsManager)
+			m_SignalsManager.SetSignalValue(m_iFuelTankFireStateSignalIdx, m_eFuelTankFireState);
+
+		UpdateFireParticles(m_vFuelTankFireOrigin, m_FuelTankFireParticle, m_eFuelTankFireState, SCR_ESecondaryExplosionType.FUEL);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetFuelTankFireState(SCR_ESecondaryExplosionScale state, vector origin = vector.Zero)
+	{
+		if (m_eFuelTankFireState == state)
+			return;
+
+		m_eFuelTankFireState = state;
+		m_vFuelTankFireOrigin = origin;
+		Replication.BumpMe();
+
+		OnFuelTankFireStateChanged();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnSuppliesFireStateChanged()
+	{
+		if (m_SignalsManager)
+			m_SignalsManager.SetSignalValue(m_iSuppliesFireStateSignalIdx, m_eSuppliesFireState);
+
+		UpdateFireParticles(m_vSuppliesFireOrigin, m_SuppliesFireParticle, m_eSuppliesFireState, SCR_ESecondaryExplosionType.RESOURCE, EResourceType.SUPPLIES);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetSuppliesFireState(SCR_ESecondaryExplosionScale state, vector origin = vector.Zero)
+	{
+		if (m_eSuppliesFireState == state)
+			return;
+
+		m_eSuppliesFireState = state;
+		m_vSuppliesFireOrigin = origin;
+		Replication.BumpMe();
+
+		OnSuppliesFireStateChanged();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void UpdateFuelTankFireState(float fireRate, float timeSlice)
+	{
+		if (!m_FuelManager)
+		{
+			SetFuelTankFireState(SCR_ESecondaryExplosionScale.NONE);
+			return;
+		}
+
+		if (fireRate <= 0)
+		{
+			SetFuelTankFireState(SCR_ESecondaryExplosionScale.NONE);
+			return;
+		}
+
+		if (GetState() == EDamageState.DESTROYED)
+		{
+			SetFuelTankFireState(SCR_ESecondaryExplosionScale.NONE);
+			return;
+		}
+
+		float totalFuel = m_FuelManager.GetTotalFuel();
+		if (totalFuel <= 0)
+		{
+			SetFuelTankFireState(SCR_ESecondaryExplosionScale.NONE);
+			return;
+		}
+
+		vector averagePosition = GetSecondaryExplosionPosition(SCR_FuelHitZone);
+
+		// Fire area damage
+		float fuelTankDamage;
+		m_fFuelTankFireDamageTimeout -= timeSlice;
+		if (m_fFuelTankFireDamageTimeout < 0)
+		{
+			EntitySpawnParams spawnParams();
+			spawnParams.Transform[3] = averagePosition;
+			ResourceName fireDamage = GetSecondaryExplosion(totalFuel / fireRate, SCR_ESecondaryExplosionType.FUEL, fire: true);
+			SecondaryExplosion(fireDamage, GetInstigator(), spawnParams);
+
+			// Constant intervals for secondary damage
+			m_fFuelTankFireDamageTimeout = m_fSecondaryFireDamageDelay;
+			fuelTankDamage = fireRate * m_fSecondaryFireDamageDelay * m_fFuelTankFireDamageRate;
+		}
+
+		// Consume fuel
+		if (fuelTankDamage > 0)
+		{
+			float totalCapacity = m_FuelManager.GetTotalMaxFuel();
+
+			array<BaseFuelNode> fuelTanks = {};
+			m_FuelManager.GetFuelNodesList(fuelTanks);
+			foreach (BaseFuelNode fuelTank : fuelTanks)
+			{
+				fuelTank.SetFuel(fuelTank.GetFuel() - fuelTankDamage * (fuelTank.GetMaxFuel() / totalCapacity));
+			}
+		}
+
+		SCR_ESecondaryExplosionScale fuelTankFireState = GetSecondaryExplosionScale(fireRate, SCR_ESecondaryExplosionType.FUEL);
+		SetFuelTankFireState(fuelTankFireState, averagePosition);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void UpdateSuppliesFireState(float fireRate, float timeSlice)
+	{
+		if (fireRate <= 0)
+		{
+			SetSuppliesFireState(SCR_ESecondaryExplosionScale.NONE);
+			return;
+		}
+
+		if (GetState() == EDamageState.DESTROYED)
+		{
+			SetSuppliesFireState(SCR_ESecondaryExplosionScale.NONE);
+			return;
+		}
+
+		SCR_ResourceEncapsulator encapsulator = GetResourceEncapsulator();
+		if (!encapsulator)
+		{
+			SetSuppliesFireState(SCR_ESecondaryExplosionScale.NONE);
+			return;
+		}
+
+		float totalResources = encapsulator.GetAggregatedResourceValue();
+		if (totalResources <= 0)
+		{
+			SetSuppliesFireState(SCR_ESecondaryExplosionScale.NONE);
+			return;
+		}
+
+		SCR_ResourceContainerQueueBase containerQueue = encapsulator.GetContainerQueue();
+		int containerCount = encapsulator.GetContainerCount();
+
+		SCR_ResourceContainer container;
+		float weight;
+		vector position;
+
+		vector averagePosition = GetOwner().CoordToLocal(encapsulator.GetOwnerOrigin());
+
+		// Get the weighed average position of explosion relative to encapsulator
+		for (int i; i < containerCount; i++)
+		{
+			container = containerQueue.GetContainerAt(i);
+			if (!container)
+				continue;
+
+			// Determine secondary explosion position
+			weight = container.GetResourceValue() / totalResources;
+			if (weight <= 0)
+				continue;
+
+			position = GetOwner().CoordToLocal(container.GetOwnerOrigin());
+			averagePosition += position * weight;
+		}
+
+		SCR_ESecondaryExplosionScale suppliesFireState = GetSecondaryExplosionScale(fireRate, SCR_ESecondaryExplosionType.RESOURCE);
+		SetSuppliesFireState(suppliesFireState, averagePosition);
+
+		// Fire area damage
+		float suppliesDamage;
+		m_fSuppliesFireDamageTimeout -= timeSlice;
+		if (m_fSuppliesFireDamageTimeout < 0)
+		{
+
+			EntitySpawnParams spawnParams();
+			spawnParams.Transform[3] = averagePosition;
+			ResourceName fireDamage = GetSecondaryExplosion(fireRate, SCR_ESecondaryExplosionType.RESOURCE, fire: true);
+			SecondaryExplosion(fireDamage, GetInstigator(), spawnParams);
+
+			// Constant intervals for secondary damage
+			m_fSuppliesFireDamageTimeout = m_fSecondaryFireDamageDelay;
+			suppliesDamage = Math.Ceil(fireRate * m_fSecondaryFireDamageDelay * m_fSuppliesFireDamageRate);
+		}
+
+		if (containerCount > 1)
+			suppliesDamage /= containerCount;
+
+		for (int i; i < containerCount; i++)
+		{
+			container = containerQueue.GetContainerAt(i);
+			if (container)
+				container.DecreaseResourceValue(suppliesDamage);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override SCR_ResourceEncapsulator GetResourceEncapsulator(EResourceType suppliesType = EResourceType.SUPPLIES)
+	{
+		if (!m_ResourceComponent)
+			return null;
+
+		SCR_ResourceContainer container = m_ResourceComponent.GetContainer(suppliesType);
+		if (!container)
+			return null;
+
+		return container.GetResourceEncapsulator();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetMinImpulse()
+	{
+		return m_fMinImpulse;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void InitStaticMapForIndices()
 	{
 		s_mResponseIndexMomentumMap.Insert(SCR_EPhysicsResponseIndex.TINY_MOMENTUM, 0);
-		s_mResponseIndexMomentumMap.Insert(SCR_EPhysicsResponseIndex.SMALL_MOMENTUM, 13333.3); // Approx UAZ (1600kg) at 30 km/h in kJ
-		s_mResponseIndexMomentumMap.Insert(SCR_EPhysicsResponseIndex.MEDIUM_MOMENTUM, 26666.6); // 60 km/h
-		s_mResponseIndexMomentumMap.Insert(SCR_EPhysicsResponseIndex.LARGE_MOMENTUM, 37777.7); // 85 km/h
-		s_mResponseIndexMomentumMap.Insert(SCR_EPhysicsResponseIndex.HUGE_MOMENTUM, 62222.2); // 140 km/h
+		s_mResponseIndexMomentumMap.Insert(SCR_EPhysicsResponseIndex.SMALL_MOMENTUM, 6666.6); // Approx UAZ (1600kg) at 15 km/h in kJ
+		s_mResponseIndexMomentumMap.Insert(SCR_EPhysicsResponseIndex.MEDIUM_MOMENTUM, 22222.2); // 50 km/h
+		s_mResponseIndexMomentumMap.Insert(SCR_EPhysicsResponseIndex.LARGE_MOMENTUM, 44444.4); // 100 km/h
+		s_mResponseIndexMomentumMap.Insert(SCR_EPhysicsResponseIndex.HUGE_MOMENTUM, 133333.3); // 300 km/h
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1024,4 +1577,4 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		if (!s_mResponseIndexMomentumMap.Find(SCR_EPhysicsResponseIndex.TINY_MOMENTUM, null))
 			InitStaticMapForIndices();
 	}
-};
+}

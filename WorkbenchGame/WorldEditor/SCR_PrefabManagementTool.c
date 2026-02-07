@@ -151,7 +151,7 @@ class SCR_PrefabManagementTool : WorldEditorTool
 			string absoluteSaveDirectory;
 			if (!SCR_AddonTool.GetAddonAbsolutePath(m_iAddon, relativeSaveDirectory, absoluteSaveDirectory, false))
 			{
-				Print("Wrong path: " + SCR_AddonTool.GetAddonIndex(m_iAddon) + relativeSaveDirectory, LogLevel.WARNING);
+				Print("Wrong path: " + SCR_AddonTool.ToFileSystem(SCR_AddonTool.GetAddonIndex(m_iAddon)) + relativeSaveDirectory, LogLevel.WARNING);
 				continue;
 			}
 
@@ -207,6 +207,8 @@ class SCR_PrefabManagementTool : WorldEditorTool
 		foreach (ResourceName foundPrefab : foundPrefabs)
 		{
 			string fileNameWithoutExtension = FilePath.StripExtension(FilePath.StripPath(foundPrefab.GetPath()));
+			if (fileNameWithoutExtension.EndsWith(SCR_PrefabHelper.PREFAB_BASE_SUFFIX))
+				fileNameWithoutExtension = fileNameWithoutExtension.Substring(0, fileNameWithoutExtension.Length() - SCR_PrefabHelper.PREFAB_BASE_SUFFIX.Length());
 
 			string relativeSaveDirectory;
 			if (isCloning && !m_sCloneSavePath.IsEmpty())

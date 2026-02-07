@@ -5,7 +5,7 @@ class SCR_AnalogGauge : SCR_BaseAnalogGauge
 	[Attribute("0", UIWidgets.SpinBox, "Min. value (usually 0, but can be any value, even negative)")]
 	protected float m_fValueMin;	
 	
-	[Attribute("120", UIWidgets.SpinBox, "Max. value (in the units provided, e.g. KM/H)", "0.1 1000000000 0.1")]
+	[Attribute("120", UIWidgets.SpinBox, "Max. value (in the units provided, e.g. km/h)", "0.1 1000000000 0.1")]
 	protected float m_fValueMax;
 	
 	// Attributes: labels

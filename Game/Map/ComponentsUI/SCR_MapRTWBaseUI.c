@@ -16,7 +16,7 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	[Attribute("", UIWidgets.Object, desc: "Array of x*y sizes in unscaled pix")]
 	protected ref array<ref ToolSize> m_aSizesArray;
 	
-	const string BASE_WORLD_TYPE = "Preview";
+	const string BASE_WORLD_TYPE = "ChimeraWorld";
 	const float CAMERA_VERTICAL_FOV = 43;
 	
 	// configuration
@@ -68,17 +68,7 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	//! \return prefab resource
 	protected string GetPrefabResource()
 	{
-		ResourceName prefabName = string.Empty;
-		
-		IEntity item = FindRelatedGadget();
-		if (item)
-		{
-			SCR_GadgetComponent itemComp = SCR_GadgetComponent.Cast( item.FindComponent(SCR_GadgetComponent) );
-			if (itemComp)
-				prefabName = itemComp.GetPrefabResource();
-		}
-		
-		return prefabName;
+		return string.Empty;
 	}
 	
 	//------------------------------------------------------------------------------------------------

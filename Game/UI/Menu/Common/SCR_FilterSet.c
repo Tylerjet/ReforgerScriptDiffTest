@@ -20,6 +20,10 @@ class SCR_FilterEntry
 	// Main image
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Image - texture or imageset", "edds imageset")]
 	ResourceName m_sImageTexture;
+
+	[Attribute("{00FE3DBDFD15227B}UI/Textures/Icons/icons_wrapperUI-glow.imageset", UIWidgets.ResourcePickerThumbnail, "edds imageset")]
+	ResourceName m_sGlowTexture;
+	
 	[Attribute("", UIWidgets.EditBox, "Image name if image set is used")]
 	string m_sImageName;
 	
@@ -38,7 +42,13 @@ class SCR_FilterEntry
 	
 	//-----------------------------------------------------------------------------------------------------------
 	//! Returns the selected flag.
-	bool GetSelected() {return m_bSelected; }
+	bool GetSelected(bool defaultValue = false) 
+	{
+		if (defaultValue)
+			return m_bSelectedAtStart;
+		
+		return m_bSelected; 
+	}
 	
 	//-----------------------------------------------------------------------------------------------------------
 	void Init(SCR_FilterCategory category)
@@ -74,6 +84,9 @@ class SCR_FilterCategory
 	
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Common image set for individual filters. Each filter can override it though.", "imageset")]
 	ResourceName m_sFilterImageSet;
+	
+	[Attribute("{00FE3DBDFD15227B}UI/Textures/Icons/icons_wrapperUI-glow.imageset", UIWidgets.ResourcePickerThumbnail, "imageset")]
+	ResourceName m_sFilterGlowImageSet;
 	
 	[Attribute("", UIWidgets.Object)]
 	protected ref array<ref SCR_FilterEntry> m_aFilters;
@@ -203,6 +216,19 @@ class SCR_FilterSet
 		return null;
 	}
 	
+	//-----------------------------------------------------------------------------------------------------------
+	bool AnyFilterSelected()
+	{
+		bool selected;
+		foreach (SCR_FilterCategory category : m_aFilterCategories)
+		{
+			selected = category.GetAnySelected();
+			if (selected)
+				return true;
+		}
+		
+		return false;
+	}
 	
 	//-----------------------------------------------------------------------------------------------------------
 	//! Initializes all filters to their default values
@@ -302,6 +328,7 @@ class SCR_AllFilterSetsStorage : ModuleGameSettings
 		
 		BaseContainerTools.ReadFromInstance(allFilterSets, allFilterSetsContainer);
 		GetGame().UserSettingsChanged();
+		GetGame().SaveUserSettings();
 	}
 	
 	
@@ -333,7 +360,7 @@ class SCR_AllFilterSetsStorage : ModuleGameSettings
 		SCR_AllFilterSetsStorage allFilterSets = new SCR_AllFilterSetsStorage;
 		BaseContainer allFilterSetsContainer = GetGame().GetGameUserSettings().GetModule("SCR_AllFilterSetsStorage");
 		BaseContainerTools.WriteToInstance(allFilterSets, allFilterSetsContainer);
-		
+
 		// Find the old data for this tag
 		SCR_FilterSetStorage storedFilterSet;
 		for (int i = 0; i < allFilterSets.m_aFilterSets.Count(); i++)
@@ -398,5 +425,6 @@ class SCR_AllFilterSetsStorage : ModuleGameSettings
 		// Save settings
 		BaseContainerTools.ReadFromInstance(allFilterSets, allFilterSetsContainer);
 		GetGame().UserSettingsChanged();
+		GetGame().SaveUserSettings();
 	}
 };

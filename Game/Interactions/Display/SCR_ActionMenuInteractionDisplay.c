@@ -269,7 +269,6 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	protected float m_fFadeInOffset;	
 			
 	protected EActionMenu m_eState = EActionMenu.UNDEFINED;
-	
 
 	protected Widget m_wActionMenu;
 	protected Widget m_wActionButton;
@@ -291,6 +290,9 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	
 	// Data containing info from interaction handler
 	protected ref ActionDisplayData m_pLastData;
+	
+	//~ In order for the continues action process not to instantly go from 100% to 0 it holds the 100% for x seconds. This const is how long it holds (In seconds)
+	protected const float CONTINUES_ACTION_RESET_HOLD = 0.25;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Creates and initializes root widget to be slotted with actions
@@ -724,17 +726,16 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 
 	//------------------------------------------------------------------------------------------------
 	//! Called when action is being performed
-	override void OnActionProgress( IEntity pUser, BaseUserAction pPerformedAction, float fProgress, float fDuration )
+	override void OnActionProgress(IEntity pUser, BaseUserAction pPerformedAction, float fProgress, float fDuration)
 	{
-		ActionMenuElement pActionMenuElement = m_mActionWidget.Get(pPerformedAction);
-		
-		if (!pActionMenuElement)
-			return;
-		
-		if (fDuration == 0.0)
-			pActionMenuElement.SetProgress(0.0);
-		else
-			pActionMenuElement.SetProgress(fProgress / fDuration);
+		 ActionMenuElement pActionMenuElement = m_mActionWidget.Get(pPerformedAction);
+        if (!pActionMenuElement)
+            return;
+        if (fDuration == 0.0)
+            pActionMenuElement.SetProgress(0.0);
+        //~ Continues action
+        else
+            pActionMenuElement.SetProgress(fProgress / fDuration);
 	}
 
 	//------------------------------------------------------------------------------------------------

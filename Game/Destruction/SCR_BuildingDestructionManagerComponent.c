@@ -24,6 +24,7 @@ class SCR_BuildingDestructionData
 	ref set<int> m_aExecutedEffectIndices;
 	ref array<IEntity> m_aExcludeList;
 	ref array<ref Tuple2<vector, vector>> m_aNavmeshAreas;
+	ref array<bool> m_aRedoRoads;
 	ref SCR_BuildingDestructionCameraShakeProgress m_CameraShake = new SCR_BuildingDestructionCameraShakeProgress();
 	SCR_AudioSource m_AudioSource;
 	float m_fBuildingVolume;
@@ -50,6 +51,7 @@ class SCR_BuildingDestructionData
 		m_aExecutedEffectIndices = null;
 		m_aExcludeList = null;
 		m_aNavmeshAreas = null;
+		m_aRedoRoads = null;
 		m_CameraShake = new SCR_BuildingDestructionCameraShakeProgress();
 		m_AudioSource = null;
 		m_fBuildingVolume = 0;
@@ -58,7 +60,10 @@ class SCR_BuildingDestructionData
 
 //------------------------------------------------------------------------------------------------
 class SCR_BuildingDestructionManagerComponent : ScriptComponent
-{
+{			
+	[Attribute()]
+	protected ref SCR_BuildingDestructionConfig m_BuildingDestructionConfig;
+	
 	private int m_iFirstFreeData = -1;
 	private ref array<ref SCR_BuildingDestructionData> m_aBuildingDestructionData = {};
 	
@@ -100,6 +105,16 @@ class SCR_BuildingDestructionManagerComponent : ScriptComponent
 		m_aBuildingDestructionData[index].Reset();
 		m_aBuildingDestructionData[index].m_iNextFreeIndex = m_iFirstFreeData;
 		m_iFirstFreeData = index;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get array of typenames to be excluded from entity query
+	array<string> GetExcludedQueryTypes()
+	{
+		if (!m_BuildingDestructionConfig)
+			return null;
+		
+		return m_BuildingDestructionConfig.m_aExcludedEntityQueryTypes;
 	}
 	
 	//------------------------------------------------------------------------------------------------

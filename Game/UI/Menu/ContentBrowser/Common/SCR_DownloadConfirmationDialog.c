@@ -84,8 +84,8 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		OnAllPatchSizeLoaded(m_Loader, true);
 		
 		// Buttons
-		SCR_NavigationButtonComponent confirmButton  = FindButton("confirm");
-		SCR_NavigationButtonComponent confirm2Button  = FindButton("confirm2");
+		SCR_InputButtonComponent confirmButton  = FindButton("confirm");
+		SCR_InputButtonComponent confirm2Button  = FindButton("confirm2");
 		
 		if (confirm2Button)
 			confirm2Button.m_OnActivated.Insert(OnConfirm2);

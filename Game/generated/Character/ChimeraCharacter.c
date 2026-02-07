@@ -25,6 +25,8 @@ class ChimeraCharacter: GameEntity
 	proto external CharacterControllerComponent GetCharacterController();
 	//! Returns component which handles damage
 	proto external SCR_DamageManagerComponent GetDamageManager();
+	//! Returns component which handles weapons
+	proto external BaseWeaponManagerComponent GetWeaponManager();
 	//! Returns true if the character is inside a vehicle.
 	proto external bool IsInVehicle();
 	//! Returns true if the character is in vehicle in ADS

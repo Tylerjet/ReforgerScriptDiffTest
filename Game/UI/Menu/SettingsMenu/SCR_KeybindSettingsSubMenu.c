@@ -9,6 +9,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 
 	// Widgets
 	protected VerticalLayoutWidget m_wActionsLayout;
+	protected ScrollLayoutWidget m_wActionsScrollLayout;
 
 	// Bindings
 	protected ref InputBinding m_Binding;
@@ -19,9 +20,10 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	protected static const string RESET_ALL_DIALOG_MESSAGE = "#AR-Settings_Keybind_MessageResetAll";
 	
 	protected SCR_KeybindRowComponent m_SelectedRowComponent;
-	protected SCR_NavigationButtonComponent m_ResetSingleButtonComponent;
-	protected SCR_NavigationButtonComponent m_UnbindSingleActionButtonComponent;
-	protected SCR_NavigationButtonComponent m_AdvancedBindingButtonComponent;
+	protected SCR_InputButtonComponent m_ResetSingleButtonComponent;
+	protected SCR_InputButtonComponent m_UnbindSingleActionButtonComponent;
+	protected SCR_InputButtonComponent m_AdvancedBindingButtonComponent;
+	protected SCR_SpinBoxComponent m_CategoriesSpinBox;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
@@ -30,20 +32,32 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		m_wActionsLayout = VerticalLayoutWidget.Cast(GetRootWidget().FindAnyWidget("ActionRowsContent"));
 		if (!m_wActionsLayout)
 			return;
+		
+		m_wActionsScrollLayout = ScrollLayoutWidget.Cast(GetRootWidget().FindAnyWidget("ScrollLayout0"));
+		if (!m_wActionsScrollLayout)
+			return;
 
 		SCR_SettingsManagerKeybindModule settingsKeybindModule = SCR_SettingsManagerKeybindModule.Cast(GetGame().GetSettingsManager().GetModule(ESettingManagerModuleType.SETTINGS_MANAGER_KEYBINDING));
 		if (!settingsKeybindModule)
 			return;
 		
 		m_Binding = settingsKeybindModule.GetInputBindings();
-		
-		SCR_NavigationButtonComponent reset = CreateNavigationButton("MenuResetAllKeybind", "#AR-Settings_Keybind_ResetEveryKeybind", true);
+
+		SCR_InputButtonComponent reset = CreateNavigationButton("MenuResetAllKeybind", "#AR-Settings_Keybind_ResetEveryKeybind", true);
 		reset.m_OnActivated.Insert(ResetKeybindsToDefault);
+		
+#ifdef PLATFORM_CONSOLE
+		if (!GetGame().GetHasKeyboard())
+		{
+			reset.SetVisible(false);
+			reset.SetEnabled(false);
+		}
+#endif
 		
 		CreateSingleKeybindResetButton();
 		CreateUnbindSingleButton();
 		CreateAdvancedBindingButton();
-
+		
 		//read the categories and actions from KEY_BINDING_CONFIG
 		Resource holder = BaseContainerTools.LoadContainer(KEY_BINDING_CONFIG);
 		BaseContainer container = holder.GetResource().ToBaseContainer();
@@ -53,6 +67,22 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta)
+	{
+		super.OnMenuUpdate(parentMenu, tDelta);
+		
+		//TODO: change this to use events insetad of tick
+		SetAdvancedKeybindButtonVisible(!GetGame().IsPlatformGameConsole() && GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.GAMEPAD);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetAdvancedKeybindButtonVisible(bool visible)
+	{
+		if (m_AdvancedBindingButtonComponent)
+			m_AdvancedBindingButtonComponent.SetVisible(visible, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void ListActionsFromCurrentCategory()
 	{
 		Widget spinBox = GetRootWidget().FindAnyWidget("CategoriesBox");
@@ -60,11 +90,16 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		if (!spinBox)
 			return;
 
-		SCR_SpinBoxComponent spinBoxComponent = SCR_SpinBoxComponent.Cast(spinBox.GetHandler(0));
-		if (!spinBoxComponent)
+		m_CategoriesSpinBox = SCR_SpinBoxComponent.Cast(spinBox.GetHandler(0));
+		if (!m_CategoriesSpinBox)
 			return;
 
-		SCR_KeyBindingCategory category = m_KeybindConfig.keyBindingCategories.Get(spinBoxComponent.GetCurrentIndex());
+		// Allow category switching with gamepad from anywere in this menu. 
+		// Otherwise the player will need to scroll all the way back to the spin box
+		m_CategoriesSpinBox.SetKeepActionListeners(true);
+		m_CategoriesSpinBox.AddActionListeners();
+		
+		SCR_KeyBindingCategory category = m_KeybindConfig.m_KeyBindingCategories.Get(m_CategoriesSpinBox.GetCurrentIndex());
 		if (!category)
 			return;
 
@@ -82,13 +117,13 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		TextWidget separatorText;
 		Widget actionRowWidget;
 		SCR_KeybindRowComponent component;
-		foreach (SCR_KeyBindingEntry entry : category.keyBindingEntries)
+		foreach (SCR_KeyBindingEntry entry : category.m_KeyBindingEntries)
 		{
-			displayName = entry.displayName;
+			displayName = entry.m_sDisplayName;
 			if (displayName.Length() == 0)
-				displayName = "<#AR-Settings_Keybind_MissingName>" + entry.actionName;
+				displayName = "<#AR-Settings_Keybind_MissingName>" + entry.m_sActionName;
 
-			if (entry.actionName == "separator")
+			if (entry.m_sActionName == "separator")
 			{
 				separator = GetGame().GetWorkspace().CreateWidgets(SEPARATOR_LAYOUT_PATH ,m_wActionsLayout);
 				if (!separator)
@@ -96,8 +131,8 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 				separatorText = TextWidget.Cast(separator.FindAnyWidget("ActionCategoryName"));
 				if (!separatorText)
 					continue;
-				separatorText.SetVisible(!entry.displayName.IsEmpty());
-				separatorText.SetText(entry.displayName);
+				separatorText.SetVisible(!entry.m_sDisplayName.IsEmpty());
+				separatorText.SetText(entry.m_sDisplayName);
 				if (firstSeparator)
 				{
 					keybindTitle = separator.FindAnyWidget("Keybind");
@@ -118,9 +153,12 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 				actionRowWidget = GetGame().GetWorkspace().CreateWidgets(ACTIONROW_LAYOUT_PATH ,m_wActionsLayout);
 				component = SCR_KeybindRowComponent.Cast(actionRowWidget.FindHandler(SCR_KeybindRowComponent));
 				if (component)
-					component.Create(actionRowWidget, displayName, entry.actionName, this, entry.preset,  GetRootWidget(), m_Binding);
+					component.Create(actionRowWidget, displayName, entry.m_sActionName, this, entry.m_sPreset,  GetRootWidget(), m_Binding, entry.m_ePrefixType);
 			}
 		}
+		
+		if (m_wActionsScrollLayout)
+			m_wActionsScrollLayout.SetSliderPos(0, 0);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -137,8 +175,8 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		spinBoxComponent.ClearAll();
 		spinBoxComponent.m_OnChanged.Insert(ListActionsFromCurrentCategory);
 
-		foreach (SCR_KeyBindingCategory category : m_KeybindConfig.keyBindingCategories)
-			spinBoxComponent.AddItem(category.displayName);
+		foreach (SCR_KeyBindingCategory category : m_KeybindConfig.m_KeyBindingCategories)
+			spinBoxComponent.AddItem(category.m_sDisplayName);
 
 		spinBoxComponent.SetCurrentItem(0);
 
@@ -154,9 +192,15 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void CreateSingleKeybindResetButton()
 	{
+#ifdef PLATFORM_CONSOLE
+			if (!GetGame().GetHasKeyboard())
+				return;
+#endif
+		
 		m_ResetSingleButtonComponent = CreateNavigationButton("MenuResetKeybind", "#AR-Settings_Keybind_ResetAllKeybinds", true);
 		m_ResetSingleButtonComponent.m_OnActivated.Insert(ResetSingleKeybindToDefault);
 		m_ResetSingleButtonComponent.SetEnabled(false);
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -174,16 +218,16 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		array<string> contexts = {};
 		m_Binding.GetContexts(contexts);
 		
-		foreach (SCR_KeyBindingCategory category: m_KeybindConfig.keyBindingCategories)
+		foreach (SCR_KeyBindingCategory category: m_KeybindConfig.m_KeyBindingCategories)
 		{
-			foreach (SCR_KeyBindingEntry entry: category.keyBindingEntries)
+			foreach (SCR_KeyBindingEntry entry: category.m_KeyBindingEntries)
 			{
-				string finalPreset = entry.preset;
-				if (!entry.preset.IsEmpty())
-					finalPreset = PRIMARY_PRESET_PREFIX + entry.preset;
+				string finalPreset = entry.m_sPreset;
+				if (!entry.m_sPreset.IsEmpty())
+					finalPreset = PRIMARY_PRESET_PREFIX + entry.m_sPreset;
 				
-				m_Binding.ResetDefault(entry.actionName, EInputDeviceType.KEYBOARD, finalPreset);
-				m_Binding.ResetDefault(entry.actionName, EInputDeviceType.MOUSE, finalPreset);
+				m_Binding.ResetDefault(entry.m_sActionName, EInputDeviceType.KEYBOARD, finalPreset);
+				m_Binding.ResetDefault(entry.m_sActionName, EInputDeviceType.MOUSE, finalPreset);
 			}
 		}
 		ListActionsFromCurrentCategory();
@@ -195,6 +239,51 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	{
 		super.OnMenuShow(parentMenu);
 		ListActionsFromCurrentCategory();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuHide(SCR_SuperMenuBase parentMenu)
+	{
+		super.OnMenuHide(parentMenu);
+		
+		if (m_CategoriesSpinBox)
+		{
+			m_CategoriesSpinBox.SetKeepActionListeners(false);
+			m_CategoriesSpinBox.RemoveActionListeners();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuFocusGained()
+	{
+		super.OnMenuFocusGained();
+		
+		if (m_CategoriesSpinBox)
+		{
+			m_CategoriesSpinBox.SetKeepActionListeners(true);
+			m_CategoriesSpinBox.AddActionListeners();
+		}
+
+		// Restore focus to last selected entry on dialog close
+		if (!GetShown())
+			return;
+		
+		if (m_SelectedRowComponent)
+			GetGame().GetWorkspace().SetFocusedWidget(m_SelectedRowComponent.GetRootWidget());
+		else if (m_CategoriesSpinBox)
+			GetGame().GetWorkspace().SetFocusedWidget(m_CategoriesSpinBox.GetRootWidget());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuFocusLost()
+	{
+		super.OnMenuFocusLost();
+		
+		if (m_CategoriesSpinBox)
+		{
+			m_CategoriesSpinBox.SetKeepActionListeners(false);
+			m_CategoriesSpinBox.RemoveActionListeners();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -219,6 +308,10 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	//------------------------------------------------------------------------------------------------
 	void CreateUnbindSingleButton()
 	{
+#ifdef PLATFORM_CONSOLE
+			if (!GetGame().GetHasKeyboard())
+				return;
+#endif
 		m_UnbindSingleActionButtonComponent = CreateNavigationButton("MenuUnbindKeybind", "#AR-Settings_Keybind_UnbindOne", true);
 		m_UnbindSingleActionButtonComponent.m_OnActivated.Insert(UnbindSingleAction);
 		m_UnbindSingleActionButtonComponent.SetEnabled(false);
@@ -226,7 +319,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	
 	//------------------------------------------------------------------------------------------------
 	void CreateAdvancedBindingButton()
-	{
+	{		
 		m_AdvancedBindingButtonComponent = CreateNavigationButton("MenuAdvancedKeybind", "#AR_Settings_KeybindAdvanced_Title", true);
 		m_AdvancedBindingButtonComponent.m_OnActivated.Insert(AdvancedKeybindButtonClick);
 		m_AdvancedBindingButtonComponent.SetEnabled(false);
@@ -267,6 +360,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		
 		keybindDialog.SetActionName(rowComp.GetActionName());
 		keybindDialog.SetActionPreset(PRIMARY_PRESET_PREFIX + rowComp.GetActionPreset());
+		keybindDialog.SetActionPrefixType(rowComp.GetActionPrefixType());
 		keybindDialog.InitiateAdvancedKeybindDialog();
 		keybindDialog.m_OnCancel.Insert(ListActionsFromCurrentCategory);
 	}

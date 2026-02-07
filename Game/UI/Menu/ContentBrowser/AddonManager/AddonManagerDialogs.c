@@ -88,32 +88,6 @@ class SCR_WorkshopErrorPresetLoadDialog : SCR_ConfigurableDialogUi
 	
 	protected int m_iDownloading;
 	
-	//---------------------------------------------------------------------------------------------------
-	protected void OnConfirmAddonsDownload(SCR_DownloadConfirmationDialog dialog)
-	{
-		// Listen to downalod actinos 
-		array<ref SCR_WorkshopItemAction> actions = dialog.GetActions();
-		array<ref SCR_WorkshopItemActionDownload> downloads = new array<ref SCR_WorkshopItemActionDownload>;
-		
-		foreach (ref SCR_WorkshopItemAction act : actions)
-		{
-			//act.m_OnChanged.Insert(OnDownloadActionChange);
-			act.m_OnCompleted.Insert(OnModDownloaded);
-			
-			// Insert download action OnReportedModsFix
-			SCR_WorkshopItemActionDownload downloadAction = SCR_WorkshopItemActionDownload.Cast(act);
-			if (downloadAction)
-				downloads.Insert(downloadAction);
-		}
-		
-		m_iDownloading = actions.Count();
-		// Set downloads
-		//m_ModManager.SetDownloadActions(downloads);
-		
-		dialog.GetOnDownloadConfirmed().Remove(OnConfirmAddonsDownload);
-		
-		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.DownloadManagerDialog);
-	}
 	
 	//---------------------------------------------------------------------------------------------------
 	protected void OnModDownloaded(SCR_WorkshopItemAction action)

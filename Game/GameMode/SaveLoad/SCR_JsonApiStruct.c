@@ -19,6 +19,12 @@ class SCR_JsonApiStruct: JsonApiStruct
 		return false;
 	}
 	/*!
+	Clear struct's data
+	*/
+	void ClearCache()
+	{
+	}
+	/*!
 	Log struct's data
 	*/
 	void Log()

@@ -6,10 +6,14 @@ class GroupSettingsDialogUI: DialogUI
 	protected SCR_ComboBoxComponent m_GroupStatus;
 	protected SCR_EditBoxComponent m_GroupName;
 	protected SCR_EditBoxComponent m_GroupDescription;
+	
+	protected ref SCR_ScriptPlatformRequestCallback m_CallbackGetPrivilege;
 		
 	protected SCR_PlayerControllerGroupComponent m_PlayerComponent;
 	protected SCR_GroupsManagerComponent m_GroupsManager;
 	protected SCR_AIGroup m_PlayerGroup;
+	
+	protected bool m_bHasPrivilege;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
@@ -21,7 +25,18 @@ class GroupSettingsDialogUI: DialogUI
 			return;
 		
 		if (m_PlayerComponent.GetSelectedGroupID() == -1)
+		{
 			Close();
+			return;
+		}
+		
+		m_CallbackGetPrivilege = new SCR_ScriptPlatformRequestCallback();
+		m_CallbackGetPrivilege.m_OnResult.Insert(OnPrivilegeCallback);
+		GetGame().GetPlatformService().GetPrivilegeAsync(UserPrivilege.USER_GEN_CONTENT, m_CallbackGetPrivilege);
+	}
+	
+	void OnPrivilegeCallback(UserPrivilege privilege, UserPrivilegeResult result)
+	{
 		
 		m_GroupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!m_GroupsManager)
@@ -39,27 +54,43 @@ class GroupSettingsDialogUI: DialogUI
 		if (!m_GroupStatus)
 			return;
 		
-		PlatformService platform = GetGame().GetPlatformService();
-		if (!platform)
-			return;
-		
 		m_GroupName = SCR_EditBoxComponent.GetEditBoxComponent("Name", w);
 		if (!m_GroupName)
 			return;
-		
-		m_GroupName.SetEnabled(platform.GetPrivilege(UserPrivilege.USER_GEN_CONTENT));
 		
 		m_GroupDescription = SCR_EditBoxComponent.GetEditBoxComponent("Description", w);
 		if (!m_GroupDescription)
 			return;
 		
-		m_GroupDescription.SetEnabled(platform.GetPrivilege(UserPrivilege.USER_GEN_CONTENT));
+		if (result == UserPrivilegeResult.ALLOWED)
+		{
+			m_GroupName.SetEnabled(true);
+			m_GroupName.SetValue(m_PlayerGroup.GetCustomName());
+			
+			m_GroupDescription.SetEnabled(true);
+			m_GroupDescription.SetValue(m_PlayerGroup.GetCustomDescription());
+			m_bHasPrivilege = true;
+		}
+		else
+		{
+			m_GroupName.SetEnabled(false);
+			m_GroupName.SetValue(WidgetManager.Translate("#AR-UserActionUnavailable"));
+			m_GroupDescription.SetEnabled(false);
+			m_GroupDescription.SetValue(WidgetManager.Translate("#AR-UserActionUnavailable"));
+			m_bHasPrivilege = false;
+		}
 		
-		m_GroupName.SetValue(m_PlayerGroup.GetCustomName());
-		m_GroupDescription.SetValue(m_PlayerGroup.GetCustomDescription());
 		SetupGroupStatusCombo();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(float tDelta)
+	{
+		super.OnMenuUpdate(tDelta);
+		
+		GetGame().GetInputManager().ActivateContext("InteractableDialogContext");
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override protected void OnConfirm()
 	{
@@ -67,9 +98,17 @@ class GroupSettingsDialogUI: DialogUI
 		if (!groupController)
 			return;
 		
-		int groupID = m_PlayerGroup.GetGroupID();
-		groupController.RequestSetCustomGroupDescription(groupID, m_GroupDescription.GetValue());
-		groupController.RequestSetCustomGroupName(groupID, m_GroupName.GetValue());
+		if (m_bHasPrivilege)
+		{
+			string outputName;
+			string outputDesc;
+			GetGame().GetProfanityFilter().ReplaceProfanities(m_GroupDescription.GetValue(), outputDesc);
+			GetGame().GetProfanityFilter().ReplaceProfanities(m_GroupName.GetValue(), outputName);
+			
+			int groupID = m_PlayerGroup.GetGroupID();
+			groupController.RequestSetCustomGroupDescription(groupID, outputDesc);
+			groupController.RequestSetCustomGroupName(groupID, outputName);
+		}
 		
 		Close();
 	}

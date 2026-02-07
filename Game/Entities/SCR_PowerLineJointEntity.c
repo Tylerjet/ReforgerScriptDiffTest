@@ -6,34 +6,31 @@ class SCR_PowerLineJointEntityClass: GenericEntityClass
 //------------------------------------------------------------------------------------------------
 class SCR_PowerLineJointEntity: GenericEntity
 {
-	[Attribute("", UIWidgets.EditBox, "", "")]
-	string m_sConnectedJoint;
+	[Attribute("1.0")]
+	protected float m_fSagInMeters;
 	
-	[Attribute("1", UIWidgets.EditBox, "", "")]
-	float m_fSagInMeters;
+	[Attribute("0.1")]
+	protected float m_AngleRad;
 	
-	[Attribute("0.1", UIWidgets.CheckBox, "", "")]
-	float m_AngleRad;
-	
-	[Attribute("0.5", UIWidgets.CheckBox, "", "")]
-	float m_MovementSpeed;
+	[Attribute("0.5")]
+	protected float m_MovementSpeed;
 	
 	#ifdef WORKBENCH
-	private static const int SEGMENTS = 64;
-	private const int POINTS = SEGMENTS + 1;
-	private vector m_DebugLine[65];
-	private vector m_DebugLinePivots[65];
-	private vector m_vDirectionLevelNorm;
-	private vector m_vConnectedJointPos;
-	private ref array<vector> m_Curve = new array<vector>;
-	private ref array<vector> m_CurvePivots = new array<vector>;
-	private ref array<ref Shape> m_aShapes = new array<ref Shape>;
+	protected static const int SEGMENTS = 64;
+	protected const int POINTS = SEGMENTS + 1;
+
+	protected vector m_DebugLine[POINTS];
+	protected vector m_DebugLinePivots[POINTS];
+	protected vector m_vDirectionLevelNorm;
+	protected vector m_vConnectedJointPos;
+	protected ref array<vector> m_Curve = {};
+	protected ref array<vector> m_CurvePivots = {};
+	protected ref array<ref Shape> m_aShapes = {};
 	
 	private float m_fTimeAccu;
 	
 	
 	//------------------------------------------------------------------------------------------------
-	
 	bool GetJoint()
 	{
 		WorldEditorAPI api = _WB_GetEditorAPI();
@@ -115,7 +112,7 @@ class SCR_PowerLineJointEntity: GenericEntity
 		float segmentSize = distanceLevel / SEGMENTS;
 		
 		int segment = 0;
-		auto curveYValues = new array<float>;
+		array<float> curveYValues = {};
 		
 		float step = 1 / SEGMENTS;
 		float value = 0;
@@ -193,7 +190,7 @@ class SCR_PowerLineJointEntity: GenericEntity
 		float speed = m_MovementSpeed;
 		m_fTimeAccu += speed * timeSlice;
 		//Print(m_fTimeAccu);
-		float val1 = Math.Sin(m_fTimeAccu) / 2 + 0.5;
+		float val1 = Math.Sin(m_fTimeAccu) * 0.5 + 0.5;
 		float val2 = Math.Lerp(-m_AngleRad, m_AngleRad, val1);
 		
 		float sin = Math.Sin(val2);

@@ -13,12 +13,6 @@ class EditorBrowserDialogUI: EditorMenuBase
 			placingManager.SetInstantPlacing(null);
 		}
 		
-		SCR_ContentBrowserEditorComponent contentBrowserManager = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent));
-		if (contentBrowserManager)
-		{
-			contentBrowserManager.SetExtendedEntity(null);
-		}
-		
 		CloseSelf();
 	}
 	

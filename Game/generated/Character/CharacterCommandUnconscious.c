@@ -18,7 +18,8 @@ class CharacterCommandUnconscious: CharacterCommand
 	On belly rolling over to the right - 3, (with arms up - 7)
 	Lying on left side transition - 4, (with arms up - 8)
 	Lying on right side transition - 5, (with arms up - 9)
-	Exit uncsocious animation state - 0
+	Exit unconscious animation state (with anims - soft exit) - -1
+	Reset unconscious animation state (without anims - hard reset) - -2
 	*/
 	proto external void StartCommandUnconscious(int commandI);
 }

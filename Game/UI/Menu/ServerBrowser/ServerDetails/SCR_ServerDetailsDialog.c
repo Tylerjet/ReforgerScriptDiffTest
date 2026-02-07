@@ -9,14 +9,14 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	protected const string WIDGET_SCROLL = "ScrollSize";
 	protected const string WIDGET_ADDON_LIST = "AddonList";
 	protected const string WIDGET_LOADING = "Loading";
-	protected const string WIDGET_FAVORITE = "FavoriteImage";
 	protected const string WIDGET_TITLEFRAME = "TitleFrame";
 
 	protected const string WIDGET_IPADDRESS_TEXT = "IPAddressText";
 	protected const string WIDGET_DISCORD_TEXT = "DiscordText";
 	protected const string WIDGET_MODS_NUMBER_TEXT = "ModsNumberText";
 	protected const string WIDGET_MODS_SIZE_TEXT = "ModsSizeAmount";
-	protected const string WIDGET_VERSION_ALERT_TEXT = "VersionAlertTextButton";
+	protected const string WIDGET_ALERT_TEXT = "AlertText";
+	protected const string WIDGET_ALERT_WRAPPER = "AlertOverlay"; //TODO: move alerts handling to a specific component on the button itself
 	protected const string WIDGET_MODS_SIZE_TO_DOWNLOAD_TEXT = "ModsSizeToDownload";
 
 	protected const string WIDGET_MODS_SIZE_LAYOUT = "ModsSizeLayout";
@@ -38,31 +38,28 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	protected Widget m_wScroll;
 	protected Widget m_wAddonList;
 	protected Widget m_wLoading;
-	protected Widget m_wFavoriteImage;
 	protected Widget m_wModsSizeLayout;
 	protected Widget m_wDetailIconsLayout;
 	protected Widget m_wVersionAlertIcon;
 	protected Widget m_wModsSizeToDownloadLayout;
+	protected Widget m_wAlertWrapper;
 
 	protected RichTextWidget m_wIPAddressText;
 	protected RichTextWidget m_wDiscordText;
 	protected RichTextWidget m_wModsNumberText;
 	protected RichTextWidget m_wModsSizeText;
-	protected RichTextWidget m_wVersionAlertText;
+	protected RichTextWidget m_wAlertText;
 	protected RichTextWidget m_wModsSizeToDownloadText;
 
-	protected SCR_NavigationButtonComponent m_NavConfirm;
-	protected SCR_NavigationButtonComponent m_NavFavorites;
+	protected SCR_InputButtonComponent m_NavConfirm;
+	protected SCR_InputButtonComponent m_NavFavorites;
 
-	protected SCR_ButtonComponent m_BtnFavorites;
+	protected SCR_ModularButtonComponent m_BtnFavorites;
 	protected SCR_ButtonComponent m_BtnCopyIPAddress;
 	protected SCR_ButtonComponent m_BtnDiscord;
-	
+
 	protected SCR_ScenarioBackendImageComponent m_BackendImageComp;
 	protected Widget m_wBackgroundImageBackend;
-
-	protected EInputDeviceType m_eLastInputDevice;
-	protected EInputDeviceType m_eCurrentInputDevice;
 
 	ref ScriptInvoker m_OnFavorites = new ScriptInvoker();
 
@@ -71,7 +68,12 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	protected float m_fVersionAlertIconPaddingLeft;
 
 	protected const ResourceName ADDON_LINE_LAYOUT_SERVER_BROWSER = "{3BC78F295971FD3D}UI/layouts/Menus/ContentBrowser/DownloadManager/DownloadManager_AddonDownloadLineConfirmation_ServerBrowser.layout";
-	protected const string STR_VERSION_MISMATCH = "#ar-serverbrowser_joinversionfail";
+	protected const string STR_VERSION_MISMATCH = "#AR-ServerBrowser_JoinModVersionMissmatch";
+	protected const string ICON_VERSION_MISMATCH = "warning";
+	
+	protected const string STR_HIGH_PING = "#AR-ServerBrowser_HighPingWarning_Title";
+	protected const string STR_HIGH_PING_ICON = "ping-low";
+	protected const string STR_HIGH_PING_ICON_SCALE = "1.75";
 	
 	//This should probably be a setting in SCR_HorizontalScrollAnimationComponent, as this is a bandaid solution to the title flickering
 	protected const int MAX_TITLE_LENGTH = 55;
@@ -88,23 +90,16 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 		m_wScroll = m_wRoot.FindAnyWidget(WIDGET_SCROLL);
 		m_wAddonList = m_wRoot.FindAnyWidget(WIDGET_ADDON_LIST);
 		m_wLoading = m_wRoot.FindAnyWidget(WIDGET_LOADING);
-		m_wFavoriteImage = m_wRoot.FindAnyWidget(WIDGET_FAVORITE);
 		m_wModsSizeLayout = m_wRoot.FindAnyWidget(WIDGET_MODS_SIZE_LAYOUT);
 		m_wDetailIconsLayout = m_wRoot.FindAnyWidget(WIDGET_DETAIL_ICONS_LAYOUT);
 		m_wModsSizeToDownloadLayout = m_wRoot.FindAnyWidget(WIDGET_MODS_SIZE_TO_DOWNLOAD_LAYOUT);
-
-		m_wVersionAlertIcon = m_wRoot.FindAnyWidget(IMG_VERSION_ALERT);
-		if (m_wVersionAlertIcon)
-		{
-			float top, right, bottom;
-			AlignableSlot.GetPadding(m_wVersionAlertIcon, m_fVersionAlertIconPaddingLeft, top, right, bottom);
-		}
-
+		m_wAlertWrapper = m_wRoot.FindAnyWidget(WIDGET_ALERT_WRAPPER);
+		
 		m_wIPAddressText = RichTextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_IPADDRESS_TEXT));
 		m_wDiscordText = RichTextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_DISCORD_TEXT));
 		m_wModsNumberText = RichTextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_MODS_NUMBER_TEXT));
 		m_wModsSizeText = RichTextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_MODS_SIZE_TEXT));
-		m_wVersionAlertText = RichTextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_VERSION_ALERT_TEXT));
+		m_wAlertText = RichTextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_ALERT_TEXT));
 		m_wModsSizeToDownloadText = RichTextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_MODS_SIZE_TO_DOWNLOAD_TEXT));
 	}
 
@@ -113,13 +108,13 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	{
 		super.Init(root, preset, proxyMenu);
 
-		m_NavConfirm = SCR_NavigationButtonComponent.Cast(root.FindAnyWidget(BTN_CONFIRM).FindHandler(SCR_NavigationButtonComponent));
+		m_NavConfirm = SCR_InputButtonComponent.Cast(root.FindAnyWidget(BTN_CONFIRM).FindHandler(SCR_InputButtonComponent));
 		if (m_NavConfirm)
 			BindButtonConfirm(m_NavConfirm);
 
 		m_NavFavorites = FindButton(BTN_FAVORITES);
 
-		m_BtnFavorites = SCR_ButtonComponent.Cast(root.FindAnyWidget(BTN_FAVORITES_STAR).FindHandler(SCR_ButtonComponent));
+		m_BtnFavorites = SCR_ModularButtonComponent.FindComponent(root.FindAnyWidget(BTN_FAVORITES_STAR));
 
 		if (m_NavFavorites)
 			m_NavFavorites.m_OnActivated.Insert(OnFavorites);
@@ -137,9 +132,6 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 		if (m_BtnDiscord)
 			m_BtnDiscord.m_OnClicked.Insert(OnDiscord);
 
-		m_eLastInputDevice = GetGame().GetInputManager().GetLastUsedInputDevice();
-		m_eCurrentInputDevice = m_eLastInputDevice;
-		
 		m_wBackgroundImageBackend = GetRootWidget().FindAnyWidget("BackgroundImageBackend");
 		if (m_wBackgroundImageBackend)
 			m_BackendImageComp = SCR_ScenarioBackendImageComponent.Cast(m_wBackgroundImageBackend.FindHandler(SCR_ScenarioBackendImageComponent));
@@ -154,42 +146,27 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 
 		m_wModsSizeLayout.SetVisible(false);
 		m_wModsSizeToDownloadLayout.SetVisible(false);
-		
+
 		//! Background Image
-		if(!s_Room)
+		if (!s_Room)
 			return;
-		
+
 		SetScenarioImage(s_Room.HostScenario());
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuUpdate(float tDelta)
-	{
-		if (!m_wVersionAlertIcon || !m_wVersionAlertIcon.IsVisible())
-			return;
-
-		m_eCurrentInputDevice = GetGame().GetInputManager().GetLastUsedInputDevice();
-
-		if (m_eCurrentInputDevice == m_eLastInputDevice)
-		return;
-
-		m_eLastInputDevice = m_eCurrentInputDevice;
-		UpdateVersionAlertIconPadding();
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override void SetTitle(string text)
 	{
 		super.SetTitle(text);
-		
+
 		Widget titleFrame = m_wRoot.FindAnyWidget(WIDGET_TITLEFRAME);
 		if (!titleFrame)
 			return;
-		
+
 		SCR_HorizontalScrollAnimationComponent scrollComp = SCR_HorizontalScrollAnimationComponent.Cast(titleFrame.FindHandler(SCR_HorizontalScrollAnimationComponent));
 		if (!scrollComp)
 			return;
-		
+
 		if (text.Length() < MAX_TITLE_LENGTH)
 			scrollComp.AnimationStop();
 		else
@@ -223,7 +200,7 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 
 		dialog.DisplayFavoriteAction(s_Room.IsFavorite());
 		dialog.UpdateDetailIcons();
-		dialog.UpdateVersionAlertMessage();
+		dialog.UpdateAlertMessage();
 
 		return dialog;
 	}
@@ -266,7 +243,7 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 			if (!item.GetOffline()) //Missing, needs download
 				itemsToDownload.Insert(item);
 
-			else if(versionFrom && !Revision.AreEqual(versionFrom, versionTo)) //Downloaded, needs update
+			else if (versionFrom && !Revision.AreEqual(versionFrom, versionTo)) //Downloaded, needs update
 				itemsToUpdate.Insert(item);
 
 			else //Downloaded
@@ -283,8 +260,8 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 		foreach (SCR_WorkshopItem item : itemsOrdered)
 		{
 			Widget w = GetGame().GetWorkspace().CreateWidgets(ADDON_LINE_LAYOUT_SERVER_BROWSER, m_wAddonList);
-			
-			if(item == itemsOrdered[itemsOrdered.Count() - 1])
+
+			if (item == itemsOrdered[itemsOrdered.Count() - 1])
 				AlignableSlot.SetPadding(w, 0, 0, 0, 0);
 
 			SCR_DownloadManager_AddonDownloadLine comp = SCR_DownloadManager_AddonDownloadLine.Cast(w.FindHandler(SCR_DownloadManager_AddonDownloadLine));
@@ -302,13 +279,13 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	{
 		if (!m_BackendImageComp)
 			return;
-		
+
 		if (scenario)
 			m_BackendImageComp.SetScenarioAndImage(scenario, scenario.Thumbnail());
 		else
 			m_BackendImageComp.SetScenarioAndImage(null, null);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetCanJoin(bool canJoin)
 	{
@@ -330,19 +307,14 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 		if (m_NavFavorites)
 		{
 			if (isFavorite)
-				m_NavFavorites.SetLabel("#AR-Workshop_ButtonRemoveFavourites");
+				m_NavFavorites.SetLabel(UIConstants.FAVORITE_LABEL_REMOVE);
 			else
-				m_NavFavorites.SetLabel("#AR-Workshop_ButtonAddToFavourites");
+				m_NavFavorites.SetLabel(UIConstants.FAVORITE_LABEL_ADD);
 		}
 
-		if (m_wFavoriteImage)
-		{
-			// Play star fade animation
-			if (isFavorite)
-				AnimateWidget.Color(m_wFavoriteImage, UIColors.CONTRAST_COLOR, UIConstants.FADE_RATE_FAST);
-			else
-				AnimateWidget.Color(m_wFavoriteImage, UIColors.LIGHT_GREY, UIConstants.FADE_RATE_FAST);
-		}
+		// Star Button
+		if (m_BtnFavorites)
+			m_BtnFavorites.SetToggled(isFavorite, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -442,35 +414,30 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 
 
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateVersionAlertMessage()
+	protected void UpdateAlertMessage()
 	{
-		if (!s_Room || !m_wVersionAlertText || !m_wVersionAlertIcon)
+		if (!s_Room || !m_wAlertText || !m_wAlertWrapper || !m_NavConfirm)
 			return;
 
-		bool showMessage = s_Room.GameVersion() != GetGame().GetBuildVersion();
+		bool versionMismatch = s_Room.GameVersion() != GetGame().GetBuildVersion();
+		bool highPing = ServerBrowserMenuUI.IsServerPingAboveThreshold(s_Room);
+		bool showMessage = versionMismatch || highPing;
 
-		m_wVersionAlertText.SetVisible(showMessage);
-		m_wVersionAlertIcon.SetVisible(showMessage);
-
+		m_wAlertWrapper.SetVisible(showMessage);
+		m_NavConfirm.ResetTexture();
+		
 		if (!showMessage)
 			return;
 
-		m_wVersionAlertText.SetText("v" + s_Room.GameVersion() + " - " + STR_VERSION_MISMATCH + "!");
-		UpdateVersionAlertIconPadding();
-	}
-
-
-	//------------------------------------------------------------------------------------------------
-	protected void UpdateVersionAlertIconPadding()
-	{
-		float left, top, right, bottom;
-		AlignableSlot.GetPadding(m_wVersionAlertIcon, left, top, right, bottom);
-
-		if (m_eCurrentInputDevice == EInputDeviceType.GAMEPAD)
-			left = 0 - (m_fVersionAlertIconPaddingLeft * 0.2);
+		if (versionMismatch)
+		{
+			m_wAlertText.SetText(s_Room.GameVersion() + " - " + STR_VERSION_MISMATCH);
+			m_NavConfirm.SetTexture(UIConstants.ICONS_IMAGE_SET, ICON_VERSION_MISMATCH, UIColors.WARNING);
+		}
 		else
-			left = m_fVersionAlertIconPaddingLeft;
-
-		LayoutSlot.SetPadding(m_wVersionAlertIcon, left, top, right, bottom);
+		{
+			string icon = string.Format("<image set='%1' name='%2' scale='%3'/>", UIConstants.ICONS_IMAGE_SET, STR_HIGH_PING_ICON, STR_HIGH_PING_ICON_SCALE);
+			m_wAlertText.SetText(icon + "  " + STR_HIGH_PING + "  ");
+		}
 	}
-};
+}

@@ -1,0 +1,72 @@
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup System
+\{
+*/
+
+/*!
+To create a system, you just need to create a class which inherits from BaseSystem, and then specify GetSystemPoint to your need.
+*/
+class BaseSystem
+{
+	private void BaseSystem();
+
+	//! Get the world associated to this system
+	proto external World GetWorld();
+	proto external void Enable(bool enable);
+	proto external bool IsEnabled();
+	/*!
+	The 4 functions below are designed so scripters can handle a batch update of multiple entities in a performant way.
+
+	Example:
+	override void OnUpdate()
+	{
+		BeginUpdate();
+		foreach (IEntity ent: myents)
+		{
+			ent.SetWorldTransform(myNewTransform);
+			AddEntity(ent);
+		}
+		Update(); //< This is the call where entities are updated in batch
+		EndUpdate();
+	}
+	*/
+	proto external protected void BeginUpdate();
+	proto external protected void Update();
+	proto external protected void EndUpdate();
+	proto external protected void AddEntity(notnull IEntity entity);
+
+	// callbacks
+
+	event protected ESystemPoint GetSystemPoint() { return ESystemPoint.FixedFrame; };
+	//! Should return true for systems this system depends on. False otherwise
+	event protected bool DependsOn(ESystemPoint point, BaseSystem system) { return false; };
+	/*!
+	Called when system are to be intialized.
+	This always happens at any point when simulation decides to reinitialize
+	the system without actually destroying it.
+	*/
+	event protected void OnInit();
+	/*!
+	Called when system are to be cleaned up.
+	This always happens at any point when simulation decides to bring the system back
+	to the initial state without actually destroying it.
+	*/
+	event protected void OnCleanup();
+	//! Called every time system is started (before the first run and after Enable(true) is called
+	event protected void OnStarted();
+	//! Called every time system is stopped (after Enable(false) is called and before the system is being destroyed
+	event protected void OnStopped();
+	//! Called every time system is allowed to tick
+	event protected void OnUpdate(ESystemPoint point);
+	event protected void OnDiag(float timeSlice);
+}
+
+/*!
+\}
+*/

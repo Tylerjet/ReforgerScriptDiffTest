@@ -4,6 +4,7 @@ class SCR_MapWatchUI : SCR_MapRTWBaseUI
 	const string ICON_NAME = "watch";
 	
 	protected SCR_WristwatchComponent m_WristwatchComp;
+	protected string m_sPrefabResource;
 			
 	//------------------------------------------------------------------------------------------------
 	override void SetWidgetNames()
@@ -43,18 +44,36 @@ class SCR_MapWatchUI : SCR_MapRTWBaseUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Set compass visibility
+	protected void OnInputQuickBind(float value, EActionTrigger reason)
+	{
+		SetVisible(!m_bIsVisible);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override string GetPrefabResource()
+	{
+		return m_sPrefabResource;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set wristwatch visibility
 	//! \param visible is true/false switch
 	override void SetVisible(bool visible)
 	{
 		if (visible)
 		{			
-			// No wristwatch equipped
-			if (!FindRelatedGadget())
+			IEntity wristwatch = FindRelatedGadget();
+			if (!wristwatch)
 			{
 				super.SetVisible(false);
 				return;
 			}
+			
+			SCR_WristwatchComponent watchComp = SCR_WristwatchComponent.Cast(wristwatch.FindComponent(SCR_WristwatchComponent));
+			if (!watchComp)
+				return;
+			
+			m_sPrefabResource = watchComp.GetMapPrefabResource();
 			
 			super.SetVisible(visible);
 					
@@ -81,6 +100,8 @@ class SCR_MapWatchUI : SCR_MapRTWBaseUI
 		{
 			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 12); // add to menu
 			m_ToolMenuEntry.m_OnClick.Insert(ToggleVisible);
+			
+			GetGame().GetInputManager().AddActionListener("MapToolWatch", EActionTrigger.DOWN, OnInputQuickBind);
 		}
 	}
 	

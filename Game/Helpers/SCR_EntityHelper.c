@@ -5,6 +5,7 @@ class SCR_EntityHelper
 	//! \param parent
 	//! \param recursive checks children's children if set to true, the number of direct children otherwise
 	//! \return 0 if the provided entity is null
+	// unused
 	static int GetChildrenCount(IEntity parent, bool recursive = false)
 	{
 		if (!parent)
@@ -24,26 +25,9 @@ class SCR_EntityHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Deletes all children of the input parent entity
-	// used by DeleteEntityAndChildren only
-	protected static void DeleteChildren(IEntity parent)
-	{
-		if (!parent)
-			return;
-
-		IEntity child = parent.GetChildren();
-		while (child)
-		{
-			DeleteChildren(child);
-
-			parent.RemoveChild(child);
-			delete child;
-			child = parent.GetChildren();
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Deletes input parent entity and all children
+	//! Just a wrapper for RplComponent.DeleteRplEntity(entity, false);
+	//! \param entity
 	static void DeleteEntityAndChildren(IEntity entity)
 	{
 		if (entity)
@@ -52,6 +36,8 @@ class SCR_EntityHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns the size of an entity from its bounding box
+	//! \param entity
+	//! \return vector of width, height, length
 	static vector GetEntitySize(notnull IEntity entity)
 	{
 		vector entMins, entMaxs;
@@ -62,6 +48,8 @@ class SCR_EntityHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns the center of the entity from its bounding box in world coordinates
+	//! \param entity
+	//! \return bounding box' centre in world coordinates
 	static vector GetEntityCenterWorld(notnull IEntity entity)
 	{
 		vector entMins, entMaxs;
@@ -70,7 +58,8 @@ class SCR_EntityHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns the radius of the entity based on the length of its bounding box
+	//! Returns the radius of the entity based on the size of its bounding box
+	//! \param entity the entity to measure
 	static float GetEntityRadius(notnull IEntity entity)
 	{
 		return GetEntitySize(entity).Length() * 0.5;
@@ -78,6 +67,8 @@ class SCR_EntityHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns a list of all entities in the hierarchy
+	//! \param entity
+	//! \param[inout] output
 	static void GetHierarchyEntityList(notnull IEntity entity, notnull inout array<IEntity> output)
 	{
 		IEntity child = entity.GetChildren();
@@ -88,8 +79,15 @@ class SCR_EntityHelper
 			child = child.GetSibling();
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param entity the entity to snap to the ground
+	//! \param excludeArray
+	//! \param maxLength
+	//! \param startOffset
+	//! \param onlyStatic only check static physics
+	// unused
 	static void SnapToGround(notnull IEntity entity, array<IEntity> excludeArray = null, float maxLength = 10, vector startOffset = "0 0 0", bool onlyStatic = false)
 	{
 		vector origin = entity.GetOrigin();
@@ -106,8 +104,10 @@ class SCR_EntityHelper
 			param.ExcludeArray = excludeArray;
 		}
 		else
+		{
 			param.Exclude = entity;
-		
+		}
+
 		param.LayerMask = EPhysicsLayerPresets.Projectile;
 		BaseWorld world = entity.GetWorld();
 		float traceDistance;
@@ -124,6 +124,8 @@ class SCR_EntityHelper
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param newUp
+	//! \param[inout] mat
 	static void OrientUpToVector(vector newUp, inout vector mat[4])
 	{
 		vector origin = mat[3];
@@ -137,9 +139,11 @@ class SCR_EntityHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static bool OnlyStaticCallback(notnull IEntity e)
+	//! \param entity
+	// used by SnapToGround() which is unused
+	protected static bool OnlyStaticCallback(notnull IEntity entity)
 	{
-		Physics physics = e.GetPhysics();
+		Physics physics = entity.GetPhysics();
 		if (physics && physics.IsDynamic())
 			return false;
 		
@@ -149,49 +153,55 @@ class SCR_EntityHelper
 	//------------------------------------------------------------------------------------------------
 	//! Returns the main parent of the input entity
 	//! \param entity Entity to get the main parent from
-	//! \param self Return itself if there is no parent, default = false
+	//! \param self return entity if there is no parent, false otherwise - default = false
 	static IEntity GetMainParent(IEntity entity, bool self = false)
 	{
 		if (!entity)
 			return null;
 
-		IEntity parent = entity.GetParent();
-		if (!parent)
-		{
-			if (self)
-				return entity;
-			else
-				return null;
-		}
+		IEntity parent = entity.GetRootParent();
+		if (parent != entity)
+			return parent;
 
-		while (parent.GetParent())
-		{
-			parent = parent.GetParent();
-		}
-
-		return parent;
+		// root element
+		if (self)
+			return entity;
+		else
+			return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Return the player-controlled entity
+	//! See EntityUtils.GetPlayer()
 	static IEntity GetPlayer()
 	{
 		return EntityUtils.GetPlayer();
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Check if the provided entity is the local player
+	//! See EntityUtils.GetPlayer()
+	//! \param entity
+	// unused
 	static bool IsPlayer(IEntity entity)
 	{
 		return entity && entity == EntityUtils.GetPlayer();
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Check if the provided entity is -a- player - a human-controlled entity
+	//! See EntityUtils.IsPlayer()
+	//! \param entity
+	// unused
 	static bool IsAPlayer(IEntity entity)
 	{
 		return entity && EntityUtils.IsPlayer(entity);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Set transform for whole hierarchy
+	//! Set transform for the whole hierarchy
+	//! \param entity
+	//! \param newTransform
 	static void SetHierarchyTransform(notnull IEntity entity, vector newTransform[4])
 	{
 		vector oldTransform[4];
@@ -207,7 +217,12 @@ class SCR_EntityHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Called from SetHierarchyTransform
+	//! Set child transformation
+	//! \param entity
+	//! \param oldTransform
+	//! \param newTransform
+	//! \param recursive
+	// used by SetHierarchyTransform
 	protected static void SetHierarchyChildTransform(notnull IEntity entity, vector oldTransform[4], vector newTransform[4], bool recursive = true)
 	{
 		Physics entPhys = entity.GetPhysics();
@@ -233,27 +248,14 @@ class SCR_EntityHelper
 			child = child.GetSibling();
 		}
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Get Faction of given entity
-	static Faction GetEntityFaction(notnull IEntity ent)
-	{
-		FactionAffiliationComponent factionComp = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
-		if (!factionComp)
-			return null;
-
-		Faction faction = factionComp.GetAffiliatedFaction();
-		if (!faction)
-			faction = factionComp.GetDefaultAffiliatedFaction();
-
-		return faction;
-	}
-};
+}
 
 class SCR_EntityHelperT<Class T>
 {
 	//------------------------------------------------------------------------------------------------
 	//! Search for an entity of given type in hierarchy of provided parent
+	//! \param parent
+	//! \return the found entity or null if not found
 	static T GetEntityInHierarchy(notnull IEntity parent)
 	{
 		IEntity child = parent.GetChildren();
@@ -267,4 +269,4 @@ class SCR_EntityHelperT<Class T>
 
 		return null;
 	}
-};
+}

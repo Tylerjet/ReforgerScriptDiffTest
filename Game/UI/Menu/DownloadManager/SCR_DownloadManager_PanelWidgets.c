@@ -9,14 +9,14 @@ class SCR_DownloadManager_PanelWidgets
 	FrameWidget m_Panel;
 
 	ButtonWidget m_OpenButton;
-	SCR_NavigationButtonComponent m_OpenButtonComponent;
+	SCR_InputButtonComponent m_OpenButtonComponent;
 
 	bool Init(Widget root)
 	{
 		m_Panel = FrameWidget.Cast(root.FindWidget("m_Panel"));
 
 		m_OpenButton = ButtonWidget.Cast(root.FindWidget("m_Panel.m_OpenButton"));
-		m_OpenButtonComponent = SCR_NavigationButtonComponent.Cast(m_OpenButton.FindHandler(SCR_NavigationButtonComponent));
+		m_OpenButtonComponent = SCR_InputButtonComponent.Cast(m_OpenButton.FindHandler(SCR_InputButtonComponent));
 
 		return true;
 	}

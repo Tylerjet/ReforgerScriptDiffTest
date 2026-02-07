@@ -9,16 +9,14 @@ Do not modify, this script is generated
 \{
 */
 
-class CharacterEntityClass: GenericEntityClass
+class CharacterEntityClass: PawnEntityClass
 {
 }
 
-class CharacterEntity: GenericEntity
+class CharacterEntity: PawnEntity
 {
-	proto external void Teleport(vector transform[4]);
-	proto external CharacterMovement GetCurrentMovement();
-	proto external CharacterStance GetCurrentStance();
-	proto external ActionManager GetActionManager();
+	proto external CharacterMovementComponent GetMovementComponent();
+	proto external CharacterAnimGraphComponent GetAnimGraphComponent();
 }
 
 /*!

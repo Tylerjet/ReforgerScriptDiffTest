@@ -121,15 +121,61 @@ class SCR_WorkshopItemActionDownloadDependenciesLatest : SCR_WorkshopItemActionC
 	}
 };
 
+//-----------------------------------------------------------------------------------------------
+//! Action for reporting an item
+class SCR_WorkshopItemActionReportBase : SCR_WorkshopItemAction
+{
+	ref SCR_WorkshopCallbackBase m_Callback;	
+	
+	//-----------------------------------------------------------------------------------------------
+	protected bool OnActivateInternal();
+	
+	//-----------------------------------------------------------------------------------------------
+	protected override bool OnActivate()
+	{
+		m_Callback = new SCR_WorkshopCallbackBase();
+		m_Callback.m_OnTimeout.Insert(Callback_OnTimeout);
+		m_Callback.m_OnError.Insert(Callback_OnError);
+		m_Callback.m_OnSuccess.Insert(Callback_OnSuccess);
+		
+		bool success = OnActivateInternal();	
+		return success;
+	}
+	
+
+	//-----------------------------------------------------------------------------------------------
+	protected override bool OnReactivate()
+	{
+		return this.OnActivate();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void Callback_OnError()
+	{
+		Fail();
+		SCR_CommonDialogs.CreateRequestErrorDialog();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void Callback_OnTimeout()
+	{
+		Fail();
+		SCR_CommonDialogs.CreateTimeoutOkDialog();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void Callback_OnSuccess()
+	{
+		this.Complete();
+	}
+};
 
 //-----------------------------------------------------------------------------------------------
 //! Action for reporting an item
-class SCR_WorkshopItemActionReport : SCR_WorkshopItemAction
+class SCR_WorkshopItemActionReport : SCR_WorkshopItemActionReportBase
 {
 	protected EWorkshopReportType m_eReportType;
-	protected string m_sMessage;
-	ref SCR_WorkshopCallbackBase m_Callback;
-	
+	protected string m_sMessage;	
 	
 	//-----------------------------------------------------------------------------------------------
 	void SCR_WorkshopItemActionReport(SCR_WorkshopItem wrapper, EWorkshopReportType eReport, string sMessage)
@@ -140,34 +186,9 @@ class SCR_WorkshopItemActionReport : SCR_WorkshopItemAction
 	
 	
 	//-----------------------------------------------------------------------------------------------
-	protected override bool OnActivate()
+	protected override bool OnActivateInternal()
 	{
-		m_Callback = new SCR_WorkshopCallbackBase();
-		m_Callback.m_OnTimeout.Insert(Callback_OnErrorOrTimeout);
-		m_Callback.m_OnError.Insert(Callback_OnErrorOrTimeout);
-		m_Callback.m_OnSuccess.Insert(Callback_OnSuccess);
-		
-		bool success = m_Wrapper.Internal_Report(m_eReportType, m_sMessage, m_Callback);
-		
-		return success;
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected override bool OnReactivate()
-	{
-		return this.OnActivate();
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnErrorOrTimeout()
-	{
-		this.Fail();
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnSuccess()
-	{
-		this.Complete();
+		return m_Wrapper.Internal_Report(m_eReportType, m_sMessage, m_Callback);
 	}
 };
 
@@ -175,118 +196,31 @@ class SCR_WorkshopItemActionReport : SCR_WorkshopItemAction
 
 //-----------------------------------------------------------------------------------------------
 //! Action for canceling report of an item
-class SCR_WorkshopItemActionCancelReport : SCR_WorkshopItemAction
-{
-	ref SCR_WorkshopCallbackBase m_Callback;
-	
-	
-	//-----------------------------------------------------------------------------------------------
-	protected override bool OnActivate()
+class SCR_WorkshopItemActionCancelReport : SCR_WorkshopItemActionReportBase
+{	
+	protected override bool OnActivateInternal()
 	{
-		m_Callback = new SCR_WorkshopCallbackBase();
-		m_Callback.m_OnTimeout.Insert(Callback_OnErrorOrTimeout);
-		m_Callback.m_OnError.Insert(Callback_OnErrorOrTimeout);
-		m_Callback.m_OnSuccess.Insert(Callback_OnSuccess);
-		
-		bool success = m_Wrapper.Internal_CancelReport(m_Callback);
-		
-		return success;
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected override bool OnReactivate()
-	{
-		return this.OnActivate();
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnErrorOrTimeout()
-	{
-		this.Fail();
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnSuccess()
-	{
-		this.Complete();
+		return m_Wrapper.Internal_CancelReport(m_Callback);
 	}
 };
 
 
 //-----------------------------------------------------------------------------------------------
 //! Action for blocking author
-class SCR_WorkshopItemActionAddAuthorBlock : SCR_WorkshopItemAction
-{
-	protected ref SCR_WorkshopCallbackBase m_Callback;
-	
-	
-	//-----------------------------------------------------------------------------------------------
-	protected override bool OnActivate()
+class SCR_WorkshopItemActionAddAuthorBlock : SCR_WorkshopItemActionReportBase
+{	
+	protected override bool OnActivateInternal()
 	{
-		m_Callback = new SCR_WorkshopCallbackBase();
-		m_Callback.m_OnTimeout.Insert(Callback_OnErrorOrTimeout);
-		m_Callback.m_OnError.Insert(Callback_OnErrorOrTimeout);
-		m_Callback.m_OnSuccess.Insert(Callback_OnSuccess);
-		
-		bool success = m_Wrapper.Internal_AddAuthorBlock(m_Callback);
-		
-		return success;
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected override bool OnReactivate()
-	{
-		return this.OnActivate();
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnErrorOrTimeout()
-	{
-		this.Fail();
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnSuccess()
-	{
-		this.Complete();
+		return m_Wrapper.Internal_AddAuthorBlock(m_Callback);
 	}
 };
 
 //-----------------------------------------------------------------------------------------------
 //! Action for removing author mod content blocking
-class SCR_WorkshopItemActionRemoveAuthorBlock : SCR_WorkshopItemAction
-{
-	protected ref SCR_WorkshopCallbackBase m_Callback;
-	
-	
-	//-----------------------------------------------------------------------------------------------
-	protected override bool OnActivate()
+class SCR_WorkshopItemActionRemoveAuthorBlock : SCR_WorkshopItemActionReportBase
+{	
+	protected override bool OnActivateInternal()
 	{
-		m_Callback = new SCR_WorkshopCallbackBase();
-		m_Callback.m_OnTimeout.Insert(Callback_OnErrorOrTimeout);
-		m_Callback.m_OnError.Insert(Callback_OnErrorOrTimeout);
-		m_Callback.m_OnSuccess.Insert(Callback_OnSuccess);
-		
-		bool success = m_Wrapper.Internal_RemoveAuthorBlock(m_Callback);
-		
-		return success;
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected override bool OnReactivate()
-	{
-		return this.OnActivate();
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnErrorOrTimeout()
-	{
-		this.Fail();
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnSuccess()
-	{
-		this.Complete();
+		return m_Wrapper.Internal_RemoveAuthorBlock(m_Callback);
 	}
 };

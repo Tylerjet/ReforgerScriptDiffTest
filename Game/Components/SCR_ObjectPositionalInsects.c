@@ -65,15 +65,16 @@ class SCR_ObjectPositionalInsects : SCR_AmbientInsectsEffect
 			if (m_aRainIntensityCurve[i] <= 0)
 				continue;
 
-			while (prefabContainer)
+			BaseContainer prefabContainerToTest = prefabContainer;
+			while (prefabContainerToTest)
 			{
-				if (type.GetPrefabContainerSet().Contains(prefabContainer))
+				if (type.GetPrefabContainerSet().Contains(prefabContainerToTest))
 				{
 					type.AddClosestEntity(entity);
 					return;
 				}
 	
-				prefabContainer = prefabContainer.GetAncestor();
+				prefabContainerToTest = prefabContainerToTest.GetAncestor();
 			}
 		}
 	}
@@ -90,12 +91,18 @@ class SCR_ObjectPositionalInsects : SCR_AmbientInsectsEffect
 			m_aDayTimeCurve[i] = SCR_AmbientSoundsComponent.GetPoint(m_AmbientInsectsComponent.GetTimeOfDay(), m_aSpawnDef[i].m_TimeModifier);
 			m_aRainIntensityCurve[i] = SCR_AmbientSoundsComponent.GetPoint(m_AmbientInsectsComponent.GetRainIntensity(), m_aSpawnDef[i].m_RainModifier);
 		}
+		
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			return;
 
 		// Using TagManager we get array of closest entities where Insects can spawn
-		TagManager tagManager = GetGame().GetTagManager();
+		TagManager tagManager = world.GetTagManager();
 		if (!tagManager)
 		{
 			Print("AMBIENT LIFE: SCR_AmbientInsectsComponent: Missing TagManager in the world", LogLevel.WARNING);
+			m_AmbientInsectsComponent.RemoveInsectEffect(this);
+			
 			return;
 		}
 
@@ -115,7 +122,6 @@ class SCR_ObjectPositionalInsects : SCR_AmbientInsectsEffect
 	{
 		super.OnPostInit(ambientSoundsComponent, ambientInsectsComponent, signalsManagerComponent);
 
-		
 		SCR_InsectSpawnDef spawnDef = null;
 		foreach (SCR_PositionalInsectType type : m_aPositionalInsectType)
 		{
@@ -131,6 +137,8 @@ class SCR_ObjectPositionalInsects : SCR_AmbientInsectsEffect
 			if (!spawnDef)
 			{
 				Print("AMBIENT LIFE: SCR_AmbientInsectsComponent: Missing Spawn Definition Config", LogLevel.WARNING);
+				m_AmbientInsectsComponent.RemoveInsectEffect(this);
+				
 				return;
 			}
 

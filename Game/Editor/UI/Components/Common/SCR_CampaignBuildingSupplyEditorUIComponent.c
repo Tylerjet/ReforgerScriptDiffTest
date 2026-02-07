@@ -1,13 +1,17 @@
 class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 {
-	SCR_CampaignSuppliesComponent m_SupplyComponent;
-	SCR_FactionAffiliationComponent m_FactionComponent;
-	TextWidget m_ProviderName
-	TextWidget m_ProviderCallsign
-	TextWidget m_ProviderSupplyCurrent
-	TextWidget m_ProviderSupplyMax
-	OverlayWidget m_ProviderIcon;
+	protected SCR_FactionAffiliationComponent m_FactionComponent;
+	protected TextWidget m_ProviderName
+	protected TextWidget m_ProviderCallsign
+	protected Widget m_wInGameSupply;
+	protected TextWidget m_ProviderSupplyCurrent
+	protected TextWidget m_ProviderSupplyMax
+	protected OverlayWidget m_ProviderIcon;
 	
+	protected SCR_ResourceComponent	m_ResourceComponent;
+	protected SCR_ResourceConsumer m_ResourceConsumer;
+	protected ref SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandleConsumer;
+	protected RplId m_ResourceInventoryPlayerComponentRplId;
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -16,6 +20,7 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 		m_ProviderName = TextWidget.Cast(w.FindAnyWidget("Provider_Name"));
 		m_ProviderCallsign = TextWidget.Cast(w.FindAnyWidget("Provider_Callsign"));
 		m_ProviderSupplyCurrent = TextWidget.Cast(w.FindAnyWidget("Supply_Value_Current"));
+		m_wInGameSupply = w.FindAnyWidget("Supply_InGame_Supply");
 		m_ProviderSupplyMax = TextWidget.Cast(w.FindAnyWidget("Supply_Value_Max"));
 		m_ProviderIcon = OverlayWidget.Cast(w.FindAnyWidget("Provider_Icon_Overlay"));
 		
@@ -27,9 +32,6 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 		if (!targetEntity)
 			return;		
 		
-		if (!buildingEditorComponent.GetProviderSuppliesComponent(m_SupplyComponent))
-			return;
-		
 		m_FactionComponent = buildingEditorComponent.GetProviderFactionComponent();
 		if (!m_FactionComponent)
 			return;
@@ -37,9 +39,30 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 		SetSourceIcon(targetEntity);
 		SetProviderName(targetEntity);
 		
-		UpdateSupply(m_SupplyComponent.GetSupplies(), m_SupplyComponent.GetSuppliesMax());
-		m_SupplyComponent.m_OnSuppliesChanged.Insert(UpdateSupply);
+		if (!buildingEditorComponent.GetProviderResourceComponent(m_ResourceComponent))
+			return;
+		
+		if (!m_ResourceComponent || !m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES, m_ResourceConsumer))
+			return;
+		
+		m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+		m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(m_ResourceConsumer, m_ResourceInventoryPlayerComponentRplId);
+		
+		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(UpdateResources);
+		// Update once at the beginning and then every time the supply value has changed. 
+		UpdateResources();
 	}	
+
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+		
+		if (m_ResourceComponent)
+			m_ResourceComponent.TEMP_GetOnInteractorReplicated().Remove(UpdateResources);
+		
+		m_ResourceSubscriptionHandleConsumer = null;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void SetSourceIcon(IEntity targetEntity)
@@ -112,24 +135,63 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateSupply(int currentSupplies, int maxSupplies)
+	protected void UpdateResources()
 	{
-		if (m_SupplyComponent)
-		{
-			if (m_ProviderSupplyCurrent)
-				m_ProviderSupplyCurrent.SetText(currentSupplies.ToString());
-			if (m_ProviderSupplyMax)
-				m_ProviderSupplyMax.SetText(maxSupplies.ToString());
-		}
+		if (!m_ResourceComponent)
+			return;
+		
+		SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+		
+		if (!consumer)
+			return;
+		
+		if (m_ProviderSupplyCurrent)
+			m_ProviderSupplyCurrent.SetText(consumer.GetAggregatedResourceValue().ToString());
+		if (m_ProviderSupplyMax)
+			m_ProviderSupplyMax.SetText(consumer.GetAggregatedMaxResourceValue().ToString());
+		
+		// Visualize supply state 
+		if (consumer.GetAggregatedResourceValue() == 0)
+			m_wInGameSupply.SetColor(UIColors.WARNING);
+		else
+			m_wInGameSupply.SetColor(Color.White);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[Obsolete("SCR_CampaignBuildingSupplyEditorUIComponent.UpdateResources() should be used instead.")]
+	protected void UpdateSupply()
+	{
+		if (!m_ResourceComponent)
+			return;
+		
+		SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+		
+		if (!consumer)
+			return;
+		
+		if (m_ProviderSupplyCurrent)
+			m_ProviderSupplyCurrent.SetText(consumer.GetAggregatedResourceValue().ToString());
+		if (m_ProviderSupplyMax)
+			m_ProviderSupplyMax.SetText(consumer.GetAggregatedMaxResourceValue().ToString());
+		
+		// Visualize supply state 
+		if (consumer.GetAggregatedResourceValue() == 0)
+			m_wInGameSupply.SetColor(UIColors.WARNING);
+		else
+			m_wInGameSupply.SetColor(Color.White);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void SetProviderName(IEntity targetEntity)
 	{
-		SCR_CampaignMilitaryBaseComponent targetBase = SCR_CampaignMilitaryBaseComponent.Cast(targetEntity.FindComponent(SCR_CampaignMilitaryBaseComponent));
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(targetEntity.FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (!providerComponent)
+			return;
+		
+		SCR_MilitaryBaseComponent targetBase = SCR_MilitaryBaseComponent.Cast(providerComponent.GetMilitaryBaseComponent());
 		if (targetBase)
 		{
-			m_ProviderName.SetText(targetBase.GetBaseNameUpperCase());
+			m_ProviderName.SetText("#AR-MapLocation_MilitaryBase");
 			m_ProviderCallsign.SetText(targetBase.GetCallsignDisplayName());
 			return;
 		}

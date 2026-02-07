@@ -166,8 +166,10 @@ class SCR_HintUIInfo: SCR_BlockUIInfo
 		if (!textWidget)
 			return false;
 		
+		Color sRGBA = UIColors.CONTRAST_COLOR;
+		
 		if (m_aHighlightWidgetsNames && !m_aHighlightWidgetsNames.IsEmpty())
-			textWidget.SetTextFormat(GetDescription(), "color hex='0xff43c25d'><outline color='0,0,0,128' size='2'><b", "/b></outline></color"); //--- ToDo: Don't hardcode
+			textWidget.SetTextFormat(GetDescription(), string.Format("color rgba=%1", UIColors.SRGBAFloatToInt(sRGBA)), "/color"); //--- ToDo: Don't hardcode
 		else
 			textWidget.SetText(GetDescription());
 		return true;

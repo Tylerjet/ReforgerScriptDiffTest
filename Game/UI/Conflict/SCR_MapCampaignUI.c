@@ -33,7 +33,7 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 		if (faction != playerFaction)
 			return;
 		
-		SCR_CampaignMobileAssemblyComponent assembly = faction.GetMobileAssembly();
+		SCR_CampaignMobileAssemblyStandaloneComponent assembly = faction.GetMobileAssembly();
 		if (!assembly)
 			return;
 
@@ -107,22 +107,31 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 	{
 		if (!m_bIsDeployMap && spawnPoint.GetVisibleInDeployMapOnly())
 			return;
-
-		if (spawnPoint.Type() != SCR_CampaignSpawnPointGroup)
-		{
-			super.ShowSpawnPoint(spawnPoint); // when spawn point is placed by game master, use default spawn point visualization
-			return;
-		}
-
+		
 		SCR_GameModeCampaign gameMode = SCR_GameModeCampaign.GetInstance();
 		
 		if (!gameMode)
 			return;
-
-		// todo: hotfix for icon duplicates in conflict, figure out a proper solution :wink:
-		if (!gameMode.IsTutorial())
-			if (spawnPoint.Type() == SCR_SpawnPoint || spawnPoint.Type() == SCR_CampaignSpawnPointGroup)
+		
+		if (spawnPoint.Type() != SCR_CampaignSpawnPointGroup)
+		{
+			IEntity owner = spawnPoint.GetParent();
+		
+			// Mobile HQ icon is already shown
+			SCR_CampaignMobileAssemblyStandaloneComponent westMHQ = gameMode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).GetMobileAssembly();
+			SCR_CampaignMobileAssemblyStandaloneComponent eastMHQ = gameMode.GetFactionByEnum(SCR_ECampaignFaction.OPFOR).GetMobileAssembly();
+			
+			if ((westMHQ && westMHQ.GetOwner() == spawnPoint) || (eastMHQ && eastMHQ.GetOwner() == spawnPoint))
 				return;
+			
+			super.ShowSpawnPoint(spawnPoint); // when spawn point is placed by game master, use default spawn point visualization
+			return;
+		}
+		
+		// todo: hotfix for icon duplicates in conflict, figure out a proper solution :wink:
+
+		if (spawnPoint.Type() == SCR_SpawnPoint || spawnPoint.Type() == SCR_CampaignSpawnPointGroup)
+			return;
 
 		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sSpawnPointElement, m_wIconsContainer);
 		SCR_MapUISpawnPoint handler = SCR_MapUISpawnPoint.Cast(w.FindHandler(SCR_MapUISpawnPoint));
@@ -140,12 +149,7 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 	//------------------------------------------------------------------------------------------------
 	protected void CreatePlayerSpawnPositionHint()
 	{
-		PlayerController pc = GetGame().GetPlayerController();
-		
-		if (!pc)
-			return;
-		
-		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.Cast(pc.FindComponent(SCR_CampaignFeedbackComponent));
+		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.GetInstance();
 		
 		if (!comp)
 			return;

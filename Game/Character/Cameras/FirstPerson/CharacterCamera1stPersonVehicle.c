@@ -6,6 +6,7 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 {
 	protected IEntity m_OwnerVehicle;
 	protected float m_fAngleFirstPerson;
+	protected float m_fAngleFirstPersonScale;
 
 	//-----------------------------------------------------------------------------
 	void CharacterCamera1stPersonVehicle(CameraHandlerComponent pCameraHandler)
@@ -43,6 +44,11 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 						m_fPitchFactor = vehicleCamData.m_fPitchFactor;
 						m_fAngleFirstPerson = vehicleCamData.m_fAngleFirstPerson * Math.DEG2RAD;
 					}
+
+					if (m_ControllerComponent && m_ControllerComponent.IsGadgetInHands())
+						m_fAngleFirstPersonScale = 0;
+					else
+						m_fAngleFirstPersonScale = 1;
 				}
 			}
 		}
@@ -54,6 +60,26 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 	
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
+		if (!m_bCameraTransition)
+		{
+			m_UseLookPositionOverrideLS = true;
+
+			// Prevent camera from moving behind the character as it orbits around the head.
+			float yawOffset = -0.5 * m_CharacterHeadAimingComponent.GetLookAngles()[0];
+			vector additiveYaw = { yawOffset, 0.0, 0.0 };
+			
+			// Camera moves forward as the player looks sideways (providing better view off the shoulders when pitching down).
+			const float OneBy90 = 1.0 / 90.0;
+			float zOffset = -0.2 * Math.Clamp(Math.AbsFloat(additiveYaw[0] * OneBy90), 0.0, 1.0);
+			vector offsetLS = { m_OffsetLS[0], m_OffsetLS[1], zOffset };
+						
+			vector resultTM[4];
+			m_CharacterHeadAimingComponent.GetLookTransformationLS(GetCameraBoneIndex(), EDirectBoneMode.RelativePosition, offsetLS, additiveYaw, resultTM);
+			m_LookPositionOverrideLS = resultTM[3];
+
+			m_CharacterHeadAimingComponent.SetPitchLimitReductionMultiplier(0.5); // Less aggressive pitch reduction.
+		}
+		
 		super.OnUpdate(pDt, pOutResult);
 		pOutResult.m_fUseHeading = 0.0;	
 		AddVehiclePitchRoll(m_OwnerVehicle, pDt, pOutResult.m_CameraTM);
@@ -97,7 +123,23 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 			}
 		}
 
-		SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleFirstPerson, pOutResult.m_CameraTM);
+		// Rotate camera if not having gadget in hands
+		if (float.AlmostEqual(m_fAngleFirstPerson, 0))
+			return;
+
+		// First person camera angle offset only for pilot
+		Vehicle vehicle = Vehicle.Cast(m_OwnerVehicle);
+		if (!vehicle || vehicle.GetPilot() != m_OwnerCharacter)
+			return;
+
+		if (m_ControllerComponent && m_ControllerComponent.IsGadgetInHands())
+			m_fAngleFirstPersonScale -= pDt * 3;
+		else
+			m_fAngleFirstPersonScale += pDt * 3;
+
+		m_fAngleFirstPersonScale = Math.Clamp(m_fAngleFirstPersonScale, 0, 1);
+
+		SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleFirstPerson * m_fAngleFirstPersonScale, pOutResult.m_CameraTM);
 	}
 	
 	//-----------------------------------------------------------------------------

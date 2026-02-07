@@ -38,15 +38,9 @@ class SCR_LocalPlayerPenalty: Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnControllableDestroyed(IEntity entity, IEntity instigator)
+	void OnControllableDestroyed(IEntity entity, IEntity killerEntity, Instigator instigator)
 	{
-		if (m_iFriendlyAIKillPenalty == 0 && m_iFriendlyPlayerKillPenalty == 0)
-			return;
-		
-		if (!instigator)
-			return;
-		
-		if (entity == instigator)
+		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER || (m_iFriendlyAIKillPenalty == 0 && m_iFriendlyPlayerKillPenalty == 0))
 			return;
 		
 		SCR_ChimeraCharacter victimChar = SCR_ChimeraCharacter.Cast(entity);
@@ -54,47 +48,28 @@ class SCR_LocalPlayerPenalty: Managed
 		if (!victimChar)
 			return;
 		
-		SCR_ChimeraCharacter killerChar;
+		int killerPlayerId = instigator.GetInstigatorPlayerID();
+		int victimPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(victimChar);
 		
-		// Instigator is a vehicle, find the driver
-		if (instigator.IsInherited(Vehicle))
-		{
-			Print("SCR_LocalPlayerPenalty:OnControllableDestroyed: Instigator of this kill was a vehicle. This is not the expected behaviour!", LogLevel.ERROR);
-			
-			//That should not happen, but just to be safe for now, we have this way to calculate the correct instigator
-			killerChar = GetInstigatorFromVehicle(instigator)
-		}
-		else
-		{
-			// Check if the killer is a regular soldier
-			killerChar = SCR_ChimeraCharacter.Cast(instigator);
-			
-			// If all else fails, check if the killer is in a vehicle turret
-			if (!killerChar)
-			{
-				Print("DEBUG LINE | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
-				Print("SCR_LocalPlayerPenalty:OnControllableDestroyed: Instigator of this kill could not be casted to SCR_ChimeraCharacter", LogLevel.ERROR);
-				killerChar = GetInstigatorFromVehicle(instigator, true);
-			}
-		}
-		
-		//If there's no killer, or its a suicide: return
-		if (!killerChar || killerChar == victimChar)
+		//Suicide is not punishable by the Player Penalty system
+		if (killerPlayerId == victimPlayerId)
 			return;
 		
-		int killerPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(killerChar);
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return;
 		
-		if (killerPlayerId == 0)
+		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerPlayerId));
+		if (!factionKiller)
 			return;
 		
 		//If it's no friendly kill, no wrongdoing was committed
-		if (!killerChar.GetFaction().IsFactionFriendly(victimChar.GetFaction()))
+		if (!factionKiller.IsFactionFriendly(victimChar.GetFaction()))
 			return;
 		
-		int victimPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(victimChar);
 		SCR_LocalPlayerPenaltyData playerPenaltyData = GetPlayerPenaltyData(killerPlayerId);
 		
-		if (victimPlayerId == 0)
+		if (victimPlayerId <= 0)
 			playerPenaltyData.AddPenaltyScore(m_iFriendlyAIKillPenalty);
 		else
 			playerPenaltyData.AddPenaltyScore(m_iFriendlyPlayerKillPenalty);
@@ -121,7 +96,7 @@ class SCR_LocalPlayerPenalty: Managed
 		{
 			BaseCompartmentSlot slot = compartments[i];
 			
-			if ((!gunner && slot.Type() == PilotCompartmentSlot) || (gunner && slot.Type() == TurretCompartmentSlot))
+			if (slot && (!gunner && slot.Type() == PilotCompartmentSlot) || (gunner && slot.Type() == TurretCompartmentSlot))
 				return SCR_ChimeraCharacter.Cast(slot.GetOccupant());
 		}
 		
@@ -214,19 +189,6 @@ class SCR_LocalPlayerPenalty: Managed
 				continue;
 			}
 		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//Is this unused?
-	void AddPenaltyScore(int playerId, int points)
-	{
-		BackendApi backendApi = GetGame().GetBackendApi();
-		
-		//Currently, only friendly fire is tracked in this component
-		if (backendApi && points > 0)
-			backendApi.PlayerBanEvent("Trolling", "FriendlyFire", points, playerId);
-		
-		GetPlayerPenaltyData(playerId).AddPenaltyScore(points);
 	}
 	
 	//------------------------------------------------------------------------------------------------

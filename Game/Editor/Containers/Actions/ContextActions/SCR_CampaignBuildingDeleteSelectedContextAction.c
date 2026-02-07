@@ -9,29 +9,55 @@ class SCR_CampaignBuildingDeleteSelectedContextAction : SCR_DeleteSelectedContex
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override bool CanBeShown(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
+	{
+		if (!selectedEntity)
+			return false;
+
+		SCR_CampaignBuildingCompositionComponent compositionComponent = SCR_CampaignBuildingCompositionComponent.Cast(selectedEntity.GetOwner().FindComponent(SCR_CampaignBuildingCompositionComponent));
+		if (!compositionComponent || compositionComponent.IsInteractionLocked())
+			return false;
+
+		return super.CanBeShown(selectedEntity, cursorWorldPosition, flags);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool CanBePerformed(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
+	{
+		if (!selectedEntity || !CanBeDeleted(selectedEntity))
+			return false;
+
+		return super.CanBePerformed(selectedEntity, cursorWorldPosition, flags);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags, int param = -1)
 	{
-		if (!hoveredEntity)
+		if (!hoveredEntity || !CanBeDeleted(hoveredEntity))
 			return;
 
-		BaseGameMode gameMode = GetGame().GetGameMode();
-		SCR_CampaignBuildingManagerComponent buildingManagerComponent = SCR_CampaignBuildingManagerComponent.Cast(gameMode.FindComponent(SCR_CampaignBuildingManagerComponent));
-		if (!buildingManagerComponent)
-			return;
-
-		buildingManagerComponent.SetDisassemblyCompositionAndRequester(Replication.FindId(hoveredEntity), param);
 		super.Perform(hoveredEntity, cursorWorldPosition);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool CanSendNotification(notnull SCR_EditableEntityComponent editableEnt)
+	protected bool CanBeDeleted(notnull SCR_EditableEntityComponent hoveredEntity)
 	{
-		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(editableEnt.GetInfo());
-		if (!editableEntityUIInfo)
+		SCR_CampaignBuildingCompositionComponent compositionComponent = SCR_CampaignBuildingCompositionComponent.Cast(hoveredEntity.GetOwner().FindComponent(SCR_CampaignBuildingCompositionComponent));
+		if (!compositionComponent)
 			return false;
 
-		array<EEditableEntityLabel> entityLabels = {};
-		editableEntityUIInfo.GetEntityLabels(entityLabels);
-		return entityLabels.Contains(EEditableEntityLabel.TRAIT_SERVICE);
+		if (compositionComponent.IsInteractionLocked())
+		{
+			SendNotification();
+			return false;
+		}
+
+		return true;
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	protected void SendNotification()
+	{
+		SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_COMPOSITION_UNDER_CONSTRUCTION);
+	}
+}

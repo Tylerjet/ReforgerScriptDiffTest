@@ -56,17 +56,17 @@ class WorldMapExportTool: WorldEditorTool
 
 	[Attribute("1.0 1.0 1.0 1.0", UIWidgets.ColorPicker, "Rasterization: Land color Bright", category: "Rasterization")]
 	ref Color landColorBright;
-	[Attribute("0.0 0.0 0.0 1.0", UIWidgets.ColorPicker, "Rasterization: Land color Dark", category: "Rasterization")]
+	[Attribute("0.5 0.5 0.5 1.0", UIWidgets.ColorPicker, "Rasterization: Land color Dark", category: "Rasterization")]
 	ref Color landColorDark;
 	[Attribute("0.863 0.980 1.0 1.0", UIWidgets.ColorPicker, "Rasterization: Ocean color Bright", category: "Rasterization")]
 	ref Color oceanColorBright;
-	[Attribute("0.0 0.0 0.0 1.0", UIWidgets.ColorPicker, "Rasterization: Ocean color Dark", category: "Rasterization")]
+	[Attribute("0.757 0.91 0.929 1.0", UIWidgets.ColorPicker, "Rasterization: Ocean color Dark", category: "Rasterization")]
 	ref Color oceanColorDark;
-	[Attribute("3.0", UIWidgets.Slider, "Rasterization: Land scale factor", "0 10 0.1", category: "Rasterization")]
+	[Attribute("2.5", UIWidgets.Slider, "Rasterization: Land scale factor", "0 10 0.1", category: "Rasterization")]
 	float scaleLand;
-	[Attribute("1.0", UIWidgets.Slider, "Rasterization: Ocean scale factor", "0 10 0.1", category: "Rasterization")]
+	[Attribute("1.2", UIWidgets.Slider, "Rasterization: Ocean scale factor", "0 10 0.1", category: "Rasterization")]
 	float scaleOcean;
-	[Attribute("400.0", UIWidgets.Slider, "Rasterization: Height scale factor", "-1000 1000 1.0", category: "Rasterization")]
+	[Attribute("500.0", UIWidgets.Slider, "Rasterization: Height scale factor", "-1000 1000 1.0", category: "Rasterization")]
 	float heightScale;
 	[Attribute("60.0", UIWidgets.Slider, "Rasterization: Depth scale factor", "-1000 1000 1.0", category: "Rasterization")]
 	float depthScale;
@@ -74,7 +74,7 @@ class WorldMapExportTool: WorldEditorTool
 	float depthLerpMeters;
 	[Attribute("0.5", UIWidgets.Slider, "Rasterization: Shade intensity factor", "0.5 15 0.01", category: "Rasterization")]
 	float shadeIntensity;
-	[Attribute("2.0", UIWidgets.Slider, "Rasterization: Height intensity factor", "0.5 15 0.01", category: "Rasterization")]
+	[Attribute("1.8", UIWidgets.Slider, "Rasterization: Height intensity factor", "0.5 15 0.01", category: "Rasterization")]
 	float heightIntensity;
 	[Attribute("1", UIWidgets.CheckBox, "Rasterization: Include Areas defined by Generators into Rasterization", category: "Rasterization")]
 	bool includeGeneratorAreas;
@@ -299,16 +299,16 @@ class WorldDataExport: WorkbenchPlugin
 				Print("Exporting map rasterization...");
 				//TODO: change to user defined values (along with WorldMapExportTool)
 				Color landColorBright = new Color(1.0, 1.0, 1.0, 1.0);
-				Color landColorDark = new Color(0.0, 0.0, 0.0, 1.0);
+				Color landColorDark = new Color(0.5, 0.5, 0.5, 1.0);
 				Color oceanColorBright = new Color(0.863, 0.980, 1.0, 1.0);
-				Color oceanColorDark = new Color(0.0, 0.0, 0.0, 1.0);
-				float scaleLand = 3.0;
-				float scaleOcean = 1.0;
-				float heightScale = 400.0;
+				Color oceanColorDark = new Color(0.757, 0.91, 0.929, 1.0);
+				float scaleLand = 2.5;
+				float scaleOcean = 1.2;
+				float heightScale = 500.0;
 				float depthScale = 60.0;
 				float depthLerpMeters = -50.0;
 				float shadeIntensity = 0.5;
-				float heightIntensity = 2.0;
+				float heightIntensity = 1.8;
 				bool includeGeneratorAreas = true;
 				Color forestAreaColor = new Color(0.608, 0.784, 0.529, 1.0);
 				float forestAreaIntensity = 1.25;

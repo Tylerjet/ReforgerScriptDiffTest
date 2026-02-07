@@ -2,6 +2,8 @@ class SCR_EnableDefendersAction : ScriptedUserAction
 {
 
 	protected SCR_DefenderSpawnerComponent m_DefenderSpawner;
+	protected SCR_SpawnerAIGroupManagerComponent m_GroupSpawningManager;
+	
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
@@ -22,6 +24,12 @@ class SCR_EnableDefendersAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
+		if (m_GroupSpawningManager.IsAtAILimit())
+		{
+			SetCannotPerformReason("#AR-Campaign_Action_BuildBlocked-UC");
+			return false;
+		}
+		
 		return true;
 	}
 
@@ -29,8 +37,8 @@ class SCR_EnableDefendersAction : ScriptedUserAction
 	override bool CanBeShownScript(IEntity user)
 	{
 		if (!m_DefenderSpawner)
-			return false;
-
+			return false;		
+		
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (!playerController)
 			return false;
@@ -63,5 +71,16 @@ class SCR_EnableDefendersAction : ScriptedUserAction
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
 		m_DefenderSpawner = SCR_DefenderSpawnerComponent.Cast(pOwnerEntity.FindComponent(SCR_DefenderSpawnerComponent));
+	
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return;	
+			
+		m_GroupSpawningManager = SCR_SpawnerAIGroupManagerComponent.Cast(gameMode.FindComponent(SCR_SpawnerAIGroupManagerComponent));
+		if (!m_GroupSpawningManager)
+		{
+			Print("SCR_DefenderSpawnerComponent requires SCR_SpawnerAIGroupManagerComponent attached to gamemode to work properly!", LogLevel.ERROR);	
+			return;
+		}	
 	}
 };

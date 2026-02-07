@@ -7,7 +7,9 @@ Can also be used for Player pinging a target entity (m_iParam1 pinging playerID,
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(ENotification, "m_NotificationKey")]
 class SCR_NotificationPlayerTargetEditableEntity : SCR_NotificationDisplayData
 {
-
+	[Attribute("0", desc: "If true will get target Character name (first, alias and surname) if the entity is a NPC otherwise will get the entity type name eg: Rifleman")]
+	protected bool m_bGetTargetCharacterName;
+	
 	override string GetText(SCR_NotificationData data)
 	{
 		int playerID, targetID;
@@ -15,7 +17,7 @@ class SCR_NotificationPlayerTargetEditableEntity : SCR_NotificationDisplayData
 		
 		string playerName, entityName;
 		data.GetNotificationTextEntries(playerName, entityName);
-		if (!GetPlayerName(playerID, playerName) || !GetEditableEntityName(targetID, entityName))
+		if (!GetPlayerName(playerID, playerName) || !GetEditableEntityName(targetID, entityName, m_bGetTargetCharacterName))
 			return string.Empty;
 		
 		data.SetNotificationTextEntries(playerName, entityName);

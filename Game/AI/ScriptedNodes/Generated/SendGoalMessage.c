@@ -384,6 +384,9 @@ class SCR_AISendGoalMessage_Move : SCR_AISendMessageGenerated
 	[Attribute("", UIWidgets.Auto)]
 	bool m_bIsWaypointRelated;
 	
+	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EMovementType))]
+	EMovementType m_eMovementType;
+	
 	[Attribute("", UIWidgets.Auto)]
 	bool m_bUseVehicles;
 	
@@ -417,6 +420,8 @@ class SCR_AISendGoalMessage_Move : SCR_AISendMessageGenerated
 		
 		GetVariableIn("MovePosition", msg.m_MovePosition);
 		
+		msg.m_eMovementType = m_eMovementType;
+		
 		if(!GetVariableIn("UseVehicles", msg.m_bUseVehicles))
 			msg.m_bUseVehicles = m_bUseVehicles;
 		
@@ -434,6 +439,7 @@ class SCR_AISendGoalMessage_Move : SCR_AISendMessageGenerated
 		string s;
 		s = s + string.Format("m_fPriorityLevel: %1\n", m_fPriorityLevel);
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
+		s = s + string.Format("m_eMovementType: %1\n", typename.EnumToString(EMovementType, m_eMovementType));
 		s = s + string.Format("m_bUseVehicles: %1\n", m_bUseVehicles);
 		return s;
 	}
@@ -449,6 +455,9 @@ class SCR_AISendGoalMessage_Follow : SCR_AISendMessageGenerated
 	
 	[Attribute("", UIWidgets.Auto)]
 	bool m_bIsWaypointRelated;
+	
+	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EMovementType))]
+	EMovementType m_eMovementType;
 	
 	[Attribute("", UIWidgets.Auto)]
 	bool m_bUseVehicles;
@@ -484,6 +493,8 @@ class SCR_AISendGoalMessage_Follow : SCR_AISendMessageGenerated
 		
 		GetVariableIn("MovePosition", msg.m_MovePosition);
 		
+		msg.m_eMovementType = m_eMovementType;
+		
 		if(!GetVariableIn("UseVehicles", msg.m_bUseVehicles))
 			msg.m_bUseVehicles = m_bUseVehicles;
 		
@@ -503,6 +514,7 @@ class SCR_AISendGoalMessage_Follow : SCR_AISendMessageGenerated
 		string s;
 		s = s + string.Format("m_fPriorityLevel: %1\n", m_fPriorityLevel);
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
+		s = s + string.Format("m_eMovementType: %1\n", typename.EnumToString(EMovementType, m_eMovementType));
 		s = s + string.Format("m_bUseVehicles: %1\n", m_bUseVehicles);
 		return s;
 	}
@@ -607,6 +619,9 @@ class SCR_AISendGoalMessage_SeekAndDestroy : SCR_AISendMessageGenerated
 	[Attribute("", UIWidgets.Auto)]
 	bool m_bIsWaypointRelated;
 	
+	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EMovementType))]
+	EMovementType m_eMovementType;
+	
 	[Attribute("", UIWidgets.Auto)]
 	bool m_bUseVehicles;
 	
@@ -640,6 +655,8 @@ class SCR_AISendGoalMessage_SeekAndDestroy : SCR_AISendMessageGenerated
 		
 		GetVariableIn("MovePosition", msg.m_MovePosition);
 		
+		msg.m_eMovementType = m_eMovementType;
+		
 		if(!GetVariableIn("UseVehicles", msg.m_bUseVehicles))
 			msg.m_bUseVehicles = m_bUseVehicles;
 		
@@ -657,6 +674,7 @@ class SCR_AISendGoalMessage_SeekAndDestroy : SCR_AISendMessageGenerated
 		string s;
 		s = s + string.Format("m_fPriorityLevel: %1\n", m_fPriorityLevel);
 		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
+		s = s + string.Format("m_eMovementType: %1\n", typename.EnumToString(EMovementType, m_eMovementType));
 		s = s + string.Format("m_bUseVehicles: %1\n", m_bUseVehicles);
 		return s;
 	}

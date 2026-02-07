@@ -1,0 +1,131 @@
+class SCR_WeaponLoadoutData
+{
+	int SlotIdx;
+	ResourceName WeaponPrefab;
+}
+
+class SCR_PlayerLoadoutData
+{
+    ref array<ResourceName> Clothings = {};
+	ref array<ref SCR_WeaponLoadoutData> Weapons = {};
+ 
+    static bool Extract(SCR_PlayerLoadoutData instance, ScriptCtx ctx, SSnapSerializerBase snapshot)
+    {
+        // Fill a snapshot with values from an instance.
+		
+		int clothingCount = instance.Clothings.Count();
+		snapshot.SerializeInt(clothingCount);
+		
+		for (int i = 0; i < clothingCount; ++i)
+		{
+			string resourceName = instance.Clothings[i];
+			snapshot.SerializeString(resourceName);
+		}
+		
+		int weaponCount = instance.Weapons.Count();
+		snapshot.SerializeInt(weaponCount);
+		
+		for (int i = 0; i < weaponCount; ++i)
+		{
+			snapshot.SerializeInt(instance.Weapons[i].SlotIdx);
+			
+			string resourceName = instance.Weapons[i].WeaponPrefab;
+			snapshot.SerializeString(resourceName);
+		}
+		
+        return true;
+    }
+ 
+    static bool Inject(SSnapSerializerBase snapshot, ScriptCtx ctx, SCR_PlayerLoadoutData instance)
+    {
+        // Fill an instance with values from snapshot.
+		int clothingCount;
+		snapshot.SerializeInt(clothingCount);
+		instance.Clothings.Clear();
+		
+		for (int i = 0; i < clothingCount; ++i)
+		{
+			string resourceName;
+			snapshot.SerializeString(resourceName);
+			
+			instance.Clothings.Insert(resourceName);
+		}
+		
+		int weaponCount;
+		snapshot.SerializeInt(weaponCount);
+		instance.Weapons.Clear();
+		
+		for (int i = 0; i < weaponCount; ++i)
+		{
+			SCR_WeaponLoadoutData weaponData();
+			
+			snapshot.SerializeInt(weaponData.SlotIdx);
+			
+			string resourceName;
+			snapshot.SerializeString(resourceName);
+			weaponData.WeaponPrefab = resourceName;
+			
+			instance.Weapons.Insert(weaponData);
+		}
+		
+        return true;
+    }
+ 
+    static void Encode(SSnapSerializerBase snapshot, ScriptCtx ctx, ScriptBitSerializer packet)
+    {
+		int clothingCount;
+		snapshot.SerializeBytes(clothingCount, 4);
+		packet.Serialize(clothingCount, 32);
+		
+		for (int i = 0; i < clothingCount; ++i)
+		{
+			snapshot.EncodeString(packet);
+		}
+		
+		int weaponCount;
+		snapshot.SerializeBytes(weaponCount, 4);
+		packet.Serialize(weaponCount, 32);
+		
+		for (int i = 0; i < weaponCount; ++i)
+		{
+			snapshot.EncodeInt(packet);
+			snapshot.EncodeString(packet);
+		}
+    }
+ 
+    static bool Decode(ScriptBitSerializer packet, ScriptCtx ctx, SSnapSerializerBase snapshot)
+    {
+		int clothingCount;
+		packet.Serialize(clothingCount, 32);
+		snapshot.SerializeBytes(clothingCount, 4);
+		
+		for (int i = 0; i < clothingCount; ++i)
+		{
+			snapshot.DecodeString(packet);
+		}
+		
+		int weaponCount;
+		packet.Serialize(weaponCount, 32);
+		snapshot.SerializeBytes(weaponCount, 4);
+		
+		for (int i = 0; i < weaponCount; ++i)
+		{
+			snapshot.DecodeInt(packet);
+			snapshot.DecodeString(packet);
+		}
+		
+        return true;
+    }
+ 
+    static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs , ScriptCtx ctx)
+    {
+		Print("Can't use SCR_PlayerLoadoutData as a property", LogLevel.ERROR);
+        return true;
+    }
+ 
+    static bool PropCompare(SCR_PlayerLoadoutData instance, SSnapSerializerBase snapshot, ScriptCtx ctx)
+    {
+        Print("Can't use SCR_PlayerLoadoutData as a property", LogLevel.ERROR);
+        return true;
+    }
+}

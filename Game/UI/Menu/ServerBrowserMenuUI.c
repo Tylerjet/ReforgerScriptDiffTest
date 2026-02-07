@@ -3,42 +3,37 @@ Main class for server browser menu handling
 Handles cooperation of varios components for server searching, joning, mods handling, etc.
 */
 //------------------------------------------------------------------------------------------------
+void ScriptInvokerRoomMethod(Room room);
+typedef func ScriptInvokerRoomMethod;
+typedef ScriptInvokerBase<ScriptInvokerRoomMethod> ScriptInvokerRoom;
+
+//------------------------------------------------------------------------------------------------
 class ServerBrowserMenuUI : MenuRootBase
 {
-	const ResourceName CONFIG_DIALOGS_ERROR = "{D3BFEE28E7D5B6A1}Configs/ServerBrowser/KickDialogs.conf";
-
 	// Server list feedback strings
 	const string TAG_DETAILS_FALLBACK_SEACHING = "Searching";
 	const string TAG_DETAILS_FALLBACK_EMPTY = "Empty";
 	const string TAG_MESSAGE_SEARCHING = "SEARCHING";
-	protected const string JOIN_WHILE_DOWNLOADING = "JOIN_WHILE_DOWNLOADING";
-
-	protected const string FAVORITE_LABEL_ADD = "#AR-Workshop_ButtonAddToFavourites";
-	protected const string FAVORITE_LABEL_REMOVE = "#AR-Workshop_ButtonRemoveFavourites";
+	const string TAG_MESSAGE_CONNECTING = "CONNECTING";
 
 	const int SERVER_LIST_VIEW_SIZE = 32;
 	const int ROOM_CONTENT_LOAD_DELAY = 500;
 	const int ROOM_REFRESH_RATE = 10 * 1000;
-	const int ROOM_REFRESH_WAIT_DELAY = 100;
-	const int BACKEND_CHECK_TIMEOUT = 30 * 1000;
 
 	protected const int REJOIN_DELAY = 10;
 
-	protected bool m_bWaitForRefresh = false;
+	// This should be the same value as in High latency filter in {4F6F41C387ADC14E}Configs/ServerBrowser/ServerBrowserFilterSet.conf
+	// TODO: unify with the value set in filters
+	static const int HIGH_PING_SERVER_THRESHOLD = 200;
+	
+	protected bool m_bWaitForRefresh;
 	protected bool m_bHostedServers;
 
 	// Widget class reference
-	protected ref ServerBrowserMenuWidgets m_Widgets = new ref ServerBrowserMenuWidgets;
+	protected ref ServerBrowserMenuWidgets m_Widgets = new ServerBrowserMenuWidgets();
 
 	// Server list handling
-	protected SCR_ServerBrowserEntryComponent m_EntryInteractible = null;
-	protected SCR_ServerBrowserEntryComponent m_ServerEntryFocused = null;
-	protected SCR_ServerBrowserEntryComponent m_ServerEntryLastFocused = null;
-	protected ref array<SCR_ServerBrowserEntryComponent> m_aRoomEntryList = {};
-
-	protected Room m_LastFocusedRoom = null;
-	protected Room m_LastLoadedRoom = null;
-	protected Room m_LastLoadingRoom;
+	protected SCR_ServerBrowserEntryComponent m_ServerEntry;
 
 	// Widget handlers
 	protected SCR_TabViewComponent m_TabView;
@@ -47,15 +42,10 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected SCR_FilterPanelComponent m_FilterPanel;
 	protected SCR_PooledServerListComponent m_ScrollableList;
 	protected SCR_ServerScenarioDetailsPanelComponent m_ServerScenarioDetails;
-	//protected SCR_LoadingOverlay m_LoadingOverlay;
-
-	protected SCR_NavigationButtonComponent m_BtnJoin;
-	protected SCR_NavigationButtonComponent m_BtnDetails;
-	protected SCR_NavigationButtonComponent m_BtnFavorite;
 
 	// States
 	protected Widget m_wFirstServerEntry;
-	protected ESBWidgetFocus m_iFocusedWidgetState = ESBWidgetFocus.SERVER_LIST;
+	protected SCR_EListMenuWidgetFocus m_iFocusedWidgetState = SCR_EListMenuWidgetFocus.LIST;
 
 	protected static string m_sErrorMessage = "";
 	protected static string m_sErrorMessageGroup = "";
@@ -66,7 +56,6 @@ class ServerBrowserMenuUI : MenuRootBase
 
 	// Lobby Rooms handling
 	protected Room m_RoomToJoin;
-	protected Room m_JoiningRoom = null;
 	protected ref array<Room> m_aRooms = {};
 	protected ref array<Room> m_aDirectFoundRooms = {};
 
@@ -75,39 +64,41 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected ref ServerDetailsMenuUI m_DetailsDialog = null;
 	protected SCR_ConfigurableDialogUi m_ModListFailDialog;
 
+	// Privileges
+	protected ref SCR_ScriptPlatformRequestCallback m_CallbackGetPrivilege;
+
 	// Search callbacks
-	protected ref array<ref ServerBrowserCallback> m_aSearchCallbacks = {};
-	protected ref ServerBrowserCallback m_CallbackLastSearch = null;
+	protected ref ServerBrowserCallback m_CallbackLastSearch;
 	protected ref SCR_BackendCallback m_CallbackScroll = new SCR_BackendCallback();
-	protected ref ServerBrowserCallback m_CallbackPing = new ServerBrowserCallback();
 	protected ref SCR_RoomCallback m_CallbackFavorite = new SCR_RoomCallback();
 
 	protected ref OnDirectJoinCallback m_CallbackSearchTarget = new OnDirectJoinCallback();
 
 	// Room data refresh
 	protected ref ServerBrowserCallback m_CallbackAutoRefresh = new ServerBrowserCallback();
-	protected bool m_bRoomsLoaded = false;
 	protected bool m_bFirstRoomLoad = true;
+	protected bool m_bForceUnfilteredRequest;
+	protected int m_iTotalNumberOfRooms;
 
 	// Joining
-	protected ref ServerBrowserCallback m_CallbackJoin = new ref ServerBrowserCallback();
+	protected ref ServerBrowserCallback m_CallbackJoin = new ServerBrowserCallback();
 	protected ref SCR_ServerBrowserDialogManager m_Dialogs = new SCR_ServerBrowserDialogManager();
 
-	//protected ref SCR_BackendCallback m_CallbackPassword = new SCR_BackendCallback();
-	protected ref RoomPasswordJoinParam m_passwordStruct = new RoomPasswordJoinParam();
+	protected ref RoomJoinData m_JoinData = new RoomJoinData();
 	protected ref SCR_RoomPasswordVerification m_PasswordVerification = new SCR_RoomPasswordVerification();
 
 	// Filter parameters
 	protected ref FilteredServerParams m_ParamsFilter = new FilteredServerParams();
-	protected ref FilteredServerParams m_DirectJoinParams = new FilteredServerParams();
+	protected ref FilteredServerParams m_DirectJoinParams;
 
 	// Server mod content
 	protected ref SCR_RoomModsManager m_ModsManager = new SCR_RoomModsManager();
+	protected ref array<ref SCR_WorkshopItem> m_aRequiredMods = {}; 
+	protected ref array<ref SCR_WorkshopItemActionDownload> m_aUnrelatedDownloads = {};
+	protected SCR_DownloadManager m_DownloadManager;
 
 	// Dependencies arrays for pasing updated & outdated server mod dependecies
 	protected MissionWorkshopItem m_RoomScenario;
-
-	protected ref array<Dependency> m_aServerDependencies = {};
 
 	// Message components
 	protected SCR_SimpleMessageComponent m_SimpleMessageWrap;
@@ -118,7 +109,6 @@ class ServerBrowserMenuUI : MenuRootBase
 	// Reconnecting to last played server
 	protected ref ServerBrowserCallback m_CallbackSearchPreviousRoom = new ServerBrowserCallback();
 	protected ref SCR_GetRoomsIds m_SearchIds = new SCR_GetRoomsIds();
-	protected string m_sLastRoomId = string.Empty;
 	protected Room m_RejoinRoom = null;
 
 	protected ref array<ref SCR_FilterEntry> m_aFiltersToSelect = {};
@@ -130,29 +120,24 @@ class ServerBrowserMenuUI : MenuRootBase
 	ref ScriptInvoker m_OnScenarioLoad = new ScriptInvoker();
 	ref ScriptInvoker m_OnEntryFocus = new ScriptInvoker();
 	ref ScriptInvoker m_OnFavoritesResponse = new ScriptInvoker();
+	
+	protected static ref ScriptInvoker<> m_OnErrorMessageSet = new ScriptInvoker<>();
 
-	// Input Actions
+	// Entry Actions
 	protected EInputDeviceType m_eLastInputType;
-
-	// Tooltip
-	protected const ResourceName TOOLTIP_MESSAGE_IMAGESET = "{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
-
+	protected bool m_bWasEntrySelected;
+	protected SCR_ServerBrowserEntryComponent m_ClickedEntry; // Cache last clicked entry to trigger the correct dialog after the double click window
+	
 	//------------------------------------------------------------------------------------------------
-	// Override menu functions
+	// OVERRIDES
 	//------------------------------------------------------------------------------------------------
-
 	//------------------------------------------------------------------------------------------------
 	//! Opening menu - do server browser setup - TODO@wernerjak - cleanup open
 	override void OnMenuOpen()
 	{
-		if (!m_ParamsFilter)
-			m_ParamsFilter = new FilteredServerParams();
-
 		// Workshop setup
 		m_WorkshopApi = GetGame().GetBackendApi().GetWorkshop();
 		m_Lobby = GetGame().GetBackendApi().GetClientLobby();
-
-		m_Lobby.SetViewSize(SERVER_LIST_VIEW_SIZE);
 
 		// Items preloading
 		if (m_WorkshopApi.NeedScan())
@@ -164,70 +149,61 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Accessing handlers
 		SetupHandlers();
 		SetupCallbacks();
+		m_CallbackAutoRefresh.m_OnSuccess.Insert(OnRoomAutoRefresh);
 
 		SetupParams(m_Lobby);
 
-		m_iFocusedWidgetState = ESBWidgetFocus.SERVER_LIST;
-
-		RoomHandlingButtonsEnabling(false, false);
-
 		// Setup list and message
-		Messages_ShowMessage(TAG_MESSAGE_SEARCHING);
+		if (SCR_ServicesStatusHelper.IsBackendReady())
+			Messages_ShowMessage(TAG_MESSAGE_SEARCHING);
+		else
+			Messages_ShowMessage(TAG_MESSAGE_CONNECTING, true);
 
 		if (m_ScrollableList)
-		{
 			m_ScrollableList.ShowEmptyRooms();
-		}
 
 		// Setup Actions
 		SCR_MenuActionsComponent actionsComp = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
 		if (actionsComp)
-			actionsComp.m_OnAction.Insert(OnActionTriggered);
+			actionsComp.GetOnAction().Insert(OnActionTriggered);
 
-		// Setup debug menu
+		UpdateNavigationButtons();
 
-		// Setup connection attempt timeout
-		// GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
+		SwitchFocus(SCR_EListMenuWidgetFocus.SORTING);
 		
-		GetGame().GetCallqueue().CallLater(CheckKickError);
-		
-		m_LastLoadingRoom = null;
+		super.OnMenuOpen();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void CheckKickError()
+	override void OnMenuOpened()
 	{
+		super.OnMenuOpened();
+		
 		// Show last server
-		if (!m_sErrorMessage.IsEmpty())
+		if (!m_sErrorMessage.IsEmpty() && !GetGame().GetBackendApi().GetClientLobby().GetPreviousRoomId().IsEmpty())
 			DisplayKick();
+		
+		m_OnErrorMessageSet.Insert(DisplayKick);
+		
+		Refresh();
 	}
-
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuFocusGained()
 	{
-		ClearConnectionTimeoutWaiting();
-
-		if (!GetGame().GetBackendApi().IsActive())
-			GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
-
 		// Focus back on the host button
 		if (m_bHostedServers)
 			GetGame().GetCallqueue().CallLater(FocusWidget, 0, false, m_Widgets.m_wHostNewServerButton);
-
-		SCR_MenuActionsComponent actionsComp = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
-		if (actionsComp)
-			actionsComp.ActivateActions();
+		else
+			SwitchFocus(SCR_EListMenuWidgetFocus.LIST, true);
+		
+		super.OnMenuFocusGained();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuFocusLost()
 	{
-		ClearConnectionTimeoutWaiting();
-
-		SCR_MenuActionsComponent actionsComp = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
-		if (actionsComp)
-			actionsComp.DeactivateActions();
+		super.OnMenuFocusLost();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -244,7 +220,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Remove callbacks
 		m_Lobby.SetRefreshCallback(null);
 
-		m_ScrollableList.m_OnSetPage.Remove(CallOnServerListSetPage);
+		m_ScrollableList.GetOnSetPage().Remove(CallOnServerListSetPage);
 		m_CallbackAutoRefresh.m_OnSuccess.Clear();
 
 		ClearConnectionTimeoutWaiting();
@@ -265,343 +241,84 @@ class ServerBrowserMenuUI : MenuRootBase
 		if (m_bIsWaitingForBackend)
 			WaitingForRunningBackend();
 
-		// Testing scrollable list update
+		// Scroll list update
 		if (m_ScrollableList)
 			m_ScrollableList.UpdateScroll();
 
-		//! Update Tooltip actions
+		//! Update Entry buttons
 		EInputDeviceType inputDeviceType = GetGame().GetInputManager().GetLastUsedInputDevice();
-		if (inputDeviceType == m_eLastInputType || !m_EntryInteractible)
-			return;
+		bool isEntrySelected = GetSelectedEntry();
+		bool shouldUpdateButtons = inputDeviceType != m_eLastInputType || isEntrySelected != m_bWasEntrySelected;
+
+		if (shouldUpdateButtons)
+			UpdateNavigationButtons();
 
 		m_eLastInputType = inputDeviceType;
-
-		SCR_BrowserHoverTooltipComponent hoverComp = SCR_BrowserHoverTooltipComponent.FindComponent(m_EntryInteractible.GetRootWidget());
-		if (hoverComp)
-		{
-			hoverComp.UpdateButtonAction("Details");
-			hoverComp.UpdateButtonAction("Join");
-		}
+		m_bWasEntrySelected = isEntrySelected;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Action Listeners
+	// INPUTS
 	//------------------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------
-	void OnActionTriggered(string action, float multiplier)
+	protected void UpdateNavigationButtons()
 	{
+		if (!m_Widgets)
+			return;
+
+		SCR_ServerBrowserEntryComponent entry = GetSelectedEntry();
+		bool versionMismatch, unjoinable;
+		bool enabled = entry && entry.GetIsEnabled(versionMismatch, unjoinable);
+		bool visible = entry && GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE;
+
+		if (m_Widgets.m_JoinButton)
+			m_Widgets.m_JoinButton.SetVisible(visible && !unjoinable, false);
+		
+		if (m_Widgets.m_DetailsButton)
+			m_Widgets.m_DetailsButton.SetVisible(visible && !unjoinable, false);
+		
+		if (m_Widgets.m_FavoritesButton)
+			m_Widgets.m_FavoritesButton.SetVisible(visible && enabled, false);
+
+		if (!enabled || !visible)
+			return;
+
+		Room room = entry.GetRoomInfo();
+		if (!room)
+			return;
+
+		if (m_Widgets.m_FavoritesButton)
+			m_Widgets.m_FavoritesButton.SetLabel(GetFavoriteLabel(room.IsFavorite()));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnActionTriggered(string action, float multiplier)
+	{
+		//!TODO: Why are these being triggered twice?
+
+		//! Proceed only if using mouse, the navigation buttons will take care of the interactions with keyboard or gamepad
+		if (GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE)
+			return;
+
 		switch (action)
 		{
 			case "MenuSelectDouble": OnServerEntryClickInteraction(multiplier); break;
 			case "MenuServerDetails": OnActionDetails(); break;
+			case "MenuFavourite": OnActionFavorite(); break;
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Service check
-	//------------------------------------------------------------------------------------------------
-
-	//------------------------------------------------------------------------------------------------
-	//! Start looking for servers once backend is runnig
-	protected void WaitingForRunningBackend()
-	{
-		bool backendActive = GetGame().GetBackendApi().IsActive();
-		if (!backendActive)
-			return;
-
-		// Call room search or find last server
-		string lastId = m_Lobby.GetPreviousRoomId();
-
-		// Is there last server and reconnect is enabled
-		bool reconnectEnabled = IsKickReconnectEnabled(m_Dialogs.GetCurrentKickDialog());
-
-		if (!m_Lobby.IsPingAvailable())
-			return;
-
-		ClearConnectionTimeoutWaiting();
-		OnActionRefresh();
-
-		// Join to invited server
-		Room invited = m_Lobby.GetInviteRoom();
-		if (invited)
-			JoinProcess_Init(invited);
-
-		// Clear error msg
-		ClearErrorMessage();
-
-		// Stop waiting for backend
-		m_bIsWaitingForBackend = false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Fail wating for backend if takes too long
-	protected void ConnectionTimeout()
-	{
-		Messages_ShowMessage("NO_CONNECTION");
-
-		if (m_Dialogs)
-		{
-			m_Dialogs.DisplayDialog(EJoinDialogState.BACKEND_TIMEOUT);
-			m_Dialogs.m_OnConfirm.Clear();
-			m_Dialogs.m_OnConfirm.Insert(OnConnectionTimeoutDialogConfirm);
-		}
-
-		ClearConnectionTimeoutWaiting();
-
-		m_bIsWaitingForBackend = false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnConnectionTimeoutDialogConfirm()
-	{
-		m_Dialogs.m_OnConfirm.Remove(OnConnectionTimeoutDialogConfirm);
-		Messages_ShowMessage(TAG_MESSAGE_SEARCHING);
-		m_bIsWaitingForBackend = false;
-
-		GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void ClearConnectionTimeoutWaiting()
-	{
-		GetGame().GetCallqueue().Remove(ConnectionTimeout);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Call this on receiving filtered rooms from search
-	//! Setting up server list - TODO@wernerjak - can be partialy moved in server list comp
-	protected void OnRoomsFound(array<Room> rooms = null)
-	{
-		// Allow rooms loading
-		m_bRoomsLoaded = true;
-
-		// Clear cached last mods
-		m_LastLoadedRoom = null;
-		m_ServerEntryLastFocused = null;
-
-		// Load rooms
-		ClientLobbyApi lobby = GetGame().GetBackendApi().GetClientLobby();
-
-		if (rooms)
-		{
-			// Direct join rooms
-			lobby.Target(rooms);
-		}
-		else
-		{
-			// Room from search
-			lobby.Rooms(m_aRooms);
-
-			if (m_aRooms.IsEmpty())
-			{
-				PrintDebug("No room found", "OnRoomsFound");
-			}
-
-			m_CallbackAutoRefresh.m_OnSuccess.Insert(OnRoomAutoRefresh);
-		}
-
-		DisplayRooms(m_aRooms);
-
-		// Move to top in list
-		if (m_ScrollableList)
-		{
-			if (m_ScrollableList.IsListFocused() || m_bFirstRoomLoad)
-			{
-				m_ScrollableList.FocusFirstAvailableEntry();
-			}
-		}
-
-		if (m_bFirstRoomLoad)
-		{
-			m_ScrollableList.SetIsListFocused(true);
-			m_bFirstRoomLoad = false;
-		}
-
-		ClearConnectionTimeoutWaiting();
-		m_ScrollableList.ShowScrollbar(true);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void DisplayRooms(array<Room> rooms = null)
-	{
-		// Don't display if rooms are not loaded
-		if (!m_bRoomsLoaded)
-			return;
-
-		// Don't display if missing MP privilege
-		if (!GetGame().GetPlatformService().GetPrivilege(UserPrivilege.MULTIPLAYER_GAMEPLAY))
-		{
-			return;
-		}
-
-		// Check list
-		if (!m_ScrollableList || !m_ServerScenarioDetails)
-		{
-			PrintDebug("Missing important component references!", "DisplayRooms");
-			return;
-		}
-
-		// Check addons
-		SCR_AddonManager addonMgr = SCR_AddonManager.GetInstance();
-
-		if (!addonMgr)
-		{
-			PrintDebug("Could not find addon mngr to verify ugc privilege", "DisplayRooms");
-			return;
-		}
-
-		// Cross play filter when Cross play privilege is not enabled
-		/*if (m_ParamsFilter.IsModdedFilterSelected() && !GetGame().GetPlatformService().GetPrivilege(UserPrivilege.CROSS_PLAY))
-		{
-			//Messages_ShowMessage("MISSING_PRIVILEGE_MP");
-			NegotiatePrivilegeAsync(UserPrivilege.CROSS_PLAY);
-
-			//return;
-		}*/
-
-		// Modds filter when UGC not enabled
-		if (m_ParamsFilter.IsModdedFilterSelected() && !addonMgr.GetUgcPrivilege())
-		{
-			Messages_ShowMessage("MISSING_PRIVILEGE_UGC");
-
-			// Negotatiate UGC privilege
-			addonMgr.m_OnUgcPrivilegeResult.Insert(Platform_OnUgcPrivilegeResult);
-			addonMgr.NegotiateUgcPrivilegeAsync();
-
-			return;
-		}
-
-
-		int roomCount = m_Lobby.TotalRoomCount();
-
-		// Display no rooms found
-		if (roomCount == 0)
-		{
-			// Display empty servers
-			m_ServerEntryFocused = null;
-			m_EntryInteractible = null;
-
-			// Setup list
-			m_ScrollableList.SetRooms(rooms, 0, true);
-			m_ScrollableList.ShowEmptyRooms();
-
-			if (m_ServerScenarioDetails)
-				m_ServerScenarioDetails.SetDefaultScenario(TAG_DETAILS_FALLBACK_EMPTY);
-
-			// Show filters
-			m_FilterPanel.ShowFilterListBox(true);
-			m_FilterPanel.EnableFilterButton(false);
-
-			// Show message
-			Messages_ShowMessage("NO_FILTERED_SERVERS");
-			RoomHandlingFavoriteEnable(false);
-
-			return;
-		}
-
-		// Display rooms
-
-		// Set rooms to fill server list
-		m_ScrollableList.SetRooms(m_aRooms, m_Lobby.TotalRoomCount(), true);
-
-		// filters
-		m_FilterPanel.EnableFilterButton(true);
-
-		// Hide message
-		Messages_Hide();
-	}
-
-	//
-	// Lobby Rooms handling
-	//------------------------------------------------------------------------------------------------
-
-	//------------------------------------------------------------------------------------------------
-	//! Call this once new room data are fetched
-	protected void OnRoomAutoRefresh(ServerBrowserCallback callback)
-	{
-		if (m_Dialogs.IsOpen())
-			return;
-
-		m_Lobby.SetRefreshRate(ROOM_REFRESH_RATE);
-		DisplayRooms(m_aRooms);
-
-		m_bWaitForRefresh = false;
-
-		m_OnAutoRefresh.Invoke();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void CreateServerDetailsDialog(Room roomToJoin)
-	{
-		if (!roomToJoin)
-			return;
-
-		// Create details dialog
-		array<ref SCR_WorkshopItem> items = {};
-		array<Dependency> dependencies = {};
-		roomToJoin.AllItems(dependencies);
-
-		if (m_ModsManager.GetRoomItemsScripted().Count() == dependencies.Count())
-			items = m_ModsManager.GetRoomItemsScripted();
-
-		SCR_ServerDetailsDialog serverDetails = m_Dialogs.CreateServerDetailsDialog(roomToJoin, items, m_OnFavoritesResponse);
-		serverDetails.SetCanJoin(CanJoinRoom(roomToJoin));
-		serverDetails.m_OnFavorites.Insert(OnActionFavorite);
-
-		bool loaded = m_ModsManager.GetModsLoaded();
-
-		if (!dependencies.IsEmpty())
-		{
-			//Fill with last loaded mod list
-			if (!m_ModsManager.GetModsLoaded())
-				m_ModsManager.GetOnGetAllDependencies().Insert(OnServerDetailModsLoaded);
-			else
-				OnServerDetailModsLoaded();
-		}
-		else
-		{
-			// Fill with emtpy data
-			m_Dialogs.FillRoomDetailsMods({});
-		}
-
-		m_Dialogs.GetCurrentDialog().m_OnConfirm.Insert(JoinProcess_LoadModContent);
-		m_Dialogs.GetCurrentDialog().m_OnClose.Insert(OnServerDetailsClosed);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Call this to fill details mods list
-	protected void OnServerDetailModsLoaded()
-	{
-		m_Dialogs.FillRoomDetailsMods(m_ModsManager.GetRoomItemsScripted(), m_ModsManager);
-		m_ModsManager.GetOnGetAllDependencies().Remove(OnServerDetailModsLoaded);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnServerDetailsClosed()
-	{
-		m_ModsManager.GetOnGetAllDependencies().Remove(OnServerDetailModsLoaded);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Bind action for leaving menu
-	[MenuBindAttribute()]
-	void OnActionBack()
-	{
-		// Remove specific filters
-		if (m_ParamsFilter)
-		{
-			m_ParamsFilter.SetScenarioId("");
-			m_ParamsFilter.SetHostedScenarioModId("");
-		}
-
-		// Close
-		Close();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Bind action for refreshing server list
 	[MenuBindAttribute()]
 	void OnActionRefresh()
+	{
+		m_bForceUnfilteredRequest = true;
+		Refresh();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void Refresh()
 	{
 		PrintDebug("m_RejoinRoom: " + m_RejoinRoom, "OnActionRefresh");
 
@@ -625,23 +342,22 @@ class ServerBrowserMenuUI : MenuRootBase
 			m_ScrollableList.ShowEmptyRooms();
 			m_ScrollableList.ShowScrollbar(false);
 		}
-
-		// Setup connection attempt timeout
-		GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
-
-		m_bRoomsLoaded = false;
+		
+		CheckBackendState();
+		
+		// Remove callbacks
+		m_Lobby.SetRefreshCallback(null);
 
 		// Start loading
 		if (m_bFirstRoomLoad)
-		{
 			SearchRooms();
-		}
 		else
-		{
 			GetGame().GetCallqueue().CallLater(SearchRooms, ROOM_CONTENT_LOAD_DELAY, false);
-		}
 
-		Messages_ShowMessage(TAG_MESSAGE_SEARCHING, m_bFirstRoomLoad);
+		if (SCR_ServicesStatusHelper.IsBackendReady())
+			Messages_ShowMessage(TAG_MESSAGE_SEARCHING);
+		else
+			Messages_ShowMessage(TAG_MESSAGE_CONNECTING, true);
 
 		if (m_ServerScenarioDetails)
 			m_ServerScenarioDetails.SetDefaultScenario(TAG_DETAILS_FALLBACK_SEACHING);
@@ -652,8 +368,6 @@ class ServerBrowserMenuUI : MenuRootBase
 	[MenuBindAttribute()]
 	void OnActionManualConnect()
 	{
-		Print("OnActionManualConnect");
-		
 		MultiplayerDialogUI multiplayerDialog = m_Dialogs.CreateManualJoinDialog();
 
 		if (!multiplayerDialog)
@@ -673,27 +387,48 @@ class ServerBrowserMenuUI : MenuRootBase
 	[MenuBindAttribute()]
 	void OnActionFilter()
 	{
-		// Set focus
-		if (m_iFocusedWidgetState != ESBWidgetFocus.FILTERING)
-			SwitchFocus(null, ESBWidgetFocus.FILTERING);
-		else
-			SwitchFocus(null, ESBWidgetFocus.SERVER_LIST);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Bind action for favoriting server
-	[MenuBindAttribute()]
-	void OnActionFavorite()
-	{
-		if (!m_EntryInteractible)
+		if (!m_FilterPanel)
 			return;
 
-		m_EntryInteractible.OnFavoriteClicked(null);
-		DisplayFavoriteAction(m_EntryInteractible.GetRoomInfo().IsFavorite());
+		SCR_EListMenuWidgetFocus focus =  SCR_EListMenuWidgetFocus.FILTERING; 
+		if (m_FilterPanel.GetFilterListBoxShown())
+			focus =  SCR_EListMenuWidgetFocus.LIST; 
+
+		// Set focus
+		m_FilterPanel.ShowFilterListBox(focus == SCR_EListMenuWidgetFocus.FILTERING);
+		SwitchFocus(focus);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Bind action for server details
+	//! Bind action for leaving menu
+	[MenuBindAttribute()]
+	void OnActionBack()
+	{
+		// Remove specific filters
+		if (m_ParamsFilter)
+		{
+			m_ParamsFilter.SetScenarioId("");
+			m_ParamsFilter.SetHostedScenarioModId("");
+		}
+
+		// Close
+		Close();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Action for favoriting server
+	void OnActionFavorite()
+	{
+		if (!m_ServerEntry)
+		{
+			Debug.Error("No entry selected.");
+			return;
+		}
+		m_ServerEntry.SetFavorite(!m_ServerEntry.IsFavorite());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Action for server details
 	void OnActionDetails()
 	{
 		SCR_ServerBrowserEntryComponent entry = GetSelectedEntry();
@@ -709,50 +444,396 @@ class ServerBrowserMenuUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Call searching for servers
-	protected void SearchRooms()
+	protected void OnServerEntryClickInteraction(float multiplier)
 	{
-		// Clear auto refresh
-		m_CallbackAutoRefresh.m_OnSuccess.Clear();
+		//! multiplier value in the action is used to differentiate between single and double click
 
-		// Start loading and show loading feedback
-		m_bRoomsLoaded = false;
+		SCR_ServerBrowserEntryComponent entry = m_ClickedEntry;
+		if (!entry || !GetEntryUnderCursor())
+			return;
 
-		// Callback
-		ref ServerBrowserCallback searchCallback = new ServerBrowserCallback;
-		SetupSearchCallback(searchCallback);
-		m_CallbackLastSearch = searchCallback;
+		switch (Math.Floor(multiplier))
+		{
+			case 1: OnServerEntryClick(entry); break;
+			case 2: OnServerEntryDoubleClick(entry); break;
+		}
 
-		m_Lobby.SearchRooms(m_ParamsFilter, m_CallbackLastSearch);
+		m_ClickedEntry = null;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Setup room search invoker actions and save callback in list
-	protected void SetupSearchCallback(ServerBrowserCallback searchCallback)
+	//! Join to the room on double click on server entry
+	protected void OnServerEntryDoubleClick(SCR_ServerBrowserEntryComponent entry)
 	{
-		// Check callback
-		if (!searchCallback)
+		if (entry != m_ServerEntry)
+			OnServerEntryFocusEnter(entry);
+		
+		m_bQuickJoin = true;
+		
+		// Join
+		if (entry && entry.GetRoomInfo() && entry.GetRoomInfo().Joinable())
+			JoinActions_Join();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnEntryMouseButton(string tag)
+	{
+		OnServerEntryDoubleClick(GetSelectedEntry());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnJoinButton()
+	{
+		OnServerEntryClick(GetSelectedEntry());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Join to the room on double click on server entry
+	protected void OnServerEntryClick(notnull SCR_ServerBrowserEntryComponent entry)
+	{
+		//! This means the player moved the mouse to another entry during the small window it takes the component to check for double click...
+		//! ...so another room got focused, but we want the clicked one to be the focused one
+		if (entry != m_ServerEntry)
+			OnServerEntryFocusEnter(entry);
+		
+		m_RoomToJoin = entry.GetRoomInfo();		
+		
+		//! On MOUSE clicking opens the details dialog. On KEYBOARD and GAMEPAD single click is quick join, there's a separate button for details
+		m_bQuickJoin = GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE;
+
+		// Join
+		if (entry.GetRoomInfo() && entry.GetRoomInfo().Joinable())
+			JoinActions_Join();
+		
+		//TODO: handle edge case in which we ask for the details while downloading another version of a required mod, make sure the shown download size is correct
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Service check
+	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! Start looking for servers once backend is runnig
+	protected void WaitingForRunningBackend()
+	{
+		if (!IsBackendReady())
+			return;
+
+		// Call room search or find last server
+		string lastId = m_Lobby.GetPreviousRoomId();
+
+		// Is there last server and reconnect is enabled
+		bool reconnectEnabled = IsKickReconnectEnabled(m_Dialogs.GetCurrentKickDialog());
+
+		if (!m_Lobby.IsPingAvailable())
+			return;
+
+		ClearConnectionTimeoutWaiting();
+		Refresh();
+
+		// Clear error msg
+		ClearErrorMessage();
+
+		// Stop waiting for backend
+		m_bIsWaitingForBackend = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool IsBackendReady()
+	{
+		auto ba = GetGame().GetBackendApi();
+		return ba.IsActive() && ba.IsAuthenticated();
+	}
+
+	//------------------------------------------------------------------------------------------------	
+	protected void CheckBackendState()
+	{	
+		if (!IsBackendReady())
 		{
-			PrintDebug("Search callback is null!", "SetupSearchCallback");
+			m_bIsWaitingForBackend = true;
+			auto callQueue = GetGame().GetCallqueue();
+			callQueue.Remove(ConnectionTimeout);
+			callQueue.CallLater(ConnectionTimeout, SCR_ServicesStatusHelper.CONNECTION_CHECK_EXPIRE_TIME);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ShowTimeoutDialog()
+	{
+		Messages_ShowMessage("NO_CONNECTION");
+		if (m_Dialogs)
+		{
+			m_Dialogs.DisplayDialog(EJoinDialogState.BACKEND_TIMEOUT);
+			m_Dialogs.GetOnConfirm().Clear();
+			m_Dialogs.GetOnConfirm().Insert(OnConnectionTimeoutDialogConfirm);
+		}
+	}
+	//------------------------------------------------------------------------------------------------
+	//! Fail wating for backend if takes too long
+	protected void ConnectionTimeout()
+	{
+		if (!IsBackendReady())
+		{
+			ShowTimeoutDialog();
+		}
+		ClearConnectionTimeoutWaiting();
+
+		m_bIsWaitingForBackend = false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnConnectionTimeoutDialogConfirm()
+	{
+		m_Dialogs.GetOnConfirm().Remove(OnConnectionTimeoutDialogConfirm);
+		
+		if (SCR_ServicesStatusHelper.IsBackendReady())
+			Messages_ShowMessage(TAG_MESSAGE_SEARCHING);
+		else
+			Messages_ShowMessage(TAG_MESSAGE_CONNECTING, true);		
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ClearConnectionTimeoutWaiting()
+	{
+		GetGame().GetCallqueue().Remove(ConnectionTimeout);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Call this on receiving filtered rooms from search
+	//! Setting up server list - TODO@wernerjak - can be partialy moved in server list comp
+	protected void OnRoomsFound(array<Room> rooms = null)
+	{		
+		// Load rooms
+		ClientLobbyApi lobby = GetGame().GetBackendApi().GetClientLobby();
+
+		if (rooms)
+		{
+			// Direct join rooms
+			lobby.Target(rooms);
+		}
+		else
+		{
+			// Room from search
+			lobby.Rooms(m_aRooms);
+			//TODO: [BUG] On trunk, switching to Community Tab returns an empty rooms array even if there are rooms?!
+
+			if (m_aRooms.IsEmpty())
+			{
+				PrintDebug("No room found", "OnRoomsFound");
+			}
+		}
+		
+		// Setup room data refresh
+		lobby.SetRefreshCallback(m_CallbackAutoRefresh);
+		lobby.SetRefreshRate(ROOM_REFRESH_RATE);
+
+		DisplayRooms(m_aRooms);
+
+		// Move to top in list
+		if (m_ScrollableList)
+		{
+			if (m_ScrollableList.IsListFocused() || m_bFirstRoomLoad)
+			{
+				m_ScrollableList.FocusFirstAvailableEntry();
+			}
+		}
+
+		if (m_bFirstRoomLoad)
+		{
+			m_ScrollableList.SetIsListFocused(true);
+			m_bFirstRoomLoad = false;
+		}
+
+		m_ScrollableList.ShowScrollbar(true);
+		
+		int currentRoomsCount = m_Lobby.TotalRoomCount();
+		if (currentRoomsCount > m_iTotalNumberOfRooms)
+			m_iTotalNumberOfRooms = currentRoomsCount;
+		
+		// Items Found Message
+		if (m_FilterPanel)
+			m_FilterPanel.SetItemsFoundMessage(m_Lobby.TotalRoomCount(), m_iTotalNumberOfRooms, m_Lobby.TotalRoomCount() != m_iTotalNumberOfRooms);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DisplayRooms(array<Room> rooms = null)
+	{
+		// Don't display if missing MP privilege
+		if (!GetGame().GetPlatformService().GetPrivilege(UserPrivilege.MULTIPLAYER_GAMEPLAY))
+		{
 			return;
 		}
+
+		// Check list
+		if (!m_ScrollableList || !m_ServerScenarioDetails)
+		{
+			PrintDebug("Missing important component references!", "DisplayRooms");
+			return;
+		}
+
+		// Check addons
+		SCR_AddonManager addonMgr = SCR_AddonManager.GetInstance();
+
+		if (!addonMgr)
+		{
+			PrintDebug("Could not find addon mngr to verify ugc privilege", "DisplayRooms");
+			return;
+		}
+
+		// Modds filter when UGC not enabled
+		if (m_ParamsFilter.IsModdedFilterSelected() && !addonMgr.GetUgcPrivilege())
+		{
+			Messages_ShowMessage("MISSING_PRIVILEGE_UGC");
+
+			// Negotatiate UGC privilege
+			addonMgr.m_OnUgcPrivilegeResult.Insert(Platform_OnUgcPrivilegeResult);
+			addonMgr.NegotiateUgcPrivilegeAsync();
+		
+			SwitchFocus(SCR_EListMenuWidgetFocus.LIST);
+			if (m_FilterPanel)
+				m_FilterPanel.ShowFilterListBox(false);
+			
+			return;
+		}
+
+		int roomCount = m_Lobby.TotalRoomCount();
+
+		// Display no rooms found
+		if (roomCount == 0)
+		{
+			// Setup list
+			m_ScrollableList.SetRooms(rooms, 0, true);
+			m_ScrollableList.ShowEmptyRooms();
+
+			if (m_ServerScenarioDetails)
+				m_ServerScenarioDetails.SetDefaultScenario(TAG_DETAILS_FALLBACK_EMPTY);
+
+			// Show filters
+			if (!m_FilterPanel.GetFilterListBoxShown())
+				SwitchFocus(SCR_EListMenuWidgetFocus.FILTERING);
+			if (m_FilterPanel)
+				m_FilterPanel.ShowFilterListBox(true);
+			
+			// Show message
+			Messages_ShowMessage("NO_FILTERED_SERVERS");
+
+			return;
+		}
+
+		// Display rooms
+		// Set rooms to fill server list
+		m_ScrollableList.SetRooms(m_aRooms, m_Lobby.TotalRoomCount(), true);
+
+		// Hide message
+		Messages_Hide();
+		
+		if (m_FilterPanel && !m_FilterPanel.GetFilterListBoxShown())
+			SwitchFocus(SCR_EListMenuWidgetFocus.LIST);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// LOBBY ROOMS HANDLING
+	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! Call this once new room data are fetched
+	protected void OnRoomAutoRefresh(ServerBrowserCallback callback)
+	{
+		m_Lobby.SetRefreshRate(ROOM_REFRESH_RATE);
+		DisplayRooms(m_aRooms);
+
+		m_bWaitForRefresh = false;
+
+		m_OnAutoRefresh.Invoke();
+	}
+
+	// ---- SEARCH ROOMS ----
+	// First search to get the total number of servers
+	//------------------------------------------------------------------------------------------------
+	protected void SearchRooms()
+	{
+		//TODO: query for filtered first, then independently query for total number, in order to reduce load time at start
+		
+		// Start loading and show loading feedback
+		m_ServerEntry = null;
+		m_ModsManager.Clear();
+		
+		// Remove callbacks
+		m_Lobby.SetRefreshCallback(null);
+
+		if (!m_bFirstRoomLoad && !m_bForceUnfilteredRequest)
+		{
+			SearchRoomsFiltered();
+			return;
+		}
+
+		// Callback
+		ref ServerBrowserCallback searchCallback = new ServerBrowserCallback;
+		
+		// Invoker actions
+		searchCallback.m_OnSuccess.Insert(OnSearchAllRoomsSuccess);
+		searchCallback.m_OnFail.Insert(OnSearchAllRoomsFail);
+		searchCallback.m_OnTimeOut.Insert(OnSearchAllRoomsTimeOut);
+		
+		m_CallbackLastSearch = searchCallback;
+		
+		FilteredServerParams params = new FilteredServerParams();
+		m_Lobby.SearchRooms(params, searchCallback);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSearchAllRoomsSuccess(ServerBrowserCallback callback)
+	{
+		OnSearchAllRooms();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnSearchAllRoomsFail(ServerBrowserCallback callback, int code, int restCode, int apiCode)
+	{
+		OnSearchAllRooms();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnSearchAllRoomsTimeOut()
+	{
+		OnSearchAllRooms();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSearchAllRooms()
+	{
+		m_CallbackLastSearch = null;
+		
+		// Total number of active servers
+		m_iTotalNumberOfRooms = m_Lobby.TotalRoomCount();
+		
+		SearchRoomsFiltered();
+	}
+	
+	// Searches to get the filtered servers to display	
+	//------------------------------------------------------------------------------------------------
+	protected void SearchRoomsFiltered()
+	{
+		if (m_ScrollableList)
+			m_Lobby.SetViewSize(m_ScrollableList.GetPageEntriesCount() * 2);
+		else
+			m_Lobby.SetViewSize(SERVER_LIST_VIEW_SIZE);
+		
+		// Callback
+		ref ServerBrowserCallback searchCallback = new ServerBrowserCallback;
 
 		// Invoker actions
 		searchCallback.m_OnSuccess.Insert(OnSearchRoomsSuccess);
 		searchCallback.m_OnFail.Insert(OnSearchRoomsFail);
 		searchCallback.m_OnTimeOut.Insert(OnSearchRoomsTimeOut);
-
-		// Save callback
-		m_aSearchCallbacks.Insert(searchCallback);
+		
+		m_CallbackLastSearch = searchCallback;
+		
+		m_Lobby.SearchRooms(m_ParamsFilter, searchCallback);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnSearchRoomsSuccess(ServerBrowserCallback callback)
 	{
 		PrintDebug(string.Format("Success - servers found: %1", m_Lobby.TotalRoomCount()), "OnSearchRoomsSuccess");
-
-		// Cleanup callback data
-		RoomSearchCallbackCleanup(callback);
 
 		// Display rooms
 		OnRoomsFound();
@@ -765,48 +846,31 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected void OnSearchRoomsFail(ServerBrowserCallback callback, int code, int restCode, int apiCode)
 	{
 		PrintDebug(string.Format("Room search fail - code: %1 | restCode: %2 | apiCode: %3", code, restCode, apiCode), "OnSearchRoomsFail");
-
-		// Cleanup callback data
-		RoomSearchCallbackCleanup(callback);
-
-		// Check if this is last request
-		if (callback != m_CallbackLastSearch)
-			return;
+		m_CallbackLastSearch = null;
 
 		// Run again if failed ping
-		if (m_bFirstRoomLoad && m_ParamsFilter.GetSortOrder() == m_ParamsFilter.SOgRT_PING)
+		if (m_bFirstRoomLoad && m_ParamsFilter.GetSortOrder() == m_ParamsFilter.SORT_PING)
 		{
-			OnActionRefresh();
+			Refresh();
 			return;
 		}
 
 		Messages_ShowMessage("BACKEND_SERVICE_FAIL");
-		m_CallbackLastSearch = null;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnSearchRoomsTimeOut()
 	{
-		ConnectionTimeout();
+		ShowTimeoutDialog();
 		PrintDebug("time out!", "OnSearchRoomsTimeOut");
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Clean up invoker actions and callback reference
-	protected void RoomSearchCallbackCleanup(ServerBrowserCallback callback)
-	{
-		callback.m_OnSuccess.Clear();
-		callback.m_OnFail.Clear();
-
-		m_aSearchCallbacks.RemoveItem(callback);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Restore filtering parameters in UI
-	void SetupParams(ClientLobbyApi lobby)
+	protected void SetupParams(ClientLobbyApi lobby)
 	{
 		FilteredServerParams params = FilteredServerParams.Cast(lobby.GetParameters());
-		if (params == null)
+		if (!params)
 		{
 			// Default filter setup
 			string strParams = lobby.GetStrParams();
@@ -818,38 +882,31 @@ class ServerBrowserMenuUI : MenuRootBase
 		}
 		else
 		{
-			// Restore previous filter setuo
+			// Restore previous filter setup
 			m_ParamsFilter = params;
-			SetupFilteringUI(m_ParamsFilter);
 		}
+		
+		// Reset search
+		m_ParamsFilter.SetSearch(string.Empty);
+		
+		SetupFilteringUI(m_ParamsFilter);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Apply filter setup on each ui filtering widget - restoring filter UI states
 	protected void SetupFilteringUI(FilteredServerParams filterParams)
 	{
-		// Search
-		/*
-		if (m_SearchEditBox)
-		{
-			string searchStr = filterParams.GetSearchText();
-			m_SearchEditBox.SetValue(searchStr);
-		}*/
-
-		// Sort
-		/*if (m_SortBar)
-		{
-			string sortName = filterParams.GetSortOrder();
-			int sortId = m_SortBar.FindElement(sortName);
-			if (sortId != -1)
-				m_SortBar.SetCurrentSortElement(sortId, ESortOrder.ASCENDING, useDefaultSortOrder: true);
-		}*/
-
 		// Tabview
 		if (m_TabView)
 		{
 			if (m_ParamsFilter)
 				m_TabView.ShowTab(m_ParamsFilter.GetSelectedTab());
+		}
+		
+		if (m_FilterPanel)
+		{
+			bool show = m_FilterPanel.AnyFilterButtonsVisible();
+			m_FilterPanel.ShowFilterListBox(show, show);
 		}
 	}
 
@@ -860,12 +917,8 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Loading
 		SCR_MenuLoadingComponent.m_OnMenuOpening.Insert(OnOpeningByLoadComponent);
 
-		// Setup room data refresh
-		m_Lobby.SetRefreshCallback(m_CallbackAutoRefresh);
-		m_Lobby.SetRefreshRate(ROOM_REFRESH_RATE);
-
 		// Server list
-		m_ScrollableList.m_OnSetPage.Insert(CallOnServerListSetPage);
+		m_ScrollableList.GetOnSetPage().Insert(CallOnServerListSetPage);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -882,16 +935,15 @@ class ServerBrowserMenuUI : MenuRootBase
 		{
 			m_Dialogs.GetEventOnRejoinTimerOver().Insert(OnLastRoomReconnectConfirm);
 
-			m_Dialogs.m_OnConfirm.Insert(OnLastRoomReconnectConfirm);
-			m_Dialogs.m_OnCancel.Remove(OnRejoinCancel);
-			m_Dialogs.m_OnCancel.Insert(OnRejoinCancel);
+			m_Dialogs.GetOnConfirm().Insert(OnLastRoomReconnectConfirm);
+			m_Dialogs.GetOnCancel().Remove(OnRejoinCancel);
+			m_Dialogs.GetOnCancel().Insert(OnRejoinCancel);
 
 			m_Dialogs.DisplayReconnectDialog(m_RejoinRoom, REJOIN_DELAY, m_sErrorMessageDetail);
 		}
 
 		// Clear messages and backend check
 		ClearErrorMessage();
-		ClearConnectionTimeoutWaiting();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -912,116 +964,72 @@ class ServerBrowserMenuUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Call this when focusing on server
-	protected void OnServerEntryFocusEnter(SCR_ServerBrowserEntryComponent serverEntry)
+	// ENTRIES
+	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	protected void OnServerEntryFocusEnter(SCR_ScriptedWidgetComponent entry)
 	{
+		SCR_ServerBrowserEntryComponent serverEntry = SCR_ServerBrowserEntryComponent.Cast(entry);
+		
 		if (!serverEntry || !m_ModsManager)
 			return;
 
-		m_ServerEntryFocused = serverEntry;
-
-		// Compare previously focused entry
-		if (m_ServerEntryLastFocused != m_ServerEntryFocused)
+		Room room = serverEntry.GetRoomInfo();
+		if (room)
 		{
-			// Start check new server
-			if (m_ModsManager)
-				m_ModsManager.DefaultSetup();
-
-			m_ServerEntryLastFocused = m_ServerEntryFocused;
-		}
-
-		// Set interactible
-		if (m_EntryInteractible != m_ServerEntryFocused)
-		{
-			m_EntryInteractible = m_ServerEntryFocused;
-		}
-
-		// Focus room
-		if (m_ServerEntryFocused)
-		{
-			m_iFocusedWidgetState = ESBWidgetFocus.SERVER_LIST;
-		}
-
-		// Load room data
-		Room room = m_ServerEntryFocused.GetRoomInfo();
-
-		// Check restriction
-		bool canJoin = CanJoinRoom(room);
-
-		m_OnEntryFocus.Invoke(true, canJoin, true);
-		RoomHandlingButtonsEnabling(canJoin, true);
-		RoomHandlingFavoriteEnable(true);
-
-		Room roomInteractible = m_EntryInteractible.GetRoomInfo();
-		if (roomInteractible)
-			DisplayFavoriteAction(roomInteractible.IsFavorite());
-
-		m_LastFocusedRoom = room;
-		ReceiveRoomContent(m_LastFocusedRoom, true, serverEntry);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnTooltipShow(SCR_HoverDetectorComponent baseHoverComp, Widget widget)
-	{
-		SCR_BrowserHoverTooltipComponent tooltipComp = SCR_BrowserHoverTooltipComponent.FindComponent(widget);
-		if (!tooltipComp || !m_LastFocusedRoom || !m_ModsManager || !widget.IsEnabled())
-			return;
-
-		//! Input update
-		m_eLastInputType = GetGame().GetInputManager().GetLastUsedInputDevice();
-
-		//! Reset
-		tooltipComp.ClearSetupButtons();
-		tooltipComp.SetMessage("");
-
-		//! Message
-		string message, icon, formattedIcon;
-
-		//! Is room password protected
-		if (m_LastFocusedRoom.PasswordProtected())
-		{
-			icon = "server-locked";
+			if (m_ServerEntry == serverEntry)
+				return;
+			m_ServerEntry = serverEntry;
+			m_RoomToJoin = room;
 		}
 		else
 		{
-			//! Check room mods count
-			array<Dependency> roomMod = {};
-			m_LastFocusedRoom.AllItems(roomMod);
-			array<ref SCR_WorkshopItem> toUpdateMods = m_ModsManager.GetRoomItemsToUpdate();
-
-			//! Is room modded
-			if (!roomMod.IsEmpty() && !toUpdateMods.IsEmpty() && m_LastFocusedRoom == m_LastLoadedRoom)
-			{
-				icon = "download";
-				message = m_ModsManager.GetModListSizeString(toUpdateMods) + " ";
-			}
+			m_ServerEntry = null;
+			return;
 		}
+		m_ModsManager.Clear();
+		m_ServerEntry.SetModsManager(m_ModsManager);
 
-		if (!icon.IsEmpty())
-			formattedIcon = string.Format("<image set='%1' name='%2' scale='1.75'/>", TOOLTIP_MESSAGE_IMAGESET, icon);
+		// Check restriction
+		bool canJoin = CanJoinRoom(m_RoomToJoin);
 
-		if (!formattedIcon.IsEmpty() || !message.IsEmpty())
-			tooltipComp.SetMessage(string.Format("[%1%2]", formattedIcon, message));
+		m_OnEntryFocus.Invoke(true, canJoin, true);
 
-		//! Create Tooltip
-		tooltipComp.CreateTooltip();
+		DisplayFavoriteAction(m_RoomToJoin.IsFavorite());
+
+		ReceiveRoomContent(m_RoomToJoin, true);
+
+		UpdateNavigationButtons();
+
+		m_ServerEntry.m_OnClick.Insert(OnEntryMouseClick);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void ReceiveRoomContent(Room room, bool receiveMods, SCR_ServerBrowserEntryComponent roomEntry)
+	protected void OnServerEntryFocusLeave(SCR_ScriptedWidgetComponent entry)
 	{
-		if (room && m_LastLoadingRoom == room)
-			return;
-		
-		m_LastLoadingRoom = room;
-		
-		// Check room
-		if (!room && roomEntry && roomEntry.GetRoomInfo())
-			room = roomEntry.GetRoomInfo();
+		SCR_ServerBrowserEntryComponent serverEntry = SCR_ServerBrowserEntryComponent.Cast(entry);
 
-		if (!room)
-			return;
+		// Invoke focus leave
+		m_OnEntryFocus.Invoke(false, false, false);
+		serverEntry.m_OnClick.Remove(OnEntryMouseClick);
+	}
 
+	//------------------------------------------------------------------------------------------------
+	void OnEntryMouseClick(SCR_ScriptedWidgetComponent button)
+	{
+		m_ClickedEntry = SCR_ServerBrowserEntryComponent.Cast(button);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ReceiveRoomContent(notnull Room room, bool receiveMods)
+	{
+		// Call queue handling
+		ScriptCallQueue callQueue = GetGame().GetCallqueue();
+
+		// Clear previous call latter
+
+		callQueue.Remove(ReceiveRoomContent_Mods);
+		
 		if (m_ServerScenarioDetails)
 			m_ServerScenarioDetails.DisplayRoomData(room, receiveMods);
 
@@ -1029,76 +1037,43 @@ class ServerBrowserMenuUI : MenuRootBase
 		bool canJoin = CanJoinRoom(room);
 
 		m_OnEntryFocus.Invoke(true, canJoin, true);
-		RoomHandlingButtonsEnabling(canJoin, true);
-
-		// Call queue handling
-		ScriptCallQueue callQueue = GetGame().GetCallqueue();
-
-		// Clear previous call latter
-		callQueue.Remove(ReceiveRoomContent_Scenario);
-		callQueue.Remove(ReceiveRoomContent_Mods);
-
-		// Load scenario - vanilla instantly, modded with delay
-		if (room.HostScenarioMod())
-		{
-			callQueue.CallLater(ReceiveRoomContent_Scenario, ROOM_CONTENT_LOAD_DELAY, false, room);
-		}
-		else
-		{
-			ReceiveRoomContent_Scenario(room);
-		}
 
 		// Allow check only if client is authorized to join server
 		if (!room.IsAuthorized())
+		{
 			return;
+		}
 
 		// Check room mods count
 		array<Dependency> roomMod = {};
-		room.AllItems(roomMod);
+		room.GetItems(roomMod);
 
-		// Is room modded
-		if (!roomMod.IsEmpty())
+		// Show mod count immidiatelly
+		if (!roomMod.IsEmpty() && m_ServerScenarioDetails)
+			m_ServerScenarioDetails.DisplayModsCount(roomMod.Count());
+
+		// Receive mod data only if currently view is focused
+		if (room.IsDownloadListLoaded())
 		{
-			// Show mod count immidiatelly
-			if (m_ServerScenarioDetails)
-				m_ServerScenarioDetails.DisplayModsCount(roomMod.Count());
 
-			// Receive mod data only if currently view is focused
-			if (room == m_LastFocusedRoom)
-			{
-				// Receive cached mod data if rooms last checked
-				if (room == m_LastLoadedRoom)
-				{
-					ReceiveRoomContent_Mods(room);
-					return;
-				}
-
-				// Load mods after short delay - to prevent spamming mods receive requiest with fast server selecting
-				//PrintDebug("Call later room receive for: " + room.Name(), "ReceiveRoomContent");
-				callQueue.CallLater(ReceiveRoomContent_Mods, ROOM_CONTENT_LOAD_DELAY, false, room);
-			}
+			ReceiveRoomContent_Mods(room);
+			return;
 		}
+		else
+		{
+			// Load mods after short delay - to prevent spamming mods receive requiest with fast server selecting
+			callQueue.CallLater(ReceiveRoomContent_Mods, ROOM_CONTENT_LOAD_DELAY, false, room);
+		}		
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Separated receive scenario data for server
 	//! Call this later if scenario is from mod to prevent too many request
-	protected void ReceiveRoomContent_Scenario(Room room)
+	protected void ReceiveRoomContent_Scenario()
 	{
-		if (!room)
-			return;
-
-		if (m_LastFocusedRoom != room)
-		{
-			// Modded scenario - prevent display, wait for focus
-			// TODO@wernerjak - improve modded scenario check
-			if (room.HostScenarioMod())
-				return;
-		}
-
 		// Load scenario
 		m_ModsManager.GetOnGetScenario().Insert(OnLoadingScenario);
-		m_ModsManager.ReceiveRoomScenario(room);
+		m_ModsManager.ReceiveRoomScenario(m_RoomToJoin);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1106,81 +1081,19 @@ class ServerBrowserMenuUI : MenuRootBase
 	//! Call this later to prevent too many request
 	protected void ReceiveRoomContent_Mods(Room room)
 	{
-		if (!m_ModsManager || !room)
+		if (!m_ModsManager || !room || m_RoomToJoin != room)
 			return;
-
-		// Check cached dependencies
-		//if (m_ModsManager.AllItemsLoaded)
 
 		m_ModsManager.GetOnGetAllDependencies().Insert(OnLoadingDependencyList);
 		m_ModsManager.ReceiveRoomMods(room);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Call this when leaving focus
-	protected void OnServerEntryFocusLeave(SCR_ServerBrowserEntryComponent serverEntry)
-	{
-		// Invoke focus leave
-		m_OnEntryFocus.Invoke(false, false, false);
-
-		RoomHandlingButtonsEnabling(false, false);
-		RoomHandlingFavoriteEnable(false);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnServerEntryClickInteraction(float multiplier)
-	{
-		//! multiplier value in the action is used to differentiate between single and double click
-
-		SCR_ServerBrowserEntryComponent entry = GetSelectedEntry();
-		if (!entry)
-			return;
-
-		EInputDeviceType lastInputDevice = GetGame().GetInputManager().GetLastUsedInputDevice();
-		if (lastInputDevice == EInputDeviceType.MOUSE && entry != GetEntryUnderCursor())
-			return;
-
-		switch (Math.Floor(multiplier))
-		{
-			case 1: OnServerEntryClick(entry); break;
-			case 2: OnServerEntryDoubleClick(entry); break;
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Join to the room on double click on server entry
-	protected void OnServerEntryDoubleClick(SCR_ServerBrowserEntryComponent entry)
-	{
-		m_bQuickJoin = true;
-
-		// Join
-		if (entry && entry.GetRoomInfo().Joinable())
-			JoinActions_Join();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Join to the room on double click on server entry
-	protected void OnServerEntryClick(SCR_ServerBrowserEntryComponent entry)
-	{
-		//! This means the player moved the mouse to another entry during the small window it takes the component to check for double click...
-		//! ...so another room got focused, but we want the clicked one to be the focused one
-		if (entry && entry != m_EntryInteractible)
-			m_EntryInteractible = entry;
-
-		//! On MOUSE clicking opens the details dialog. On KEYBOARD and GAMEPAD single click is quick join, there's a separate button for details
-		m_bQuickJoin = GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE;
-
-		// Join
-		if (entry && entry.GetRoomInfo().Joinable())
-			JoinActions_Join();
-	}
-
+	// SETUP
 	//------------------------------------------------------------------------------------------------
 	//! Getting reference for all server widget elements
 	protected void SetupHandlers()
 	{
-		// Top filtering widgets --------------------
-
 		// Tab view
 		m_TabView = SCR_TabViewComponent.Cast(m_Widgets.FindHandlerReference(null, m_Widgets.WIDGET_TAB_VIEW, SCR_TabViewComponent));
 		if (m_TabView)
@@ -1197,13 +1110,13 @@ class ServerBrowserMenuUI : MenuRootBase
 		if (m_FilterPanel)
 		{
 			// Invoker
-			m_FilterPanel.m_OnFilterPanelToggled.Insert(OnFilterPanelToggle);
-			m_FilterPanel.m_OnFilterChanged.Insert(OnChangeFilter);
+			m_FilterPanel.GetOnFilterPanelToggled().Insert(OnFilterPanelToggle);
+			m_FilterPanel.GetOnFilterChanged().Insert(OnChangeFilter);
 
 			// Attempt load previous filter setup
 			m_FilterPanel.TryLoad();
 			m_ParamsFilter.SetFilters(m_FilterPanel.GetFilter());
-
+			
 			FilterCrossplayCheck();
 		}
 
@@ -1232,22 +1145,16 @@ class ServerBrowserMenuUI : MenuRootBase
 			null, m_Widgets.WIDGET_SCROLLABLE_LIST, SCR_PooledServerListComponent
 		));
 
-		if (m_ScrollableList)
-			m_Lobby.SetViewSize(m_ScrollableList.GetPageEntriesCount() * 2);
-
 		// Add callbacks
 		array<SCR_ServerBrowserEntryComponent> entries = m_ScrollableList.GetRoomEntries();
 
 		foreach (SCR_ServerBrowserEntryComponent entry : entries)
 		{
 			// Set invoker actions
-			entry.Event_OnFocusEnter.Insert(OnServerEntryFocusEnter);
-			entry.Event_OnFocusLeave.Insert(OnServerEntryFocusLeave);
-			entry.m_OnFavorite.Insert(OnRoomEntrySetFavorite);
-
-			// Tooltip show event
-			SCR_HoverDetectorComponent hoverComp = SCR_HoverDetectorComponent.FindComponent(entry.GetRootWidget());
-			hoverComp.m_OnHoverDetected.Insert(OnTooltipShow);
+			entry.GetOnFocus().Insert(OnServerEntryFocusEnter);
+			entry.GetOnFocusLost().Insert(OnServerEntryFocusLeave);
+			entry.GetOnFavorite().Insert(OnRoomEntrySetFavorite);
+			entry.GetOnMouseInteractionButtonClicked().Insert(OnEntryMouseButton);
 		}
 
 		// Detail screen
@@ -1257,21 +1164,16 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		// Bacis setup and hide
 		if (m_ServerScenarioDetails)
-		{
 			m_ServerScenarioDetails.SetModsManager(m_ModsManager);
-		}
 
 		// Messages
 		m_SimpleMessageWrap = SCR_SimpleMessageComponent.Cast(m_Widgets.FindHandlerReference(null, m_Widgets.WIDGET_MESSAGE_WRAP, SCR_SimpleMessageComponent));
-
 		m_SimpleMessageList = SCR_SimpleMessageComponent.Cast(m_Widgets.FindHandlerReference(null, m_Widgets.WIDGET_MESSAGE_LIST, SCR_SimpleMessageComponent));
 
-		// Bottom navigation bar --------------------
-
 		// Navigation buttons
-		m_BtnJoin = SCR_NavigationButtonComponent.Cast(m_Widgets.FindHandlerReference(
-			null, m_Widgets.WIDGET_BUTTON_JOIN, SCR_NavigationButtonComponent
-		));
+		m_Widgets.m_JoinButton.m_OnActivated.Insert(OnJoinButton);
+		m_Widgets.m_DetailsButton.m_OnActivated.Insert(OnActionDetails);
+		m_Widgets.m_FavoritesButton.m_OnActivated.Insert(OnActionFavorite);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1313,88 +1215,224 @@ class ServerBrowserMenuUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Switch focus to target widget to handling
-	protected void SwitchFocus(Widget wFocused, ESBWidgetFocus focus)
+	//! Switch focus
+	protected void SwitchFocus(SCR_EListMenuWidgetFocus focus, bool force = false)
 	{
-		// Remove if focus is already applied
-		if (m_iFocusedWidgetState == focus)
+		if (m_iFocusedWidgetState == focus && !force)
+			return; 
+
+		Widget focusTarget;
+		
+		switch(focus)
+		{
+			case SCR_EListMenuWidgetFocus.LIST:
+			{
+				if (m_ServerEntry && m_ServerEntry.IsVisible())
+					focusTarget = m_ServerEntry.GetRootWidget();
+				else if (m_ScrollableList)
+					focusTarget = m_ScrollableList.FirstAvailableEntry();
+
+				break;
+			}
+		
+			case SCR_EListMenuWidgetFocus.FILTERING:
+			{
+				focusTarget = m_FilterPanel.GetWidgets().m_FilterButton;
+				break;
+			}
+			
+			case SCR_EListMenuWidgetFocus.SORTING:
+			{
+				focusTarget = m_Widgets.m_wSortSessionFavorite;
+				break;
+			}
+		}
+
+		m_iFocusedWidgetState = focus;
+		
+		if (!focusTarget || !focusTarget.IsVisible())
+		{
+			// Fallback
+			focusTarget = m_Widgets.m_wSortSessionFavorite;
+			m_iFocusedWidgetState = SCR_EListMenuWidgetFocus.SORTING;
+		}
+
+		GetGame().GetWorkspace().SetFocusedWidget(focusTarget);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Find filter by it's internal name define in ServerBrowserFilterSet.conf
+	//! Set filter enabled
+	void ActivateFilter(string filterName, bool enabled, bool processFilters = true)
+	{
+		// Setup filter
+		SCR_FilterEntry filter = new SCR_FilterEntry;
+		filter.m_sInternalName = filterName;
+		filter.SetSelected(true);
+
+		// Register filter
+		m_aFiltersToSelect.Insert(filter);
+
+		// Activate filter if possible
+		if (processFilters)
+			ActivateFiltersFromList();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ActivateFiltersFromList()
+	{
+		// Filters array check
+		if (!m_aFiltersToSelect || m_aFiltersToSelect.IsEmpty())
 			return;
 
-		// Quick focus on widget
-		if (wFocused)
-		{
-			GetGame().GetWorkspace().SetFocusedWidget(wFocused);
+		// Filter panel check
+		if (!m_FilterPanel || !m_ParamsFilter)
 			return;
+
+		// Get filter set
+		ref SCR_FilterSet filterSet = m_FilterPanel.GetFilter();
+		if (!filterSet)
+			return;
+
+		// Check and enable each filter
+		foreach (SCR_FilterEntry filter : m_aFiltersToSelect)
+		{
+			if (!filter)
+				continue;
+
+			// Find filter to select
+			SCR_FilterEntry targetFilter = filterSet.FindFilter(filter.m_sInternalName);
+
+			// Set select if is found
+			if (targetFilter && targetFilter.GetSelected() != filter.GetSelected())
+			{
+				targetFilter.SetSelected(filter.GetSelected());
+				m_FilterPanel.SelectFilter(targetFilter, filter.GetSelected());
+			}
 		}
+
+		// Clear filters
+		m_aFiltersToSelect.Clear();
 
 		// Filter
-		if (m_FilterPanel)
-			m_FilterPanel.ShowFilterListBox(false);
+		m_ParamsFilter.SetFilters(filterSet);
+		Refresh();
+	}
 
-		// Set focus stat
-		m_iFocusedWidgetState = focus;
+	//------------------------------------------------------------------------------------------------
+	//! Separated focus function for later call
+	protected void FocusWidget(Widget w)
+	{
+		GetGame().GetWorkspace().SetFocusedWidget(w);
+	}
 
-		// Setup focus
-		switch (focus)
+	//------------------------------------------------------------------------------------------------
+	protected void CallOnServerListSetPage(int page)
+	{
+		GetGame().GetCallqueue().Remove(OnServerListSetPage);
+		GetGame().GetCallqueue().CallLater(OnServerListSetPage, ROOM_CONTENT_LOAD_DELAY, false, page);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Show message feedback by selected message component
+	//! showWrap = true will hide server list and display message on full layout
+	protected void Messages_ShowMessage(string messageTag, bool showWrap = false)
+	{
+		Widget wrapLayout = m_Widgets.m_wPanelEmpty;
+
+		// Check message component references
+		if (!wrapLayout || !m_SimpleMessageWrap || !m_SimpleMessageList)
 		{
-			// Server list - base
-			case ESBWidgetFocus.SERVER_LIST:
-			{
-				if (m_wFirstServerEntry)
-					wFocused = m_wFirstServerEntry;
-
-				break;
-			}
-
-			// Filtering
-			case ESBWidgetFocus.FILTERING:
-			{
-				if (m_FilterPanel)
-				{
-					m_FilterPanel.ShowFilterListBox(true);
-
-					Widget button = m_FilterPanel.m_Widgets.m_FilterButton;
-					if (button)
-						GetGame().GetWorkspace().SetFocusedWidget(button);
-				}
-				break;
-			}
-
-			// Sorting
-			case ESBWidgetFocus.SORTING:
-			{
-				if (m_SortBar)
-				{
-					//wFocused = m_SortBar.GetLastFocusedButton();m_wRoot
-					wFocused = m_Widgets.m_wSortSessionName;
-				}
-				break;
-			}
-
-			// Search box
-			case ESBWidgetFocus.SEARCH:
-			{
-				if (m_Widgets.m_wSearchEditBox)
-					wFocused = m_Widgets.m_wSearchEditBox;
-				break;
-			}
+			string msg = string.Format("Missing ref - WrapLayout: %1 Wrap: %2, List: %3", wrapLayout, m_SimpleMessageWrap, m_SimpleMessageList);
+			PrintDebug(msg, "Messages_ShowMessage");
+			return;
 		}
 
-		// Switch focus
-		if (wFocused)
+		// Show menu content
+		if (m_Widgets.m_wContent)
+			m_Widgets.m_wContent.SetVisible(!showWrap);
+
+		// Display messages
+		wrapLayout.SetVisible(showWrap);
+		m_SimpleMessageWrap.GetRootWidget().SetVisible(showWrap);
+
+		m_SimpleMessageList.GetRootWidget().SetVisible(!showWrap);
+
+		// Wrapper
+		if (showWrap)
 		{
-			GetGame().GetWorkspace().SetFocusedWidget(wFocused);
-			m_iFocusedWidgetState = focus;
+			m_SimpleMessageWrap.SetContentFromPreset(messageTag);
+			//return;
 		}
-		else
+
+		// List
+		m_SimpleMessageWrap.SetContentFromPreset(messageTag);
+		m_SimpleMessageList.SetContentFromPreset(messageTag);
+		
+		// Hide footer buttons during full layout mode
+		if (m_Widgets.m_RefreshButton)
+			m_Widgets.m_RefreshButton.SetVisible(!showWrap, false);
+		
+		if (m_Widgets.m_DirectJoinButton)
+			m_Widgets.m_DirectJoinButton.SetVisible(!showWrap, false);
+		
+		if (m_Widgets.m_FilterButton)
+			m_Widgets.m_FilterButton.SetVisible(!showWrap, false);
+			
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Hide both message widgets
+	protected void Messages_Hide()
+	{
+		Widget wrapLayout = m_Widgets.m_wPanelEmpty;
+
+		// Check message component references
+		if (!wrapLayout || !m_SimpleMessageWrap || !m_SimpleMessageList)
 		{
-			// Go to server list first entry by default
-			if (m_wFirstServerEntry)
-			{
-				GetGame().GetWorkspace().SetFocusedWidget(m_wFirstServerEntry);
-				m_iFocusedWidgetState = ESBWidgetFocus.SERVER_LIST;
-			}
+			string msg = string.Format("Missing ref - WrapLayout: %1 Wrap: %2, List: %3", wrapLayout, m_SimpleMessageWrap, m_SimpleMessageList);
+			PrintDebug(msg, "Messages_Hide");
+			return;
 		}
+
+		// Hide
+		m_SimpleMessageWrap.GetRootWidget().SetVisible(false);
+		m_SimpleMessageList.GetRootWidget().SetVisible(false);
+
+		wrapLayout.SetVisible(false);
+
+		if (m_Widgets.m_wContent)
+			m_Widgets.m_wContent.SetVisible(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ClearErrorMessage()
+	{
+		m_sErrorMessage = "";
+		m_sErrorMessageGroup = "";
+		m_sErrorMessageDetail = "";
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Based on given boolean favorite nav button is displaying eather add or remove favorite
+	protected void DisplayFavoriteAction(bool favorited)
+	{
+		string label = GetFavoriteLabel(favorited);
+
+		if (m_Widgets && m_Widgets.m_FavoritesButton && m_ServerEntry)
+			m_Widgets.m_FavoritesButton.SetLabel(label);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// CALLBACKS
+	//------------------------------------------------------------------------------------------------
+	//! Call this when server browser is open by loading component
+	//! Start waiting for backend
+	protected void OnOpeningByLoadComponent(int menuPreset)
+	{
+		// Check menu opening
+		if (menuPreset == ChimeraMenuPreset.ServerBrowserMenu)
+			return;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1410,9 +1448,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_ParamsFilter.SetSorting(sortElementName, sortAscending);
 
 		if (!m_bFirstRoomLoad)
-			OnActionRefresh();
-
-		SwitchFocus(null, ESBWidgetFocus.SORTING);
+			Refresh();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1488,38 +1524,28 @@ class ServerBrowserMenuUI : MenuRootBase
 			m_ParamsFilter.SetSelectedTab(id);
 
 		if (!m_bFirstRoomLoad)
-			OnActionRefresh();
+			Refresh();
+		
+		Widget focus = GetGame().GetWorkspace().GetFocusedWidget();
+		if (!focus || !focus.IsVisible())
+			SwitchFocus(SCR_EListMenuWidgetFocus.LIST, true);
 	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Separated focus function for later call
-	protected void FocusWidget(Widget w)
-	{
-		GetGame().GetWorkspace().SetFocusedWidget(w);
-	}
-
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnFilterPanelToggle(bool show)
 	{
+		if (!m_FilterPanel)
+			return;
+		
 		// Focus back to server list
 		if (show || m_Lobby.TotalRoomCount() == 0)
-			return;
-
-		// Focus back to last entry
-		if (m_ServerEntryFocused)
 		{
-			RefocusEntry();
+			SwitchFocus(SCR_EListMenuWidgetFocus.FILTERING);
 			return;
 		}
-
-		// Focus first
-		if (!m_ScrollableList)
-			return;
-
-		Widget first = m_ScrollableList.FirstAvailableEntry();
-		if (first)
-			GetGame().GetWorkspace().SetFocusedWidget(first);
+			
+		// Focus back to last entry
+		SwitchFocus(SCR_EListMenuWidgetFocus.LIST);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1529,7 +1555,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	{
 		// Set filter and refresh
 		m_ParamsFilter.SetFilters(m_FilterPanel.GetFilter());
-		OnActionRefresh();
+		Refresh();
 
 		// Prevent using cross play filter
 		bool hasCrossplay = GetGame().GetPlatformService().GetPrivilege(UserPrivilege.CROSS_PLAY);
@@ -1556,18 +1582,11 @@ class ServerBrowserMenuUI : MenuRootBase
 			if (result != UserPrivilegeResult.ALLOWED)
 			{
 				FilterCrossplayCheck();
-				OnActionRefresh();
+				Refresh();
 			}
 		}
 
 		m_CallbackGetPrivilege.m_OnResult.Remove(OnCrossPlayPrivilegeResultFilter);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void CallOnServerListSetPage(int page)
-	{
-		GetGame().GetCallqueue().Remove(OnServerListSetPage);
-		GetGame().GetCallqueue().CallLater(OnServerListSetPage, ROOM_CONTENT_LOAD_DELAY, false, page);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1586,12 +1605,9 @@ class ServerBrowserMenuUI : MenuRootBase
 		//m_CallbackScroll.m_OnSuccess.Insert(OnScrollSuccess);
 		m_CallbackScroll.GetEventOnResponse().Insert(OnScrollResponse);
 
-		if (m_bRoomsLoaded)
-		{
-			array<Room> rooms = {};
-			m_Lobby.Rooms(rooms);
-			m_Lobby.Scroll(pos, m_CallbackScroll);
-		}
+		array<Room> rooms = {};
+		m_Lobby.Rooms(rooms);
+		m_Lobby.Scroll(pos, m_CallbackScroll);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1625,7 +1641,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	{
 		// Check if loaded room should display details
 		bool loadedRoomFocused = false;
-		if (m_ServerEntryFocused && !m_ScrollableList.IsRoomLoaded(m_ServerEntryFocused))
+		if (m_ServerEntry && !m_ScrollableList.IsRoomLoaded(m_ServerEntry))
 			loadedRoomFocused = true;
 
 		// Update rooms
@@ -1640,7 +1656,7 @@ class ServerBrowserMenuUI : MenuRootBase
 				if (m_ScrollableList)
 					CallOnServerListSetPage(m_ScrollableList.GetCurrentPage());
 				else
-					OnActionRefresh();
+					Refresh();
 			}
 		}
 
@@ -1648,127 +1664,9 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		DisplayRooms(m_aRooms);
 
-		// Clear callback
-		//m_CallbackScroll.m_OnSuccess.Remove(OnScrollSuccess);
-		//m_CallbackScroll.GetEventOnResponse().Remove();
-
-
 		// Focus on new room
 		if (loadedRoomFocused)
-			ReceiveRoomContent(m_LastFocusedRoom, true, m_ServerEntryFocused);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Call this when search is sucessful with favorite filter active
-	protected void OnSearchFoundFavorite()
-	{
-		if (!m_bIsCheckingSpecificfilter)
-		{
-			if (m_Lobby.TotalRoomCount() == 0)
-			{
-				m_bIsCheckingSpecificfilter = true;
-
-				m_ParamsFilter.DefaulFilterFavorite();
-				OnActionRefresh();
-
-				SCR_FilterSet filterSet = m_FilterPanel.GetFilter();
-				m_ParamsFilter.SetFilters(filterSet);
-			}
-		}
-		else
-		{
-			m_OnAutoRefresh.Clear();
-			m_CallbackAutoRefresh.m_OnSuccess.Clear();
-
-			// Show favorite missing specific message
-			if (m_Lobby.TotalRoomCount() == 0)
-				Messages_ShowMessage("NO_FAVORITES");
-			else
-			{
-				Messages_ShowMessage("NO_FILTERED_SERVERS");
-			}
-
-			m_bIsCheckingSpecificfilter = false;
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Call this when search is sucessful with recently played filter active
-	protected void OnSearchFoundRecentlyPlayed()
-	{
-		m_ParamsFilter.DefaulFilterRecentlyPlayed();
-
-		// Is double checked?
-		if (!m_bIsCheckingSpecificfilter)
-		{
-			m_bIsCheckingSpecificfilter = true;
-			OnActionRefresh();
-		}
-		else
-		{
-			// Show favorite missing specific message
-
-			m_bIsCheckingSpecificfilter = false;
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Find filter by it's internal name define in ServerBrowserFilterSet.conf
-	//! Set filter enabled
-	void ActivateFilter(string filterName, bool enabled, bool processFilters = true)
-	{
-		// Setup filter
-		SCR_FilterEntry filter = new SCR_FilterEntry;
-		filter.m_sInternalName = filterName;
-		filter.SetSelected(true);
-
-		// Register filter
-		m_aFiltersToSelect.Insert(filter);
-
-		// Activate filter if possible
-		if (processFilters)
-			ActivateFiltersFromList();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void ActivateFiltersFromList()
-	{
-		// Filters array check
-		if (!m_aFiltersToSelect || m_aFiltersToSelect.IsEmpty())
-			return;
-
-		// Filter panel check
-		if (!m_FilterPanel || !m_ParamsFilter)
-			return;
-
-		// Get filter set
-		ref SCR_FilterSet filterSet = m_FilterPanel.GetFilter();
-		if (!filterSet)
-			return;
-
-		// Check and enable each filter
-		foreach (SCR_FilterEntry filter : m_aFiltersToSelect)
-		{
-			if (!filter)
-				continue;
-
-			// Find filter to select
-			SCR_FilterEntry targetFilter = filterSet.FindFilter(filter.m_sInternalName);
-
-			// Set select if is found
-			if (targetFilter && targetFilter.GetSelected() != filter.GetSelected())
-			{
-				targetFilter.SetSelected(filter.GetSelected());
-				m_FilterPanel.SelectFilter(targetFilter, filter.GetSelected());
-			}
-		}
-
-		// Clear filters
-		m_aFiltersToSelect.Clear();
-
-		// Filter
-		m_ParamsFilter.SetFilters(filterSet);
-		OnActionRefresh();
+			ReceiveRoomContent(m_ServerEntry.GetRoomInfo(), true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1776,13 +1674,17 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected void OnSearchEditBoxConfirm(SCR_EditBoxComponent editBox, string sInput)
 	{
 		m_ParamsFilter.SetSearch(sInput);
-		OnActionRefresh();
+		Refresh();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Favoriting server
-	protected void OnRoomEntrySetFavorite(notnull SCR_ServerBrowserEntryComponent serverEntry, bool favorite)
+	protected void OnRoomEntrySetFavorite(SCR_ListMenuEntryComponent entry, bool favorite)
 	{
+		SCR_ServerBrowserEntryComponent serverEntry = SCR_ServerBrowserEntryComponent.Cast(entry);
+		if(!serverEntry)
+			return;
+			
 		Room roomClicked = serverEntry.GetRoomInfo();
 		if (!roomClicked)
 			return;
@@ -1841,19 +1743,8 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		if (m_ServerScenarioDetails)
 			m_ServerScenarioDetails.DisplayMods();
-
-		// Save room with last loaded info
-		if (m_ServerEntryFocused)
-			m_LastLoadedRoom = m_ServerEntryFocused.GetRoomInfo();
-
-		//! Update Tooltip
-		Widget lineRoot = m_ServerEntryFocused.GetRootWidget();
-		SCR_BrowserHoverTooltipComponent hoverComp = SCR_BrowserHoverTooltipComponent.FindComponent(lineRoot);
-
-		if (!hoverComp || !hoverComp.GetTooltip())
-			return;
-
-		OnTooltipShow(SCR_HoverDetectorComponent.FindComponent(lineRoot), lineRoot);
+		
+		ReceiveRoomContent_Scenario();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1887,8 +1778,8 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Set server details
 		Room roomInfo = null;
 
-		if (m_EntryInteractible)
-			roomInfo = m_EntryInteractible.GetRoomInfo();
+		if (m_ServerEntry)
+			roomInfo = m_ServerEntry.GetRoomInfo();
 
 		if (!roomInfo)
 			return;
@@ -1906,30 +1797,45 @@ class ServerBrowserMenuUI : MenuRootBase
 			// Hide scenario image
 			m_ServerScenarioDetails.SetHideScenarioImg(hideScenario);
 
-			if (scenarioItem) // Vanilla
+			if (scenarioItem)
 			{
 				m_ServerScenarioDetails.SetScenario(scenarioItem);
 			}
-			else // Modded
-			{
-				scenarioItem = MissionFromMod(scenario);
-
-				if (scenarioItem)
-					m_ServerScenarioDetails.SetScenario(scenarioItem);
-				else
-					m_ServerScenarioDetails.DisplayDefaultScenarioImage();
-			}
+			else
+				m_ServerScenarioDetails.DisplayDefaultScenarioImage();
 		}
 
 		//! Update Details Dialog
-		if(m_Dialogs)
+		if (m_Dialogs)
 			m_Dialogs.UpdateRoomDetailsScenarioImage(scenarioItem);
-		
+
 		m_RoomScenario = scenarioItem;
 
 		m_OnScenarioLoad.Invoke(m_RoomScenario);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!  Call this on rejoin dialog cancel
+	protected void OnRejoinCancel()
+	{
+		if (m_Dialogs.GetCurrentKickDialog())
+		{
+			m_Dialogs.GetOnConfirm().Remove(OnLastRoomReconnectConfirm);
+			m_Dialogs.GetOnCancel().Remove(OnRejoinCancel);
+		}
+
+		GetGame().GetCallqueue().Remove(OnLastRoomReconnectConfirm);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Display again old search if servers were overidden by direct join search
+	protected void OnDirectJoinCancel()
+	{
+		// TODO@wernerjak - restore old search
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// HELPERS
 	//------------------------------------------------------------------------------------------------
 	protected MissionWorkshopItem MissionFromMod(Dependency scenario)
 	{
@@ -1956,102 +1862,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		}
 
 		return null;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Focus on last selected server entry -TODO@wernerjak - move this to server list component
-	//! Call this when getting back to server browser - from server details
-	protected void RefocusEntry()
-	{
-		if (m_ServerEntryFocused)
-			GetGame().GetWorkspace().SetFocusedWidget(m_ServerEntryFocused.GetRootWidget());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Set enable for room handling buttons in various states
-	protected void RoomHandlingButtonsEnabling(bool joinEnabled, bool detailsEnabled)
-	{
-		if (!m_BtnJoin || !m_BtnDetails)
-			return;
-
-		m_BtnJoin.SetEnabled(joinEnabled);
-		m_BtnDetails.SetEnabled(detailsEnabled);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void RoomHandlingFavoriteEnable(bool enable)
-	{
-		if (m_BtnFavorite)
-			m_BtnFavorite.SetEnabled(enable);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Show message feedback by selected message component
-	//! showWrap = true will hide server list and display message on full layout
-	protected void Messages_ShowMessage(string messageTag, bool showWrap = false)
-	{
-		Widget wrapLayout = m_Widgets.m_wPanelEmpty;
-
-		// Check message component references
-		if (!wrapLayout || !m_SimpleMessageWrap || !m_SimpleMessageList)
-		{
-			string msg = string.Format("Missing ref - WrapLayout: %1 Wrap: %2, List: %3", wrapLayout, m_SimpleMessageWrap, m_SimpleMessageList);
-			PrintDebug(msg, "Messages_ShowMessage");
-			return;
-		}
-
-		// Show menu content
-		if (m_Widgets.m_wContent)
-			m_Widgets.m_wContent.SetVisible(!showWrap);
-
-		// Display messages
-		wrapLayout.SetVisible(showWrap);
-		m_SimpleMessageWrap.GetRootWidget().SetVisible(showWrap);
-
-		m_SimpleMessageList.GetRootWidget().SetVisible(!showWrap);
-
-		// Wrapper
-		if (showWrap)
-		{
-			m_SimpleMessageWrap.SetContentFromPreset(messageTag);
-			//return;
-		}
-
-		// List
-		m_SimpleMessageWrap.SetContentFromPreset(messageTag);
-		m_SimpleMessageList.SetContentFromPreset(messageTag);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Hide both message widgets
-	protected void Messages_Hide()
-	{
-		Widget wrapLayout = m_Widgets.m_wPanelEmpty;
-
-		// Check message component references
-		if (!wrapLayout || !m_SimpleMessageWrap || !m_SimpleMessageList)
-		{
-			string msg = string.Format("Missing ref - WrapLayout: %1 Wrap: %2, List: %3", wrapLayout, m_SimpleMessageWrap, m_SimpleMessageList);
-			PrintDebug(msg, "Messages_Hide");
-			return;
-		}
-
-		// Hide
-		m_SimpleMessageWrap.GetRootWidget().SetVisible(false);
-		m_SimpleMessageList.GetRootWidget().SetVisible(false);
-
-		wrapLayout.SetVisible(false);
-
-		if (m_Widgets.m_wContent)
-			m_Widgets.m_wContent.SetVisible(true);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! On join callback fail show join error dialog
-	protected void OnJoinFail(int code, int restCode, int apiCode)
-	{
-		if (m_Dialogs)
-			m_Dialogs.DisplayJoinFail(apiCode);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2085,56 +1895,48 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		return (clientV == roomV);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//!  Call this on rejoin dialog cancel
-	protected void OnRejoinCancel()
+	protected string GetFavoriteLabel(bool isFavorite)
 	{
-		OnActionRefresh();
-
-		if (m_Dialogs.GetCurrentKickDialog())
-		{
-			m_Dialogs.m_OnConfirm.Remove(OnLastRoomReconnectConfirm);
-			m_Dialogs.m_OnCancel.Remove(OnRejoinCancel);
-		}
-
-		GetGame().GetCallqueue().Remove(OnLastRoomReconnectConfirm);
+		if (isFavorite)
+			return UIConstants.FAVORITE_LABEL_REMOVE;
+		else
+			return UIConstants.FAVORITE_LABEL_ADD;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Call this to progress to join once all mods are downloaded in join dialogs
-	//! This should be pnly called if dialog is still open
-	protected void OnDialogsHandlerDownloadComplete(Room room)
+	protected SCR_ServerBrowserEntryComponent GetEntryUnderCursor()
 	{
-		JoinProcess_Join(room);
-		//JoinProcess_CheckRoomPasswordProtected(room);
+		Widget w = WidgetManager.GetWidgetUnderCursor();
+
+		if (!w)
+			return null;
+
+		return SCR_ServerBrowserEntryComponent.Cast(w.FindHandler(SCR_ServerBrowserEntryComponent));
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Call this on closing on of join dialog handler dialogs to stop interacting with dialog
-	protected void OnDialogsHandlerClose()
+	protected SCR_ServerBrowserEntryComponent GetSelectedEntry()
 	{
-		// Clean invite
-		if (m_Lobby.GetInviteRoom())
-		{
-			m_Lobby.ClearInviteRoom();
-		}
+		// We are not over a line, use currently focused line
+		Widget wfocused = GetGame().GetWorkspace().GetFocusedWidget();
+		SCR_ServerBrowserEntryComponent comp;
+		if (wfocused)
+			comp = SCR_ServerBrowserEntryComponent.Cast(wfocused.FindHandler(SCR_ServerBrowserEntryComponent));
+
+		EInputDeviceType inputDevice = GetGame().GetInputManager().GetLastUsedInputDevice();
+		bool isCursorOnInnerButton = m_ServerEntry && m_ServerEntry.IsInnerButtonInteraction();
+
+		if (inputDevice == EInputDeviceType.MOUSE && (GetEntryUnderCursor() || isCursorOnInnerButton))
+			return m_ServerEntry;
+
+		return comp;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Display again old search if servers were overidden by direct join search
-	protected void OnDirectJoinCancel()
-	{
-		// TODO@wernerjak - restore old search
-	}
-
 	// API
 	//------------------------------------------------------------------------------------------------
-	Room GetJoiningRoom() { return m_JoiningRoom; }
-
-	//------------------------------------------------------------------------------------------------
-	void SetJoiningRoom(Room room) { m_JoiningRoom = room; }
-
 	//------------------------------------------------------------------------------------------------
 	void FilterScenarioId(string scenarioId)
 	{
@@ -2148,7 +1950,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		if (m_ParamsFilter)
 			m_ParamsFilter.SetHostedScenarioModId(scenarioModId);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Set to find server by scenario id and scenario source mod id
 	static void OpenWithScenarioFilter(string scenarioId, string scenarioModId = string.Empty)
@@ -2156,7 +1958,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		ServerBrowserMenuUI sb = ServerBrowserMenuUI.Cast(GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ServerBrowserMenu));
 		if (sb)
 		{
-			sb.FilterScenarioId(scenarioId);
+ 			sb.FilterScenarioId(scenarioId);
 
 			// Modded
 			if (scenarioModId != string.Empty)
@@ -2187,19 +1989,6 @@ class ServerBrowserMenuUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Call this when server browser is open by loading component
-	//! Start waiting for backend
-	protected void OnOpeningByLoadComponent(int menuPreset)
-	{
-		// Check menu opening
-		if (menuPreset == ChimeraMenuPreset.ServerBrowserMenu)
-			return;
-
-		// Set wait for backemd
-		m_bIsWaitingForBackend = true;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Set message for error dialog
 	//! Error is display if message has text, message is cleared after displaying dialog
 	static void SetErrorMessage(string msg, string group, string details = "")
@@ -2207,94 +1996,33 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_sErrorMessage = msg;
 		m_sErrorMessageGroup = group;
 		m_sErrorMessageDetail = details;
+		
+		m_OnErrorMessageSet.Invoke();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void ClearErrorMessage()
+	static bool IsServerPingAboveThreshold(Room room)
 	{
-		m_sErrorMessage = "";
-		m_sErrorMessageGroup = "";
-		m_sErrorMessageDetail = "";
+		//TODO: unify this check with the value in the filters
+		return room && room.GetPing() >= HIGH_PING_SERVER_THRESHOLD;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	//! Based on given boolean favorite nav button is displaying eather add or remove favorite
-	protected void DisplayFavoriteAction(bool favorited)
-	{
-		string label = GetFavoriteLabel(favorited);
-
-		if (m_BtnFavorite && m_EntryInteractible)
-			m_BtnFavorite.SetLabel(label);
-	}
-
+	// ROOM JOINING PROCESS
 	//------------------------------------------------------------------------------------------------
-	protected string GetFavoriteLabel(bool isFavorite)
-	{
-		if (isFavorite)
-			return FAVORITE_LABEL_REMOVE;
-		else
-			return FAVORITE_LABEL_ADD;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected SCR_ServerBrowserEntryComponent GetEntryUnderCursor()
-	{
-		Widget w = WidgetManager.GetWidgetUnderCursor();
-
-		if (!w)
-			return null;
-
-		return SCR_ServerBrowserEntryComponent.Cast(w.FindHandler(SCR_ServerBrowserEntryComponent));
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected SCR_ServerBrowserEntryComponent GetSelectedEntry()
-	{
-		// We are not over a line, use currently focused line
-		Widget wfocused = GetGame().GetWorkspace().GetFocusedWidget();
-		SCR_ServerBrowserEntryComponent comp;
-		if (wfocused)
-			comp = SCR_ServerBrowserEntryComponent.Cast(wfocused.FindHandler(SCR_ServerBrowserEntryComponent));
-
-		EInputDeviceType inputDevice = GetGame().GetInputManager().GetLastUsedInputDevice();
-
-		if (inputDevice == EInputDeviceType.MOUSE && GetEntryUnderCursor())
-			return m_EntryInteractible;
-
-		return comp;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ServerBrowserMenuUI() {}
-
-
-	void ~ServerBrowserMenuUI() {}
-
-	//------------------------------------------------------------------------------------------------
-	// Room joining process
-	//------------------------------------------------------------------------------------------------
-
-
 	//------------------------------------------------------------------------------------------------
 	//! Action for joining to selected server
 	protected void JoinActions_Join()
 	{
 		// Prevent join if no entry selected
-		if (!m_EntryInteractible)
+		if (!m_ServerEntry)
 		{
 			PrintDebug("Quick join is not possible because there is no selected server", "JoinActions_Join");
 			return;
 		}
 
-		// Loaded mods if interactible is hovered
-		if (m_EntryInteractible != m_ServerEntryFocused)
-		{
-			GetGame().GetWorkspace().SetFocusedWidget(m_EntryInteractible.GetRootWidget());
-			ReceiveRoomContent(m_EntryInteractible.GetRoomInfo(), false, m_EntryInteractible);
-		}
-
 		// Join
-		Room roomToJoin = m_EntryInteractible.GetRoomInfo();
+		Room roomToJoin = m_ServerEntry.GetRoomInfo();
 		if (roomToJoin)
 			JoinProcess_Init(roomToJoin);
 
@@ -2316,8 +2044,8 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Clearup
 		if (m_Dialogs.GetCurrentKickDialog())
 		{
-			m_Dialogs.m_OnConfirm.Remove(OnLastRoomReconnectConfirm);
-			m_Dialogs.m_OnCancel.Remove(OnRejoinCancel);
+			m_Dialogs.GetOnConfirm().Remove(OnLastRoomReconnectConfirm);
+			m_Dialogs.GetOnCancel().Remove(OnRejoinCancel);
 		}
 
 		GetGame().GetCallqueue().Remove(OnLastRoomReconnectConfirm);
@@ -2331,7 +2059,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	//! Initialize joining process to specific room
 	void JoinProcess_FindRoom(string params, EDirectJoinFormats format, bool publicNetwork)
 	{
-		m_DirectJoinParams = new FilteredServerParams;
+		m_DirectJoinParams = new FilteredServerParams();
 
 		// Format
 		switch (format)
@@ -2396,7 +2124,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		if (m_aDirectFoundRooms.Count() == 1)
 		{
 			// Check content of specific server
-			m_ModsManager.DefaultSetup();
+			m_ModsManager.Clear();
 
 			m_RoomToJoin = m_aDirectFoundRooms[0];
 			JoinProcess_Init(m_RoomToJoin);
@@ -2505,10 +2233,9 @@ class ServerBrowserMenuUI : MenuRootBase
 	//! Initialize joining process to specific room
 	void JoinProcess_Init(Room roomToJoin)
 	{
-		// Focus correct room
-		if (m_EntryInteractible != m_LastFocusedRoom)
-			GetGame().GetWorkspace().SetFocusedWidget(m_EntryInteractible.GetRootWidget());
-
+		if (!m_DownloadManager)
+			m_DownloadManager = SCR_DownloadManager.GetInstance();
+		
 		// Set immidiate refresh to receive player count
 		//m_Lobby.SetRefreshRate(1);
 		m_bWaitForRefresh = true;
@@ -2542,35 +2269,28 @@ class ServerBrowserMenuUI : MenuRootBase
 		else
 			JoinProcess_CheckRoomPasswordProtected(m_RoomToJoin);
 
-
-		if (m_Lobby.GetInviteRoom())
-		{
-			PrintDebug("Server browser is joining to invited server!", "JoinProcess_Init");
-		}
-
-		m_Dialogs.m_OnCancel.Insert(OnJoinDialogsClose);
+		m_Dialogs.GetOnCancel().Insert(OnJoinDialogsClose);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Call this to kill joining process at any stage
 	protected void OnJoinDialogsClose()
 	{
-		// Clear joining callbacks
-		m_CallbackJoin.m_OnSuccess.Clear();
-		m_CallbackJoin.m_OnFail.Clear();
-		m_CallbackJoin.m_OnTimeOut.Clear();
+		m_CallbackJoin = null;
 
 		// Clear mods manager callbacks
 		m_ModsManager.GetOnGetAllDependencies().Clear();
 		m_ModsManager.GetOnModsFail().Clear();
+		m_ModsManager.GetOnDependenciesLoadingPrevented().Remove(OnDependenciesLoadingPrevented);
 		m_ModsManager.GetOnGetScenario().Clear();
 
 		// Clear dialog
-		m_Dialogs.m_OnConfirm.Clear();
-		m_Dialogs.m_OnCancel.Clear();
-		m_Dialogs.m_OnDialogClose.Clear();
-		m_Dialogs.m_OnDownloadComplete.Clear();
-		m_Dialogs.m_OnJoinRoomDemand.Clear();
+		m_Dialogs.GetOnConfirm().Clear();
+		m_Dialogs.GetOnCancel().Clear();
+		m_Dialogs.GetOnDialogClose().Clear();
+		m_Dialogs.GetOnDownloadComplete().Clear();
+		m_Dialogs.GetOnDownloadCancelDialogClose().Clear();
+		m_Dialogs.GetOnJoinRoomDemand().Clear();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2593,11 +2313,8 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Chekc match
 		bool versionsMatch = ClientRoomVersionMatch(roomToJoin);
 
-
-		#ifdef SB_DEBUG
-
-		#else
-
+#ifdef SB_DEBUG
+#else
 		// Stop join process with error dialog with wrong version
 		if (!versionsMatch)
 		{
@@ -2605,16 +2322,37 @@ class ServerBrowserMenuUI : MenuRootBase
 			m_Dialogs.DisplayDialog(EJoinDialogState.VERSION_MISMATCH);
 			return;
 		}
-
-		#endif
+#endif
 
 		// Check room password protection
-		JoinProcess_CheckRoomPasswordProtected(roomToJoin);
+		JoinProcess_CheckHighPing(roomToJoin);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Display a warning dialog if the player chose to join a server with high ping
+	protected void JoinProcess_CheckHighPing(Room roomToJoin)
+	{
+		if (IsServerPingAboveThreshold(roomToJoin))
+		{
+			m_Dialogs.SetJoinRoom(roomToJoin);
+			m_Dialogs.DisplayDialog(EJoinDialogState.HIGH_PING_SERVER);
+			m_Dialogs.GetOnConfirm().Insert(OnHighPingServerWarningDialogConfirm);
+			
+			return;
+		}
+		
+		JoinProcess_CheckRoomPasswordProtected(roomToJoin);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnHighPingServerWarningDialogConfirm()
+	{
+		m_Dialogs.GetOnConfirm().Remove(OnHighPingServerWarningDialogConfirm);
+		JoinProcess_CheckRoomPasswordProtected(m_Dialogs.GetJoinRoom());
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Check if room requires password to join
-	//! Open password dialog room is password protected and password is not skipped, otherwiser next step
 	protected void JoinProcess_CheckRoomPasswordProtected(Room roomToJoin)
 	{
 		// Skip password if using direct join code or is invited
@@ -2626,7 +2364,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Next step if no password protection
 		if (!m_RoomToJoin.PasswordProtected() || skipPassword)
 		{
-			//JoinProcess_LoadModContent(roomToJoin);
 			JoinProcess_ShowJoinDetailsDialog(roomToJoin);
 			return;
 		}
@@ -2636,10 +2373,20 @@ class ServerBrowserMenuUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void OnRejoinAuthorizationFailed(string message)
+	{
+		m_PasswordVerification.GetOnFailVerification().Remove(OnRejoinAuthorizationFailed);
+		
+		m_Dialogs.CloseCurrentDialog();
+		JoinProcess_PasswordClearInvokers();
+		GetGame().GetCallqueue().CallLater(JoinProcess_PasswordDialogOpen);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void JoinProcess_PasswordDialogOpen()
 	{
 		m_Dialogs.DisplayDialog(EJoinDialogState.PASSWORD_REQUIRED);
-		m_Dialogs.m_OnCancel.Insert(JoinProcess_PasswordClearInvokers);
+		m_Dialogs.GetOnCancel().Insert(JoinProcess_PasswordClearInvokers);
 
 		m_PasswordVerification.SetupDialog(m_Dialogs.GetCurrentDialog(), m_RoomToJoin);
 		m_PasswordVerification.GetOnVerified().Insert(OnPasswordVerified);
@@ -2648,12 +2395,23 @@ class ServerBrowserMenuUI : MenuRootBase
 
 	//------------------------------------------------------------------------------------------------
 	//! On successfull room password verification continue to cotent handling
-	protected void OnPasswordVerified(RoomPasswordJoinParam passwordParam)
+	protected void OnPasswordVerified(Room room)
 	{
 		JoinProcess_PasswordClearInvokers();
 
-		m_passwordStruct = passwordParam;
+		if (!room)
+		{
+			#ifdef WORKBENCH
+				Print("ServerBrowserMenuUI - OnPasswordVerified() - NULL ROOM");
+			#endif
+			
+			return;
+		}
+		
+		m_RoomToJoin = room;
 		JoinProcess_ShowJoinDetailsDialog(m_RoomToJoin);
+		
+		ReceiveRoomContent(m_RoomToJoin, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2669,9 +2427,74 @@ class ServerBrowserMenuUI : MenuRootBase
 	{
 		m_PasswordVerification.GetOnVerified().Remove(OnPasswordVerified);
 		m_PasswordVerification.GetOnFailVerification().Remove(OnPasswordFailVerification);
-		m_Dialogs.m_OnCancel.Remove(JoinProcess_PasswordClearInvokers);
+		m_Dialogs.GetOnCancel().Remove(JoinProcess_PasswordClearInvokers);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void JoinProcess_ShowJoinDetailsDialog(Room roomToJoin)
+	{
+		// Skip the dialog on double click
+		if (m_bQuickJoin)
+		{
+			JoinProcess_LoadModContent(roomToJoin);
+			return;
+		}
+
+		CreateServerDetailsDialog(roomToJoin);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void CreateServerDetailsDialog(Room roomToJoin)
+	{
+		if (!roomToJoin)
+			return;
+
+		// Create details dialog
+		array<ref SCR_WorkshopItem> items = {};
+		array<Dependency> dependencies = {};
+		roomToJoin.GetItems(dependencies);
+
+		if (m_ModsManager.GetRoomItemsScripted().Count() == dependencies.Count())
+			items = m_ModsManager.GetRoomItemsScripted();
+
+		SCR_ServerDetailsDialog serverDetails = m_Dialogs.CreateServerDetailsDialog(roomToJoin, items, m_OnFavoritesResponse);
+		serverDetails.SetCanJoin(CanJoinRoom(roomToJoin));
+		serverDetails.m_OnFavorites.Insert(OnActionFavorite);
+
+		bool loaded = roomToJoin.IsDownloadListLoaded();
+
+		if (!dependencies.IsEmpty())
+		{
+			//Fill with last loaded mod list
+			if (!roomToJoin.IsDownloadListLoaded())
+				m_ModsManager.GetOnGetAllDependencies().Insert(OnServerDetailModsLoaded);
+			else
+				OnServerDetailModsLoaded();
+		}
+		else
+		{
+			// Fill with emtpy data
+			m_Dialogs.FillRoomDetailsMods({});
+		}
+
+		m_Dialogs.GetCurrentDialog().m_OnConfirm.Insert(JoinProcess_LoadModContent);
+		m_Dialogs.GetCurrentDialog().m_OnClose.Insert(OnServerDetailsClosed);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Call this to fill details mods list
+	protected void OnServerDetailModsLoaded()
+	{
+		m_Dialogs.FillRoomDetailsMods(m_ModsManager.GetRoomItemsScripted(), m_ModsManager);
+		m_ModsManager.GetOnGetAllDependencies().Remove(OnServerDetailModsLoaded);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnServerDetailsClosed()
+	{
+		m_ModsManager.GetOnGetAllDependencies().Remove(OnServerDetailModsLoaded);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Load data about room mods to check which data is client missing
 	//! Show state if mods are already loaded or wait for receiving mods data
@@ -2685,7 +2508,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
 		array<Dependency> deps = {};
 
-		m_RoomToJoin.AllItems(deps);
+		m_RoomToJoin.GetItems(deps);
 
 		if (!mgr.GetUgcPrivilege() && !deps.IsEmpty())
 		{
@@ -2712,9 +2535,9 @@ class ServerBrowserMenuUI : MenuRootBase
 
 	//------------------------------------------------------------------------------------------------
 	protected void JoinProcess_LoadModContentVisualize()
-	{
+	{		
 		// Show state of mods if all loaded
-		if (m_ModsManager.GetModsLoaded())
+		if (m_RoomToJoin.IsDownloadListLoaded())
 		{
 			//SolveJoiningCases(); //TODO@wernerjak - solve joining cases function clearing
 			JoinProcess_CheckModContent();
@@ -2728,25 +2551,11 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Set wait for loading
 		m_ModsManager.GetOnGetAllDependencies().Insert(JoinProcess_CheckModContent);
 		m_ModsManager.GetOnModsFail().Insert(JoinProcess_OnModCheckFailed);
-		m_ModsManager.GetOnDependenciesLoadingPrevented().Insert(JoinProcess_OnDependenciesLoadingPrevented);
-		
-		//ReceiveRoomContent(m_RoomToJoin, true, m_ServerEntryFocused);
-		m_ModsManager.ReceiveRoomContentData(m_RoomToJoin);
+		m_ModsManager.GetOnDependenciesLoadingPrevented().Insert(OnDependenciesLoadingPrevented);
+
+		m_ModsManager.ReceiveRoomMods(m_RoomToJoin);
 	}
 
-	//------------------------------------------------------------------------------------------------
-	protected void JoinProcess_ShowJoinDetailsDialog(Room roomToJoin)
-	{
-		// Skip the dialog on double click
-		if (m_bQuickJoin)
-		{
-			JoinProcess_LoadModContent(roomToJoin);
-			return;
-		}
-
-		CreateServerDetailsDialog(roomToJoin);
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	protected void JoinProcess_OnModCheckFailed(Room room)
 	{
@@ -2755,26 +2564,18 @@ class ServerBrowserMenuUI : MenuRootBase
 		
 		m_ModsManager.GetOnGetAllDependencies().Remove(JoinProcess_CheckModContent);
 		m_ModsManager.GetOnModsFail().Remove(JoinProcess_OnModCheckFailed);
-		m_ModsManager.GetOnDependenciesLoadingPrevented().Remove(JoinProcess_OnDependenciesLoadingPrevented);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void JoinProcess_OnDependenciesLoadingPrevented(Room room, array<ref SCR_WorkshopItem> dependencies)
-	{
-		SCR_AddonListDialog dialog = SCR_AddonListDialog.CreateItemsList(dependencies, "cancel_download_confirmation", SCR_WorkshopUiCommon.DIALOGS_CONFIG);
-		dialog.m_OnConfirm.Insert(OnDependenciesCancelDownloadConfirm);
-		//dialog.m_OnClose.Insert(OnCancelDownloadDialogClose);
-		
-		m_ModsManager.GetOnGetAllDependencies().Remove(JoinProcess_CheckModContent);
-		m_ModsManager.GetOnModsFail().Remove(JoinProcess_OnModCheckFailed);
-		m_ModsManager.GetOnDependenciesLoadingPrevented().Remove(JoinProcess_OnDependenciesLoadingPrevented);
+		m_ModsManager.GetOnDependenciesLoadingPrevented().Remove(OnDependenciesLoadingPrevented);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnDependenciesCancelDownloadConfirm(SCR_ConfigurableDialogUi dialog)
+	protected void OnDependenciesLoadingPrevented(Room room, array<ref SCR_WorkshopItem> dependencies)
 	{
-		SCR_DownloadManager.GetInstance().EndAllDownloads();
-		JoinProcess_LoadModContentVisualize();
+		m_Dialogs.CloseCurrentDialog();
+		
+		if (room != m_RoomToJoin)
+			return;
+	
+		JoinProcess_CheckModContent();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2783,13 +2584,14 @@ class ServerBrowserMenuUI : MenuRootBase
 	//! Stop progess if room mods are restricted
 	protected void JoinProcess_CheckModContent()
 	{
-		Room roomToJoin = m_RoomToJoin;
-		m_Dialogs.SetJoinRoom(roomToJoin);
+		m_Dialogs.CloseCurrentDialog();
+		m_Dialogs.SetJoinRoom(m_RoomToJoin);
 
 		// Remove mods check actions
 		m_ModsManager.GetOnGetAllDependencies().Remove(JoinProcess_CheckModContent);
 		m_ModsManager.GetOnModsFail().Remove(JoinProcess_OnModCheckFailed);
-
+		m_ModsManager.GetOnDependenciesLoadingPrevented().Remove(OnDependenciesLoadingPrevented);
+		
 		// Restricted content check
 		array<ref SCR_WorkshopItem> items = m_ModsManager.GetRoomItemsScripted();
 
@@ -2804,56 +2606,135 @@ class ServerBrowserMenuUI : MenuRootBase
 			return;
 		}
 
-		// Split items
-		array<ref SCR_WorkshopItem> updated = SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.NO_PROBLEMS);
-		array<ref SCR_WorkshopItem> outdated = SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.NOT_LOCAL_VERSION_MATCH_DEPENDENCY);
+		// Get necessary downloads
+		m_aRequiredMods = SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.NOT_LOCAL_VERSION_MATCH_DEPENDENCY);
 
-		// Join if room content is matching
-		if (outdated.IsEmpty())
+		// If no downloads are required proceed with the joining process, otherwise stop unrelated downloads and get the required addons to join
+		if (!m_aRequiredMods.IsEmpty())
 		{
-			JoinProcess_Join(roomToJoin);
+			m_aUnrelatedDownloads = m_DownloadManager.GetUnrelatedDownloads(items);
+			
+			if (!m_aUnrelatedDownloads.IsEmpty())
+				JoinProcess_DisplayUnrelatedDownloadsWarning();
+			else
+				JoinProcess_DownloadRequiredMods();
+			
 			return;
 		}
 		
-		// Start downloading
-		SCR_DownloadManager.GetInstance().DownloadItems(outdated);
+		JoinProcess_CheckRunningDownloads();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Display a dialog asking for unrelated download stop confirmation (this includes wrong versions of required mods)
+	protected void JoinProcess_DisplayUnrelatedDownloadsWarning()
+	{	
+		m_Dialogs.DisplayJoinDownloadsWarning(m_aUnrelatedDownloads, SCR_EJoinDownloadsConfirmationDialogType.UNRELATED);
+		m_Dialogs.GetOnConfirm().Insert(JoinProcess_StopDownloadingUnrelatedMods);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Pause existing downloads that are unrelated to the specific server we want to join
+	protected void JoinProcess_StopDownloadingUnrelatedMods()
+	{	
+		m_Dialogs.GetOnConfirm().Remove(JoinProcess_StopDownloadingUnrelatedMods);
+		
+		if (!m_DownloadManager || m_DownloadManager.GetDownloadQueue().IsEmpty())
+		{
+			OnAllUnrelatedDownloadsStopped();
+			return;
+		}
 
-		m_Dialogs.DisplayDialog(EJoinDialogState.MODS_DOWNLOADING);
+		// Stop downloads		
+		m_DownloadManager.GetOnAllDownloadsStopped().Insert(OnAllUnrelatedDownloadsStopped);
+
+		foreach (SCR_WorkshopItemActionDownload download : m_aUnrelatedDownloads)
+		{
+			download.Cancel();
+		}
+		
+		// Display filler dialog
+		m_Dialogs.DisplayDialog(EJoinDialogState.UNRELATED_DOWNLOADS_CANCELING);
+		
+		//TODO: pause downloads instead of clearing them, and allow the player to resume them once out of multiplayer games
+		//TODO: give the option to keep downloading while playing multiplayer?
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAllUnrelatedDownloadsStopped()
+	{
+		if (m_DownloadManager)
+			m_DownloadManager.GetOnAllDownloadsStopped().Remove(OnAllUnrelatedDownloadsStopped);
+		
+		// Must call the next frame or the download will instantly fail
+		GetGame().GetCallqueue().CallLater(JoinProcess_CloseUnrelatedDownloadsCancelingDialog);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Call join if all clint pass through all check to join server
-	protected void JoinProcess_Join(Room roomToJoin)
+	protected void JoinProcess_CloseUnrelatedDownloadsCancelingDialog()
+	{
+		m_Dialogs.GetCurrentDialog().Close();
+		JoinProcess_DownloadRequiredMods();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Start downloading necessary mods for the server
+	protected void JoinProcess_DownloadRequiredMods()
+	{
+		if (m_DownloadManager)
+			m_DownloadManager.DownloadItems(m_aRequiredMods);
+		
+		m_Dialogs.DisplayJoinDownloadsWarning(m_DownloadManager.GetDownloadQueue(), SCR_EJoinDownloadsConfirmationDialogType.REQUIRED);
+		
+		// Display Download Manager dialog
+		m_Dialogs.GetOnDownloadComplete().Insert(JoinProcess_OnJoinRoomDemand);
+		m_Dialogs.GetOnCancel().Insert(OnDownloadRequiredModsCancel);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDownloadRequiredModsCancel()
+	{
+		m_Dialogs.GetOnCancel().Remove(OnDownloadRequiredModsCancel);
+		
+		if (m_DownloadManager)
+		{
+			m_DownloadManager.EndAllDownloads();
+			m_DownloadManager.ClearFailedDownloads();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void JoinProcess_OnJoinRoomDemand(Room roomToJoin)
+	{
+		m_Dialogs.GetOnDownloadComplete().Remove(JoinProcess_OnJoinRoomDemand);
+		
+		m_RoomToJoin = roomToJoin;
+		JoinProcess_CheckRunningDownloads();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Final step: display a warning dialog if there are still downloads running, as these will be stopped
+	protected void JoinProcess_CheckRunningDownloads()
 	{
 		int nCompleted, nTotal;
 		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
 
-		if (mgr)
-			mgr.GetDownloadQueueState(nCompleted, nTotal);
+		if (m_DownloadManager)
+			m_DownloadManager.GetDownloadQueueState(nCompleted, nTotal);
 
-		if (nTotal > 0)
+		if (nTotal <= 0)
 		{
-			SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.CreateFromPreset(m_Dialogs.CONFIG_DIALOGS, JOIN_WHILE_DOWNLOADING);
-			dialog.m_OnConfirm.Insert(OnInteruptDownloadConfirm);
-			dialog.m_OnClose.Insert(OnInteruptDownloadClose);
+			JoinProcess_Join();
 			return;
 		}
+		
+		m_Dialogs.DisplayJoinDownloadsWarning(m_DownloadManager.GetDownloadQueue(), SCR_EJoinDownloadsConfirmationDialogType.REQUIRED);
+		m_Dialogs.GetOnConfirm().Insert(OnInterruptDownloadConfirm);
 
-		// Join server
-		SetJoiningRoom(roomToJoin);
-		roomToJoin.Join(m_CallbackJoin, m_passwordStruct);
-
-		// Add join callbacks
-		m_CallbackJoin.m_OnSuccess.Insert(JoinProcess_OnJoinSuccess);
-		m_CallbackJoin.m_OnFail.Insert(JoinProcess_OnJoinFail);
-		m_CallbackJoin.m_OnTimeOut.Insert(JoinProcess_OnJoinTimeout);
-
-		if (m_Dialogs)
-			m_Dialogs.DisplayDialog(EJoinDialogState.JOIN);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnInteruptDownloadConfirm()
+	protected void OnInterruptDownloadConfirm()
 	{
 		if (!m_RoomToJoin)
 		{
@@ -2861,31 +2742,33 @@ class ServerBrowserMenuUI : MenuRootBase
 			return;
 		}
 
+		// TODO: pause and cache instead of canceling
 		// Cancel downloading
 		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
 		if (mgr)
 			mgr.EndAllDownloads();
 
-		// Join server
-		SetJoiningRoom(m_RoomToJoin);
-		m_RoomToJoin.Join(m_CallbackJoin, m_passwordStruct);
-
+		JoinProcess_Join();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Join ...Finally!
+	protected void JoinProcess_Join()
+	{
 		// Add join callbacks
+		if (!m_CallbackJoin)
+			m_CallbackJoin = new ServerBrowserCallback;
 		m_CallbackJoin.m_OnSuccess.Insert(JoinProcess_OnJoinSuccess);
 		m_CallbackJoin.m_OnFail.Insert(JoinProcess_OnJoinFail);
 		m_CallbackJoin.m_OnTimeOut.Insert(JoinProcess_OnJoinTimeout);
-
+		
+		// Join server
+		m_RoomToJoin.Join(m_CallbackJoin, m_JoinData);
+		
 		if (m_Dialogs)
 			m_Dialogs.DisplayDialog(EJoinDialogState.JOIN);
 	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnInteruptDownloadClose()
-	{
-		if (m_Dialogs)
-			m_Dialogs.CloseCurrentDialog();
-	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Call this if joining to room was successful
 	//! Connect to the server
@@ -2893,10 +2776,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	{
 		// Connect - gathers mods needed and calls for a reload
 		if (!GameStateTransitions.RequestConnectViaRoom(m_RoomToJoin))
-		{
-			// Transition is not guaranteed
-			return;
-		}
+			return; // Transition is not guaranteed
 
 		// Save menu to reopen
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ServerBrowserMenu);
@@ -2905,14 +2785,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_RoomToJoin = null;
 		GetGame().GetMenuManager().CloseAllMenus();
 		GetGame().GetBackendApi().GetWorkshop().Cleanup();
-
-		// Clean invite
-		if (m_Lobby.GetInviteRoom())
-		{
-			m_Lobby.ClearInviteRoom();
-
-			PrintDebug("Succesful join to invited server and cleaning the server!", "JoinProcess_OnJoinSuccess");
-		}
 
 		JoinProcess_CleanJoinCallback();
 	}
@@ -2925,24 +2797,30 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Server is full
 		if (apiCode == EApiCode.EACODE_ERROR_MP_ROOM_IS_FULL)
 		{
-			if (m_Dialogs)
-			{
-				m_Dialogs.m_OnJoinRoomDemand.Insert(JoinProcess_Join);
-
-				m_Dialogs.SetJoinRoom(m_JoiningRoom);
-				m_Dialogs.DisplayDialog(EJoinDialogState.QUEUE_WAITING);
-			}
-
 			// Clear
 			JoinProcess_CleanJoinCallback();
+			
+			if (m_Dialogs)
+			{
+				m_Dialogs.SetJoinRoom(m_RoomToJoin);
+				m_Dialogs.GetOnJoinRoomDemand().Insert(JoinProcess_OnJoinRoomDemand);
+				
+				m_Dialogs.DisplayDialog(EJoinDialogState.QUEUE_WAITING);
+				GetGame().GetBackendApi().GetClientLobby().SetRefreshCallback(m_CallbackAutoRefresh);
+			}
 			return;
 		}
-
+		
 		// Fail dialog
 		if (m_Dialogs)
 		{
 			m_Dialogs.CloseCurrentDialog();
-			m_Dialogs.DisplayJoinFail(apiCode);
+			
+			// Banned
+			if (!m_JoinData.scope.IsEmpty())
+				m_Dialogs.DisplayJoinBan(m_JoinData);
+			else
+				m_Dialogs.DisplayJoinFail(apiCode);
 		}
 
 		// Try password again
@@ -2965,16 +2843,16 @@ class ServerBrowserMenuUI : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void JoinProcess_CleanJoinCallback()
 	{
-		m_CallbackJoin.m_OnSuccess.Remove(JoinProcess_OnJoinSuccess);
-
-		m_CallbackJoin.m_OnFail.Remove(JoinProcess_OnJoinFail);
-		m_CallbackJoin.m_OnTimeOut.Remove(JoinProcess_OnJoinTimeout);
+		m_CallbackJoin = null;
 
 		// Dialogs
-		m_Dialogs.m_OnJoinRoomDemand.Remove(JoinProcess_Join);
-		m_Dialogs.GetOnCloseAll().Remove(JoinProcess_CleanJoinCallback);
+		m_Dialogs.GetOnJoinRoomDemand().Remove(JoinProcess_OnJoinRoomDemand);
+		m_Dialogs.GetOnCancel().Remove(JoinProcess_CleanJoinCallback);
 
-		m_Dialogs.m_OnCancel.Remove(OnJoinDialogsClose);
+		m_Dialogs.GetOnCancel().Remove(OnJoinDialogsClose);
+		
+		ClientLobbyApi lobby = GetGame().GetBackendApi().GetClientLobby();
+		lobby.ClearInviteRoom();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2990,20 +2868,15 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_Dialogs.SetModManager(m_ModsManager);
 
 		// Invokers
-		m_Dialogs.m_OnDownloadComplete.Clear();
-		m_Dialogs.m_OnDownloadComplete.Insert(OnDialogsHandlerDownloadComplete);
-		m_Dialogs.GetOnCloseAll().Insert(JoinProcess_CleanJoinCallback);
+		m_Dialogs.GetOnDownloadComplete().Clear();
+		m_Dialogs.GetOnCancel().Insert(JoinProcess_CleanJoinCallback);
 
-		m_aSearchCallbacks.Clear();
+		m_CallbackLastSearch = null;
 	}
 
-
 	//------------------------------------------------------------------------------------------------
-	//! Privileges handling
+	//! PRIVILEGES HANDLING
 	//------------------------------------------------------------------------------------------------
-
-	protected ref SCR_ScriptPlatformRequestCallback m_CallbackGetPrivilege;
-
 	//------------------------------------------------------------------------------------------------
 	//! Attempt to allow MP privilege
 	protected void NegotiateMPPrivilegeAsync()
@@ -3047,7 +2920,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	{
 		// Sucessful
 		if (privilege == UserPrivilege.MULTIPLAYER_GAMEPLAY && result == UserPrivilegeResult.ALLOWED)
-			OnActionRefresh();
+			Refresh();
 
 		m_CallbackGetPrivilege.m_OnResult.Remove(OnMPPrivilegeResult);
 	}
@@ -3057,15 +2930,14 @@ class ServerBrowserMenuUI : MenuRootBase
 	{
 		// Sucessful
 		if (privilege == UserPrivilege.CROSS_PLAY && result == UserPrivilegeResult.ALLOWED)
-			OnActionRefresh();
+			Refresh();
 
 		m_CallbackGetPrivilege.m_OnResult.Remove(OnCrossPlayPrivilegeResult);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Custom debuging
+	// DEBUG
 	//------------------------------------------------------------------------------------------------
-
 	//------------------------------------------------------------------------------------------------
 	//! Custom debug print displayed with -scrDefine=SB_DEBUG argument
 	protected void PrintDebug(string msg, string functionName = string.Empty)
@@ -3080,7 +2952,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		PrintFormat("[ServerBrowserMenuUI]%1 -- Msg: %2", fncStr, msg);
 		#endif
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 //! Overrided GetRoomsIds class to manipulation in script
@@ -3100,22 +2972,4 @@ class SCR_GetRoomsIds extends GetRoomsIds
 	{
 		roomIds.Clear();
 	}
-};
-
-//------------------------------------------------------------------------------------------------
-enum ESBWidgetFocus
-{
-	SERVER_LIST = 0,
-	FILTERING = 1,
-	SORTING = 2,
-	SEARCH = 3
-};
-
-//------------------------------------------------------------------------------------------------
-enum ESBServerFeedback
-{
-	LOADING_SERVERS,
-	NO_SERVERS,
-	BACKED_ERROR,
-	SERVER_BROWSER
-};
+}

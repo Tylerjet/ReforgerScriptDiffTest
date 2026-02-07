@@ -302,7 +302,7 @@ class SCR_BarracksComponent: SCR_ServicePointComponent
 		if (!ai)
 			return;
 		
-		group.AddAIEntityToGroup(ai, index);
+		group.AddAIEntityToGroup(ai);
 	}
 	
 	//------------------------------------------------------------------------------------------------

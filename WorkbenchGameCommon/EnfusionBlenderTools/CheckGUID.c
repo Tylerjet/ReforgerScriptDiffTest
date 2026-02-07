@@ -30,18 +30,13 @@ class CheckGUID: NetApiHandler
 		CheckGUIDRequest req = CheckGUIDRequest.Cast(request);
 		CheckGUIDResponse response = new CheckGUIDResponse();		
 		
-		if(req.matName.Contains("_"))
+
+		ResourceName guid = "{" + req.matName + "}";
+		string resName = Workbench.GetResourceName(guid);
+
+		if(resName != guid && guid.Length() == 18)
 		{
-			ResourceName relPath = "{" + req.matName.Substring(req.matName.LastIndexOf("_")+1, req.matName.Length() - 1 - req.matName.LastIndexOf("_")) + "}";
-			if(relPath.Length() == 18)
-			{
-				string resName = Workbench.GetResourceName(relPath);
-				//If getResourceName won't find GUID it will print the same GUID as it get
-				if(relPath != resName)
-				{
-					response.exists = true;
-				}
-			}
+			response.exists = true;
 		}
 		
 		return response;

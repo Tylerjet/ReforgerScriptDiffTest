@@ -3,12 +3,25 @@ class KeybindMenu : DialogUI
 	protected static ref InputBinding s_Binding;
 	protected SCR_KeybindSetting m_KeybindMenuComponent;
 	
+	protected RichTextWidget m_wActionRowName;
+	
 	protected ref ScriptInvoker m_OnKeyCaptured;
 
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuOpen()
+	{
+		super.OnMenuOpen();
+		
+		m_wActionRowName = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("ActionRowName"));
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
 	{
 		super.OnMenuUpdate(tDelta);
+		
+		GetGame().GetInputManager().ActivateContext("InteractableDialogContext");
+		
 		if (!s_Binding)
 			return;
 
@@ -23,7 +36,7 @@ class KeybindMenu : DialogUI
 			CloseAnimated();
 		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override protected void OnCancel()
 	{
@@ -40,6 +53,13 @@ class KeybindMenu : DialogUI
 		GetGame().GetInputManager().AddActionListener("MenuBackKeybind", EActionTrigger.DOWN, CancelCapture);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void SetActionRowName(string name)
+	{
+		if (m_wActionRowName)
+			m_wActionRowName.SetText(name);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void CancelCapture()
 	{

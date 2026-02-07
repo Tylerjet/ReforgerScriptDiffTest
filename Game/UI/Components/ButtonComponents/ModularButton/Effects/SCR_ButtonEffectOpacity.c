@@ -2,7 +2,7 @@
 Effect which animated opacity of the target widget.
 */
 
-[BaseContainerProps(), SCR_ButtonEffectTitleAttribute("Opacity", "m_sWidgetName")]
+[BaseContainerProps(configRoot : true), SCR_ButtonEffectTitleAttribute("Opacity", "m_sWidgetName")]
 class SCR_ButtonEffectOpacity : SCR_ButtonEffectWidgetBase
 {
 	[Attribute(defvalue: "0.2", UIWidgets.EditBox, "Duration of animation")]

@@ -11,9 +11,6 @@ class SCR_ContentBrowser_ScenarioSubMenuWidgets
 	HorizontalLayoutWidget m_SortingHeader;
 	SCR_SortHeaderComponent m_SortingHeaderComponent;
 
-	ButtonWidget m_SortNameButton;
-	SCR_SortElementComponent m_SortNameButtonComponent;
-
 	ScrollLayoutWidget m_ScenarioScroll;
 	SCR_GamepadScrollComponent m_ScenarioScrollComponent;
 
@@ -41,9 +38,6 @@ class SCR_ContentBrowser_ScenarioSubMenuWidgets
 
 		m_SortingHeader = HorizontalLayoutWidget.Cast(root.FindWidget("Panels.m_LeftPanel.VerticalLayout0.TopBarHeight.TopBar.Content.m_SortingHeader"));
 		m_SortingHeaderComponent = SCR_SortHeaderComponent.Cast(m_SortingHeader.FindHandler(SCR_SortHeaderComponent));
-
-		m_SortNameButton = ButtonWidget.Cast(root.FindWidget("Panels.m_LeftPanel.VerticalLayout0.TopBarHeight.TopBar.Content.m_SortingHeader.m_SortNameButton"));
-		m_SortNameButtonComponent = SCR_SortElementComponent.Cast(m_SortNameButton.FindHandler(SCR_SortElementComponent));
 
 		m_ScenarioScroll = ScrollLayoutWidget.Cast(root.FindWidget("Panels.m_LeftPanel.VerticalLayout0.Content.m_ScenarioScroll"));
 		m_ScenarioScrollComponent = SCR_GamepadScrollComponent.Cast(m_ScenarioScroll.FindHandler(SCR_GamepadScrollComponent));

@@ -29,6 +29,8 @@ class PerceptionComponent: AIComponentEntity
 	proto external void SetPerceptionFactor(float value);
 	// Returns the desired update interval of Perception Component. It depends on LOD level.
 	proto external float GetUpdateInterval();
+	proto external IEntity GetFriendlyInLineOfFire();
+	proto external void SetFriendlyFireCheck(bool on);
 }
 
 /*!

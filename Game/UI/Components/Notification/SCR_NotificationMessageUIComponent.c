@@ -98,7 +98,7 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 			ImageWidget icon = ImageWidget.Cast(m_wRoot.FindAnyWidget(m_sIcon));
 			if (icon)
 			{
-				if (uiInfo.GetIconPath() != string.Empty)
+				if (uiInfo.HasIcon())
 					uiInfo.SetIconTo(icon);
 				else 
 					icon.SetVisible(false);

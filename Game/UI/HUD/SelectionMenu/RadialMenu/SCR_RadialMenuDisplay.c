@@ -75,6 +75,9 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 	[Attribute(desc: "Widget name with breadcrumbs component to find reference for breadcrumbs")]
 	protected string m_sBreadCrumbs;
 
+	[Attribute("ImgInnerBackground", desc: "Name of image widget for inner circle background")]
+	protected string m_sInnerBackround;
+	
 	[Attribute(desc: "Widget holding icon and shadow of crosshair")]
 	protected string m_sCrosshairWrap;
 
@@ -119,6 +122,7 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 	protected TextWidget m_wSelectedName;
 	protected TextWidget m_wActionHint;
 	protected TextWidget m_wDescription;
+	protected ImageWidget m_wInnerBackround;
 	protected Widget m_wCrosshairWrap;
 	protected BlurWidget m_wBlur;
 	
@@ -163,6 +167,7 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 
 		m_wActionHint = TextWidget.Cast(GetRootWidget().FindAnyWidget(m_sActionHint));
 
+		m_wInnerBackround = ImageWidget.Cast(GetRootWidget().FindAnyWidget(m_sInnerBackround));
 		m_wCrosshairWrap = GetRootWidget().FindAnyWidget(m_sCrosshairWrap);
 		m_wBlur = BlurWidget.Cast(GetRootWidget().FindAnyWidget(m_sBlur));
 
@@ -265,7 +270,10 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 			radialInputs = SCR_RadialMenuControllerInputs.Cast(m_RadialMenu.GetControllerInputs());
 		
 		if (radialInputs)
+		{
 			ShowCrosshair(radialInputs.m_bShowCrosshair);
+			ShowInnerBackground(radialInputs.m_bShowInnerBackground);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -280,8 +288,11 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 
 		float sizeX, sizeY;
 		m_wBase.GetScreenSize(sizeX, sizeY);
-
-		m_RadialMenu.SetMenuCenterPos(Vector(posX + sizeX * 0.5, posY + sizeY * 0.5, 0));
+		
+		float x = posX + sizeX * 0.5;
+		float y = posY + sizeY * 0.5;
+		m_RadialMenu.SetMenuCenterPos(Vector(x, y, 0));
+		GetGame().GetInputManager().SetCursorPosition(x, y);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -291,7 +302,7 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 			return;
 		
 		if (m_RadialMenu.GetEntryPerformed() && !m_bFastFadeOnPerform)
-			Show(false, UIConstants.FADE_RATE_SLOW, EAnimationCurve.EASE_IN_EXPO);
+			Show(false, UIConstants.FADE_RATE_DEFAULT, EAnimationCurve.EASE_IN_EXPO);
 		else
 			Show(false, UIConstants.FADE_RATE_FAST);
 	}
@@ -790,6 +801,13 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 			m_wSelectedIndicatorFeedback.SetMaskProgress(range);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void ShowInnerBackground(bool show)
+	{
+		if (m_wInnerBackround)
+			m_wInnerBackround.SetVisible(show);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void ShowCrosshair(bool show)
 	{

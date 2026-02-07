@@ -7,6 +7,9 @@ Can be used for AI (m_iParam1) killing player Character (m_iParam2)
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(ENotification, "m_NotificationKey")]
 class SCR_NotificationEditableEntityTargetPlayer : SCR_NotificationPlayerTargetPlayer
 {
+	[Attribute("0", desc: "If true will get Character name (first, alias and surname) if the entity is a NPC otherwise will get the entity type name eg: Rifleman")]
+	protected bool m_bGetCharacterName;
+	
 	override string GetText(SCR_NotificationData data)
 	{		
 		int entityID, targetPlayerID;
@@ -14,7 +17,7 @@ class SCR_NotificationEditableEntityTargetPlayer : SCR_NotificationPlayerTargetP
 
 		string entityName, targetPlayerName;
 		data.GetNotificationTextEntries(entityName, targetPlayerName);
-		if (!GetEditableEntityName(entityID, entityName) || !GetPlayerName(targetPlayerID, targetPlayerName))
+		if (!GetEditableEntityName(entityID, entityName, m_bGetCharacterName) || !GetPlayerName(targetPlayerID, targetPlayerName))
 			return string.Empty;
 		
 		data.SetNotificationTextEntries(entityName, targetPlayerName);

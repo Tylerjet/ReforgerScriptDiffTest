@@ -11,11 +11,13 @@ class SCR_RadialMenuGameModeComponent : ScriptComponent
 	protected ref SCR_RadialMenu m_Menu;
 
 	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
+	void Update(float timeSlice)
 	{
+		if (System.IsConsoleApp())
+			return;
+		
 		if (!m_Menu)
 		{
-			ClearEventMask(owner, EntityEvent.FRAME);
 			Print("[SCR_RadialMenuGameModeComponent] - Radial menu not assigned! Can't update!", LogLevel.WARNING);
 			return;
 		}
@@ -26,12 +28,37 @@ class SCR_RadialMenuGameModeComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		SetEventMask(owner, EntityEvent.FRAME);
+		ConnectToRadialMenuSystem();
+	}
+	
+	override void OnDelete(IEntity owner)
+	{
+		DisconnectFromRadialMenuSystem();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	SCR_RadialMenu GetMenu()
 	{
 		return m_Menu;
+	}
+	
+	protected void ConnectToRadialMenuSystem()
+	{
+		World world = GetOwner().GetWorld();
+		RadialMenuSystem updateSystem = RadialMenuSystem.Cast(world.FindSystem(RadialMenuSystem));
+		if (!updateSystem)
+			return;
+		
+		updateSystem.Register(this);
+	}
+	
+	protected void DisconnectFromRadialMenuSystem()
+	{
+		World world = GetOwner().GetWorld();
+		RadialMenuSystem updateSystem = RadialMenuSystem.Cast(world.FindSystem(RadialMenuSystem));
+		if (!updateSystem)
+			return;
+		
+		updateSystem.Unregister(this);
 	}
 };

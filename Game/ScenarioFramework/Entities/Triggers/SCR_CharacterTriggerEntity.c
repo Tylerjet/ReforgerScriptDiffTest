@@ -15,18 +15,24 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 {
 	[Attribute(desc: "Faction which is used for area control calculation. Leave empty for any faction.", category: "Trigger")]
 	protected FactionKey 		m_sOwnerFactionKey;
-
+	
 	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(TA_EActivationPresence), category: "Trigger")]
 	protected TA_EActivationPresence	m_eActivationPresence;
+	
+	[Attribute(desc: "Fill the entity names here for detection. Is combined with other filters using OR.", category: "Trigger")]
+	protected ref array<string> 	m_aSpecificEntityNames;
 
-	[Attribute(desc: "If SPECIFIC_CLASS is selected, fill the class name here.", category: "Trigger")]
+	[Attribute(desc: "Fill the class names here for detection. Is combined with other filters using OR.", category: "Trigger")]
 	protected ref array<string> 	m_aSpecificClassNames;
 
-	[Attribute(desc: "If SPECIFIC_PREFAB_NAME is selected, fill the class name here.", category: "Trigger")]
-	protected ref array<ResourceName> 	m_aSpecificPrefabNames;
+	[Attribute(desc: "Which Prefabs and if their children will be detected by the trigger. Is combined with other filters using OR.", category: "Trigger")]
+	protected ref array<ref SCR_ScenarioFrameworkPrefabFilter> m_aPrefabFilter;
 
 	[Attribute(desc: "Here you can input custom trigger conditions that you can create by extending the SCR_CustomTriggerConditions", uiwidget: UIWidgets.Object)]
 	protected ref array<ref SCR_CustomTriggerConditions> m_aCustomTriggerConditions;
+	
+	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "If you set some vehicle to be detected by the trigger, it will also search the inventory for vehicle prefabs/classes that are set", category: "Trigger")]
+	protected bool m_bSearchVehicleInventory;
 
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")]
 	protected bool		m_bOnce;
@@ -77,7 +83,7 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Sets specific classname to be searched in the trigger
+	//! Sets specific classnames to be searched in the trigger
 	void SetSpecificClassName(array<string> aClassName)
 	{
 		foreach (string className : aClassName)
@@ -86,16 +92,23 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 				m_aSpecificClassNames.Insert(className);
 		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	//! Sets specific prefab to be searched in the trigger
-	void SetSpecificPrefabName(array<ResourceName> aPrefabNames)
+	//! Sets specific prefab filters to be searched in the trigger
+	void SetPrefabFilters(array<ref SCR_ScenarioFrameworkPrefabFilter> aPrefabFilter)
 	{
-		foreach (ResourceName prefabName : aPrefabNames)
+		foreach (SCR_ScenarioFrameworkPrefabFilter prefabFilter : aPrefabFilter)
 		{
-			if (!m_aSpecificPrefabNames.Contains(prefabName))
-				m_aSpecificPrefabNames.Insert(prefabName);
+			if (!m_aPrefabFilter.Contains(prefabFilter))
+				m_aPrefabFilter.Insert(prefabFilter);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets if trigger should also search vehicle inventory when looking for prefabs/classnames inside
+	void SetSearchVehicleInventory(bool search)
+	{
+		m_bSearchVehicleInventory = search;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -169,7 +182,7 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 		if (factionManager)
 			m_OwnerFaction = factionManager.GetFactionByKey(sFaction);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Returns if this is executed in a server environment
 	bool IsMaster()
@@ -204,6 +217,13 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	float GetActivationCountdownTimerTemp()
 	{
 		return m_fTempWaitTime;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns minimum players needed percentage
+	float GetMinimumPlayersNeededPercentage()
+	{
+		return m_fMinimumPlayersNeededPercentage;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -276,6 +296,31 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	{
 		if (className.IsEmpty())
 			return 0;
+		
+		if (m_bSearchVehicleInventory)
+		{
+			array<IEntity> aItemsToAdd = {};
+			foreach (IEntity entity : m_aEntitiesInside)
+			{
+				if (!entity)
+					continue;
+				
+				if (!Vehicle.Cast(entity))
+					continue;
+				
+				InventoryStorageManagerComponent inventoryComponent = InventoryStorageManagerComponent.Cast(entity.FindComponent(InventoryStorageManagerComponent));
+				if (!inventoryComponent)
+					continue;
+		
+				array<IEntity> aItems = {};
+				inventoryComponent.GetItems(aItems);
+				if (!aItems.IsEmpty())
+					aItemsToAdd.InsertAll(aItems);
+			}
+			
+			if (!aItemsToAdd.IsEmpty())
+				m_aEntitiesInside.InsertAll(aItemsToAdd);
+		}
 
 		int iCnt = 0;
 		GetEntitiesInside(m_aEntitiesInside);
@@ -296,10 +341,36 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns number of specific prefab that is inside of this trigger
-	int GetSpecificPrefabCountInsideTrigger(BaseContainer prefabContainer, int targetCount = -1)
+	int GetSpecificPrefabCountInsideTrigger(BaseContainer prefabContainer, int targetCount = -1, bool includeInheritance = false)
 	{
-		int iCnt = 0;
+		int iCnt;
 		GetEntitiesInside(m_aEntitiesInside);
+		
+		if (m_bSearchVehicleInventory)
+		{
+			array<IEntity> aItemsToAdd = {};
+			foreach (IEntity entity : m_aEntitiesInside)
+			{
+				if (!entity)
+					continue;
+				
+				if (!Vehicle.Cast(entity))
+					continue;
+				
+				InventoryStorageManagerComponent inventoryComponent = InventoryStorageManagerComponent.Cast(entity.FindComponent(InventoryStorageManagerComponent));
+				if (!inventoryComponent)
+					continue;
+		
+				array<IEntity> aItems = {};
+				inventoryComponent.GetItems(aItems);
+				if (!aItems.IsEmpty())
+					aItemsToAdd.InsertAll(aItems);
+			}
+			
+			if (!aItemsToAdd.IsEmpty())
+				m_aEntitiesInside.InsertAll(aItemsToAdd);
+		}
+		
 		foreach (IEntity entity : m_aEntitiesInside)
 		{
 			if (!entity)
@@ -309,10 +380,31 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 			if (!prefabData)
 				continue;
 			
-			if (prefabData.GetPrefab() != prefabContainer)
+			BaseContainer container = prefabData.GetPrefab();
+			if (!container)
 				continue;
 			
-			iCnt++;
+			if (!includeInheritance)
+			{
+				if (container != prefabContainer)
+					continue;
+				
+				iCnt++;
+			}
+			else
+			{
+				while (container)
+				{
+					if (container == prefabContainer)
+					{
+						iCnt++;
+						break;
+					}
+		
+					container = container.GetAncestor();
+				}
+			}
+			
 			if (iCnt == targetCount)
 				break;
 		}
@@ -331,25 +423,15 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 		{
 			if (!entity)
 				continue;
-
-			if (!faction)
-			{
-				chimeraCharacter = SCR_ChimeraCharacter.Cast(entity);
-				if (!chimeraCharacter)
-					continue;
-
-				iCnt++;			//Faction not set == ANY faction
-			}
-			else
-			{
-				chimeraCharacter = SCR_ChimeraCharacter.Cast(entity);
-				if (!chimeraCharacter)
-					continue;
-
-				if (chimeraCharacter.GetFaction() == faction)
-					iCnt++;
-			}
 			
+			chimeraCharacter = SCR_ChimeraCharacter.Cast(entity);
+			if (!chimeraCharacter)
+				continue;
+
+			if (faction && chimeraCharacter.GetFaction() != faction)
+				continue;
+			
+			iCnt++;
 			if (iCnt == targetCount)
 				break;
 		}
@@ -363,30 +445,25 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	{
 		int iCnt = 0;
 		m_aPlayersInside.Clear();
-		SCR_PlayerController playerController;
 		GetEntitiesInside(m_aEntitiesInside);
+		SCR_ChimeraCharacter chimeraCharacter;
 		foreach (IEntity entity : m_aEntitiesInside)
 		{
 			if (!entity)
 				continue;
 			
-			if (!faction)
-			{
-				iCnt++;			//Faction not set == ANY faction
-				m_aPlayersInside.Insert(entity);
-			}
-			else
-			{
-				playerController = SCR_PlayerController.Cast(entity);
-				if (!playerController)
-					continue;
-
-				if (playerController.GetLocalControlledEntityFaction() != faction)
-					continue;
-				
-				iCnt++;
-				m_aPlayersInside.Insert(entity);
-			}
+			chimeraCharacter = SCR_ChimeraCharacter.Cast(entity);
+			if (!chimeraCharacter)
+				continue;
+			
+			if (faction && chimeraCharacter.GetFaction() != faction)
+				continue;
+			
+			if (!EntityUtils.IsPlayer(entity))
+				continue;
+			
+			iCnt++;
+			m_aPlayersInside.Insert(entity);
 		}
 
 		return iCnt;
@@ -394,7 +471,7 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns all the players by the faction set for this trigger
-	protected void GetPlayersByFactionInsideTrigger(notnull out array<IEntity> aOut)
+	void GetPlayersByFactionInsideTrigger(notnull out array<IEntity> aOut)
 	{
 		SCR_ChimeraCharacter chimeraCharacter;
 		GetEntitiesInside(m_aEntitiesInside);
@@ -403,29 +480,22 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 			if (!entity)
 				continue;
 			
+			chimeraCharacter = SCR_ChimeraCharacter.Cast(entity);
+			if (!chimeraCharacter)
+				continue;
+			
 			//Faction not set == ANY faction
 			if (!m_OwnerFaction)
 			{
-				chimeraCharacter = SCR_ChimeraCharacter.Cast(entity);
-				if (!chimeraCharacter)
-					continue;
-
-				if (!EntityUtils.IsPlayer(entity))
-					continue;
-
-				aOut.Insert(entity)
+				if (EntityUtils.IsPlayer(entity))
+					aOut.Insert(entity)
 			}
 			else
 			{
-
-				chimeraCharacter = SCR_ChimeraCharacter.Cast(entity);
-				if (!chimeraCharacter)
+				if (chimeraCharacter.GetFaction() != m_OwnerFaction)
 					continue;
-
-				if (!EntityUtils.IsPlayer(entity))
-					continue;
-
-				if (chimeraCharacter.GetFaction() == m_OwnerFaction)
+				
+				if (EntityUtils.IsPlayer(entity))
 					aOut.Insert(entity);
 			}
 		}
@@ -433,7 +503,7 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns all the players in the game
-	protected void GetPlayersByFaction(notnull out array<IEntity> aOut)
+	void GetPlayersByFaction(notnull out array<IEntity> aOut)
 	{
 		array<int> aPlayerIDs = {};
 		SCR_PlayerController playerController;
@@ -453,64 +523,45 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	//! Override this method in inherited class to define a new filter.
 	override bool ScriptedEntityFilterForQuery(IEntity ent)
 	{
-		if (ChimeraCharacter.Cast(ent) && !IsAlive(ent))
-			return false;
-
-		// take only players
-		if (m_eActivationPresence == TA_EActivationPresence.PLAYER)
+		if (m_eActivationPresence == TA_EActivationPresence.PLAYER || m_eActivationPresence == TA_EActivationPresence.ANY_CHARACTER)
 		{
-			if (!EntityUtils.IsPlayer(ent))
+			SCR_ChimeraCharacter chimeraCharacter = SCR_ChimeraCharacter.Cast(ent);	
+			if (!chimeraCharacter)
 				return false;
-		}
-		else if (m_eActivationPresence == TA_EActivationPresence.SPECIFIC_CLASS)
-		{
-			bool isClassName;
-			foreach (string specificClassName : m_aSpecificClassNames)
-			{
-				if (!ent.IsInherited(specificClassName.ToType()))
-				{
-					isClassName= false;
-				}
-				else
-				{
-					isClassName = true;
-					break;
-				}
-			}
-
-			//We are checking this bool here in this way because we don't want to return true here just yet
-			if (!isClassName)
+				
+			if (m_OwnerFaction && chimeraCharacter.GetFaction() != m_OwnerFaction)
 				return false;
+				
+			if (!IsAlive(ent))
+				return false;
+				
+			if (m_eActivationPresence == TA_EActivationPresence.PLAYER)
+				return EntityUtils.IsPlayer(ent);
+			
+			return true;
 		}
-		else if (m_eActivationPresence == TA_EActivationPresence.SPECIFIC_PREFAB_NAME)
+	
+		//In case of vehicle, we first need to check if it is alive and then check the faction
+		Vehicle vehicle = Vehicle.Cast(ent);
+		if (vehicle)
 		{
-			EntityPrefabData prefabData = ent.GetPrefabData();
-			if (!prefabData)
+			if (!IsAlive(ent))
 				return false;
 			
-			bool found;
-			foreach (BaseContainer prefabContainer : m_aPrefabContainerSet)
-			{
-				if (prefabData.GetPrefab() == prefabContainer)
-				{
-					found = true;
-					break;
-				}
-			}
+			if (!m_OwnerFaction)
+				return true;
 			
-			//We are checking this bool here in this way because we don't want to return true here just yet
-			if (!found)
-				return false;
+			return vehicle.GetFaction() == m_OwnerFaction;
 		}
-
+		
 		if (!m_OwnerFaction)
-			return true;	//if faction is not specified, any faction can (de)activate the trigger
-
-		FactionAffiliationComponent pFaciliation = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
-		if (!pFaciliation)
-			return false;
-
-		return pFaciliation.GetAffiliatedFaction() == m_OwnerFaction;
+			return true;
+			
+		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
+		if (!factionAffiliation)
+			return true;
+		
+		return factionAffiliation.GetAffiliatedFaction() == m_OwnerFaction;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -541,28 +592,8 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 
 			return;
 		}
-
-		if (m_eActivationPresence == TA_EActivationPresence.ANY_CHARACTER)
-		{
-			m_iCountInsideTrigger = GetCharacterCountByFactionInsideTrigger(m_OwnerFaction, 1);
-		}
-		else if (m_eActivationPresence == TA_EActivationPresence.SPECIFIC_CLASS)
-		{
-			foreach (string className : m_aSpecificClassNames)
-			{
-				m_iCountInsideTrigger += GetSpecificClassCountInsideTrigger(className, 1);
-			}
-		}
-		else if (m_eActivationPresence == TA_EActivationPresence.SPECIFIC_PREFAB_NAME)
-		{
-			foreach (BaseContainer prefabData : m_aPrefabContainerSet)
-			{
-				m_iCountInsideTrigger += GetSpecificPrefabCountInsideTrigger(prefabData, 1);
-			}
-		}
-
-		if (m_iCountInsideTrigger > 0)
-			m_bTriggerConditionsStatus = true;
+		
+		m_bTriggerConditionsStatus = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -579,6 +610,9 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	//! Handles players inside the trigger or those who left it
 	protected void HandleNetworkComponentForPlayersInside(IEntity ent)
 	{
+		if (m_aPlayersInside.IsEmpty())
+			m_iCountInsideTrigger = GetPlayersCountByFactionInsideTrigger(m_OwnerFaction);
+		
 		foreach (IEntity entity : m_aPlayersInside)
 		{
 			ProcessPlayerNetworkComponent(entity, false);
@@ -702,7 +736,7 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void HandleAudio()
+	void HandleAudio()
 	{
 		if (m_bTriggerConditionsStatus)
 		{
@@ -716,7 +750,7 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void PlayMusic(string sAudio)
+	void PlayMusic(string sAudio)
 	{
 
 		if (!m_MusicManager)
@@ -754,7 +788,7 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void StopMusic(string sAudio)
+	void StopMusic(string sAudio)
 	{
 		if (!m_MusicManager)
 		{
@@ -810,40 +844,6 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Prepares optimized solution for scripted querry using BaseContainer for quicker calculations
-	void PrepareScriptedQuerry(array<ResourceName> aPrefabData, out set<BaseContainer> aBaseContainerOut)
-	{
-		//We need to initialize this set here
-		aBaseContainerOut = new ref set<BaseContainer>();
-		
-		Resource resource;
-		BaseResourceObject resourceObject;
-		BaseContainer prefabContainer;
-		foreach (ResourceName resourceName : aPrefabData)
-		{
-			resource = Resource.Load(resourceName);
-			if (!resource.IsValid())
-				continue;
-			
-			resourceObject = resource.GetResource();
-			if (!resourceObject)
-				continue;
-			
-			prefabContainer = resourceObject.ToBaseContainer();
-			if (!prefabContainer)
-				continue;
-			
-			//This set is part of this trigger entity and will contain all BaseContainers needed for calculations
-			if (!m_aPrefabContainerSet.Contains(prefabContainer))
-				m_aPrefabContainerSet.Insert(prefabContainer);
-			
-			//This set is being outed and contains just newly proccessed BaseContainers
-			if (!aBaseContainerOut.Contains(prefabContainer))
-				aBaseContainerOut.Insert(prefabContainer);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Sets Init sequence as done
 	protected void SetInitSequenceDone()
 	{
@@ -852,8 +852,19 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 			condition.Init(this);
 		}
 		
-		//Here we process array of strings to more optimized set of BaseContainers. However in this case, we do not need outed set here.
-		PrepareScriptedQuerry(m_aSpecificPrefabNames, null);
+		foreach (SCR_ScenarioFrameworkPrefabFilter prefabFilterInput : m_aPrefabFilter)
+		{
+			PrefabFilter prefabFilter = new PrefabFilter();
+			prefabFilter.SetPrefab(prefabFilterInput.m_sSpecificPrefabName);
+			prefabFilter.SetCheckPrefabHierarchy(prefabFilterInput.m_bIncludeChildren);
+			AddPrefabFilter(prefabFilter);
+		}
+		
+		foreach (ResourceName className : m_aSpecificClassNames)
+		{
+			AddClassType(className.ToType());
+		}
+
 		m_bInitSequenceDone = true;
 	}
 
@@ -892,28 +903,30 @@ class SCR_CustomTriggerConditions
 [BaseContainerProps()]
 class SCR_CustomTriggerConditionsSpecificPrefabCount : SCR_CustomTriggerConditions
 {
-	[Attribute(desc: "If SPECIFIC_PREFAB_NAME is selected, fill the class name here.", category: "Trigger")]
-	protected ref array<ResourceName> 	m_aSpecificPrefabNames;
-
-	protected ref set<BaseContainer> 	m_aPrefabContainerSet = new ref set<BaseContainer>();
-
-	[Attribute(defvalue: "1", desc: "How many entities of specific prefab are requiered to be inside the trigger", params: "0 100000 1", category: "Trigger")]
-	protected int 	m_iPrefabCount;
+	[Attribute(desc: "Which Prefabs and if their children will be accounted for", category: "Trigger")]
+	protected ref array<ref SCR_ScenarioFrameworkPrefabFilterCount> m_aPrefabFilter;
 
 	//------------------------------------------------------------------------------------------------
 	override void Init(SCR_CharacterTriggerEntity trigger)
 	{
-		trigger.PrepareScriptedQuerry(m_aSpecificPrefabNames, m_aPrefabContainerSet);
+		foreach (SCR_ScenarioFrameworkPrefabFilterCount prefabFilterCount : m_aPrefabFilter)
+		{
+			PrefabFilter prefabFilter = new PrefabFilter();
+			prefabFilter.SetPrefab(prefabFilterCount.m_sSpecificPrefabName);
+			prefabFilter.SetCheckPrefabHierarchy(prefabFilterCount.m_bIncludeChildren);
+			trigger.AddPrefabFilter(prefabFilter);
+			prefabFilterCount.m_PrefabContainer = SCR_BaseContainerTools.GetBaseContainer(prefabFilterCount.m_sSpecificPrefabName);
+		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Checks how many times the specific prefab (Using the BaseContainer) is present inside the trigger and sets trigger conditions accordingly
 	override void CustomTriggerConditions(SCR_CharacterTriggerEntity trigger)
 	{
 		bool triggerStatus;
-		foreach (BaseContainer prefabContainer : m_aPrefabContainerSet)
+		foreach (SCR_ScenarioFrameworkPrefabFilterCount prefabFilter : m_aPrefabFilter)
 		{
-			if (trigger.GetSpecificPrefabCountInsideTrigger(prefabContainer, m_iPrefabCount) >= m_iPrefabCount)
+			if (trigger.GetSpecificPrefabCountInsideTrigger(prefabFilter.m_PrefabContainer,  prefabFilter.m_iPrefabCount, prefabFilter.m_bIncludeChildren) >= prefabFilter.m_iPrefabCount)
 			{
 				triggerStatus= true;
 			}
@@ -935,12 +948,17 @@ class SCR_CustomTriggerConditionsSpecificClassNameCount : SCR_CustomTriggerCondi
 	protected ref array<string> 	m_aSpecificClassNames;
 
 	[Attribute(defvalue: "1", desc: "How many entities of specific prefab are requiered to be inside the trigger", params: "0 100000 1", category: "Trigger")]
-	protected int 	m_iPrefabCount;
+	protected int 	m_iClassnameCount;
 
 	//------------------------------------------------------------------------------------------------
 	override void Init(SCR_CharacterTriggerEntity trigger)
 	{
 		trigger.SetSpecificClassName(m_aSpecificClassNames);
+		
+		foreach (ResourceName className : m_aSpecificClassNames)
+		{
+			trigger.AddClassType(className.ToType());
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -950,7 +968,7 @@ class SCR_CustomTriggerConditionsSpecificClassNameCount : SCR_CustomTriggerCondi
 		bool triggerStatus;
 		foreach (string className : m_aSpecificClassNames)
 		{
-			if (trigger.GetSpecificClassCountInsideTrigger(className) >= m_iPrefabCount)
+			if (trigger.GetSpecificClassCountInsideTrigger(className) >= m_iClassnameCount)
 			{
 				triggerStatus= true;
 			}

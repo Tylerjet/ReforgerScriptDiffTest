@@ -1,3 +1,6 @@
+//#define SHOW_DMG_INDICATORS_WARNING
+//#define SHOW_DMG_INDICATORS_ERROR
+
 class SCR_HitZoneInfo : SCR_BaseVehicleInfo
 {
 	[Attribute("", uiwidget: UIWidgets.Auto)]
@@ -9,6 +12,14 @@ class SCR_HitZoneInfo : SCR_BaseVehicleInfo
 	//! Can be overridden to get state of actual system or linked to an event
 	override EVehicleInfoState GetState()
 	{
+		#ifdef SHOW_DMG_INDICATORS_ERROR
+		return EVehicleInfoState.ERROR;
+		#endif
+		
+		#ifdef SHOW_DMG_INDICATORS_WARNING
+		return EVehicleInfoState.WARNING;
+		#endif
+		
 		if (!m_aHitZones)
 			return EVehicleInfoState.DISABLED;
 

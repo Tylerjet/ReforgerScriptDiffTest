@@ -6,7 +6,6 @@ Saved data for editable entity.
 class SCR_EditableEntityStruct: JsonApiStruct
 {
 	//--- Constants
-	protected static const string TAG_DESTROYED = "D";
 	protected static const int TARGET_NONE = -1;
 	protected static const int TARGET_SLOT = -2;
 	
@@ -30,13 +29,14 @@ class SCR_EditableEntityStruct: JsonApiStruct
 	protected SCR_EditableEntityComponent m_Entity;
 	protected SCR_EditableEntityComponent m_Target;
 	protected static SCR_CompositionSlotManagerComponent m_SlotManager;
+	protected static IEntity m_PlayerEntity;
 	
 	/*!
 	Save all editable entities.
 	\param[out] outEntries Array to be filled with save entries
 	\param attributeList List of attributes which will be evaluated for each entity
 	*/
-	static void SerializeEntities(out notnull array<ref SCR_EditableEntityStruct> outEntries, SCR_EditorAttributeList attributeList)
+	static void SerializeEntities(out notnull array<ref SCR_EditableEntityStruct> outEntries, SCR_EditorAttributeList attributeList, EEditableEntityFlag requiredFlags)
 	{
 		//--- Clear existing array
 		outEntries.Clear();
@@ -55,7 +55,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 		array<int> entriesWithTarget = {};
 		foreach (SCR_EditableEntityComponent child: children)
 		{
-			SerializeEntity(child, -1, outEntries, attributeList, entriesWithTarget, false);
+			SerializeEntity(child, -1, outEntries, attributeList, requiredFlags, entriesWithTarget, false);
 		}
 		
 		//--- Link attached entities together (only after all of them were registered)
@@ -77,12 +77,15 @@ class SCR_EditableEntityStruct: JsonApiStruct
 		}
 		m_SlotManager = null;
 	}
-	protected static void SerializeEntity(SCR_EditableEntityComponent entity, int parentID, out notnull array<ref SCR_EditableEntityStruct> outEntries, SCR_EditorAttributeList attributeList, out array<int> entriesWithTarget, bool isParentDirty)
+	protected static void SerializeEntity(SCR_EditableEntityComponent entity, int parentID, out notnull array<ref SCR_EditableEntityStruct> outEntries, SCR_EditorAttributeList attributeList, EEditableEntityFlag requiredFlags, out array<int> entriesWithTarget, bool isParentDirty)
 	{
+		if (requiredFlags != 0 && !entity.HasEntityFlag(requiredFlags))
+			return;
+		
 		SCR_EditableEntityComponent target;
 		int targetValue = TARGET_NONE;
-		bool isDestroyed;
-		if (!entity.Serialize(target, targetValue, isDestroyed))
+		EEditableEntitySaveFlag saveFlags = 0;
+		if (!entity.Serialize(target, targetValue, saveFlags))
 			return;
 		
 		//--- Only placeable entities can have dirty hierarchy, artifically created ones (e.g., custom layer) are exempted
@@ -94,8 +97,9 @@ class SCR_EditableEntityStruct: JsonApiStruct
 		parentID = outEntries.Insert(entry);
 		
 		entry.pf = entity.GetPrefab(true);
-		if (isDestroyed)
-			entry.pf += TAG_DESTROYED;
+		
+		if (saveFlags != 0)
+			entry.pf += saveFlags.ToString();
 		
 		entry.sc = entity.GetOwner().GetScale();
 		entry.hy = isParentDirty || entity.HasEntityFlag(EEditableEntityFlag.INDIVIDUAL_CHILDREN) || entity.HasEntityFlag(EEditableEntityFlag.DIRTY_HIERARCHY);
@@ -113,10 +117,10 @@ class SCR_EditableEntityStruct: JsonApiStruct
 		entry.qz = quat[2];
 		entry.qw = quat[3];
 		
+		entry.tv = targetValue; //--- Assigned even when target is not, some entities may use it for other purposes (e.g., task faction)
 		if (target)
 		{
 			entry.m_Target = target;
-			entry.tv = targetValue;
 			entriesWithTarget.Insert(parentID);
 		}
 		else if (m_SlotManager)
@@ -133,7 +137,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 		{
 			for (int c = 0, count = entity.GetChildrenCount(true); c < count; c++)
 			{
-				SerializeEntity(entity.GetChild(c), parentID, outEntries, attributeList, entriesWithTarget, entry.hy && canBeDirty);
+				SerializeEntity(entity.GetChild(c), parentID, outEntries, attributeList, requiredFlags, entriesWithTarget, entry.hy && canBeDirty);
 			}
 		}
 	}
@@ -151,6 +155,23 @@ class SCR_EditableEntityStruct: JsonApiStruct
 		array<int> entriesWithTarget = {};
 		foreach (int id, SCR_EditableEntityStruct entry: entries)
 		{
+			//--- Extract optional params (encoded in prefab name, so they don't need a variable in every struct)
+			ResourceName prefab = entry.pf;
+			EEditableEntitySaveFlag saveFlags = 0;
+			"{"; // fix indent
+			int guidIndex = prefab.LastIndexOf("}") + 1;
+			int prefabParamsCount = prefab.Length() - guidIndex;
+			if (prefabParamsCount > 0)
+			{
+				string prefabParams = prefab.Substring(guidIndex, prefabParamsCount);
+				saveFlags = prefabParams.ToInt();
+				prefab = prefab.Substring(0, guidIndex);
+			}	
+			
+			//--- Don't spawn SP player entity in MP
+			if (Replication.IsRunning() && (saveFlags & EEditableEntitySaveFlag.PLAYER))
+				continue;
+			
 			if (entry.pi != -1)
 			{
 				if (!entities.Find(entry.pi, parent))
@@ -178,16 +199,8 @@ class SCR_EditableEntityStruct: JsonApiStruct
 			SCR_EditorLinkComponent.IgnoreSpawning(entry.hy);
 			SCR_AIGroup.IgnoreSpawning(true);
 			
-			//--- Extract optional params (encoded in prefab name, so they don't need a variable in every struct)
-			ResourceName prefab = entry.pf;
-			string prefabParams = string.Empty;
-			int guidIndex = prefab.LastIndexOf("}") + 1;
-			int prefabParamsCount = prefab.Length() - guidIndex;
-			if (prefabParamsCount > 0)
-			{
-				prefabParams = prefab.Substring(guidIndex, prefabParamsCount);
-				prefab = prefab.Substring(0, guidIndex);
-			}	
+			if (saveFlags & EEditableEntitySaveFlag.NOT_SPAWNED)
+				SCR_EditorLinkComponent.IgnoreSpawning(true);
 			
 			IEntity rawEntity = GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), spawnParams);
 			entry.m_Entity = SCR_EditableEntityComponent.GetEditableEntity(rawEntity);
@@ -203,7 +216,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 				
 				SCR_EditorAttributeStruct.DeserializeAttributes(entry.at, attributeList, entry.m_Entity);
 				
-				if (entry.ti!= TARGET_NONE)
+				if (entry.ti != TARGET_NONE)
 				{
 					if (entry.ti == TARGET_SLOT)
 						slotManager.SetOccupant(spawnParams.Transform[3], rawEntity);
@@ -211,8 +224,16 @@ class SCR_EditableEntityStruct: JsonApiStruct
 						entriesWithTarget.Insert(id);
 				}
 			
-				if (prefabParams.Contains(TAG_DESTROYED))
+				if (!Replication.IsRunning() && (saveFlags & EEditableEntitySaveFlag.PLAYER))
+				{
+					m_PlayerEntity = rawEntity;
+					RequestLocalPlayerSpawn(SCR_PlayerController.GetLocalPlayerId());
+				}
+			
+				if (saveFlags & EEditableEntitySaveFlag.DESTROYED)
+				{
 					entry.m_Entity.Destroy();
+				}
 				
 				Print(string.Format("SCR_EditableEntityStruct: Entity @\"%1\" spawned at %2 as a child of %3", entry.pf, spawnParams.Transform, parent), LogLevel.VERBOSE);
 			}
@@ -223,17 +244,34 @@ class SCR_EditableEntityStruct: JsonApiStruct
 			}
 		}
 		
-		//--- Link attached entities together (only after all of them were spawned)
-		SCR_EditableEntityStruct entry, targetEntry;
-		for (int i = 0, count = entriesWithTarget.Count(); i < count; i++)
+		//--- Once all entities were spawned, call Deserialize() on them
+		foreach (int id, SCR_EditableEntityStruct entry: entries)
 		{
-			entry = entries[entriesWithTarget[i]];
-			targetEntry = entries[entry.ti];
-			entry.m_Entity.Deserialize(targetEntry.m_Entity, entry.tv);
+			if (entriesWithTarget.Contains(id))
+				entry.m_Entity.Deserialize(entries[entry.ti].m_Entity, entry.tv); //--- Link attached entities together (e.g., crew in vehicles)
+			else
+				entry.m_Entity.Deserialize(null, entry.tv);
 		}
 		
 		SCR_EditorLinkComponent.IgnoreSpawning(false);
 		SCR_AIGroup.IgnoreSpawning(false);
+	}
+	protected static void RequestLocalPlayerSpawn(int playerId)
+	{
+		SCR_RespawnComponent respawnComponent = SCR_RespawnComponent.Cast(GetGame().GetPlayerManager().GetPlayerRespawnComponent(playerId));
+		if (respawnComponent)
+		{
+			//--- Assign player comtrol using respawn system
+			SCR_PossessSpawnData spawnData = SCR_PossessSpawnData.FromEntity(m_PlayerEntity);
+			respawnComponent.RequestSpawn(spawnData);
+		}
+		else
+		{
+			//--- Player not initialized yet, do so once that happens
+			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+			if (gameMode)
+				gameMode.GetOnPlayerRegistered().Insert(RequestLocalPlayerSpawn);
+		}
 	}
 	/*!
 	Delete all saved editable entities.
@@ -255,8 +293,8 @@ class SCR_EditableEntityStruct: JsonApiStruct
 	static void LogEntities(notnull array<ref SCR_EditableEntityStruct> entries, SCR_EditorAttributeList attributeList = null)
 	{
 		Print("  SCR_EditableEntityStruct: " + entries.Count());
-		string textDefault = "    %1: %2 | file: %3 | pos: %4 | ang: %5 | scl: %6 | drt: %9";
-		string textTarget = "    %1: %2 | file: %3 | pos: %4 | ang: %5 | scl: %6 | drt: %9 | tgt: %7 (#%8)";
+		//string textDefault = "    %1: %2 | file: %3 | pos: %4 | ang: %5 | scl: %6 | drt: %9 | tgt: N/A (#%8)";
+		//string textTarget = "    %1: %2 | file: %3 | pos: %4 | ang: %5 | scl: %6 | drt: %9 | tgt: %7 (#%8)";
 		float quat[4];
 		vector angles;
 		Resource resource;
@@ -269,13 +307,44 @@ class SCR_EditableEntityStruct: JsonApiStruct
 			quat[3] = entry.qw;
 			angles = Math3D.QuatToAngles(quat);
 			
+			//--- Get flags
+			ResourceName prefab = entry.pf;
+			EEditableEntitySaveFlag saveFlags = 0;
+			"{"; // fix indent
+			int guidIndex = prefab.LastIndexOf("}") + 1;
+			int prefabParamsCount = prefab.Length() - guidIndex;
+			if (prefabParamsCount > 0)
+			{
+				string prefabParams = prefab.Substring(guidIndex, prefabParamsCount);
+				saveFlags = prefabParams.ToInt();
+			}	
+			
 			resource = Resource.Load(entry.pf);
 			resourceName = resource.GetResource().GetResourceName();
 			
+			/*
 			if (entry.ti != TARGET_NONE)
 				PrintFormat(textTarget, id, entry.pi, FilePath.StripPath(resourceName), Vector(entry.px, entry.py, entry.pz), angles, entry.sc, entry.ti, entry.tv, entry.hy);
 			else
 				PrintFormat(textDefault, id, entry.pi, FilePath.StripPath(resourceName), Vector(entry.px, entry.py, entry.pz), angles, entry.sc, entry.ti, entry.tv, entry.hy);
+			*/
+			
+			string result = "    " + id + ": " + entry.pi;
+			result += " | " + FilePath.StripPath(resourceName);
+			result += " | pos: " + Vector(entry.px, entry.py, entry.pz);
+			result += " | ang: " + angles;
+			result += " | scl: " + entry.sc;
+			result += " | flg: " + SCR_Enum.FlagsToString(EEditableEntitySaveFlag, saveFlags);
+			result += " | drt: " + entry.hy;
+			
+			if (entry.ti == TARGET_NONE)
+				result += " | tgt: N/A";
+			else
+				result += " | tgt: " + entry.ti;
+			
+			result += " (#" + entry.tv + ")";
+			
+			Print("" + result);
 			
 			SCR_EditorAttributeStruct.LogAttributes(entry.at, attributeList, "    ");
 		}

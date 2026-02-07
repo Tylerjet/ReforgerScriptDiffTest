@@ -7,57 +7,62 @@ class SCR_SignalDefinition
 	[Attribute("", UIWidgets.Object, "")]
 	protected ref array<ref SCR_SignalPointDefinition> m_aSignalPointDefinition;
 	
-	// Stores current signal shape
-	ref array<ref SCR_SignalPoint> m_aSignalPoint = new array<ref SCR_SignalPoint>;
+	int m_iSignalIdx;
 	
-	float m_iSignalPointCount;
-	float m_iSignalIdx;
+	float m_fTargetValue;
+	float m_fCurrentValue;
+	float m_fSpeed;
+	int m_iCurrentPointIndex;
 	
 	//------------------------------------------------------------------------------------------------
-	float GetSignalValue(float worldTime)
+	float GetSignalValue(float timeSlice)
 	{
-		int i;
+		m_fCurrentValue = m_fCurrentValue + m_fSpeed * timeSlice;
 		
-		for (i = 1; i <= m_iSignalPointCount; i++)
+		if (m_fSpeed >= 0 && m_fCurrentValue >= m_fTargetValue || m_fSpeed < 0 && m_fCurrentValue <= m_fTargetValue)
 		{
-			if (m_aSignalPoint[i].m_fTime > worldTime)
-				break;
+			// Saturate
+			m_fCurrentValue = m_fTargetValue;
+			
+			// Get next index
+			m_iCurrentPointIndex++;
+			if (m_iCurrentPointIndex >= m_aSignalPointDefinition.Count())
+				m_iCurrentPointIndex = 0;
+						
+			// Get new target value
+			SCR_SignalPointDefinition signalPoindDefinition = m_aSignalPointDefinition[m_iCurrentPointIndex];
+			m_fTargetValue = signalPoindDefinition.GetValue();
+			
+			// Get speed
+			float time = signalPoindDefinition.GetTime() * 0.001;
+			m_fSpeed = (m_fTargetValue - m_fCurrentValue) / time;	
 		}
 		
-		if (i == m_iSignalPointCount + 1)
-		{
-			UpdateSignalPoint(worldTime);
-			i = 1;
-		}
-		return Math.Lerp(m_aSignalPoint[i-1].m_fValue, m_aSignalPoint[i].m_fValue, (worldTime - m_aSignalPoint[i-1].m_fTime) / (m_aSignalPoint[i].m_fTime - m_aSignalPoint[i-1].m_fTime));
+		return m_fCurrentValue;
 	}
 		
-	void UpdateSignalPoint(float worldTime)
-	{		
-		SCR_SignalPoint firstPoint = new SCR_SignalPoint;
-		
-		firstPoint.m_fTime = worldTime;
-		
-		if (m_aSignalPoint.Count() != 0)
-		{
-			firstPoint.m_fValue = m_aSignalPoint[m_iSignalPointCount].m_fValue;
-			m_aSignalPoint.Clear();		
-		}
-		
-		m_aSignalPoint.Insert(firstPoint);
-
-		for (int i = 0; i < m_iSignalPointCount; i++)
-		{
-			SCR_SignalPoint signalPoint = new SCR_SignalPoint;
-			m_aSignalPointDefinition[i].GenerateRandom(signalPoint);
-			signalPoint.m_fTime += m_aSignalPoint[i].m_fTime;			
-			m_aSignalPoint.Insert(signalPoint);
-		}
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	void SCR_SignalDefinition()
-	{
-		m_iSignalPointCount = m_aSignalPointDefinition.Count();
+	{		
+		int count = m_aSignalPointDefinition.Count();
+		if (count == 0)
+			return;
+		
+		// Get current value
+		m_fCurrentValue = m_aSignalPointDefinition[0].GetValue();
+		
+		// Get next index
+		if (count == 1)
+			m_iCurrentPointIndex = 0;
+		else
+			m_iCurrentPointIndex = 1;
+			
+		// Get target value
+		SCR_SignalPointDefinition signalPoindDefinition = m_aSignalPointDefinition[m_iCurrentPointIndex];
+		m_fTargetValue = signalPoindDefinition.GetValue();
+			
+		// Get speed
+		float time = signalPoindDefinition.GetTime() * 0.001;
+		m_fSpeed = (m_fTargetValue - m_fCurrentValue) / time;		
 	}
 };

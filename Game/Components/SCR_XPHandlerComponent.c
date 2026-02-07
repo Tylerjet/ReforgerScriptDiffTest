@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------------------------
 class SCR_XPHandlerComponentClass : SCR_BaseGameModeComponentClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
@@ -9,16 +9,22 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	[Attribute("{E6FC4537B53EA00B}Configs/Campaign/XPRewards.conf", params: "conf class=SCR_XPRewardList")]
 	private ResourceName m_sXPRewardsConfig;
 
+	[Attribute("300", UIWidgets.EditBox, "How many XP a player needs to gain in a single life to get the Veterancy award. 0 = disabled.", params: "0 inf 1")]
+	protected int m_iVeterancyXPAwardThreshold;
+
+	[Attribute("1800", UIWidgets.EditBox, "If suicide is committed more than once in this time (seconds), a penalty is issued.", params: "0 inf 1")]
+	protected int m_iSuicidePenaltyCooldown;
+
 	//static const int SKILL_LEVEL_MAX = 10;
 	//static const int SKILL_LEVEL_XP_COST = 1000;				// how much XP is needed for new level
 
 	//static const float SKILL_LEVEL_XP_BONUS = 0.1;
-	
+
 	protected static const float TRANSPORT_POINTS_TO_XP_RATIO = 0.01;
 	protected static const int TRANSPORT_XP_PAYOFF_THRESHOLD = 15;
 
 	protected ref array<ref SCR_XPRewardInfo> m_aXPRewardList = {};
-	
+
 	protected ref map<int, float> m_mPlayerTransportPoints = new map<int, float>();
 
 	protected float m_fXpMultiplier = 1;
@@ -27,7 +33,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	override void OnPlayerSpawned(int playerId, IEntity controlledEntity)
 	{
 		super.OnPlayerSpawned(playerId, controlledEntity);
-		
+
 		if (!IsProxy())
 		{
 			SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(controlledEntity.FindComponent(SCR_CompartmentAccessComponent));
@@ -46,7 +52,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		if (compXP)
 			compXP.UpdatePlayerRank(false);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
@@ -54,18 +60,31 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 		m_mPlayerTransportPoints.Remove(playerId);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		super.OnPlayerKilled(playerId, player, killer);
+		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
 
 		if (IsProxy())
 			return;
 
+		if (playerId == killer.GetInstigatorPlayerID())
+			ProcessSuicide(playerId);
+
+		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
+
+		if (pc)
+		{
+			SCR_PlayerXPHandlerComponent compXP = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
+
+			if (compXP)
+				compXP.OnPlayerKilled();
+		}
+
 		AwardTransportXP(playerId);
-		SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(player.FindComponent(SCR_CompartmentAccessComponent));
-		
+		SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(playerEntity.FindComponent(SCR_CompartmentAccessComponent));
+
 		if (!compartmentAccessComponent)
 			return;
 
@@ -73,59 +92,43 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnControllableDestroyed(IEntity entity, IEntity instigator)
+	override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
 	{
-		super.OnControllableDestroyed(entity, instigator);
+		super.OnControllableDestroyed(entity, killerEntity, killer);
 
 		// Handle XP for kill
-		if (!instigator)
+		if (killer.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
 
-		SCR_ChimeraCharacter instigatorChar;
+		int killerId = killer.GetInstigatorPlayerID();
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity);
 
-		// Instigator is a vehicle, find the driver
-		if (instigator.IsInherited(Vehicle))
+		SCR_ChimeraCharacter entityChar = SCR_ChimeraCharacter.Cast(entity);
+		if (!entityChar)
+			return;
+
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return;
+
+		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerId));
+		if (!factionKiller)
+			return;
+
+		if (factionKiller.IsFactionFriendly(entityChar.GetFaction()))
 		{
-			instigatorChar = SCR_LocalPlayerPenalty.GetInstigatorFromVehicle(instigator);
+			if (killerId != playerId)
+				AwardXP(killerId, SCR_EXPRewards.FRIENDLY_KILL);
 		}
 		else
 		{
-			// Check if the killer is a regular soldier on foot
-			instigatorChar = SCR_ChimeraCharacter.Cast(instigator);
+			SCR_ChimeraCharacter instigatorChar = SCR_ChimeraCharacter.Cast(killerEntity);
 
-			// If all else fails, check if the killer is in a vehicle turret
-			if (!instigatorChar)
-				instigatorChar = SCR_LocalPlayerPenalty.GetInstigatorFromVehicle(instigator, true);
-		}
-
-		if (!instigatorChar)
-			return;
-
-		FactionAffiliationComponent foundComponentVictim = FactionAffiliationComponent.Cast(entity.FindComponent(FactionAffiliationComponent));
-		FactionAffiliationComponent foundComponentKiller = FactionAffiliationComponent.Cast(instigatorChar.FindComponent(FactionAffiliationComponent));
-
-		if (!foundComponentKiller || !foundComponentVictim)
-			return;
-
-		Faction killerFaction = foundComponentKiller.GetAffiliatedFaction();
-		Faction victimFaction = foundComponentVictim.GetAffiliatedFaction();
-
-		if (!killerFaction || !victimFaction)
-			return;
-
-		if (killerFaction == victimFaction)
-		{
-			if (instigatorChar != entity)
-				AwardXP(instigatorChar, SCR_EXPRewards.FRIENDLY_KILL);
-		}
-		else
-		{
-			if (instigatorChar.IsInVehicle())
-				AwardXP(instigatorChar, SCR_EXPRewards.ENEMY_KILL_VEH);
+			if (!instigatorChar || !instigatorChar.IsInVehicle())
+				AwardXP(killerId, SCR_EXPRewards.ENEMY_KILL);
 			else
-				AwardXP(instigatorChar, SCR_EXPRewards.ENEMY_KILL);
+				AwardXP(killerId, SCR_EXPRewards.ENEMY_KILL_VEH);
 		}
-
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -143,23 +146,63 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 		AwardTransportXP(playerId);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnStatPointsAdded(int playerId, SCR_EDataStats stat, float amount, bool temp)
 	{
 		//Print(temp);
 		//Print(SCR_Enum.GetEnumName(SCR_EDataStats, stat));
-		
+
 		if (!temp || stat != SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS)
 			return;
 
 		int newValue = m_mPlayerTransportPoints.Get(playerId) + amount;
 		m_mPlayerTransportPoints.Set(playerId, newValue);
-		
+
 		//Print(newValue);
 
 		if (newValue * TRANSPORT_POINTS_TO_XP_RATIO >= TRANSPORT_XP_PAYOFF_THRESHOLD)
 			AwardTransportXP(playerId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ProcessSuicide(int playerId)
+	{
+#ifdef NO_SUICIDE_PENALTY
+		return;
+#endif
+		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
+
+		if (!pc)
+			return;
+
+		SCR_PlayerXPHandlerComponent compXPPlayer = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
+
+		if (!compXPPlayer)
+			return;
+
+		SCR_FactionManager fm = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+
+		if (!fm)
+			return;
+
+		// Check for cooldown on the penalty
+		float curTime = GetGame().GetWorld().GetWorldTime();
+		float penaltyTimestamp = compXPPlayer.GetSuicidePenaltyTimestamp();
+		compXPPlayer.SetSuicidePenaltyTimestamp(curTime + ((float)m_iSuicidePenaltyCooldown * 1000));
+
+		if (curTime > penaltyTimestamp)
+			return;
+
+		// Don't make player renegade just by suiciding
+		int penalty = GetXPRewardAmount(SCR_EXPRewards.SUICIDE);
+		int playerXPWithPenalty = compXPPlayer.GetPlayerXP() + penalty;
+		SCR_ECharacterRank newRank = fm.GetRankByXP(playerXPWithPenalty);
+
+		if (fm.IsRankRenegade(newRank))
+			return;
+
+		AwardXP(pc.GetPlayerId(), SCR_EXPRewards.SUICIDE);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -189,13 +232,13 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Add XP to given entity
-	void AwardXP(notnull IEntity player, SCR_EXPRewards rewardID, float multiplier = 1.0, bool volunteer = false, int customXP = 0)
+	//! Add XP to given playerId
+	void AwardXP(int playerId, SCR_EXPRewards rewardID, float multiplier = 1.0, bool volunteer = false, int customXP = 0)
 	{
 		if (IsProxy())
 			return;
 
-		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(player));
+		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
 
 		if (playerController)
 			AwardXP(playerController, rewardID, multiplier, volunteer, customXP);
@@ -210,8 +253,32 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 		SCR_PlayerXPHandlerComponent comp = SCR_PlayerXPHandlerComponent.Cast(controller.FindComponent(SCR_PlayerXPHandlerComponent));
 
-		if (comp)
-			comp.AddPlayerXP(rewardID, multiplier, volunteer, customXP);
+		if (!comp)
+			return;
+
+		comp.AddPlayerXP(rewardID, multiplier, volunteer, customXP);
+
+		// Do not handle veterancy award if it's being processed already or disabled
+		if (rewardID == SCR_EXPRewards.VETERANCY || m_iVeterancyXPAwardThreshold == 0 || customXP != 0)
+			return;
+
+		int singleLifeXP = comp.GetPlayerXPSinceLastSpawn();
+		float veterancyAwards = Math.Floor(singleLifeXP / m_iVeterancyXPAwardThreshold);
+
+		if (veterancyAwards < 1)
+			return;
+
+		int leftoverXP = singleLifeXP % m_iVeterancyXPAwardThreshold;
+		comp.SetPlayerXPSinceLastSpawn(leftoverXP);
+
+		// Award veterancy bonus with a delay so the UI isn't overwritten immediately
+		GetGame().GetCallqueue().CallLater(VeterancyAward, 2000, false, controller, veterancyAwards);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void VeterancyAward(notnull PlayerController controller, float multiplier)
+	{
+		AwardXP(controller, SCR_EXPRewards.VETERANCY, multiplier);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -292,10 +359,10 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 		if (header)
 			m_fXpMultiplier = header.m_fXpMultiplier;
-		
+
 		SCR_PlayerData.s_OnStatAdded.Insert(OnStatPointsAdded);
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 enum SCR_EXPRewards
@@ -315,6 +382,10 @@ enum SCR_EXPRewards
 	TASK_DEFEND,
 	TASK_TRANSPORT,
 	SERVICE_BUILD,
+	SUICIDE,
+	VETERANCY,
+	SPAWN_PROVIDER,
+	FREE_ROAM_BUILDING_BUILT,
 	CUSTOM_1,
 	CUSTOM_2,
 	CUSTOM_3,
@@ -335,4 +406,4 @@ enum SCR_EXPRewards
 	CUSTOM_18,
 	CUSTOM_19,
 	CUSTOM_20
-};
+}

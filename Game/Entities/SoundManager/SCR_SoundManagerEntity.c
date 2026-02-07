@@ -17,12 +17,15 @@ Signals for given sound can be set only befor the playback and is not possible t
 class SCR_SoundManagerEntity : GenericEntity
 {	
 	//! Stores all playing AudioSources	with dynamic update
-	private ref array<ref SCR_AudioSource> m_aAudioSource = new array<ref SCR_AudioSource>;
+	private ref array<ref SCR_AudioSource> m_aAudioSource = {};
+	//! SoundWorld
+	private SoundWorld m_SoundWorld;
 	
 	//! Global signal names
 	static const string G_INTERIOR_SIGNAL_NAME = "GInterior";
 	static const string G_CURR_VEHICLE_COVERAGE_SIGNAL_NAME = "GCurrVehicleCoverage";
 	static const string G_IS_THIRD_PERSON_CAM_SIGNAL_NAME = "GIsThirdPersonCam";
+	static const string G_ROOM_SIZE = "GRoomSize";
 	static const string DYNAMIC_RANGE_SIGNAL_NAME = "DynamicRange";
 	static const string IN_EDITOR_SIGNAL_NAME = "InEditor";
 	
@@ -30,6 +33,7 @@ class SCR_SoundManagerEntity : GenericEntity
 	private static int s_iGInteriorIdx;
 	private static int s_iGCurrVehicleCoverageIdx;
 	private static int s_iGIsThirdPersonCamIdx;
+	private static int s_iGRoomSizeIdx;
 	private static int s_iDynamicRangeIdx;
 	private static int s_iInEditorIdx;
 
@@ -40,6 +44,7 @@ class SCR_SoundManagerEntity : GenericEntity
 	private static int s_iInvalidAudioSources;
 	private static int s_iInaudibleAudioSources;
 	private static int s_iTerminateAudioSourceCalls;
+	private static int s_iCalculateInterirorAtCount;
 	#endif
 	
 	//------------------------------------------------------------------------------------------------	
@@ -167,17 +172,15 @@ class SCR_SoundManagerEntity : GenericEntity
 	*/
 	void PlayAudioSource(SCR_AudioSource audioSource)
 	{			
-		// Update occlusion signals
-		audioSource.SetOcclusionSignals();
+		// Update global occlusion signals
+		audioSource.SetGlobalOcclusionSignals();
 		
 		// Get owner transformation
 		vector mat[4];
 		audioSource.m_Owner.GetTransform(mat);
 		
-		// Play sound event
-		if (PlaySoundEvent(audioSource, mat))
-			// Inset audio source to audio source pool
-			m_aAudioSource.Insert(audioSource);
+		// Play event
+		PlaySoundEvent(audioSource, mat);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -190,13 +193,11 @@ class SCR_SoundManagerEntity : GenericEntity
 	*/
 	void PlayAudioSource(SCR_AudioSource audioSource, vector mat[4])
 	{		
-		// Update occlusion signals
-		audioSource.SetOcclusionSignals();
-				
-		// Play sound event
-		if (PlaySoundEvent(audioSource, mat))
-			// Inset audio source to audio source pool
-			m_aAudioSource.Insert(audioSource);
+		// Update global occlusion signals
+		audioSource.SetGlobalOcclusionSignals();
+		
+		// Play event
+		PlaySoundEvent(audioSource, mat);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -205,22 +206,31 @@ class SCR_SoundManagerEntity : GenericEntity
 	\param audioSource AudioSource that is supposed to be played
 	\param mat Sound will be played using this transformation matrix
 	*/	
-	private bool PlaySoundEvent(SCR_AudioSource audioSource, vector mat[4])
+	private void PlaySoundEvent(SCR_AudioSource audioSource, vector mat[4])
 	{
-		// Play event
-		audioSource.m_AudioHandle = AudioSystem.PlayEvent(audioSource.m_AudioSourceConfiguration.m_sSoundProject, audioSource.m_AudioSourceConfiguration.m_sSoundEventName, mat, audioSource.m_aSignalName, audioSource.m_aSignalValue);
-		
-		#ifdef ENABLE_DIAG
-		if (audioSource.m_AudioHandle == AudioHandle.Invalid)		
-			s_iInvalidAudioSources++;			
-		else			
-			s_iPlayedAudioSources++;			
-		#endif
-		
-		// Check if AudioHandle is valid		
-		return audioSource.m_AudioHandle != AudioHandle.Invalid;
+		if (m_SoundWorld)
+		{
+			audioSource.m_InteriorRequestCallback = new SCR_InteriorRequestCallback(audioSource);
+			audioSource.SetTransformation(mat);
+			m_SoundWorld.CalculateInterirorAt(mat[3], audioSource.m_InteriorRequestCallback);
+			
+			#ifdef ENABLE_DIAG			
+			s_iCalculateInterirorAtCount++;
+			#endif
+
+			// Inset audio source to audio source pool
+			m_aAudioSource.Insert(audioSource);
+		}
+		else
+		{
+			audioSource.SetTransformation(mat);
+			
+			// Inset audio source to audio source pool
+			if (audioSource.Play())
+				m_aAudioSource.Insert(audioSource);
+		}
 	}
-		
+			
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Terminates all playing sounds on given entity 
@@ -234,11 +244,10 @@ class SCR_SoundManagerEntity : GenericEntity
 					
 		for (int i = m_aAudioSource.Count() - 1; i >= 0; i--)
 		{
-			if (m_aAudioSource[i].m_Owner == entity)
-			{
-				AudioSystem.TerminateSound(m_aAudioSource[i].m_AudioHandle);
-				m_aAudioSource.Remove(i);
-			}
+			SCR_AudioSource audioSource = m_aAudioSource[i];
+			
+			if (audioSource.m_Owner == entity)
+				audioSource.Ternimate();
 		}
 	}
 	
@@ -254,10 +263,7 @@ class SCR_SoundManagerEntity : GenericEntity
 			return;	
 		
 		// Terminate sound
-		AudioSystem.TerminateSound(audioSource.m_AudioHandle);
-		
-		// Remove from AudioSources pool
-		m_aAudioSource.RemoveItem(audioSource);
+		audioSource.Ternimate();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -268,7 +274,7 @@ class SCR_SoundManagerEntity : GenericEntity
 	{		
 		foreach (SCR_AudioSource audioSource : m_aAudioSource)
 		{
-			AudioSystem.TerminateSound(audioSource.m_AudioHandle);
+			audioSource.Ternimate();
 		}
 	}
 		
@@ -281,30 +287,26 @@ class SCR_SoundManagerEntity : GenericEntity
 		for (int i = m_aAudioSource.Count() - 1; i >= 0; i--)
 		{
 			SCR_AudioSource audioSource = m_aAudioSource[i];
-						
+							
 			// Remove audio source if sound finished playing
-			if (AudioSystem.IsSoundPlayed(audioSource.m_AudioHandle))
+			if (AudioSystem.IsSoundPlayed(audioSource.m_AudioHandle) && !audioSource.m_InteriorRequestCallback)
 			{
 				m_aAudioSource.Remove(i);
 				continue;
 			}
-			
+					
 			if (m_aAudioSource[i].m_Owner)
 			{
 				// Update audio source position				
 				if (!SCR_Enum.HasFlag(audioSource.m_AudioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.Static))
-				{
-					vector mat[4];
-					audioSource.m_Owner.GetTransform(mat);
-					AudioSystem.SetSoundTransformation(audioSource.m_AudioHandle, mat);		
-				}			
+					audioSource.UpdateTransformation();			
 			}
 			else
 			{
 				// Remove audio source if parent entity was deleted
-				if (!SCR_Enum.HasFlag(audioSource.m_AudioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.FinishWhenEntityDestroyed))
+				if (!SCR_Enum.HasFlag(audioSource.m_AudioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.FinishWhenEntityDestroyed) && !audioSource.m_InteriorRequestCallback)
 				{
-					AudioSystem.TerminateSound(audioSource.m_AudioHandle);
+					audioSource.Ternimate();
 					m_aAudioSource.Remove(i);
 				}
 			}
@@ -314,6 +316,7 @@ class SCR_SoundManagerEntity : GenericEntity
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_SOUND_MANAGER))
 		{
 			int count = m_aAudioSource.Count();
+			DbgUI.Begin("Sound Manager");
 			DbgUI.Text("Active Audio Sources          :" + count);
 			if (count > s_iMaxActiveAudioSources)
 				s_iMaxActiveAudioSources = count;
@@ -323,7 +326,9 @@ class SCR_SoundManagerEntity : GenericEntity
 			DbgUI.Text("Invalid Audio Sources         :" + s_iInvalidAudioSources);
 			DbgUI.Text("Inaudible Audio Sources       :" + s_iInaudibleAudioSources);
 			DbgUI.Text("TerminateAudioSource() Calls  :" + s_iTerminateAudioSourceCalls);
-		
+			DbgUI.Text("CalculateInterirorAt() Count  :" + s_iCalculateInterirorAtCount);
+			DbgUI.End();
+			
 			// Print events for active audio sources
 			if (m_aAudioSource.Count() != 0)
 			{
@@ -333,6 +338,29 @@ class SCR_SoundManagerEntity : GenericEntity
 					Print(audioSource.m_AudioSourceConfiguration.m_sSoundEventName);
 				}
 			}
+		}
+		
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_GLOBAL_VARIABLES))
+		{					
+			Resource holder = BaseContainerTools.LoadContainer("{A60F08955792B575}Sounds/_SharedData/Variables/GlobalVariables.conf");			
+			if (!holder)
+				return;
+			
+			BaseContainer baseContainer = holder.GetResource().ToBaseContainer();
+			if (!baseContainer)
+				return;
+						
+			BaseContainerList list = baseContainer.GetObjectArray("Variables");
+			if (!list)
+				return;		
+			
+			DbgUI.Begin("Global Variables");
+			for (int i = 0; i < list.Count(); i++)
+			{
+				string name = list[i].GetName();
+				DbgUI.Text(name + ": " + AudioSystem.GetVariableValue(name, "{A60F08955792B575}Sounds/_SharedData/Variables/GlobalVariables.conf").ToString(-1,2));
+			}
+			DbgUI.End();
 		}		
 		#endif
 	}
@@ -362,6 +390,15 @@ class SCR_SoundManagerEntity : GenericEntity
 	int GetGIsThirdPersonCamSignalIdx()
 	{
 		return s_iGIsThirdPersonCamIdx;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Returns GRoomSize global signal index
+	*/	
+	int GetRoomSizeIdx()
+	{
+		return s_iGRoomSizeIdx;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -466,6 +503,7 @@ class SCR_SoundManagerEntity : GenericEntity
 		s_iGInteriorIdx = gameSignalsManager.AddOrFindSignal(G_INTERIOR_SIGNAL_NAME);
 		s_iGCurrVehicleCoverageIdx = gameSignalsManager.AddOrFindSignal(G_CURR_VEHICLE_COVERAGE_SIGNAL_NAME);
 		s_iGIsThirdPersonCamIdx = gameSignalsManager.AddOrFindSignal(G_IS_THIRD_PERSON_CAM_SIGNAL_NAME);
+		s_iGRoomSizeIdx = gameSignalsManager.AddOrFindSignal(G_ROOM_SIZE);
 		s_iDynamicRangeIdx = gameSignalsManager.AddOrFindSignal(DYNAMIC_RANGE_SIGNAL_NAME);
 		s_iInEditorIdx = gameSignalsManager.AddOrFindSignal(IN_EDITOR_SIGNAL_NAME);
 		
@@ -477,6 +515,11 @@ class SCR_SoundManagerEntity : GenericEntity
 		//Event listeners for editor manager
 		EditorManagerEventsInit();
 		
+		// GetSoundWorld
+		ChimeraWorld chimeraWorld = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		if (chimeraWorld)
+			m_SoundWorld = chimeraWorld.GetSoundWorld();
+		
 		#ifdef ENABLE_DIAG	
 		s_iCreatedAudioSources = 0;
 		s_iMaxActiveAudioSources = 0;
@@ -484,7 +527,8 @@ class SCR_SoundManagerEntity : GenericEntity
 		s_iInvalidAudioSources = 0;
 		s_iInaudibleAudioSources = 0;
 		s_iTerminateAudioSourceCalls = 0;
-		#endif
+		s_iCalculateInterirorAtCount = 0;
+		#endif	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -495,6 +539,7 @@ class SCR_SoundManagerEntity : GenericEntity
 		
 		#ifdef ENABLE_DIAG
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_SOUND_MANAGER, "", "Sound Manager", "Sounds");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_GLOBAL_VARIABLES, "", "Global Variables", "Sounds");
 		#endif	
 	}
 
@@ -512,6 +557,7 @@ class SCR_SoundManagerEntity : GenericEntity
 		
 		#ifdef ENABLE_DIAG				
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_SOUNDS_SOUND_MANAGER);
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_SOUNDS_GLOBAL_VARIABLES);
 		#endif
 	}
 };

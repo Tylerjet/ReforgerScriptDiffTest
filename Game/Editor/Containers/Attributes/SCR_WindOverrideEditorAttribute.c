@@ -11,7 +11,9 @@ class SCR_WindOverrideEditorAttribute : SCR_BaseEditorAttribute
 		if (!IsGameMode(item)) 
 			return null;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) 
 			return null;
 		
@@ -40,7 +42,9 @@ class SCR_WindOverrideEditorAttribute : SCR_BaseEditorAttribute
 		if (!var)
 			return;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) 
 			return;
 		
@@ -96,7 +100,8 @@ class SCR_WindOverrideEditorAttribute : SCR_BaseEditorAttribute
 		//Cancel preview (On reset)
 		else
 		{
-			TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+			ChimeraWorld world = GetGame().GetWorld();
+			TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 			if (!weatherManager) 
 				return;
 			

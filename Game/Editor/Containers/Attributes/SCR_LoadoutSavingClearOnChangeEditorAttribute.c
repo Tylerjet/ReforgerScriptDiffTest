@@ -5,6 +5,12 @@ This is a attribute that is never set anywhere and reset when attribute dialog i
 class SCR_LoadoutSavingClearOnChangeEditorAttribute : SCR_BaseEditorAttribute
 {	
 	//------------------------------------------------------------------------------------------------
+	override bool IsSerializable()
+	{
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{				
 		if (!IsGameMode(item))

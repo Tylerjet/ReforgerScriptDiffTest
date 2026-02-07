@@ -35,6 +35,22 @@ class SCR_BanSettings : JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetDefault()
+	{
+		m_fScoreThreshold = 10.0;
+		m_fScoreDecreasePerMinute = 0.2;
+		m_fScoreMultiplier = 0.2;
+		m_fAccelerationMin = 1.0;
+		m_fAccelerationMax = 6.0;
+		m_fBanEvaluationLight = 0.8;
+		m_fBanEvaluationHeavy = 1.0;
+		m_fCrimePtFriendKill = 1.0;
+		m_fCrimePtTeamKill = 0.7;
+		m_fQualityTimeTemp = 1.0;
+		m_bVotingSuggestionEnabled = 0.0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SCR_BanSettings()
 	{
 		RegAll();
@@ -65,6 +81,13 @@ class SCR_BanSettingsContainer : JsonApiStruct
 		Print(" -- Settings -- ", lv);
 		Print("m_sDesc: " + m_sDesc, lv);
 		m_BanSettings.Log(lv);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetDefault()
+	{
+		m_sDesc = "Default params";
+		m_BanSettings.SetDefault();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -305,6 +328,12 @@ class SCR_PlayerDataConfigs : Managed
 			GetGame().GetBackendApi().SettingsData("BanSettings", m_BanSettings);
 		else
 			Print(m_BanSettings.GetDesc(), LogLevel.DEBUG);
+		
+		if (m_BanSettings.GetDesc().IsEmpty())
+		{
+			Print("Ban Settings could not be loaded from BE Storage: Relying on default config", LogLevel.WARNING);
+			m_BanSettings.SetDefault();
+		}
 		
 		m_BanSettings.Log(LogLevel.DEBUG);
 	}

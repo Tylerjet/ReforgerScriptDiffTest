@@ -2,7 +2,7 @@
 Effect which changes text of a text or rich text widget.
 */
 
-[BaseContainerProps(), SCR_ButtonEffectTitleAttribute("Text", "m_sWidgetName")]
+[BaseContainerProps(configRoot : true), SCR_ButtonEffectTitleAttribute("Text", "m_sWidgetName")]
 class SCR_ButtonEffectText : SCR_ButtonEffectWidgetBase
 {
 	[Attribute()]

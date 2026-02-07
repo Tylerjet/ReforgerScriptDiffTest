@@ -226,7 +226,6 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME | EntityEvent.SIMULATE);
-		owner.SetFlags(EntityFlags.ACTIVE);
 	}
 
 	//------------------------------------------------------------------------------------------------

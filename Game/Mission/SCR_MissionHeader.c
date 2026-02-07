@@ -66,6 +66,9 @@ class SCR_MissionHeader : MissionHeader
 	[Attribute("0")]
 	bool m_bRandomStartingWeather;
 	
+	[Attribute("0", desc: "Weather can change during gameplay")];
+	bool m_bRandomWeatherChanges;
+	
 	[Attribute("1", UIWidgets.EditBox, "Player XP multiplier (when enabled in gamemode; 1 for default)")]
 	float m_fXpMultiplier;
 	

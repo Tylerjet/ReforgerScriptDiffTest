@@ -24,12 +24,11 @@ class SCR_VONControllerClass: ScriptGameComponentClass
 //! Scripted VON input and control, attached to SCR_PlayerController
 class SCR_VONController : ScriptComponent
 {
-	// TODO remove ties to consciousness logic 
  	// TODO more robust von component selection management
 	
 	[Attribute("", UIWidgets.Object)]
 	protected ref SCR_VONMenu m_VONMenu;
-	
+		
 	protected const string VON_DIRECT_HOLD = "VONDirect";
 	protected const string VON_CHANNEL_HOLD = "VONChannel";
 	protected const string VON_LONG_RANGE_HOLD = "VONLongRange";
@@ -45,9 +44,10 @@ class SCR_VONController : ScriptComponent
 	protected bool m_bIsActiveModeLong;		// used for controller, switch between long range VON = true / channel VON = false
 	protected float m_fToggleOffDelay;		// used to track delay before toggle can be cancelled
 	protected string m_sActiveHoldAction;	// tracker for ending the hold action VON 
+	protected string m_sLocalEncryptionKey;		// local players faction encryption key
 	protected EVONTransmitType m_eVONType;	// currently active VON type
 	protected InputManager m_InputManager;
-	
+
 	protected SCR_VoNComponent m_VONComp;					// VON component used for transmission
 	protected SCR_VonDisplay m_VONDisplay;					// VON transmission display
 	protected SCR_VONEntry m_ActiveEntry;					// active entry (non direct speech)
@@ -93,6 +93,7 @@ class SCR_VONController : ScriptComponent
 	void SetVONDisabled(bool state)
 	{
 		m_bIsDisabled = state;
+		UpdateSystemState();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -154,8 +155,11 @@ class SCR_VONController : ScriptComponent
 	{
 		if (entry == m_ActiveEntry)
 			return;
-			
+				
 		m_ActiveEntry = entry;
+		
+		if (m_ActiveEntry && !m_ActiveEntry.m_bIsEnabled)	// turn off toggle when switching to disabled entry
+			OnVONToggle(0,0);
 		
 		if (resetLRR)	// cancel long range state if switching to personal radio
 		{
@@ -204,7 +208,7 @@ class SCR_VONController : ScriptComponent
 		
 		if (entry == m_LongRangeEntry)	// unset long range entry
 			m_LongRangeEntry = null;
-		
+				
 		m_aEntries.RemoveItem(entry);
 	}
 	
@@ -328,7 +332,7 @@ class SCR_VONController : ScriptComponent
 		}
 		else 
 		{
-			if (!m_ActiveEntry)
+			if (!m_ActiveEntry || !m_ActiveEntry.m_bIsEnabled)
 				return;
 			
 			m_bIsActiveModeLong = false;
@@ -503,6 +507,16 @@ class SCR_VONController : ScriptComponent
 		}
 		else
 		{
+			if (!GetGame().GetVONCanTransmitCrossFaction())
+			{
+				if (!m_sLocalEncryptionKey)
+					InitEncryptionKey();
+			
+				SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
+				if (radioEntry && m_sLocalEncryptionKey != string.Empty && radioEntry.GetTransceiver().GetRadio().GetEncryptionKey() != m_sLocalEncryptionKey)
+					return;
+			}
+						
 			SetActiveTransmit(entry);
 			m_VONComp.SetCapture(true);
 			m_bIsActive = true;
@@ -544,12 +558,15 @@ class SCR_VONController : ScriptComponent
 	//! SCR_PlayerController Event
 	//! Used to reinit VON when new entity is controlled
 	protected void OnControlledEntityChanged(IEntity from, IEntity to)
-	{		
+	{				
 		if (m_bIsToggledDirect || m_bIsToggledChannel)
 			OnVONToggle(0,0);
 		
 		if (to)
+		{
+			m_sLocalEncryptionKey = string.Empty;
 			SetVONComponent(SCR_VoNComponent.Cast(to.FindComponent(SCR_VoNComponent)));
+		}
 		else 
 			SetVONComponent(null);	
 		
@@ -559,6 +576,18 @@ class SCR_VONController : ScriptComponent
 			if (eventHandlerManager)
 				eventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
 		}
+		
+		bool unconsciousVONEnabled;
+		SCR_BaseGameMode baseGameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!baseGameMode)
+			return;
+		
+		SCR_GameModeHealthSettings healthSettingsComp = SCR_GameModeHealthSettings.Cast(baseGameMode.GetGameModeHealthSettings());
+		if (healthSettingsComp)
+			unconsciousVONEnabled = healthSettingsComp.IsUnconsciousVONPermitted();
+		
+		if (unconsciousVONEnabled)
+			return;
 		
 		if (to)		
 		{
@@ -570,6 +599,8 @@ class SCR_VONController : ScriptComponent
 			if (characterController)
 				m_bIsUnconscious = characterController.IsUnconscious();
 			
+			UpdateSystemState();
+			
 			EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(to.FindComponent(EventHandlerManagerComponent));
 			if (eventHandlerManager)
 				eventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
@@ -579,10 +610,27 @@ class SCR_VONController : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//! SCR_PlayerController Event
 	//! Used to deactivate VON for dead players
-	protected void OnDestroyed(IEntity killer)
+	protected void OnDestroyed(Instigator killer, IEntity killerEntity)
 	{		
 		if (m_bIsToggledDirect || m_bIsToggledChannel)
 			OnVONToggle(0,0);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_BaseGameMode event
+	//! Used to unregister VON for deleted players
+	protected void OnPlayerDeleted(int playerId, IEntity player)
+	{
+		if (playerId != GetGame().GetPlayerController().GetPlayerId())
+			return;
+		
+		if (m_bIsToggledDirect || m_bIsToggledChannel)
+			OnVONToggle(0,0);
+		
+		m_ActiveEntry = null;
+		m_LongRangeEntry = null;
+		
+		m_aEntries.Clear();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -629,6 +677,8 @@ class SCR_VONController : ScriptComponent
 	{
 		m_bIsUnconscious = !conscious;
 		
+		UpdateSystemState();
+		
 		if (conscious)
 			return;
 		
@@ -637,12 +687,24 @@ class SCR_VONController : ScriptComponent
 			
 		TimeoutVON();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void InitEncryptionKey()
+	{
+		SCR_FactionManager fManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (fManager)
+		{
+			SCR_Faction faction = SCR_Faction.Cast(fManager.GetLocalPlayerFaction());
+			if (faction)
+				m_sLocalEncryptionKey = faction.GetFactionRadioEncryptionKey();
+		}
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! Initialize component, done once per controller
 	protected void Init(IEntity owner)
-	{
-		if (s_bIsInit)	// hosted server will have multiple controllers, init just the first one
+	{	
+		if (s_bIsInit || System.IsConsoleApp())	// hosted server will have multiple controllers, init just the first one // dont init on dedicated server
 		{
 			Deactivate(owner);
 			return;
@@ -673,15 +735,21 @@ class SCR_VONController : ScriptComponent
 		PauseMenuUI.m_OnPauseMenuClosed.Insert(OnPauseMenuClosed);
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.GetOnPlayerDeleted().Insert(OnPlayerDeleted);
+		
 		m_DirectSpeechEntry = new SCR_VONEntry(); // Init direct speech entry
 		m_DirectSpeechEntry.m_bIsEnabled = true;
 		
-		SetEventMask(GetOwner(), EntityEvent.FRAME);
+		ConnectToHandleUpdateVONControllersSystem();
 		
 		s_bIsInit = true;
 		
 		if (m_VONMenu)
 			m_VONMenu.Init(this);
+		
+		UpdateSystemState();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -689,6 +757,8 @@ class SCR_VONController : ScriptComponent
 	protected void Cleanup()
 	{
 		m_VONMenu = null;
+		
+		UpdateSystemState();
 		
 		if (GetGame().GetCallqueue())
 			GetGame().GetCallqueue().Remove(OnVONGamepad);
@@ -718,6 +788,10 @@ class SCR_VONController : ScriptComponent
 			if (eventHandlerManager)
 				eventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
 		}
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.GetOnPlayerDeleted().Remove(OnPlayerDeleted);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -747,7 +821,38 @@ class SCR_VONController : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected void EOnFrame(IEntity owner, float timeSlice)
+	protected void UpdateSystemState()
+	{
+		if ((!m_bIsDisabled && !m_bIsUnconscious) || m_VONMenu)
+			ConnectToHandleUpdateVONControllersSystem();
+		else
+			DisconnectFromHandleUpdateVONControllersSystem();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ConnectToHandleUpdateVONControllersSystem()
+	{
+		World world = GetOwner().GetWorld();
+		HandleUpdateVONControllersSystem updateSystem = HandleUpdateVONControllersSystem.Cast(world.FindSystem(HandleUpdateVONControllersSystem));
+		if (!updateSystem)
+			return;
+		
+		updateSystem.Register(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void DisconnectFromHandleUpdateVONControllersSystem()
+	{
+		World world = GetOwner().GetWorld();
+		HandleUpdateVONControllersSystem updateSystem = HandleUpdateVONControllersSystem.Cast(world.FindSystem(HandleUpdateVONControllersSystem));
+		if (!updateSystem)
+			return;
+		
+		updateSystem.Unregister(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void Update(float timeSlice)
 	{
 		if (!m_bIsDisabled && !m_bIsUnconscious)
 		{
@@ -772,10 +877,14 @@ class SCR_VONController : ScriptComponent
 			UpdateDebug();
 		#endif
 	}
+	
 	//------------------------------------------------------------------------------------------------
-	void ~SCR_VONController()
+	override void OnDelete(IEntity owner)
 	{
 		s_bIsInit = false;
 		Cleanup();
+		DisconnectFromHandleUpdateVONControllersSystem();
+		
+		super.OnDelete(owner);
 	}
 };

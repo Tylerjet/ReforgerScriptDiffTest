@@ -92,7 +92,7 @@ class SCR_ConsumableEffectBase : Managed
 			localAnimParams = animParams;
 
 		if (localAnimParams)
-			activatedAction = controller.TryUseItemOverrideParams(item, false, localAnimParams.m_itemUseCommandId, localAnimParams.m_itemCmdIntArg, localAnimParams.m_itemCmdFloatArg, localAnimParams.m_fAnimDuration, localAnimParams.m_intParam, localAnimParams.m_floatParam, localAnimParams.m_boolParam, null);
+			activatedAction = controller.TryUseItemOverrideParams(item, false, false, localAnimParams.m_itemUseCommandId, localAnimParams.m_itemCmdIntArg, localAnimParams.m_itemCmdFloatArg, localAnimParams.m_fAnimDuration, localAnimParams.m_intParam, localAnimParams.m_floatParam, localAnimParams.m_boolParam, null);
 		else
 			activatedAction = controller.TryUseItem(item);
 		

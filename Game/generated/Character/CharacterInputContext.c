@@ -110,8 +110,8 @@ class CharacterInputContext
 	proto external int GetVehicleLights();
 	proto external void SetVehicleHorn(int val);
 	proto external int GetVehicleHorn();
-	proto external void SetVehicleHandBrake(bool val);
-	proto external bool GetVehicleHandBrake();
+	proto external void SetVehicleHandBrake(EHandBrakeType val);
+	proto external EHandBrakeType GetVehicleHandBrake();
 	// Gestures/Animations
 	proto external bool IsPlayingGesture();
 	proto external void SetPlayingGesture(bool val);
@@ -122,6 +122,9 @@ class CharacterInputContext
 	proto external IEntity GetLeftHandGadgetEntity();
 	// Returns the entity both when the gadget is in hand and when hidden by another action.
 	proto external IEntity GetWantedLefHandGadgetEntity();
+	proto external void SetCancelItemAction(bool value);
+	// Returns water level where x represents approximate total depth of water body, y represents how deep character is submerged in water, z represents how deep character's nose is submerged in water.
+	proto external vector GetWaterLevel();
 }
 
 /*!

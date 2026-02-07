@@ -291,4 +291,14 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		
 		SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! If the composition can't be transformed to a new position, turn the colour of the preview to red.
+	override protected SCR_EPreviewState GetPreviewStateToShow()
+	{
+		if (m_TransformingManager.CanBeTransformed())
+			return SCR_EPreviewState.PLACEABLE;
+		else
+			return SCR_EPreviewState.BLOCKED;
+	}
 };

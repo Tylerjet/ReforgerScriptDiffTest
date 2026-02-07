@@ -32,9 +32,10 @@ class DamageManagerComponent: SCR_HitZoneContainerComponent
 	//returns true if the default hitzone is in Destroyed damage state
 	proto external bool IsDestroyed();
 	//Sets the given entity as the last instigator of damage.
-	proto external void SetInstigator(IEntity instigator);
+	proto external void SetInstigatorEntity(IEntity instigator);
+	proto external void SetInstigator(notnull Instigator instigator);
 	//Returns last instigator
-	proto external IEntity GetInstigator();
+	proto external notnull Instigator GetInstigator();
 	/*!
 	Call HandleDamage on a specified hitzone
 	\param dType Type of damage
@@ -47,7 +48,7 @@ class DamageManagerComponent: SCR_HitZoneContainerComponent
 	\param colliderID ID of the collider receiving damage
 	\param externNodeIndex External node index
 	*/
-	proto external void HandleDamage(EDamageType dType, float damage, out vector hitPosDirNorm[3],	IEntity hitEntity, HitZone struckHitZone, IEntity instigator, SurfaceProperties surface, int colliderID, int externNodeIndex);
+	proto external void HandleDamage(EDamageType dType, float damage, out vector hitPosDirNorm[3],	IEntity hitEntity, HitZone struckHitZone, notnull Instigator instigator, SurfaceProperties surface, int colliderID, int externNodeIndex);
 	/*!
 	\return true if there is active DOT of specified type.
 	*/
@@ -63,6 +64,10 @@ class DamageManagerComponent: SCR_HitZoneContainerComponent
 
 	// callbacks
 
+	//! Not all armors are physical so the surface that gets struck by projectiles will not be the one the armor, but the hitzone.
+	//! This is a workaround to solve that issue. It gets called every time a projectile strikes a hitzone
+	//! We can override material of the hit with the corresponding one from the armor (if needed)
+	event GameMaterial OverrideHitMaterial(HitZone struckHitzone);
 	/*!
 	Invoked every time the DoT is added to certain hitzone.
 	*/

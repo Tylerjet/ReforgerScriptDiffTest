@@ -4,6 +4,9 @@ class SCR_CatalogEntitySpawnerComponentClass : SCR_SlotServiceComponentClass
 {
 	[Attribute(defvalue: "{56EBF5038622AC95}Assets/Conflict/CanBuild.emat", params: "emat", desc: "Material used on entity previews, visible to local players only", category: "Entity Spawner")]
 	ResourceName m_sPreviewEntityMaterial;
+	
+	[Attribute(defvalue: "{14A9DCEA57D1C381}Assets/Conflict/CannotBuild.emat", params: "emat", desc: "Material used on unavailable entity previews, visible to local players only", category: "Entity Spawner")]
+	ResourceName m_sPreviewEntityMaterialUnavailable;
 
 	[Attribute(defvalue :"{000CD338713F2B5A}Prefabs/AI/Groups/Group_Base.et", UIWidgets.ResourceNamePicker, "Default group to be initially assigned to created units", "et", category: "Entity Spawner")]
 	protected ResourceName m_sDefaultGroupPrefab;
@@ -56,6 +59,8 @@ class SCR_CatalogEntitySpawnerComponentClass : SCR_SlotServiceComponentClass
 //! Requires ActionManager with enough SCR_CatalogSpawnerUserAction attached to it (they cannot be generated through script) and SCR_EntitySlotComponents in hiearchy or vicinity of owner
 class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 {
+	protected const float UPDATE_PERIOD = 10.0 / 60.0;
+	
 	[Attribute(category: "Catalog Parameters", desc: "Type of entity catalogs that will be allowed on this spawner.", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EEntityCatalogType))]
 	protected ref array<EEntityCatalogType> m_aCatalogTypes;
 
@@ -65,6 +70,13 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	[Attribute(uiwidget: UIWidgets.SearchComboBox, category: "Catalog Parameters", desc: "Ignored labels.", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
 	protected ref array<EEditableEntityLabel> m_aIgnoredLabels;
 
+	[RplProp()]
+	protected ref array<RplId> m_aGracePeriodEntries = {};
+	[RplProp()]
+	protected ref array<RplId> m_aGracePeriodRequesters = {};
+	protected ref array<float> m_aGracePeriodStartingTimes = {};
+	protected float m_fLastUpdateElapsedTime;
+	
 	[Attribute(defvalue: "1", desc: "If true, Spawner will require from entities that they have all allowed labels.", category: "Catalog Parameters")]
 	protected bool m_bNeedAllLabels;
 
@@ -73,11 +85,22 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 	[Attribute(params: "0 inf", desc: "Custom supplies value.", category: "Supplies")]
 	protected int m_iCustomSupplies;
-
+	
+	[Attribute(desc: "Enables the refund grace period.", category: "Supplies")]
+	protected bool m_bEnableGracePeriod;
+	[Attribute(params: "0 inf", desc: "Time in seconds for the duration of the grace period for refunding.", category: "Supplies")]
+	protected float m_fGracePeriodTime;
+	[Attribute(params: "0 inf", desc: "Range in meters for the area of the grace period for refunding.", category: "Supplies")]
+	protected float m_fGracePeriodAreaRange;
+	[Attribute(params: "0 inf", desc: "Multiplier used to affect the resource usage of the refund actions after the grace period has expired.", category: "Supplies")]
+	protected float m_fPostGracePeriodRefundMultiplier;
+	
+	
 	protected ActionsManagerComponent m_ActionManager;
 	protected IEntity m_SpawnedEntity;
 	protected SCR_PrefabPreviewEntity m_PreviewEntity;
-	protected SCR_CampaignSuppliesComponent m_SupplyComponent; //TODO: Temporary until supply sandbox rework
+	protected SCR_ResourceComponent m_ResourceComponent;
+	protected SCR_CampaignSuppliesComponent m_SupplyComponent
 	protected RplComponent m_RplComponent;
 	protected SCR_Faction m_CurrentFaction;
 
@@ -127,7 +150,139 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	{
 		return m_CurrentFaction;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetPostGracePeriodRefundMultiplier()
+	{
+		return m_fPostGracePeriodRefundMultiplier;
+	}
 
+	//------------------------------------------------------------------------------------------------
+	bool IsInGracePeriod(IEntity entity)
+	{
+		RplId entityId = Replication.FindId(entity);
+		
+		if (entityId.IsValid())
+			return m_aGracePeriodEntries.Contains(entityId);
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsInGracePeriod(RplId entityId)
+	{
+		if (entityId.IsValid())
+			return m_aGracePeriodEntries.Contains(entityId);
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool CanRefund(RplId entityId, RplId userId)
+	{
+		if (!entityId.IsValid() || !userId.IsValid())
+			return false;
+			
+		int idx = m_aGracePeriodEntries.Find(entityId);
+		
+		return	idx == -1 
+			||	(	m_aGracePeriodEntries[idx] == entityId 
+				&&	m_aGracePeriodRequesters[idx] == userId);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool CanRefund(notnull IEntity entity, notnull IEntity user)
+	{
+		RplId entityId = Replication.FindId(entity);
+		RplId userId = Replication.FindId(user);
+		
+		if (!entityId.IsValid() || !userId.IsValid())
+			return false;
+			
+		int idx = m_aGracePeriodEntries.Find(entityId);
+		
+		return	idx == -1 
+			||	(	m_aGracePeriodEntries[idx] == entityId 
+				&&	m_aGracePeriodRequesters[idx] == userId);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UnregisterGracePeriod(notnull IEntity entity)
+	{
+		RplId entityId = Replication.FindId(entity);
+		
+		if (!entityId.IsValid())
+			return;
+		
+		int idx = m_aGracePeriodEntries.Find(entityId);
+		
+		m_aGracePeriodEntries.Remove(idx);
+		m_aGracePeriodStartingTimes.Remove(idx);
+		m_aGracePeriodRequesters.Remove(idx);
+		
+		if (m_aGracePeriodEntries.Count() == 0)
+			ClearEventMask(GetOwner(), EntityEvent.FRAME);
+		
+		Replication.BumpMe();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UnregisterGracePeriod(RplId entityId)
+	{
+		if (!entityId.IsValid())
+			return;
+		
+		int idx = m_aGracePeriodEntries.Find(entityId);
+		
+		m_aGracePeriodEntries.Remove(idx);
+		m_aGracePeriodStartingTimes.Remove(idx);
+		m_aGracePeriodRequesters.Remove(idx);
+		
+		if (m_aGracePeriodEntries.Count() == 0)
+			ClearEventMask(GetOwner(), EntityEvent.FRAME);
+		
+		Replication.BumpMe();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RegisterGracePeriod(notnull IEntity entity, notnull IEntity user, float startingTime = FLT_INF)
+	{
+		RplId entityId = Replication.FindId(entity);
+		RplId userId = Replication.FindId(user);
+		
+		if (!entityId.IsValid())
+			return;
+		
+		if (!userId.IsValid())
+			return;
+		
+		if (startingTime == FLT_INF)
+			startingTime = GetGame().GetWorld().GetWorldTime() / 1000.0;
+		
+		if (m_aGracePeriodEntries.Count() == 0)
+			SetEventMask(GetOwner(), EntityEvent.FRAME);
+		
+		m_aGracePeriodEntries.Insert(entityId);
+		m_aGracePeriodRequesters.Insert(userId);
+		m_aGracePeriodStartingTimes.Insert(startingTime + m_fGracePeriodTime);
+		Replication.BumpMe();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RegisterGracePeriod(RplId entityId, RplId userId, float startingTime = FLT_INF)
+	{
+		if (startingTime == FLT_INF)
+			startingTime = GetGame().GetWorld().GetWorldTime() / 1000.0;
+		
+		if (m_aGracePeriodEntries.Count() == 0)
+			SetEventMask(GetOwner(), EntityEvent.FRAME);
+		
+		m_aGracePeriodEntries.Insert(entityId);
+		m_aGracePeriodRequesters.Insert(userId);
+		m_aGracePeriodStartingTimes.Insert(startingTime + m_fGracePeriodTime);
+		Replication.BumpMe();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Check if user is elibigle for requesting specified entity
 	//! \param entityEntry - entity entry of item to be checked
@@ -245,7 +400,15 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Assign resource component to handle resources of spawner.
+	void AssignResourceComponent(notnull SCR_ResourceComponent component)
+	{
+		m_ResourceComponent = component;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Assign supply component to handle supplies of spawner. Currently uses Campaign specific supplies (temporarily)
+	[Obsolete("SCR_CatalogEntitySpawnerComponent.AssignSupplyComponent() should be used instead.")]
 	void AssignSupplyComponent(notnull SCR_CampaignSuppliesComponent supplyComp)
 	{
 		m_SupplyComponent = supplyComp;
@@ -407,7 +570,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		if (!user)
 			return;
 
-		int supplies = GetSpawnerSupplies();
+		int supplies = GetSpawnerResourceValue();
 		SCR_EntityCatalogSpawnerData spawnerData = SCR_EntityCatalogSpawnerData.Cast(entityEntry.GetEntityDataOfType(SCR_EntityCatalogSpawnerData));
 		if (!spawnerData)
 			return;
@@ -435,9 +598,14 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		//Supply consumption specific states
 		if (m_bSuppliesConsumptionEnabled)
 		{
-			if (m_SupplyComponent && entitySpawnerData && (entitySpawnerData.GetSupplyCost() > m_SupplyComponent.GetSupplies()))
+			if (!m_ResourceComponent)
+				return SCR_EEntityRequestStatus.NOT_AVAILABLE;
+			
+			SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+			
+			if (consumer && entitySpawnerData && (entitySpawnerData.GetSupplyCost() > consumer.GetAggregatedResourceValue()))
 				return SCR_EEntityRequestStatus.NOT_ENOUGH_SUPPLIES;
-			else if (!m_SupplyComponent && entitySpawnerData && (entitySpawnerData.GetSupplyCost() > m_iCustomSupplies))
+			else if (!consumer && entitySpawnerData && (entitySpawnerData.GetSupplyCost() > m_iCustomSupplies))
 				return SCR_EEntityRequestStatus.NOT_ENOUGH_SUPPLIES;
 		}
 
@@ -470,6 +638,16 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 			if (!CanRequestAI(user, entitySpawnerData.GetEntityCount()))
 				return SCR_EEntityRequestStatus.GROUP_FULL;
+		}
+		
+		// Campaign dependent ranking and cooldowns. To be replaced once stand-alone rank system is present
+		if (SCR_GameModeCampaign.GetInstance())
+		{
+			if (!RankCheck(entityEntry, user))
+				return SCR_EEntityRequestStatus.RANK_LOW;
+
+			if (!CooldownCheck(user))
+				return SCR_EEntityRequestStatus.COOLDOWN;
 		}
 
 		return SCR_EEntityRequestStatus.CAN_SPAWN;
@@ -536,7 +714,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		if (!playerGroup)
 			return;
 
-		SCR_PlayerController playerController = GetPlayerControllerFromEntity(playerGroup.GetLeaderEntity());
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerGroup.GetLeaderID()));
 		if (!playerController)
 			return;
 
@@ -658,7 +836,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	//! Used to create local "preview" model on specified slot. Used to visualise what entity is player requesting and position where it will appear
 	//! \param spawnData - SCR_EntityCatalogEntry containing information about entity (prefab data is required)
 	//! \param slot - Slot on which preview should appear
-	void CreatePreviewEntity(notnull SCR_EntityCatalogEntry spawnData, notnull SCR_EntitySpawnerSlotComponent slot)
+	void CreatePreviewEntity(notnull SCR_EntityCatalogEntry spawnData, notnull SCR_EntitySpawnerSlotComponent slot, SCR_EEntityRequestStatus reqStatus = SCR_EEntityRequestStatus.CAN_SPAWN)
 	{
 		SCR_CatalogEntitySpawnerComponentClass prefabData = SCR_CatalogEntitySpawnerComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!prefabData)
@@ -683,7 +861,14 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		params.TransformMode = ETransformMode.WORLD;
 
 		slot.GetOwner().GetTransform(params.Transform);
-		m_PreviewEntity = SCR_PrefabPreviewEntity.Cast(SCR_PrefabPreviewEntity.SpawnPreviewFromPrefab(resource, "SCR_PrefabPreviewEntity", GetOwner().GetWorld(), params, prefabData.m_sPreviewEntityMaterial));
+		
+		ResourceName material;
+		if (reqStatus == SCR_EEntityRequestStatus.CAN_SPAWN)
+			material = prefabData.m_sPreviewEntityMaterial;
+		else
+			material = prefabData.m_sPreviewEntityMaterialUnavailable;
+		
+		m_PreviewEntity = SCR_PrefabPreviewEntity.Cast(SCR_PrefabPreviewEntity.SpawnPreviewFromPrefab(resource, "SCR_PrefabPreviewEntity", GetOwner().GetWorld(), params, material));
 		
 		if (m_PreviewEntity)
 		{
@@ -747,7 +932,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			SCR_AIGroup.IgnoreSpawning(true);
 		
 		//Spawns entity using Resource Name from prefab data and slot owning entity
-		m_SpawnedEntity = SpawnEntity(entityEntry.GetPrefab(), slot.GetOwner());
+		m_SpawnedEntity = SpawnEntity(spawnerData.GetRandomDefaultOrVariantPrefab(), slot.GetOwner());
 
 		if (!m_SpawnedEntity)
 		{
@@ -774,17 +959,37 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			if (assetIndex > -1)
 				SendNotification(0, user, entityList.Find(entityEntry), parentCatalog.GetCatalogType());
 		}
-
-		slot.MoveCharactersFromSlot();
 		
 		//Called, if spawned entity is vehicle
 		if (m_SpawnedEntity.IsInherited(Vehicle))
 		{
+			CarControllerComponent_SA carController = CarControllerComponent_SA.Cast(m_SpawnedEntity.FindComponent(CarControllerComponent_SA));
+			if (carController)
+				carController.SetPersistentHandBrake(true);
+			
 			Physics physicsComponent = m_SpawnedEntity.GetPhysics();
 			if (physicsComponent)
 				physicsComponent.SetVelocity("0 -0.1 0"); // Make the entity copy the terrain properly
 			
 			LockSpawnedVehicle(user);
+
+			ActionsManagerComponent actionsManagerComponent = ActionsManagerComponent.Cast(m_SpawnedEntity.FindComponent(ActionsManagerComponent));
+			
+			if (!actionsManagerComponent)
+				return;
+			
+			SCR_ResourceEntityRefundAction refundAction;
+			array<BaseUserAction> outActions = {};
+			
+			actionsManagerComponent.GetActionsList(outActions);
+			
+			foreach (BaseUserAction action : outActions)
+			{
+				refundAction = SCR_ResourceEntityRefundAction.Cast(action);
+				
+				if (!refundAction)
+					continue;
+			}
 		}
 
 		//Called, if spawned entity is SCR_ChimeraCharacter or inherits from it.
@@ -796,6 +1001,10 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 			OnChimeraCharacterSpawned(SCR_ChimeraCharacter.Cast(m_SpawnedEntity), user, slot.GetRallyPoint());
 			requestComponent.AddQueuedAI(spawnerData.GetEntityCount());
+		}
+		else
+		{
+			slot.MoveCharactersFromSlot();
 		}
 
 		//Called, if spawned entity is SCR_AIGroup or inherits from it.
@@ -816,7 +1025,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		EntitySpawnParams params = new EntitySpawnParams();
 		params.TransformMode = ETransformMode.WORLD;
 		slotOwner.GetTransform(params.Transform);
-
+		
 		return GetGame().SpawnEntityPrefab(entityResource, GetOwner().GetWorld(), params);
 	}
 
@@ -840,9 +1049,20 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
+	Get the resource component that is assigned to the spawner.
+	\return SCR_ResourceComponent resource component.
+	*/
+	SCR_ResourceComponent GetSpawnerResourceComponent()
+	{
+		return m_ResourceComponent;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
 	Get supply component assigned to spawner
 	\return SCR_CampaignSuppliesComponent spawn supplies
 	*/
+	[Obsolete("SCR_CatalogEntitySpawnerComponent.GetSpawnerResourceComponent() should be used instead.")]
 	SCR_CampaignSuppliesComponent GetSpawnerSupplyComponent()
 	{
 		return m_SupplyComponent;
@@ -850,9 +1070,28 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 	//------------------------------------------------------------------------------------------------
 	/*!
+	Get resources left for spawner
+	\return float spawn supplies
+	*/
+	float GetSpawnerResourceValue()
+	{
+		if (!m_ResourceComponent)
+			return 0.0;
+		
+		SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+			
+		if (!consumer)
+			return 0.0;
+		
+		return consumer.GetAggregatedResourceValue();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
 	Get supplies left for spawner
 	\return float spawn supplies
 	*/
+	[Obsolete("SCR_CatalogEntitySpawnerComponent.GetSpawnerResourceValue() should be used instead.")]
 	float GetSpawnerSupplies()
 	{
 		if (!m_SupplyComponent)
@@ -868,14 +1107,35 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	*/
 	void AddSpawnerSupplies(float supplies)
 	{
-		if (m_SupplyComponent)
+		if (m_ResourceComponent)
 		{
-			m_SupplyComponent.AddSupplies(supplies);
-
+			SCR_ResourceInteractor interactor;
+			
+			if (supplies >= 0)
+			{
+				SCR_ResourceGenerator generator = m_ResourceComponent.GetGenerator(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+				
+				if (!generator)
+					return;
+				
+				interactor = generator;
+				
+				generator.RequestGeneration(supplies);
+			}
+			else
+			{
+				SCR_ResourceConsumer consumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+				
+				if (!consumer)
+					return;
+				
+				interactor = consumer;
+				
+				consumer.RequestConsumtion(-supplies);
+			}
+			
 			if (m_OnSpawnerSuppliesChanged)
-				m_OnSpawnerSuppliesChanged.Invoke(m_SupplyComponent.GetSupplies());
-
-			return;
+				m_OnSpawnerSuppliesChanged.Invoke(interactor.GetAggregatedResourceValue());
 		}
 
 		m_iCustomSupplies += supplies;
@@ -996,7 +1256,11 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			playerGroup = groups.param2;
 		}
 
-		SCR_SpawnerRequestComponent spawnerReqComponent = GetRequestComponentFromPlayerEntity(playerGroup.GetLeaderEntity());
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerGroup.GetLeaderID()));
+		if (!playerController)
+			return;
+		
+		SCR_SpawnerRequestComponent spawnerReqComponent = SCR_SpawnerRequestComponent.Cast(playerController.FindComponent(SCR_SpawnerRequestComponent));
 		if (spawnerReqComponent)
 			spawnerReqComponent.AddQueuedAI(-1);
 	}
@@ -1088,16 +1352,65 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	{
 		if (ent.FindComponent(SCR_CampaignMilitaryBaseComponent))
 		{
-			SCR_CampaignSuppliesComponent supplyComp = SCR_CampaignSuppliesComponent.Cast(ent.FindComponent(SCR_CampaignSuppliesComponent));
-			if (supplyComp)
+			SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(ent);
+			
+			if (resourceComponent)
 			{
-				AssignSupplyComponent(supplyComp);
+				AssignResourceComponent(resourceComponent);
+				
 				return false;
 			}
 		}
 
 		return true;
 	}
+	
+	override void EOnFrame(IEntity owner, float timeSlice)
+	{
+		if (!m_bEnableGracePeriod)
+			return;
+		
+		m_fLastUpdateElapsedTime += timeSlice;
+		
+		if (m_fLastUpdateElapsedTime > UPDATE_PERIOD)
+		{
+			float worldTime = GetGame().GetWorld().GetWorldTime() / 1000.0;
+			IEntity entity;
+			vector entityMins;
+			vector entityMaxs;
+			vector entityMat[4];
+			
+			for (int idx, count = m_aGracePeriodEntries.Count(); idx < count; idx++)
+			{
+				RplId id = m_aGracePeriodEntries[idx];
+				
+				entity = IEntity.Cast(Replication.FindItem(id));
+				
+				if (!entity)
+				{
+					m_aGracePeriodEntries.Remove(idx);
+					m_aGracePeriodStartingTimes.Remove(idx);
+					idx = Math.Max(0, idx - 1);
+					count = Math.Max(0, count - 1);
+					
+					continue;
+				}
+				
+				entity.GetBounds(entityMins, entityMaxs);
+				entity.GetWorldTransform(entityMat);
+				
+				if (worldTime < m_aGracePeriodStartingTimes[idx] && Math3D.IntersectionSphereAABB(GetOwner().GetOrigin().InvMultiply4(entityMat), m_fGracePeriodAreaRange, entityMins, entityMaxs))
+					continue;
+				
+				UnregisterGracePeriod(id);
+				idx = Math.Max(0, idx - 1);
+				count = Math.Max(0, count - 1);
+			}
+			
+			m_fLastUpdateElapsedTime = 0.0;
+		}
+	}
+		
 
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnInit(IEntity owner)
@@ -1123,6 +1436,8 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			if (prefabData)
 				GetGame().GetWorld().QueryEntitiesBySphere(GetOwner().GetOrigin(), prefabData.GetSupplySearchRadius(), SupplyComponentSearchCallback);
 		}
+		
+		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(owner);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -25,8 +25,6 @@ class SCR_MapCompassUIDeploy : SCR_MapCompassUI
 
 	override IEntity FindRelatedGadget()
 	{
-		ResourceName resName = GetGadgetForFaction();
-		Resource res = Resource.Load(resName);
-		return GetGame().SpawnEntityPrefabLocal(res);
+		return m_MapEntity;
 	}
 };

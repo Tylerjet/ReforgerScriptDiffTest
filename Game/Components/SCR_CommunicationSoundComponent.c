@@ -27,10 +27,44 @@ enum ECP_Characters
 	RADIO_MAN
 };
 
+enum ECP_VehicleTypes
+{
+	VEHICLE,
+	CAR,
+	TRUCK,
+	APC,
+	FUEL_TRUCK,
+	COMM_TRUCK,
+	SUPPLY_TRUCK,
+	MORTAR,
+	HELICOPTER,
+};
+
+enum SCR_ECommunicationSoundEventPriority
+{
+	SOUND_NONE = 0,
+	SOUND_BREATH = 10,
+	SOUND_PAIN_RELIEVE = 80,
+	SOUND_HIT = 90,
+	SOUND_DEATH = 98,
+	SOUND_KNOCKOUT = 99
+}
+
 class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 {
 	protected SignalsManagerComponent m_SignalsManagerComponent;
 	private static const int SUBTITLES_MAX_DISTANCE = 20;
+	static const int DEFAULT_EVENT_PRIORITY_DELAY = 100;
+	private static const string DAMAGE_TYPE_SIGNAL_NAME = "DamageType";
+	private static const string HIT_SCREAM_INTENSITY_SIGNAL_NAME = "HitScreamIntensity";
+
+	protected string m_sDelayedSoundEvent;
+	protected SCR_ECommunicationSoundEventPriority m_eDelayedSoundEventPriority;
+	protected EDamageType m_eEDamageType;
+	protected int m_iHitScreamIntensity;
+	
+	protected int m_iDamageTypeSignalIdx;
+	protected int m_iHitScreamIntensitySignalIdx;
 	
 	static bool m_bShowSubtitles;
 	
@@ -101,14 +135,99 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	/*! Schedule and prioritize appropriate injury sounds to be played. The sound scheduled will skip the internal queue
+	\param critical Whether current hit event is considered a critical hit. Multiple critical hits will increase intensity of hit scream.
+	*/
+	void SoundEventHit(bool critical, EDamageType damageType)
+	{
+		if (critical)
+			m_iHitScreamIntensity += 1;
+
+		SCR_ECommunicationSoundEventPriority priority = SCR_ECommunicationSoundEventPriority.SOUND_HIT + m_iHitScreamIntensity;
+		if (priority >= SCR_ECommunicationSoundEventPriority.SOUND_DEATH)
+			priority = SCR_ECommunicationSoundEventPriority.SOUND_DEATH - 1;
+
+		DelayedSoundEventPriority(SCR_SoundEvent.SOUND_HIT, priority, DEFAULT_EVENT_PRIORITY_DELAY, damageType);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*! Schedule and prioritize appropriate injury sounds to be played. The sound scheduled will skip the internal queue
+	\param eventName Name of the sound event to be played after delayMS.
+	\param priority Priority of the sound event. The event with higher priority will override the current delayed event.
+	\param delayMS Miliseconds delay for determining the sound event to be played
+	*/
+	void DelayedSoundEventPriority(string eventName, SCR_ECommunicationSoundEventPriority priority, int delayMS, EDamageType damageType = EDamageType.TRUE)
+	{
+		if (priority < m_eDelayedSoundEventPriority)
+			return;
+
+		m_sDelayedSoundEvent = eventName;
+		m_eDelayedSoundEventPriority = priority;
+		m_eEDamageType = damageType;
+
+		ScriptCallQueue queue = GetGame().GetCallqueue();
+
+		int remainingTime = queue.GetRemainingTime(PlayDelayedSoundEventPriority);
+
+		if (delayMS < remainingTime)
+		{
+			queue.Remove(PlayDelayedSoundEventPriority);
+			remainingTime = 0;
+		}
+
+		if (remainingTime <= 0)
+			queue.CallLater(PlayDelayedSoundEventPriority, delayMS);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Plays the delayed sound event requested via DelayedSoundEventPriority.
+	//! Skips internal queue of the communication sound component.
+	void PlayDelayedSoundEventPriority()
+	{
+		if (m_SignalsManagerComponent)
+		{
+			m_SignalsManagerComponent.SetSignalValue(m_iDamageTypeSignalIdx, m_eEDamageType);
+			m_SignalsManagerComponent.SetSignalValue(m_iHitScreamIntensitySignalIdx, m_iHitScreamIntensity);
+		}
+		
+		SoundEventPriority(m_sDelayedSoundEvent, m_eDelayedSoundEventPriority, true);
+
+		m_sDelayedSoundEvent = string.Empty;
+		m_eDelayedSoundEventPriority = SCR_ECommunicationSoundEventPriority.SOUND_NONE;
+		m_eEDamageType = EDamageType.TRUE;
+
+		// Also reset hit scream intensity
+		m_iHitScreamIntensity = 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*! Called by damage manager when character dies. 
+	Depending on silent parameter, character will cancel current delayed sound event and then either scream or not
+	\param silent When true, character will play SOUND_KNOCKOUT event. When false, SOUND_DEATH will be played instead.
+	*/
+	void SoundEventDeath(bool silent)
+	{
+		GetGame().GetCallqueue().Remove(DelayedSoundEventPriority);
+
+		if (silent)
+			SoundEvent(SCR_SoundEvent.SOUND_KNOCKOUT);
+		else
+			SoundEvent(SCR_SoundEvent.SOUND_DEATH);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SCR_CallsignBaseComponent callsignBaseComponent = SCR_CallsignBaseComponent.Cast(owner.FindComponent(SCR_CallsignBaseComponent));
-		
 		if (callsignBaseComponent)
 			callsignBaseComponent.GetOnCallsignChanged().Insert(SetCallsignSignals);
-		
+				
 		m_SignalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
+		if (m_SignalsManagerComponent)
+		{
+			m_iDamageTypeSignalIdx = m_SignalsManagerComponent.AddOrFindSignal(DAMAGE_TYPE_SIGNAL_NAME);
+			m_iHitScreamIntensitySignalIdx = m_SignalsManagerComponent.AddOrFindSignal(HIT_SCREAM_INTENSITY_SIGNAL_NAME);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -136,5 +255,8 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_CommunicationSoundComponent()
 	{
+		SCR_CallsignBaseComponent callsignBaseComponent = SCR_CallsignBaseComponent.Cast(GetOwner().FindComponent(SCR_CallsignBaseComponent));
+		if (callsignBaseComponent)
+			callsignBaseComponent.GetOnCallsignChanged().Remove(SetCallsignSignals);
 	}
 };

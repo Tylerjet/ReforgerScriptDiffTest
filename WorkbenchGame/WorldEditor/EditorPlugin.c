@@ -4,6 +4,16 @@ class EditorPlugin : WorldEditorPlugin
 	[Attribute(desc: "When enabled, Game Master camera will start on the position of World Editor camera.", category: "Game Master")]
 	protected bool m_bStartOnWorldEditorCamera;
 	
+	[Attribute(desc: "When enabled, Game Master interface will start unpaused.", category: "Game Master")]
+	protected bool m_bStartUnpaused;
+	
+	protected void Unpause()
+	{
+		SCR_EditorManagerEntity.GetInstance().GetOnOpened().Remove(Unpause);
+		ChimeraWorld world = GetGame().GetWorld();
+		world.PauseGameTime(false);
+	}
+	
 	override void OnGameModeStarted(string worldName, string gameMode, bool playFromCameraPos, vector cameraPosition, vector cameraAngles)
 	{
 		//--- Player is spawned at camera position; initialize, but don't open the editor
@@ -17,19 +27,40 @@ class EditorPlugin : WorldEditorPlugin
 #endif
 		}
 		
-		if (!m_bStartOnWorldEditorCamera)
-			return;
+		if (m_bStartOnWorldEditorCamera)
+		{
+			SCR_CameraEditorComponent cameraComponent = SCR_CameraEditorComponent.Cast(SCR_CameraEditorComponent.GetInstance(SCR_CameraEditorComponent));
+			if (cameraComponent)
+			{
+				//--- Set initial camera position and rotation
+				vector transform[4];
+				Math3D.AnglesToMatrix(Vector(cameraAngles[1], cameraAngles[0], cameraAngles[2]), transform);
+				transform[3] = cameraPosition;
+				
+				cameraComponent.SetInitTransform(transform);
+			}
+		}
 		
-		SCR_CameraEditorComponent cameraComponent = SCR_CameraEditorComponent.Cast(SCR_CameraEditorComponent.GetInstance(SCR_CameraEditorComponent));
-		if (!cameraComponent)
-			return;
-		
-		//--- Set initial camera position and rotation
-		vector transform[4];
-		Math3D.AnglesToMatrix(Vector(cameraAngles[1], cameraAngles[0], cameraAngles[2]), transform);
-		transform[3] = cameraPosition;
-		
-		cameraComponent.SetInitTransform(transform);
+		if (m_bStartUnpaused)
+		{
+			SCR_PauseGameTimeEditorComponent pauseComponent = SCR_PauseGameTimeEditorComponent.Cast(SCR_PauseGameTimeEditorComponent.GetInstance(SCR_PauseGameTimeEditorComponent));
+			if (pauseComponent)
+			{
+				pauseComponent.SetPauseOnOpen(false);
+				
+				SCR_EditorManagerEntity editorManager = pauseComponent.GetManager();
+				if (editorManager.IsOpened())
+				{
+					//--- Editor already opened, unpause the game
+					Unpause();
+				}
+				else if (editorManager.IsInTransition())
+				{
+					//--- Editor is being opened (e.g., when playing from character in editor world), unpause the game once it's opened
+					editorManager.GetOnOpened().Insert(Unpause);
+				}
+			}
+		}
 	}
 	
 	//--- Play the editor directly

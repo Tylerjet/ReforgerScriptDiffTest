@@ -1,7 +1,7 @@
 /*!
 Effect which passes all subscribed events to another modular button.
 */
-[BaseContainerProps(), SCR_ButtonEffectTitleAttribute("SlaveButton", "m_sWidgetName")]
+[BaseContainerProps(configRoot : true), SCR_ButtonEffectTitleAttribute("SlaveButton", "m_sWidgetName")]
 class SCR_ButtonEffectSlaveButton : SCR_ButtonEffectWidgetBase
 {
 	protected SCR_ModularButtonComponent m_targetComponent;

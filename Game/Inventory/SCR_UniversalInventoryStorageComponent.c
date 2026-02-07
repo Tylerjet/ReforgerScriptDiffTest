@@ -7,13 +7,17 @@ class SCR_UniversalInventoryStorageComponentClass: UniversalInventoryStorageComp
 // see CharacterInventoryStorageComponent for example of custom storage inheritance from current class
 class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponent
 {
-	
-	
 	[Attribute( "0", UIWidgets.EditBox, "How much weight it can carry")]
 	protected float m_fMaxWeight;
 	
 	[Attribute( "0", UIWidgets.EditBox, "The ID of slots the inserted items will be visible in")]
-	protected ref array<int> 										m_aSlotsToShow;
+	protected ref array<int> m_aSlotsToShow;
+	
+	[Attribute(desc: "Dictates how the entity gets other storage and sets them as linked storage or how it itself sets it as a linked storage of another storage. Do not use base class!")]
+	protected ref SCR_BaseLinkedStorageLogic m_LinkedStorageLogic;
+	
+	//~ Storages that will be automaticly closed and opened when the parent (this) storage is closed or opened
+	protected ref array<BaseInventoryStorageComponent> m_aLinkedStorages;
 	
 	#ifndef DISABLE_INVENTORY
 	private SCR_ItemAttributeCollection 							pAttributes;
@@ -21,11 +25,8 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	protected SCR_InventoryStorageManagerComponent					pInventoryManager;
 	protected const int												MIN_VOLUME_TO_SHOW_ITEM_IN_SLOT = 200000;	//cm^3
 	
-	
 	//protected float										m_fWeightSum			= 0.0;
 	//protected float										m_fVolumeSum			= 0.0;
-	
-	
 	
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 	
@@ -172,6 +173,42 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		m_fWeight += pItemComponent.GetTotalWeight();
 	}
 	
+	//------------------------------------------------------------------------ LINKED STORAGES ----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get a list of all linked storages of this storage
+	\param[out] linkedStorages Linked storages
+	\return Amount of linked storages
+	*/
+	int GetLinkedStorages(notnull out array<BaseInventoryStorageComponent> linkedStorages)
+	{
+		if (!m_aLinkedStorages)
+			return 0;
+		
+		linkedStorages.Copy(m_aLinkedStorages);
+		return linkedStorages.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Add a linked storage to this storage
+	\param newLinkedStorage The storage to link
+	*/
+	void AddLinkedStorage(BaseInventoryStorageComponent newLinkedStorage)
+	{
+		//~ Do not add self as linked storage
+		if (newLinkedStorage == this)
+			return;
+		
+		if (!m_aLinkedStorages)
+			m_aLinkedStorages = {};
+		//~ Already contains the storage
+		else if (m_aLinkedStorages.Contains(newLinkedStorage))
+			return;
+
+		m_aLinkedStorages.Insert(newLinkedStorage);
+	}
+	
 		
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
 	
@@ -191,6 +228,9 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 			return;
 
 		m_fWeight = pAttributes.GetWeight();
+		
+		if (m_LinkedStorageLogic)
+			m_LinkedStorageLogic.Init(this);
 	}
 	#else
 	private SCR_ItemAttributeCollection GetAttributeCollection( IEntity item );

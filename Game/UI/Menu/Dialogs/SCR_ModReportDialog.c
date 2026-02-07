@@ -2,7 +2,8 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 {
 	// Const localized strings 
 	protected const string MSG_SELECT = "#AR-Workshop_SelectMsg";
-	protected const string LINE_DOWNLOADED = "#AR-Workshop_TabName_Downloaded";
+	protected const string LINE_DOWNLOADED = "#AR-Workshop_Details_Downloaded";
+	protected const string TAG_AUTHOR_UNBLOCK = "unblock_author_simple";
 	
 	protected const int AUTHOR_MOD_LIMIT = 50;
 	
@@ -53,7 +54,7 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 		m_CurrentDialog.m_OnCancel.Insert(OnSelectReportCancel);
 		
 		// Author report action
-		SCR_NavigationButtonComponent butAuthor = m_CurrentDialog.FindButton("report_author");
+		SCR_InputButtonComponent butAuthor = m_CurrentDialog.FindButton("report_author");
 		if (butAuthor)
 			butAuthor.m_OnActivated.Insert(OnSelectReportAuthor);
 	}
@@ -73,32 +74,21 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	void OnSelectReportAuthor()
-	{
-		// Callback 
-		m_CallbackPage = new ref SCR_WorkshopApiCallback_RequestPage(0);
-		
-		if (!m_Author.IsBlocked())
-			m_CallbackPage.m_OnSuccess.Insert(OpenReportAuthorModList);
-		else 
-			m_CallbackPage.m_OnSuccess.Insert(OpenRemoveAuthorBlockModList);
-		
-		m_LoadingOverlayDlg = SCR_LoadingOverlayDialog.Create();
-		
-		// Params 
-		ContentBrowserUI cb = ContentBrowserUI.Cast(
-			GetGame().GetMenuManager().FindMenuByPreset(ChimeraMenuPreset.ContentBrowser)
-		);
-		
-		SCR_ContentBrowser_AddonsSubMenu addonsSubMenu = cb.GetOnlineSubMenu();
-		m_Params = new SCR_ContentBrowser_GetAssetListParams(addonsSubMenu);
-		m_Params.limit = AUTHOR_MOD_LIMIT;
-		m_Params.offset = 0;
-		
-		m_Author.RequestPage(m_CallbackPage, m_Params, false);
-				
-		///OpenReportAuthorModList();
+	{	
 		if (m_CurrentDialog)
 			m_CurrentDialog.ClearButtons();
+		
+		if (!m_Author.IsBlocked())
+		{
+			// Block author
+			m_LoadingOverlayDlg = SCR_LoadingOverlayDialog.Create();
+			OpenReportAuthorModList();
+		}
+		else
+		{
+			// Show cancel report block
+			OpenRemoveAuthorBlockModList();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -129,38 +119,42 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Dialog displaying all author mmods and explaing what will happen after report confirm
-	protected void OpenReportAuthorModList(SCR_WorkshopApiCallback_RequestPage callback)
-	{		
-		m_CallbackPage.m_OnSuccess.Remove(OpenReportAuthorModList);
-		
+	protected void OpenReportAuthorModList()
+	{
 		string author = m_Item.GetAuthorName();
 		
 		OpenAuthorModsDialog();
-		m_CurrentDialog.GetMessageWidget().SetTextFormat("#AR-Workshop_ReportAuthorMsg" + "\n\n" + "#AR-Workshop_AffectedMods", author);
+		
+		// Setup message
+		string msg = "#AR-Workshop_ReportAuthorMsg";
+		SCR_AddonListDialog addonDialog = SCR_AddonListDialog.Cast(m_CurrentDialog);
+		
+		// Show affected mods only if there are any mods to be displayed 
+		if (addonDialog && !addonDialog.GetDonwloadLines().IsEmpty())
+			msg += "\n\n" + "#AR-Workshop_AffectedMods";
+		
+		m_CurrentDialog.GetMessageWidget().SetTextFormat(msg, author);
 		
 		// Actions 
 		m_CurrentDialog.m_OnConfirm.Insert(OnConfirmReportAuthorModList);
 		m_CurrentDialog.m_OnCancel.Insert(OnCancelReportAuthorModList);
-		
 		m_LoadingOverlayDlg.Close();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Dialog displaying all author mmods and explaing what will happen after report confirm
-	protected void OpenRemoveAuthorBlockModList(SCR_WorkshopApiCallback_RequestPage callback)
-	{		
-		m_CallbackPage.m_OnSuccess.Remove(OpenRemoveAuthorBlockModList);
+	protected void OpenRemoveAuthorBlockModList()
+	{				
+		m_CurrentDialog = SCR_ConfigurableDialogUi.CreateFromPreset(m_sDialogsConfig, TAG_AUTHOR_UNBLOCK);
 		
+		// Add author to message
+		string msg = m_CurrentDialog.GetMessageStr();
 		string author = m_Item.GetAuthorName();
-		
-		OpenAuthorModsDialog(false);
-		m_CurrentDialog.GetMessageWidget().SetTextFormat("#AR-Workshop_CancelAuthorReport" + "\n\n" + "#AR-Workshop_AffectedMods", author);
+		m_CurrentDialog.GetMessageWidget().SetTextFormat(msg, author);
 		
 		// Actions 
 		m_CurrentDialog.m_OnConfirm.Insert(OnConfirmRemoveAuthorBlock);
 		m_CurrentDialog.m_OnCancel.Insert(OnCancelRemoveAuthorReport);
-		
-		m_LoadingOverlayDlg.Close();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -168,8 +162,11 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 	{
 		// Create dialog list
 		array<WorkshopItem> toReport = {};
-		m_Author.GetPageItems(toReport);
-		
+		if (m_Author.IsBlocked())
+			m_Author.GetPageItems(toReport);
+		else
+			m_Author.GetOfflineItems(toReport);
+
 		m_aAuthorModsList.Clear();
 	
 		foreach (WorkshopItem item : toReport)
@@ -207,6 +204,10 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 	protected ref SCR_WorkshopItemActionAddAuthorBlock m_ActionAddAuthorBlock;
 	protected ref SCR_WorkshopItemActionRemoveAuthorBlock m_ActionRemoveAuthorBlock;
 	
+	
+	
+	
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnConfirmReportAuthorModList()
 	{
@@ -214,8 +215,11 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 		m_ActionAddAuthorBlock = m_Item.AddAuthorBlock();
 		
 		m_ActionAddAuthorBlock.m_OnCompleted.Insert(OnAuthorReportSuccess);
+		m_ActionAddAuthorBlock.m_OnFailed.Insert(OnAuthorReportFail);
 		
-		m_ActionAddAuthorBlock.Activate();
+		if (!m_ActionAddAuthorBlock.Activate() && !m_ActionAddAuthorBlock.Reactivate())
+			return;
+		
 		
 		OnCancelReportAuthorModList();
 		m_LoadingOverlayDlg = SCR_LoadingOverlayDialog.Create();
@@ -227,11 +231,20 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 		m_ActionRemoveAuthorBlock = m_Item.RemoveAuthorBlock();
 		
 		m_ActionRemoveAuthorBlock.m_OnCompleted.Insert(OnRemoveAuthorBlockSuccess);
+		m_ActionRemoveAuthorBlock.m_OnFailed.Insert(OnAuthorReportFail);
 		
-		m_ActionRemoveAuthorBlock.Activate();
+		if (!m_ActionRemoveAuthorBlock.Activate() && !m_ActionRemoveAuthorBlock.Reactivate())
+			return;
 		
 		OnCancelReportAuthorModList();
 		m_LoadingOverlayDlg = SCR_LoadingOverlayDialog.Create();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAuthorReportFail()
+	{
+		CloseDialogs();
+		m_LoadingOverlayDlg.Close();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -239,7 +252,7 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 	{
 		ContentBrowserDetailsMenu detailsMenu = ContentBrowserDetailsMenu.Cast(GetGame().GetMenuManager().GetTopMenu());
 		
-		detailsMenu.OnItemReportedSuccessfully();
+		detailsMenu.OnItemReportedSuccessfully(true);
 		
 		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
 		
@@ -258,8 +271,7 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 				action.Cancel();
 		}
 		
-		//m_CurrentDialog.Close();
-		m_CurrentDialog.m_OnClose.Insert(CloseDialogs);
+		CloseDialogs();
 		m_LoadingOverlayDlg.Close();
 	}
 	

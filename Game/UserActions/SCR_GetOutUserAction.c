@@ -1,6 +1,7 @@
 class SCR_GetOutAction : SCR_CompartmentUserAction
 {
 	protected const float MAX_GETOUT_SPEED_METER_PER_SEC_SQ = 17.36138889;
+	protected const float MAX_GETOUT_ALTITUDE_AGL_METERS = 3;
 
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
@@ -24,7 +25,7 @@ class SCR_GetOutAction : SCR_CompartmentUserAction
 		if (!compartmentAcess)
 			return;
 		
-		if (!compartmentAcess.GetOutVehicle(GetRelevantDoorIndex(pUserEntity)))
+		if (!compartmentAcess.GetOutVehicle(GetRelevantDoorIndex(pUserEntity), false))
 			return;
 		
 		super.PerformAction(pOwnerEntity, pUserEntity);
@@ -56,17 +57,7 @@ class SCR_GetOutAction : SCR_CompartmentUserAction
 			return false;
 		
 		// Do not allow plain GetOut with speeds higher than 15 km/phys
-		IEntity vehicle;
-		IEntity parent = GetOwner();
-		while (parent)
-		{
-			vehicle = parent;
-
-			if (Vehicle.Cast(parent))
-				break;
-
-			parent = parent.GetParent();
-		}
+		Vehicle vehicle = Vehicle.Cast(GetOwner().GetRootParent());
 		
 		if (vehicle)
 		{
@@ -77,6 +68,15 @@ class SCR_GetOutAction : SCR_CompartmentUserAction
 				vector velocity = phys.GetVelocity();
 
 				if ((velocity.LengthSq()) > MAX_GETOUT_SPEED_METER_PER_SEC_SQ)
+					return false;
+			}
+
+			// Disallow GetOut when flying is above 3 meters
+			HelicopterControllerComponent helicopterController = HelicopterControllerComponent.Cast(vehicle.GetVehicleController());
+			if (helicopterController)
+			{
+				VehicleHelicopterSimulation simulation = VehicleHelicopterSimulation.Cast(helicopterController.GetBaseSimulation());
+				if (simulation && simulation.GetAltitudeAGL() > MAX_GETOUT_ALTITUDE_AGL_METERS)
 					return false;
 			}
 		}

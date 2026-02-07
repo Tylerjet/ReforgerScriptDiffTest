@@ -137,15 +137,14 @@ sealed class SCR_DeathRecord : SCR_IGameModeRecord
 	{
 	}
 
-	static ref SCR_DeathRecord CreateNew(IEntity victim, IEntity instigator)
+	static ref SCR_DeathRecord CreateNew(int playerId, IEntity playerEntity, IEntity killerEntity, Instigator killer)
 	{
 		SCR_DeathRecord record = new SCR_DeathRecord();
-		record.m_Position = victim.GetOrigin();
-		record.m_fTimestamp = victim.GetWorld().GetWorldTime();
-		auto pm = GetGame().GetPlayerManager();
-		record.m_PlayerId = pm.GetPlayerIdFromControlledEntity(victim);
-		record.m_InstigatorId = pm.GetPlayerIdFromControlledEntity(instigator);
-		FactionAffiliationComponent factionComponent = FactionAffiliationComponent.Cast(victim.FindComponent(FactionAffiliationComponent));
+		record.m_Position = playerEntity.GetOrigin();
+		record.m_fTimestamp = playerEntity.GetWorld().GetWorldTime();
+		record.m_PlayerId = playerId;
+		record.m_InstigatorId = killer.GetInstigatorPlayerID();
+		FactionAffiliationComponent factionComponent = FactionAffiliationComponent.Cast(playerEntity.FindComponent(FactionAffiliationComponent));
 		if (factionComponent)
 		{
 			Faction faction = factionComponent.GetAffiliatedFaction();
@@ -153,11 +152,11 @@ sealed class SCR_DeathRecord : SCR_IGameModeRecord
 				record.m_Faction = faction.GetFactionKey();
 		}
 
-		if (instigator)
+		if (killerEntity)
 		{
-			record.m_InstigatorPosition = instigator.GetOrigin();
+			record.m_InstigatorPosition = killerEntity.GetOrigin();
 
-			ChimeraCharacter ch = ChimeraCharacter.Cast(instigator);
+			ChimeraCharacter ch = ChimeraCharacter.Cast(killerEntity);
 			if (ch)
 			{
 				BaseWeaponManagerComponent wpm = ch.GetCharacterController().GetWeaponManagerComponent();
@@ -169,7 +168,7 @@ sealed class SCR_DeathRecord : SCR_IGameModeRecord
 				}
 			}
 
-			FactionAffiliationComponent instigatorFactionComponent = FactionAffiliationComponent.Cast(instigator.FindComponent(FactionAffiliationComponent));
+			FactionAffiliationComponent instigatorFactionComponent = FactionAffiliationComponent.Cast(killerEntity.FindComponent(FactionAffiliationComponent));
 			if (instigatorFactionComponent)
 			{
 				Faction instigatorFaction = instigatorFactionComponent.GetAffiliatedFaction();
@@ -386,12 +385,12 @@ class SCR_GameModeStatistics
 
 	/*!
 		Creates a death record.
-		\param victim Dead/destroyed entity
-		\param instigator Killer entity
+		\param playerEntity Dead/destroyed entity
+		\param killerEntity Killer entity
 	*/
-	static void RecordDeath(IEntity victim, IEntity instigator)
+	static void RecordDeath(int playerId, IEntity playerEntity, IEntity killerEntity, Instigator killer)
 	{
-		SCR_DeathRecord rec = SCR_DeathRecord.CreateNew(victim, instigator);
+		SCR_DeathRecord rec = SCR_DeathRecord.CreateNew(playerId, playerEntity, killerEntity, killer);
 		s_aRecordBuffer.Insert(rec);
 	}
 

@@ -1,119 +1,98 @@
 class SCR_SwitchSeatAction : SCR_GetInUserAction
 {
-	protected IEntity m_pOwner;
-	
-	//------------------------------------------------------------------------------------------------
-	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
-	{
-		super.Init(pOwnerEntity, pManagerComponent);
-		m_pOwner = pOwnerEntity;
-	}
-		
-	//------------------------------------------------------------------------------------------------
-	//! Checks parents of root entity and whether compartment belongs to any of them.
-	protected bool IsCompartmentInHierarchy(notnull BaseCompartmentSlot compartment, IEntity root)
-	{
-		IEntity pCompartmentOwner = compartment.GetOwner();
-		IEntity pRoot = root;
-		while (pRoot)
-		{
-			if (pCompartmentOwner == pRoot)
-				return true;
-			
-			pRoot = pRoot.GetParent();
-		}
-		
-		while (pCompartmentOwner)
-		{
-			if (pCompartmentOwner == root)
-				return true;
-			
-			pCompartmentOwner = pCompartmentOwner.GetParent();
-		}
-		
-		return false;
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
-	{		
-		if (!user)
-			return false;
-		
+	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(user);
 		if (!character && !character.IsInVehicle())
 			return false;
-		
-		CharacterControllerComponent characterController = CharacterControllerComponent.Cast(character.FindComponent(CharacterControllerComponent));
+
+		CharacterControllerComponent characterController = character.GetCharacterController();
 		if (!characterController)
 			return false;
-		
-		auto compartmentAccess = character.GetCompartmentAccessComponent();
+
+		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
 		if (!compartmentAccess)
 			return false;
-		
-		auto characterCompartment = compartmentAccess.GetCompartment();
+
+		BaseCompartmentSlot characterCompartment = compartmentAccess.GetCompartment();
 		if (!characterCompartment)
+			return false;
+
+		BaseCompartmentSlot compartment = GetCompartmentSlot();
+		if (!compartment)
+			return false;
+
+		if (characterCompartment == compartment)
+			return false;
+
+		// Restrict switching to this compartment in case the section does not match
+		if (characterCompartment.GetCompartmentSection() != compartment.GetCompartmentSection())
 			return false;
 
 		auto commandHandler = character.GetAnimationComponent().GetCommandHandler();
 		if (commandHandler && commandHandler.IsVehicleSwitchingSeats())
 			return false;
 
-		
 		// Prevents switching seats within different vehicles,
-		if (!IsCompartmentInHierarchy(characterCompartment, m_pOwner))
+		if (characterCompartment.GetOwner().GetRootParent() != GetOwner().GetRootParent())
 			return false;
-		
-		// Check if the position isn't lock.
-		if (m_pLockComp && m_pLockComp.IsLocked(user, GetCompartmentSlot()))
+
+		// Check if the position isn't locked
+		if (m_pLockComp && m_pLockComp.IsLocked(user, compartment))
 		{
 			SetCannotPerformReason(m_pLockComp.GetCannotPerformReason(user));
 			return false;
 		}
-		
-		BaseCompartmentSlot compartment = GetCompartmentSlot();		
-		return compartment != null;
+
+		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
 		if (!user)
 			return false;
-		
+
 		BaseCompartmentSlot compartment = GetCompartmentSlot();
 		if (!compartment)
 			return false;
-		
+
 		if (compartment.GetOccupant())
 			return false;
-		
-		auto character = ChimeraCharacter.Cast(user);
-		if (!character && !character.IsInVehicle()) 
+
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (!character && !character.IsInVehicle())
 			return false;
-		
-		auto compartmentAccess = character.GetCompartmentAccessComponent();
+
+		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
 		if (!compartmentAccess)
 			return false;
-		
+
 		if (compartmentAccess.IsGettingIn() || compartmentAccess.IsGettingOut())
 			return false;
-		
-		auto characterCompartment = compartmentAccess.GetCompartment();
+
+		BaseCompartmentSlot characterCompartment = compartmentAccess.GetCompartment();
 		if (!characterCompartment)
 			return false;
-		
+
+		if (characterCompartment == compartment)
+			return false;
+
+		// Restrict switching to this compartment in case the section does not match
+		if (characterCompartment.GetCompartmentSection() != compartment.GetCompartmentSection())
+			return false;
+
 		auto commandHandler = character.GetAnimationComponent().GetCommandHandler();
 		if (commandHandler && commandHandler.IsVehicleSwitchingSeats())
 			return false;
 
 		// Prevents switching seats within different vehicles,
-		if (!IsCompartmentInHierarchy(characterCompartment, m_pOwner))
+		if (characterCompartment.GetOwner().GetRootParent() != GetOwner().GetRootParent())
 			return false;
-		
-		//! Check if some other action or animation is preventing the seat switch 
-		if(GetGame().GetIsClientAuthority())
+
+		//! Check if some other action or animation is preventing the seat switch
+		if (GetGame().GetIsClientAuthority())
 		{
 			auto vehicleController = VehicleControllerComponent.Cast(characterCompartment.GetController());
 			if (vehicleController && !vehicleController.CanSwitchSeat())
@@ -125,8 +104,7 @@ class SCR_SwitchSeatAction : SCR_GetInUserAction
 			if (vehicleController && !vehicleController.CanSwitchSeat())
 				return false;
 		}
-		
 
-		return characterCompartment != compartment;
-	}	
-};
+		return true;
+	}
+}

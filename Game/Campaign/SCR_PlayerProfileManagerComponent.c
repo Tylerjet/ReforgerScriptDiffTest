@@ -60,15 +60,16 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	/*!
 		Called after a player gets killed.
 		\param playerId PlayerId of victim player.
-		\param player Entity of victim player if any.
-		\param killer Entity of killer instigator if any.
+		\param playerEntity Entity of victim player if any.
+		\param killerEntity Entity of killer instigator if any.
+		\param killer Instigator of the kill, use type to see if there's any
 	*/
-	protected override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	protected override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		super.OnPlayerKilled(playerId, player, killer);
+		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
 		
 		CareerBackendData victimProfile = GetPlayerProfile(playerId);
-		int killerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(killer);
+		int killerId = killer.GetInstigatorPlayerID();
 		
 		// Victim profile exists
 		if (victimProfile)

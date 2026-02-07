@@ -16,6 +16,9 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 	[Attribute(defvalue: "0.03", desc: "Inertia strength. Larger values mean more inertia.")]
 	private float m_fInertiaStrength;
 	
+	[Attribute("1", desc: "When enabled, changes in entity hover state will refresh tooltips.")]
+	protected bool m_bTrackHoverState;
+	
 	protected InputManager m_InputManager;
 	protected SCR_LayersEditorComponent m_LayersManager;
 	protected SCR_TooltipAreaEditorUIComponent m_TooltipArea;
@@ -296,8 +299,12 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		m_TooltipArea.GetWidget().SetOpacity(0);
 		
-		SCR_BaseEditableEntityFilter hoverFilter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.HOVER);
-		if (hoverFilter) hoverFilter.GetOnChanged().Insert(OnHover);
+		if (m_bTrackHoverState)
+		{
+			SCR_BaseEditableEntityFilter hoverFilter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.HOVER);
+			if (hoverFilter)
+				hoverFilter.GetOnChanged().Insert(OnHover);
+		}
 		
 		m_LayersManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent));
 		
@@ -319,8 +326,12 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		if (m_TooltipArea) m_TooltipArea.ClearTooltips();
 		
-		SCR_BaseEditableEntityFilter hoverFilter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.HOVER);
-		if (hoverFilter) hoverFilter.GetOnChanged().Remove(OnHover);
+		if (m_bTrackHoverState)
+		{
+			SCR_BaseEditableEntityFilter hoverFilter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.HOVER);
+			if (hoverFilter)
+				hoverFilter.GetOnChanged().Remove(OnHover);
+		}
 		
 		if (m_ContextMenu)
 			m_ContextMenu.GetOnContextMenuToggle().Remove(OnContextMenuToggle);

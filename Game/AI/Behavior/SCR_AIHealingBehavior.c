@@ -15,6 +15,9 @@ class SCR_AIHealBehavior : SCR_AIBehaviorBase
 	protected float m_fTimeCreated_ms;
 	protected float m_fPriorityDelay_ms;
 	
+	// Max threat value under which we will consider healing someone
+	protected const float MAX_THREAT_THRESHOLD = 0.002;
+	
 	//-------------------------------------------------------------------------------------------------------------------------------
 	//! priority should be between normal Move and AttackMove and replaced by enum later, maybe evaluated dynamicly
 	void SCR_AIHealBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, IEntity entityToHeal, bool allowHealMove, float priority = PRIORITY_BEHAVIOR_HEAL, float priorityLevel = PRIORITY_LEVEL_NORMAL)
@@ -46,7 +49,8 @@ class SCR_AIHealBehavior : SCR_AIBehaviorBase
 	
 	override float CustomEvaluate()
 	{
-		if (GetGame().GetWorld().GetWorldTime() - m_fTimeCreated_ms > m_fPriorityDelay_ms)
+		if ((GetGame().GetWorld().GetWorldTime() - m_fTimeCreated_ms > m_fPriorityDelay_ms) &&
+			(m_Utility.m_ThreatSystem.GetThreatMeasureWithoutInjuryFactor() < MAX_THREAT_THRESHOLD))
 			return GetPriority();
 		else
 			return 0;

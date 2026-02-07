@@ -87,7 +87,7 @@ class SCR_ScenarioFrameworkGetLastFinishedTaskEnity : SCR_ScenarioFrameworkGet
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGetEntityByName: SCR_ScenarioFrameworkGet
 {
-	[Attribute()];
+	[Attribute()]
 	protected string 		m_sEntityName;
 	
 	//------------------------------------------------------------------------------------------------
@@ -102,9 +102,28 @@ class SCR_ScenarioFrameworkGetEntityByName: SCR_ScenarioFrameworkGet
 
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkGetSpawnedEntity: SCR_ScenarioFrameworkGet
+{
+	[Attribute()]
+	protected string 		m_sLayerName;
+	
+	//------------------------------------------------------------------------------------------------
+	override SCR_ScenarioFrameworkParamBase Get()
+	{
+		IEntity entity = FindEntityByName(m_sLayerName);
+		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+		if (!layer)
+			return null;
+		
+		return new SCR_ScenarioFrameworkParam<IEntity>(layer.GetSpawnedEntity());
+	}
+};
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGetTask: SCR_ScenarioFrameworkGet
 {
-	[Attribute()];
+	[Attribute()]
 	protected string 		m_sLayerTaskName;
 	
 	//------------------------------------------------------------------------------------------------
@@ -123,7 +142,7 @@ class SCR_ScenarioFrameworkGetTask: SCR_ScenarioFrameworkGet
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGetLayerTask: SCR_ScenarioFrameworkGet
 {
-	[Attribute()];
+	[Attribute()]
 	protected string 		m_sLayerTaskName;
 	
 	//------------------------------------------------------------------------------------------------
@@ -145,7 +164,7 @@ class SCR_ScenarioFrameworkGetLayerTask: SCR_ScenarioFrameworkGet
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGetLayerBase: SCR_ScenarioFrameworkGet
 {
-	[Attribute()];
+	[Attribute()]
 	protected string 		m_sLayerBaseName;
 	
 	//------------------------------------------------------------------------------------------------
@@ -167,7 +186,7 @@ class SCR_ScenarioFrameworkGetLayerBase: SCR_ScenarioFrameworkGet
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGetArea: SCR_ScenarioFrameworkGet
 {
-	[Attribute()];
+	[Attribute()]
 	protected string 		m_sAreaName;
 	
 	//------------------------------------------------------------------------------------------------
@@ -189,7 +208,7 @@ class SCR_ScenarioFrameworkGetArea: SCR_ScenarioFrameworkGet
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGetAreaTrigger: SCR_ScenarioFrameworkGet
 {
-	[Attribute()];
+	[Attribute()]
 	protected string 		m_sAreaName;
 	
 	//------------------------------------------------------------------------------------------------
@@ -215,7 +234,7 @@ class SCR_ScenarioFrameworkGetAreaTrigger: SCR_ScenarioFrameworkGet
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGetListEntitiesInTrigger : SCR_ScenarioFrameworkGet
 {
-	[Attribute()];
+	[Attribute()]
 	protected string 		m_sTriggerName;
 	
 	//------------------------------------------------------------------------------------------------
@@ -260,6 +279,7 @@ class SCR_ScenarioFrameworkGetCountEntitiesInTrigger : SCR_ScenarioFrameworkGetL
 };
 
 //------------------------------------------------------------------------------------------------
+//! Intended mainly for the one player scenario, because it will retrieve the first player it finds
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkGetPlayerEntity: SCR_ScenarioFrameworkGet
 {
@@ -269,11 +289,74 @@ class SCR_ScenarioFrameworkGetPlayerEntity: SCR_ScenarioFrameworkGet
 		if (!GetGame().GetWorld())
 			return null;
 		
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		array<int> playerIDs = {};
+		GetGame().GetPlayerManager().GetPlayers(playerIDs);
+		IEntity entity;
+		foreach (int playerID : playerIDs)
+		{
+			entity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
+			if (!entity)
+				continue;
+			
+			return new SCR_ScenarioFrameworkParam<IEntity>(entity);
+		}
 		
-		if (!playerController)
+		return null;
+	}
+};
+
+//------------------------------------------------------------------------------------------------
+//! Gets the closest player to provided getter
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkGetClosestPlayerEntity: SCR_ScenarioFrameworkGet
+{
+	[Attribute(desc: "Closest to what - use getter")];
+	protected ref SCR_ScenarioFrameworkGet		m_Getter;
+	
+	//------------------------------------------------------------------------------------------------
+	override SCR_ScenarioFrameworkParamBase Get()
+	{
+		if (!GetGame().GetWorld())
 			return null;
-				
-		return new SCR_ScenarioFrameworkParam<IEntity>(playerController.GetMainEntity());
+		
+		if (!m_Getter)
+		{
+			Print("ScenarioFramework: GetClosestPlayerEntity - The object the distance is calculated from is missing!", LogLevel.ERROR);
+			return null;
+		}
+		
+		SCR_ScenarioFrameworkParam<IEntity> entityWrapper = SCR_ScenarioFrameworkParam<IEntity>.Cast(m_Getter.Get());
+		if (!entityWrapper)
+			return null;
+
+		IEntity entityFrom = IEntity.Cast(entityWrapper.GetValue());
+		if (!entityFrom)
+			return null;
+		
+		array<int> playerIDs = {};
+		GetGame().GetPlayerManager().GetPlayers(playerIDs);
+		
+		IEntity closestEntity;
+		IEntity entityToBeChecked;
+		float fDistance = float.MAX;
+		foreach (int playerID : playerIDs)
+		{
+			entityToBeChecked = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
+			if (!entityToBeChecked)
+				continue;
+			
+			float fActualDistance = vector.DistanceSqXZ(entityFrom.GetOrigin(), entityToBeChecked.GetOrigin());
+
+			if (fActualDistance < fDistance)
+			{
+				closestEntity = entityToBeChecked;
+				fDistance = fActualDistance;
+			}
+		}
+
+		if (!closestEntity)
+			return null;
+		
+		return new SCR_ScenarioFrameworkParam<IEntity>(closestEntity);
 	}
 };

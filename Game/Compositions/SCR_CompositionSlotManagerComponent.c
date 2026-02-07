@@ -1,3 +1,7 @@
+void OnCompositionSlotManagerEntityChangedMethod(SCR_CompositionSlotManagerComponent slotManager, IEntity slot);
+typedef func OnCompositionSlotManagerEntityChangedMethod;
+typedef ScriptInvokerBase<OnCompositionSlotManagerEntityChangedMethod> OnCompsitionSlotManagerEntityChanged;
+
 [ComponentEditorProps(category: "GameScripted/Compositions", description: "")]
 class SCR_CompositionSlotManagerComponentClass: ScriptComponentClass
 {
@@ -11,6 +15,16 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 	protected ref map<RplId, IEntity> m_aOccupiedDynamic = new map<RplId, IEntity>();
 	protected ref array<IEntity> m_aQueriedEntities;
 	
+	protected ref OnCompsitionSlotManagerEntityChanged m_OnEntityChanged;
+
+	OnCompsitionSlotManagerEntityChanged GetOnEntityChanged()
+	{
+		if (!m_OnEntityChanged)
+			m_OnEntityChanged = new OnCompsitionSlotManagerEntityChanged();
+
+		return m_OnEntityChanged;
+	}
+
 	static SCR_CompositionSlotManagerComponent GetInstance()
 	{
 		if (GetGame().GetGameMode())
@@ -171,11 +185,15 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		if (!entity)
 			return;
 
-		entity.SetVisible(!isOccupied);
+		if (entity.GetEntityType(slot) == EEditableEntityType.SLOT)
+			entity.SetVisible(!isOccupied);
 	
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		if (core)
 			core.Event_OnEntityExtendedChange.Invoke(entity, isOccupied);
+
+		if (m_OnEntityChanged)
+			m_OnEntityChanged.Invoke(this, slot);
 	}
 	protected void OnEntityChanged(SCR_EditableEntityComponent entity)
 	{
@@ -189,10 +207,17 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 			vector transform[4];
 			entity.GetTransform(transform);
 			if (vector.Distance(transform[3], slot.GetWorldTransformAxis(3)) < 0.1)
+			{
+				if (m_OnEntityChanged)
+					m_OnEntityChanged.Invoke(this, slot);
+
 				return;
+			}
 		}
 		
 		SetOccupant(slot, null);
+		if (m_OnEntityChanged)
+			m_OnEntityChanged.Invoke(this, slot);
 	}
 	protected bool QueryEntity(IEntity entity)
 	{

@@ -2,7 +2,7 @@
 This effect modifies texture of an image.
 */
 
-[BaseContainerProps(), SCR_ButtonEffectTitleAttribute("Image", "m_sWidgetName")]
+[BaseContainerProps(configRoot : true), SCR_ButtonEffectTitleAttribute("Image", "m_sWidgetName")]
 class SCR_ButtonEffectImage : SCR_ButtonEffectWidgetBase
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, "Common image set", "imageset")]

@@ -48,12 +48,23 @@ class SCR_AIRetreatFromTargetBehavior : SCR_AIBehaviorBase
 {
 	ref SCR_BTParamRef<BaseTarget> m_RetreatFromTarget = new SCR_BTParamRef<BaseTarget>("RetreatFromTarget");
 	
-	void SCR_AIRetreatFromTargetBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, BaseTarget retreatFromTarget, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AIRetreatFromTargetBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, notnull BaseTarget retreatFromTarget, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		m_RetreatFromTarget.Init(this, retreatFromTarget);
 		m_sBehaviorTree = "{91B8D5FDB60C1C80}AI/BehaviorTrees/Chimera/Soldier/RetreatFromTarget.bt";
 		SetPriority(PRIORITY_BEHAVIOR_RETREAT_FROM_TARGET);
 		m_fPriorityLevel.m_Value = priorityLevel;
+	}
+	
+	override float CustomEvaluate()
+	{
+		if (m_RetreatFromTarget.m_Value.GetTargetCategory() != ETargetCategory.ENEMY)
+		{
+			Complete();
+			return 0;
+		}
+		else
+			return GetPriority();
 	}
 }
 

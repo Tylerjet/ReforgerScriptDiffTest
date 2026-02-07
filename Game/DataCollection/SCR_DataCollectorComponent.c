@@ -50,6 +50,11 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected override void OnGameModeEnd(SCR_GameModeEndData data)
 	{
+		foreach (SCR_DataCollectorModule module : m_aModules)
+		{
+			module.OnGameModeEnd();
+		}
+		
 		PlayerManager playerManager = GetGame().GetPlayerManager();
 		int playerID;
 		PlayerController playerController;
@@ -236,9 +241,9 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		GetPlayerData(playerId);
 
 		//And then let the modules handle the newly connected player if they need to
-		for (int i = m_aModules.Count() - 1; i >= 0; i--)
+		foreach (SCR_DataCollectorModule module : m_aModules)
 		{
-			m_aModules[i].OnPlayerAuditSuccess(playerId);
+			module.OnPlayerAuditSuccess(playerId);
 		}
 	}
 	
@@ -253,9 +258,9 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	protected override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
 		SCR_PlayerData playerDisconnectedData = GetPlayerData(playerId);
-		for (int i = m_aModules.Count() - 1; i >= 0; i--)
+		foreach (SCR_DataCollectorModule module : m_aModules)
 		{
-			m_aModules[i].OnPlayerDisconnected(playerId);
+			module.OnPlayerDisconnected(playerId);
 		}
 
 		playerDisconnectedData.StoreProfile();
@@ -287,34 +292,34 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected override void OnPlayerSpawned(int playerId, IEntity controlledEntity)
 	{
-		for (int i = m_aModules.Count() - 1; i >= 0; i--)
+		foreach (SCR_DataCollectorModule module : m_aModules)
 		{
-			m_aModules[i].OnPlayerSpawned(playerId, controlledEntity);
+			module.OnPlayerSpawned(playerId, controlledEntity);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	protected override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		for (int i = m_aModules.Count() - 1; i >= 0; i--)
+		foreach (SCR_DataCollectorModule module : m_aModules)
 		{
-			m_aModules[i].OnPlayerKilled(playerId, player, killer);
+			module.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
 		}
 		
 		if (m_bOptionalKicking)
-			m_OptionalKicking.OnControllableDestroyed(player, killer);
+			m_OptionalKicking.OnControllableDestroyed(playerEntity, killerEntity, killer);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnAIKilled(IEntity AI, IEntity killer)
+	protected void OnAIKilled(IEntity AIEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		for (int i = m_aModules.Count() - 1; i >= 0; i--)
+		foreach (SCR_DataCollectorModule module : m_aModules)
 		{
-			m_aModules[i].OnAIKilled(AI, killer);
+			module.OnAIKilled(AIEntity, killerEntity, killer);
 		}
 		
 		if (m_bOptionalKicking)
-			m_OptionalKicking.OnControllableDestroyed(AI, killer);
+			m_OptionalKicking.OnControllableDestroyed(AIEntity, killerEntity, killer);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -322,16 +327,14 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	This method is a hack to process killings when the dead entity is an AI
 	Because there's no "OnAiKilled" method
 	*/
-	protected override void OnControllableDestroyed(IEntity entity, IEntity instigator)
+	protected override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
 	{
-		if (!entity || !instigator)
-			return;
-
-		if (!SCR_ChimeraCharacter.Cast(entity) || !SCR_ChimeraCharacter.Cast(instigator))
+		if (!SCR_ChimeraCharacter.Cast(entity))
 		{
-			Print("Error: The OnControllableDestroyed method from the Data Collector was invoked with an IEntity that is not a chimera character.", LogLevel.ERROR);
-			Print("Instigator's prefab name: " + instigator.GetPrefabData().GetPrefabName() + ". Entity's prefab name: " + entity.GetPrefabData().GetPrefabName()+" .", LogLevel.ERROR);
-			Print("The instance of entity is " + entity + " and the instance of the instigator is " + instigator, LogLevel.ERROR);
+			Print("Error: The OnControllableDestroyed method from the Data Collector was invoked with an IEntity that is not a chimera character."
+			+ "Dead entity is" + entity +", and killerEntity is "+killerEntity, LogLevel.ERROR);
+			PrintFormat("Dead: %1", entity);
+			PrintFormat("KillerEntity: %1", killerEntity);
 			return;
 		}
 
@@ -339,19 +342,19 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		//If playerId is not 0 it means that the entity killed was a player
 		//Therefore it will be handled by the OnPlayerKilled event
 		//so we don't need to do anything else
-		if (playerId != 0)
+		if (playerId > 0)
 			return;
 
-		OnAIKilled(entity, instigator);
+		OnAIKilled(entity, killerEntity, killer);
 	}
 
 #ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------
 	void OnPlayerEntityChanged(IEntity from, IEntity to)
 	{
-		for (int i = m_aModules.Count() - 1; i >= 0; i--)
+		foreach (SCR_DataCollectorModule module : m_aModules)
 		{
-			m_aModules[i].OnControlledEntityChanged(from, to);
+			module.OnControlledEntityChanged(from, to);
 		}
 	}
 
@@ -417,6 +420,12 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 #endif
 		}
 		
+		//Init all modules
+		foreach (SCR_DataCollectorModule module : m_aModules)
+		{
+			module.InitModule();
+		}
+		
 		bool writingRights = false;
 		BackendApi ba = GetGame().GetBackendApi();
 		
@@ -454,6 +463,10 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	protected override void EOnFrame(IEntity owner, float timeSlice)
 	{
 #ifdef ENABLE_DIAG
+		
+		// Hotfix: AND I AM DISABLING THIS, because it causes other invokers to be duplicit after respawn
+		// TODO: Make something more serious
+		/*
 		//I am doing this because the OnAudit invoker is only used on server-side
 		//Here we want to be able to debug the tracking of career stuff on client-side
 		//since there's no event for it, we need to check periodically until
@@ -466,6 +479,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 			}
 			m_iInitializingTimer++;
 		}
+		*/
 
 		if (m_bVisualDisplay != DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_DATA_COLLECTION_ENABLE_DIAG))
 		{

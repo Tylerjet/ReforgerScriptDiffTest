@@ -449,13 +449,13 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 				m_ButtonNextNoScrollWidget.SetFlags(WidgetFlags.NOFOCUS); 
 		}
 		
-		SCR_NavigationButtonComponent prevButtonComponent = SCR_NavigationButtonComponent.Cast(m_ButtonPrevWidget.FindHandler(SCR_NavigationButtonComponent));
+		SCR_InputButtonComponent prevButtonComponent = SCR_InputButtonComponent.Cast(m_ButtonPrevWidget.FindHandler(SCR_InputButtonComponent));
 		if (prevButtonComponent)
 			prevButtonComponent.m_OnActivated.Insert(OnButtonPrev);
 		else
 			ButtonActionComponent.GetOnAction(m_ButtonPrevWidget, true).Insert(OnButtonPrev);
 		
-		SCR_NavigationButtonComponent nextButtonComponent = SCR_NavigationButtonComponent.Cast(m_ButtonNextWidget.FindHandler(SCR_NavigationButtonComponent));
+		SCR_InputButtonComponent nextButtonComponent = SCR_InputButtonComponent.Cast(m_ButtonNextWidget.FindHandler(SCR_InputButtonComponent));
 		if (nextButtonComponent)
 			nextButtonComponent.m_OnActivated.Insert(OnButtonNext);
 		else
@@ -463,7 +463,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 		
 		if (m_ButtonPrevNoScrollWidget)
 		{
-			prevButtonComponent = SCR_NavigationButtonComponent.Cast(m_ButtonPrevNoScrollWidget.FindHandler(SCR_NavigationButtonComponent));
+			prevButtonComponent = SCR_InputButtonComponent.Cast(m_ButtonPrevNoScrollWidget.FindHandler(SCR_InputButtonComponent));
 			if (prevButtonComponent)
 				prevButtonComponent.m_OnActivated.Insert(OnButtonPrev);
 			else
@@ -472,7 +472,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 		
 		if (m_ButtonNextNoScrollWidget)
 		{
-			nextButtonComponent = SCR_NavigationButtonComponent.Cast(m_ButtonNextNoScrollWidget.FindHandler(SCR_NavigationButtonComponent));
+			nextButtonComponent = SCR_InputButtonComponent.Cast(m_ButtonNextNoScrollWidget.FindHandler(SCR_InputButtonComponent));
 			if (nextButtonComponent)
 				nextButtonComponent.m_OnActivated.Insert(OnButtonNext);
 			else

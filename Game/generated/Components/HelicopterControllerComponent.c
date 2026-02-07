@@ -15,10 +15,14 @@ class HelicopterControllerComponentClass: VehicleControllerComponent_SAClass
 
 class HelicopterControllerComponent: VehicleControllerComponent_SA
 {
-	//! Is called every time the engine starts.
-	event void OnEngineStart();
-	//! Is called every time the engine stops.
-	event void OnEngineStop();
+	//! return true if autohover system is enabled
+	proto external bool GetAutohoverEnabled();
+	//! enables autohover system
+	proto external void SetAutohoverEnabled(bool enabled);
+	//! returns true if wheel brake is active
+	proto external bool GetWheelBrake();
+	//! returns true if persistent wheel brake is active
+	proto external bool GetPersistentWheelBrake();
 }
 
 /*!

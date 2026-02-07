@@ -157,8 +157,9 @@ class SCR_AIDebugVisualization : GenericEntity
 		DbgUI.Begin("Perception Panel");
 		
 		DbgUI.Text("Values for tuning perception properties");
-
-		BaseTimeAndWeatherManagerEntity twm = GetGame().GetTimeAndWeatherManager();
+		
+		ChimeraWorld world = GetWorld();
+		BaseTimeAndWeatherManagerEntity twm = world.GetTimeAndWeatherManager();
 		if (!twm)
 		{
 			DbgUI.Text("BaseTimeAndWeatherManagerEntity not found!");
@@ -183,8 +184,11 @@ class SCR_AIDebugVisualization : GenericEntity
 		}
 		else
 		{
-			float ambientLightFactor = pm.GetAmbientLightFactor();
-			DbgUI.Text(string.Format("Ambient Light Factor: %1", ambientLightFactor));
+			float directLV;
+			float ambientLV;
+			float totalLV;
+			pm.GetAmbientLV(directLV, ambientLV, totalLV);
+			DbgUI.Text(string.Format("Direct LV: %1, Ambient LV: %2, Total Ambient LV: %3", directLV, ambientLV, totalLV));
 		}
 		
 		DbgUI.End();
@@ -237,13 +241,15 @@ class SCR_AIDebugVisualization : GenericEntity
 	{
 		s_Instance = this;
 		
-		SetEventMask(EntityEvent.FRAME | EntityEvent.DIAG);
+		SetEventMask(EntityEvent.FRAME);
+		ConnectToDiagSystem();
 		SetFlags(EntityFlags.ACTIVE, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_AIDebugVisualization()
 	{
+		DisconnectFromDiagSystem();
 		if (m_aElements)
 			m_aElements.Clear();
 		m_aElements = null;

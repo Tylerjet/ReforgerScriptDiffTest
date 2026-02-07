@@ -21,4 +21,5 @@ enum EEditableEntityFlag
 	NON_SERIALIZABLE	= 1 << 14, ///< When enabled, entity will not be serialized when session is saved
 	HAS_AREA			= 1 << 15, ///< Entity has an area, e.g., a trigger or a spawn point
 	DIRTY_HIERARCHY		= 1 << 16, ///< Entity was changed by the user
+	LINKED_CHILDREN		= 1 << 17, ///< Entity spawns children using SCR_EditorLinkComponent
 };

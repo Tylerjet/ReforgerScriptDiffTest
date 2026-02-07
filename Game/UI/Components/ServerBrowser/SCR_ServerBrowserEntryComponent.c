@@ -2,50 +2,38 @@
 //
 //------------------------------------------------------------------------------------------------
 
-class SCR_ServerBrowserEntryComponent : SCR_ScriptedWidgetComponent
+class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 {
-	// Widget names
-	const string WIDGET_FAVORITE_BUTTON = "FavButton";
-	const string WIDGET_CONTENT = "Content";
-	const string WIDGET_HORIZONTAL_PROPERTIES = "HPropertyImages";
-	const string WIDGET_PROPERTIES_MODS = "HPropertyImages_Mods";
-	const string WIDGET_PROPERTIES_PASSWORD = "HPropertyImages_Password";
-	const string WIDGET_IMAGE_PING = "ImgPing";
+	// Attributes
+	[Attribute("999")]
+	protected int m_iPingLimit;
+	
+	[Attribute("download")]
+	protected string m_sTooltipDownloadIcon;
+	
+	[Attribute("1.75")]
+	protected float m_fTooltipDownloadIconScale;
 
-	const string WIDGET_BACKGROUND = "Background";
-	const string WIDGET_BACKGROUND_EMPTY = "BackgroundEmpty";
-	const string WIDGET_HORIZONTAL_CONTENT = "HorizontalLayout";
-	const string WIDGET_LOADING = "Loading";
-
-	// Strings
-	const string STRING_COUNT_UNLIMITED = "#AR-ServerBrowser_CountUnlimited";
-
-	// Numbers
-	const int SERVER_NAME_LENGTH = 60;
-	const int SIZE_PROPERTY_IMAGE = 32;
-	const int PING_LIMIT = 999;
-
-	const string SERVER_NAME_ENDING = "...";
-
+	// Const
+	protected const string LAYOUT_CONTENT = "HorizontalLayout";
+	protected const string LAYOUT_LOADING = "Loading";
+	
+	protected const string BUTTON_FAVORITE = "FavButton";
+	protected const string BUTTON_JOIN = "JoinButton";
+	protected const string BUTTON_PASSWORD = "PasswordButton";
+	
+	protected const string ICON_WARNING = "VersionWarningIcon";
+	protected const string ICON_UNJOINABLE = "JoinWarningIcon";
+	protected const string ICON_MODDED = "ImageModded";
+	protected const string ICON_PING = "ImgPing";
+	
+	protected const string FRAME_NAME = "FrameName";
+	protected const string FRAME_SCENARIO = "FrameScenario";
+	
+	protected const string TEXT_CELL = "Content";
+	
 	// Base
 	protected Room m_RoomInfo;
-
-	protected SCR_ModularButtonComponent m_ModularButton = null;
-
-	// Server properties images
-	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Image - texture or imageset", "edds imageset")]
-	protected ResourceName m_PropertiesImageSet;
-
-	protected Widget m_wProperties;
-	protected Widget m_wPropertiesMods;
-	protected Widget m_wPropertiesPassword;
-
-	// Properties
-	[Attribute("", UIWidgets.Object)]
-	protected ref array<ref ServerBrowserEntryProperty> m_aPropertyImages;
-
-	protected ref array<ImageWidget> m_aPropertyWidgets = {};
-
 	protected SCR_EServerEntryProperty m_iProperties;
 
 	// Ping
@@ -53,89 +41,94 @@ class SCR_ServerBrowserEntryComponent : SCR_ScriptedWidgetComponent
 	protected ref array<ref ServerBrowserEntryProperty> m_aPingStates;
 
 	// Backrounds and wrappers
-	protected Widget m_wBackground;
-	protected Widget m_wBackgroundEmpty;
 	protected Widget m_wHorizontalContent;
 	protected Widget m_wLoading;
 
-	// Favorite widges and behavior
-	protected bool m_bFavoritingAnimationEnabled = true;
-	protected bool m_bIsFavorite;
-	protected Widget m_wFavorite;
-	protected Widget m_wFavoriteImage;
+	// Favorite widgets and behavior
+	protected Widget m_wUnjoinableIcon;
 
 	protected ImageWidget m_wImgPing;
-	protected int m_iPingLimit = 0;
+	protected int m_iHighestPing = 0;
 
-	protected bool m_bIsModded = false;
+	protected Widget m_wImageModded;
+	protected Widget m_wJoinButton;
+	protected Widget m_wPasswordButton;
 
-	protected ref SCR_ButtonComponent m_FavComponent;
-
-	ref ScriptInvoker Event_OnFocusEnter = new ScriptInvoker();
-	ref ScriptInvoker Event_OnFocusLeave = new ScriptInvoker();
-	ref ScriptInvoker m_OnMouseEnter = new ScriptInvoker();
-	ref ScriptInvoker m_OnMouseLeave = new ScriptInvoker();
-
-	ref ScriptInvoker m_OnFavorite = new ScriptInvoker();
-
-	// Text scrolling anims
-	SCR_HorizontalScrollAnimationComponent m_NameScrollAnim;
-	SCR_HorizontalScrollAnimationComponent m_ScenarioScrollAnim;
-
-	protected bool m_bInnerButtonInteraction = false;
+	protected SCR_RoomModsManager m_ModsManager;
+	protected string m_sPatchSize;
+	protected bool m_bIsPatchSizeLoaded;
 
 	//------------------------------------------------------------------------------------------------
-	// Override API
+	// Override
 	//------------------------------------------------------------------------------------------------
-
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
+		m_wRoot = w;
+
 		if (!GetGame().InPlayMode())
 			return;
 
-		super.HandlerAttached(w);
-
 		// Get wrappers
-		m_wBackground = m_wRoot.FindAnyWidget(WIDGET_BACKGROUND);
-		m_wBackgroundEmpty = m_wRoot.FindAnyWidget(WIDGET_BACKGROUND_EMPTY);
-		m_wHorizontalContent = m_wRoot.FindAnyWidget(WIDGET_HORIZONTAL_CONTENT);
-		m_wLoading = m_wRoot.FindAnyWidget(WIDGET_LOADING);
+		m_wHorizontalContent = m_wRoot.FindAnyWidget(LAYOUT_CONTENT);
+		m_wLoading = m_wRoot.FindAnyWidget(LAYOUT_LOADING);
 
-		// Call init
-		Init(w);
+		// Setup favorite button
+		Widget favoriteButton = w.FindAnyWidget(BUTTON_FAVORITE);
+		if (favoriteButton)
+		{
+			m_FavComponent = SCR_ModularButtonComponent.Cast(favoriteButton.FindHandler(SCR_ModularButtonComponent));
 
-		// Disabled opacity
-		if (!w.IsEnabled())
-			w.SetOpacity(UIConstants.DISABLED_WIDGET_OPACITY);
+			m_wVersionWarningIcon = w.FindAnyWidget(ICON_WARNING);
+			m_wUnjoinableIcon = w.FindAnyWidget(ICON_UNJOINABLE);
+		}
 
-		// Find widgets
-		m_wProperties = w.FindAnyWidget(WIDGET_HORIZONTAL_PROPERTIES);
-		m_wPropertiesMods = w.FindAnyWidget(WIDGET_PROPERTIES_MODS);
-		m_wPropertiesPassword = w.FindAnyWidget(WIDGET_PROPERTIES_PASSWORD);
-		m_wImgPing = ImageWidget.Cast(w.FindAnyWidget(WIDGET_IMAGE_PING));
+		// Property images and buttons
+		m_wImageModded = w.FindAnyWidget(ICON_MODDED);
+		m_wJoinButton = w.FindAnyWidget(BUTTON_JOIN);
+		m_wPasswordButton = w.FindAnyWidget(BUTTON_PASSWORD);
+
+		// Mouse interaction buttons
+		if (m_FavComponent)
+			m_aMouseButtons.Insert(m_FavComponent);
+
+		SCR_ModularButtonComponent buttonComp = SCR_ModularButtonComponent.FindComponent(m_wJoinButton);
+		if (buttonComp)
+		{
+			buttonComp.m_OnClicked.Insert(OnJoinInteractionButtonClicked);
+			m_aMouseButtons.Insert(buttonComp);
+		}
+
+		buttonComp = SCR_ModularButtonComponent.FindComponent(m_wPasswordButton);
+		if (buttonComp)
+		{
+			buttonComp.m_OnClicked.Insert(OnJoinInteractionButtonClicked);
+			m_aMouseButtons.Insert(buttonComp);
+		}
+
+		// Ping
+		m_wImgPing = ImageWidget.Cast(w.FindAnyWidget(ICON_PING));
 
 		// Name
-		Widget frameName = m_wRoot.FindAnyWidget("FrameName");
+		SCR_HorizontalScrollAnimationComponent scrollComp;
+		Widget frameName = m_wRoot.FindAnyWidget(FRAME_NAME);
 		if (frameName)
 		{
-			m_NameScrollAnim = SCR_HorizontalScrollAnimationComponent.Cast(
-				frameName.FindHandler(SCR_HorizontalScrollAnimationComponent)
-			);
+			scrollComp = SCR_HorizontalScrollAnimationComponent.Cast(frameName.FindHandler(SCR_HorizontalScrollAnimationComponent));
+			if (scrollComp)
+				m_aScrollAnimations.Insert(scrollComp);
 		}
 
 		// Scenario
-		Widget frameScenario = m_wRoot.FindAnyWidget("FrameScenario");
+		Widget frameScenario = m_wRoot.FindAnyWidget(FRAME_SCENARIO);
 		if (frameScenario)
 		{
-			m_ScenarioScrollAnim = SCR_HorizontalScrollAnimationComponent.Cast(
-				frameScenario.FindHandler(SCR_HorizontalScrollAnimationComponent)
-			);
+			scrollComp = SCR_HorizontalScrollAnimationComponent.Cast(frameScenario.FindHandler(SCR_HorizontalScrollAnimationComponent));
+			if (scrollComp)
+				m_aScrollAnimations.Insert(scrollComp);
 		}
 
-		// Setup scroll animations
-		EnableTextAnimations(false);
-
+		// Loading
 		m_wLoading.SetVisible(false);
 
 		// Get highest ping
@@ -143,215 +136,67 @@ class SCR_ServerBrowserEntryComponent : SCR_ScriptedWidgetComponent
 		{
 			int ping = m_aPingStates[i].m_sValue.ToInt();
 
-			if (m_iPingLimit < ping)
-				m_iPingLimit = ping;
+			if (m_iHighestPing < ping)
+				m_iHighestPing = ping;
+		}
+
+		super.HandlerAttached(w);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltipClass, Widget tooltipWidget, Widget hoverWidget, SCR_ScriptedWidgetTooltipPreset preset, string tag)
+	{
+		super.OnTooltipShow(tooltipClass, tooltipWidget, hoverWidget, preset, tag);
+
+		string message = tooltipClass.GetDefaultMessage();
+
+		switch (tag)
+		{
+			case "VersionMismatch":
+				SCR_VersionMismatchTooltipComponent comp = SCR_VersionMismatchTooltipComponent.FindComponent(tooltipWidget);
+				if (comp && m_RoomInfo)
+					comp.SetWrongVersionMessage(m_RoomInfo.GameVersion());
+				break;
+
+			case "Join":
+				if (m_bIsPatchSizeLoaded)
+					message = string.Format(message, GetDownloadSizeMessage());
+
+				tooltipClass.SetMessage(message);
+				break;
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool OnMouseEnter(Widget w, int x, int y)
+	override void UpdateModularButtons()
 	{
-		super.OnMouseEnter(w, x, y);
+		// Password and Play buttons
+		if (m_wJoinButton)
+			m_wJoinButton.SetVisible(m_bMouseButtonsEnabled && m_bFocused && !(m_iProperties & SCR_EServerEntryProperty.PASSWORD_PROTECTED) && !(m_iProperties & SCR_EServerEntryProperty.UNJOINABLE));
 
-		if (!m_ModularButton)
-			m_ModularButton = SCR_ModularButtonComponent.Cast(m_wRoot.FindHandler(SCR_ModularButtonComponent));
-
-		if (m_ModularButton && !m_ModularButton.GetIsFocusOnMouseEnter())
-			m_OnMouseEnter.Invoke(this);
-
-		return false;
+		super.UpdateModularButtons();
 	}
-
-	//------------------------------------------------------------------------------------------------
-	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
-	{
-		super.OnMouseLeave(w, enterW, x, y);
-
-		if (m_ModularButton && !m_ModularButton.GetIsFocusOnMouseEnter())
-			m_OnMouseLeave.Invoke(this);
-
-		return false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override bool OnClick(Widget w, int x, int y, int button)
-	{
-		// LMB check
-		if (button != 0 || m_bInnerButtonInteraction)
-			return false;
-
-		return super.OnClick(w, x, y, button);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override bool OnDoubleClick(Widget w, int x, int y, int button)
-	{
-		// LMB check
-		if (button != 0 || m_bInnerButtonInteraction)
-			return false;
-
-		return super.OnDoubleClick(w, x, y, button);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override bool OnFocus(Widget w, int x, int y)
-	{
-		super.OnFocus(w, x, y);
-		Event_OnFocusEnter.Invoke(this);
-
-		if (!m_NameScrollAnim)
-			return false;
-
-		// Set text animations
-		EnableTextAnimations(true);
-
-		return false;
-	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
-		super.OnFocusLost(w, x, y);
-		Event_OnFocusLeave.Invoke(this);
-
-		// Stop anim
-		EnableTextAnimations(false);
-
-		return false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void HandlerDeattached(Widget w)
-	{
-		Event_OnFocusEnter.Clear();
-		Event_OnFocusLeave.Clear();
-	}
-
-
-	//------------------------------------------------------------------------------------------------
-	// Public API
-	//------------------------------------------------------------------------------------------------
-
-	//------------------------------------------------------------------------------------------------
-	//! Call this on initialization to setup widget
-	void Init(Widget w)
-	{
-		// Favourite reference
-		Widget m_wFavoriteButton = w.FindAnyWidget(WIDGET_FAVORITE_BUTTON);
-
-		// Setup favorite button
-		if (m_wFavoriteButton)
+		if (m_ModsManager)
 		{
-			m_FavComponent = SCR_ButtonComponent.Cast(m_wFavoriteButton.FindHandler(SCR_ButtonComponent));
-			m_wFavoriteImage = m_wFavoriteButton.FindAnyWidget(WIDGET_CONTENT);
-
-			m_wFavoriteButton.SetEnabled(true);
+			m_ModsManager.GetOnGetAllDependencies().Remove(OnServerDetailModsLoaded);
+			m_bIsPatchSizeLoaded = false;
 		}
-
-		// Setup invoker actions
-		if (!m_FavComponent)
-			return;
-
-		m_FavComponent.m_OnClicked.Insert(OnFavoriteClicked);
-		m_FavComponent.m_OnHover.Insert(OnFavoriteHover);
-		m_FavComponent.m_OnHoverLeave.Insert(OnFavoriteLeave);
+		
+		return super.OnFocusLost(w, x, y);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	//! Set room and display room info in entry
-	void SetRoomInfo(Room room)
+	// Protected
+	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	protected void OnJoinInteractionButtonClicked()
 	{
-		m_RoomInfo = room;
-
-		// Visualize as empty?
-		if (!m_RoomInfo)
-			return;
-
-		// Disable if not joinable
-		EnableEntry(room.Joinable());
-
-		// Name
-		SetCellText("Name", m_RoomInfo.Name());
-
-		// Scenario
-		SetCellText("Scenario", m_RoomInfo.ScenarioName());
-
-		// Player count
-		string playerCount = m_RoomInfo.PlayerCount().ToString();
-		string playerCountMax = m_RoomInfo.PlayerLimit().ToString();
-
-		SetCellText("Players", playerCount + "/" + playerCountMax);
-
-		// Check mods
-		m_bIsModded = room.IsModded();
-
-		// Setup room properties
-		CheckRoomProperties();
-		DisplayServerProperties();
-
-		// Favorite
-		SetFavorite(m_RoomInfo.IsFavorite(), false);
-
-		// Ping
-		DisplayPing(room.GetPing());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void SetFavorite(bool bFavorite, bool callback)
-	{
-		if (!m_wFavoriteImage)
-			return;
-
-		m_bIsFavorite = bFavorite;
-
-		// Play star fade animation
-		if (m_bFavoritingAnimationEnabled)
-		{
-			if (m_bIsFavorite)
-				AnimateWidget.Color(m_wFavoriteImage, UIColors.CONTRAST_COLOR, UIConstants.FADE_RATE_FAST);
-			else
-				AnimateWidget.Color(m_wFavoriteImage, UIColors.LIGHT_GREY, UIConstants.FADE_RATE_FAST);
-		}
-
-		if (callback)
-			m_OnFavorite.Invoke(this, bFavorite);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnFavoriteClicked(SCR_ButtonBaseComponent button)
-	{
-		SetFavorite(!m_bIsFavorite, true);
-		GetGame().GetWorkspace().SetFocusedWidget(m_wRoot);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Animate whole widget opacity
-	void AnimateOpacity(int delay, float animationTime, float opacityEnd, float opacityStart = -1)
-	{
-		if (opacityStart != -1)
-			GetRootWidget().SetOpacity(opacityStart);
-
-		GetGame().GetCallqueue().Remove(OpacityAnimation);
-		GetGame().GetCallqueue().CallLater(OpacityAnimation, delay, false, animationTime, opacityEnd);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Protected API
-	//------------------------------------------------------------------------------------------------
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnFavoriteHover()
-	{
-		m_bInnerButtonInteraction = true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnFavoriteLeave(Widget w = null)
-	{
-		if (GetGame().GetWorkspace().GetFocusedWidget() == m_wRoot && !w)
-			GetGame().GetWorkspace().SetFocusedWidget(m_wRoot);
-
-		m_bInnerButtonInteraction = false
+		if (m_OnMouseInteractionButtonClicked)
+			m_OnMouseInteractionButtonClicked.Invoke("");
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -362,7 +207,7 @@ class SCR_ServerBrowserEntryComponent : SCR_ScriptedWidgetComponent
 		if (!wCell)
 			return;
 
-		TextWidget wText = TextWidget.Cast(wCell.FindAnyWidget(WIDGET_CONTENT));
+		TextWidget wText = TextWidget.Cast(wCell.FindAnyWidget(TEXT_CELL));
 		if (wText)
 			wText.SetText(str);
 	}
@@ -371,7 +216,9 @@ class SCR_ServerBrowserEntryComponent : SCR_ScriptedWidgetComponent
 	//! Display number of current ping and add icon and color
 	protected void DisplayPing(int ping)
 	{
-		float lastHighest = m_iPingLimit + 1;
+		//TODO: the ping threshold are manually set in the layout. This values should be unified with the server browser threshold check and filters .conf 4F6F41C387ADC14E
+		
+		float lastHighest = m_iHighestPing + 1;
 		ServerBrowserEntryProperty displayState;
 
 		// No ping state
@@ -400,11 +247,11 @@ class SCR_ServerBrowserEntryComponent : SCR_ScriptedWidgetComponent
 		string strPing = Math.Floor(ping).ToString();
 
 		// Over limit
-		if (ping > m_iPingLimit || ping < 0)
+		if (ping > m_iHighestPing || ping < 0)
 			displayState = m_aPingStates[m_aPingStates.Count() - 1];
 
-		if (ping > PING_LIMIT)
-			strPing = PING_LIMIT.ToString() + "#ENF-ComboModifier";
+		if (ping > m_iPingLimit)
+			strPing = m_iPingLimit.ToString() + "#ENF-ComboModifier";
 
 		SetCellText("Ping", strPing);
 
@@ -412,28 +259,9 @@ class SCR_ServerBrowserEntryComponent : SCR_ScriptedWidgetComponent
 		if (displayState && m_wImgPing)
 		{
 			m_wImgPing.SetVisible(true);
-			m_wImgPing.LoadImageFromSet(0, m_PropertiesImageSet, displayState.m_sImageName);
+			m_wImgPing.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, displayState.m_sImageName);
 			m_wImgPing.SetColor(displayState.m_Color);
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Set button visuals and behavior
-	void EmptyVisuals(bool enable)
-	{
-		//m_wRoot.SetEnabled(!enable);
-
-		// Set widgets
-		//m_wBackground.SetVisible(!enable);
-		//m_wBackgroundEmpty.SetVisible(enable);
-		m_wHorizontalContent.SetVisible(!enable);
-		m_wLoading.SetVisible(enable);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OpacityAnimation(int time, float opacityEnd)
-	{
-		AnimateWidget.Opacity(GetRootWidget(), opacityEnd, time);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -444,7 +272,7 @@ class SCR_ServerBrowserEntryComponent : SCR_ScriptedWidgetComponent
 
 		// Client versions missmatch
 		bool wrongVersion = m_RoomInfo.GameVersion() != GetGame().GetBuildVersion();
-		bool restrictedUGC = m_bIsModded && !SCR_AddonManager.GetInstance().GetUgcPrivilege();
+		bool restrictedUGC = m_RoomInfo.IsModded() && !SCR_AddonManager.GetInstance().GetUgcPrivilege();
 
 		if (wrongVersion || restrictedUGC)
 			m_iProperties |= SCR_EServerEntryProperty.VERSION_MISMATCH;
@@ -461,121 +289,142 @@ class SCR_ServerBrowserEntryComponent : SCR_ScriptedWidgetComponent
 		// m_iProperties |= SCR_EServerEntryProperty.LAN;
 
 		// MODDED
-		if (m_bIsModded)
+		if (m_RoomInfo.IsModded())
 			m_iProperties |= SCR_EServerEntryProperty.MODDED;
+
+		// UNJOINABLE
+		if (!m_RoomInfo.Joinable())
+			m_iProperties |= SCR_EServerEntryProperty.UNJOINABLE;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	// Create property images based on room setup
 	protected void DisplayServerProperties()
 	{
-		// Remove previous
-		foreach (Widget w : m_aPropertyWidgets)
-		{
-			w.RemoveFromHierarchy();
-		}
+		// Check states
+		if (m_wImageModded)
+			m_wImageModded.SetVisible(m_iProperties & SCR_EServerEntryProperty.MODDED);
 
-		m_aPropertyWidgets.Clear();
+		if (m_wPasswordButton)
+			m_wPasswordButton.SetVisible(m_iProperties & SCR_EServerEntryProperty.PASSWORD_PROTECTED && !(m_iProperties & SCR_EServerEntryProperty.UNJOINABLE));
 
-		// Check images
-		if (!m_aPropertyImages || m_aPropertyImages.IsEmpty())
+		// Turn favorites button into warning or unjoinable icon
+		if (!m_FavComponent || !m_wVersionWarningIcon || !m_wUnjoinableIcon)
 			return;
 
-		// Check states and create images
-		ImageWidget imgProperty;
-		Widget container = m_wProperties;
+		bool versionMismatch = m_iProperties & SCR_EServerEntryProperty.VERSION_MISMATCH;
+		bool unjoinable = m_iProperties & SCR_EServerEntryProperty.UNJOINABLE;
 
-		foreach (ServerBrowserEntryProperty property : m_aPropertyImages)
-		{
-			if (!(m_iProperties & property.m_iPropertyState))
-				continue;
+		m_FavComponent.SetEnabled(!versionMismatch && !unjoinable);
 
-			if (property.m_iPropertyState == SCR_EServerEntryProperty.PASSWORD_PROTECTED) // Locked with password
-				container = m_wPropertiesPassword;
-			else if (property.m_iPropertyState == SCR_EServerEntryProperty.MODDED) // Modded
-				container = m_wPropertiesMods;
-			else // As part of the refactoring we only want Locked and Modded icons
-				continue;
+		m_wVersionWarningIcon.SetVisible(versionMismatch && !unjoinable);
+		m_wUnjoinableIcon.SetVisible(unjoinable);
 
-			// Create image
-			imgProperty = ImageWidget.Cast(GetGame().GetWorkspace().CreateWidget(
-				WidgetType.ImageWidgetTypeID, WidgetFlags.BLEND | WidgetFlags.VISIBLE | WidgetFlags.STRETCH | WidgetFlags.NOWRAP, property.m_Color, 0, container
-			));
-
-			// Setup image
-			imgProperty.LoadImageFromSet(0, m_PropertiesImageSet, property.m_sImageName);
-			imgProperty.SetSize(SIZE_PROPERTY_IMAGE, SIZE_PROPERTY_IMAGE);
-			imgProperty.SetFlags(WidgetFlags.IGNORE_CURSOR);
-
-			// Cache in list
-			m_aPropertyWidgets.Insert(imgProperty);
-		}
-
-		// Turn favorites button into warning icon
-		if (m_iProperties & SCR_EServerEntryProperty.VERSION_MISMATCH)
-		{
-			EnableFavoritingAnimation(false);
-
-			ImageWidget favImage = ImageWidget.Cast(m_wFavoriteImage);
-			if (favImage)
-			{
-				favImage.LoadImageFromSet(0, m_PropertiesImageSet, "warning");
-				favImage.SetColor(UIColors.WARNING);
-			}
-		}
+		m_bDisabled = versionMismatch || unjoinable;
+		UpdateModularButtons();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Apply behavior on all potentially longer entry text
-	protected void EnableTextAnimations(bool enable)
+	protected string GetDownloadSizeMessage()
 	{
-		HandleTextAnimation(m_NameScrollAnim, enable);
-		HandleTextAnimation(m_ScenarioScrollAnim, enable);
+		if (!m_ModsManager || !(m_iProperties & SCR_EServerEntryProperty.MODDED) || m_sPatchSize.IsEmpty())
+			return string.Empty;
+
+		string icon, color;
+		
+		icon = string.Format("<image set='%1' name='%2' scale='%3'/>", UIConstants.ICONS_IMAGE_SET, m_sTooltipDownloadIcon, m_fTooltipDownloadIconScale.ToString());
+		return string.Format("  [%1%2 ]", icon, m_sPatchSize);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Handle animation enabled-disabling
-	//! enable = false restarts positions
-	protected void HandleTextAnimation(SCR_HorizontalScrollAnimationComponent anim, bool enable)
+	protected void OnServerDetailModsLoaded()
 	{
-		if (!anim)
+		if (!m_ModsManager || !(m_iProperties & SCR_EServerEntryProperty.MODDED))
 			return;
-
-		if (enable)
-		{
-			if (!anim.GetContentFit())
-			{
-				anim.AnimationStart();
-			}
-			else
-			{
-				anim.AnimationStop();
-				anim.ResetPosition();
-			}
-
-			return;
-		}
-
-		// Disabled
-		anim.AnimationStop();
-		anim.ResetPosition();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void EnableEntry(bool enable)
-	{
-		if (enable)
-		{
-			GetRootWidget().SetOpacity(1);
-		}
+		
+		array<ref SCR_WorkshopItem> toUpdateMods = m_ModsManager.GetRoomItemsToUpdate();
+		if (!toUpdateMods.IsEmpty())
+			m_sPatchSize = m_ModsManager.GetModListPatchSizeString(toUpdateMods);
 		else
+			m_sPatchSize = string.Empty;
+		
+		m_bIsPatchSizeLoaded = true;
+		UpdateTooltipJoinDownloadSizeMessage();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateTooltipJoinDownloadSizeMessage()
+	{
+		if (!m_CurrentTooltip || !m_CurrentTooltip.IsVisible())
+			return;
+		
+		switch (m_CurrentTooltip.GetTag())
 		{
-			GetRootWidget().SetOpacity(0.5);
+			case "Join":
+				string message = m_CurrentTooltip.GetDefaultMessage();
+				message = string.Format(message, GetDownloadSizeMessage());
+				m_CurrentTooltip.SetMessage(message);
+				break;
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Get & Set API
+	// Public
+	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	//! Set room and display room info in entry
+	void SetRoomInfo(Room room)
+	{
+		m_RoomInfo = room;
+
+		// Visualize as empty?
+		if (!m_RoomInfo)
+			return;
+
+		// Setup room properties
+		CheckRoomProperties();
+		DisplayServerProperties();
+
+		// Name
+		SetCellText("Name", m_RoomInfo.Name());
+
+		// Scenario
+		SetCellText("Scenario", m_RoomInfo.ScenarioName());
+
+		// Player count
+		string playerCount = m_RoomInfo.PlayerCount().ToString();
+		string playerCountMax = m_RoomInfo.PlayerLimit().ToString();
+
+		SetCellText("Players", playerCount + "/" + playerCountMax);
+
+		// Favorite
+		if (m_FavComponent)
+			SetFavorite(m_RoomInfo.IsFavorite());
+
+		// Ping
+		DisplayPing(room.GetPing());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Set button visuals and behavior
+	void EmptyVisuals(bool enable)
+	{
+		m_wHorizontalContent.SetVisible(!enable);
+		m_wLoading.SetVisible(enable);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetModsManager(SCR_RoomModsManager modsManager)
+	{
+		m_ModsManager = modsManager;
+		
+		if (m_ModsManager)
+		{
+			m_ModsManager.GetOnGetAllDependencies().Insert(OnServerDetailModsLoaded);
+			m_bIsPatchSizeLoaded = false;
+		}
+	}
+
 	//------------------------------------------------------------------------------------------------
 	Room GetRoomInfo()
 	{
@@ -585,15 +434,17 @@ class SCR_ServerBrowserEntryComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	bool GetIsModded()
 	{
-		return m_bIsModded;
+		return m_iProperties & SCR_EServerEntryProperty.MODDED;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void EnableFavoritingAnimation(bool enabled)
+	bool GetIsEnabled(out bool versionMismatch, out bool unjoinable)
 	{
-		m_bFavoritingAnimationEnabled = enabled;
+		versionMismatch = m_iProperties & SCR_EServerEntryProperty.VERSION_MISMATCH;
+		unjoinable = m_iProperties & SCR_EServerEntryProperty.UNJOINABLE;
+		return !versionMismatch && !unjoinable;
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
@@ -610,7 +461,7 @@ class ServerBrowserEntryProperty
 
 	[Attribute("1 1 1 1", UIWidgets.ColorPicker)]
 	ref Color m_Color;
-};
+}
 
 //------------------------------------------------------------------------------------------------
 enum SCR_EServerEntryProperty
@@ -620,4 +471,5 @@ enum SCR_EServerEntryProperty
 	CROSS_PLATFORM = 1<<2,
 	LAN = 1<<3,
 	MODDED = 1<<4,
-};
+	UNJOINABLE = 1<<5
+}

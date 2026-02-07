@@ -2,6 +2,8 @@
 //! Map marker object base class 
 class SCR_MapMarkerBase
 {
+	protected const int SERIALIZED_BYTES = 26;	// total amount of serialized bytes withotut custom string
+	
 	// synchronized 
 	protected SCR_EMapMarkerType m_eType;	// config type
 	protected int m_iMarkerID = -1;			// network ID, -1 means the marker is not set as synchronized
@@ -11,12 +13,14 @@ class SCR_MapMarkerBase
 	protected int m_iPosWorldY;
 	protected int m_iColorEntry;			// placed marker color entry id
 	protected int m_iIconEntry;				// placed marker icon entry id
+	protected int m_iRotation;
 	protected string m_sCustomText;
 	
 	// server only
 	protected bool m_bIsServerSideDisabled; // in hosted server scenario, opposing faction markers have to be properly managed but still disabled from showing up
 	
 	// rest
+	protected bool m_bIsDragged;						// currently being dragged
 	protected SCR_MapMarkerEntryConfig m_ConfigEntry; 	// marker entry associated with this marker type
 	protected SCR_MapEntity m_MapEntity;
 	protected Widget m_wRoot;
@@ -92,6 +96,18 @@ class SCR_MapMarkerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	int GetRotation()
+	{
+		return m_iRotation;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetRotation(int angle)
+	{
+		m_iRotation = angle;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	int GetColorEntry()
 	{
 		return m_iColorEntry;
@@ -135,6 +151,13 @@ class SCR_MapMarkerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Set dragged state
+	void SetDragged(bool state)
+	{
+		m_bIsDragged = state;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Fetch marker definition from config & create widget
 	void OnCreateMarker()
 	{
@@ -157,6 +180,11 @@ class SCR_MapMarkerBase
 		m_MarkerWidgetComp = SCR_MapMarkerWidgetComponent.Cast(m_wRoot.FindHandler(SCR_MapMarkerWidgetComponent));
 		m_MarkerWidgetComp.SetMarkerObject(this);
 		m_ConfigEntry.InitClientSettings(this, m_MarkerWidgetComp);
+		m_MarkerWidgetComp.SetRotation(m_iRotation);
+		
+		SCR_MapEntity.GetOnMapClose().Insert(OnMapClosed);
+		SCR_MapEntity.GetOnLayerChanged().Insert(OnMapLayerChanged);
+		OnMapLayerChanged(m_MapEntity.GetLayerIndex());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -167,10 +195,33 @@ class SCR_MapMarkerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnMapClosed(MapConfiguration config)
+	{
+		SCR_MapEntity.GetOnMapClose().Remove(OnMapClosed);
+		SCR_MapEntity.GetOnLayerChanged().Remove(OnMapLayerChanged);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnMapLayerChanged(int layerID)
+	{
+		if (m_MarkerWidgetComp)
+			m_MarkerWidgetComp.SetLayerID(layerID);
+		
+		 LayerChangeLogic(layerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void LayerChangeLogic(int layerID)
+	{
+		if (m_ConfigEntry && m_MarkerWidgetComp)
+			m_ConfigEntry.OnMapLayerChanged(m_MarkerWidgetComp, layerID);
+	} 
+	
+	//------------------------------------------------------------------------------------------------
 	//! Called from SCR_MapMarkerManagerComponent
 	void OnUpdate()
 	{
-		if (m_bIsServerSideDisabled)
+		if (m_bIsServerSideDisabled || m_bIsDragged)
 			return;
 		
 		int screenX, screenY;
@@ -187,9 +238,10 @@ class SCR_MapMarkerBase
 		snapshot.SerializeInt(instance.m_iMarkerID);
 		snapshot.SerializeInt(instance.m_MarkerOwnerID);
 		snapshot.SerializeInt(instance.m_iConfigID);
+		snapshot.SerializeBytes(instance.m_iRotation, 2);
 		snapshot.SerializeBytes(instance.m_eType, 1);
 		snapshot.SerializeBytes(instance.m_iColorEntry, 1);
-		snapshot.SerializeBytes(instance.m_iIconEntry, 1);
+		snapshot.SerializeBytes(instance.m_iIconEntry, 2);
 		snapshot.SerializeString(instance.m_sCustomText);
 		return true;
 	}
@@ -202,9 +254,10 @@ class SCR_MapMarkerBase
 		snapshot.SerializeInt(instance.m_iMarkerID);
 		snapshot.SerializeInt(instance.m_MarkerOwnerID);
 		snapshot.SerializeInt(instance.m_iConfigID);
+		snapshot.SerializeBytes(instance.m_iRotation, 2);
 		snapshot.SerializeBytes(instance.m_eType, 1);
 		snapshot.SerializeBytes(instance.m_iColorEntry, 1);
-		snapshot.SerializeBytes(instance.m_iIconEntry, 1);
+		snapshot.SerializeBytes(instance.m_iIconEntry, 2);
 		snapshot.SerializeString(instance.m_sCustomText);
 		return true;
 	}
@@ -212,14 +265,14 @@ class SCR_MapMarkerBase
 	//------------------------------------------------------------------------------------------------
 	static void Encode(SSnapSerializerBase snapshot, ScriptCtx ctx, ScriptBitSerializer packet)
 	{
-		snapshot.Serialize(packet, 23);
+		snapshot.Serialize(packet, SERIALIZED_BYTES);
 		snapshot.EncodeString(packet);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	static bool Decode(ScriptBitSerializer packet, ScriptCtx ctx, SSnapSerializerBase snapshot)
 	{
-		snapshot.Serialize(packet, 23);
+		snapshot.Serialize(packet, SERIALIZED_BYTES);
 		snapshot.DecodeString(packet);
 		return true;
 	}
@@ -227,7 +280,7 @@ class SCR_MapMarkerBase
 	//------------------------------------------------------------------------------------------------
 	static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs , ScriptCtx ctx)
 	{
-		return lhs.CompareSnapshots(rhs, 23)	// m_iPosWorldX(4) + m_iPosWorldY(4) + m_iMarkerID(4) + m_MarkerOwnerID(4)  + m_iConfigID(4) + m_eType(1) + m_iColorEntry(1) + m_iIconEntry(1)
+		return lhs.CompareSnapshots(rhs, SERIALIZED_BYTES)	// m_iPosWorldX(4) + m_iPosWorldY(4) + m_iMarkerID(4) + m_MarkerOwnerID(4)  + m_iConfigID(4) + m_iRotation(2) + m_eType(1) + m_iColorEntry(1) + m_iIconEntry(2)
 			&& lhs.CompareStringSnapshots(rhs); // m_sCustomText
 	}
 
@@ -239,9 +292,10 @@ class SCR_MapMarkerBase
 			&& snapshot.CompareInt(instance.m_iMarkerID)
 			&& snapshot.CompareInt(instance.m_MarkerOwnerID)
 			&& snapshot.CompareInt(instance.m_iConfigID)
+			&& snapshot.Compare(instance.m_iRotation, 2)
 		    && snapshot.Compare(instance.m_eType, 1)
 			&& snapshot.Compare(instance.m_iColorEntry, 1)
-			&& snapshot.Compare(instance.m_iIconEntry, 1)
+			&& snapshot.Compare(instance.m_iIconEntry, 2)
 			&& snapshot.CompareString(instance.m_sCustomText);
 	}
 };

@@ -22,6 +22,8 @@ class SCR_EntityCatalogSpawnerData: SCR_BaseEntityCatalogData
 	[Attribute(desc: "Variants prefab data of entity. These are a diffrent variant of the default")]
 	protected ref array<ref SCR_SpawnerVariantData> m_aVariantData;
 	
+	protected ResourceName m_sDefaultPrefab;
+	
 	//--------------------------------- Enable/Disable in Spawner ---------------------------------\\
 	/*!
 	Set the enabled state of the entity in the spawner
@@ -109,6 +111,28 @@ class SCR_EntityCatalogSpawnerData: SCR_BaseEntityCatalogData
 		return m_iSupplyCost;
 	}
 	
+	//--------------------------------- Get Variants of Type ---------------------------------\\
+	/*!
+	Get random variant or default prefab
+	\return Random variant or default prefab
+	*/
+	ResourceName GetRandomDefaultOrVariantPrefab()
+	{
+		array<ResourceName> prefabs = {};
+		
+		prefabs.Insert(m_sDefaultPrefab);
+		
+		foreach (SCR_SpawnerVariantData data: m_aVariantData)
+		{
+			if (SCR_StringHelper.IsEmptyOrWhiteSpace(data.GetVariantPrefabData()))
+				continue;
+			
+			prefabs.Insert(data.GetVariantPrefabData());
+		}
+		
+		return prefabs.GetRandomElement();
+	}
+	
 	//--------------------------------- Get Variant data list ---------------------------------\\
 	/*!
 	Get list of all variant data
@@ -177,6 +201,13 @@ class SCR_EntityCatalogSpawnerData: SCR_BaseEntityCatalogData
 		
 		return variantData.GetVariantPrefabData();
 	}
+	
+	override void InitData(notnull SCR_EntityCatalogEntry entry)
+	{
+		super.InitData(entry);
+		
+		m_sDefaultPrefab = entry.GetPrefab();
+	}
 };
 
 //======================================== VARIANT DATA ========================================\\
@@ -218,5 +249,5 @@ Spawner varient types
 */
 enum ESpawnerVariantType
 {
-	VEHICLE_MERC = 0,
+	VEHICLE_MERC,
 };

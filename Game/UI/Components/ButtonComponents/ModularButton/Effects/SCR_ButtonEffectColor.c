@@ -2,7 +2,7 @@
 Effect which colorizes a widget with given name.
 */
 
-[BaseContainerProps(), SCR_ButtonEffectTitleAttribute("Color", "m_sWidgetName")]
+[BaseContainerProps(configRoot : true), SCR_ButtonEffectTitleAttribute("Color", "m_sWidgetName")]
 class SCR_ButtonEffectColor : SCR_ButtonEffectWidgetBase
 {
 	// Attributes
@@ -43,10 +43,17 @@ class SCR_ButtonEffectColor : SCR_ButtonEffectWidgetBase
 	[Attribute()]
 	ref Color m_cToggledOff;
 
+	//TODO: focus should probably be a state, not events
+	//TODO: Fix colors not matching the button's current state
 	
 	override void OnStateDefault(bool instant)
 	{
-		Apply(m_cDefault, instant);		
+		// This can get triggered on mouse leave while the button remains focused. The focus color must then have priority, as it is integral to gamepad navigation
+		Color color = m_cDefault;
+		if ((m_eEvents & EModularButtonEventFlag.EVENT_FOCUS_GAINED) && m_Button.GetFocused())
+			color = m_cFocusGained;
+		
+		Apply(color, instant);
 	}
 	
 	override void OnStateHovered(bool instant)
@@ -56,7 +63,12 @@ class SCR_ButtonEffectColor : SCR_ButtonEffectWidgetBase
 	
 	override void OnStateActivated(bool instant)
 	{
-		Apply(m_cActivated, instant);
+		// If the modular button is toggled while focused, the focus state must have priority, as it is integral to gamepad navigation
+		Color color = m_cActivated;
+		if ((m_eEvents & EModularButtonEventFlag.EVENT_FOCUS_GAINED) && m_Button.GetFocused())
+			color = m_cFocusGained;
+		
+		Apply(color, instant);
 	}
 	
 	override void OnStateDisabled(bool instant)
@@ -86,7 +98,13 @@ class SCR_ButtonEffectColor : SCR_ButtonEffectWidgetBase
 	
 	override void OnFocusLost(bool instant)
 	{
-		Apply(m_cFocusLost, instant);
+		// Focusing away from an activated modular button must give priority to it's activated state color
+		Color color = m_cFocusLost;
+		if ((m_eEvents & EModularButtonEventFlag.STATE_ACTIVATED) && m_Button.GetToggled())
+			color = m_cActivated;
+		
+		//TODO: handle focus lost on activated hovered
+		Apply(color, instant);
 	}
 	
 	override void OnToggledOn(bool instant)

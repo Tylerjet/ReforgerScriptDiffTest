@@ -15,6 +15,10 @@ class ScriptedDamageManagerComponent : BaseScriptedDamageManagerComponent
 	private static int s_iFirstFreeDamageManagerData = -1;
 	private static ref array<ref SCR_ScriptedDamageManagerData> s_aScriptedDamageManagerData = {};
 	
+	protected int m_iTimetickInstigator = System.GetTickCount();
+	protected int m_iTimeThresholdInstigatorReplacement = 180000; //180000 miliseconds = 3 minutes
+	protected int m_iPlayerId = 0;
+	
 	private int m_iDamageManagerDataIndex = -1;
 	
 	//------------------------------------------------------------------------------------------------
@@ -164,7 +168,7 @@ class ScriptedDamageManagerComponent : BaseScriptedDamageManagerComponent
 				  EDamageType type,
 				  float damage,
 				  HitZone pHitZone,
-				  IEntity instigator, 
+				  notnull Instigator instigator, 
 				  inout vector hitTransform[3], 
 				  float speed,
 				  int colliderID, 
@@ -220,6 +224,61 @@ class ScriptedDamageManagerComponent : BaseScriptedDamageManagerComponent
 			invoker.Invoke(state);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Called whenever an instigator is going to be set.
+	\param currentInstigator: This damage manager's last instigator
+	\param newInstigator: The new instigator for this damage manager
+	\return If it returns true, newInstigator will become the new current instigator for the damage manager and it will receive kill credit.
+	*/
+	protected override bool ShouldOverrideInstigator(notnull Instigator currentInstigator, notnull Instigator newInstigator)
+	{
+		//If time difference since last instigator set is small, this kill was a suicide, and the previous instigator was an enemy, do not override
+		int currentTimeTick = System.GetTickCount();
+		
+		if (m_iPlayerId == 0)
+		{
+			m_iPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(GetOwner());
+		}
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (m_iPlayerId <= 0 || !factionManager)
+		{
+			m_iTimetickInstigator = currentTimeTick;
+			return true;
+		}
+		
+		int newId = newInstigator.GetInstigatorPlayerID();
+		int oldId = currentInstigator.GetInstigatorPlayerID();
+		
+		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(newId));
+		if (!factionKiller)
+		{
+			m_iTimetickInstigator = currentTimeTick;
+			return true;
+		}
+		
+		Faction factionPrevInstigator = Faction.Cast(factionManager.GetPlayerFaction(oldId));
+		if (!factionPrevInstigator)
+		{
+			m_iTimetickInstigator = currentTimeTick;
+			return true;
+		}
+		Faction factionPlayer = Faction.Cast(factionManager.GetPlayerFaction(m_iPlayerId));
+		if (!factionPlayer)
+		{
+			m_iTimetickInstigator = currentTimeTick;
+			return true;
+		}
+		
+		if (newId == m_iPlayerId && (currentTimeTick - m_iTimetickInstigator) < m_iTimeThresholdInstigatorReplacement && !factionPrevInstigator.IsFactionFriendly(factionPlayer))
+		{
+			return false;
+		}
+		
+		m_iTimetickInstigator = currentTimeTick;
+		return true;
+	}
 	//------------------------------------------------------------------------------------------------
 	void ~ScriptedDamageManagerComponent()
 	{

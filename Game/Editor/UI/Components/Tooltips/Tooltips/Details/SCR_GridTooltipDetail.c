@@ -8,7 +8,7 @@ class SCR_MapGridTooltipDetail: SCR_EntityTooltipDetail
 	{
 		vector pos;
 		if (entity.GetPos(pos))
-			m_Text.SetText(m_Map.GetGridPos(pos));
+			m_Text.SetText(m_Map.GetGridLabel(pos));
 	}
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{

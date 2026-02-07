@@ -4,6 +4,9 @@ class SCR_WristwatchComponentClass : SCR_GadgetComponentClass
 	[Attribute("0", UIWidgets.ComboBox, "Set wristwatch type", "", ParamEnumArray.FromEnum(EWristwatchType), category: "Wristwatch")]
 	int m_iWristwatchType;
 	
+	[Attribute("{6ECDF523E1035A0F}Prefabs/Items/Equipment/Watches/Watch_SandY184A_Map.et", desc: "Wristwatch prefab used for display within 2D map", category: "Wristwatch")]
+	ResourceName m_sMapResource;
+	
 	bool m_bSignalInit = false;
 	int m_iSignalHour = -1;
 	int m_iSignalMinute = -1;
@@ -52,11 +55,21 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 	protected TimeAndWeatherManagerEntity m_TimeMgr;
 		
 	//------------------------------------------------------------------------------------------------
+	//! Get 2D map prefab resource name
+	//! \return returns prefab ResourceName
+	ResourceName GetMapPrefabResource()
+	{					
+		return m_PrefabData.m_sMapResource;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void UpdateTime()
 	{		
 		if (!m_TimeMgr)
 		{
-			m_TimeMgr = GetGame().GetTimeAndWeatherManager();
+			ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+			if (world)
+				m_TimeMgr = world.GetTimeAndWeatherManager();
 			return;
 		}
 		
@@ -95,8 +108,11 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 	{
 		m_iMode = EGadgetMode.IN_HAND;
 		m_bActivated = true;
+		UpdateWristwatchState();
 		
-		m_TimeMgr = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		if (world)
+			m_TimeMgr = world.GetTimeAndWeatherManager();
 		m_PrefabData.InitSignals(GetOwner());
 	}
 	
@@ -161,7 +177,7 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 		if (System.IsConsoleApp())
 			return;
 
-		SetEventMask(GetOwner(), EntityEvent.FRAME);
+		ConnectToGadgetsSystem();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -172,11 +188,11 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 		if (System.IsConsoleApp())
 			return;
 		
-		ClearEventMask(GetOwner(), EntityEvent.FRAME);
+		DisconnectFromGadgetsSystem();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
+	override void Update(float timeSlice)
 	{					
 		UpdateTime();
 	}

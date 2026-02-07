@@ -128,7 +128,7 @@ class SCR_XPInfoDisplay : SCR_InfoDisplayExtended
 		int showXP = XP;
 		m_bNegativeXP = false;
 		
-		if (toggled)
+		if (toggled || !notify)
 		{
 			// We are just showing info on current XP, no change was made - hide reward name
 			m_wTitle.SetText(string.Empty);

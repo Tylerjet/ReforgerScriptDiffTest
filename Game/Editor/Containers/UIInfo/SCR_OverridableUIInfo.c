@@ -9,7 +9,7 @@ class SCR_OverridableUIInfo: SCR_UIInfo
 	Set info name
 	\param name New name
 	*/
-	void SetName(LocalizedString name)
+	override void SetName(LocalizedString name)
 	{
 		Name = name;
 	}
@@ -17,7 +17,7 @@ class SCR_OverridableUIInfo: SCR_UIInfo
 	Set info description
 	\param description New description
 	*/
-	void SetDescription(LocalizedString description)
+	override void SetDescription(LocalizedString description)
 	{
 		Description = description;
 	}

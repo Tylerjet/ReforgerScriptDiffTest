@@ -24,6 +24,8 @@ class SCR_WorkshopUiCommon
 	// Map which maps addon tags to default pictures
 	static ref map<string, ResourceName> s_sAddonTagDefaultThumbnailMap;
 	
+	static const string WIDGET_LIST = "AddonList";
+	
 	
 	//------------------------------------------------------------------------------------------------
 	// P U B L I C   M E T H O D S 
@@ -353,7 +355,13 @@ class SCR_WorkshopUiCommon
 			return "#AR-Workshop_State_Restricted";
 	}
 	
+	protected static ref ScriptInvoker<> m_OnDownloadConfirmDisplayed = new ScriptInvoker<>();
 	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvoker GetOnDownloadConfirmDisplayed()
+	{
+		return m_OnDownloadConfirmDisplayed;
+	}
 	
 	//---------------------------------------------------------------------------------------------
 	//! Performs the primary suggested action
@@ -372,6 +380,8 @@ class SCR_WorkshopUiCommon
 			if (!item.GetOffline())
 			{
 				dlRequest = SCR_WorkshopDownloadSequence.Create(item, item.GetLatestRevision(), dlRequest);
+				dlRequest.GetOnDownloadConfirmDisplayed().Remove(OnDownloadConfirmDisplayed);
+				dlRequest.GetOnDownloadConfirmDisplayed().Insert(OnDownloadConfirmDisplayed);
 				return;
 			}
 			else
@@ -384,6 +394,8 @@ class SCR_WorkshopUiCommon
 					case EWorkshopItemProblem.DEPENDENCY_OUTDATED:
 					{
 						dlRequest = SCR_WorkshopDownloadSequence.Create(item, item.GetLatestRevision(), dlRequest);
+						dlRequest.GetOnDownloadConfirmDisplayed().Remove(OnDownloadConfirmDisplayed);
+						dlRequest.GetOnDownloadConfirmDisplayed().Insert(OnDownloadConfirmDisplayed);
 						return;
 					}
 					
@@ -426,6 +438,12 @@ class SCR_WorkshopUiCommon
 		return;
 	}
 	
+	//---------------------------------------------------------------------------------------------
+	protected static void OnDownloadConfirmDisplayed(SCR_DownloadSequence downloadSequence, SCR_DownloadConfirmationDialog confirmDialog)
+	{
+		if (m_OnDownloadConfirmDisplayed)
+				m_OnDownloadConfirmDisplayed.Invoke(downloadSequence, confirmDialog);
+	}
 	
 	//---------------------------------------------------------------------------------------------
 	//! Updates icon and text with according to current state of addon
@@ -515,12 +533,16 @@ class SCR_WorkshopUiCommon
 	//! Converts report type enum to stringtable entry
 	static string GetReportTypeString(EWorkshopReportType eReportType)
 	{
-		const int REPORT_REASONS_COUNT = 4;
+		const int REPORT_REASONS_COUNT = EWorkshopReportType.EWREPORT_OTHER + 1;
 		const string REPORT_REASONS[REPORT_REASONS_COUNT] = 
 		{
 			"#AR-Workshop_Report_InappropiateContent",
 			"#AR-Workshop_Report_OffensiveLanguage",
 			"#AR-Workshop_Report_Missleading_NonFunctional",
+			"#AR-Workshop_Report_Spam",
+			"#AR-Workshop_Report_Scam",
+			"#AR-Workshop_Report_Malicious",
+			"#AR-Workshop_Report_IPInfringement",
 			"#AR-Workshop_Report_Other"
 		};
 		
@@ -667,17 +689,17 @@ class SCR_CancelDownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		m_aActions = {};
 		
 		foreach (SCR_WorkshopItemActionDownload action : actionsToCancel)
+		{
 			m_aActions.Insert(action);
+		}
 		
 		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, "cancel_download_confirmation", this);
 	}
-	
-	
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
-		VerticalLayoutWidget layout = VerticalLayoutWidget.Cast(GetContentLayoutRoot(GetRootWidget()).FindAnyWidget("AddonList"));
+		VerticalLayoutWidget layout = VerticalLayoutWidget.Cast(GetContentLayoutRoot(GetRootWidget()).FindAnyWidget(SCR_WorkshopUiCommon.WIDGET_LIST));
 		
 		// Create widgets for downloads
 		foreach (SCR_WorkshopItemActionDownload action : m_aActions)
@@ -687,8 +709,6 @@ class SCR_CancelDownloadConfirmationDialog : SCR_ConfigurableDialogUi
 			comp.InitForCancelDownloadAction(action);
 		}
 	}
-	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnConfirm()
@@ -701,6 +721,72 @@ class SCR_CancelDownloadConfirmationDialog : SCR_ConfigurableDialogUi
 	}
 };
 
+
+//------------------------------------------------------------------------------------------------
+//! Dialog to cancel downloads during to server joining
+class SCR_ServerJoinDownloadsConfirmationDialog : SCR_ConfigurableDialogUi
+{
+	protected ref array<ref SCR_WorkshopItemActionDownload> m_aActions = {};	
+	protected ref array<SCR_DownloadManager_AddonDownloadLine> m_aLineCompents = {};
+	
+	protected static const string TAG_ALL = "server_download_all_cancel";
+	protected static const string TAG_REQUIRED = "server_download_required";
+	protected static const string TAG_UNRELATED = "server_download_unrelated_cancel";
+	
+	protected const ResourceName DOWNLOAD_LINE_LAYOUT = "{1C5D2CC10D7A1BC3}UI/layouts/Menus/ContentBrowser/DownloadManager/DownloadManager_AddonDownloadLineNonInteractive.layout";
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_ServerJoinDownloadsConfirmationDialog Create(array<ref SCR_WorkshopItemActionDownload> actions, SCR_EJoinDownloadsConfirmationDialogType type)
+	{
+		string tag;
+		
+		switch (type)
+		{
+			case SCR_EJoinDownloadsConfirmationDialogType.ALL:
+				tag = TAG_ALL;
+				break;
+		
+			case SCR_EJoinDownloadsConfirmationDialogType.REQUIRED:
+				tag = TAG_REQUIRED;
+				break;
+			
+			case SCR_EJoinDownloadsConfirmationDialogType.UNRELATED:
+				tag = TAG_UNRELATED;
+				break;
+		}
+		
+		return new SCR_ServerJoinDownloadsConfirmationDialog(tag, actions);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_ServerJoinDownloadsConfirmationDialog(string tag, array<ref SCR_WorkshopItemActionDownload> actions)
+	{
+		foreach (SCR_WorkshopItemActionDownload action : actions)
+		{
+			m_aActions.Insert(action);
+		}
+		
+		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, tag, this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
+	{	
+		VerticalLayoutWidget layout = VerticalLayoutWidget.Cast(GetContentLayoutRoot(GetRootWidget()).FindAnyWidget(SCR_WorkshopUiCommon.WIDGET_LIST));
+		
+		// Create widgets for downloads
+		foreach (SCR_WorkshopItemActionDownload action : m_aActions)
+		{
+			Widget w = GetGame().GetWorkspace().CreateWidgets(DOWNLOAD_LINE_LAYOUT, layout);
+			SCR_DownloadManager_AddonDownloadLine comp = SCR_DownloadManager_AddonDownloadLine.Cast(w.FindHandler(SCR_DownloadManager_AddonDownloadLine));
+			comp.InitForServerDownloadAction(action);
+			
+			m_aLineCompents.Insert(comp);
+		}
+		
+		super.OnMenuOpen(preset);
+	}
+};
 
 
 //------------------------------------------------------------------------------------------------
@@ -729,7 +815,6 @@ class SCR_BannedAddonsDetectedDialog : SCR_ConfigurableDialogUi
 	}
 };
 
-
 //------------------------------------------------------------------------------------------------
 //! Shows a list of addons and some text.
 class SCR_AddonListDialog : SCR_ConfigurableDialogUi
@@ -753,7 +838,7 @@ class SCR_AddonListDialog : SCR_ConfigurableDialogUi
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
-		VerticalLayoutWidget layout = VerticalLayoutWidget.Cast(GetContentLayoutRoot(GetRootWidget()).FindAnyWidget("AddonList"));
+		VerticalLayoutWidget layout = VerticalLayoutWidget.Cast(GetContentLayoutRoot(GetRootWidget()).FindAnyWidget(SCR_WorkshopUiCommon.WIDGET_LIST));
 		
 		// Create widgets
 		foreach (SCR_WorkshopItem item : m_aItems)
@@ -957,7 +1042,6 @@ class SCR_CancelMyReportDialog : SCR_ConfigurableDialogUi
 	{
 		m_LoadingOverlayDlg.CloseAnimated();
 		Close();
-		SCR_CommonDialogs.CreateRequestErrorDialog();
 	}
 	
 	//------------------------------------------------------------------------------------------------

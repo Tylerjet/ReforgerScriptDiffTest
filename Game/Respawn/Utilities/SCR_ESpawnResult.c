@@ -34,7 +34,17 @@ enum SCR_ESpawnResult
 		specific implementation, e.g. respawn timer and similar.
 		See SCR_BaseRespawnHandler.CanRequestSpawn.
 	*/
-	SPAWN_NOT_ALLOWED,
+	SPAWN_NOT_ALLOWED = 3000,
+	
+	NOT_ALLOWED_TIMER,
+	NOT_ALLOWED_SPAWNPOINT_DISABLED,
+	NOT_ALLOWED_SPAWNING_DISABLED,
+	NOT_ALLOWED_VEHICLE_FULL,
+	NOT_ALLOWED_VEHICLE_MOVING,
+	NOT_ALLOWED_RADIO_VEHICLE_SPAWNING_DISABLED,
+	NOT_ALLOWED_SPAWNPOINT_OCCUPIED_BY_HOSTILE,
+	NOT_ALLOWED_SPAWNING_DISABLED_ENEMIES_NEARBY,
+	NOT_ALLOWED_SPAWNPOINT_DISABLED_OUT_OF_RESPAWNS,
 
 	/*!
 		Prefab needs to meet certain conditions before it is spawned.
@@ -89,5 +99,5 @@ enum SCR_ESpawnResult
 		This error should never occur. If it occurs, it most likely means that
 		a fatal/unrecoverable issue has occured, but is not specified.
 	*/
-	UNKNOWN_ERROR = 999999
+	UNKNOWN_ERROR = 999999,
 };

@@ -28,6 +28,6 @@ class SCR_FadeInOutEffect : SCR_BaseScreenEffect
 			m_wFadeInOut.SetOpacity(1);
 		}
 		
-		AnimateWidget.Opacity(m_wFadeInOut, targetVal, 1/seconds, true);
+		GetGame().GetCallqueue().CallLater(AnimateWidget.Opacity, 0, false, m_wFadeInOut, targetVal, 1/seconds, true); // this is delayed by frame so there is at least one visible frame of opacity = 1 
 	}
 };

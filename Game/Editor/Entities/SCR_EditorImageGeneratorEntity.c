@@ -131,14 +131,9 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 	}
 	protected bool Init()
 	{
-		if (m_iInit < 2 && !SCR_Global.IsEditMode(this))
+		if (m_iInit <= 1 && !SCR_Global.IsEditMode(this))
 		{
-			string testFilePath = Type().ToString();
-			if (m_iInit == 0)
-			{
-				System.MakeScreenshot("$ArmaReforger:" + testFilePath);
-			}
-			else if (m_iInit == 1)
+			if (m_iInit == 1)
 			{
 				//--- Validate screen size
 				if (!m_bDebugMode)
@@ -162,19 +157,6 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 				}
 				m_iSelectedPrefabsCount = m_aSelectedPrefabs.Count();
 				
-				//--- Validate screenshot extension
-				if (!m_bDebugMode)
-				{
-					bool exists = FileIO.FileExists(FilePath.AppendExtension(testFilePath, "png"));
-					FileIO.DeleteFile(FilePath.AppendExtension(testFilePath, "png"));
-					FileIO.DeleteFile(FilePath.AppendExtension(testFilePath, "bmp"));
-					if (!exists)
-					{
-						//Debug.Error2(Type().ToString(), "Cannot generate images of editable entities, please set 'Debug menu > Game > Compressed format in WB' to 'true'!\n\nPress 'Ignore' to show prefabs without taking screenshots.\n");
-						Print("Cannot generate images of editable entities, please set 'Debug menu > Game > Compressed format in WB' to 'true'!\nSelected prefabs will still be shown, but no images will be captured.", LogLevel.WARNING);
-						//GetGame().GetCallqueue().CallLater(RequestClose, false, 1);
-					}
-				}
 				
 				//--- Set initial delay
 				m_fTimeNext = m_fTime + 1;
@@ -186,7 +168,7 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 			}
 			m_iInit++; //--- Wait one frame before evaluating screen dimensions, otherwise they will still be default 128x128
 		}
-		return m_iInit == 2;
+		return m_iInit > 1;
 	}
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
@@ -270,7 +252,7 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 			if (m_fTimeNext == -1)
 				DbgUI.Text("Press 'Space' to take screenshot and continue to next prefab\n\n");
 			else
-				DbgUI.Text(string.Format("Estimated remaining time: %1", SCR_Global.GetTimeFormatting(m_fTimeRemaining, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS)));
+				DbgUI.Text(string.Format("Estimated remaining time: %1", SCR_FormatHelper.GetTimeFormatting(m_fTimeRemaining, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS)));
 		}
 		else
 		{

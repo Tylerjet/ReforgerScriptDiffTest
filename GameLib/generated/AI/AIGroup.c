@@ -19,6 +19,9 @@ class AIGroup: AIAgent
 	proto external void RemoveAgent(AIAgent pAgent);
 	proto external int GetAgents(notnull out array<AIAgent> outAgents);
 	proto external int GetAgentsCount();
+	proto external void ActivateAllMembers();
+	proto external void DeactivateAllMembers();
+	proto external AIFormationComponent GetFormationComponent();
 	// waypoints handling
 	proto external void AddWaypoint(AIWaypoint w);
 	proto external void RemoveWaypoint(AIWaypoint w);
@@ -30,10 +33,6 @@ class AIGroup: AIAgent
 	proto external int GetWaypoints(out array<AIWaypoint> outWaypoints);
 	proto external AIAgent GetLeaderAgent();
 	proto external IEntity GetLeaderEntity();
-	proto external AIFormationDefinition GetFormation();
-	//Sets a displacement in the formation so that the used offset positions start at the given value
-	proto external void SetFormationDisplacement(int iValue);
-	proto external int GetFormationDisplacement();
 	// Returns center of mass of the group, which is average of all member positions
 	proto external vector GetCenterOfMass();
 	proto external void SetNewLeader(AIAgent newLeader);

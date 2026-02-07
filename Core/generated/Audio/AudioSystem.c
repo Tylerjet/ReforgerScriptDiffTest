@@ -34,6 +34,8 @@ sealed class AudioSystem
 	static proto bool SetSoundTransformation(AudioHandle handle, vector transf[]);
 	//! Return -1.0 for the inaudible event, otherwise return distance from passed position to listener.
 	static proto float IsAudible(string filepath, string eventName, vector position);
+	//! Return value current value of a variable.
+	static proto float GetVariableValue(string varname, string filename);
 	//------------------------------------------------------------------------------------------------
 	static proto float OutputVolume();
 	//------------------------------------------------------------------------------------------------

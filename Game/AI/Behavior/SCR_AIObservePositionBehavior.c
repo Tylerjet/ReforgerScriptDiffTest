@@ -63,7 +63,7 @@ Behavior to observe supposed location of where gunshot came from.
 class SCR_AIObserveUnknownFireBehavior : SCR_AIObservePositionBehavior
 {
 	protected const float TIMEOUT_S = 16.0;
-	protected const float DURATION_MIN_S = 2.0;			// Min duration of behavior
+	protected const float DURATION_MIN_S = 3.0;			// Min duration of behavior
 	protected const float DIRECTION_SPAN_DEG = 32.0;	
 	protected const float DURATION_S_PER_METER = 0.1;	// How duration depends on distance
 	protected const float USE_BINOCULARS_DISTANCE_THRESHOLD = 70;
@@ -110,6 +110,20 @@ class SCR_AIObserveUnknownFireBehavior : SCR_AIObservePositionBehavior
 		float delay_s = Math.Max(DELAY_MIN_S, DELAY_S_PER_METER * distance); // Linearly increase with distance
 		delay_s = Math.RandomFloat(0.7*delay_s, 1.3*delay_s);
 		m_fDelay.m_Value = delay_s;
+	}
+	
+	override void OnActionSelected()
+	{
+		super.OnActionSelected();
+		
+		if (Math.RandomFloat01() < 0.2)
+		{
+			if (!m_Utility.m_CommsHandler.CanBypass())
+			{
+				SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_UNDER_FIRE, null, vector.Zero, 0, false, SCR_EAITalkRequestPreset.IRRELEVANT);
+				m_Utility.m_CommsHandler.AddRequest(rq);
+			}
+		}
 	}
 	
 	static bool IsNewPositionMoreRelevant(vector myWorldPos, vector oldWorldPos, vector newWorldPos)

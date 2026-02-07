@@ -36,16 +36,18 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	protected ref array<ref Widget> m_aDisabled = {};
 	
 	// Navigation buttons 
-	protected SCR_NavigationButtonComponent m_NavWorkshop;
-	protected SCR_NavigationButtonComponent m_NavEnable;
-	protected SCR_NavigationButtonComponent m_NavEnableAll;
-	protected SCR_NavigationButtonComponent m_NavSelectSort;
-	protected SCR_NavigationButtonComponent m_NavChangeSortOrder;
+	protected SCR_InputButtonComponent m_NavWorkshop;
+	protected SCR_InputButtonComponent m_NavEnable;
+	protected SCR_InputButtonComponent m_NavEnableAll;
+	protected SCR_InputButtonComponent m_NavSelectSort;
+	protected SCR_InputButtonComponent m_NavChangeSortOrder;
 	
 	protected SCR_AddonLineDSConfigComponent m_FocusedLine;
 	protected SCR_AddonLineDSConfigComponent m_OrderedLine;
 	
 	protected ref map<ref SCR_WorkshopItem, ref SCR_AddonLineDSConfigComponent> m_aEnabledMods = new map<ref SCR_WorkshopItem, ref SCR_AddonLineDSConfigComponent>();
+	
+	protected bool m_bIsListeningForCommStatus;
 	
 	//------------------------------------------------------------------------------------------------
 	// Invokers
@@ -99,7 +101,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		m_Widgets.m_ButtonDisableAllComponent.m_OnClicked.Insert(OnDisableAllClicked);
 		
 		CreateAddonList();
-		
+
 		SetupDownloadingCallbacks();
 	}
 	
@@ -108,38 +110,23 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	{
 		super.HandlerDeattached(w);
 		ClearDownloadingCallbacks();
+		
+		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
+		m_bIsListeningForCommStatus = false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
 	{
-		super.OnMenuShow(parentMenu);
-		
 		if (!m_NavWorkshop)
 		{
-			m_NavWorkshop = CreateNavigationButton("MenuFilter", "#AR-Workshop_WorkshopPageName", false);
+			m_NavWorkshop = CreateNavigationButton("MenuDownloadManager", "#AR-Workshop_WorkshopPageName", false);
 			
 			if (m_NavWorkshop)
 				m_NavWorkshop.m_OnActivated.Insert(OnOpenWorkshopButton);
 		}
 		
 		// Setup navigation buttons 
-		if (!m_NavEnable)
-		{
-			m_NavEnable = CreateNavigationButton("MenuSelect", NAV_ENABLE, true);
-			
-			if (m_NavEnable)
-				m_NavEnable.m_OnActivated.Insert(OnNavEnableActivated);
-		}
-		
-		if (!m_NavEnableAll)
-		{
-			m_NavEnableAll = CreateNavigationButton("MenuDownloadManager", NAV_ENABLE_ALL, false);
-			
-			if (m_NavEnableAll)
-				m_NavEnableAll.m_OnActivated.Insert(OnNavEnableAllActivated);
-		}
-		
 		if (!m_NavSelectSort)
 		{
 			m_NavSelectSort = CreateNavigationButton("MenuSelectHold", "#AR-Editor_TooltipDetail_WaypointIndex_Name", true);
@@ -156,10 +143,66 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 				m_NavChangeSortOrder.SetVisible(false);
 		}
 		
+		if (!m_NavEnable)
+		{
+			m_NavEnable = CreateNavigationButton("MenuEnable", NAV_ENABLE, true);
+			
+			if (m_NavEnable)
+				m_NavEnable.m_OnActivated.Insert(OnNavEnableActivated);
+		}
+		
+		if (!m_NavEnableAll)
+		{
+			m_NavEnableAll = CreateNavigationButton("MenuEnableAll", NAV_ENABLE_ALL, false);
+			
+			if (m_NavEnableAll)
+				m_NavEnableAll.m_OnActivated.Insert(OnNavEnableAllActivated);
+		}
+		
 		// Focus fist entry next frame to ensure focus will happend
 		GetGame().GetCallqueue().CallLater(FocusFirstEntry);
+		
+		SCR_ServicesStatusHelper.RefreshPing();
+		
+		if (!m_bIsListeningForCommStatus)
+			SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Insert(OnCommStatusCheckFinished);
+		
+		m_bIsListeningForCommStatus = true;
+		UpdateWorkshopButton();
+		
+		super.OnMenuShow(parentMenu);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuHide(SCR_SuperMenuBase parentMenu)
+	{
+		super.OnMenuHide(parentMenu);
+		
+		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
+		m_bIsListeningForCommStatus = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateWorkshopButton()
+	{	
+		if (!m_NavWorkshop)
+			return;
+
+		SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_NavWorkshop, SCR_ServicesStatusHelper.SERVICE_WORKSHOP);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnCommStatusCheckFinished(SCR_ECommStatus status, float responseTime, float lastSuccessTime, float lastFailTime)
+	{
+		UpdateWorkshopButton();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void ShowNavigationButtons(bool show)
+	{
+		super.ShowNavigationButtons(show && !m_aEnabledMods.IsEmpty());
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// Protected 
 	//------------------------------------------------------------------------------------------------
@@ -330,7 +373,11 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	//! Setup callbacks for all running downloads 
 	protected void SetupDownloadingCallbacks()
 	{
-		array<ref SCR_WorkshopItemActionDownload> actions = SCR_DownloadManager.GetInstance().GetDownloadQueue();
+		SCR_DownloadManager downloadManager = SCR_DownloadManager.GetInstance();
+		if (!downloadManager)
+			return;
+		
+		array<ref SCR_WorkshopItemActionDownload> actions = downloadManager.GetDownloadQueue();
 		
 		for (int i = 0, count = actions.Count(); i < count; i++)
 		{
@@ -897,7 +944,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_NavigationButtonComponent GetNavWorkshopButton()
+	SCR_InputButtonComponent GetNavWorkshopButton()
 	{
 		return m_NavWorkshop;
 	}

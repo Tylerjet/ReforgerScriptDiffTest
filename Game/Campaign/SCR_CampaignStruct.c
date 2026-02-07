@@ -15,7 +15,7 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 	protected int m_iTutorialStage = -1;
 	protected bool m_bMatchOver;
 	protected string m_sWeatherState;
-	protected int m_iCallsignOffset = SCR_CampaignMilitaryBaseComponent.INVALID_BASE_CALLSIGN;
+	protected int m_iCallsignOffset = SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN;
 	
 	//------------------------------------------------------------------------------------------------
 	int GetHours()
@@ -113,7 +113,8 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		
 		Clear();
 		
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = campaign.GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		
 		if (timeManager)
 		{
@@ -126,7 +127,7 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		
 		campaign.GetBaseManager().StoreBasesStates(m_aBasesStructs);
 		
-		SCR_CampaignTutorialComponent tutorial = SCR_CampaignTutorialComponent.Cast(campaign.FindComponent(SCR_CampaignTutorialComponent));
+		SCR_CampaignTutorialArlandComponent tutorial = SCR_CampaignTutorialArlandComponent.Cast(campaign.FindComponent(SCR_CampaignTutorialArlandComponent));
 		
 		if (tutorial)
 		{
@@ -138,27 +139,27 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		
 		SCR_CampaignFaction factionBLUFOR = campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR);
 		SCR_CampaignFaction factionOPFOR = campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR);
-		SCR_CampaignMobileAssemblyComponent mobileHQ;
+		IEntity mobileHQ;
 		
-		if (factionBLUFOR)
+		if (factionBLUFOR && factionBLUFOR.GetMobileAssembly())
 		{
-			mobileHQ = factionBLUFOR.GetMobileAssembly();
+			mobileHQ = factionBLUFOR.GetMobileAssembly().GetVehicle();
 			
 			if (mobileHQ)
 			{
-				m_vMHQLocationBLUFOR = mobileHQ.GetOwner().GetParent().GetOrigin();
-				m_vMHQRotationBLUFOR = mobileHQ.GetOwner().GetParent().GetYawPitchRoll();
+				m_vMHQLocationBLUFOR = mobileHQ.GetOrigin();
+				m_vMHQRotationBLUFOR = mobileHQ.GetYawPitchRoll();
 			}
 		}
 		
-		if (factionOPFOR)
+		if (factionOPFOR && factionOPFOR.GetMobileAssembly())
 		{
-			mobileHQ = factionOPFOR.GetMobileAssembly();
+			mobileHQ = factionOPFOR.GetMobileAssembly().GetVehicle();
 			
 			if (mobileHQ)
 			{
-				m_vMHQLocationOPFOR = mobileHQ.GetOwner().GetParent().GetOrigin();
-				m_vMHQRotationOPFOR = mobileHQ.GetOwner().GetParent().GetYawPitchRoll();
+				m_vMHQLocationOPFOR = mobileHQ.GetOrigin();
+				m_vMHQRotationOPFOR = mobileHQ.GetYawPitchRoll();
 			}
 		}
 		
@@ -249,7 +250,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	protected vector m_vPos;
 	protected int m_iF;
 	protected int m_iS;
-	protected string m_sHQP;
+	/*protected string m_sHQP;
 	protected vector m_vHQPos;
 	protected vector m_vHQRot;
 	protected string m_sVDP;
@@ -272,7 +273,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	protected vector m_vFHRot;
 	protected string m_sBP;
 	protected vector m_vBPos;
-	protected vector m_vBRot;
+	protected vector m_vBRot;*/
 	
 	//------------------------------------------------------------------------------------------------
 	bool IsHQ()
@@ -304,7 +305,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	string GetHQPrefab()
+	/*string GetHQPrefab()
 	{
 		return m_sHQP;
 	}
@@ -370,7 +371,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 		}
 		
 		return vector.Zero;
-	}
+	}*/
 	
 	//------------------------------------------------------------------------------------------------
 	void SetIsHQ(bool hq)
@@ -403,7 +404,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetBuildingsData(notnull SCR_CampaignMilitaryBaseComponent base)
+	/*void SetBuildingsData(notnull SCR_CampaignMilitaryBaseComponent base)
 	{
 		array<SCR_ServicePointComponent> services = {};
 		base.GetServices(services);
@@ -505,7 +506,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 				}
 			}
 		}
-	}
+	}*/
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnExpand()
@@ -548,7 +549,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 		RegV("m_vPos");
 		RegV("m_iF");
 		RegV("m_iS");
-		RegV("m_sHQP");
+		/*RegV("m_sHQP");
 		RegV("m_vHQPos");
 		RegV("m_vHQRot");
 		RegV("m_sVDP");
@@ -571,7 +572,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 		RegV("m_vFHRot");
 		RegV("m_sBP");
 		RegV("m_vBPos");
-		RegV("m_vBRot");
+		RegV("m_vBRot");*/
 	}
 };
 
@@ -686,7 +687,7 @@ class SCR_CampaignPlayerStruct : SCR_JsonApiStruct
 		if (!api)
 			return string.Empty;
 		
-		return api.GetPlayerUID(playerId);
+		return api.GetPlayerIdentityId(playerId);
 	}
 	
 	//------------------------------------------------------------------------------------------------

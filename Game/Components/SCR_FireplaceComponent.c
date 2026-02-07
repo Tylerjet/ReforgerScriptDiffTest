@@ -168,5 +168,8 @@ class SCR_FireplaceComponent : SCR_BaseInteractiveLightComponent
 		super.OnDelete(owner);
 		
 		RemoveLights();
+		
+		if (m_pFireParticle)
+			RplComponent.DeleteRplEntity(m_pFireParticle, false);
 	}
 };

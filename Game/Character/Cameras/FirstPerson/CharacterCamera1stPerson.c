@@ -54,6 +54,16 @@ class CharacterCamera1stPerson extends CharacterCameraBase
 		
 		vector additiveRotation = "0 0 0";
 		m_CharacterHeadAimingComponent.GetLookTransformationLS(pOutResult.m_iDirectBone, pOutResult.m_iDirectBoneMode, m_OffsetLS, additiveRotation, pOutResult.m_CameraTM);
+
+		if (m_UseLookPositionOverrideLS)
+			pOutResult.m_CameraTM[3] = m_LookPositionOverrideLS;
+		
+		vector vYPR = "0 0 0";
+		vYPR[1] = m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+		vector mat[4];
+		Math3D.AnglesToMatrix(vYPR, mat);
+		Math3D.MatrixMultiply4(mat, pOutResult.m_CameraTM, pOutResult.m_CameraTM);
+		
 		if( m_ApplyHeadBob )
 			m_CharacterCameraHandler.AddViewBobToTransform(pOutResult.m_CameraTM, 1, false);
 
@@ -87,6 +97,9 @@ class CharacterCamera1stPerson extends CharacterCameraBase
 
 	protected bool m_bCameraTransition = false;
 	protected CompartmentAccessComponent m_pCompartmentAccess;
+	
+	protected bool m_UseLookPositionOverrideLS = false;
+	protected vector m_LookPositionOverrideLS;
 };
 
 class CharacterCamera1stPersonBoneTransform extends CharacterCamera1stPerson

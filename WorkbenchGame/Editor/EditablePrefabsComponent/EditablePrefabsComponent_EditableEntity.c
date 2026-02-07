@@ -44,17 +44,19 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 		
 		array<ref ContainerIdPathEntry> path = {ContainerIdPathEntry(componentSource.GetClassName()), ContainerIdPathEntry("m_UIInfo")};
 
+		//--- Get existing UI info
+		BaseContainer infoCurrent;
+		if (componentCurrent)
+			infoCurrent = componentCurrent.GetObject("m_UIInfo");
+		
 		//--- Name
 		if (!m_sNameFormat.IsEmpty())
 		{
 			string name;
+			
 			//--- Preserve existing localized name
-			if (componentCurrent)
-			{
-				BaseContainer infoCurrent = componentCurrent.GetObject("m_UIInfo");
-				if (infoCurrent)
-					infoCurrent.Get("Name", name);
-			}
+			if (infoCurrent)
+				infoCurrent.Get("Name", name);
 			
 			if (!name.StartsWith("#"))
 			{
@@ -71,12 +73,26 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 			api.SetVariableValue(entitySource, path, "Name", name);
 		}
 		
-		//--- Preserve existing entity icon
-		ResourceName entityIcon;
-		if (componentCurrent)
+		
+		//--- Preserve existing localized description
+		if (infoCurrent)
 		{
-			BaseContainer infoCurrent = componentCurrent.GetObject("m_UIInfo");
-			if (infoCurrent && infoCurrent.IsVariableSetDirectly("Icon") && infoCurrent.Get("Icon", entityIcon) && !entityIcon.IsEmpty())
+			string description;
+			if (infoCurrent.IsVariableSetDirectly("Description") && infoCurrent.Get("Description", description) && !description.IsEmpty())
+			{
+				api.SetVariableValue(entitySource, path, "Description", description);
+			}
+			
+			//--- Preserve existing entity icon set name
+			string entityIconSetName;
+			if (infoCurrent.IsVariableSetDirectly("IconSetName") && infoCurrent.Get("IconSetName", entityIconSetName) && !entityIconSetName.IsEmpty())
+			{
+				api.SetVariableValue(entitySource, path, "IconSetName", entityIconSetName);
+			}
+			
+			//--- Preserve existing entity icon
+			ResourceName entityIcon;
+			if (infoCurrent.IsVariableSetDirectly("Icon") && infoCurrent.Get("Icon", entityIcon) && !entityIcon.IsEmpty())
 			{
 				api.SetVariableValue(entitySource, path, "Icon", entityIcon);
 			}
@@ -135,8 +151,6 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 		
 		if (m_bUpdateBudgets)
 		{
-			array<ref ContainerIdPathEntry> budgetPath = {ContainerIdPathEntry(componentSource.GetClassName()), ContainerIdPathEntry("m_UIInfo"), null};
-			
 			BaseContainer infoAncestor;
 			IEntityComponentSource componentAncestor;
 			if (componentCurrent)
@@ -157,15 +171,39 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 				string vehicleCompartmentTypesValue = SCR_BaseContainerTools.GetArrayValue(vehicleCompartmentTypes);
 				api.SetVariableValue(entitySource, path, "m_aOccupantFillCompartmentTypes", vehicleCompartmentTypesValue);
 				
-				SetBudgets(api, entitySource, infoAncestor, path, "m_aCrewEntityBudgetCost", crewBudgetCosts);
-				SetBudgets(api, entitySource, infoAncestor, path, "m_aPassengerEntityBudgetCost", passengerBudgetCosts);
+				SetBudgets(api, entitySource, infoAncestor, infoCurrent, path, "m_aCrewEntityBudgetCost", crewBudgetCosts);
+				SetBudgets(api, entitySource, infoAncestor, infoCurrent, path, "m_aPassengerEntityBudgetCost", passengerBudgetCosts);
 			}
 			
 			//=== Calculate combined children budget costs
 			array<ref SCR_EntityBudgetValue> entityChildrenBudgetCosts = {};
 			GetEntityChildrenBudgetCostsFromSource(entitySource, entityChildrenBudgetCosts);
 			
-			SetBudgets(api, entitySource, infoAncestor, path, "m_EntityChildrenBudgetCost", entityChildrenBudgetCosts);
+			SetBudgets(api, entitySource, infoAncestor, infoCurrent, path, "m_EntityChildrenBudgetCost", entityChildrenBudgetCosts);
+			
+			//--- Preserve existing values of the entity budget
+			if (infoAncestor)
+			{
+				string varName = "m_EntityBudgetCost";
+				array<ref SCR_EntityBudgetValue> entityBudgetCosts = {};
+				PreserveBudgets(api, infoCurrent, varName, entityBudgetCosts);
+				
+				int budgetListCount;
+				BaseContainerList budgetList = infoAncestor.GetObjectArray(varName);
+				if (budgetList)
+					budgetListCount = budgetList.Count();
+				
+				array<ref ContainerIdPathEntry> budgetPath = {ContainerIdPathEntry(componentSource.GetClassName()), ContainerIdPathEntry("m_UIInfo"), null};
+				foreach (SCR_EntityBudgetValue budget: entityBudgetCosts)
+				{
+					api.CreateObjectArrayVariableMember(entitySource, path, varName, "SCR_EntityBudgetValue", budgetListCount);
+					
+					budgetPath.Set(budgetPath.Count() - 1, ContainerIdPathEntry(varName, budgetListCount));
+					api.SetVariableValue(entitySource, budgetPath , "m_BudgetType", typename.EnumToString(EEditableEntityBudget, budget.GetBudgetType()));
+					api.SetVariableValue(entitySource, budgetPath , "m_Value", budget.GetBudgetValue().ToString());
+					budgetListCount++;
+				}
+			}
 		}
 		
 		//--- Custom slot prefab
@@ -194,8 +232,10 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 		}
 		return true;
 	}
-	protected void SetBudgets(WorldEditorAPI api, IEntitySource entitySource, BaseContainer info, array<ref ContainerIdPathEntry> path, string varName, array<ref SCR_EntityBudgetValue> budgets)
+	protected void SetBudgets(WorldEditorAPI api, IEntitySource entitySource, BaseContainer info, BaseContainer infoCurrent, array<ref ContainerIdPathEntry> path, string varName, array<ref SCR_EntityBudgetValue> budgets)
 	{	
+		PreserveBudgets(api, infoCurrent, varName, budgets);
+		
 		api.ClearVariableValue(entitySource, path, varName);
 		
 		//--- Copy path and add an entry to be set in the loop
@@ -254,6 +294,37 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 			budgetPath.Set(budgetPath.Count() - 1, ContainerIdPathEntry(varName, index));
 			api.SetVariableValue(entitySource, budgetPath , "m_BudgetType", typename.EnumToString(EEditableEntityBudget, budgetType));
 			api.SetVariableValue(entitySource, budgetPath , "m_Value", budgetValue.ToString());
+		}
+	}
+	protected void PreserveBudgets(WorldEditorAPI api, BaseContainer infoCurrent, string varName, array<ref SCR_EntityBudgetValue> budgets)
+	{
+		BaseContainerList budgetList = infoCurrent.GetObjectArray(varName);
+		int budgetListCount = budgetList.Count();
+		EEditableEntityBudget listBudgetType;
+		for (int l = 0; l < budgetListCount; l++)
+		{
+			budgetList.Get(l).Get("m_BudgetType", listBudgetType);
+			
+			bool isFound;
+			foreach (int i, SCR_EntityBudgetValue entry: budgets)
+			{
+				if (entry.GetBudgetType() == listBudgetType)
+				{
+					isFound = true;
+					break;
+				}
+			}
+			if (!isFound)
+			{
+				//--- Add only budgets that are not defined anew
+				EEditableEntityBudget budgetType;
+				budgetList.Get(l).Get("m_BudgetType", budgetType);
+				
+				int budgetValue;
+				budgetList.Get(l).Get("m_Value", budgetValue);
+				
+				budgets.Insert(new SCR_EntityBudgetValue(budgetType, budgetValue));
+			}
 		}
 	}
 	protected void CreatePreviewImage(EditablePrefabsConfig config, WorldEditorAPI api, out string targetPath, IEntitySource entitySource, string addonName)

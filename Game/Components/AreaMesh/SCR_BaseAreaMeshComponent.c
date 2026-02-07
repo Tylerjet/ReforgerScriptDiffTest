@@ -10,7 +10,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	[Attribute(defvalue: "10", category: "Virtual Area", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EAreaMeshShape), desc: "Area shape. If Ellipse it will use Radius while Rectangle uses diameter (width and length) rather like ellipse using half the diameter)")]
 	protected EAreaMeshShape m_eShape;
 	
-	[Attribute("10")]
+	[Attribute("10", category: "Virtual Area")]
 	protected float m_fHeight;
 	
 	[Attribute("12", desc: "How many segments in the ellipse (ELLIPSE Shapes only as RECTANGLE has a set resolution of 4).", uiwidget: UIWidgets.Slider, params: "4 60 1", category: "Virtual Area")]
@@ -27,6 +27,9 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	
 	[Attribute("false", desc: "When enabled, the component will be active from init", category: "Virtual Area")]
 	protected bool m_bActiveEveryFrameOnInit;
+	
+	[Attribute("0", desc: "If true always hide the zone in workbench. This setting is ignored when playing even within workbench", category: "Workbench")]
+	protected bool m_bHideInWorkbench;
 	
 	protected vector m_vLastPos;
 	protected vector m_vLastDir;
@@ -109,10 +112,10 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 		dimensions[2] = length;
 	}
 	
-	//~ Get the position of the AreaMesh. Can be overwritten to set custom position
-	protected vector GetPosition(IEntity owner)
+	//~ Get the offset of the AreaMesh. Can be overwritten to set custom position. Only x and z are used. Height is ignored
+	protected vector GetMeshOffset(IEntity owner)
 	{
-		return owner.GetOrigin();
+		return vector.Zero;
 	}
 	
 	//~ Get material used for area mesh
@@ -128,6 +131,11 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	{
 		IEntity owner = GetOwner();
 		
+		#ifdef WORKBENCH
+		if (m_bHideInWorkbench && owner.GetWorld() && owner.GetWorld().IsEditMode())
+			return;
+		#endif
+		
 		vector dimensions;
 		GetDimensions3D(dimensions);
 		
@@ -138,6 +146,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 		}	
 		
 		array<vector> positions = {};
+		vector offset = GetMeshOffset(owner);
 		
 		if (m_eShape == EAreaMeshShape.ELLIPSE)
 		{
@@ -148,7 +157,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 			for (int v = 0; v < resolution; v++)
 			{
 				float dir = dirStep * v;
-				vector pos = Vector(Math.Sin(dir) * dimensions[0], -dimensions[1], Math.Cos(dir) * dimensions[2]);
+				vector pos = Vector((Math.Sin(dir) * dimensions[0]) + offset[0], -dimensions[1], (Math.Cos(dir) * dimensions[2]) + offset[2]);
 				positions.Insert(pos);
 			}
 		}
@@ -160,10 +169,10 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 			
 			array<vector> corners = 
 			{
-				Vector(-width, -dimensions[1], -length),
-				Vector(width, -dimensions[1], -length),
-				Vector(width, -dimensions[1], length),
-				Vector(-width, -dimensions[1], length)
+				Vector(-width + offset[0], -dimensions[1], -length + offset[2]),
+				Vector(width + offset[0], -dimensions[1], -length + offset[2]),
+				Vector(width + offset[0], -dimensions[1], length + offset[2]),
+				Vector(-width + offset[0], -dimensions[1], length + offset[2])
 			};
 			
 			//~ Set positions
@@ -186,9 +195,18 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 			return;
 		}
 		
-		//--- Snap all positions to ground
 		if (m_bFollowTerrain)
 		{
+			//--- Reset entity rotation
+			vector transform[4];
+			owner.GetWorldTransform(transform);
+			vector angles = Math3D.MatrixToAngles(transform);
+			angles[1] = 0; //--- Reset pitch
+			angles[2] = 0; //--- Reset roll
+			Math3D.AnglesToMatrix(angles, transform);
+			owner.SetWorldTransform(transform);
+			
+			//--- Snap all positions to ground
 			BaseWorld world = owner.GetWorld();
 			vector worldPos;
 			foreach (int i, vector pos: positions)
@@ -204,7 +222,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 		{
 			owner.SetObject(meshObject, "");
 			
-			m_vLastPos = GetPosition(owner);
+			m_vLastPos = owner.GetOrigin();
 			m_vLastDir = owner.GetAngles();
 		}
 		
@@ -212,7 +230,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
-		if (vector.DistanceSq(m_vLastPos, GetPosition(owner)) > 0.1 || vector.DistanceSq(m_vLastDir, owner.GetAngles()) > 0.1)
+		if (vector.DistanceSq(m_vLastPos, owner.GetOrigin()) > 0.1 || vector.DistanceSq(m_vLastDir, owner.GetAngles()) > 0.1)
 			GenerateAreaMesh();
 	}
 	

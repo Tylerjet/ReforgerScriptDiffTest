@@ -24,24 +24,42 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 		if (!m_bReloadLoadout)
 			return null;
 		
-		m_PreviewManager = GetGame().GetItemPreviewManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		m_PreviewManager = world.GetItemPreviewManager();
 
 		if (!m_PreviewManager)
 		{
 			Resource res = Resource.Load(m_sPreviewManager);
 			if (res.IsValid())
-				GetGame().SpawnEntityPrefabLocal(res);
-			m_PreviewManager = GetGame().GetItemPreviewManager();
+				GetGame().SpawnEntityPrefabLocal(res, world);
+			
+			m_PreviewManager = world.GetItemPreviewManager();
 			if (!m_PreviewManager)
 			{
 				return null;
 			}
 		}
 		
-		ResourceName resName = loadout.GetLoadoutPreviewResource();
-		m_PreviewManager.SetPreviewItemFromPrefab(m_wPreview, resName, attributes);
+		if (SCR_PlayerArsenalLoadout.Cast(loadout))
+		{
+			Resource resource = Resource.Load(loadout.GetLoadoutResource());
+			if (!resource)
+				return null;
+			
+			IEntity char = GetGame().SpawnEntityPrefabLocal(resource);
+			if (!char)
+				return null;
+			
+			m_PreviewManager.SetPreviewItem(m_wPreview, char, attributes);
+			return char;
+		}
+		else
+		{
+			ResourceName resName = loadout.GetLoadoutResource();
+			m_PreviewManager.SetPreviewItemFromPrefab(m_wPreview, resName, attributes);
 
-		return m_PreviewManager.ResolvePreviewEntityForPrefab(resName);
+			return m_PreviewManager.ResolvePreviewEntityForPrefab(resName);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

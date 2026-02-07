@@ -26,6 +26,8 @@ class Vehicle : BaseVehicle
 	EVehicleType m_eVehicleType;
 	
 	SCR_VehicleFactionAffiliationComponent m_pFactionComponent;
+	protected SCR_WaterPhysicsComponent m_WaterPhysics;
+	protected BaseControllerComponent m_VehicleController;
 	
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnPhysicsActive()
@@ -59,6 +61,12 @@ class Vehicle : BaseVehicle
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	SCR_WaterPhysicsComponent GetWaterPhysicsComponent()
+	{
+		return m_WaterPhysics;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	Faction GetDefaultFaction()
 	{
 		if (m_pFactionComponent)
@@ -77,6 +85,44 @@ class Vehicle : BaseVehicle
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Get vehicle controller, stored as BaseControllerComponent
+	BaseControllerComponent GetVehicleController()
+	{
+		return m_VehicleController;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get primary pilot compartment slot
+	PilotCompartmentSlot GetPilotCompartmentSlot()
+	{
+		if (GetGame().GetIsClientAuthority())
+		{
+			VehicleControllerComponent controllerCA = VehicleControllerComponent.Cast(m_VehicleController);
+			if (controllerCA)
+				return controllerCA.GetPilotCompartmentSlot();
+		}
+		else
+		{
+			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(m_VehicleController);
+			if (controller)
+				return controller.GetPilotCompartmentSlot();
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get pilot of the vehicle - occupant of the primary pilot compartment
+	IEntity GetPilot()
+	{
+		PilotCompartmentSlot slot = GetPilotCompartmentSlot();
+		if (slot)
+			return slot.GetOccupant();
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void Vehicle(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.PHYSICSACTIVE);
@@ -85,6 +131,12 @@ class Vehicle : BaseVehicle
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
+		if (GetGame().GetIsClientAuthority())
+			m_VehicleController = BaseControllerComponent.Cast(FindComponent(VehicleControllerComponent));
+		else
+			m_VehicleController = BaseControllerComponent.Cast(FindComponent(VehicleControllerComponent_SA));
+
 		m_pFactionComponent = SCR_VehicleFactionAffiliationComponent.Cast(FindComponent(SCR_VehicleFactionAffiliationComponent));
+		m_WaterPhysics = SCR_WaterPhysicsComponent.Cast(FindComponent(SCR_WaterPhysicsComponent));
 	}
 };

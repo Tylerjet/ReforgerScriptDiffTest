@@ -154,7 +154,7 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 			return;
 			
 		animComponent.Prepare(animResourceHolder.m_sAnimation, Math.RandomFloatInclusive(1, 5), 1, true);
-		animComponent.Play(entity);
+		animComponent.Play();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -281,7 +281,7 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 	//! Gets sound map type from terrain
 	protected int GetSoundMapTypeFromTerrain(inout vector worldPos, vector camPos)
 	{
-		ChimeraWorld world = m_AmbientInsectsComponent.GetOwner().GetWorld();
+		ChimeraWorld world = ChimeraWorld.CastFrom(m_AmbientInsectsComponent.GetOwner().GetWorld());
 		if (!world)
 			return INVALID;
 
@@ -362,7 +362,7 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 
 	//------------------------------------------------------------------------------------------------
 	//! Loads configs where necessary values are stored
-	protected void LoadConfigs(SCR_AmbientInsectsComponent ambientSoundsComponent)
+	protected void LoadConfigs()
 	{
 		foreach (SCR_RandomPositionalInsectsDef def : m_aRandomPositionalInsectsDef)
 		{
@@ -377,6 +377,8 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 			if (!insectGroup)
 			{
 				Print("AMBIENT LIFE: SCR_AmbientInsectsComponent: Missing Ambience Sound Gropu Config", LogLevel.WARNING);
+				m_AmbientInsectsComponent.RemoveInsectEffect(this);
+				
 				return;
 			}
 
@@ -394,6 +396,8 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 			if (!spawnDef)
 			{
 				Print("AMBIENT LIFE: SCR_AmbientInsectsComponent: Missing Spawn Definition Config", LogLevel.WARNING);
+				m_AmbientInsectsComponent.RemoveInsectEffect(this);
+				
 				return;
 			}
 
@@ -412,6 +416,8 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 		if (!ambientSoundsDayTimeCurveDefinitionConfig)
 		{
 			Print("AMBIENT LIFE: SCR_AmbientInsectsComponent: Missing Daytime Curve Deffinition Config", LogLevel.WARNING);
+			m_AmbientInsectsComponent.RemoveInsectEffect(this);
+			
 			return;
 		}
 
@@ -429,6 +435,8 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 		if (!ambientSoundsWindDefinitionConfig)
 		{
 			Print("AMBIENT LIFE: SCR_AmbientInsectsComponent: Missing Wind Curve Definition Config", LogLevel.WARNING);
+			m_AmbientInsectsComponent.RemoveInsectEffect(this);
+			
 			return;
 		}
 
@@ -441,8 +449,7 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 	{
 		super.OnPostInit(ambientSoundsComponent, ambientInsectsComponent, signalsManagerComponent);
 
-		LoadConfigs(ambientInsectsComponent);
-		m_AmbientInsectsComponent = ambientInsectsComponent;
+		LoadConfigs();
 
 		int count = m_aSpawnDef.Count();
 		m_aDensity.Resize(count);

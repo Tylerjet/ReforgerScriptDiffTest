@@ -71,6 +71,8 @@ class ScriptCallQueue
 	proto int GetRemainingTimeByName(Managed obj, string fnName);
 	//! remove all calls from queue
 	proto native void Clear();
+	//! dump all callbacks into log
+	proto native void Dump();
 }
 
 /**
@@ -122,6 +124,8 @@ class ScriptInvokerBase<Class T>: Managed
 	proto void Remove(T fn);
 	//! remove all calls from list
 	proto native void Clear();
+	//! dump all callbacks into log
+	proto native void Dump();
 }
 
 typedef ScriptInvokerBase<func> ScriptInvoker;

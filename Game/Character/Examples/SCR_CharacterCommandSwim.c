@@ -40,7 +40,7 @@ class SCR_CharacterCommandSwim : ScriptedCommand
 
 	void EndSwimming()
 	{
-		PreAnim_CallCommand(m_Table.m_CmdStartSwimming, 0, 0);
+		PreAnim_CallCommand(m_Table.m_CmdStartSwimming, -1, 0);
 	}
 	
 	//	

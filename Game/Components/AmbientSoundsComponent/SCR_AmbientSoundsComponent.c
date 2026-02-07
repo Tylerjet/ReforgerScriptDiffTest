@@ -11,21 +11,13 @@ enum EQueryType
 
 enum ELocalAmbientSignal
 {
-	AboveFreshWater,
 	SoundName,
 	EntitySize,
 	AboveTerrain,
-	AboveSea,
 	SunAngle,
 	EnvironmentType,
 	Seed,
 	Distance
-};
-
-enum EOutputStateSignal
-{
-	AboveSea,
-	AboveFreshWater,
 };
 
 [EntityEditorProps(category: "GameScripted/Sound", description: "THIS IS THE SCRIPT DESCRIPTION.", color: "0 0 255 255")]
@@ -50,13 +42,15 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
     private const int INVALID = -1;
     const int WINDSPEED_MIN = 2;
     const int WINDSPEED_MAX = 12;
-	private float m_fQueryTimer = QUERY_PROCESSING_INTERVAL;
-	private float m_fUpdateTimer;
 	private const int UPDATE_PROCESSING_INTERVAL = 300;
 	private const int LOOPED_SOUND_MINIMUM_MOVE_DISTANCE_SQ = 2;
-
+	
+	// Timers
+	private float m_fQueryTimer;
+	private float m_fUpdateTimer;
+	
 	// Misc
-	private BaseWorld m_World;
+	private ChimeraWorld m_World;
 	private int m_iEnvironmentTypeSignalValue;
 	private float m_fWorldTime;
 	private vector m_vCameraPosFrame;
@@ -65,12 +59,11 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	
 	// Looped sounds pool
 	private ref array<ref SCR_AudioHandleLoop> m_aAudioHandleLoop = {};
+
 	//! Stores entity counds for all EQueryType
 	private ref array<int> m_aQueryTypeCount = new array<int>;		
 	//! AmbientEntity Signal's manager signals indexes
 	private ref array<int> m_aLocalAmbientSignalIndex = new array<int>;	
-	//! Output state signls indexes
-	private ref array<int> m_aOutputStateSignalIndex = new array<int>;
 			
 	//------------------------------------------------------------------------------------------------
 	/*
@@ -104,10 +97,10 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ETreeSoundTypes GetDominantTree()
+	EQueryType GetDominantTree()
 	{
 		if (m_aQueryTypeCount[EQueryType.TreeLeafy] + m_aQueryTypeCount[EQueryType.TreeConifer] == 0)
-			return ETreeSoundTypes.None;
+			return INVALID;
 		if (m_aQueryTypeCount[EQueryType.TreeLeafy] > m_aQueryTypeCount[EQueryType.TreeConifer])
 			return EQueryType.TreeLeafy;
 		else
@@ -117,48 +110,33 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Uses linear interpolation to get value from curve
-		\time Range <0, 1>
+		\x Range <0, 1>
 		\curve Curve
 		\return value from curve
 	*/									
-	static float GetPoint(float time, Curve curve)
-	{		
-		time = Math.Clamp(time, 0, 1);
+	static float GetPoint(float x, Curve curve)
+	{				
+		if (x <= curve[0][0])
+			return curve[0][1];
 		
-		int size = curve.Count();
-		int i;
+		int lastIdx = curve.Count() - 1;
 		
-		for (i = 0; i < size; i++)
+		if (x >= curve[lastIdx][0])
+			return curve[lastIdx][1];
+		
+		int i;		
+		for (i = 1; i < lastIdx; i++)
 		{
-			if (curve[i][0] > time)
+			if (curve[i][0] > x)
 				break; 
 		}
 		
-		// One point defined or value befor first point	
-		if (i == 0)
-			return curve[i][1];	
-		else if (i >= size - 1)
-			return curve[size - 1][1];
+		if (curve[i-1][1] == curve[i][1])
+			return curve[i][1];
 		else
-		{
-			if (curve[i-1][1] == curve[i][1])
-				return curve[i][1];
-			else					
-				return Interpolate(time, curve[i-1][0], curve[i][0], curve[i-1][1], curve[i][1]);
-		}
+			return Math.Lerp(curve[i-1][1], curve[i][1], (x - curve[i-1][0]) / (curve[i][0] - curve[i-1][0]));
 	}
-
-	//------------------------------------------------------------------------------------------------	
-	private static float Interpolate(float in, float Xmin, float Xmax, float Ymin, float Ymax)
-	{
-		if (in <= Xmin)
-			return Ymin;			
-		if (in >= Xmax)
-			return Ymax;
-			
-		return ((Ymin * (Xmax - in) + Ymax * (in - Xmin)) / (Xmax - Xmin));		
-	}
-	
+				
 	//------------------------------------------------------------------------------------------------	
 	/*!
 		Use to play sound events that has looped banks
@@ -200,16 +178,16 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 				audioHandleLoop.m_AudioHandle = SoundEventTransform(audioHandleLoop.m_sSoundEvent, audioHandleLoop.m_aMat);
 		}
 	}
-				
+	
 	//------------------------------------------------------------------------------------------------	
 	override void UpdateSoundJob(IEntity owner, float timeSlice)
 	{
 		super.UpdateSoundJob(owner, timeSlice);
-			
+		
 		m_vCameraPosFrame = GetCameraOrigin();	
 		m_fWorldTime = m_World.GetWorldTime();
 		
-		// Handle looped sounds
+		// Update effects
 		if (m_fWorldTime > m_fUpdateTimer)
 		{
 			// Handle looped sounds
@@ -218,23 +196,19 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 				m_vCameraPosLoopedSound = m_vCameraPosFrame;
 				UpdateLoopedSounds()
 			}
-														
+											
+			foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
+				ambientSoundsEffect.Update(m_fWorldTime, m_vCameraPosFrame);
+			
 			m_fUpdateTimer = m_fWorldTime + UPDATE_PROCESSING_INTERVAL;
 		}
 		
-		foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
-			ambientSoundsEffect.Update(m_fWorldTime, m_vCameraPosFrame);
-		
 		HandleQueryEntities();
 
-		// !!! Make sure, that 0 = default in case AmbientEntity is not present			
-		if (m_aOutputStateSignalIndex[EOutputStateSignal.AboveSea] != INVALID)
-			AudioSystem.SetOutputStateSignal(AudioSystem.DefaultOutputState, m_aOutputStateSignalIndex[EOutputStateSignal.AboveSea], m_LocalSignalsManager.GetSignalValue(m_aLocalAmbientSignalIndex[ELocalAmbientSignal.AboveSea]) - 0.1);
-									
-		if (m_aOutputStateSignalIndex[EOutputStateSignal.AboveFreshWater] != INVALID)
-			AudioSystem.SetOutputStateSignal(AudioSystem.DefaultOutputState, m_aOutputStateSignalIndex[EOutputStateSignal.AboveFreshWater], m_LocalSignalsManager.GetSignalValue(m_aLocalAmbientSignalIndex[ELocalAmbientSignal.AboveFreshWater]));	
-
 #ifdef ENABLE_DIAG
+		foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
+			ambientSoundsEffect.UpdateDebug(m_fWorldTime);
+		
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_RELOAD_AMBIENT_SOUNDS_CONFIGS))
 		{
 			foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
@@ -251,9 +225,12 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		super.OnPostInit(owner);
 		
 		// Get world
-		m_World = owner.GetWorld();	
+		m_World = GetGame().GetWorld();	
 		if (!m_World)
+		{
 			SetScriptedMethodsCall(false);	
+			return;
+		}
 				
 		// Get local signals component		
 		m_LocalSignalsManager = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));		
@@ -270,16 +247,20 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		
 		for (int i = 0; i < size; i++)
 			m_aLocalAmbientSignalIndex.Insert(m_LocalSignalsManager.AddOrFindSignal(typename.EnumToString(ELocalAmbientSignal, i)));
-		
-		// Get Output Stage Signals Idx
-		enumType = EOutputStateSignal;
-		size = enumType.GetVariableCount();
-		
-		for (int i = 0; i < size; i++)
-			m_aOutputStateSignalIndex.Insert(AudioSystem.GetOutpuStateSignalIdx(0, typename.EnumToString(EOutputStateSignal, i)));
-		
+				
 		foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
 			ambientSoundsEffect.OnPostInit(this, m_LocalSignalsManager);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnInit(IEntity owner)
+	{
+		super.OnInit(owner);
+		
+		m_World.RegisterEntityToBeUpdatedWhileGameIsPaused(owner);
+		
+		foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
+			ambientSoundsEffect.OnInit();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -297,6 +278,9 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_AmbientSoundsComponent()
 	{
+		if (m_World)
+			m_World.UnregisterEntityToBeUpdatedWhileGameIsPaused(GetOwner());
+				
 #ifdef ENABLE_DIAG
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_SOUNDS_RELOAD_AMBIENT_SOUNDS_CONFIGS);
 #endif	

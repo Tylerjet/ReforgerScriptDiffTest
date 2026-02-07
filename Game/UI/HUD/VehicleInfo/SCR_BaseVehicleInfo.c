@@ -27,11 +27,12 @@ enum EVehicleInfoColor
 [BaseContainerProps(configRoot: true)]
 class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 {
-	protected ResourceName m_Imageset = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
-	protected ResourceName m_ImagesetGlow = "{ABC6B36856013403}UI/Textures/Icons/icons_wrapperUI-64-glow.imageset";
+	protected ResourceName m_Imageset = "{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
+	protected ResourceName m_ImagesetGlow = "{00FE3DBDFD15227B}UI/Textures/Icons/icons_wrapperUI-glow.imageset";
 
 	protected ImageWidget m_wIcon;
 	protected ImageWidget m_wGlow;
+	protected OverlayWidget m_wSizeOverlay;
 
 	[Attribute("", UIWidgets.EditBox, "Indicator icon to be displayed.")]
 	protected string m_sIcon;
@@ -51,6 +52,8 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 
     protected Color m_aColors[5];
 	protected Color m_aColorsGlow[5];
+	
+	protected const int ICON_SIZE = 64;
   
 	//------------------------------------------------------------------------------------------------
 	//! Can be overridden to get state of actual system or linked to an event
@@ -92,6 +95,16 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void Scale(OverlayWidget widget, float scale)
+	{
+		if (!widget)
+			return;
+
+		FrameSlot.SetSizeX(widget, scale * ICON_SIZE);
+		FrameSlot.SetSizeY(widget, scale * ICON_SIZE);		
+	}	
+	
+	//------------------------------------------------------------------------------------------------
 	protected void SetIcon(string icon)
 	{
 		if (!m_wIcon || !m_wGlow)
@@ -100,8 +113,7 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 		m_wIcon.LoadImageFromSet(0, m_Imageset, icon);
 		m_wGlow.LoadImageFromSet(0, m_ImagesetGlow, icon);
 
-		Scale(m_wIcon, m_fWidgetScale);
-		Scale(m_wGlow, m_fWidgetScale);
+		Scale(m_wSizeOverlay, m_fWidgetScale);
 	}	
 
 	//------------------------------------------------------------------------------------------------
@@ -148,8 +160,10 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 
 		EVehicleInfoState state = GetState();
 		
+		bool isBlinking = IsBlinking();
 		int time = GetGame().GetWorld().GetWorldTime();
-		if (IsBlinking())
+		
+		if (isBlinking)
 		{
 			if (Math.Mod(time - m_iBlinkingOffset, 1000) < 500)
 				state = Math.Max(state - 1, EVehicleInfoState.DISABLED);
@@ -162,15 +176,15 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 		if (UpdateRequired(state))
 		{
 			#ifdef DEBUG_VEHICLE_UI
-			PrintFormat("%1 SetState: %2", this, state);
+			PrintFormat("%1 Update -> state: %2 | icon: %3", this, state, m_sIcon);
 			#endif
 
 			m_eState = state;
 			
 			SetIcon(m_sIcon);
 			SetColor(state, m_eColor);
-		
-			bool show = m_bShowGhost || state != EVehicleInfoState.DISABLED;
+
+			bool show = isBlinking || m_bShowGhost || state != EVehicleInfoState.DISABLED;
 			
 			if (m_bShown != show)
 				Show(show);		
@@ -200,6 +214,7 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 
 		m_wIcon = ImageWidget.Cast(m_wRoot.FindAnyWidget("Icon"));
 		m_wGlow = ImageWidget.Cast(m_wRoot.FindAnyWidget("Glow"));
+		m_wSizeOverlay = OverlayWidget.Cast(m_wRoot.FindAnyWidget("SizeOverlay"));
 
 		m_eState = EVehicleInfoState.NOT_INITIALIZED;
 		

@@ -8,6 +8,9 @@ class SCR_AIMedicHealBehavior : SCR_AIBehaviorBase
 	
 	ref SCR_AIMoveIndividuallyBehavior m_HealMove;
 	
+	// Max threat value under which we will consider healing someone
+	protected const float MAX_THREAT_THRESHOLD = 0.002;
+	
 	void SCR_AIMedicHealBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, IEntity entityToHeal, bool allowHealMove, float priority = PRIORITY_BEHAVIOR_MEDIC_HEAL, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		m_EntityToHeal.Init(this, entityToHeal);
@@ -39,4 +42,12 @@ class SCR_AIMedicHealBehavior : SCR_AIBehaviorBase
 		SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, "Failed heal", EAIDebugCategory.INFO, 5);
 #endif
 	}
+	
+	override float CustomEvaluate()
+	{
+		if (m_Utility.m_ThreatSystem.GetThreatMeasure() < MAX_THREAT_THRESHOLD)
+			return GetPriority();
+		else
+			return 0;
+	};
 };

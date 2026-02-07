@@ -105,7 +105,6 @@ class SCR_AttributeDescriptionUIComponent: ScriptedWidgetComponent
 		SetAttributeDescription(null);
 		
 		attributesManager.GetOnAttributeDescriptionChanged().Insert(SetAttributeDescription);
-		attributesManager.GetOnAttributeCategoryChanged().Insert(OnCategoryChanged);
 	}
 	
 	override void HandlerDeattached(Widget w)
@@ -115,7 +114,6 @@ class SCR_AttributeDescriptionUIComponent: ScriptedWidgetComponent
 			return;
 		
 		attributesManager.GetOnAttributeDescriptionChanged().Remove(SetAttributeDescription);
-		attributesManager.GetOnAttributeCategoryChanged().Remove(OnCategoryChanged);
 	}
 
 };

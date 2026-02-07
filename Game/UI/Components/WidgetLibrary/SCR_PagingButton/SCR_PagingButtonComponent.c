@@ -43,7 +43,7 @@ class SCR_PagingButtonComponent : SCR_ButtonBaseComponent
 			m_wText.SetVisible(m_bUseActionHint);
 			if (m_bUseActionHint)
 			{
-				m_wText.SetTextFormat("<action name='%1' scale='1.5'>/", m_sActionName);
+				m_wText.SetTextFormat("<action name='%1' scale='1.5'/>", m_sActionName);
 			}
 		}
 		
@@ -143,7 +143,7 @@ class SCR_PagingButtonComponent : SCR_ButtonBaseComponent
 		else
 		{
 			GetGame().GetInputManager().AddActionListener(m_sActionName, EActionTrigger.DOWN, OnMenuSelect);
-			m_wText.SetTextFormat("<action name='%1' scale='1.5'>/", m_sActionName);
+			m_wText.SetTextFormat("<action name='%1' scale='1.5'/>", m_sActionName);
 		}
 	}
 

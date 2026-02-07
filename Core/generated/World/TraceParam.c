@@ -14,15 +14,21 @@ Input&Output structure for collision tests.
 */
 class TraceParam: Managed
 {
+	//! Start position from where we trace
 	vector Start;
+	//! End position to where we trace
 	vector End;
+	//! Bitmask of layer(s) representing the traced object. The interaction matrix is used to determine whether an object can be traced.
 	int LayerMask = 0xffffffff;
+	//! Bitmask of layers to trace. Not used if 0, otherwise it overrides LayerMask.
+	int TargetLayers = 0;
 	TraceFlags Flags;
-	//use either Exclude or ExcludeArray. Never both, it has some performance penalty
+	//! Use either Exclude or ExcludeArray. Never both, it has some performance penalty
 	IEntity Exclude;
 	array<IEntity> ExcludeArray;
-	//use either Include or IncludeArray. Never both, it has some performance penalty
+	//! Use either Include or IncludeArray. Never both, it has some performance penalty
 	IEntity Include;
+	//! Include only these entities
 	array<IEntity> IncludeArray;
 	IEntity TraceEnt; ///<[out] traced entity
 	vector TraceNorm; ///<[out] traced polygon normal (X,Y,Z)

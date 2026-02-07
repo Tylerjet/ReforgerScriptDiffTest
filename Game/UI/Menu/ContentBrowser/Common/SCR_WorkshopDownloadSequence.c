@@ -15,6 +15,14 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 
 	protected SCR_LoadingOverlayDialog m_LoadingOverlay;
 	
+	protected ref ScriptInvoker<> m_OnDownloadConfirmDisplayed = new ScriptInvoker<>();
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnDownloadConfirmDisplayed()
+	{
+		return m_OnDownloadConfirmDisplayed;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	// Public 
 	//------------------------------------------------------------------------------------------------
@@ -23,16 +31,10 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 	//! Tries to create a new request if previous doesn't exist or finished. Otherwise returns the previous request.
 	static SCR_WorkshopDownloadSequence Create(SCR_WorkshopItem item, Revision itemTargetRevision, SCR_WorkshopDownloadSequence previous)
 	{
-		if (previous)
-			Print("sq prev: " + previous + "waiting: " + previous.m_bWaitingResponse);
-		else
-			Print("sq prev: " + previous + "waiting: idk");
-		
 		if (previous && previous.m_bWaitingResponse)
 			return previous;
 		
 		SCR_WorkshopDownloadSequence sq = new SCR_WorkshopDownloadSequence(null, item, itemTargetRevision);
-		Print("sq new: " + sq + "waiting: " + sq.m_bWaitingResponse);
 		
 		return sq;
 	}
@@ -141,7 +143,10 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 		// Show confirmation only if there are dependencies
 		if (!m_aDependencies.IsEmpty())
 		{
-			SCR_DownloadConfirmationDialog.CreateForAddonAndDependencies(m_Item, downloadMainItem, dependenciesToLoad, m_bSubscribeToAddons);
+			SCR_DownloadConfirmationDialog confirmDialog = SCR_DownloadConfirmationDialog.CreateForAddonAndDependencies(m_Item, downloadMainItem, dependenciesToLoad, m_bSubscribeToAddons);
+			
+			if (m_OnDownloadConfirmDisplayed)
+				m_OnDownloadConfirmDisplayed.Invoke(this, confirmDialog);
 		}
 		else
 		{

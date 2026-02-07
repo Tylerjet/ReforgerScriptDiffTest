@@ -19,6 +19,11 @@ class SCR_ContentDetailsPanelBase : ScriptedWidgetComponent
 	[Attribute("", UIWidgets.ResourceNamePicker, "Common image set", "imageset")]
 	protected ResourceName m_IconImageSet; 
 	
+	[Attribute("500")]
+	protected int m_iMaxDescriptionLenght;
+	
+	protected const int DESCRIPTION_LENGHT_OFFSET = 10;
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -64,6 +69,19 @@ class SCR_ContentDetailsPanelBase : ScriptedWidgetComponent
 		return m_FallbackContent.m_DefaultContent;
 	}
 	
+	//-----------------------------------------------------------------------------------
+	//! Set description text with enforced text lenght limit
+	protected void SetDescriptionText(string text)
+	{
+		// Edit text if it's too long
+		if (text.Length() > m_iMaxDescriptionLenght + DESCRIPTION_LENGHT_OFFSET)
+		{
+			text = text.Substring(0, m_iMaxDescriptionLenght);
+			text += "...";
+		}
+		
+		widgets.m_DescriptionText.SetText(text);
+	}
 };
 
 

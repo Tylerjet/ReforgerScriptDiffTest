@@ -11,13 +11,13 @@ class SCR_StartScenarioDialogWidgets
 	ImageWidget m_ScenarioImage;
 
 	ButtonWidget m_JoinButton;
-	SCR_NavigationButtonComponent m_JoinButtonComponent;
+	SCR_InputButtonComponent m_JoinButtonComponent;
 
 	ButtonWidget m_HostButton;
-	SCR_NavigationButtonComponent m_HostButtonComponent;
+	SCR_InputButtonComponent m_HostButtonComponent;
 
 	ButtonWidget m_PlayButton;
-	SCR_NavigationButtonComponent m_PlayButtonComponent;
+	SCR_InputButtonComponent m_PlayButtonComponent;
 
 	bool Init(Widget root)
 	{
@@ -26,13 +26,13 @@ class SCR_StartScenarioDialogWidgets
 		m_ScenarioImage = ImageWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.VerticalLayout0.HorizontalLayout0.m_ScenarioImage"));
 
 		m_JoinButton = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.VerticalLayout0.HorizontalLayout0.PlayablePC.m_JoinButton"));
-		m_JoinButtonComponent = SCR_NavigationButtonComponent.Cast(m_JoinButton.FindHandler(SCR_NavigationButtonComponent));
+		m_JoinButtonComponent = SCR_InputButtonComponent.Cast(m_JoinButton.FindHandler(SCR_InputButtonComponent));
 
 		m_HostButton = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.VerticalLayout0.HorizontalLayout0.PlayablePC.m_HostButton"));
-		m_HostButtonComponent = SCR_NavigationButtonComponent.Cast(m_HostButton.FindHandler(SCR_NavigationButtonComponent));
+		m_HostButtonComponent = SCR_InputButtonComponent.Cast(m_HostButton.FindHandler(SCR_InputButtonComponent));
 
 		m_PlayButton = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.VerticalLayout0.HorizontalLayout0.PlayablePC.m_PlayButton"));
-		m_PlayButtonComponent = SCR_NavigationButtonComponent.Cast(m_PlayButton.FindHandler(SCR_NavigationButtonComponent));
+		m_PlayButtonComponent = SCR_InputButtonComponent.Cast(m_PlayButton.FindHandler(SCR_InputButtonComponent));
 
 		return true;
 	}

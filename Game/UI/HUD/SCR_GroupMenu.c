@@ -7,9 +7,12 @@ class SCR_GroupMenu : SCR_SuperMenuBase
 		
 		Widget cancelButton = GetRootWidget().FindAnyWidget("Back");		
 		
-		SCR_NavigationButtonComponent cancel = SCR_NavigationButtonComponent.Cast(cancelButton.FindHandler(SCR_NavigationButtonComponent));		
+		SCR_InputButtonComponent cancel = SCR_InputButtonComponent.Cast(cancelButton.FindHandler(SCR_InputButtonComponent));		
 		cancel.m_OnClicked.Insert(Close);
 		cancel.m_OnActivated.Insert(Close);
+		
+		SCR_AIGroup.GetOnJoinPrivateGroupRequest().Insert(UpdateTabs);
+		SCR_AIGroup.GetOnPlayerLeaderChanged().Insert(UpdateTabs);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -18,6 +21,13 @@ class SCR_GroupMenu : SCR_SuperMenuBase
 		super.OnMenuShow();
 		
 		UpdateTabs();		
+	}
+	
+	
+	override void OnMenuClose()
+	{
+		SCR_AIGroup.GetOnJoinPrivateGroupRequest().Remove(UpdateTabs);
+		SCR_AIGroup.GetOnPlayerLeaderChanged().Remove(UpdateTabs);
 	}
 		
 	//------------------------------------------------------------------------------------------------

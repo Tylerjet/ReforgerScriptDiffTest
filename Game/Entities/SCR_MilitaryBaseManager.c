@@ -1,7 +1,8 @@
 //------------------------------------------------------------------------------------------------
+[EntityEditorProps(insertable: false)]
 class SCR_MilitaryBaseManagerClass : GenericEntityClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_MilitaryBaseManager : GenericEntity
@@ -10,8 +11,10 @@ class SCR_MilitaryBaseManager : GenericEntity
 
 	protected ref array<SCR_MilitaryBaseComponent> m_aBases = {};
 	protected ref array<SCR_MilitaryBaseLogicComponent> m_aLogicComponents = {};
+	protected ref array<int> m_aAvailableCallsignIds;
 
 	protected ref ScriptInvoker m_OnBaseFactionChanged;
+	protected ref ScriptInvoker m_OnLogicRegisteredInBase;
 	protected ref ScriptInvoker m_OnServiceRegisteredInBase;
 	protected ref ScriptInvoker m_OnServiceUnregisteredInBase;
 
@@ -44,6 +47,13 @@ class SCR_MilitaryBaseManager : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void OnLogicRegisteredInBase(SCR_MilitaryBaseLogicComponent logic, SCR_MilitaryBaseComponent base)
+	{
+		if (m_OnLogicRegisteredInBase)
+			m_OnLogicRegisteredInBase.Invoke(base, logic);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void OnServiceUnregisteredInBase(SCR_ServicePointComponent service, SCR_MilitaryBaseComponent base)
 	{
 		if (m_OnServiceUnregisteredInBase)
@@ -66,6 +76,15 @@ class SCR_MilitaryBaseManager : GenericEntity
 			m_OnServiceRegisteredInBase = new ScriptInvoker();
 
 		return m_OnServiceRegisteredInBase;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnLogicRegisteredInBase()
+	{
+		if (!m_OnLogicRegisteredInBase)
+			m_OnLogicRegisteredInBase = new ScriptInvoker();
+
+		return m_OnLogicRegisteredInBase;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -171,6 +190,61 @@ class SCR_MilitaryBaseManager : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void LoadAvailableCallsigns()
+	{
+		FactionManager fManager = GetGame().GetFactionManager();
+
+		if (!fManager)
+			return;
+
+		m_aAvailableCallsignIds = {};
+		array<Faction> allFactions = {};
+		array<SCR_Faction> playableFactions = {};
+		fManager.GetFactionsList(allFactions);
+		array<int> callsignIndexesSource = {};
+
+		foreach (Faction faction : allFactions)
+		{
+			SCR_Faction factionCast = SCR_Faction.Cast(faction);
+
+			if (factionCast && factionCast.IsPlayable())
+				playableFactions.Insert(factionCast);
+		}
+
+		if (playableFactions.IsEmpty())
+			return;
+
+		// All playable factions need to have a callsign with the same ID registered in order for it to be used
+		// Grab the indexes available from the first valid faction in the list so we can compare it with the other factions
+		callsignIndexesSource = playableFactions[0].GetBaseCallsignIndexes();
+		bool canAdd;
+
+		foreach (int indexSource : callsignIndexesSource)
+		{
+			canAdd = true;
+
+			// Ignore the index unless it's registered in all other factions
+			foreach (int i, SCR_Faction faction : playableFactions)
+			{
+				// No need to check it against the original source faction
+				if (i == 0)
+					continue;
+
+				if (!faction.GetBaseCallsignByIndex(indexSource))
+				{
+					canAdd = false;
+					break;
+				}
+			}
+
+			if (!canAdd)
+				continue;
+
+			m_aAvailableCallsignIds.Insert(indexSource);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void RegisterBase(notnull SCR_MilitaryBaseComponent base)
 	{
 		m_aBases.Insert(base);
@@ -178,6 +252,22 @@ class SCR_MilitaryBaseManager : GenericEntity
 		vector basePosition = base.GetOwner().GetOrigin();
 		int baseRadius = base.GetRadius();
 		int distanceLimit = baseRadius * baseRadius;
+
+		if (Replication.IsServer())
+		{
+			// If not done already, grab all available callsign IDs
+			if (!m_aAvailableCallsignIds)
+				LoadAvailableCallsigns();
+
+			// Assign random available callsign
+			if (m_aAvailableCallsignIds && !m_aAvailableCallsignIds.IsEmpty())
+			{
+				int i = m_aAvailableCallsignIds.GetRandomIndex();
+
+				base.SetCallsignIndexAutomatic(m_aAvailableCallsignIds[i]);
+				m_aAvailableCallsignIds.Remove(i);
+			}
+		}
 
 		foreach (SCR_MilitaryBaseLogicComponent component : m_aLogicComponents)
 		{
@@ -200,6 +290,9 @@ class SCR_MilitaryBaseManager : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	protected void UnregisterBase(notnull SCR_MilitaryBaseComponent base)
 	{
+		if (m_aAvailableCallsignIds)
+			m_aAvailableCallsignIds.Insert(base.GetCallsign());
+
 		m_aBases.RemoveItem(base);
 	}
 
@@ -257,4 +350,4 @@ class SCR_MilitaryBaseManager : GenericEntity
 		if (core)
 			core.Event_OnEntityTransformChanged.Remove(OnEntityTransformChanged);
 	}
-};
+}

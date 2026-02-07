@@ -1,3 +1,7 @@
+void ScriptInvoker_FactionPlayableChangedMethod(SCR_Faction faction, bool playable);
+typedef func ScriptInvoker_FactionPlayableChangedMethod;
+typedef ScriptInvokerBase<ScriptInvoker_FactionPlayableChangedMethod> ScriptInvoker_FactionPlayableChanged;
+
 //------------------------------------------------------------------------------------------------
 class SCR_Faction : ScriptedFaction
 {
@@ -34,14 +38,14 @@ class SCR_Faction : ScriptedFaction
 	[Attribute(desc: "Create only predefined groups")]
 	protected bool m_bCreateOnlyPredefinedGroups;
 
-	[Attribute("", uiwidget: UIWidgets.EditBox)]
+	[Attribute()]
 	protected string m_sFactionRadioEncryptionKey;
 
-	[Attribute("0", uiwidget: UIWidgets.EditBox)]
+	[Attribute("0")]
 	protected int m_iFactionRadioFrequency;
 
 	protected ref array<string>> m_aAncestors;
-	protected ref ScriptInvoker Event_OnFactionPlayableChanged = new ref ScriptInvoker; //Gives Faction and Bool enabled
+	protected ref ScriptInvoker_FactionPlayableChanged m_OnFactionPlayableChanged; //Gives Faction and Bool enabled
 
 	[Attribute("", UIWidgets.Object, "List of ranks")]
 	protected ref array<ref SCR_CharacterRank> m_aRanks;
@@ -57,9 +61,12 @@ class SCR_Faction : ScriptedFaction
 
 	[Attribute("List of flags from imageset")]
 	protected ref array<string> m_aFlagNames;
+	
+	[Attribute()]
+	protected ref array<ref SCR_MilitaryBaseCallsign> m_aBaseCallsigns;
 
 	//~ Catalog map for quicker obtaining the catalog using EEntityCatalogType
-	protected ref map<EEntityCatalogType, ref SCR_EntityCatalog> m_mEntityCatalogs = new ref map<EEntityCatalogType, ref SCR_EntityCatalog>();
+	protected ref map<EEntityCatalogType, ref SCR_EntityCatalog> m_mEntityCatalogs = new map<EEntityCatalogType, ref SCR_EntityCatalog>();
 	
 	protected ref set<Faction> m_FriendlyFactions = new set<Faction>;
 	
@@ -148,18 +155,19 @@ class SCR_Faction : ScriptedFaction
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//Called everywhere, used to generate initial data for this faction
+	// Called everywhere, used to generate initial data for this faction
 	void InitializeFaction()
 	{
 	}
 
-	void SetAncestors(array<string> ancestors)
+	//------------------------------------------------------------------------------------------------
+	void SetAncestors(notnull array<string> ancestors)
 	{
 		m_aAncestors = {};
 		m_aAncestors.Copy(ancestors);
 	}
 
-	//------------------------------------------------------------------------------------------------\
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Check if the faction is playable.
 	Non-playable factions will not appear in the respawn menu.
@@ -170,6 +178,7 @@ class SCR_Faction : ScriptedFaction
 		return m_bIsPlayable;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Init faction is playable.
 	Called on Init (if server) and on server join (is Client)
@@ -180,6 +189,7 @@ class SCR_Faction : ScriptedFaction
 		m_bIsPlayable = isPlayable;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Check if the faction is inherited from a faction with given faction key.
 	\param factionKey Ancestor faction key
@@ -190,6 +200,7 @@ class SCR_Faction : ScriptedFaction
 		return m_aAncestors && m_aAncestors.Contains(factionKey);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Set if the faction is playable.
 	Non-playable factions will not appear in the respawn menu.
@@ -207,12 +218,13 @@ class SCR_Faction : ScriptedFaction
 			return;
 
 		m_bIsPlayable = isPlayable;
-		Event_OnFactionPlayableChanged.Invoke(this, m_bIsPlayable);
+		if (m_OnFactionPlayableChanged)
+			m_OnFactionPlayableChanged.Invoke(this, m_bIsPlayable);
 
 		//Kill players if m_bIsPlayable is false, killPlayersIfNotPlayable is true, of the same faction and is server
 		if (!m_bIsPlayable && killPlayersIfNotPlayable && Replication.IsServer())
 		{
-			array<int> playerList = new array<int>;
+			array<int> playerList = {};
 			GetGame().GetPlayerManager().GetPlayers(playerList);
 
 			SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
@@ -250,17 +262,25 @@ class SCR_Faction : ScriptedFaction
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get On Playable Changed Script Invoker
-	\return ScriptInvoker Event_OnFactionPlayableChanged
+	\return ScriptInvoker_FactionPlayableChanged OnFactionPlayableChanged
 	*/
-	ScriptInvoker GetOnFactionPlayableChanged()
+	ScriptInvoker_FactionPlayableChanged GetOnFactionPlayableChanged()
 	{
-		return Event_OnFactionPlayableChanged;
+		if (!m_OnFactionPlayableChanged)
+			m_OnFactionPlayableChanged = new ScriptInvoker_FactionPlayableChanged();
+
+		return m_OnFactionPlayableChanged;
 	}
-	
+
 	//======================================== FACTION RELATIONS ========================================\\
-	//~ Check if faction is friendly
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Check if provided faction is friendly
+	*/
 	override bool DoCheckIfFactionFriendly(Faction faction)
 	{
 		return m_FriendlyFactions.Contains(faction);
@@ -293,6 +313,7 @@ class SCR_Faction : ScriptedFaction
 			m_FriendlyFactions.Remove(index);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get the number of players assigned to this faction
 	*/
@@ -422,7 +443,8 @@ class SCR_Faction : ScriptedFaction
 	}
 	
 	//======================================== FACTION ENTITY CATALOG ========================================\\
-	//--------------------------------- Get Entity Catalog ---------------------------------\\
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get Entity catalog of specific type linked to faction
 	The catalog contains all entities part of the faction of that specific type
@@ -441,8 +463,8 @@ class SCR_Faction : ScriptedFaction
 		Print(string.Format("'SCR_Faction' trying to get entity list of type '%1' but there is no catalog with that type for faction '%2'", typename.EnumToString(EEntityCatalogType, catalogType), GetFactionKey()), LogLevel.WARNING);
 		return null;
 	}
-	
-	//--------------------------------- Get Entity All Catalogs ---------------------------------\\
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get all entity catalogs within the faction
 	The catalogs contain all entities part of the faction
@@ -459,8 +481,8 @@ class SCR_Faction : ScriptedFaction
 		
 		return outEntityCatalogs.Count();
 	}
-	
-	//--------------------------------- Init ---------------------------------\\
+
+	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity owner)
 	{
 		super.Init(owner);
@@ -516,4 +538,91 @@ class SCR_Faction : ScriptedFaction
 		//~ Clear array as no longer needed
 		m_aEntityCatalogs = null;
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the provided entity's Faction
+	//! \param entity
+	//! \return the entity's Faction (not SCR_Faction)
+	static Faction GetEntityFaction(notnull IEntity entity)
+	{
+		FactionAffiliationComponent factionComp = FactionAffiliationComponent.Cast(entity.FindComponent(FactionAffiliationComponent));
+		if (!factionComp)
+			return null;
+
+		Faction faction = factionComp.GetAffiliatedFaction();
+		if (!faction)
+			faction = factionComp.GetDefaultAffiliatedFaction();
+
+		return faction;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<int> GetBaseCallsignIndexes()
+	{
+		array<int> indexes = {};
+		
+		foreach (SCR_MilitaryBaseCallsign callsign : m_aBaseCallsigns)
+		{
+			indexes.Insert(callsign.GetSignalIndex());
+		}
+		
+		return indexes;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_MilitaryBaseCallsign GetBaseCallsignByIndex(int index, int offset = 0)
+	{
+		index += offset;
+		
+		if (m_aBaseCallsigns.IsIndexValid(index))
+			return m_aBaseCallsigns[index];
+		
+		index -= m_aBaseCallsigns.Count();
+		
+		if (m_aBaseCallsigns.IsIndexValid(index))
+			return m_aBaseCallsigns[index];
+		
+		return null;
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sCallsign")]
+class SCR_MilitaryBaseCallsign
+{
+	[Attribute("", UIWidgets.EditBox)]
+	protected string m_sCallsign;
+	
+	[Attribute("", UIWidgets.EditBox)]
+	protected string m_sCallsignShort;
+	
+	[Attribute("", UIWidgets.EditBox)]
+	protected string m_sCallsignUpperCase;
+	
+	[Attribute("0", UIWidgets.EditBox)]
+	protected int m_iSignalIndex;
+	
+	//------------------------------------------------------------------------------------------------
+	string GetCallsign()
+	{
+		return m_sCallsign;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetCallsignShort()
+	{
+		return m_sCallsignShort;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetCallsignUpperCase()
+	{
+		return m_sCallsignUpperCase;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetSignalIndex()
+	{
+		return m_iSignalIndex;
+	}
+}

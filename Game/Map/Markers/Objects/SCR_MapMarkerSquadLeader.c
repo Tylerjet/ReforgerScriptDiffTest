@@ -16,6 +16,7 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 	bool m_bDoGroupTextUpdate;				// group text update flag
 	protected bool m_bDoGroupSymbolUpdate;	// group symbol update flag
 	protected SCR_AIGroup m_Group;
+	protected SCR_MapMarkerSquadLeaderComponent m_SquadLeaderWidgetComp;
 		
 	//------------------------------------------------------------------------------------------------
 	// RPL EVENTS
@@ -117,13 +118,12 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 			SetImage(faction.GetGroupFlagImageSet(), flag);
 		}
 		
-		if (m_MarkerWidgetComp)		// if map is open, update immediately
-			m_MarkerWidgetComp.SetImage(m_sImageset, m_sIconName, ASPECT_RATIO_FLAG);
+		m_SquadLeaderWidgetComp.SetImage(m_sImageset, m_sIconName, ASPECT_RATIO_FLAG);
 
 		if (m_Group.IsPlayerInGroup(GetGame().GetPlayerController().GetPlayerId()))
-			SCR_MapMarkerSquadLeaderComponent.Cast(m_MarkerWidgetComp).SetGroupActive(true);
+			m_SquadLeaderWidgetComp.SetGroupActive(true);
 		else
-			SCR_MapMarkerSquadLeaderComponent.Cast(m_MarkerWidgetComp).SetGroupActive(false);
+			m_SquadLeaderWidgetComp.SetGroupActive(false);
 		
 		m_bDoGroupSymbolUpdate = false;
 	}
@@ -176,6 +176,9 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 		super.OnCreateMarker();
 		
 		m_bDoGroupSymbolUpdate = true;
+		m_bDoGroupTextUpdate = true;
+		
+		m_SquadLeaderWidgetComp = SCR_MapMarkerSquadLeaderComponent.Cast(m_MarkerWidgetComp);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -191,6 +194,9 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 		
 		if (m_bDoGroupTextUpdate)
 			InitGroupText();
+		
+		if (m_SquadLeaderWidgetComp.m_bIsHovered)
+			m_SquadLeaderWidgetComp.UpdateGroupInfoPosition(m_iScreenX, m_iScreenY);
 	}
 	
 	//------------------------------------------------------------------------------------------------

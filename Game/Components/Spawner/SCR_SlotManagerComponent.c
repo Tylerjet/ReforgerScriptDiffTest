@@ -1,3 +1,4 @@
+[EntityEditorProps(insertable: false)]
 class SCR_SpawnerSlotManagerClass: GenericEntityClass
 {
 };
@@ -47,10 +48,12 @@ class SCR_SpawnerSlotManager : GenericEntity
 	{
 		if (s_Instance)
 			return s_Instance;
-		
+	
 		s_Instance = SCR_SpawnerSlotManager.Cast(GetGame().SpawnEntity(SCR_SpawnerSlotManager, GetGame().GetWorld()));	
-		s_Instance.SetupSlotUpdatedInvoker();
+		if (!s_Instance)
+			return null;
 		
+		s_Instance.SetupSlotUpdatedInvoker();
 		return s_Instance;
 	}
 	
@@ -106,5 +109,12 @@ class SCR_SpawnerSlotManager : GenericEntity
 			core.Event_OnEntityTransformChanged.Insert(OnSlotUpdated);
 		else
 			Print("SCR_EditableEntityCore not found! Slot transformation won't be updated!", LogLevel.WARNING);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_SpawnerSlotManager()
+	{
+		if (s_Instance == this)
+			s_Instance = null;
 	}
 }

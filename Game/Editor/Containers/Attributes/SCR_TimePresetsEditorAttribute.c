@@ -10,7 +10,9 @@ class SCR_TimePresetsEditorAttribute: SCR_BasePresetsEditorAttribute
 		if (!IsGameMode(item)) 
 			return null;
 		
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		if (!timeManager) 
 			return null;
 		
@@ -56,7 +58,8 @@ class SCR_TimePresetsEditorAttribute: SCR_BasePresetsEditorAttribute
 		int month = 5;
 		int day = 23;
 		
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		if (!timeManager) 
 			return;
 		

@@ -90,7 +90,8 @@
 		EWSTATE_RECOMMENDED,
 		EWSTATE_HIGHLIGHTED,
 		EWSTATE_MYCREATION,			// 4096
-		EWSTATE_BANNED	
+		EWSTATE_BANNED,
+		EWSTATE_ABORTING_DOWNLOAD
 	}
 
 	//! Workshop report type
@@ -99,6 +100,10 @@
 		EWREPORT_INAPPROPRIATE_CONTENT,
 		EWREPORT_OFFENSIVE_LANGUAGE,
 		EWREPORT_MISLEADING,
+		EWREPORT_SPAM,
+		EWREPORT_SCAM,
+		EWREPORT_MALICIOUS,
+		EWREPORT_INTELLECTUAL_PROPERTY,
 		EWREPORT_OTHER
 	}
 
@@ -241,37 +246,8 @@ class Revision
 	private void Revision(){};
 	
 	proto native int GetFiles(out notnull array<string> aFiles);
-}
-
-class WorkshopCatalogue
-{
-	proto native void RequestPage(BackendCallback callback, notnull PageParams params, bool clearCache);
 	
-	/**
-	\brief Get current page number
-	*/
-	proto native int GetPage();
-
-	/**
-	\brief Get total item count on all pages
-	*/
-	proto native int GetTotalItemCount();
-
-	/**
-	\brief Get item count on actual page
-	*/
-	proto native int GetPageItemCount();
-
-	/**
-	\brief Get page count
-	*/
-	proto native int GetPageCount();
-	
-	//OBSOLETE
-	/**
-	\brief Set number of items per page
-	*/
-	proto native void SetPageItems( int count );
+	proto native float GetTotalSize();
 }
 
 class DownloadableCatalogue extends WorkshopCatalogue
@@ -336,7 +312,8 @@ class WorkshopAuthor extends WorkshopCatalogue
 	\param items Array of Workshop Items
 	\return Current count of items on active page
 	*/
-	proto native int GetPageItems( out array<WorkshopItem> items );
+	proto native int GetPageItems( out notnull array<WorkshopItem> items );
+	proto native int GetOfflineItems(out notnull array<WorkshopItem> items);
 }
 
 
@@ -396,6 +373,8 @@ class DownloadableItem extends BaseWorkshopItem
 	\brief Delete local copy of an asset
 	*/
 	proto native void DeleteLocally();
+	
+	proto native void DeleteDownloadProgress();
 	
 	proto native Revision GetPendingDownload();
 	
@@ -576,10 +555,14 @@ class WorkshopItem extends DownloadableItem
 	\brief Get image gallery
 	*/
 	proto native int Gallery(out notnull array<BackendImage> gallery);
+		
+	proto native bool IsFavorite();	
+	proto native void SetFavorite(bool isFavorite);
 	
-	proto native bool IsFavourite();
-	
-	proto native void SetFavourite(bool isFavourite);
+	[Obsolete()]
+	bool IsFavourite() { return IsFavorite(); }
+	[Obsolete()]
+	void SetFavourite(bool isFavourite) { SetFavorite(isFavourite); }
 	
 	proto native void PauseDownload(BackendCallback callback);
 	
@@ -618,10 +601,11 @@ class WorkshopItem extends DownloadableItem
 	
 	proto native static void SetThumbnailGridScale(int scale);
 	
-	proto native string GetBackendEnv();
+	proto native owned string GetBackendEnv();
 	
 	proto native string GetPath();
 	
+	proto native bool IsReadyToRun();
 }
 
 

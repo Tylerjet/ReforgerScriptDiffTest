@@ -21,8 +21,6 @@ enum LightFlags
 	DIFFUSE_ONLY,
 	//! Special type of light from sky. It's used as directional+ambient light for ambient pass
 	SKY,
-	//! Light has a linear falloff instead of quadratic
-	LINEAR_FALLOFF,
 	//! Is it dynamic light
 	DYNAMIC,
 }

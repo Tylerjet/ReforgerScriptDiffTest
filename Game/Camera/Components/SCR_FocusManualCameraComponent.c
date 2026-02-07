@@ -121,6 +121,14 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 	}
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
+		if (!param.isManualInputEnabled)
+		{
+			if (m_Widget)
+				m_Widget.SetVisible(false);
+			
+			return;
+		}
+		
 		if (m_bIsFocusRequsted)
 		{
 			m_bIsFocusRequsted = false;
@@ -131,9 +139,6 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 			
 			m_Effect.SetParam("FocalLength", 500);
 			m_Effect.SetParam("FocalLengthNear", 500);
-			
-			if (m_Widget)
-				m_Widget.SetVisible(true);
 			
 			if (!m_sSoundEvent.IsEmpty())
 				SCR_UISoundEntity.SoundEvent(m_sSoundEvent);
@@ -170,18 +175,22 @@ class SCR_FocusManualCameraComponent : SCR_BaseManualCameraComponent
 		//--- Update GUI
 		if (m_Widget)
 		{
+			m_Widget.SetVisible(true);
 			vector screenPos = m_Widget.GetWorkspace().ProjWorldToScreen(m_vFocusPosWorld, param.world);
 			if (screenPos[2] > 0) FrameSlot.SetPos(m_Widget, screenPos[0], screenPos[1]);
 		}
 	}
 	override void EOnCameraSave(SCR_ManualCameraComponentSave data)
 	{
-		if (m_bIsFocus)
-			data.m_aValues = {m_vFocusPosWorld[0], m_vFocusPosWorld[1], m_vFocusPosWorld[2]};
+		if (!m_bIsFocus)
+			return;
+		
+		data.m_aValues = {m_vFocusPosWorld[0], m_vFocusPosWorld[1], m_vFocusPosWorld[2]};
+		data.m_Target = m_FocusEntity;
 	}
 	override void EOnCameraLoad(SCR_ManualCameraComponentSave data)
 	{
-		SetFocus(Vector(data.m_aValues[0], data.m_aValues[1], data.m_aValues[2]));
+		SetFocus(Vector(data.m_aValues[0], data.m_aValues[1], data.m_aValues[2]), data.m_Target);
 	}
 	override bool EOnCameraInit()
 	{

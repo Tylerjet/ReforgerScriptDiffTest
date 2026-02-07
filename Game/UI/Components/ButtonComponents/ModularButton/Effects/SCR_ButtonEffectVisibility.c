@@ -2,7 +2,7 @@
 Effect which sets a widget visible (SetVisible).
 */
 
-[BaseContainerProps(), SCR_ButtonEffectTitleAttribute("Visibility", "m_sWidgetName")]
+[BaseContainerProps(configRoot : true), SCR_ButtonEffectTitleAttribute("Visibility", "m_sWidgetName")]
 class SCR_ButtonEffectVisibility : SCR_ButtonEffectWidgetBase
 {	
 	[Attribute()]

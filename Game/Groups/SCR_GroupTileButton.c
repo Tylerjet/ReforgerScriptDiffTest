@@ -1,19 +1,66 @@
-class SCR_PlayerTileButtonComponent : SCR_ButtonBaseComponent
+class SCR_PlayerTileButtonComponent : SCR_ScriptedWidgetComponent
 {
 	protected SCR_ComboBoxComponent m_OptionsCombo;
-	protected int m_PlayerID;
+	protected int m_iPlayerId;
 	protected SCR_ChimeraCharacter m_AICharacter;
 
+	protected ref ScriptInvokerInt m_OnTileFocus;
+	protected ref ScriptInvokerInt m_OnTileFocusLost;
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnClick(Widget w, int x, int y, int button)
+	{
+		// TODO: on self, this combo box is empty and invisible. On others allows inviting to your group
+		m_OptionsCombo.OpenList();
+		return super.OnClick(w, x, y, button);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocus(Widget w, int x, int y)
+	{	
+		if (m_OnTileFocus)
+			m_OnTileFocus.Invoke(m_iPlayerId);
+		
+		return super.OnFocus(w, x, y);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		if (m_OnTileFocusLost)
+			m_OnTileFocusLost.Invoke(m_iPlayerId);
+		
+		return super.OnFocusLost(w, x, y);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerInt GetOnTileFocus()
+	{
+		if (!m_OnTileFocus)
+			m_OnTileFocus = new ScriptInvokerInt();
+		
+		return m_OnTileFocus;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerInt GetOnTileFocusLost()
+	{
+		if (!m_OnTileFocusLost)
+			m_OnTileFocusLost = new ScriptInvokerInt();
+		
+		return m_OnTileFocusLost;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	int GetTilePlayerID()
 	{
-		return m_PlayerID;
+		return m_iPlayerId;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void SetTilePlayerID(int playerID)
 	{
-		m_PlayerID = playerID;
+		m_iPlayerId = playerID;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -41,14 +88,6 @@ class SCR_PlayerTileButtonComponent : SCR_ButtonBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool OnClick(Widget w, int x, int y, int button)
-	{
-		super.OnClick(w, x, y, button);
-		m_OptionsCombo.OpenList();
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	void SetOpacity(float opacity)
 	{
 		Widget comboBox = m_OptionsCombo.GetRootWidget();
@@ -63,6 +102,7 @@ class SCR_PlayerTileButtonComponent : SCR_ButtonBaseComponent
 	}
 };
 
+//------------------------------------------------------------------------------------------------
 class SCR_GroupTileButton : SCR_ButtonBaseComponent
 {
 	protected int m_iGroupID;
@@ -76,7 +116,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 
 	protected SCR_GroupsManagerComponent m_GroupManager;
 	protected SCR_BaseTaskManager m_BaseTaskManager;
-	protected SCR_NavigationButtonComponent m_JoinGroupButton;
+	protected SCR_InputButtonComponent m_JoinGroupButton;
 	protected SCR_PlayerControllerGroupComponent m_GroupComponent;
 
 	[Attribute("0.898 0.541 0.184 1", UIWidgets.ColorPicker)]
@@ -105,6 +145,9 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	protected ref array<SCR_PlayerTileButtonComponent> m_aPlayerComponentsList = {};
 	protected SCR_PlayerTileButtonComponent m_PlayerTileComponent;
 	protected static ref ScriptInvoker s_OnGroupButtonClicked = new ScriptInvoker();
+	
+	protected static ref ScriptInvokerInt m_OnPlayerTileFocus;
+	protected static ref ScriptInvokerInt m_OnPlayerTileFocusLost;
 
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
@@ -274,8 +317,6 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		}	
 	}
 	
-	
-
 	//------------------------------------------------------------------------------------------------
 	void OnSelectGroupFlagButtonClicked()
 	{
@@ -475,6 +516,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//TODO: setup should be taken care of by the player tile component
 	void SetupPlayerTile(Widget playerTile, int playerID)
 	{
 		PlayerManager playerManager = GetGame().GetPlayerManager();
@@ -515,17 +557,8 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		playerName.SetText(GetGame().GetPlayerManager().GetPlayerName(playerID));
 
 		ChimeraCharacter controlledEntity = ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(playerID));
-		if (!controlledEntity)
+		if (controlledEntity)
 		{
-			playerName.SetColor(m_PlayerNameDeadColor);
-			playerFrequency.SetText("-");
-		}
-		else
-		{
-			CharacterControllerComponent controller = controlledEntity.GetCharacterController();
-			DamageManagerComponent damageManager = controlledEntity.GetDamageManager();
-			if (damageManager && damageManager.GetState() == EDamageState.DESTROYED)
-				playerName.SetColor(m_PlayerNameDeadColor);
 			gadgetManager = SCR_GadgetManagerComponent.Cast(controlledEntity.FindComponent(SCR_GadgetManagerComponent));
 			SCR_Global.GetFrequencies(gadgetManager, frequencies);
 			if (!frequencies.IsEmpty())
@@ -554,7 +587,6 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 				task.SetTitleWidgetText(taskName, task.GetTaskListTaskTitle());
 			}
 		}
-
 
 		//set the state of mute
 		if (muteIcon && GetGame().GetPlayerController().GetPlayerMutedState(playerID) == PermissionState.DISALLOWED)
@@ -599,15 +631,32 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 
 				SetBadgeColor(badge, badgeColor);
 			}
-
 		}
 
-		m_PlayerTileComponent.m_OnFocus.Insert(DisableConfirmButton);
-		m_PlayerTileComponent.m_OnFocusLost.Insert(EnableConfirmButton);
+		m_PlayerTileComponent.GetOnTileFocus().Insert(OnPlayerTileFocus);
+		m_PlayerTileComponent.GetOnTileFocusLost().Insert(OnPlayerTileFocusLost);
 
 		m_aPlayerComponentsList.Insert(m_PlayerTileComponent);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerTileFocus(int id)
+	{
+		if (m_OnPlayerTileFocus)
+			m_OnPlayerTileFocus.Invoke(id);
+		
+		 DisableConfirmButton();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerTileFocusLost(int id)
+	{
+		if (m_OnPlayerTileFocusLost)
+			m_OnPlayerTileFocusLost.Invoke(id);
+		
+		EnableConfirmButton();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void SetGroupInfoColor(Color groupColor)
 	{
@@ -666,7 +715,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetJoinGroupButton(SCR_NavigationButtonComponent joinGroupButton)
+	void SetJoinGroupButton(SCR_InputButtonComponent joinGroupButton)
 	{
 		m_JoinGroupButton = joinGroupButton;
 	}
@@ -811,9 +860,27 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerInt GetOnPlayerTileFocus()
+	{
+		if (!m_OnPlayerTileFocus)
+			m_OnPlayerTileFocus = new ScriptInvokerInt();
+		
+		return m_OnPlayerTileFocus;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerInt GetOnPlayerTileFocusLost()
+	{
+		if (!m_OnPlayerTileFocusLost)
+			m_OnPlayerTileFocusLost = new ScriptInvokerInt();
+		
+		return m_OnPlayerTileFocusLost;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void EnableConfirmButton()
 	{
-			SetConfirmButtonStatus(true);
+		SetConfirmButtonStatus(true);
 	}
 
 	//------------------------------------------------------------------------------------------------

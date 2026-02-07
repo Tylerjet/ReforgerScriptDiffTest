@@ -107,3 +107,20 @@ class SCR_PlayerCommandingMenuCategoryElement : SCR_PlayerCommandingMenuBaseElem
 		return m_aElements;
 	}	
 };
+
+class SCR_BaseGroupCommandTitleField : BaseContainerCustomTitleField
+{
+	//------------------------------------------------------------------------------------------------
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{
+		// Make sure variable exists
+		int index = source.GetVarIndex("m_sCommandName");
+		if (index == -1)
+			return false;
+
+		// Tag string
+		source.Get("m_sCommandName", title);
+
+		return true;
+	}
+}

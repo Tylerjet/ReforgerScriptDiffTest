@@ -13,7 +13,8 @@ class SCR_AIDayNightTest : DecoratorScripted
 	//-------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
 	{
-		m_TimeManager = GetGame().GetTimeAndWeatherManager();;
+		ChimeraWorld world = owner.GetWorld();
+		m_TimeManager = world.GetTimeAndWeatherManager();
 		if( !m_TimeManager )
 		{
 			Print("SCR_AIDayNightTest: Could not find a TimeAndWeatherManagerEntity", LogLevel.WARNING);

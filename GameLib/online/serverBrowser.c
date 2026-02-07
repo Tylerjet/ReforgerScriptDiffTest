@@ -213,18 +213,16 @@ class Room: Managed
 	[Obsolete("Use WorkshopItem instead!")]
 	proto native void DownloadAddons(BackendCallback callback);
 	
+	[Obsolete("Use GetItems instead!")]
 	proto native void AllItems(out notnull array<Dependency> items);
 	
 	proto native float GetPing();
-	
-	//proto native bool Connect();
-	
+		
 	proto native bool HasBattlEye();
 	
-	proto native void RemoteControl(string ip, int port, string password, RCONCallback callback);
-	proto native void RemoteCommand(string message, RCONCallback callback);
-	
 	proto native void VerifyPassword(string password, BackendCallback callback);
+	
+	proto native bool IsDownloadListLoaded();
 }
 
 class ClientLobbyApi

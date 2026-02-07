@@ -23,13 +23,12 @@ class DestructibleEntity: StaticModelEntity
 	\param damageType Damage type
 	\param rawDamage Incoming damage, without any modifiers taken into account
 	\param damageSource Projectile
-	\param damageSourceGunner Damage source instigator
-	\param damageSourceParent Damage source parent entity (soldier, vehicle)
+	\param Instigator instigator
 	\param hitMaterial Hit surface physics material
 	\param hitTransform Hit position, direction and normal
 	\param impactVelocity Projectile velocity at the time of impact
 	*/
-	event float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity damageSource, IEntity damageSourceGunner, IEntity damageSourceParent, const GameMaterial hitMaterial, inout vector hitTransform[3], const vector impactVelocity);
+	event float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity damageSource, notnull Instigator instigator, const GameMaterial hitMaterial, inout vector hitTransform[3], const vector impactVelocity);
 	event protected void OnDamage(int previousState, int newState, EDamageType type, float damageTaken, float currentHealth, inout vector hitTransform[3], ScriptBitWriter frameData);
 	//Notification when the destructible state has changed. If JIP is true, the state has changed because of synchronization
 	event protected void OnStateChanged(int destructibleState, ScriptBitReader frameData, bool JIP);

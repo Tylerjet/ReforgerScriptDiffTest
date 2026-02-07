@@ -51,7 +51,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		SCR_AIGroup.GetOnPrivateGroupChanged().Insert(UpdateGroupPrivacy);
 		SCR_AIGroup.GetOnCustomNameChanged().Insert(UpdateGroupNames);
 		SCR_AIGroup.GetOnFrequencyChanged().Insert(UpdateGroupFrequency);
-		SCR_AIGroup.GetOnFlagSelected().Insert(UpdateGroupFlag);		
+		SCR_AIGroup.GetOnFlagSelected().Insert(UpdateGroupFlag);
 		
 		m_PlyGroupComp.GetOnGroupChanged().Insert(UpdateLocalPlayerGroup);
 
@@ -77,7 +77,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 	}
 	
-	protected override void SetExpanded(bool expanded)
+	override void SetExpanded(bool expanded)
 	{
 		m_wGroupList.SetVisible(expanded);
 	}	
@@ -113,12 +113,17 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		foreach (SCR_DeployButtonBase btn : m_aButtons)
 		{
 			SCR_GroupButton groupBtn = SCR_GroupButton.Cast(btn);
+			if (!groupBtn)
+				continue;
+
 			bool canJoinGroup = m_PlyGroupComp.CanPlayerJoinGroup(GetGame().GetPlayerController().GetPlayerId(), group);
 			if (!canJoinGroup && group == GetPlayerGroup())
 				canJoinGroup = true;
 
 			if (groupBtn && groupBtn.GetGroupId() == group.GetGroupID())
 				groupBtn.UpdateGroup(canJoinGroup);
+
+			groupBtn.UpdateButtonAvailability(m_PlyGroupComp);
 		}
 
 		GetOnPlayerGroupJoined().Invoke(group, pid);
@@ -144,25 +149,33 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 					{
 						groupBtn.HideTooltip();
 						groupBtn.UpdateGroup();
+						groupBtn.UpdateButtonAvailability(m_PlyGroupComp);
 					}
 
 					groupBtn.SetSelected(groupBtn.GetGroupId() == groupId);
 				}
 			}
 
+			UpdateNewGroupButton();
 			GetGame().GetCallqueue().CallLater(SetPlayerGroup, 100, false, group); // call later because of group name initialization
 		}
 	}
 
 	//! Set group private.
-	protected void UpdateGroupPrivacy()
+	protected void UpdateGroupPrivacy(int groupId, bool isPrivate)
 	{
 		foreach (SCR_DeployButtonBase btn : m_aButtons)
 		{
 			SCR_GroupButton groupBtn = SCR_GroupButton.Cast(btn);
-			if (groupBtn)
-				groupBtn.UpdateGroupPrivacy();
+			if (!groupBtn || (groupBtn.GetGroupId() != groupId))
+				continue;
+
+			groupBtn.UpdateGroupPrivacy(isPrivate);
+			groupBtn.UpdateButtonAvailability(m_PlyGroupComp);
+			break;
 		}
+
+		UpdateNewGroupButton();
 	}
 
 	//! Set group name.
@@ -212,7 +225,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	//! Show groups available for given faction.
 	void ShowAvailableGroups(notnull Faction faction)
 	{
-		if (!m_wGroupList)
+		if (!m_wGroupList || !m_GroupManager)
 			return;
 		
 		if (!m_wExpandButtonName) // todo@lk: crate IsExpandable property or something like that
@@ -224,7 +237,9 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		array<SCR_AIGroup> playableGroups = m_GroupManager.GetPlayableGroupsByFaction(faction);
 		if (!playableGroups)
 			return;
-
+#ifdef DEPLOY_MENU_DEBUG
+		PrintFormat("ShowAvailableGroups() for %1", faction.GetFactionKey());
+#endif
 		int groupCount = playableGroups.Count();
 
 		for (int i = 0; i < groupCount; ++i)
@@ -235,13 +250,30 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		CreateNewGroupButton();
 	}
 
+	//! Joins an automatically selected group
+	void JoinGroupAutomatically()
+	{
+		if (!m_GroupManager)
+			return;
+
+		SCR_AIGroup playerGroup = m_GroupManager.GetFirstNotFullForFaction(m_PlyFaction);
+		if (!playerGroup)
+		{
+			RequestNewGroup();
+		}
+		else
+		{
+			m_PlyGroupComp.SetSelectedGroupID(playerGroup.GetGroupID());
+			m_PlyGroupComp.RequestJoinGroup(m_PlyGroupComp.GetSelectedGroupID());		
+		}
+	}
+
 	//! Removes the group button from the list.
 	protected void RemoveGroup(SCR_AIGroup group)
 	{
 		if (!m_wGroupList)
 			return;
 
-		UpdateNewGroupButton();
 		Widget child = m_wGroupList.GetChildren();
 		while (child)
 		{
@@ -257,6 +289,8 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 			child = child.GetSibling();
 		}
+
+		UpdateNewGroupButton();	
 	}
 
 	//! Creates a button which handles creating of a new group.
@@ -333,6 +367,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		btnComp.m_OnMouseLeave.Insert(OnMouseLeft);
 
 		m_aButtons.Insert(btnComp);
+		UpdateNewGroupButton();
 	}	
 
 	//! Called when the group button is focused.
@@ -501,14 +536,21 @@ class SCR_GroupButton : SCR_DeployButtonBase
 	{
 		if (!m_Group)
 			return;
-
+#ifdef DEPLOY_MENU_DEBUG
+		PrintFormat("UpdateGroup() name: %1, group id: %2", m_Group.GetCustomNameWithOriginal(), m_Group.GetGroupID());
+#endif
 		GetGame().GetCallqueue().CallLater(UpdateGroupName, 100, false); // fix for group names not being available on client right away
+
 		UpdateGroupFrequency();
-		UpdateGroupPrivacy();
+		UpdateGroupPrivacy(m_Group.IsPrivate());
 		UpdateGroupFlag();
 		SetGroupFull(m_Group.IsFull());
-		SetEnabled(canJoin && !m_Group.IsPrivate());
 
+		bool buttonEnabled = canJoin && !m_Group.IsFull() && !m_Group.IsPrivate();
+		SetEnabled(buttonEnabled);
+#ifdef DEPLOY_MENU_DEBUG
+		PrintFormat("%1::UpdateGroup() name: %2, group id: %7, Is full: %3, IsEnabled(): %4, canJoin: %5, isPrivate: %6", this, m_Group.GetCustomNameWithOriginal(), m_Group.IsFull().ToString(), IsEnabled().ToString(), canJoin.ToString(), m_Group.IsPrivate().ToString(), m_Group.GetGroupID());
+#endif
 		if (m_wPlayerCount)
 			m_wPlayerCount.SetTextFormat("%1/%2", m_Group.GetPlayerCount(), m_Group.GetMaxMembers());		
 	}
@@ -563,14 +605,33 @@ class SCR_GroupButton : SCR_DeployButtonBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void UpdateGroupPrivacy()
+	void UpdateGroupPrivacy(bool isPrivate)
 	{
-		bool privateGroup = m_Group.IsPrivate();
 		if (m_wPrivateGroup)
-			m_wPrivateGroup.SetVisible(privateGroup);
-		SetEnabled(!privateGroup);
+			m_wPrivateGroup.SetVisible(isPrivate);
+
+#ifdef DEPLOY_MENU_DEBUG
+		PrintFormat("%1::UpdateGroupPrivacy() %2, group id: %5, Is private: %3, IsEnabled(): %4",
+			this, m_Group.GetCustomNameWithOriginal(), isPrivate.ToString(), IsEnabled().ToString(), m_Group.GetGroupID());
+#endif
+
 	}
 
+	void UpdateButtonAvailability(SCR_PlayerControllerGroupComponent groupCtrl)
+	{
+		if (!m_Group)
+			return;
+
+		bool canJoinGroup = groupCtrl.CanPlayerJoinGroup(GetGame().GetPlayerController().GetPlayerId(), m_Group);
+		if (!canJoinGroup && m_Group == groupCtrl.GetPlayersGroup())
+		{
+			SetEnabled(true);
+			return;
+		}
+
+		SetEnabled(canJoinGroup && !m_Group.IsFull() && !m_Group.IsPrivate());
+	}
+	
 	protected void SetGroupFull(bool full)
 	{
 		if (m_wFullGroup)

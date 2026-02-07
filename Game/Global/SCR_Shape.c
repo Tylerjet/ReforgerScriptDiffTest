@@ -138,4 +138,47 @@ class SCR_Shape
 		
 		return meshObject;
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Draw debug circle with outline using specified colors and shape flags
+	Circle stems from origin of the transform and rotating around the up vector
+	Circle has fixed section count of 36
+	\param transform Orientation matrix of the circle - side, normal, direction, center position
+	\param radius Radius of the circles [m]
+	\param colorOutline color of the outline
+	\param colorPlane color of the circle plane
+	\param shapeFlags flags for rendering the basic shape
+	*/
+	static void DrawCircle(vector transform[4], float radius, int colorOutline, int colorPlane, ShapeFlags shapeFlags)
+	{
+		vector axis = transform[1];
+		vector pivot = transform[3];
+		vector circleMat[4] = transform;
+		circleMat[3] = circleMat[3] + transform[2] * radius;
+
+		const int sectionCount = 36;
+		const int linesCount = sectionCount + 1; // one extra line is needed to complete outline
+		const int trisCount = sectionCount * 3;
+		vector lines[linesCount];
+		vector tris[trisCount];
+
+		// If angle and section count become parametrized, this could become DrawArc
+		float sectionStep = Math.DEG2RAD * (360 / sectionCount);
+
+		for (int i; i < sectionCount; i++)
+		{
+			lines[i] = circleMat[3];
+			tris[i*3] = pivot;
+			tris[i*3 + 1] = circleMat[3];
+			SCR_Math3D.RotateAround(circleMat, pivot, axis, sectionStep, circleMat);
+			tris[i*3 + 2] = circleMat[3];
+		}
+
+		// one extra line is needed to complete outline
+		lines[sectionCount] = circleMat[3];
+
+		Shape.CreateLines(colorOutline, shapeFlags, lines, linesCount);
+		Shape.CreateTris(colorPlane, shapeFlags, tris, sectionCount);
+	}
+}

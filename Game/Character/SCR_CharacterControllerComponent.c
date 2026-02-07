@@ -10,28 +10,68 @@ class SCR_CharacterControllerComponentClass : CharacterControllerComponentClass
 {
 };
 
+//------------------------------------------------------------------------------------------------
+void OnPlayerDeathWithParam(SCR_CharacterControllerComponent characterController, IEntity killerEntity, notnull Instigator killer);
+typedef func OnPlayerDeathWithParam;
+typedef ScriptInvokerBase<OnPlayerDeathWithParam> OnPlayerDeathWithParamInvoker;
+
+//------------------------------------------------------------------------------------------------
+void OnControlledByPlayer(IEntity ownerEntity, bool controlled);
+typedef func OnControlledByPlayer;
+typedef ScriptInvokerBase<OnControlledByPlayer> OnControlledByPlayerInvoker;
+
+//------------------------------------------------------------------------------------------------
+void OnLifeStateChanged(ECharacterLifeState lifeState);
+typedef func OnLifeStateChanged;
+typedef ScriptInvokerBase<OnLifeStateChanged> OnLifeStateChangedInvoker;
+
+//------------------------------------------------------------------------------------------------
+void OnItemUseBegan(IEntity item);
+typedef func OnItemUseBegan;
+typedef ScriptInvokerBase<OnItemUseBegan> OnItemUseBeganInvoker;
+
+//------------------------------------------------------------------------------------------------
+void OnItemUseEnded(IEntity item, bool successful, SCR_ConsumableEffectAnimationParameters animParams);
+typedef func OnItemUseEnded;
+typedef ScriptInvokerBase<OnItemUseEnded> OnItemUseEndedInvoker;
+
+//------------------------------------------------------------------------------------------------
+void OnItemUseFinished(IEntity item, bool successful, SCR_ConsumableEffectAnimationParameters animParams);
+typedef func OnItemUseFinished;
+typedef ScriptInvokerBase<OnItemUseFinished> OnItemUseFinishedInvoker;
+
+//------------------------------------------------------------------------------------------------
 class SCR_CharacterControllerComponent : CharacterControllerComponent
 {
+	[Attribute(defvalue: "10", uiwidget: UIWidgets.EditBox, params:"1 inf 0.1", desc: "Maximum duration it takes for character to drown\n[s]")]
+	protected float m_fDrowningDuration;
+	
 	// Private members
 	protected SCR_CharacterCameraHandlerComponent m_CameraHandler; // Set from the camera handler itself
 	protected SCR_MeleeComponent m_MeleeComponent;
 	protected bool m_bOverrideActions = true;
 	protected bool m_bInspectionFocus;
+	protected bool m_bCharacterIsDrowning;
+	protected float m_fDrowningTime;
 	protected ref SCR_ScriptedCharacterInputContext m_pScrInputContext;
 
 	// Character event invokers
-	ref ScriptInvoker m_OnPlayerDeath = new ScriptInvoker();
-	ref ScriptInvoker m_OnLifeStateChanged = new ScriptInvoker();
-	ref ScriptInvoker<SCR_CharacterControllerComponent, IEntity> m_OnPlayerDeathWithParam = new ScriptInvoker();
-	ref ScriptInvoker<IEntity, bool> m_OnControlledByPlayer = new ScriptInvoker();
-
-	// Gadget even invokers
+	ref ScriptInvokerVoid m_OnPlayerDeath = new ScriptInvokerVoid();
+	ref OnPlayerDeathWithParamInvoker m_OnPlayerDeathWithParam = new OnPlayerDeathWithParamInvoker();
+	ref OnLifeStateChangedInvoker m_OnLifeStateChanged = new OnLifeStateChangedInvoker();
+	ref OnControlledByPlayerInvoker m_OnControlledByPlayer = new OnControlledByPlayerInvoker();
+	ref ScriptInvokerFloat2<float> m_OnPlayerDrowning = new ScriptInvokerFloat2();
+	ref ScriptInvokerVoid m_OnPlayerStopDrowning = new ScriptInvokerVoid();
+	
+	// Gadget event invokers
 	ref ScriptInvoker<IEntity, bool, bool> m_OnGadgetStateChangedInvoker = new ref ScriptInvoker<IEntity, bool, bool>();
 	ref ScriptInvoker<IEntity, bool> m_OnGadgetFocusStateChangedInvoker = new ref ScriptInvoker<IEntity, bool>();
 
-	// Item even invokers
-	ref ScriptInvoker<IEntity> m_OnItemUseBeganInvoker = new ref ScriptInvoker<IEntity>();
-	ref ScriptInvoker<IEntity, bool, SCR_ConsumableEffectAnimationParameters> m_OnItemUseEndedInvoker = new ref ScriptInvoker<IEntity, bool, SCR_ConsumableEffectAnimationParameters>();
+	// Item event invokers
+	ref OnItemUseBeganInvoker m_OnItemUseBeganInvoker = new ref OnItemUseBeganInvoker();
+	ref OnItemUseEndedInvoker m_OnItemUseEndedInvoker = new ref OnItemUseEndedInvoker();
+	// called when all listeners reacted on ItemUseEnded invoker - may delete the item now thus listerners to ItemUseFinished may get first parameter null! 
+	ref OnItemUseFinishedInvoker m_OnItemUseFinishedInvoker = new ref OnItemUseFinishedInvoker(); 
 	protected ref ScriptInvoker<AnimationEventID, AnimationEventID, int, float, float> m_OnAnimationEvent;
 
 	// Diagnostics, debugging
@@ -60,7 +100,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		
 		if (IsUsingItem())
 			return false;
-
+		
 		if (GetIsWeaponDeployed())
 			return false;
 		
@@ -113,6 +153,8 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		// Animation duration is not returned.
 		SCR_ConsumableEffectAnimationParameters animParams = new SCR_ConsumableEffectAnimationParameters(cmdID, cmdIntArg, cmdFloatArg, -1.0, intParam, floatParam, boolParam);
 		m_OnItemUseEndedInvoker.Invoke(item, successful, animParams);
+		// now all interested in non-null item have listened, we can call Finished to delete the item
+		m_OnItemUseFinishedInvoker.Invoke(item, successful, animParams);
 	};
 
 	//------------------------------------------------------------------------------------------------
@@ -147,15 +189,24 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 
 		return ECharacterLifeState.ALIVE;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override void OnDeath(IEntity instigator)
+	ScriptInvokerVoid GetOnPlayerDeath()
 	{
-		if (m_OnPlayerDeath != null)
-			m_OnPlayerDeath.Invoke();
-
-		if (m_OnPlayerDeathWithParam)
-			m_OnPlayerDeathWithParam.Invoke(this, instigator);
+		return m_OnPlayerDeath;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	OnPlayerDeathWithParamInvoker GetOnPlayerDeathWithParam()
+	{
+		return m_OnPlayerDeathWithParam;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDeath(IEntity instigatorEntity, notnull Instigator instigator)
+	{
+		m_OnPlayerDeath.Invoke();
+		m_OnPlayerDeathWithParam.Invoke(this, instigatorEntity, instigator);
 
 		OnLifeStateChanged(GetLifeState());
 		
@@ -164,10 +215,14 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			pc.m_bRetain3PV = true;
 
 		// Insert the character and see if it held a weapon, if so, try adding that as well
-		GarbageManager garbageManager = GetGame().GetGarbageManager();
-		if (garbageManager)
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
+		if (!world)
+			return;
+		
+		GarbageSystem garbageSystem = world.GetGarbageSystem();
+		if (garbageSystem)
 		{
-			garbageManager.Insert(GetCharacter());
+			garbageSystem.Insert(GetCharacter());
 
 			BaseWeaponManagerComponent weaponManager = GetWeaponManagerComponent();
 			if (!weaponManager)
@@ -187,10 +242,10 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			if (!weaponEntity)
 				return;
 
-			garbageManager.Insert(weaponEntity);
+			garbageSystem.Insert(weaponEntity);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnLifeStateChanged(ECharacterLifeState lifeState)
 	{
@@ -222,9 +277,6 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			return false;
 
 		if (GetStance() == ECharacterStance.PRONE)
-			return false;
-
-		if (GetCurrentMovementPhase() > EMovementType.RUN)
 			return false;
 
 		// TODO: Gadget melee weapon properties in case we want to be able to have melee component, like a shovel?
@@ -288,6 +340,61 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------ 
+	protected override void UpdateDrowning(float timeSlice, vector waterLevel)
+	{
+		ChimeraCharacter char = GetCharacter();
+		if (!char)
+			return;
+		
+		CompartmentAccessComponent accesComp = char.GetCompartmentAccessComponent();
+		bool isInWatertightCompartment = accesComp && accesComp.GetCompartment() && accesComp.GetCompartment().GetIsWaterTight();
+
+		float drowningTimeStartFX = 4;
+		if (waterLevel[2] > 0 && !isInWatertightCompartment)
+		{
+			if (m_fDrowningTime < drowningTimeStartFX && (m_fDrowningTime + timeSlice) > drowningTimeStartFX && m_OnPlayerDrowning)
+			{
+				m_OnPlayerDrowning.Invoke(m_fDrowningDuration, drowningTimeStartFX);
+				m_bCharacterIsDrowning = true;
+			}
+			
+			m_fDrowningTime += timeSlice;
+		}
+		else
+		{
+			if (m_fDrowningTime && m_OnPlayerStopDrowning)
+			{
+				m_OnPlayerStopDrowning.Invoke();
+				m_bCharacterIsDrowning = false;
+			}
+			m_fDrowningTime = 0;
+			return;
+		}
+
+		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
+		if (!damageMan || !damageMan.GetResilienceHitZone())
+			return;
+		
+		if (m_fDrowningTime > m_fDrowningDuration)
+		{
+			damageMan.GetResilienceHitZone().HandleDamage(1000, EDamageType.TRUE, GetOwner());
+			damageMan.Kill(Instigator.CreateInstigator(char));
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetDrowningTime()
+	{
+		return m_fDrowningTime;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsCharacterDrowning()
+	{
+		return m_bCharacterIsDrowning;
+	}
+
+	//------------------------------------------------------------------------------------------------ 
 	override bool ShouldAligningAdjustAimingAngles()
 	{
 		return IsAligningBeforeLoiter();
@@ -296,7 +403,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//------------------------------------------------------------------------------------------------ 
 	bool IsAligningBeforeLoiter()
 	{
-		return GetScrInputContext().m_bLoiteringShouldAlignCharacter && GetScrInputContext().m_bLoiteringShouldAlignCharacter && GetAnimationComponent().GetHeadingComponent().IsAligning();
+		return GetScrInputContext().m_iLoiteringType != -1 && GetScrInputContext().m_bLoiteringShouldAlignCharacter && GetAnimationComponent().GetHeadingComponent().IsAligning();
 	}
 	
 	//------------------------------------------------------------------------------------------------ 
@@ -650,7 +757,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 
 				if (!action && compAccess.CanGetOutVehicle())
 				{
-					compAccess.GetOutVehicle(-1);
+					compAccess.GetOutVehicle(-1, false);
 				}
 			}
 		}
@@ -975,16 +1082,16 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		localTargetDirection.Normalize();
 
 
-		float lookYaw = Math.Sin(localTargetDirection[0]);
-		float lookPitch = Math.Sin(localTargetDirection[1]);
+		float lookYaw = Math.Sin(localTargetDirection[0]) * Math.RAD2DEG;
+		float lookPitch = Math.Sin(localTargetDirection[1]) * Math.RAD2DEG;
 
 
 		//Shape shape = Shape.CreateSphere(COLOR_RED, ShapeFlags.ONCE | ShapeFlags.NOZBUFFER, contextPos, 0.01);
 
 		lookPitch -= GetAimingComponent().GetAimingDirection()[1];
-		targetAngles = Vector(lookYaw, lookPitch, 0) * Math.RAD2DEG;
+		targetAngles = Vector(lookYaw, lookPitch, 0) * Math.DEG2RAD;
 
-		return 4.30; // speed
+		return 4.30 * Math.RAD2DEG ; // speed, approx deg/s
 	}
 	
 	SCR_ScriptedCharacterInputContext GetScrInputContext()
@@ -993,8 +1100,11 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------ 
-	protected void StartLoitering(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4] = {"1 0 0", "0 1 0", "0 0 1", "0 0 0"})
+	void StartLoitering(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4] = {"1 0 0", "0 1 0", "0 0 1", "0 0 0"})
 	{
+		if (GetCharacter().GetRplComponent() && !GetCharacter().GetRplComponent().IsOwner())
+			return;
+		
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
 		if (!scrCmdHandler)
 			return;
@@ -1007,6 +1117,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
 		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
 		
+		if (IsGadgetInHands())
+			RemoveGadgetFromHand(true);
+		
 		if (alignToPosition)
 			AlignToPositionFromCurrentPosition(targetPosition);
 		
@@ -1014,13 +1127,33 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------ 
-	protected void AlignToPositionFromCurrentPosition(vector targetPosition[4])
+	protected bool AlignToPositionFromCurrentPosition(vector targetPosition[4], float toleranceXZ = 0.01, float toleranceY = 0.01)
 	{
+		if (GetCharacter().GetRplComponent() && !GetCharacter().GetRplComponent().IsOwner())
+			return false;
+		
 		vector currentTransform[4];
 		GetCharacter().GetWorldTransform(currentTransform);
 		CharacterHeadingAnimComponent headingComponent = GetAnimationComponent().GetHeadingComponent();
 		if (headingComponent)
 			headingComponent.AlignPosDirWS(currentTransform[3], currentTransform[2], targetPosition[3], targetPosition[2]); 
+
+		return vector.DistanceSqXZ(currentTransform[3], targetPosition[3]) < (toleranceXZ * toleranceXZ)
+			&& Math.AbsFloat(currentTransform[3][2] - targetPosition[3][2]) < toleranceY;
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void Rpc_StartLoitering_S(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4])
+	{
+		m_pScrInputContext.m_iLoiteringType = loiteringType;
+		m_pScrInputContext.m_iLoiteringShouldHolsterWeapon = holsterWeapon;
+		m_pScrInputContext.m_bLoiteringShouldAlignCharacter = alignToPosition;
+		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
+		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
+		
+		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
+		scrCmdHandler.StartCommandLoitering();
 	}
 	
 	//------------------------------------------------------------------------------------------------ 
@@ -1038,21 +1171,48 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		
 		if (headingComponent && headingComponent.IsAligning())
 		{
-			AlignToPositionFromCurrentPosition(GetScrInputContext().m_mLoiteringPosition);
-			return false;
+			if (AlignToPositionFromCurrentPosition(GetScrInputContext().m_mLoiteringPosition, 0.02, 0.3)) // distance smaller than 2cm
+				return false;
 		}
 		
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
 		scrCmdHandler.StartCommandLoitering();
+		
+		if (GetCharacter().GetRplComponent() && GetCharacter().GetRplComponent().IsProxy())
+			Rpc(Rpc_StartLoitering_S,
+				m_pScrInputContext.m_iLoiteringType,
+				m_pScrInputContext.m_iLoiteringShouldHolsterWeapon,
+				m_pScrInputContext.m_bLoiteringRootMotion,
+				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
+				m_pScrInputContext.m_mLoiteringPosition);
+		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------ 
 	//terminateFast should be true when we are going into alerted or combat state.
-	protected void StopLoitering(bool terminateFast)
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_StopLoitering_S(bool terminateFast)
 	{
+		if (GetCharacter().GetRplComponent() && GetCharacter().GetRplComponent().IsProxy())
+			Print("Called RPC_StopLoitering_S on a proxy.", LogLevel.ERROR);
+		
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
 		scrCmdHandler.StopLoitering(terminateFast);
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	//terminateFast should be true when we are going into alerted or combat state.
+	void StopLoitering(bool terminateFast)
+	{
+		if (GetCharacter().GetRplComponent() && !GetCharacter().GetRplComponent().IsOwner())
+			return;
+		
+		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
+		scrCmdHandler.StopLoitering(terminateFast);
+		
+		if (GetCharacter().GetRplComponent() && GetCharacter().GetRplComponent().IsProxy())
+			Rpc(RPC_StopLoitering_S, terminateFast);
 	}
 };
 

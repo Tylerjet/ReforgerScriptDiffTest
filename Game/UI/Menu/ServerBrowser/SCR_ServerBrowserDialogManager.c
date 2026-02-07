@@ -9,22 +9,28 @@ class SCR_ServerBrowserDialogManager
 	// Resources
 	const ResourceName CONFIG_DIALOGS = "{471EFCF445C3E9C6}Configs/ServerBrowser/JoiningDialogs.conf";
 	const ResourceName CONFIG_DIALOGS_ERROR = "{D3BFEE28E7D5B6A1}Configs/ServerBrowser/KickDialogs.conf";
+	protected const string OFFICIAL_SERVER_SCOPE = "officialServer";
 
 	// Dialog tags references
-	const string TAG_SEARCHING_SERVER 			= "SEARCHING_SERVER";
-	const string TAG_JOIN 						= "JOIN";
-	const string TAG_REJOIN 					= "REJOIN";
-	const string TAG_SERVER_NOT_FOUND 			= "SERVER_NOT_FOUND";
-	const string TAG_VERSION_MISMATCH 			= "VERSION_MISMATCH";
-	const string TAG_CHECKING_CONTENT 			= "CHECKING_CONTENT";
-	const string TAG_MOD_UGC_PRIVILEGE_MISSING 	= "MOD_UGC_PRIVILEGE_MISSING";
-	const string TAG_MODS_DOWNLOADING 			= "MODS_DOWNLOADING";
-	const string TAG_QUEUE_WAITING 				= "QUEUE_WAITING";
-	const string TAG_PASSWORD_REQUIRED 			= "PASSWORD_REQUIRED";
-	const string TAG_BACKEND_TIMEOUT			= "BACKEND_TIMEOUT";
-	const string TAG_KICK_DEFAULT 				= "DEFAULT_ERROR";
+	protected const string TAG_SEARCHING_SERVER 				= "SEARCHING_SERVER";
+	protected const string TAG_JOIN 							= "JOIN";
+	protected const string TAG_REJOIN 							= "REJOIN";
+	protected const string TAG_SERVER_NOT_FOUND 				= "SERVER_NOT_FOUND";
+	protected const string TAG_VERSION_MISMATCH 				= "VERSION_MISMATCH";
+	protected const string TAG_CHECKING_CONTENT 				= "CHECKING_CONTENT";
+	protected const string TAG_MOD_UGC_PRIVILEGE_MISSING 		= "MOD_UGC_PRIVILEGE_MISSING";
+	protected const string TAG_MODS_DOWNLOADING 				= "MODS_DOWNLOADING";
+	protected const string TAG_QUEUE_WAITING 					= "QUEUE_WAITING";
+	protected const string TAG_PASSWORD_REQUIRED 				= "PASSWORD_REQUIRED";
+	protected const string TAG_BACKEND_TIMEOUT					= "BACKEND_TIMEOUT";
+	protected const string TAG_KICK_DEFAULT 					= "DEFAULT_ERROR";
+	protected const string TAG_BANNED							= "JOIN_FAILED_BAN";
+	protected const string TAG_HIGH_PING_SERVER					= "HIGH_PING_SERVER";
+	protected const string TAG_UNRELATED_DOWNLOADS_CANCELING	= "UNRELATED_DOWNLOADS_CANCELING";
 
 	protected const int MAX_AUTO_REJOINS = 3;
+	protected const string STR_LIGHT_BAN = "#AR-LightBan";
+	protected const string STR_HEAVY_BAN = "#AR-HeavyBan";
 
 	// References
 	protected Room m_JoinRoom;
@@ -54,15 +60,15 @@ class SCR_ServerBrowserDialogManager
 	protected ref array<ref SCR_WorkshopItemAction> m_JoinDownloadActions = {};
 
 	// Invokers
-	ref ScriptInvoker m_OnConfirm = new ScriptInvoker();
-	ref ScriptInvoker m_OnCancel = new ScriptInvoker();
-	ref ScriptInvoker m_OnDialogClose = new ScriptInvoker();
+	protected ref ScriptInvokerVoid m_OnConfirm;
+	protected ref ScriptInvokerVoid m_OnCancel;
+	protected ref ScriptInvokerVoid m_OnDialogClose;
 
-	ref ScriptInvoker m_OnDownloadComplete = new ScriptInvoker();
-	ref ScriptInvoker<Room> m_OnJoinRoomDemand = new ScriptInvoker();
-	protected ref ScriptInvoker<> Event_OnRejoinTimerOver;
-	protected ref ScriptInvoker Event_OnCloseAll = new ScriptInvoker();
-
+	protected ref ScriptInvokerRoom m_OnDownloadComplete;
+	protected ref ScriptInvokerRoom m_OnJoinRoomDemand;
+	protected ref ScriptInvokerVoid Event_OnRejoinTimerOver;
+	protected ref ScriptInvokerVoid Event_OnCloseAll;
+	protected ref ScriptInvokerVoid m_OnDownloadCancelDialogClose;
 
 	//------------------------------------------------------------------------------------------------
 	// Public functions
@@ -128,12 +134,6 @@ class SCR_ServerBrowserDialogManager
 				//DisplayModsToUpdate();
 				break;
 
-			// Download progress
-			case EJoinDialogState.MODS_DOWNLOADING:
-				if (!SCR_DownloadManager_Dialog.IsOpened())
-					DisplayModsDownloading();
-				break;
-
 			// Cleint can't access user generated content
 			case EJoinDialogState.MOD_UGC_PRIVILEGE_MISSING:
 				SetDialogByTag(TAG_MOD_UGC_PRIVILEGE_MISSING);
@@ -155,6 +155,20 @@ class SCR_ServerBrowserDialogManager
 			case EJoinDialogState.BACKEND_TIMEOUT:
 			{
 				SetDialogByTag(TAG_BACKEND_TIMEOUT);
+				break;
+			}
+			
+			// High ping
+			case EJoinDialogState.HIGH_PING_SERVER:
+			{
+				SetDialogByTag(TAG_HIGH_PING_SERVER);
+				break;
+			}
+			
+			// Unrelated Downloads canceling filler dialog
+			case EJoinDialogState.UNRELATED_DOWNLOADS_CANCELING:
+			{
+				SetDialogByTag(TAG_UNRELATED_DOWNLOADS_CANCELING);
 				break;
 			}
 		}
@@ -262,7 +276,6 @@ class SCR_ServerBrowserDialogManager
 			}
 		}
 
-
 		// Setup dialog
 		if (dialog)
 		{
@@ -284,10 +297,10 @@ class SCR_ServerBrowserDialogManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetEventOnRejoinTimerOver()
+	ScriptInvokerVoid GetEventOnRejoinTimerOver()
 	{
 		if (!Event_OnRejoinTimerOver)
-			Event_OnRejoinTimerOver = new ScriptInvoker();
+			Event_OnRejoinTimerOver = new ScriptInvokerVoid();
 
 		return Event_OnRejoinTimerOver;
 	}
@@ -330,9 +343,7 @@ class SCR_ServerBrowserDialogManager
 
 		// Remove invokers actions from old dialog
 		if (m_CurrentDialog)
-		{
 			m_CurrentDialog.m_OnConfirm.Remove(OnDialogConfirm);
-		}
 
 		// Create dialog
 		m_CurrentDialog = SCR_ConfigurableDialogUi.CreateFromPreset(CONFIG_DIALOGS, tag, dialog);
@@ -348,47 +359,39 @@ class SCR_ServerBrowserDialogManager
 	//------------------------------------------------------------------------------------------------
 	protected void OnDialogConfirm()
 	{
-		m_OnConfirm.Invoke();
+		if (m_OnConfirm)
+			m_OnConfirm.Invoke();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnDialogCancel()
 	{
-		m_OnCancel.Invoke();
+		if (m_OnCancel)
+			m_OnCancel.Invoke();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void InvokeOnCloseAll()
 	{
 		if (!Event_OnCloseAll)
-			Event_OnCloseAll = new ScriptInvoker();
+			Event_OnCloseAll = new ScriptInvokerVoid();
 
 		Event_OnCloseAll.Invoke();
 	}
-
-	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnCloseAll()
-	{
-		if (!Event_OnCloseAll)
-			Event_OnCloseAll = new ScriptInvoker();
-
-		return Event_OnCloseAll;
-	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnDialogClose(SCR_ConfigurableDialogUi dialog)
 	{
-		m_OnDialogClose.Invoke();
+		if (m_OnDialogClose)
+			m_OnDialogClose.Invoke();
 
 		if (m_CurrentDialog == dialog)
 			InvokeOnCloseAll();
 	}
 
-
 	//------------------------------------------------------------------------------------------------
 	// Spefic dialog handling
 	//------------------------------------------------------------------------------------------------
-
 	//------------------------------------------------------------------------------------------------
 	//! Show join fail message in dialog
 	void DisplayJoinFail(EApiCode apiError)
@@ -399,10 +402,10 @@ class SCR_ServerBrowserDialogManager
 
 		switch (apiError)
 		{
-			case EApiCode.EACODE_ERROR_P2P_USER_JOIN_BAN: errorTag = "JOIN_FAILED_BAN"; break;
-			case EApiCode.EACODE_ERROR_DS_USER_JOIN_BAN: errorTag = "JOIN_FAILED_BAN"; break;
-			case EApiCode.EACODE_ERROR_USER_IS_BANNED_FROM_SHARED_GAME: errorTag = "JOIN_FAILED_BAN"; break;
-			//case EApiCode.EACODE_ERROR_PLAYER_IS_BANNED: errorTag = "JOIN_FAILED_BAN"; break;
+			case EApiCode.EACODE_ERROR_P2P_USER_JOIN_BAN: errorTag = TAG_BANNED; break;
+			case EApiCode.EACODE_ERROR_DS_USER_JOIN_BAN: errorTag = TAG_BANNED; break;
+			case EApiCode.EACODE_ERROR_USER_IS_BANNED_FROM_SHARED_GAME: errorTag = TAG_BANNED; break;
+			case EApiCode.EACODE_ERROR_PLAYER_IS_BANNED: errorTag = TAG_BANNED; break;
 			//case EApiCode.EACODE_ERROR_MAINTENANCE_IN_PROGRESS: errorTag = "JOIN_FAILED_MAITANANCE"; break;
 			//case EApiCode.EACODE_ERROR_MP_ROOM_IS_NOT_JOINABLE: errorTag = "JOIN_FAILED_NOT_JOINABLE"; break;
 		}
@@ -413,8 +416,8 @@ class SCR_ServerBrowserDialogManager
 
 		*/
 
-		SetDialogByTag(errorTag);
-
+		SetDialogByTag(errorTag);		
+		
 		// Show additional message
 		if (m_CurrentDialog)
 		{
@@ -428,6 +431,33 @@ class SCR_ServerBrowserDialogManager
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void DisplayJoinBan(RoomJoinData data)
+	{	
+		SetDialogByTag(TAG_BANNED);
+		
+		if (!m_CurrentDialog)
+			return;
+		
+		if (data.expiresAt < 0)
+			return;
+		
+		int time = data.expiresAt - System.GetUnixTime();
+		
+		// Show message with time 	
+		if (time <= 0)
+			return;
+		
+		string message = STR_LIGHT_BAN;
+		
+		// Is ban for official servers
+		if (data.scope.Contains(OFFICIAL_SERVER_SCOPE))
+			message = STR_HEAVY_BAN;
+		
+		int timeMinutes = time / 60; // show minutes
+		m_CurrentDialog.SetMessage(WidgetManager.Translate(message, timeMinutes.ToString()));
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Call this when all reports from dialog are cancled to clear invoker actions and display download dialog
 	protected void OnAllReportsCanceled(SCR_ReportedAddonsDialog dialog)
 	{
@@ -435,18 +465,27 @@ class SCR_ServerBrowserDialogManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Show process of mods to donwlaoad
-	protected void DisplayModsDownloading()
+	// Display a dialog asking for downloads cancel confirmation
+	void DisplayJoinDownloadsWarning(array<ref SCR_WorkshopItemActionDownload> downloads, SCR_EJoinDownloadsConfirmationDialogType type)
 	{
-		DialogUI dialog = SCR_DownloadManager_Dialog.Create();
-
-		SCR_DownloadManager.GetInstance().m_OnDownloadQueueCompleted.Insert(OnDownloadingDone);
-		SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Insert(OnDownloadActionFailed);
+		// Remove invokers actions from old dialog
+		if (m_CurrentDialog)
+			m_CurrentDialog.m_OnConfirm.Remove(OnDialogConfirm);
 		
-		if (dialog)
-			dialog.m_OnCancel.Insert(OnDownloadingDialogClose);
+		m_CurrentDialog = SCR_ServerJoinDownloadsConfirmationDialog.Create(downloads, type);
+
+		// Add invoker actions to current dialog
+		m_CurrentDialog.m_OnConfirm.Insert(OnDialogConfirm);
+		m_CurrentDialog.m_OnCancel.Insert(OnDialogCancel);
+		m_CurrentDialog.m_OnClose.Insert(OnDialogClose);
+		
+		if (type == SCR_EJoinDownloadsConfirmationDialogType.REQUIRED)
+		{
+			SCR_DownloadManager.GetInstance().GetOnDownloadQueueCompleted().Insert(OnDownloadingDone);
+			SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Insert(OnDownloadActionFailed);
+		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnDownloadingDone()
 	{
@@ -460,48 +499,11 @@ class SCR_ServerBrowserDialogManager
 				return;
 		}
 
-		m_OnDownloadComplete.Invoke(m_JoinRoom);
+		if (m_OnDownloadComplete)
+			m_OnDownloadComplete.Invoke(m_JoinRoom);
+		
+		SCR_DownloadManager.GetInstance().GetOnDownloadQueueCompleted().Remove(OnDownloadingDone);
 		SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Remove(OnDownloadActionFailed);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnDownloadingDialogClose()
-	{
-		SCR_DownloadManager manager = SCR_DownloadManager.GetInstance();
-		
-		// Cancel joining process
-		manager.m_OnDownloadQueueCompleted.Remove(OnDownloadingDone);
-		
-		// Just close if there are no running downloads (e.g. due to errors)
-		if (!manager.HasRunningDownloads())
-		{
-			manager.EndAllDownloads();
-			return;
-		}
-		
-		// Display download cancel dialog
-		SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.CreateFromPreset(CONFIG_DIALOGS, "CANCEL_DOWNLOAD");
-		dialog.m_OnConfirm.Insert(OnCancelDownloadDialogConfirm);
-		dialog.m_OnCancel.Insert(OnCancelDownloadDialogCancel);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnCancelDownloadDialogConfirm(SCR_ConfigurableDialogUi dialog)
-	{
-		SCR_DownloadManager.GetInstance().EndAllDownloads();
-		SCR_DownloadManager.GetInstance().ClearFailedDownloads();
-
-		// Clear
-		dialog.m_OnConfirm.Remove(OnCancelDownloadDialogConfirm);
-		dialog.m_OnCancel.Remove(OnCancelDownloadDialogCancel);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnCancelDownloadDialogCancel(SCR_ConfigurableDialogUi dialog)
-	{
-		// Clear
-		dialog.m_OnConfirm.Remove(OnCancelDownloadDialogConfirm);
-		dialog.m_OnCancel.Remove(OnCancelDownloadDialogCancel);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -509,6 +511,7 @@ class SCR_ServerBrowserDialogManager
 	{
 		CloseCurrentDialog();
 
+		SCR_DownloadManager.GetInstance().GetOnDownloadQueueCompleted().Remove(OnDownloadingDone);
 		SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Remove(OnDownloadActionFailed);
 	}
 
@@ -543,7 +546,6 @@ class SCR_ServerBrowserDialogManager
 
 		editboxDialog.m_OnWriteModeLeave.Insert(OnPasswordEditboxChanged);
 		editboxDialog.FindButton("confirm").SetEnabled(false);
-		editboxDialog.FindButton("cancel").SetEnabled(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -553,7 +555,7 @@ class SCR_ServerBrowserDialogManager
 		if (!m_CurrentDialog || !SCR_EditboxDialogUi.Cast(m_CurrentDialog))
 			return;
 
-		SCR_NavigationButtonComponent navButton = m_CurrentDialog.FindButton("confirm");
+		SCR_InputButtonComponent navButton = m_CurrentDialog.FindButton("confirm");
 		if (navButton)
 			navButton.SetEnabled(!text.IsEmpty());
 
@@ -573,12 +575,8 @@ class SCR_ServerBrowserDialogManager
 	//------------------------------------------------------------------------------------------------
 	protected void OnWaitingQueueConfirm(SCR_ConfigurableDialogUi dialog)
 	{
-		if (m_ServerBrowser)
-		{
+		if (m_ServerBrowser && m_OnJoinRoomDemand)
 			m_OnJoinRoomDemand.Invoke(m_JoinRoom);
-			//m_ServerBrowser.JoinRoom(m_JoinRoom);
-		}
-
 
 		m_CurrentDialog.m_OnConfirm.Remove(OnWaitingQueueConfirm);
 	}
@@ -604,7 +602,7 @@ class SCR_ServerBrowserDialogManager
 			txtState.SetText(count.ToString() + "/" + limit.ToString());
 
 		// Setup button
-		SCR_NavigationButtonComponent btnConfirm = m_CurrentDialog.FindButton("confirm");
+		SCR_InputButtonComponent btnConfirm = m_CurrentDialog.FindButton("confirm");
 		if (btnConfirm)
 		{
 			bool enable = limit - count > 0;
@@ -647,10 +645,76 @@ class SCR_ServerBrowserDialogManager
 			dialog.SetScenarioImage(scenario);
 	}
 
+	
 	//------------------------------------------------------------------------------------------------
 	// Get & Set API
 	//------------------------------------------------------------------------------------------------
+	
+	// Invokers
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnConfirm()
+	{
+		if (!m_OnConfirm)
+			m_OnConfirm = new ScriptInvokerVoid();
 
+		return m_OnConfirm;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnCancel()
+	{
+		if (!m_OnCancel)
+			m_OnCancel = new ScriptInvokerVoid();
+
+		return m_OnCancel;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnDialogClose()
+	{
+		if (!m_OnDialogClose)
+			m_OnDialogClose = new ScriptInvokerVoid();
+
+		return m_OnDialogClose;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnCloseAll()
+	{
+		if (!Event_OnCloseAll)
+			Event_OnCloseAll = new ScriptInvokerVoid();
+
+		return Event_OnCloseAll;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerRoom GetOnDownloadComplete()
+	{
+		if (!m_OnDownloadComplete)
+			m_OnDownloadComplete = new ScriptInvokerRoom();
+
+		return m_OnDownloadComplete;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnDownloadCancelDialogClose()
+	{
+		if (!m_OnDownloadCancelDialogClose)
+			m_OnDownloadCancelDialogClose = new ScriptInvokerVoid();
+
+		return m_OnDownloadCancelDialogClose;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerRoom GetOnJoinRoomDemand()
+	{
+		if (!m_OnJoinRoomDemand)
+			m_OnJoinRoomDemand = new ScriptInvokerRoom();
+
+		return m_OnJoinRoomDemand;
+	}
+	
+	// Helpers
 	//------------------------------------------------------------------------------------------------
 	Room GetJoinRoom()
 	{
@@ -668,7 +732,7 @@ class SCR_ServerBrowserDialogManager
 	{
 		return m_CurrentDialog;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	bool IsDialogOpen()
 	{
@@ -742,4 +806,19 @@ enum EJoinDialogState
 	SERVICE_DOWN, // Backend service is not available
 	SERVER_DOWN, // Joined server is not running
 	BACKEND_TIMEOUT,
+	
+	// Warnings
+	HIGH_PING_SERVER,
+	
+	// Fillers
+	UNRELATED_DOWNLOADS_CANCELING // Waiting for all downloads to cancel
+};
+
+//------------------------------------------------------------------------------------------------
+//! Enum for confirmation dialogs that guide the player through the download processes required to join the servers
+enum SCR_EJoinDownloadsConfirmationDialogType
+{
+	ALL,
+	UNRELATED,
+	REQUIRED
 };

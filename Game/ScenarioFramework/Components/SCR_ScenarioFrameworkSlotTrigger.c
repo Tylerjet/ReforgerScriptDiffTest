@@ -35,16 +35,27 @@ class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 	}
 	*/
 	
-	[Attribute(UIWidgets.Auto, category: "OnActivation")];
+	[Attribute(desc: "Actions that will be performed after trigger conditions are true and the trigger itself activates (not the slot itself)", category: "OnActivation")];
 	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActions;
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT, bool bInit = true)
+	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
-		super.Init(area, activation, bInit);
+		super.Init(area, activation);
 		foreach(SCR_ScenarioFrameworkActionBase triggerAction : m_aTriggerActions)
 		{
 			triggerAction.Init(m_Entity);
+		}
+		
+		if (!m_ParentLayer)
+		{
+			IEntity parentEntity = GetOwner().GetParent();
+			if (!parentEntity)
+				return;
+		
+			m_ParentLayer = SCR_ScenarioFrameworkLayerBase.Cast(parentEntity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+			if (m_ParentLayer)
+				m_ParentLayer.CheckAllChildrenSpawned(this);
 		}
 		/*
 		if (m_eActivationType != activation)

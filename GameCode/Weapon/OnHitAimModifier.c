@@ -98,7 +98,7 @@ class OnHitAimModifier : ScriptedWeaponAimModifier
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnDamage(EDamageType type, float damage, HitZone pHitZone, IEntity instigator, inout vector outMat[3], float speed, int colliderID, int nodeID)
+	void OnDamage(EDamageType type, float damage, HitZone pHitZone, notnull Instigator instigator, inout vector outMat[3], float speed, int colliderID, int nodeID)
 	{
 		float div;
 		if (m_fEffectScale > 0.0)

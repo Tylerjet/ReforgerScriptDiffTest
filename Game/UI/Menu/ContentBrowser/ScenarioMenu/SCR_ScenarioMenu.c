@@ -3,7 +3,7 @@ Menu with a list view of scenarios.
 */
 class SCR_ScenarioMenu : SCR_SuperMenuBase
 {
-	protected SCR_NavigationButtonComponent m_NavBack;
+	protected SCR_InputButtonComponent m_NavBack;
 	
 	//-----------------------------------------------------------------------------------------------------------------
 	static SCR_ScenarioMenu Open()
@@ -18,7 +18,7 @@ class SCR_ScenarioMenu : SCR_SuperMenuBase
 		super.OnMenuOpen();
 		
 		// Find nav buttons
-		m_NavBack = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Back", GetRootWidget());
+		m_NavBack = SCR_InputButtonComponent.GetInputButtonComponent("Back", GetRootWidget());
 		m_NavBack.m_OnActivated.Insert(OnNavButtonClose);
 	}
 	

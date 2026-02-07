@@ -24,6 +24,9 @@ class SCR_GameplaySettings : ModuleGameSettings
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Preserve aim down sights after performing actions like sprinting.")]
 	bool m_bStickyADS;
 	
+	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Use mouse input for steering instead of for freelook when piloting aircrafts.")]
+	bool m_bMouseControlAircraft;
+	
 	[Attribute(defvalue: SCR_Enum.GetDefault(EVehicleDrivingAssistanceMode.FULL), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EVehicleDrivingAssistanceMode), desc: "Player's vehicle driving assistance mode. Controls gearbox, engine and persistent handbrake automation.")]
 	EVehicleDrivingAssistanceMode m_eDrivingAssistance;
 };

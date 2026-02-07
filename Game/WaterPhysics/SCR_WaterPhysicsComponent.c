@@ -150,13 +150,15 @@ class SCR_WaterPhysicsComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void SimulateWaterPhysics(notnull IEntity owner, float timeSlice)
+	protected void SimulateWaterPhysics(float timeSlice)
 	{
 		if (!ENABLE_BUOYANCY)
 		{
 			SetInWater(false);
 			return;
 		}
+		
+		IEntity owner = GetOwner();
 		
 		Physics physics = owner.GetPhysics();
 		float mass = physics.GetMass();
@@ -379,23 +381,31 @@ class SCR_WaterPhysicsComponent : ScriptComponent
 		if (!m_aBuoyancyPoints.IsEmpty())
 			SetEventMask(owner, EntityEvent.PHYSICSACTIVE);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		DisconnectFromWaterPhysicsSystem();
+		
+		super.OnDelete(owner);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnPhysicsActive(IEntity owner, bool activeState)
 	{
 		if (activeState && ENABLE_BUOYANCY)
-			SetEventMask(owner, EntityEvent.SIMULATE);
+			ConnectToWaterPhysicsSystem();
 		else
-			ClearEventMask(owner, EntityEvent.SIMULATE);
+			DisconnectFromWaterPhysicsSystem();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void EOnSimulate(IEntity owner, float timeSlice)
+	void Simulate(float timeSlice)
 	{
 		// Somehow we lost all the reference points
 		if (m_aBuoyancyPoints.IsEmpty())
 		{
-			ClearEventMask(owner, EntityEvent.SIMULATE);
+			DisconnectFromWaterPhysicsSystem();
 			return;
 		}
 		
@@ -407,13 +417,33 @@ class SCR_WaterPhysicsComponent : ScriptComponent
 				return;
 			
 			// Check if point is underwater
-			if (SCR_WorldTools.IsObjectUnderwater(owner, m_aBuoyancyPoints[m_iNextWaterPoint], -1))
+			if (SCR_WorldTools.IsObjectUnderwater(GetOwner(), m_aBuoyancyPoints[m_iNextWaterPoint], -1))
 				SetInWater(true);
 		}
 		
 		//! Full buoyancy simulation. May have to begin the same frame if either of the points has been proven to be underwater
 		if (m_bInWater)
-			SimulateWaterPhysics(owner, timeSlice);
+			SimulateWaterPhysics(timeSlice);
+	}
+	
+	protected void ConnectToWaterPhysicsSystem()
+	{
+		World world = GetOwner().GetWorld();
+		WaterPhysicsSystem updateSystem = WaterPhysicsSystem.Cast(world.FindSystem(WaterPhysicsSystem));
+		if (!updateSystem)
+			return;
+		
+		updateSystem.Register(this);
+	}
+	
+	protected void DisconnectFromWaterPhysicsSystem()
+	{
+		World world = GetOwner().GetWorld();
+		WaterPhysicsSystem updateSystem = WaterPhysicsSystem.Cast(world.FindSystem(WaterPhysicsSystem));
+		if (!updateSystem)
+			return;
+		
+		updateSystem.Unregister(this);
 	}
 #endif
 };

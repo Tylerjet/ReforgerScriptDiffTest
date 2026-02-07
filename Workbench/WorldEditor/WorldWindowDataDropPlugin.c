@@ -52,11 +52,11 @@ class WorldWindowDataDropPlugin : WorldEditorPlugin
 			api.ClearEntitySelection();
 			
 			//use the same creating funtion as editor does because it solves correct placing etc.
-			IEntity ent = api.CreateEntityInWindowEx(windowType, posX, posY, "SCR_ParticleEmitter", "", api.GetCurrentEntityLayerId());
+			IEntity ent = api.CreateEntityInWindowEx(windowType, posX, posY, "ParticleEffectEntity", "", api.GetCurrentEntityLayerId());
 			if(ent)
 			{
 				IEntitySource entSrc = api.EntityToSource(ent);
-				api.ModifyEntityKey(ent, "m_EffectPath", resName);
+				api.ModifyEntityKey(ent, "EffectPath", resName);
 				api.AddToEntitySelection(api.SourceToEntity(entSrc));
 			}
 			

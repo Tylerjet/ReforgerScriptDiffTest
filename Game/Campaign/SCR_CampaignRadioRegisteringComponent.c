@@ -14,7 +14,8 @@ class SCR_CampaignRadioRegisteringComponent : ScriptComponent
 		// Base was found, stop query
 		if (base)
 		{
-			base.RegisterHQRadio(GetOwner());
+			// Delay so user actions can properly initialize first
+			GetGame().GetCallqueue().CallLater(base.RegisterHQRadio, 1000, false, GetOwner());
 			return false;
 		}
 		
@@ -25,6 +26,9 @@ class SCR_CampaignRadioRegisteringComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
+		if (!GetGame().InPlayMode())
+			return;
+		
 		BaseWorld world = GetGame().GetWorld();
 		
 		if (!world)

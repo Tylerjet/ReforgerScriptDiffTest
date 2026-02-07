@@ -15,8 +15,8 @@ class BaseProjectileComponentClass: GameComponentClass
 
 class BaseProjectileComponent: GameComponent
 {
-	proto external IEntity GetShotParentGunner();
-	proto external IEntity GetShotParentEntity();
+	proto external Instigator GetInstigator();
+	//Gets projectile entity
 	proto external IEntity GetParentProjectile();
 }
 

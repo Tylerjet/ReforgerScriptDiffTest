@@ -27,6 +27,14 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	protected RplComponent m_RplComponent;
 	protected bool m_bFirstSpawn = true;
 
+	protected vector m_vLastLoadedAt;
+	protected vector m_vLastUnloadedAt;
+
+	protected float m_fNoRewardSupplies;
+
+	static const float FULL_SUPPLY_TRUCK_AMOUNT = 600.0;
+	static const int SUPPLY_DELIVERY_THRESHOLD_SQ = 100 * 100;
+
 	//********************************//
 	//RUNTIME SYNCHED MEMBER VARIABLES//
 	//********************************//
@@ -457,12 +465,12 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		if(!IsUnloading)
 		{
-			suppliesComponent.SetSupplyLoadingPlayer(playerID);
+			//suppliesComponent.SetSupplyLoadingPlayer(playerID);
 			SendToVehicleOccupants(ENotification.SUPPLY_TRUCK_LOADING_PLAYER, vehicleEntity, playerID, supplies);
 		}
 		else
 		{
-			suppliesComponent.SetSupplyUnloadingPlayer(playerID);
+			//suppliesComponent.SetSupplyUnloadingPlayer(playerID);
 			SendToVehicleOccupants(ENotification.SUPPLY_TRUCK_UNLOADING_PLAYER, vehicleEntity, playerID, supplies);
 		}
 	}
@@ -482,12 +490,12 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		if(!IsUnloading)
 		{
-			suppliesComponent.DeleteSupplyLoadingPlayer(playerID);
+			//suppliesComponent.DeleteSupplyLoadingPlayer(playerID);
 			SendToVehicleOccupants(ENotification.SUPPLY_TRUCK_LOADING_PLAYER_STOPPED, vehicleEntity, playerID);
 		}
 		else
 		{
-			suppliesComponent.DeleteSupplyUnloadingPlayer(playerID);
+			//suppliesComponent.DeleteSupplyUnloadingPlayer(playerID);
 			SendToVehicleOccupants(ENotification.SUPPLY_TRUCK_UNLOADING_PLAYER_STOPPED, vehicleEntity, playerID);
 		}
 		
@@ -524,8 +532,8 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (amount > base.GetSupplies())
 			return;
 		
-		if (suppliesComponent.GetSupplies() == suppliesComponent.GetSuppliesMax())
-			return;
+		/*if (suppliesComponent.GetSupplies() == suppliesComponent.GetSuppliesMax())
+			return;*/
 		
 		Faction playerFaction = SCR_CampaignReconfigureRelayUserAction.GetPlayerFaction(player);
 		
@@ -536,7 +544,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!baseSuppliesComponent)
 			return;
 		
-		float distSq = Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2);
+		/*float distSq = Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2);
 		vector vehPos = box.GetOrigin();
 		
 		if (vector.DistanceSq(vehPos, player.GetOrigin()) > 100)
@@ -558,7 +566,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		base.AddSupplies(-finalAmount);
 		suppliesComponent.SetLastLoadedAt(base);
 		Rpc(RpcDo_PlayerFeedbackValueBase, ECampaignClientNotificationID.SUPPLIES_LOADED, (float)finalAmount, base.GetCallsign());
-		suppliesComponent.DeleteSupplyLoadingPlayer(playerID);
+		suppliesComponent.DeleteSupplyLoadingPlayer(playerID);*/
 		
 		SendToVehicleOccupants(ENotification.SUPPLY_TRUCK_LOADING_PLAYER_FINISHED, suppliesComponent.GetOwner(), playerID);
 	}
@@ -587,7 +595,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!box)
 			return;
 		
-		if (amount > depot.GetSupplies())
+		/*if (amount > depot.GetSupplies())
 			return;
 		
 		if (suppliesComponent.GetSupplies() == suppliesComponent.GetSuppliesMax())
@@ -603,7 +611,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		int finalAmount = Math.Min(suppliesComponent.GetSuppliesMax() - suppliesComponent.GetSupplies(), amount);
 		suppliesComponent.AddSupplies(finalAmount);
 		Rpc(RpcDo_PlayerFeedbackValueBase, ECampaignClientNotificationID.SUPPLIES_LOADED, (float)finalAmount, -1);
-		suppliesComponent.DeleteSupplyLoadingPlayer(playerID);
+		suppliesComponent.DeleteSupplyLoadingPlayer(playerID);*/
 		SendToVehicleOccupants(ENotification.SUPPLY_TRUCK_LOADING_PLAYER_FINISHED, suppliesComponent.GetOwner(), playerID);
 	}
 	
@@ -635,7 +643,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!box)
 			return;
 		
-		if (amount > suppliesComponent.GetSupplies())
+		/*if (amount > suppliesComponent.GetSupplies())
 			return;
 		
 		Faction playerFaction = SCR_CampaignReconfigureRelayUserAction.GetPlayerFaction(player);
@@ -680,10 +688,10 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		// ... or if it was both loaded and unloaded in the previous base
 		// (handled in suppliesComponent)
 		if (compXP && suppliesComponent.AwardXP())
-			compXP.AwardXP(player, SCR_EXPRewards.SUPPLIES_DELIVERED, rewardMultiplier);
+			compXP.AwardXP(playerID, SCR_EXPRewards.SUPPLIES_DELIVERED, rewardMultiplier);
 		
 		SendPlayerMessage(SCR_ERadioMsg.SUPPLIES, base.GetCallsign(), public: false);
-		suppliesComponent.DeleteSupplyUnloadingPlayer(playerID);
+		suppliesComponent.DeleteSupplyUnloadingPlayer(playerID);*/
 		
 		SendToVehicleOccupants(ENotification.SUPPLY_TRUCK_UNLOADING_PLAYER_FINISHED, suppliesComponent.GetOwner(), playerID);
 	}
@@ -718,7 +726,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SendPlayerMessage(SCR_ERadioMsg msgType, int baseCallsign = SCR_CampaignMilitaryBaseComponent.INVALID_BASE_CALLSIGN, int calledID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX, bool public = true, int param = SCR_CampaignRadioMsg.INVALID_RADIO_MSG_PARAM, bool checkHQReached = false)
+	void SendPlayerMessage(SCR_ERadioMsg msgType, int baseCallsign = SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN, int calledID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX, bool public = true, int param = SCR_CampaignRadioMsg.INVALID_RADIO_MSG_PARAM, bool checkHQReached = false)
 	{
 		SCR_FactionManager fManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		
@@ -888,7 +896,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		string msg2param2;
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		SCR_CampaignMilitaryBaseComponent base = campaign.GetBaseManager().FindBaseByCallsign(baseID);
-		SCR_CampaignFeedbackComponent manager = SCR_CampaignFeedbackComponent.Cast(m_PlayerController.FindComponent(SCR_CampaignFeedbackComponent));
+		SCR_CampaignFeedbackComponent manager = SCR_CampaignFeedbackComponent.GetInstance();
 		
 		if (!campaign)
 			return;
@@ -927,7 +935,10 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 				}
 				
 				if (!campaign.IsTutorial())
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_Building_Text", "#AR-Campaign_Hint_Building_Title", 20, fieldManualEntry: EFieldManualEntryId.CONFLICT_BUILDING);
+				{
+					if (manager)
+						manager.ShowHint(EHint.CONFLICT_BUILDING);
+				}
 				
 				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_UNLOADSUPPLIES);
 				break;
@@ -935,13 +946,15 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 			case ECampaignClientNotificationID.RESPAWN:
 			{
 				//manager.SetIsPlayerInRadioRange(true);
-				//GetGame().GetCallqueue().CallLater(manager.ShowHint, 16500, false, SCR_ECampaignHints.SIGNAL);
+				if (manager)
+					manager.OnRespawn();
 				
 				if (!base)
 					return;
 
 				msg = base.GetBaseNameUpperCase();
-				TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+				ChimeraWorld world = m_PlayerController.GetWorld();
+				TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 				
 				if (timeManager)
 				{
@@ -991,7 +1004,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void RpcDo_VehicleSpawnHint(int hintID)
 	{
-		SCR_CampaignFeedbackComponent feedbackComponent = SCR_CampaignFeedbackComponent.Cast(m_PlayerController.FindComponent(SCR_CampaignFeedbackComponent));
+		SCR_CampaignFeedbackComponent feedbackComponent = SCR_CampaignFeedbackComponent.GetInstance();
 		
 		if (!feedbackComponent)
 			return;
@@ -1006,9 +1019,33 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void EnableShowingSpawnPosition(bool enable)
+	void OnPlayerAliveStateChanged(bool alive)
 	{
-		Rpc(RpcDo_PlayerEnableShowingSpawnPosition, enable);	
+		Rpc(RpcDo_PlayerEnableShowingSpawnPosition, alive);	
+		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.Cast(GetOwner().FindComponent(SCR_CampaignFeedbackComponent));
+
+		if (!comp)
+			return;
+
+		IEntity player = m_PlayerController.GetControlledEntity();
+		
+		if (!player)
+			return;
+
+		EventHandlerManagerComponent eventHandlerManagerComponent = EventHandlerManagerComponent.Cast(player.FindComponent(EventHandlerManagerComponent));
+
+		if (!eventHandlerManagerComponent)
+			return;
+
+		if (alive)
+		{
+			comp.OnConsciousnessChanged(true);
+			eventHandlerManagerComponent.RegisterScriptHandler("OnConsciousnessChanged", comp, comp.OnConsciousnessChanged);
+		}
+		else
+		{
+			eventHandlerManagerComponent.RemoveScriptHandler("OnConsciousnessChanged", comp, comp.OnConsciousnessChanged);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1016,8 +1053,11 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	void RpcDo_PlayerEnableShowingSpawnPosition(bool enable)
 	{
 		// Adds function to queue. Sometimes, game is not fast enough to spawn player entity
-		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.Cast(m_PlayerController.FindComponent(SCR_CampaignFeedbackComponent));
+		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.GetInstance();
 			GetGame().GetCallqueue().CallLater(comp.EnablePlayerSpawnHint, 100, true, enable);
+		
+		if (!enable)
+			comp.PauseHintQueue();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1063,7 +1103,15 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!timer)	
 			return;
 		
-		timer.SetRespawnTime(m_PlayerController.GetPlayerId(), fManager.GetRankRadioRespawnCooldown(SCR_CharacterRankComponent.GetCharacterRank(operator)));
+		int playerId = m_PlayerController.GetPlayerId();
+		float suicidePenalty;
+		
+		SCR_CampaignClientData data = campaign.GetClientData(playerId);
+		
+		if (data)
+			suicidePenalty = data.GetRespawnPenalty();
+		
+		timer.SetRespawnTime(playerId, fManager.GetRankRadioRespawnCooldown(SCR_CharacterRankComponent.GetCharacterRank(operator)) + suicidePenalty);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1096,7 +1144,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		DecompressCallsign(callerCallsign, callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad);
 		DecompressCallsign(calledCallsign, calledCallsignCompany, calledCallsignPlatoon, calledCallsignSquad);
 		
-		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.Cast(m_PlayerController.FindComponent(SCR_CampaignFeedbackComponent));
+		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.GetInstance();
 		
 		if (!comp)
 			return;
@@ -1110,15 +1158,124 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void CheckHQReached()
 	{
-		#ifndef AR_CAMPAIGN_TIMESTAMP
+		/*#ifndef AR_CAMPAIGN_TIMESTAMP
 		if (m_fLastHQRadioMessageTimestamp < (Replication.Time() - 8000))
 		#else
 		ChimeraWorld world = GetOwner().GetWorld();
 		if (m_fLastHQRadioMessageTimestamp.PlusMilliseconds(8000).Less(world.GetServerTimestamp()))
 		#endif
-			SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_OutOfRadioRange_Text", "#AR-Campaign_Hint_OutOfRadioRange_Title", 20);
+			return;*/
 	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnPlayerSuppliesInteraction(EResourcePlayerInteractionType interactionType, PlayerController playerController, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue)
+	{
+		if (!playerController || !resourceComponentFrom || !resourceComponentTo)
+			return;
+
+		IEntity player = playerController.GetControlledEntity();
+
+		if (!player)
+			return;
+
+		vector pos = player.GetOrigin();
+
+		switch (interactionType)
+		{
+			case EResourcePlayerInteractionType.VEHICLE_LOAD:
+			{
+				OnSuppliesLoaded(pos, resourceValue);
+				break;
+			}
+			
+			case EResourcePlayerInteractionType.VEHICLE_UNLOAD:
+			{
+				OnSuppliesUnloaded(pos, resourceValue, playerController.GetPlayerId());
+				break;
+			}
+			
+			case EResourcePlayerInteractionType.INVENTORY_SPLIT:
+			{
+				Vehicle vehicleFrom = Vehicle.Cast(SCR_EntityHelper.GetMainParent(resourceComponentFrom.GetOwner(), true));
+				Vehicle vehicleTo = Vehicle.Cast(SCR_EntityHelper.GetMainParent(resourceComponentTo.GetOwner(), true));
+				
+				// Ignore vehicle to vehicle transfers
+				if (vehicleFrom && vehicleTo)
+					break;
+				
+				if (vehicleFrom)
+					OnSuppliesUnloaded(pos, resourceValue, playerController.GetPlayerId());
+				else
+					OnSuppliesLoaded(pos, resourceValue);
+				
+				break;
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSuppliesLoaded(vector position, float amount)
+	{
+		if (m_vLastLoadedAt == vector.Zero || vector.DistanceSqXZ(m_vLastLoadedAt, position) <= SUPPLY_DELIVERY_THRESHOLD_SQ)
+			m_fNoRewardSupplies += amount;		// Player is loading at the same spot as before
+		else
+			m_fNoRewardSupplies = amount;		// Player is loading somewhere new
 		
+		m_vLastLoadedAt = position;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSuppliesUnloaded(vector position, float amount, int playerId)
+	{
+		bool firstUnload = m_vLastUnloadedAt == vector.Zero;
+		bool notLoadedYet = m_vLastLoadedAt == vector.Zero;
+		bool travelled = vector.DistanceSqXZ(m_vLastLoadedAt, position) > SUPPLY_DELIVERY_THRESHOLD_SQ;
+
+		if (firstUnload || vector.DistanceSqXZ(m_vLastUnloadedAt, position) <= SUPPLY_DELIVERY_THRESHOLD_SQ)
+		{
+			// Player is unloading at the same spot as before
+			// In this case do nothing here
+		}
+		else if (!notLoadedYet && travelled)
+		{
+			// Player is unloading at a new spot
+			// They previously loaded supplies somewhere else
+			// Let them have the full reward
+			m_fNoRewardSupplies = 0;
+		}
+
+		if (firstUnload && travelled)
+			m_fNoRewardSupplies = 0;
+
+		m_vLastUnloadedAt = position;
+
+		// Player is unloading without loading first, no XP
+		if (notLoadedYet)
+			return;
+
+		// Make sure XP is awarded only for supplies which did not originate at this spot
+		// So players can't load and unload supplies at the same base and generate infinite XP
+		float difference = amount - m_fNoRewardSupplies;
+		m_fNoRewardSupplies -= amount;
+		m_fNoRewardSupplies = Math.Max(m_fNoRewardSupplies, 0);
+
+		if (difference <= 0)
+			return;
+
+		SCR_XPHandlerComponent compXP = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
+
+		if (compXP)
+			compXP.AwardXP(playerId, SCR_EXPRewards.SUPPLIES_DELIVERED, Math.Min(difference, amount) / FULL_SUPPLY_TRUCK_AMOUNT);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ResetSavedSupplies()
+	{
+		m_vLastLoadedAt = vector.Zero;
+		m_vLastUnloadedAt = vector.Zero;
+		m_fNoRewardSupplies = 0;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// Init
 	override void EOnInit(IEntity owner)
@@ -1135,6 +1292,14 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		if (m_PlayerController.GetPlayerId() == SCR_PlayerController.GetLocalPlayerId())
 			SCR_SpawnPointRequestUIComponent.SGetOnSpawnPointSelected().Insert(HandleRadioRespawnTimer);
+
+		if (IsProxy())
+			return;
+
+		SCR_ResourcePlayerControllerInventoryComponent comp = SCR_ResourcePlayerControllerInventoryComponent.Cast(m_PlayerController.FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
+
+		if (comp)
+			comp.GetOnPlayerInteraction().Insert(OnPlayerSuppliesInteraction);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -218,7 +218,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		
 		if (mode == EGadgetMode.ON_GROUND || mode == EGadgetMode.IN_STORAGE)
 		{
-			inventoryItemComp.EnablePhysics();
+			inventoryItemComp.SetTraceable(true);
 
 			m_bLastLightState = m_bActivated;
 			
@@ -231,7 +231,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		}
 		else if (mode == EGadgetMode.IN_SLOT)
 		{
-			inventoryItemComp.DisablePhysics();
+			inventoryItemComp.SetTraceable(false);
 
 			m_CompartmentComp = SCR_CompartmentAccessComponent.Cast(m_CharacterOwner.FindComponent(SCR_CompartmentAccessComponent));
 			if (m_CompartmentComp)
@@ -244,7 +244,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		}
 		else if (mode == EGadgetMode.IN_HAND)
 		{			
-			inventoryItemComp.EnablePhysics();
+			inventoryItemComp.SetTraceable(true);
 
 			SetShadowNearPlane(false);
 			
@@ -288,7 +288,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	{
 		super.ActivateGadgetFlag();
 
-		SetEventMask(GetOwner(), EntityEvent.FRAME);
+		ConnectToGadgetsSystem();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -296,7 +296,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	{
 		super.DeactivateGadgetFlag();
 		
-		ClearEventMask(GetOwner(), EntityEvent.FRAME);
+		DisconnectFromGadgetsSystem();
 		
 		if (m_iMode == EGadgetMode.IN_SLOT )	// reset slot position of the gadget back to its default
 			AdjustTransform();
@@ -305,6 +305,10 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	override void ActivateAction()
 	{
+		SCR_CharacterControllerComponent scrCharacterController = SCR_CharacterControllerComponent.Cast(m_CharController);
+		if (scrCharacterController && scrCharacterController.GetLifeState() != ECharacterLifeState.ALIVE)	// if in chars inventory && char is dead/uncon
+			return;
+		
 		ToggleActive(!m_bActivated);
 	}
 		
@@ -357,14 +361,18 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	};
 	
 	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
+	override void Update(float timeSlice)
 	{		
 		if (m_iMode != EGadgetMode.IN_SLOT || !m_CharController || m_CharController.IsDead())	// deactivate frame on death without turning the light off
 		{
 			DeactivateGadgetFlag();
 			return;
 		}
-				
+			
+		SCR_CharacterControllerComponent scrCharacterController = SCR_CharacterControllerComponent.Cast(m_CharController);	
+		if (scrCharacterController && scrCharacterController.GetLifeState() != ECharacterLifeState.ALIVE)	// not needed while uncon + can get quite jittery there
+			return;
+		
 		// adjust angle of the flashlight to provide usable angle within various poses
 		GetOwner().GetTransform(m_ItemMat);
 		m_vAnglesCurrent = GetOwner().GetLocalYawPitchRoll();

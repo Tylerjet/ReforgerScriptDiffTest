@@ -53,7 +53,14 @@ class SCR_VONRadialDisplay : SCR_RadialMenuDisplay
 		}
 		
 		array<SCR_AIGroup> playableGroups = {};
-		int groupCount = playableGroups.Copy(groupManager.GetPlayableGroupsByFaction(playerFaction));
+		array<SCR_AIGroup> playableGroupsOrigin = groupManager.GetPlayableGroupsByFaction(playerFaction);
+		if (!playableGroupsOrigin)
+		{
+			SetFrequenciesVisible(false);
+			return;
+		}
+		
+		int groupCount = playableGroups.Copy(playableGroupsOrigin);
 		SCR_Sorting<SCR_AIGroup, SCR_CompareGroupRadioFreq>.HeapSort(playableGroups);
 
 		int matchID = -2; // -1 for platoon, 0+ for groups
@@ -189,7 +196,11 @@ class SCR_VONRadialDisplay : SCR_RadialMenuDisplay
 			return;
 
 		// Get manager and render preview 
-		ItemPreviewManagerEntity manager = GetGame().GetItemPreviewManager();
+		ChimeraWorld world = ChimeraWorld.CastFrom(item.GetWorld());
+		if (!world)
+			return;
+		
+		ItemPreviewManagerEntity manager = world.GetItemPreviewManager();
 		if (!manager)
 			return;
 		

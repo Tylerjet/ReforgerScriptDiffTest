@@ -12,7 +12,7 @@ class SCR_BaseTriggerEntity: ScriptedGameTriggerEntity
 	
 	protected bool IsAlive(IEntity entity)
 	{
-		DamageManagerComponent damageManager = DamageManagerComponent.Cast(entity.FindComponent(DamageManagerComponent));
+		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.GetDamageManager(entity);
 		if (damageManager)
 			return damageManager.GetState() != EDamageState.DESTROYED;
 		else

@@ -73,16 +73,27 @@ class SCR_DataCollectorCrimesModule : SCR_DataCollectorModule
 	[Attribute("3", UIWidgets.Slider, desc: "Positive proportionality points for killing an enemy human-controlled soldier")]
 	protected float MODIFIER_PROPORTIONALITY_KILLS;
 	
-	protected ref map<int, int> m_mPlayerPunishmentsQueue = new map<int, int>;
+	//~ Used in voting to make sure there is a min ban duration (in seconds)
+	static const int MIN_AUTO_BAN_DURATION = 300;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerAuditSuccess(int playerID)
 	{
 		super.OnPlayerAuditSuccess(playerID, stuff);
 
-		//If war crimes are not enabled, the module doesn't need to do anything. Keep the array of players empty
-		if (m_bWarCrimesEnabled)
-			m_aPlayerIDs.Insert(playerID);
+		//If war crimes are not enabled, the module doesn't need to do anything. Keep the array of players empty and just return
+		if (!m_bWarCrimesEnabled)
+			return;
+		
+		m_aPlayerIDs.Insert(playerID);
+		
+		//Reset time out of the player in case they were previously disconnected as a punishment
+		
+		SCR_PlayerData playerData = GetGame().GetDataCollector().GetPlayerData(playerID, false);
+		if (!playerData)
+			return;
+		
+		playerData.SetTimeOut(0);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -108,6 +119,16 @@ class SCR_DataCollectorCrimesModule : SCR_DataCollectorModule
 		//Adjust index if necessary
 		if (i < m_iNextIndex)
 			m_iNextIndex--;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnGameModeEnd()
+	{
+		for (int i = 0; i < m_aPlayerIDs.Count(); i++)
+		{
+			CheckPlayer(m_aPlayerIDs[i]);
+		}
+		m_aPlayerIDs.Clear();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -217,9 +238,9 @@ class SCR_DataCollectorCrimesModule : SCR_DataCollectorModule
 		{
 			Print("Player Manager is kicking a player with id " + playerId + ". Banning them for " + durationInMinutes + " minutes.", LogLevel.DEBUG);
 			if (durationInMinutes == 0)
-				ExecutePunishment(SCR_Punishments.KICK, playerId, SCR_PlayerManagerKickReason.KICK, 0);
+				ExecutePunishment(playerId, SCR_PlayerManagerKickReason.KICK, 0);
 			else
-				ExecutePunishment(SCR_Punishments.LIGHTBAN, playerId, SCR_PlayerManagerKickReason.TEMP_BAN, durationInMinutes * 60);
+				ExecutePunishment(playerId, SCR_PlayerManagerKickReason.TEMP_BAN, durationInMinutes * 60);
 		}
 		
 		//GetGame().GetPlayerManager().KickPlayer(playerId, reason, durationInMinutes * 60);
@@ -251,6 +272,7 @@ class SCR_DataCollectorCrimesModule : SCR_DataCollectorModule
 		int durationInMinutes;
 		
 		//Should this player be banned?
+		//Lightban requires an acceleration of 4.8 or more
 		if (config.GetMaxAcceleration() * config.GetBanEvaluationLight() <= acceleration)
 		{
 			//Yes, they should. Decide between light or heavy ban now.
@@ -258,12 +280,12 @@ class SCR_DataCollectorCrimesModule : SCR_DataCollectorModule
 			//Lightban variables
 			int timeDiffLightBan = playerData.GetStat(SCR_EDataStats.SESSION_DURATION) - playerData.GetStat(SCR_EDataStats.LIGHTBAN_SESSION_DURATION);
 			int streakLightBan = playerData.GetStat(SCR_EDataStats.LIGHTBAN_STREAK);
-			int maxStreakLightBan = m_aLightBanPunishments.Count() - 1;
+			int maxStreakLightBan = m_aLightBanPunishments.Count();
 			
 			//Heavyban variables
 			int timeDiffHeavyBan = playerData.GetStat(SCR_EDataStats.SESSION_DURATION) - playerData.GetStat(SCR_EDataStats.HEAVYBAN_SESSION_DURATION);
 			int streakHeavyBan = playerData.GetStat(SCR_EDataStats.HEAVYBAN_STREAK);
-			int maxStreakHeavyBan = m_aHeavyBanPunishments.Count() - 1;
+			int maxStreakHeavyBan = m_aHeavyBanPunishments.Count();
 			
 			//If It's the first ban issued to this player recently, only light ban is enough.
 			if (timeDiffLightBan > m_iSecondsOfReincidencyLightBan && timeDiffHeavyBan > m_iSecondsOfReincidencyHeavyBan)
@@ -278,11 +300,12 @@ class SCR_DataCollectorCrimesModule : SCR_DataCollectorModule
 			//Else: Not a long enough time has passed since the last ban. This means this player has repeated an offense.
 			{
 				//If the streak of lightban is not big enough, or the acceleration is not big enough, lightban it is
-				if (streakLightBan < maxStreakLightBan || config.GetMaxAcceleration() * config.GetBanEvaluationHeavy() > acceleration)
+				//Heavyban requires an acceleration of 6 and a lightban streak of at least 3 with current configs
+				if (!(streakLightBan >= maxStreakLightBan && config.GetMaxAcceleration() * config.GetBanEvaluationHeavy() <= acceleration))
 				{
-					//Light ban is enough for this player because either the streak or the acceleration is not that big yet
+					//Light ban is enough for this player because the streak and the acceleration don't meet (both of them) the necessary conditions
 
-					durationInMinutes = m_aLightBanPunishments[Math.Min(streakLightBan, maxStreakLightBan)];;
+					durationInMinutes = m_aLightBanPunishments[Math.Min(streakLightBan, maxStreakLightBan - 1)];
 					streakLightBan++;
 
 					playerData.OverrideStat(SCR_EDataStats.LIGHTBAN_STREAK, streakLightBan);
@@ -299,7 +322,7 @@ class SCR_DataCollectorCrimesModule : SCR_DataCollectorModule
 					}
 					else
 					{
-						durationInMinutes = m_aHeavyBanPunishments[Math.Min(streakHeavyBan, maxStreakHeavyBan)];
+						durationInMinutes = m_aHeavyBanPunishments[Math.Min(streakHeavyBan, maxStreakHeavyBan - 1)];
 						streakHeavyBan++;
 					}
 
@@ -308,7 +331,7 @@ class SCR_DataCollectorCrimesModule : SCR_DataCollectorModule
 
 					BackendApi ba = GetGame().GetBackendApi();
 					if (ba)
-						ExecutePunishment(SCR_Punishments.HEAVYBAN, playerId, SCR_PlayerManagerKickReason.BAN, durationInMinutes * 60);
+						ExecutePunishment(playerId, SCR_PlayerManagerKickReason.BAN, durationInMinutes * 60);
 						//ba.PlayerBanCreate("Heavy ban", durationInMinutes * 60, playerId);
 					
 					Print("Banning service is heavybanning a player with id " + playerId + ". Banning them for " + durationInMinutes + " minutes.", LogLevel.DEBUG);
@@ -367,51 +390,78 @@ class SCR_DataCollectorCrimesModule : SCR_DataCollectorModule
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void ExecutePunishment(SCR_Punishments punishment, int playerId, SCR_PlayerManagerKickReason reason, int durationInSeconds)
+	protected void ExecutePunishment(int playerId, SCR_PlayerManagerKickReason reason, int durationInSeconds)
 	{
+		GetGame().GetDataCollector().GetPlayerData(playerId).SetTimeOut(durationInSeconds);
 		
 		if (SCR_PlayerDataConfigs.GetInstance().GetVotingSuggestionEnabled())
-		{
-			switch(punishment)
-			{
-				case SCR_Punishments.KICK:
-					SCR_VotingManagerComponent.GetInstance().StartVoting(EVotingType.KICK, playerId);
-					return;
-				case SCR_Punishments.LIGHTBAN:
-					m_mPlayerPunishmentsQueue.Insert(playerId, durationInSeconds);
-					SCR_VotingManagerComponent.GetInstance().StartVoting(EVotingType.LIGHTBAN, playerId);
-					return;
-				case SCR_Punishments.HEAVYBAN:
-					m_mPlayerPunishmentsQueue.Insert(playerId, durationInSeconds);
-					SCR_VotingManagerComponent.GetInstance().StartVoting(EVotingType.HEAVYBAN, playerId);
-					return;
-			}
-		}
+			VoteForKickOrBan(playerId, reason, durationInSeconds);
 		else
+			KickOrBanPlayer(playerId, reason, durationInSeconds);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void KickOrBanPlayer(int playerId, SCR_PlayerManagerKickReason reason, int minimmumDuration)
+	{
+		int durationInSeconds = Math.Clamp(GetGame().GetDataCollector().GetPlayerData(playerId).GetTimeOut(), minimmumDuration, int.MAX);
+		
+		switch(reason)
 		{
-			switch(punishment)
+			case SCR_PlayerManagerKickReason.KICK:
 			{
-				case SCR_Punishments.KICK:
-					GetGame().GetPlayerManager().KickPlayer(playerId, reason, durationInSeconds);
-					return;
-				case SCR_Punishments.LIGHTBAN:; 
-					GetGame().GetPlayerManager().KickPlayer(playerId, reason, durationInSeconds);
-					return;
-				case SCR_Punishments.HEAVYBAN:
-					GetGame().GetBackendApi().PlayerBanCreate("Heavy ban", durationInSeconds, playerId);
-					GetGame().GetPlayerManager().KickPlayer(playerId, reason, 0);
-					return;
+				GetGame().GetPlayerManager().KickPlayer(playerId, reason, 0);
+				return;
 			}
+			case SCR_PlayerManagerKickReason.KICK_VOTED:
+			{
+				GetGame().GetPlayerManager().KickPlayer(playerId, reason, durationInSeconds);
+				return;
+			}	
+			case SCR_PlayerManagerKickReason.TEMP_BAN: 
+			{
+				GetGame().GetPlayerManager().KickPlayer(playerId, reason, durationInSeconds);
+				return;
+			}
+			case SCR_PlayerManagerKickReason.BAN:
+			{
+				GetGame().GetBackendApi().GetBanServiceApi().CreateBanPlayerId(null, playerId, "Heavy ban", durationInSeconds);
+				GetGame().GetPlayerManager().KickPlayer(playerId, reason, 0);
+				return;
+			}
+				
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int FindDurationPunishmentInQueue(int playerId)
+	/*!
+	Vote for kicking or banning a player
+	\param punishment Punishment type
+	\param playerId id of the player
+	\param reason reason for the kick
+	\param minimmumDurationBackup minimmum duration for the ban. Used only if the voting fails
+	*/
+	void VoteForKickOrBan(int playerId, SCR_PlayerManagerKickReason reason, int minimmumDurationBackup)
 	{
-		int durationInSeconds = m_mPlayerPunishmentsQueue.Get(playerId);
-		m_mPlayerPunishmentsQueue.Remove(playerId);
+		SCR_VotingManagerComponent votingManager = SCR_VotingManagerComponent.GetInstance();
+		if (!votingManager)
+			KickOrBanPlayer(playerId, reason, minimmumDurationBackup);
 		
-		return durationInSeconds;
+		switch(reason)
+		{
+			case SCR_PlayerManagerKickReason.KICK:
+			case SCR_PlayerManagerKickReason.KICK_VOTED:
+				if (!votingManager.StartVoting(EVotingType.AUTO_KICK, playerId))
+					KickOrBanPlayer(playerId, reason, minimmumDurationBackup);
+				return;
+			case SCR_PlayerManagerKickReason.TEMP_BAN:
+				if (!votingManager.StartVoting(EVotingType.AUTO_LIGHTBAN, playerId))
+					KickOrBanPlayer(playerId, reason, minimmumDurationBackup);
+				return;
+			case SCR_PlayerManagerKickReason.BAN:
+				if (!votingManager.StartVoting(EVotingType.AUTO_HEAVYBAN, playerId))
+					KickOrBanPlayer(playerId, reason, minimmumDurationBackup);
+				return;
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -488,11 +538,3 @@ class SCR_DataCollectorCrimesModule : SCR_DataCollectorModule
 		playerData.OverrideStat(SCR_EDataStats.CRIME_ACCELERATION, currentAcceleration);
 	}
 };
-
-//------------------------------------------------------------------------------------------------
-enum SCR_Punishments
-{
-	KICK,
-	LIGHTBAN,
-	HEAVYBAN
-}

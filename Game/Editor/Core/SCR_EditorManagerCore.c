@@ -407,15 +407,15 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 			editorManager.AutoInit();
 		}
 	}
-	protected void OnPlayerKilled(int playerID, IEntity player, IEntity killer)
+	protected void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		SCR_EditorManagerEntity editorManager = GetEditorManager(playerID);
+		SCR_EditorManagerEntity editorManager = GetEditorManager(playerId);
 		if (editorManager)
 			editorManager.SetCanOpen(false, EEditorCanOpen.ALIVE);
 	}
 	protected void OnPlayerDeleted(int playerID, IEntity player)
 	{
-		OnPlayerKilled(playerID, player, null);
+		OnPlayerKilled(playerID, player, null, Instigator.CreateInstigator(null));
 	}	
 	protected void OnPlayerRoleChange(int playerId, EPlayerRole roleFlags)
 	{
@@ -458,6 +458,16 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		}
 	}
 #endif
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnReconnectOnPreviousCharacter(notnull SCR_ReconnectData reconnectData)
+	{
+		int playerID = reconnectData.m_iPlayerId;
+		
+		IEntity controlledEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
+		if (controlledEntity)
+			OnPlayerSpawn(playerID, controlledEntity);
+	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default Functions
@@ -508,6 +518,10 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 				return;
 			}
 		}
+		
+		// Listen to reconnect 
+		if (SCR_ReconnectComponent.GetInstance())
+			SCR_ReconnectComponent.GetInstance().GetOnReconnect().Insert(OnReconnectOnPreviousCharacter);
 	}
 	override void OnGameEnd()
 	{

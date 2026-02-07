@@ -26,6 +26,8 @@ class SCR_DownloadManagerEntryWidgets
 
 	ImageWidget m_DownloadIcon;
 
+	ImageWidget m_DownloadIconShadow;
+
 	TextWidget m_DownloadStateText;
 
 	TextWidget m_DownloadedText;
@@ -55,7 +57,9 @@ class SCR_DownloadManagerEntryWidgets
 		m_ResumeBtn = ButtonWidget.Cast(root.FindWidget("SizeLayout.Overlay.HorizontalLayout.VerticalLayout.HorizontalLayout.SizeLayout0.m_HorizontalButtons.m_ResumeBtn"));
 		m_ResumeBtnComponent = SCR_ModularButtonComponent.Cast(m_ResumeBtn.FindHandler(SCR_ModularButtonComponent));
 
-		m_DownloadIcon = ImageWidget.Cast(root.FindWidget("SizeLayout.Overlay.HorizontalLayout.VerticalLayout.HorizontalDownload.m_DownloadIcon"));
+		m_DownloadIcon = ImageWidget.Cast(root.FindWidget("SizeLayout.Overlay.HorizontalLayout.VerticalLayout.HorizontalDownload.DownloadIconOverlay.m_DownloadIcon"));
+
+		m_DownloadIconShadow = ImageWidget.Cast(root.FindWidget("SizeLayout.Overlay.HorizontalLayout.VerticalLayout.HorizontalDownload.DownloadIconOverlay.m_DownloadIconShadow"));
 
 		m_DownloadStateText = TextWidget.Cast(root.FindWidget("SizeLayout.Overlay.HorizontalLayout.VerticalLayout.HorizontalDownload.m_DownloadStateText"));
 

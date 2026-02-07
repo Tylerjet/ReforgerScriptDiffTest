@@ -1,7 +1,8 @@
 [EntityEditorProps(category: "GameScripted/Sound", description: "Testing component")]
 class SCR_VehicleSoundComponentClass : VehicleSoundComponentClass
 {
-	// prefab properties here
+	[Attribute("", UIWidgets.Auto, "HitZone State Signals")]
+	ref array<ref SCR_HitZoneStateSignalData> m_aHitZoneStateSignalData;
 };
 
 class SCR_VehicleSoundComponent : VehicleSoundComponent
@@ -10,23 +11,34 @@ class SCR_VehicleSoundComponent : VehicleSoundComponent
 	protected ref array<ref SCR_SignalDefinition> m_aSignalDefinition;
 	
 	[Attribute("0 0 0", UIWidgets.Coords, "Mins OOB Point for rain sound")]
-	vector m_vMins;
+	protected vector m_vMins;
 	
 	[Attribute("0 0 0", UIWidgets.Coords, "Maxs OOB Point for rain sound")]
-	vector m_vMaxs;
-	
+	protected vector m_vMaxs;
+		
 	protected SignalsManagerComponent m_SignalsManagerComponent;
+	protected ref array<ref SCR_HitZoneStateSignal> m_aHitZoneStateSignal = {};
 	
 	// Audio Handles
-	private AudioHandle m_RainSoundAudioHandle = AudioHandle.Invalid;
+	protected AudioHandle m_RainSoundAudioHandle = AudioHandle.Invalid;
 	
-	private GameSignalsManager m_GameSignalsManager;
-	private int m_iRainIntensitySignalIdx;
-	private const static float RAIN_INTENSITY_THRESHOLD = 0.1;
-	private const static string RAIN_INTENSITY_SIGNAL_NAME = "RainIntensity";
+	protected GameSignalsManager m_GameSignalsManager;
+	protected int m_iRainIntensitySignalIdx;
+	protected const static float RAIN_INTENSITY_THRESHOLD = 0.1;
+	protected const static string RAIN_INTENSITY_SIGNAL_NAME = "RainIntensity";
 	
 	//------------------------------------------------------------------------------------------------
-	
+	protected array<ref SCR_HitZoneStateSignalData> GetHitZoneStateSignalData()
+	{
+		SCR_VehicleSoundComponentClass prefabData = SCR_VehicleSoundComponentClass.Cast(GetComponentData(GetOwner()));
+		if (prefabData)
+		{
+			return prefabData.m_aHitZoneStateSignalData;
+		}
+		
+		return null;	
+	}
+	//------------------------------------------------------------------------------------------------	
 	private vector GetRainSoundPositionOffset()
 	{
 		vector cameraTransform[4];
@@ -47,20 +59,18 @@ class SCR_VehicleSoundComponent : VehicleSoundComponent
 	//------------------------------------------------------------------------------------------------
 	override void UpdateSoundJob(IEntity owner, float timeSlice)
 	{
-		HandleGeneratedSignals();
+		HandleGeneratedSignals(timeSlice);
 		HandleRainSound();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private void HandleGeneratedSignals()
+	private void HandleGeneratedSignals(float timeSlice)
 	{
 		if (!m_SignalsManagerComponent)
 			return;
-		
-		float worldTime = GetGame().GetWorld().GetWorldTime();
-			
+					
 		foreach (SCR_SignalDefinition signalDefinition : m_aSignalDefinition)
-			m_SignalsManagerComponent.SetSignalValue(signalDefinition.m_iSignalIdx, signalDefinition.GetSignalValue(worldTime));
+			m_SignalsManagerComponent.SetSignalValue(signalDefinition.m_iSignalIdx, signalDefinition.GetSignalValue(timeSlice));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -87,6 +97,47 @@ class SCR_VehicleSoundComponent : VehicleSoundComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnInit(IEntity owner)
+	{
+		super.OnInit(owner);
+		
+		RegisterHitZoneSignals();
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	protected void RegisterHitZoneSignals()
+	{	
+		if (!m_SignalsManagerComponent)
+			return;
+		
+		SCR_HitZoneContainerComponent hitZoneContainerComponent = SCR_HitZoneContainerComponent.Cast(GetOwner().FindComponent(SCR_HitZoneContainerComponent));
+		if (!hitZoneContainerComponent)
+			return;
+		
+		array<ref SCR_HitZoneStateSignalData> hitZoneStateSignalData = GetHitZoneStateSignalData();
+		if (!hitZoneStateSignalData)
+			return;
+					
+		foreach(SCR_HitZoneStateSignalData data : hitZoneStateSignalData)
+		{		
+			SCR_HitZoneStateSignal hitZoneSignal = new SCR_HitZoneStateSignal;			
+			if (hitZoneSignal.RegisterSignal(hitZoneContainerComponent, data, m_SignalsManagerComponent))
+				m_aHitZoneStateSignal.Insert(hitZoneSignal);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UnregisterHitZoneSignals()
+	{				
+		foreach(SCR_HitZoneStateSignal hitZoneStateSignal : m_aHitZoneStateSignal)
+		{
+			hitZoneStateSignal.UnregisterSignal();
+		}
+		
+		m_aHitZoneStateSignal.Clear();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{	
 		m_SignalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
@@ -94,10 +145,7 @@ class SCR_VehicleSoundComponent : VehicleSoundComponent
 		if (m_SignalsManagerComponent)
 		{
 			foreach (SCR_SignalDefinition signalDefinition : m_aSignalDefinition)
-			{
 				signalDefinition.m_iSignalIdx = m_SignalsManagerComponent.AddOrFindSignal(signalDefinition.m_sSignalName);
-				signalDefinition.UpdateSignalPoint(owner.GetWorld().GetWorldTime());
-			}
 		}
 						
 		// Get Game Signals Manger
@@ -118,6 +166,7 @@ class SCR_VehicleSoundComponent : VehicleSoundComponent
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_VehicleSoundComponent()
 	{
+		UnregisterHitZoneSignals();
 	}
 
 };

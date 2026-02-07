@@ -1,259 +1,107 @@
-class LoginCallback : BackendCallback
-{
-	protected static int F2A_CODE = 422;
-	LoginDialogUI dialog;
-
-	//------------------------------------------------------------------------------------------------
-	override void OnSuccess(int code)
-	{
-		dialog.ShowLoadinAnim(false);
-		dialog.OnSuccess();
-		dialog.CloseDelayed();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnError( int code, int restCode, int apiCode )
-	{
-		dialog.ShowLoadinAnim(false);
-		if (restCode == F2A_CODE)
-			dialog.OnTwoFactorAuthentication();
-		else
-			dialog.ShowErrorMessage(code);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnTimeout()
-	{
-		dialog.ShowLoadinAnim(false);
-		dialog.ShowTimeoutMessage();
-	}
-};
-
 //------------------------------------------------------------------------------------------------
-class LogoutCallback : BackendCallback
+class SCR_LoginDialogUI : SCR_LoginProcessDialogUI
 {
-	LogoutDialogUI dialog;
-
-	//------------------------------------------------------------------------------------------------
-	override void OnSuccess(int code)
-	{
-		dialog.OnSuccess();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnError( int code, int restCode, int apiCode )
-	{
-		dialog.OnError();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnTimeout()
-	{
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-class LoginDialogUI: DialogUI
-{
-	ref LoginCallback m_LoginCallback = new LoginCallback();
-	SCR_EditBoxComponent m_UserName;
-	SCR_EditBoxComponent m_Password;
-	SCR_EditBoxComponent m_2FACode;
-	SCR_NavigationButtonComponent m_CreateAccount;
-	Widget m_PasswordSection;
-	Widget m_AuthCodeSection;
+	protected const string USERNAME_WIDGET = "UserName";
+	protected const string PASSWORD_WIDGET = "Password";
 	
-	Widget m_WarningText;
-	Widget m_CodeWarningText;
-	Widget m_wOverlay;
-	int m_iDelayMs = 500;
-	SCR_LoadingOverlay m_LoadingOverlay;
-
-	ref ScriptInvoker m_OnDialogClosed = new ScriptInvoker();
-	ref ScriptInvoker m_OnLogin = new ScriptInvoker();
+	protected SCR_EditBoxComponent m_UserName;
+	protected SCR_EditBoxComponent m_Password;
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen()
+	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
-		super.OnMenuOpen();
+		super.OnMenuOpen(preset);
 
 		// Load credentials
-		Widget w = GetRootWidget();
-		m_wOverlay = w.FindAnyWidget("Content");
 		string name = GetGame().GetBackendApi().GetCredentialsItem(EBackendCredentials.EBCRED_NAME);
-		m_UserName = SCR_EditBoxComponent.GetEditBoxComponent("UserName", w);
-		m_WarningText = w.FindAnyWidget("DialogWarning");
-		if (m_WarningText)
-			m_WarningText.SetVisible(false);
+		m_UserName = SCR_EditBoxComponent.GetEditBoxComponent(USERNAME_WIDGET, m_wRoot);
 		if (m_UserName)
 		{
 			m_UserName.SetValue(name);
-					m_UserName.m_OnChanged.Insert(CheckFilledEditboxes);
+			m_UserName.m_OnChanged.Insert(CheckFilledEditBoxes);
+
+			GetGame().GetWorkspace().SetFocusedWidget(m_UserName.GetRootWidget());
 		}
 
-		m_Password = SCR_EditBoxComponent.GetEditBoxComponent("Password", w);
+		m_Password = SCR_EditBoxComponent.GetEditBoxComponent(PASSWORD_WIDGET, m_wRoot);
 		if (m_Password)
-					m_Password.m_OnChanged.Insert(CheckFilledEditboxes);
+			m_Password.m_OnChanged.Insert(CheckFilledEditBoxes);
 
-		m_CreateAccount = SCR_NavigationButtonComponent.GetNavigationButtonComponent("CreateAccount", w);
-		if (m_CreateAccount)
-			m_CreateAccount.m_OnActivated.Insert(OnCreateAccount);
-
-		m_CodeWarningText = w.FindAnyWidget("CodeWarning");
-		if (m_CodeWarningText)
-			m_CodeWarningText.SetVisible(false);
-		
-		m_2FACode = SCR_EditBoxComponent.GetEditBoxComponent("Code", w);
-		if (m_2FACode)
-		{
-			m_2FACode.m_OnChanged.Insert(CheckFilledEditboxes);
-		}
-		
-		m_PasswordSection = w.FindAnyWidget("LoginAndPassword");
-		m_AuthCodeSection = w.FindAnyWidget("F2A");
-		if (m_PasswordSection)
-			m_PasswordSection.SetVisible(true);
-		if (m_AuthCodeSection)
-			m_AuthCodeSection.SetVisible(false);
-
-		CheckFilledEditboxes();
+		CheckFilledEditBoxes();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private void OnCreateAccount()
-	{
-		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_RegisterAccount"));
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnTwoFactorAuthentication()
-	{
-		if (m_AuthCodeSection.IsVisible())
-			m_2FACode.OnInvalidInput();
-		else
-			m_2FACode.SetValue(string.Empty);
-		
-		m_AuthCodeSection.SetVisible(true);
-		m_PasswordSection.SetVisible(false);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnMenuClose()
-	{
-		super.OnMenuClose();
-		ShowLoadinAnim(false);
-		m_OnDialogClosed.Invoke();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected void OnConfirm()
-	{
-		m_LoginCallback.dialog = this;
-
-		// Store credentials
-		if (m_WarningText)
-			m_WarningText.SetVisible(false);
-
-		if (m_UserName)
-		{
-			string name = m_UserName.GetValue();
-			GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_NAME,name);
-		}
-
-		if (m_Password)
-		{
-			string password = m_Password.GetValue();
-			GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_PWD,password);
-		}
-
-		// If there is a two factor authentication code, send it along other credentials
-		if (m_2FACode && !m_2FACode.GetValue().IsEmpty())
-			GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_2FA_TOKEN, m_2FACode.GetValue());
-
-		GetGame().GetBackendApi().VerifyCredentials(m_LoginCallback, true);
-		ShowLoadinAnim(true);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void CheckFilledEditboxes()
-	{
-		bool enabled = m_UserName.GetValue() != string.Empty && m_Password.GetValue() != string.Empty;
-		m_Confirm.SetEnabled(enabled);
-	}
-
-
-	//------------------------------------------------------------------------------------------------
-	void CloseDelayed()
-	{
-		GetGame().GetCallqueue().CallLater(CloseAnimated, m_iDelayMs);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ShowErrorMessage(int code)
-	{
-		Print("[LoginDialogUI] Login error", LogLevel.WARNING);
-		if (!m_WarningText)
+	override void OnConfirm()
+	{	
+		if (m_bIsLoading)
 			return;
-		m_WarningText.SetVisible(true);
-		m_CodeWarningText.SetVisible(true);
-		m_UserName.OnInvalidInput();
-		m_Password.OnInvalidInput();
+		
+		// Store credentials
+		if (m_UserName)
+			GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_NAME, m_UserName.GetValue());
+
+		if (m_Password)
+			GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_PWD, m_Password.GetValue());
+		
+		GetGame().GetBackendApi().VerifyCredentials(m_Callback, true);
+		
+		super.OnConfirm();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void ShowTimeoutMessage()
+	override void OnFail(SCR_BackendCallback callback, int code, int restCode, int apiCode)
 	{
-		Print("[LoginDialogUI] Login error - timeout", LogLevel.WARNING);
+		if (restCode == CODE_TWO_FA)
+		{
+			SCR_LoginProcessDialogUI.Create2FADialog(m_UserName.GetValue(), m_Password.GetValue());
+			Close();
+		}
+		else
+			super.OnFail(callback, code, restCode, apiCode);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	void OnSuccess()
+	override void ShowWarningMessage(bool show)
 	{
-		Print("[LoginDialogUI] Login succeeded", LogLevel.WARNING);
-		m_OnLogin.Invoke();
-	}
+		super.ShowWarningMessage(show);
 
-	//------------------------------------------------------------------------------------------------
-	void ShowLoadinAnim(bool show)
-	{
-		if (show && m_wOverlay)
-			 m_LoadingOverlay = SCR_LoadingOverlay.ShowForWidget(m_wOverlay, string.Empty, false, false);
-		else if (m_LoadingOverlay)
-			m_LoadingOverlay.HideAndDelete();
+		if (!show)
+			return;
+		
+		if (m_UserName)
+			m_UserName.OnInvalidInput();
+		
+		if (m_Password)
+			m_Password.OnInvalidInput();
 	}
-};
+	
+	//------------------------------------------------------------------------------------------------
+	void CheckFilledEditBoxes()
+	{
+		m_bForceConfirmButtonDisabled = m_UserName.GetValue().IsEmpty() || m_Password.GetValue().IsEmpty();
+		if (m_ConfirmButton)
+			m_ConfirmButton.SetEnabled(!m_bForceConfirmButtonDisabled && UpdateButtons());
+	}
+}
 
 //------------------------------------------------------------------------------------------------
-class LogoutDialogUI: DialogUI
+class SCR_LoginDialogConsoleUI : SCR_LoginDialogUI
 {
-	ref LogoutCallback m_LogoutCallback = new LogoutCallback();
-	Widget m_Warning;
-
+	protected const string OVERLAY_MAIN = "OverlayMain";
+	
+	protected OverlayWidget m_wOverlayMain; 
+	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen()
+	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
-		super.OnMenuOpen();
-
-		m_Warning = GetRootWidget().FindAnyWidget("Warning");
+		super.OnMenuOpen(preset);
+		
+		m_wOverlayMain = OverlayWidget.Cast(m_wRoot.FindAnyWidget(OVERLAY_MAIN));
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override protected void OnConfirm()
+	override OverlayWidget GetDialogBaseOverlay()
 	{
-		m_LogoutCallback.dialog = this;
-		GetGame().GetBackendApi().Unlink(m_LogoutCallback);
+		return m_wOverlayMain;
 	}
-
-
-	//------------------------------------------------------------------------------------------------
-	void OnSuccess()
-	{
-		Close();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnError()
-	{
-		m_Warning.SetOpacity(1);
-	}
-};
+}

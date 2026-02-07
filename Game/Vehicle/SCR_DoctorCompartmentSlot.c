@@ -7,5 +7,11 @@ class SCR_DoctorCompartmentSlot : CargoCompartmentSlot
 	bool AllowHealingFromCompartment()
 	{
 		return m_bAllowHealingFromCompartment;
-	}	
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	override ECompartmentType GetType()
+	{
+		return ECompartmentType.Cargo;
+	}
 };

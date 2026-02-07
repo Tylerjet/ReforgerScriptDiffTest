@@ -1,788 +1,120 @@
-// #define _ALLOW_FOREST_REGENERATION
-//------------------------------------------------------------------------------------------------
-class ForestGeneratorPointData : ShapePointDataScriptBase
-{
-	[Attribute("1", UIWidgets.CheckBox, "Generate the middle outline along this line?")]
-	bool m_bMiddleOutline;
-
-	[Attribute("1", UIWidgets.CheckBox, "Generate the small outline along this line?")]
-	bool m_bSmallOutline;
-};
-
-//------------------------------------------------------------------------------------------------
-class ForestGeneratorPoint
-{
-	vector m_vPos;
-	float m_fMinAngle;
-	float m_fMaxAngle;
-	float m_fAngle;
-	bool m_bSmallOutline = true;
-	bool m_bMiddleOutline = true;
-	ref ForestGeneratorLine m_Line1;
-	ref ForestGeneratorLine m_Line2;
-};
-
-//------------------------------------------------------------------------------------------------
-class ForestGeneratorLine
-{
-	ref ForestGeneratorPoint p1 = new ForestGeneratorPoint();
-	ref ForestGeneratorPoint p2 = new ForestGeneratorPoint();
-	float m_fLength;
-};
-
-//------------------------------------------------------------------------------------------------
-enum TreeType
-{
-	TOP,
-	BOTTOM,
-	MOUTLINE,
-	SOUTLINE,
-	CLUSTER,
-	COUNT,
-};
-
-//------------------------------------------------------------------------------------------------
-enum ForestGeneratorClusterType
-{
-	CIRCLE = 0,
-	STRIP = 1,
-};
-
-//------------------------------------------------------------------------------------------------
-enum ForestGeneratorLevelType
-{
-	TOP = 0,
-	BOTTOM = 1,
-	OUTLINE = 2,
-};
-
-//------------------------------------------------------------------------------------------------
-enum ForestGeneratorOutlineType
-{
-	SMALL = 0,
-	MIDDLE = 1,
-};
-
-//------------------------------------------------------------------------------------------------
-class ForestGeneratorRectangle
-{
-	ref ForestGeneratorLine m_Line1 = new ForestGeneratorLine();
-	ref ForestGeneratorLine m_Line2 = new ForestGeneratorLine();
-	ref ForestGeneratorLine m_Line3 = new ForestGeneratorLine();
-	ref ForestGeneratorLine m_Line4 = new ForestGeneratorLine();
-	ref array<ForestGeneratorLine> m_aLines = {}; // outline lines that intersect this rectangle
-	ref array<vector> m_aPoints = {}; // points of this rectangle
-	ref array<IEntitySource> m_aPresentRoadShapes = {};
-	float m_fWidth;
-	float m_fLength;
-	float m_fArea;
-	int m_iX;
-	int m_iY;
-
-	//------------------------------------------------------------------------------------------------
-	void GetBounds(out vector mins, out vector maxs)
-	{
-		array<vector> points = {};
-		points.Insert(m_Line1.p1.m_vPos);
-		points.Insert(m_Line1.p2.m_vPos);
-		points.Insert(m_Line2.p2.m_vPos);
-		points.Insert(m_Line3.p2.m_vPos);
-		float minX = float.MAX;
-		float maxX = -float.MAX;
-		float minZ = float.MAX;
-		float maxZ = -float.MAX;
-
-		foreach (vector point : points)
-		{
-			if (point[0] < minX)
-				minX = point[0];
-
-			if (point[0] > maxX)
-				maxX = point[0];
-
-			if (point[2] < minZ)
-				minZ = point[2];
-
-			if (point[2] > maxZ)
-				maxZ = point[2];
-		}
-
-		mins[0] = minX;
-		mins[2] = minZ;
-		maxs[0] = maxX;
-		maxs[2] = maxZ;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	bool IsPointIn(float x, float y)
-	{
-		float startX = m_Line1.p1.m_vPos[0];
-		float startY = m_Line1.p1.m_vPos[2];
-
-		return
-			x > startX &&
-			x < startX + m_fWidth &&
-			y > startY &&
-			y < startY + m_fLength;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class ForestGeneratorLevel
-{
-	[Attribute(uiwidget: UIWidgets.Object, desc: "Tree groups to spawn in this forest generator level")]
-	ref array<ref TreeGroupClass> m_aTreeGroups;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Generate this level?")]
-	bool m_bGenerate;
-
-	[Attribute(defvalue: "1", desc: "How many trees per hectare should be generated.", uiwidget: UIWidgets.SpinBox)]
-	float m_fDensity;
-
-	ForestGeneratorLevelType m_Type;
-	ref array<float> m_aGroupProbas = {};
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class ForestGeneratorOutline : ForestGeneratorLevel
-{
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "How separated are the tree groups?")]
-	float m_fClusterStrength;
-
-	[Attribute(defvalue: "15", uiwidget: UIWidgets.SpinBox, desc: "In what radius should trees around be taken into count for clusters?")]
-	float m_fClusterRadius;
-
-	[Attribute("0", UIWidgets.ComboBox,enums: { ParamEnum("Small", "0"), ParamEnum("Middle", "1") }, desc: "Which type of outline is this?")]
-	ForestGeneratorOutlineType m_OutlineType;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Minimal distance from spline.")]
-	float m_fMinDistance;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Maximal distance from spline.")]
-	float m_fMaxDistance;
-
-	//------------------------------------------------------------------------------------------------
-	void ForestGeneratorOutline()
-	{
-		m_Type = ForestGeneratorLevelType.OUTLINE;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class ForestGeneratorTopLevel : ForestGeneratorLevel
-{
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "How separated are the tree groups?")]
-	float m_fClusterStrength;
-
-	[Attribute(defvalue: "15", uiwidget: UIWidgets.SpinBox, desc: "In what radius should trees around be taken into count for clusters?")]
-	float m_fClusterRadius;
-
-	//------------------------------------------------------------------------------------------------
-	void ForestGeneratorTopLevel()
-	{
-		m_Type = ForestGeneratorLevelType.TOP;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class ForestGeneratorBottomLevel : ForestGeneratorLevel
-{
-	void ForestGeneratorBottomLevel()
-	{
-		m_Type = ForestGeneratorLevelType.BOTTOM;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class FallenTree : ForestGeneratorTree
-{
-	[Attribute(desc: "Capsule start, defines offset from the pivot of the object, serves for collision detection")]
-	vector m_CapsuleStartInEditor;
-
-	[ForestGeneratorCapsuleStartAttribute()]
-	vector m_CapsuleStart;
-
-	[Attribute(desc: "Capsule end, defines offset from the pivot of the object, serves for collision detection")]
-	vector m_CapsuleEndInEditor;
-
-	[ForestGeneratorCapsuleEndAttribute()]
-	vector m_CapsuleEnd;
-
-	[Attribute(defvalue: "1", desc: "This overrides the setting from template library!")]
-	bool m_bAlignToNormal;
-
-	float m_fYaw = 0;
-	protected float m_fMinDistanceFromLine = -1;
-
-	//------------------------------------------------------------------------------------------------
-	void Rotate()
-	{
-		// vector yawDirection = vector.YawToVector(yaw);
-		// yawDirection = Vector(-yawDirection[0], 0, yawDirection[1]); // convert from Enforce to Enfusion format
-		m_CapsuleStart = Rotate2D(m_CapsuleStartInEditor * m_fScale, Math.DEG2RAD * m_fYaw);
-		m_CapsuleEnd = Rotate2D(m_CapsuleEndInEditor * m_fScale, Math.DEG2RAD * m_fYaw);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	vector Rotate2D(vector vec, float rads)
-	{
-		float sin = Math.Sin(rads);
-		float cos = Math.Cos(rads);
-
-		return Vector(
-			vec[0] * cos - vec[2] * sin,
-			0,
-			vec[0] * sin + vec[2] * cos);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetMinDistanceFromLine()
-	{
-		if (m_fMinDistanceFromLine != -1)
-			return m_fMinDistanceFromLine;
-
-		float distance = m_CapsuleStart.Length();
-		if (distance > m_fMinDistanceFromLine)
-			m_fMinDistanceFromLine = distance;
-
-		distance = m_CapsuleEnd.Length();
-		if (distance > m_fMinDistanceFromLine)
-			m_fMinDistanceFromLine = distance;
-
-		return m_fMinDistanceFromLine;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void CopyValues(notnull FallenTree newObject)
-	{
-		super.CopyValues(newObject);
-
-		newObject.m_bAlignToNormal = m_bAlignToNormal;
-		newObject.m_CapsuleStartInEditor = m_CapsuleStartInEditor;
-		newObject.m_CapsuleEndInEditor = m_CapsuleEndInEditor;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override ForestGeneratorTreeBase Copy()
-	{
-		FallenTree newObject = new FallenTree();
-		CopyValues(newObject);
-		return newObject;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class ForestGeneratorTree : SCR_ForestGeneratorTreeBase
-{
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Weight of this object for clusters?")]
-	float m_fWeight;
-
-	int m_iDebugGroupIndex;
-
-	//------------------------------------------------------------------------------------------------
-	void CopyValues(notnull ForestGeneratorTree newObject)
-	{
-		super.CopyValues(newObject);
-
-		newObject.m_fWeight = m_fWeight;
-		newObject.m_iDebugGroupIndex = m_iDebugGroupIndex;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override ForestGeneratorTreeBase Copy()
-	{
-		ForestGeneratorTree newObject = new ForestGeneratorTree();
-		CopyValues(newObject);
-		return newObject;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class ForestGeneratorTreeShort : ForestGeneratorTree
-{
-	//------------------------------------------------------------------------------------------------
-	override void AdjustScale()
-	{
-		m_fBotDistance *= m_fScale;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class ForestGeneratorTreeMiddle : ForestGeneratorTree
-{
-	[Attribute(defvalue: "5", uiwidget: UIWidgets.SpinBox, "Minimum required radius in the middle layer for this object to spawn"), ForestGeneratorDistaceAttribute(DistanceType.MID)]
-	float m_fMidDistance;
-
-	//------------------------------------------------------------------------------------------------
-	override void AdjustScale()
-	{
-		m_fBotDistance *= m_fScale;
-		m_fMidDistance *= m_fScale;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void CopyValues(notnull ForestGeneratorTreeMiddle newObject)
-	{
-		super.CopyValues(newObject);
-
-		newObject.m_fMidDistance = m_fMidDistance;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override ForestGeneratorTreeBase Copy()
-	{
-		ForestGeneratorTreeMiddle newObject = new ForestGeneratorTreeMiddle();
-		CopyValues(newObject);
-		return newObject;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class ForestGeneratorTreeTall : ForestGeneratorTree
-{
-	[Attribute(defvalue: "5", uiwidget: UIWidgets.SpinBox, "Minimum required radius in the middle layer for this object to spawn"), ForestGeneratorDistaceAttribute(DistanceType.MID)]
-	float m_fMidDistance;
-
-	[Attribute(defvalue: "10", uiwidget: UIWidgets.SpinBox, "Minimum required radius in the top layer for this object to spawn"), ForestGeneratorDistaceAttribute(DistanceType.TOP)]
-	float m_fTopDistance;
-
-	//------------------------------------------------------------------------------------------------
-	override void AdjustScale()
-	{
-		m_fBotDistance *= m_fScale;
-		m_fMidDistance *= m_fScale;
-		m_fTopDistance *= m_fScale;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void CopyValues(notnull ForestGeneratorTreeTall newObject)
-	{
-		super.CopyValues(newObject);
-
-		newObject.m_fMidDistance = m_fMidDistance;
-		newObject.m_fTopDistance = m_fTopDistance;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override ForestGeneratorTreeBase Copy()
-	{
-		ForestGeneratorTreeTall newObject = new ForestGeneratorTreeTall();
-		CopyValues(newObject);
-		return newObject;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class ForestGeneratorCluster
-{
-	[Attribute(defvalue: "", uiwidget: UIWidgets.Object, desc: "Define which tree groups should spawn in this cluster.")]
-	ref array<ref SmallForestGeneratorClusterObject> m_aObjects;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "The minimum density of the filling in number of clusters for hectare.")]
-	float m_fMinCDENSHA;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "The maximum density of the filling in number of clusters for hectare.")]
-	float m_fMaxCDENSHA;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Generate this cluster?")]
-	bool m_bGenerate;
-
-	protected ForestGeneratorClusterType m_eType;
-
-	//------------------------------------------------------------------------------------------------
-	ForestGeneratorClusterType GetClusterType()
-	{
-		return m_eType;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class ForestGeneratorCircleCluster : ForestGeneratorCluster
-{
-	float m_fRadius = 0;
-
-	//------------------------------------------------------------------------------------------------
-	void ForestGeneratorCircleCluster()
-	{
-		foreach (SmallForestGeneratorClusterObject object : m_aObjects)
-		{
-			if (object.m_fMinRadius > m_fRadius)
-				m_fRadius = object.m_fMinRadius;
-
-			if (object.m_fMaxRadius > m_fRadius)
-				m_fRadius = object.m_fMaxRadius;
-		}
-
-		m_eType = ForestGeneratorClusterType.CIRCLE;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class ForestGeneratorStripCluster : ForestGeneratorCluster
-{
-	[Attribute(defvalue: "10", uiwidget: UIWidgets.SpinBox, desc: "Offset that is applied to generated objects to avoid seeing the exact shape of the curve. [m]")]
-	float m_fMaxXOffset;
-
-	[Attribute(defvalue: "10", uiwidget: UIWidgets.SpinBox, desc: "Offset that is applied to generated objects to avoid seeing the exact shape of the curve. [m]")]
-	float m_fMaxYOffset;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Defines how many times should the curve repeat for this strip.")]
-	float m_fFrequency;
-
-	[Attribute(defvalue: "10", uiwidget: UIWidgets.SpinBox, desc: "Defines the maximum extent of the curve. [m]")]
-	float m_fAmplitude;
-
-	float m_fRadius = 0;
-
-	//------------------------------------------------------------------------------------------------
-	void ForestGeneratorStripCluster()
-	{
-		foreach (SmallForestGeneratorClusterObject object : m_aObjects)
-		{
-			if (object.m_fMinRadius > m_fRadius)
-				m_fRadius = object.m_fMinRadius;
-
-			if (object.m_fMaxRadius > m_fRadius)
-				m_fRadius = object.m_fMaxRadius;
-		}
-
-		m_eType = ForestGeneratorClusterType.STRIP;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class WideForestGeneratorClusterObject : SmallForestGeneratorClusterObject
-{
-	[Attribute(desc: "Capsule start, defines offset from the pivot of the object, serves for collision detection")]
-	vector m_CapsuleStartInEditor;
-
-	[ForestGeneratorCapsuleStartAttribute()]
-	vector m_CapsuleStart;
-
-	[Attribute(desc: "Capsule end, defines offset from the pivot of the object, serves for collision detection")]
-	vector m_CapsuleEndInEditor;
-
-	[ForestGeneratorCapsuleEndAttribute()]
-	vector m_CapsuleEnd;
-
-	[Attribute(defvalue: "1", desc: "This overrides the setting from template library!")]
-	bool m_bAlignToNormal;
-
-	float m_fYaw = 0;
-	protected float m_fMinDistanceFromLine = -1;
-
-	//------------------------------------------------------------------------------------------------
-	void Rotate()
-	{
-		m_CapsuleStart = Rotate2D(m_CapsuleStartInEditor * m_fScale, Math.DEG2RAD * m_fYaw);
-		m_CapsuleEnd = Rotate2D(m_CapsuleEndInEditor * m_fScale, Math.DEG2RAD * m_fYaw);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	vector Rotate2D(vector vec, float rads)
-	{
-		float sin = Math.Sin(rads);
-		float cos = Math.Cos(rads);
-
-		return Vector(
-			vec[0] * cos - vec[2] * sin,
-			0,
-			vec[0] * sin + vec[2] * cos);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetMinDistanceFromLine()
-	{
-		if (m_fMinDistanceFromLine != -1)
-			return m_fMinDistanceFromLine;
-
-		float distance = m_CapsuleStart.Length();
-		if (distance > m_fMinDistanceFromLine)
-			m_fMinDistanceFromLine = distance;
-
-		distance = m_CapsuleEnd.Length();
-		if (distance > m_fMinDistanceFromLine)
-			m_fMinDistanceFromLine = distance;
-
-		return m_fMinDistanceFromLine;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void CopyValues(notnull WideForestGeneratorClusterObject newObject)
-	{
-		super.CopyValues(newObject);
-
-		newObject.m_bAlignToNormal = m_bAlignToNormal;
-		newObject.m_CapsuleStartInEditor = m_CapsuleStartInEditor;
-		newObject.m_CapsuleEndInEditor = m_CapsuleEndInEditor;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override ForestGeneratorTreeBase Copy()
-	{
-		WideForestGeneratorClusterObject newObject = new WideForestGeneratorClusterObject();
-		CopyValues(newObject);
-		return newObject;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class SmallForestGeneratorClusterObject : SCR_ForestGeneratorTreeBase
-{
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Minimum count of this object to spawn")];
-	int m_iMinCount;
-
-	[Attribute(defvalue: "2", uiwidget: UIWidgets.SpinBox, desc: "Maximum count of this object to spawn")];
-	int m_iMaxCount;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Minimum distance of this object from the center of this cluster")]
-	float m_fMinRadius;
-
-	[Attribute(defvalue: "2", uiwidget: UIWidgets.SpinBox, desc: "Maximum distance of this object from the center of this cluster")]
-	float m_fMaxRadius;
-
-	//------------------------------------------------------------------------------------------------
-	override void AdjustScale()
-	{
-		m_fBotDistance *= m_fScale;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void CopyValues(notnull SmallForestGeneratorClusterObject newObject)
-	{
-		super.CopyValues(newObject);
-
-		newObject.m_iMinCount = m_iMinCount;
-		newObject.m_iMaxCount = m_iMaxCount;
-		newObject.m_fMinRadius = m_fMinRadius;
-		newObject.m_fMaxRadius = m_fMaxRadius;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override ForestGeneratorTreeBase Copy()
-	{
-		SmallForestGeneratorClusterObject newObject = new SmallForestGeneratorClusterObject();
-		CopyValues(newObject);
-		return newObject;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class MiddleForestGeneratorClusterObject : SmallForestGeneratorClusterObject
-{
-	[Attribute(defvalue: "5", uiwidget: UIWidgets.SpinBox, "Minimum required radius in the middle layer for this object to spawn"), ForestGeneratorDistaceAttribute(DistanceType.MID)]
-	float m_fMidDistance;
-
-	//------------------------------------------------------------------------------------------------
-	override void AdjustScale()
-	{
-		m_fBotDistance *= m_fScale;
-		m_fMidDistance *= m_fScale;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void CopyValues(notnull MiddleForestGeneratorClusterObject newObject)
-	{
-		super.CopyValues(newObject);
-
-		newObject.m_fMidDistance = m_fMidDistance;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override ForestGeneratorTreeBase Copy()
-	{
-		MiddleForestGeneratorClusterObject newObject = new MiddleForestGeneratorClusterObject();
-		CopyValues(newObject);
-		return newObject;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class BigForestGeneratorClusterObject : MiddleForestGeneratorClusterObject
-{
-	[Attribute(defvalue: "10", uiwidget: UIWidgets.SpinBox, "Minimum required radius in the top layer for this object to spawn"), ForestGeneratorDistaceAttribute(DistanceType.TOP)]
-	float m_fTopDistance;
-
-	//------------------------------------------------------------------------------------------------
-	override void AdjustScale()
-	{
-		m_fBotDistance *= m_fScale;
-		m_fMidDistance *= m_fScale;
-		m_fTopDistance *= m_fScale;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void CopyValues(notnull BigForestGeneratorClusterObject newObject)
-	{
-		super.CopyValues(newObject);
-		newObject.m_fTopDistance = m_fTopDistance;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override ForestGeneratorTreeBase Copy()
-	{
-		BigForestGeneratorClusterObject newObject = new BigForestGeneratorClusterObject();
-		CopyValues(newObject);
-		return newObject;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
-class TreeGroupClass
-{
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Weight of this group")]
-	float m_fWeight;
-
-	[Attribute(uiwidget: UIWidgets.Object, params: "noDetails")]
-	ref array<ref ForestGeneratorTree> m_aTrees;
-};
-
-//------------------------------------------------------------------------------------------------
-class AAB : Managed
-{
-	vector m_vMin;
-	vector m_vMax;
-	float m_fWidth; // X-axis
-	float m_fDepth; // Z-axis
-
-	//------------------------------------------------------------------------------------------------
-	void AAB()
-	{
-		m_vMin = { float.MAX, float.MAX, float.MAX };
-		m_vMax = { -float.MAX, -float.MAX, -float.MAX };
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void Add(vector value)
-	{
-		for (int i = 0; i < 3; ++i)
-		{
-			m_vMin[i] = Math.Min(m_vMin[i], value[i]);
-			m_vMax[i] = Math.Max(m_vMax[i], value[i]);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	vector GetSize()
-	{
-		return Vector(
-			m_vMax[0] - m_vMin[0],
-			m_vMax[1] - m_vMin[1],
-			m_vMax[2] - m_vMin[2]);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	bool DetectCollision2D(AAB other)
-	{
-		return
-			m_vMin[0] < other.m_vMin[0] + other.m_fWidth &&
-			m_vMin[0] + m_fWidth > other.m_vMin[0] &&
-			m_vMin[2] < other.m_vMin[2] + other.m_fDepth &&
-			m_vMin[2] + m_fDepth > other.m_vMin[2];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static AAB MakeFromPoints(array<vector> points)
-	{
-		AAB bb = new AAB();
-		foreach (vector v : points)
-		{
-			bb.Add(v);
-		}
-		bb.m_fWidth = bb.m_vMax[0] - bb.m_vMin[0];
-		bb.m_fDepth = bb.m_vMax[2] - bb.m_vMin[2];
-		return bb;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameLib/Scripted/Generator", description: "ForestGeneratorEntity", dynamicBox: true, visible: false)]
-class ForestGeneratorEntityClass : SCR_GeneratorBaseEntityClass
+class ForestGeneratorEntityClass : SCR_AreaGeneratorBaseEntityClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
-class ForestGeneratorEntity : SCR_GeneratorBaseEntity
+//! A Forest Generator uses the following data:
+//! - Levels (Top trees, Middle trees, Outlines)
+//! - Clusters (Circles, Strips)
+//! These are loaded, processed (data check)
+//! Then trees are "generated" in a grid, managed C++ side
+//! Finally, the grid is used to create entities
+class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 {
-	// General
-	[Attribute(defvalue: "42", uiwidget: UIWidgets.SpinBox, desc: "Seed used by the random generator of this forest generator", category: "General")]
+	/*
+		Generation
+	*/
+
+	[Attribute(defvalue: "42", category: "Generation", desc: "Seed used by the random generator of this forest generator")]
 	protected int m_iSeed;
 
-	// Debug
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, category: "Debug", desc: "Print the area of this forest generator polygon?")]
+	[Attribute(defvalue: "1", category: "Generation", desc: "Allow partial forest regeneration, regenerates the whole forest otherwise")]
+	protected bool m_bAllowPartialRegeneration;
+
+	[Attribute(defvalue: "0", category: "Generation", desc: "Click to regenerate the entire forest")]
+	protected bool m_bRegenerateEntireForest; //!< not saved to layer (see _WB_OnKeyChanged), used as a button
+
+#ifdef COUNTENTRIES_BENCHMARK
+	[Attribute(defvalue: "1", category: "Generation", desc: "")]
+	protected bool m_bUseCountEntriesAround;
+#endif // COUNTENTRIES_BENCHMARK
+
+	/*
+		Debug
+	*/
+
+	[Attribute(defvalue: "0", category: "Debug", desc: "Print the area of the forest generator polygon")]
 	protected bool m_bPrintArea;
 
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, category: "Debug", desc: "Draw debug shapes of objects spawned by this forest generator?")]
-	protected bool m_bDrawDebugShapes;
-
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, category: "Debug", desc: "Draw debug shapes of rectangulation for this forest generator?")]
-	protected bool m_bDrawDebugShapesRectangulation;
-
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, category: "Debug", desc: "Print the count of entities spawned by this forest generator?")]
+	[Attribute(defvalue: "0", category: "Debug", desc: "Print the count of entities spawned by this forest generator")]
 	protected bool m_bPrintEntitiesCount;
 
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, category: "Debug", desc: "Generate forest when something changed?")]
-	protected bool m_bGenerateForest;
+	[Attribute(defvalue: "0", category: "Debug", desc: "Print advanced performance measurements")]
+	protected bool m_bPrintPerformanceDetails;
 
-	[Attribute(defvalue: "", uiwidget: UIWidgets.Object, desc: "Forest generator levels to spawn in this forest generator polygon")]
+	[Attribute(defvalue: "0", category: "Debug", desc: "Draw general debug shapes")]
+	protected bool m_bDrawDebugShapes;
+
+	[Attribute(defvalue: "0", category: "Debug", desc: "Draw obstacles debug shapes")]
+	protected bool m_bDrawDebugShapesObstacles;
+
+	[Attribute(defvalue: "0", category: "Debug", desc: "Draw rectangulation debug shapes")]
+	protected bool m_bDrawDebugShapesRectangulation;
+
+	[Attribute(defvalue: "0", category: "Debug", desc: "Draw partial regeneration debug shapes")]
+	protected bool m_bDrawDebugShapesRegeneration;
+
+	[Attribute(defvalue: "1", category: "Debug", desc: "Make entities follow terrain level on shape move (keeping their relative Y)")]
+	protected bool m_bEntitiesFollowTerrainOnShapeMove;
+
+	/*
+		Forest
+	*/
+
+	[Attribute(defvalue: "", category: "Forest", desc: "Forest generator levels to spawn in this forest generator polygon")]
 	protected ref array<ref ForestGeneratorLevel> m_aLevels;
 
-	[Attribute(defvalue: "", uiwidget: UIWidgets.Object, params: "noDetails", desc: "Forest generator clusters to spawn in this forest generator polygon")]
+	[Attribute(defvalue: "", category: "Forest", desc: "Forest generator clusters to spawn in this forest generator polygon", params: "noDetails")]
 	protected ref array<ref ForestGeneratorCluster> m_aClusters;
 
-	// Obstacles
-#ifdef _ALLOW_FOREST_REGENERATION
-	[Attribute(defvalue: "0", desc: "Regenerates the forest if a road or power line spline is changed inside the forest", category: "Obstacles")]
-	protected bool m_bAllowRegenerationByNearbyChanges;
-#endif
+	[Attribute(defvalue: "", category: "Forest", desc: "Curve defining general outline scaling; from inside (left, forest core) to outside (right, forest outline)", uiwidget: UIWidgets.GraphDialog, params: "100 " + (SCALE_CURVE_MAX_VALUE - SCALE_CURVE_MIN_VALUE) + " 0 " + SCALE_CURVE_MIN_VALUE)]
+	protected ref Curve m_aGlobalOutlineScaleCurve;
 
-	//------------------------------------------------------------------------------------------------
+	[Attribute(defvalue: "0", category: "Forest", desc: "Distance from shape over which the scaling occurs", uiwidget: UIWidgets.Slider, params: "0 100 0.1")]
+	protected float m_fGlobalOutlineScaleCurveDistance;
+
+	protected static const float SCALE_CURVE_MAX_VALUE = 1;
+	protected static const float SCALE_CURVE_MIN_VALUE = 0;
+
+#ifdef WORKBENCH
+
 	protected ref ForestGeneratorGrid m_Grid;
 	protected ref RandomGenerator m_RandomGenerator;
-	protected ref array<ref Shape> m_aDebugShapes;
-	protected ref array<ref Shape> m_aDebugShapesRectangulation;
-	protected ref array<ref ForestGeneratorPoint> m_aPoints = {};
-	protected ref array<ref ForestGeneratorLine> m_aLines = {};
-	protected ref array<ref ForestGeneratorPoint> m_aMiddleOutlinePoints = {};
-	protected ref array<ref ForestGeneratorLine> m_aSmallOutlineLines = {};
-	protected ref array<ref ForestGeneratorPoint> m_aSmallOutlinePoints = {};
-	protected ref array<ref ForestGeneratorLine> m_aMiddleOutlineLines = {};
-	protected ref array<ref ForestGeneratorRectangle> m_aRectangles = {};
-	protected ref array<ref ForestGeneratorRectangle> m_aOutlineRectangles = {};
-	protected ref array<ref ForestGeneratorRectangle> m_aNonOutlineRectangles = {};
-	protected ref array<ref ForestGeneratorTreeBase> m_aGridEntries = {};
+	protected ref array<vector> m_aShapePoints; // used by Level scale curves
+
+	protected ref array<ref SCR_ForestGeneratorLine> m_aLines = {};
+	protected ref array<ref SCR_ForestGeneratorPoint> m_aMiddleOutlinePoints = {};
+	protected ref array<ref SCR_ForestGeneratorLine> m_aSmallOutlineLines = {};
+	protected ref array<ref SCR_ForestGeneratorPoint> m_aSmallOutlinePoints = {};
+	protected ref array<ref SCR_ForestGeneratorLine> m_aMiddleOutlineLines = {};
+	protected ref array<ref SCR_ForestGeneratorRectangle> m_aRectangles = {};
+	protected ref array<ref SCR_ForestGeneratorRectangle> m_aOutlineRectangles = {};
+	protected ref array<ref SCR_ForestGeneratorRectangle> m_aNonOutlineRectangles = {};
+	protected ref array<ref ForestGeneratorTreeBase> m_aGridEntries = {}; // only used to keep references for the grid, unused otherwise
 
 	protected ref array<ref ForestGeneratorOutline> m_aOutlines = {};
+	protected float m_fMaxOutlinesWidth;
+	protected float m_fArea;
 
-	protected float m_fOutlinesWidth = 0; // max outline width
-	protected bool m_bGeneratedForest = false;
+	protected ref map<IEntitySource, float> m_mEntitySourceATLHeights;
 
-	protected float m_fArea = 0;
+	protected static ref array<float> s_aPreviousPoints2D;
+	protected static ref SCR_TimeMeasurementHelper s_Benchmark;
 
-	protected IEntity m_QueriedEntity;
-	protected ref array<IEntity> m_aGeneratedEntities = {};
+	// debug shapes info
+	protected static ref SCR_DebugShapeManager s_DebugShapeManager; // static to only have one debugged forest at a time
 
+	protected static const int REGENERATION_DELETION_COLOUR = Color.RED;
+	protected static const int REGENERATION_CREATION_COLOUR = Color.GREEN;
+	protected static const vector DEBUG_VERTICAL_LINE = "0 30 0";
+
+	protected static const float RECTANGULATION_SIZE = 50; // 50x50m rectangles - TODO: find a smart calculation?
 	protected static const float HECTARE_CONVERSION_FACTOR = 0.0001; // x/10000
+	protected static const float MIN_POSSIBLE_SCALE_VALUE = 0.001; // 1/1000 is a small enough tree scale
+	protected static const string POINTDATA_CLASSNAME = ((typename)ForestGeneratorPointData).ToString();
 
 	//------------------------------------------------------------------------------------------------
-	bool OnLine(ForestGeneratorLine line, ForestGeneratorPoint point)
+	protected bool OnLine(SCR_ForestGeneratorLine line, SCR_ForestGeneratorPoint point)
 	{
 		float a = Math.Max(line.p1.m_vPos[0], line.p2.m_vPos[0]);
 		float b = Math.Min(line.p1.m_vPos[0], line.p2.m_vPos[0]);
@@ -798,9 +130,12 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 
 	//------------------------------------------------------------------------------------------------
 	//! \return 0 for colinear, 2 for counter-clockwise, 1 for clockwise
-	int Direction(ForestGeneratorPoint a, ForestGeneratorPoint b, ForestGeneratorPoint c)
+	protected int Direction(SCR_ForestGeneratorPoint a, SCR_ForestGeneratorPoint b, SCR_ForestGeneratorPoint c)
 	{
-		int val = (b.m_vPos[2] - a.m_vPos[2]) * (c.m_vPos[0] - b.m_vPos[0]) - (b.m_vPos[0] - a.m_vPos[0]) * (c.m_vPos[2] - b.m_vPos[2]);
+		int val =
+			(b.m_vPos[2] - a.m_vPos[2]) * (c.m_vPos[0] - b.m_vPos[0]) -
+			(b.m_vPos[0] - a.m_vPos[0]) * (c.m_vPos[2] - b.m_vPos[2]);
+
 		if (val == 0)
 			return 0; // colinear
 
@@ -811,7 +146,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool IsIntersect(ForestGeneratorLine line1, ForestGeneratorLine line2)
+	protected bool IsIntersect(SCR_ForestGeneratorLine line1, SCR_ForestGeneratorLine line2)
 	{
 		// four Direction for two lines and points of other line
 		int dir1 = Direction(line1.p1, line1.p2, line2.p1);
@@ -828,7 +163,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool IsIntersect(ForestGeneratorLine line, ForestGeneratorRectangle rectangle)
+	protected bool IsIntersect(SCR_ForestGeneratorLine line, SCR_ForestGeneratorRectangle rectangle)
 	{
 		return
 			IsIntersect(line, rectangle.m_Line1) ||
@@ -837,174 +172,125 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 			IsIntersect(line, rectangle.m_Line4);
 	}
 
-#ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
-	bool PreprocessTreeArr(array<ref ForestGeneratorTree> trees, int groupIdx, TreeType type, int debugGroupIdx)
+	protected bool PreprocessTreeArray(notnull array<ref ForestGeneratorTree> trees, int groupIdx, SCR_ETreeType type, int debugGroupIdx)
 	{
+		ForestGeneratorTree tree;
 		float probaSum = 0;
-		bool isAnyTreeValid = false;
 		for (int i = trees.Count() - 1; i >= 0; --i)
 		{
-			if (trees[i].m_Prefab.Length() == 0 || trees[i].m_fWeight <= 0)
+			tree = trees[i];
+			if (tree.m_fWeight <= 0 || tree.m_Prefab.IsEmpty())
 			{
 				trees.RemoveOrdered(i);
 			}
 			else
 			{
-				probaSum += trees[i].m_fWeight;
-				trees[i].m_iGroupIndex = groupIdx;
-				trees[i].m_Type = type;
-				isAnyTreeValid = true;
+				probaSum += tree.m_fWeight;
+				tree.m_iGroupIndex = groupIdx;
+				tree.m_eType = type;
 			}
 		}
 
 		if (probaSum > 0)
 		{
-			for (int i = 0, count = trees.Count(); i < count; ++i)
+			foreach (ForestGeneratorTree tree2 : trees)
 			{
-				trees[i].m_fWeight = trees[i].m_fWeight / probaSum;
+				tree2.m_fWeight = tree2.m_fWeight / probaSum;
 			}
 		}
 
-		return isAnyTreeValid;
+		return !trees.IsEmpty();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void PreprocessAllTrees()
 	{
-		int groupIdx = 0;
-		int groupProbaSum = 0;
 		int debugGroupIdx = 0;
-		int count = m_aLevels.Count();
-		for (int i = 0; i < count; i++)
-		{
-			groupIdx = 0;
-			groupProbaSum = 0;
-			ForestGeneratorLevel level = m_aLevels[i];
-			ForestGeneratorLevelType type = level.m_Type;
-			level.m_aGroupProbas = {};
-
-			if (type == ForestGeneratorLevelType.BOTTOM)
-			{
-					for (int y = 0, groupCount = level.m_aTreeGroups.Count(); y < groupCount; y++)
-					{
-						PreprocessTreeArr(level.m_aTreeGroups[y].m_aTrees, 0, TreeType.BOTTOM, debugGroupIdx);
-					}
-			}
-			else
-			{
-				for (int x = 0; x < level.m_aTreeGroups.Count();)
-				{
-					if (level.m_aTreeGroups[x].m_fWeight > 0 &&
-						level.m_aTreeGroups[x].m_aTrees &&
-						!level.m_aTreeGroups[x].m_aTrees.IsEmpty() &&
-						PreprocessTreeArr(level.m_aTreeGroups[x].m_aTrees, groupIdx, TreeType.TOP, debugGroupIdx))
-					{
-						groupProbaSum += level.m_aTreeGroups[x].m_fWeight;
-						++groupIdx;
-						++debugGroupIdx;
-						++x;
-					}
-					else
-					{
-						level.m_aTreeGroups.RemoveOrdered(x);
-					}
-				}
-
-				for (int y = 0, groupCount = level.m_aTreeGroups.Count(); y < groupCount; ++y)
-				{
-					if (groupProbaSum > 0)
-						level.m_aTreeGroups[y].m_fWeight = level.m_aTreeGroups[y].m_fWeight / groupProbaSum;
-
-					level.m_aGroupProbas.Insert(level.m_aTreeGroups[y].m_fWeight);
-				}
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
-	{
-		super._WB_OnKeyChanged(src, key, ownerContainers, parent);
-
-		if (key == "coords")
-			return false;
-
-/*
 		foreach (ForestGeneratorLevel level : m_aLevels)
 		{
-			// TODO LIMIT COUNTS
+			level.m_aGroupProbas = {};
+
+			if (level.m_eType == SCR_EForestGeneratorLevelType.BOTTOM)
+			{
+				foreach (TreeGroupClass treeGroup : level.m_aTreeGroups)
+				{
+					PreprocessTreeArray(treeGroup.m_aTrees, 0, SCR_ETreeType.BOTTOM, debugGroupIdx);
+				}
+				continue;
+			}
+
+			// TOP or OUTLINE
+
+			int groupIdx = 0;
+			float groupProbaSum = 0;
+
+			TreeGroupClass treeGroup;
+			// cannot use foreach because editing the currently iterated array (yikes!)
+			for (int i, groupCount = level.m_aTreeGroups.Count(); i < groupCount; i++)
+			{
+				treeGroup = level.m_aTreeGroups[i];
+
+				if (treeGroup.m_fWeight > 0 &&
+					treeGroup.m_aTrees &&
+					!treeGroup.m_aTrees.IsEmpty() &&
+					PreprocessTreeArray(treeGroup.m_aTrees, groupIdx, SCR_ETreeType.TOP, debugGroupIdx))
+				{
+					groupProbaSum += treeGroup.m_fWeight;
+					groupIdx++;
+					debugGroupIdx++;
+				}
+				else
+				{
+					level.m_aTreeGroups.RemoveOrdered(i);
+					groupCount--;
+					i--;
+				}
+			}
+
+			foreach (TreeGroupClass treeGroup2 : level.m_aTreeGroups)
+			{
+				if (groupProbaSum > 0)
+					treeGroup2.m_fWeight = treeGroup2.m_fWeight / groupProbaSum;
+
+				level.m_aGroupProbas.Insert(treeGroup2.m_fWeight);
+			}
 		}
-*/
-
-		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (!api)
-			return false;
-
-		IEntitySource thisSrc = api.EntityToSource(this);
-		BaseContainerTools.WriteToInstance(this, thisSrc);
-
-		PreprocessAllTrees();
-
-		ShapeEntity parentShape = ShapeEntity.Cast(parent);
-		if (parentShape)
-		{
-			IEntitySource parentSrc = api.EntityToSource(parentShape);
-			OnShapeInit(parentSrc, parentShape);
-		}
-
-		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void EOnInit(IEntity owner)
+	//! Create a list of Forest Generator Points for each shape's vertices
+	//! \param shapeEntitySource an IEntitySource from a ShapeEntity (spline or polyline)
+	//! \return created Forest Generator Points or null if the provided IEntitySource is not a shape (has no Points object array)
+	protected array<ref SCR_ForestGeneratorPoint> GetClockWisePoints(notnull IEntitySource shapeEntitySource)
 	{
-		m_Grid = new ForestGeneratorGrid(10);
-		PreprocessAllTrees();
-	}
-#endif
-
-	//------------------------------------------------------------------------------------------------
-	void ClearPoints()
-	{
-		m_aPoints.Clear();
-		m_aSmallOutlinePoints.Clear();
-		m_aMiddleOutlinePoints.Clear();
-		m_aSmallOutlineLines.Clear();
-		m_aMiddleOutlineLines.Clear();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void LoadPoints(BaseContainerList points)
-	{
+		BaseContainerList points = shapeEntitySource.GetObjectArray("Points");
 		if (!points)
-			return;
+			return null;
 
-#ifdef WORKBENCH
-		WorldEditorAPI api = _WB_GetEditorAPI();
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+
+		array<ref SCR_ForestGeneratorPoint> result = {};
 
 		BaseContainer point;
 		vector pos;
-		bool smallOutline, middleOutline;
 		BaseContainerList dataArr;
-		bool hasPointData;
 		BaseContainer data;
-		bool skip;
-		ForestGeneratorPoint genPoint;
-		for (int i = 0, pointCount = points.Count(); i < pointCount; i++)
+		SCR_ForestGeneratorPoint genPoint;
+		for (int i, pointCount = points.Count(); i < pointCount; i++)
 		{
 			point = points.Get(i);
 			point.Get("Position", pos);
 
-			smallOutline = true;
-			middleOutline = true;
+			bool smallOutline = true;
+			bool middleOutline = true;
 			dataArr = point.GetObjectArray("Data");
 
-			hasPointData = false;
-			for (int j = 0, dataCount = dataArr.Count(); j < dataCount; ++j)
+			bool hasPointData = false;
+			for (int j, dataCount = dataArr.Count(); j < dataCount; ++j)
 			{
 				data = dataArr.Get(j);
-				if (data.GetClassName() == "ForestGeneratorPointData")
+				if (data.GetClassName() == POINTDATA_CLASSNAME)
 				{
 					data.Get("m_bSmallOutline", smallOutline);
 					data.Get("m_bMiddleOutline", middleOutline);
@@ -1013,88 +299,82 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 				}
 			}
 
-			if (!hasPointData && api && !api.UndoOrRedoIsRestoring())
-			{
-				api.CreateObjectArrayVariableMember(point, null, "Data", "ForestGeneratorPointData", dataArr.Count());
-			}
+			if (!hasPointData && worldEditorAPI && !worldEditorAPI.UndoOrRedoIsRestoring())
+				worldEditorAPI.CreateObjectArrayVariableMember(point, null, "Data", POINTDATA_CLASSNAME, dataArr.Count());
 
-			skip = false;
-			foreach (ForestGeneratorPoint curPoint : m_aPoints)
+			bool skip = false;
+			foreach (SCR_ForestGeneratorPoint curPoint : result)
 			{
 				if (curPoint.m_vPos == pos)
 				{
-					Print("Found two points on the same position: " + pos + ", Skipping.", LogLevel.WARNING);
+					Print("Found two points on the same position: " + pos + ", Skipping", LogLevel.WARNING);
 					skip = true;
 					break;
 				}
 			}
+
 			if (skip)
 				continue;
 
-			genPoint = new ForestGeneratorPoint();
+			genPoint = new SCR_ForestGeneratorPoint();
 			pos[1] = 0;
 			genPoint.m_vPos = pos;
 			genPoint.m_bSmallOutline = smallOutline;
 			genPoint.m_bMiddleOutline = middleOutline;
 
-			m_aPoints.Insert(genPoint);
+			result.Insert(genPoint);
 		}
-#endif
+
+		// clockwise check
+		int count = result.Count();
+		if (count < 3)
+			return result;
+
+		int sum = 0;
+		vector currentPoint;
+		vector nextPoint;
+		for (int i; i < count; i++)
+		{
+			currentPoint = result[i].m_vPos;
+			if (i == count - 1)
+				nextPoint = result[0].m_vPos;
+			else
+				nextPoint = result[i + 1].m_vPos;
+
+			sum += (nextPoint[0] - currentPoint[0]) * (nextPoint[2] + currentPoint[2]);
+		}
+
+		if (sum < 0) // counter-clockwise, inverting points (reason unknown)
+		{
+			for (int i, iterNum = count * 0.5; i < iterNum; i++)
+			{
+				genPoint = result[i];
+				result[i] = result[count - 1 - i];
+				result[count - 1 - i] = genPoint;
+			}
+		}
+
+		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! TODO: change initialisation
-	//! NO WORKBENCH API OPERATIONS SHOULD HAPPEN FROM HERE
-	//! see GeneratorBaseEntity.OnShapeInitInternal's documentation
-	override void OnShapeInitInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity)
+	protected void FillOutlineLinesAndPoints(notnull array<ref SCR_ForestGeneratorPoint> points)
 	{
-		super.OnShapeInitInternal(shapeEntitySrc, shapeEntity);
-
-#ifdef WORKBENCH
-		if (!m_bGenerateForest)
-			return;
-
-		ClearPoints();
-		LoadOutlines();
-
-		m_fOutlinesWidth = 0;
-		foreach (ForestGeneratorOutline outline : m_aOutlines)
+		SCR_ForestGeneratorLine line;
+		foreach (int i, SCR_ForestGeneratorPoint point : points)
 		{
-			if (m_fOutlinesWidth < outline.m_fMinDistance)
-				m_fOutlinesWidth = outline.m_fMinDistance;
-			if (m_fOutlinesWidth < outline.m_fMaxDistance)
-				m_fOutlinesWidth = outline.m_fMaxDistance;
-		}
-
-		WorldEditorAPI api = _WB_GetEditorAPI();
-		if (!api || api.UndoOrRedoIsRestoring())
-			return;
-
-		m_RandomGenerator.SetSeed(m_iSeed);
-
-		BaseContainerList points = shapeEntitySrc.GetObjectArray("Points");
-
-		LoadPoints(points);
-		ClockwiseCheck();
-
-		ForestGeneratorPoint genPoint;
-		ForestGeneratorLine line = new ForestGeneratorLine();
-		for (int i = 0, count = m_aPoints.Count(); i < count; i++)
-		{
-			genPoint = m_aPoints[i];
-
 			if (i > 0)
 			{
-				line.p2 = genPoint;
+				line.p2 = point;
 				line.m_fLength = (line.p2.m_vPos - line.p1.m_vPos).Length();
-				genPoint.m_Line1 = line;
+				point.m_Line1 = line;
 				m_aLines.Insert(line);
 
-				if (genPoint.m_bSmallOutline)
-					m_aSmallOutlinePoints.Insert(genPoint);
+				if (point.m_bSmallOutline)
+					m_aSmallOutlinePoints.Insert(point);
 
-				if (genPoint.m_bMiddleOutline)
-					m_aMiddleOutlinePoints.Insert(genPoint);
+				if (point.m_bMiddleOutline)
+					m_aMiddleOutlinePoints.Insert(point);
 
 				if (line.p1.m_bSmallOutline)
 					m_aSmallOutlineLines.Insert(line);
@@ -1103,81 +383,55 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 					m_aMiddleOutlineLines.Insert(line);
 			}
 
-			line = new ForestGeneratorLine();
-			line.p1 = genPoint;
-			genPoint.m_Line2 = line;
+			line = new SCR_ForestGeneratorLine();
+			line.p1 = point;
+			point.m_Line2 = line;
 		}
 
-		if (m_aPoints.IsEmpty())
-			return;
-
-		genPoint = m_aPoints[0];
-		line.p2 = genPoint;
-		genPoint.m_Line1 = line;
+		SCR_ForestGeneratorPoint point = points[0];
+		line.p2 = point;
+		point.m_Line1 = line;
 		line.m_fLength = (line.p2.m_vPos - line.p1.m_vPos).Length();
 		m_aLines.Insert(line);
 
-		if (genPoint.m_bSmallOutline)
-			m_aSmallOutlinePoints.Insert(genPoint);
+		if (point.m_bSmallOutline)
+			m_aSmallOutlinePoints.Insert(point);
 
-		if (genPoint.m_bMiddleOutline)
-			m_aMiddleOutlinePoints.Insert(genPoint);
+		if (point.m_bMiddleOutline)
+			m_aMiddleOutlinePoints.Insert(point);
 
 		if (line.p1.m_bSmallOutline)
 			m_aSmallOutlineLines.Insert(line);
 
 		if (line.p1.m_bMiddleOutline)
 			m_aMiddleOutlineLines.Insert(line);
-
-		CalculateOutlineAnglesForPoints();
-
-		// generate the forest
-		m_aDebugShapes = {};
-		array<vector> polygon = GetPoints(shapeEntitySrc);
-
-		Print("ForestGenerator - Populating grid", LogLevel.DEBUG);
-		Debug.BeginTimeMeasure();
-		PopulateGrid(polygon);
-		Debug.EndTimeMeasure("ForestGenerator - Populating grid done");
-
-		Print("ForestGenerator - Generating entities", LogLevel.DEBUG);
-		Debug.BeginTimeMeasure();
-		GenerateEntities();
-		Debug.EndTimeMeasure("ForestGenerator - Generating entities done");
-#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private void CalculateOutlineAnglesForPoints()
+	protected void CalculateOutlineAnglesForPoints(notnull array<ref SCR_ForestGeneratorPoint> points)
 	{
-		int count = m_aPoints.Count();
+		int count = points.Count();
 		if (count < 3)
 			return;
 
-		ForestGeneratorPoint previousPoint;
-		ForestGeneratorPoint currentPoint;
-		ForestGeneratorPoint nextPoint;
+		SCR_ForestGeneratorPoint previousPoint = points[count - 1];
+		SCR_ForestGeneratorPoint currentPoint;
+		SCR_ForestGeneratorPoint nextPoint;
 		vector dir1;
 		vector dir2;
-		float yaw1;
-		float yaw2;
-		for (int i = 0; i < count; i++)
+		for (int i; i < count; i++)
 		{
-			if (i > 0)
-				previousPoint = m_aPoints[i-1];
-			else
-				previousPoint = m_aPoints[count-1];
+			currentPoint = points[i];
 
-			currentPoint = m_aPoints[i];
-			if (i < count-1)
-				nextPoint = m_aPoints[i+1];
+			if (i < count - 1)
+				nextPoint = points[i + 1];
 			else
-				nextPoint = m_aPoints[0];
+				nextPoint = points[0];
 
 			dir1 = previousPoint.m_vPos - currentPoint.m_vPos;
 			dir2 = nextPoint.m_vPos - currentPoint.m_vPos;
-			yaw1 = dir1.ToYaw();
-			yaw2 = dir2.ToYaw();
+			float yaw1 = dir1.ToYaw();
+			float yaw2 = dir2.ToYaw();
 			if (yaw1 > yaw2)
 			{
 				currentPoint.m_fMinAngle = yaw1 - 360;
@@ -1190,65 +444,368 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 			}
 
 			currentPoint.m_fAngle = Math.AbsFloat(currentPoint.m_fMaxAngle - currentPoint.m_fMinAngle);
+
+			previousPoint = currentPoint;
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
+	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
-		// TODO handle this case better if needed, use the bbox arrays
-		OnShapeInitInternal(shapeEntitySrc, shapeEntity);
+		bool parentResult = super._WB_OnKeyChanged(src, key, ownerContainers, parent);
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI)
+			return parentResult;
+
+		src = worldEditorAPI.EntityToSource(this); // src is not fresh enough
+
+		if (key == "m_bRegenerateEntireForest")
+		{
+			src.ClearVariable("m_bRegenerateEntireForest"); // don't save it to layers
+			if (m_ParentShapeSource)
+				RegenerateForest(true);
+		}
+
+		BaseContainerTools.WriteToInstance(this, src); // required for tree type changes to be considered without having to reload the world
+
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	int GetColorForTree(int index, TreeType type)
+	// triggers when a point is created/moved/deleted (or when a point data is edited!)
+	override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
+	{
+		super.OnShapeChangedInternal(shapeEntitySrc, shapeEntity, mins, maxes);
+		RegenerateForest();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// triggers when the generator is inserted in shape
+	override void OnShapeInitInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity)
+	{
+		super.OnShapeInitInternal(shapeEntitySrc, shapeEntity);
+		RegenerateForest(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override void BeforeShapeTransformInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, inout vector oldTransform[4])
+	{
+		super.BeforeShapeTransformInternal(shapeEntitySrc, shapeEntity, oldTransform);
+
+		if (!m_bEntitiesFollowTerrainOnShapeMove)
+			return;
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI)
+			return;
+
+		if (worldEditorAPI.UndoOrRedoIsRestoring())
+			return;
+
+		vector localPos, worldPos;
+		vector parentPos;
+		shapeEntitySrc.Get("coords", parentPos); // measurement has to be done on EntitySource, not Entity
+
+		m_mEntitySourceATLHeights = new map<IEntitySource, float>();
+		IEntitySource childSource;
+		for (int i = m_Source.GetNumChildren() - 1; i >= 0; i--)
+		{
+			childSource = m_Source.GetChild(i);
+			if (!childSource.Get("coords", localPos))
+				continue;
+
+			worldPos = localPos + parentPos;
+
+			float yTerrain;
+			if (!worldEditorAPI.TryGetTerrainSurfaceY(worldPos[0], worldPos[2], yTerrain))
+				continue;
+
+			m_mEntitySourceATLHeights.Insert(childSource, worldPos[1] - yTerrain);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override void OnShapeTransformInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
+	{
+		super.OnShapeTransformInternal(shapeEntitySrc, shapeEntity, mins, maxes);
+
+		if (!m_bEntitiesFollowTerrainOnShapeMove)
+			return;
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI)
+			return;
+
+		if (worldEditorAPI.UndoOrRedoIsRestoring())
+			return;
+
+		if (m_mEntitySourceATLHeights.IsEmpty())
+			return;
+
+		vector absPos = GetOrigin(); // assuming the generator stays at relative 0 0 0
+		vector localPos, worldPos;
+
+		foreach (IEntitySource childSource, float relativeY : m_mEntitySourceATLHeights)
+		{
+			if (!childSource.Get("coords", localPos))
+				continue;
+
+			worldPos = localPos + absPos;
+
+			float yTerrain;
+			if (!worldEditorAPI.TryGetTerrainSurfaceY(worldPos[0], worldPos[2], yTerrain))
+				continue;
+
+			float difference = relativeY - (worldPos[1] - yTerrain);
+			if (difference != 0)
+			{
+				localPos[1] = localPos[1] + difference;
+				worldEditorAPI.SetVariableValue(childSource, {}, "coords", localPos.ToString(false));
+			}
+		}
+
+		m_mEntitySourceATLHeights = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// hack!!1!one waiting for BeforeShapeChangedInternal introduction
+	override protected void OnPointChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, PointChangedSituation situation, int pointIndex, vector position)
+	{
+		if (s_aPreviousPoints2D)
+			return;
+
+		array<vector> points3D = GetPoints(shapeEntitySrc);
+		s_aPreviousPoints2D = {};
+		SCR_Math2D.Get2DPolygon(points3D, s_aPreviousPoints2D);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected int GetColorForTree(int index, SCR_ETreeType type)
 	{
 		int colCount = 11;
-		int colIdx = ((int)TreeType.COUNT * index + (int)type) % colCount;
+		int colIdx = (5 * index + (int)type) % colCount; // 5 because 5 SCR_ETreeType types
 		int color;
 		switch (colIdx)
 		{
-			case 0:		color = 0xff56e3d7; break;
-			case 1:		color = 0xff428af5; break;
-			case 2:		color = 0xfff57542; break;
-			case 3:		color = 0xff8ae356; break;
-			case 4:		color = 0xff2f636b; break;
-			case 5:		color = 0xff818491; break;
-			case 6:		color = 0xffed9dbb; break;
-			case 7:		color = 0xff0009ab; break;
-			case 8:		color = 0xffab003c; break;
-			case 9:		color = 0xffa8ab00; break;
-			case 10:	color = 0xffffffff; break;
-			default:	color = 0xffffffff; break;
+			case 0:		color = 0xFF56E3D7; break;
+			case 1:		color = 0xFF428AF5; break;
+			case 2:		color = 0xFFF57542; break;
+			case 3:		color = 0xFF8AE356; break;
+			case 4:		color = 0xFF2F636B; break;
+			case 5:		color = 0xFF818491; break;
+			case 6:		color = 0xFFED9DBB; break;
+			case 7:		color = 0xFF0009AB; break;
+			case 8:		color = 0xFFAB003C; break;
+			case 9:		color = 0xFFA8AB00; break;
+			case 10:	color = 0xFFFFFFFF; break;
+			default:	color = 0xFFFFFFFF; break;
 		}
 		return color;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void GenerateEntities()
+	protected void MemoryCleanup()
 	{
-#ifdef WORKBENCH
-		WorldEditorAPI api = _WB_GetEditorAPI();
-
-		// delete old trees
-		m_aGeneratedEntities.Clear();
-
-		api.BeginEditSequence(m_Source);
-
-		for (int i = m_Source.GetNumChildren() - 1; i >= 0; --i)
-		{
-			api.DeleteEntity(api.SourceToEntity(m_Source.GetChild(i)));
-		}
-
+		// all these are apparently PopulateGrid-related
 		m_aLines.Clear();
 		m_aSmallOutlineLines.Clear();
 		m_aMiddleOutlineLines.Clear();
 		m_aRectangles.Clear();
 		m_aOutlineRectangles.Clear();
 		m_aSmallOutlinePoints.Clear();
-		m_aPoints.Clear();
 		m_aMiddleOutlinePoints.Clear();
 		m_aNonOutlineRectangles.Clear();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void RegenerateForest(bool forceRegeneration = false)
+	{
+		float tick = System.GetTickCount(); // not Debug.BeginTimeMeasure because returns are on the way
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI)
+		{
+			Print("WorldEditorAPI is not available", LogLevel.ERROR);
+			return;
+		}
+
+		if (worldEditorAPI.UndoOrRedoIsRestoring())
+			return;
+
+		// clear everything
+		m_aSmallOutlinePoints.Clear();
+		m_aMiddleOutlinePoints.Clear();
+		m_aSmallOutlineLines.Clear();
+		m_aMiddleOutlineLines.Clear();
+		m_aOutlines.Clear();
+
+		m_Grid = new ForestGeneratorGrid(10); // 10 seems to be the best value here (tried 1, 20, 100)
+		m_RandomGenerator = new RandomGenerator();
+		m_RandomGenerator.SetSeed(m_iSeed);
+
+		s_DebugShapeManager.Clear();
+
+		Debug.BeginTimeMeasure();
+		PreprocessAllTrees();
+		Debug.EndTimeMeasure("Provided data preprocess");
+
+		// load outlines
+		m_fMaxOutlinesWidth;
+		float outlineWidthToClear; // outline or because scaling curves distance to clean
+		ForestGeneratorOutline outline;
+		foreach (ForestGeneratorLevel level : m_aLevels)
+		{
+			if (outlineWidthToClear < level.m_fOutlineScaleCurveDistance)
+				outlineWidthToClear = level.m_fOutlineScaleCurveDistance;
+
+			outline = ForestGeneratorOutline.Cast(level);
+			if (!outline)
+				continue;
+
+			if (m_fMaxOutlinesWidth < outline.m_fMaxDistance)
+				m_fMaxOutlinesWidth = outline.m_fMaxDistance;
+
+			if (m_fMaxOutlinesWidth < outline.m_fMinDistance) // is this check even required?
+				m_fMaxOutlinesWidth = outline.m_fMinDistance;
+
+			m_aOutlines.Insert(outline);
+		}
+
+		if (outlineWidthToClear < m_fMaxOutlinesWidth)
+			outlineWidthToClear = m_fMaxOutlinesWidth;
+
+		array<ref SCR_ForestGeneratorPoint> generatorPoints = GetClockWisePoints(m_ParentShapeSource);
+		if (!generatorPoints || generatorPoints.IsEmpty())
+			return;
+
+		Debug.BeginTimeMeasure();
+		FillOutlineLinesAndPoints(generatorPoints);
+		CalculateOutlineAnglesForPoints(generatorPoints);
+		Debug.EndTimeMeasure("Outline point calculations");
+
+		if (m_bPrintPerformanceDetails)
+			s_Benchmark = new SCR_TimeMeasurementHelper();
+		else
+			s_Benchmark = null;
+
+		// generate the forest
+
+		// m_aShapePoints = GetTesselatedShapePoints(m_ParentShapeSource); // splines will be for later
+		m_aShapePoints = GetPoints(m_ParentShapeSource);
+		m_aShapePoints.Insert(m_aShapePoints[0]); // close the shape
+
+		// see SCR_ObstacleDetector.GetPoints2D3D()
+		array<vector> polygon3D = GetPoints(m_ParentShapeSource);
+		array<float> polygon2D = {};
+		SCR_Math2D.Get2DPolygon(polygon3D, polygon2D);
+
+		Print("ForestGenerator - Populating grid", LogLevel.DEBUG);
+		Debug.BeginTimeMeasure();
+		PopulateGrid(polygon2D, polygon3D);
+		Debug.EndTimeMeasure("ForestGenerator - Populating grid done");
+
+		// create point -1 - old point - point +1 triangles
+		// create point -1 - new point - point +1 triangles
+		// what happens if a point is just deleted - regenerate everything?
+		//		- try to find if deleted or moved (count points, other points moved or not, etc)
+		//		- if only deleted, calculate triangle from previous point then new segment (-1,+1)'s middle
+		//		- if cannot decide whether or not it was deleted or moved, recalculate everything
+
+		SCR_ForestGeneratorOutlinePositionChecker outlinePositionChecker;
+
+		if (forceRegeneration)
+		{
+			s_aPreviousPoints2D = {};
+		}
+		else
+		{
+			if (!s_aPreviousPoints2D) // should have been obtained by OnPointChangedInternal
+			{
+				Print("No previous points! Fallback on current points (this edit does not do anything)", LogLevel.WARNING);
+				s_aPreviousPoints2D = polygon2D;
+			}
+
+			outlinePositionChecker = new SCR_ForestGeneratorOutlinePositionChecker(s_aPreviousPoints2D, polygon2D, outlineWidthToClear);
+		}
+
+		worldEditorAPI.BeginEditSequence(m_Source);
+
+		Print("ForestGenerator - Deleting previous entities", LogLevel.DEBUG);
+		Debug.BeginTimeMeasure();
+		int entitiesCount = DeletePreviousEntities(polygon2D, outlinePositionChecker, forceRegeneration);
+		Debug.EndTimeMeasure("ForestGenerator - Deleting " + entitiesCount + " previous entities done");
+
+		Print("ForestGenerator - Generating entities", LogLevel.DEBUG);
+		Debug.BeginTimeMeasure();
+		entitiesCount = GenerateEntities(s_aPreviousPoints2D, outlinePositionChecker, forceRegeneration);
+		Debug.EndTimeMeasure("ForestGenerator - Generating " + entitiesCount + " entities done");
+
+		worldEditorAPI.EndEditSequence(m_Source);
+
+		if (m_bPrintPerformanceDetails)
+			s_Benchmark.PrintAllMeasures();
+
+		s_aPreviousPoints2D = null;
+		MemoryCleanup();
+
+		Print("Total time: " + System.GetTickCount(tick) + " ms", LogLevel.NORMAL);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Delete previous entities - either all of them for a full regeneration, or out of shape (hehe) ones for partial regeneration
+	protected int DeletePreviousEntities(notnull array<float> currentPoints2D, SCR_ForestGeneratorOutlinePositionChecker outlineChecker, bool forceRegeneration = false)
+	{
+		int result;
+		if (forceRegeneration || !m_bAllowPartialRegeneration)
+		{
+			result = m_Source.GetNumChildren();
+			DeleteAllChildren();
+			return result;
+		}
+
+		// outline deletion
+
+		vector parentPos = GetOrigin();
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		IEntity entity;
+		vector entityPos;
+		vector worldPos;
+		for (int i = m_Source.GetNumChildren() - 1; i >= 0; --i)
+		{
+			entity = worldEditorAPI.SourceToEntity(m_Source.GetChild(i));
+			worldPos = entity.GetOrigin();
+			entityPos = CoordToLocal(worldPos); // relative pos
+
+			// remove everything not in the new shape
+			if (!Math2D.IsPointInPolygon(currentPoints2D, entityPos[0], entityPos[2]))
+			{
+				worldEditorAPI.DeleteEntity(entity);
+				continue;
+			}
+
+			// delete everything close to old and new impacted outlines
+			if (outlineChecker.IsPosWithinSetDistance(entityPos))
+			{
+				if (m_bDrawDebugShapesRegeneration)
+					s_DebugShapeManager.AddLine(worldPos, worldPos + DEBUG_VERTICAL_LINE, REGENERATION_DELETION_COLOUR);
+
+				worldEditorAPI.DeleteEntity(entity);
+				result++;
+			}
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected int GenerateEntities(notnull array<float> previousPoints2D, SCR_ForestGeneratorOutlinePositionChecker outlineChecker, bool forceRegeneration = false)
+	{
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+
+		BaseWorld world = worldEditorAPI.GetWorld();
+		if (!world)
+			return 0;
 
 		// create new trees
 		int topLevelEntitiesCount = 0;
@@ -1258,30 +815,16 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 		int clusterEntitiesCount = 0;
 		int generatedEntitiesCount = 0;
 
-		m_aDebugShapes.Clear();
-		BaseWorld world = api.GetWorld();
-		if (!world)
-		{
-			api.EndEditSequence(m_Source);
-			return;
-		}
-
-		vector worldPos, localPos;
+		vector worldPos, localPos, entityPos;
 		SCR_ForestGeneratorTreeBase baseEntry;
-		ForestGeneratorTree entry;
 		FallenTree fallenTree;
 		WideForestGeneratorClusterObject wideObject;
-
-		IEntitySource source;
-		IEntity entity;
-		ShapeEntity splineEntity;
 
 		IEntity tree;
 		IEntitySource treeSrc;
 
-		BaseContainerList baseContainer;
-		bool alignToNormal, randomYaw;
-		float yaw, pitch, roll;
+		BaseContainerList baseContainerList;
+		BaseContainer baseContainer;
 		vector randomVerticalOffset;
 
 		vector mat[4];
@@ -1291,59 +834,137 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 		traceParam.Flags = TraceFlags.WORLD;
 
 		RefreshObstacles();
-		for (int i = 0, count = m_Grid.GetEntryCount(); i < count; ++i)
+
+		// draw obstacles
+		if (m_bDrawDebugShapesObstacles)
+		{
+			foreach (SCR_ObstacleDetectorSplineInfo info : s_ObstacleDetector.GetObstacles())
+			{
+				if (info.m_fClearance == 0) // an area obstacle
+				{
+					s_DebugShapeManager.AddAABBRectangleXZ(info.m_vMinWithClearance, info.m_vMaxWithClearance);
+				}
+				else // a road-like obstacle
+				{
+					vector maxWithClearance;
+					foreach (int index, vector minWithClearance : info.m_aMinsWithClearance)
+					{
+						maxWithClearance = info.m_aMaxsWithClearance[index];
+						s_DebugShapeManager.AddAABBRectangleXZ(minWithClearance, maxWithClearance);
+					}
+				}
+			}
+		}
+
+		vector parentPos = GetOrigin();
+
+		bool partialGeneration = !forceRegeneration && m_bAllowPartialRegeneration && m_Source.GetNumChildren() > 0;
+
+		// force useScaleCurve to false to disable the scale curve system
+		bool useScaleCurve = m_fGlobalOutlineScaleCurveDistance > 0 && !m_aGlobalOutlineScaleCurve.IsEmpty();
+		float scaleCurveDistanceDivisor;
+		array<float> curveKnots;
+		if (useScaleCurve)
+		{
+			scaleCurveDistanceDivisor = 1 / m_fGlobalOutlineScaleCurveDistance;
+			curveKnots = {};
+			foreach (vector scalePoint : m_aGlobalOutlineScaleCurve)
+			{
+				curveKnots.Insert(scalePoint[0]);
+			}
+		}
+
+		// init done
+
+		for (int i, count = m_Grid.GetEntryCount(); i < count; ++i)
 		{
 			baseEntry = m_Grid.GetEntry(i, worldPos);
-			entry = ForestGeneratorTree.Cast(baseEntry);
-			fallenTree = FallenTree.Cast(baseEntry);
-			wideObject = WideForestGeneratorClusterObject.Cast(baseEntry);
-
-			// snap the tree to terrain
-			worldPos[1] = world.GetSurfaceY(worldPos[0], worldPos[2]);
-
-			switch (baseEntry.m_Type)
-			{
-				case TreeType.TOP:		topLevelEntitiesCount++; break;
-				case TreeType.BOTTOM:	bottomLevelEntitiesCount++; break;
-				case TreeType.MOUTLINE:	middleOutlineEntitiesCount++; break;
-				case TreeType.SOUTLINE:	smallOutlineEntitiesCount++; break;
-				case TreeType.CLUSTER:	clusterEntitiesCount++; break;
-			}
-
 			if (baseEntry.m_Prefab.IsEmpty())
 				continue;
 
-			if (HasObstacle(worldPos, m_aGeneratedEntities))
-				continue;
-
+			worldPos[1] = world.GetSurfaceY(worldPos[0], worldPos[2]);
 			localPos = CoordToLocal(worldPos);
 			localPos[1] = localPos[1] + baseEntry.m_fVerticalOffset;
 
-			tree = api.CreateEntity(baseEntry.m_Prefab, "", api.GetCurrentEntityLayerId(), m_Source, localPos, vector.Zero);
-			treeSrc = api.EntityToSource(tree);
-			api.BeginEditSequence(treeSrc);
-			m_aGeneratedEntities.Insert(tree);
+			if (partialGeneration) // TODO: move to Grid population instead?
+			{
+				if (
+					Math2D.IsPointInPolygon(previousPoints2D, localPos[0], localPos[2]) &&		// if in the old shape
+					!outlineChecker.IsPosWithinSetDistance(localPos)							// and not near a new outline
+				)
+					continue;
+			}
+
+			float scale = baseEntry.m_fScale;
+			if (useScaleCurve && scale > 0)
+			{
+				float distanceFromShape = SCR_Math3D.GetDistanceFromSplineXZ(m_aShapePoints, localPos);
+				if (distanceFromShape <= m_fGlobalOutlineScaleCurveDistance)
+				{
+					// (m_fOutlineScaleCurveDistance - distanceFromShape) because right-to-left curve reading
+					float scaleFactor = Math3D.Curve(ECurveType.CatmullRom, (m_fGlobalOutlineScaleCurveDistance - distanceFromShape) * scaleCurveDistanceDivisor, m_aGlobalOutlineScaleCurve, curveKnots)[1];
+					if (scaleFactor < SCALE_CURVE_MIN_VALUE)
+						scaleFactor = SCALE_CURVE_MIN_VALUE;
+					else
+					if (scaleFactor > SCALE_CURVE_MAX_VALUE)
+						scaleFactor = SCALE_CURVE_MAX_VALUE;
+
+					scale *= scaleFactor;
+				}
+			}
+
+			if (scale < MIN_POSSIBLE_SCALE_VALUE)
+			{
+				Print("avoid near-zero scale tree (scale = " + scale + " < " + MIN_POSSIBLE_SCALE_VALUE + ")", LogLevel.DEBUG);
+				continue;
+			}
+
+			if (s_Benchmark)
+				s_Benchmark.BeginMeasure("obstacle");
+			// providing a generated entities list would hinder performance here
+			bool hasObstacle = s_ObstacleDetector.HasObstacle(worldPos);
+			if (s_Benchmark)
+				s_Benchmark.EndMeasure("obstacle");
+
+			if (hasObstacle)
+				continue;
+
+			if (partialGeneration)
+			{
+				if (m_bDrawDebugShapesRegeneration)
+					s_DebugShapeManager.AddLine(worldPos, worldPos + DEBUG_VERTICAL_LINE, REGENERATION_CREATION_COLOUR);
+			}
+
+			tree = worldEditorAPI.CreateEntity(baseEntry.m_Prefab, "", worldEditorAPI.GetCurrentEntityLayerId(), m_Source, localPos, vector.Zero);
+			treeSrc = worldEditorAPI.EntityToSource(tree);
+			worldEditorAPI.BeginEditSequence(treeSrc);
+
 			generatedEntitiesCount++;
 
-			api.ModifyEntityKey(tree, "scale", baseEntry.m_fScale.ToString());
-
-			baseContainer = treeSrc.GetObjectArray("editorData");
+			if (scale != 1)
+				worldEditorAPI.ModifyEntityKey(tree, "scale", scale.ToString());
 
 			randomVerticalOffset = vector.Zero;
-			alignToNormal = false;
-			randomYaw = false;
-			if (baseContainer && baseContainer.Count() > 0)
+			bool alignToNormal = false;
+			bool randomYaw = false;
+
+			baseContainerList = treeSrc.GetObjectArray("editorData");
+			if (baseContainerList && baseContainerList.Count() > 0)
 			{
-				baseContainer.Get(0).Get("randomVertOffset", randomVerticalOffset);
-				baseContainer.Get(0).Get("alignToNormal", alignToNormal);
-				baseContainer.Get(0).Get("randomYaw", randomYaw);
+				baseContainer = baseContainerList.Get(0);
+				baseContainer.Get("randomVertOffset", randomVerticalOffset);
+				baseContainer.Get("alignToNormal", alignToNormal);
+				baseContainer.Get("randomYaw", randomYaw);
 			}
 
 			if (randomVerticalOffset != vector.Zero)
 			{
-				localPos[1] = localPos[1] + Math.RandomFloat(randomVerticalOffset[0], randomVerticalOffset[1]);
-				api.ModifyEntityKey(tree, "coords", localPos.ToString(false));
+				localPos[1] = localPos[1] + SafeRandomFloatInclusive(randomVerticalOffset[0], randomVerticalOffset[1]);
+				worldEditorAPI.ModifyEntityKey(tree, "coords", localPos.ToString(false));
 			}
+
+			fallenTree = FallenTree.Cast(baseEntry);
+			wideObject = WideForestGeneratorClusterObject.Cast(baseEntry);
 
 			if (fallenTree)
 				alignToNormal = fallenTree.m_bAlignToNormal;
@@ -1351,6 +972,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 			if (wideObject)
 				alignToNormal = wideObject.m_bAlignToNormal;
 
+			float yaw;
 			if (randomYaw)
 			{
 				if (wideObject)
@@ -1360,21 +982,23 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 				else
 					yaw = m_RandomGenerator.RandFloatXY(0, 360);
 
-				api.ModifyEntityKey(tree, "angleY", yaw.ToString());
+				if (yaw != 0)
+					worldEditorAPI.ModifyEntityKey(tree, "angleY", yaw.ToString());
 			}
 
+			float pitch = 0;
 			if (baseEntry.m_fRandomPitchAngle > 0)
 				pitch = m_RandomGenerator.RandFloatXY(-baseEntry.m_fRandomPitchAngle, baseEntry.m_fRandomPitchAngle);
-			else
-				pitch = 0;
 
+			float roll = 0;
 			if (baseEntry.m_fRandomRollAngle > 0)
 				roll = m_RandomGenerator.RandFloatXY(-baseEntry.m_fRandomRollAngle, baseEntry.m_fRandomRollAngle);
-			else
-				roll = 0;
 
-			api.ModifyEntityKey(tree, "angleX", pitch.ToString());
-			api.ModifyEntityKey(tree, "angleZ", roll.ToString());
+			if (pitch != 0)
+				worldEditorAPI.ModifyEntityKey(tree, "angleX", pitch.ToString());
+
+			if (roll != 0)
+				worldEditorAPI.ModifyEntityKey(tree, "angleZ", roll.ToString());
 
 			if (alignToNormal)
 			{
@@ -1403,68 +1027,55 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 
 				angles = Math3D.MatrixToAngles(mat);
 
-				api.ModifyEntityKey(tree, "angleX", angles[1].ToString());
-				api.ModifyEntityKey(tree, "angleY", angles[0].ToString());
-				api.ModifyEntityKey(tree, "angleZ", angles[2].ToString());
+				worldEditorAPI.ModifyEntityKey(tree, "angleX", angles[1].ToString());
+				worldEditorAPI.ModifyEntityKey(tree, "angleY", angles[0].ToString());
+				worldEditorAPI.ModifyEntityKey(tree, "angleZ", angles[2].ToString());
 			}
 
-			api.EndEditSequence(treeSrc);
-			if (m_bDrawDebugShapes)
+			worldEditorAPI.EndEditSequence(treeSrc);
+
+			switch (baseEntry.m_eType)
 			{
-				Shape s = Shape.CreateSphere(
-					GetColorForTree(baseEntry.m_iGroupIndex, baseEntry.m_Type),
-					ShapeFlags.VISIBLE | ShapeFlags.NOOUTLINE,
-					worldPos,
-					1 + (int)TreeType.COUNT - (int)baseEntry.m_Type);
-				m_aDebugShapes.Insert(s);
+				case SCR_ETreeType.TOP:		topLevelEntitiesCount++; break;
+				case SCR_ETreeType.BOTTOM:	bottomLevelEntitiesCount++; break;
+				case SCR_ETreeType.MIDDLE_OUTLINE:	middleOutlineEntitiesCount++; break;
+				case SCR_ETreeType.SMALL_OUTLINE:	smallOutlineEntitiesCount++; break;
+				case SCR_ETreeType.CLUSTER:	clusterEntitiesCount++; break;
 			}
+
+			if (m_bDrawDebugShapes)
+				s_DebugShapeManager.AddSphere(worldPos, 1 + 5 - (int)baseEntry.m_eType, GetColorForTree(baseEntry.m_iGroupIndex, baseEntry.m_eType), ShapeFlags.NOOUTLINE);
+				// 1 + 5 because 5x SCR_ETreeType types
 		}
+
 		ClearObstacles(); // frees RAM
 
-		api.EndEditSequence(m_Source);
+		if (m_bPrintArea)
+			Print("Area of the polygon is: " + m_fArea.ToString(lenDec: 2) + " square meters", LogLevel.NORMAL);
 
 		if (m_bPrintEntitiesCount)
 		{
-			Print("Forest generator generated: " + topLevelEntitiesCount + " entities in top level.", LogLevel.NORMAL);
-			Print("Forest generator generated: " + bottomLevelEntitiesCount + " entities in bottom level.", LogLevel.NORMAL);
-			Print("Forest generator generated: " + middleOutlineEntitiesCount + " entities in middle outline.", LogLevel.NORMAL);
-			Print("Forest generator generated: " + smallOutlineEntitiesCount + " entities in small outline.", LogLevel.NORMAL);
-			Print("Forest generator generated: " + clusterEntitiesCount + " entities in clusters.", LogLevel.NORMAL);
-			Print("Forest generator generated: " + generatedEntitiesCount + " entities in total.", LogLevel.NORMAL);
+			Print("Forest generator generated: " + topLevelEntitiesCount + " entities in top level", LogLevel.NORMAL);
+			Print("Forest generator generated: " + bottomLevelEntitiesCount + " entities in bottom level", LogLevel.NORMAL);
+			Print("Forest generator generated: " + middleOutlineEntitiesCount + " entities in middle outline", LogLevel.NORMAL);
+			Print("Forest generator generated: " + smallOutlineEntitiesCount + " entities in small outline", LogLevel.NORMAL);
+			Print("Forest generator generated: " + clusterEntitiesCount + " entities in clusters", LogLevel.NORMAL);
+			Print("Forest generator generated: " + generatedEntitiesCount + " entities in total", LogLevel.NORMAL);
 		}
-#endif
+
+		return generatedEntitiesCount;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void PopulateGrid(array<vector> polygon)
+	void PopulateGrid(array<float> polygon2D, array<vector> polygon3D)
 	{
 		m_Grid.Clear();
 		m_aGridEntries.Clear();
 
-		// we need to convert the polygon to 2D to have efficient IsPointInPolygon queries
-		array<float> polygon2D = {};
-		foreach (vector polyPoint : polygon)
-		{
-			polygon2D.Insert(polyPoint[0]);
-			polygon2D.Insert(polyPoint[2]);
-		}
+		m_fArea = SCR_Math2D.GetPolygonArea(polygon2D);
 
-		array<float> a = {};
-		array<float> b = {};
-		for (int i = 0, count = polygon2D.Count(); i < count; i += 2) // step 2
-		{
-			a.Insert(polygon2D[i]);
-			b.Insert(polygon2D[i + 1]);
-		}
-
-		m_fArea = Math.AbsFloat(PolygonArea(a, b));
-
-		if (m_bPrintArea)
-			Print("Area of the polygon is: " + m_fArea + " square meters.", LogLevel.NORMAL);
-
-		AAB bbox = AAB.MakeFromPoints(polygon);
-		vector bboxSize = bbox.GetSize();
-		m_Grid.Resize(bboxSize[0], bboxSize[2]);
+		SCR_AABB bbox = new SCR_AABB(polygon3D);
+		m_Grid.Resize(bbox.m_vDimensions[0], bbox.m_vDimensions[2]);
 
 		Debug.BeginTimeMeasure();
 		Rectangulate(bbox, polygon2D);
@@ -1476,34 +1087,32 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 		vector bboxMinWorld = bboxMin.Multiply4(worldMat);
 		m_Grid.SetPointOffset(bboxMinWorld[0], bboxMinWorld[2]);
 
-		GenerateTrees(polygon2D, bbox);
+		Debug.BeginTimeMeasure();
+		GenerateForestGeneratorTrees(polygon2D, bbox);
+		Debug.EndTimeMeasure("ForestGenerator - Grid tree generation done");
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void Rectangulate(AAB bbox, array<float> polygon2D)
+	void Rectangulate(SCR_AABB bbox, array<float> polygon2D)
 	{
 		vector direction = bbox.m_vMax - bbox.m_vMin;
-		float targetRectangleWidth = 50;
-		float targetRectangleLength = 50;
+		float targetRectangleWidth = RECTANGULATION_SIZE;
+		float targetRectangleLength = RECTANGULATION_SIZE;
 		int targetRectangleCountW = Math.Ceil(direction[0] / targetRectangleWidth);
 		int targetRectangleCountL = Math.Ceil(direction[2] / targetRectangleLength);
-		bool areLineArraysIdentical = AreIdentical(m_aSmallOutlineLines, m_aMiddleOutlineLines);
 
 		vector ownerOrigin = GetOrigin();
-		m_aDebugShapesRectangulation = {};
 
-		bool isInPolygon;
-		ForestGeneratorRectangle rectangle;
+		SCR_ForestGeneratorRectangle rectangle;
 		vector p1;
-		int red, green, blue;
-		bool found;
 		Shape shape;
-		for (int x = 0; x < targetRectangleCountW; x++)
+		for (int x; x < targetRectangleCountW; x++)
 		{
-			for (int y = 0; y < targetRectangleCountL; y++)
+			for (int y; y < targetRectangleCountL; y++)
 			{
-				isInPolygon = false;
-				rectangle = new ForestGeneratorRectangle();
+				bool isInPolygon = false;
+
+				rectangle = new SCR_ForestGeneratorRectangle();
 				rectangle.m_iX = x;
 				rectangle.m_iY = y;
 				rectangle.m_fWidth = targetRectangleWidth;
@@ -1516,6 +1125,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 				rectangle.m_Line1.p1.m_vPos = p1;
 				if (!isInPolygon)
 					isInPolygon = Math2D.IsPointInPolygon(polygon2D, p1[0], p1[2]);
+
 				rectangle.m_aPoints.Insert(p1);
 
 				p1[0] = p1[0] + targetRectangleWidth;
@@ -1523,6 +1133,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 				rectangle.m_Line2.p1.m_vPos = p1;
 				if (!isInPolygon)
 					isInPolygon = Math2D.IsPointInPolygon(polygon2D, p1[0], p1[2]);
+
 				rectangle.m_aPoints.Insert(p1);
 
 				p1[2] = p1[2] + targetRectangleLength;
@@ -1530,6 +1141,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 				rectangle.m_Line3.p1.m_vPos = p1;
 				if (!isInPolygon)
 					isInPolygon = Math2D.IsPointInPolygon(polygon2D, p1[0], p1[2]);
+
 				rectangle.m_aPoints.Insert(p1);
 
 				p1[0] = p1[0] - targetRectangleWidth;
@@ -1537,19 +1149,16 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 				rectangle.m_Line4.p1.m_vPos = p1;
 				if (!isInPolygon)
 					isInPolygon = Math2D.IsPointInPolygon(polygon2D, p1[0], p1[2]);
+
 				rectangle.m_aPoints.Insert(p1);
 
-				red = 0;
-				green = Math.Floor(m_RandomGenerator.RandFloatXY(0, 255));
-				blue = Math.Floor(m_RandomGenerator.RandFloatXY(0, 255));
-
-				foreach (ForestGeneratorLine line : m_aLines)
+				foreach (SCR_ForestGeneratorLine line : m_aLines)
 				{
 					if (!NeedsCheck(line, rectangle) || !IsIntersect(line, rectangle))
 						continue;
 
-					found = false;
-					foreach (ForestGeneratorLine rectLine : rectangle.m_aLines)
+					bool found = false;
+					foreach (SCR_ForestGeneratorLine rectLine : rectangle.m_aLines)
 					{
 						if (rectLine == line)
 						{
@@ -1557,39 +1166,45 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 							break;
 						}
 					}
+
 					if (!found)
 						rectangle.m_aLines.Insert(line);
 				}
 
-				if (rectangle.m_aLines.IsEmpty() && !isInPolygon)
+				bool areLinesEmpty = rectangle.m_aLines.IsEmpty();
+				if (areLinesEmpty && !isInPolygon)
 					continue;
 
 				m_aRectangles.Insert(rectangle);
 
-				if (!rectangle.m_aLines.IsEmpty())
-				{
-					red = 255;
-					blue = 0;
-					green = 0;
-
-					m_aOutlineRectangles.Insert(rectangle);
-				}
-				else
-				{
+				if (areLinesEmpty)
 					m_aNonOutlineRectangles.Insert(rectangle);
-				}
+				else
+					m_aOutlineRectangles.Insert(rectangle);
 
 				if (m_bDrawDebugShapesRectangulation)
 				{
-					shape = Shape.Create(ShapeType.BBOX, ARGB(255, red, green, blue), ShapeFlags.NOZBUFFER, ownerOrigin + rectangle.m_Line1.p1.m_vPos, ownerOrigin + rectangle.m_Line3.p1.m_vPos);
-					m_aDebugShapesRectangulation.Insert(shape);
+					int red;
+					int green;
+					int blue;
+					if (areLinesEmpty)
+					{
+						green = Math.Floor(m_RandomGenerator.RandFloatXY(0, 255));
+						blue = Math.Floor(m_RandomGenerator.RandFloatXY(0, 255));
+					}
+					else
+					{
+						red = 255;
+					}
+
+					s_DebugShapeManager.AddBBox(ownerOrigin + rectangle.m_Line1.p1.m_vPos, ownerOrigin + rectangle.m_Line3.p1.m_vPos, ARGB(63, red, green, blue));
 				}
 			}
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool NeedsCheck(ForestGeneratorLine line, ForestGeneratorRectangle rectangle)
+	bool NeedsCheck(SCR_ForestGeneratorLine line, SCR_ForestGeneratorRectangle rectangle)
 	{
 		vector linePoint1 = line.p1.m_vPos;
 		vector linePoint2 = line.p2.m_vPos;
@@ -1606,127 +1221,73 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 		float maxsx = maxs[0];
 		float maxsz = maxs[2];
 
-		if (linePoint1x < minsx && linePoint2x < minsx)
-			return false;
-
-		if (linePoint1x > maxsx && linePoint2x > maxsx)
-			return false;
-
-		if (linePoint1z < minsz && linePoint2z < minsz)
-			return false;
-
-		if (linePoint1z > maxsz && linePoint2z > maxsz)
+		if (
+			(linePoint1x < minsx && linePoint2x < minsx) ||
+			(linePoint1x > maxsx && linePoint2x > maxsx) ||
+			(linePoint1z < minsz && linePoint2z < minsz) ||
+			(linePoint1z > maxsz && linePoint2z > maxsz))
 			return false;
 
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected bool AreIdentical(notnull array<ref ForestGeneratorLine> array1, notnull array<ref ForestGeneratorLine> array2)
+	protected void GenerateForestGeneratorTrees(array<float> polygon2D, SCR_AABB bbox)
 	{
-		int count = array1.Count();
-		if (count != array2.Count())
-			return false;
-
-		for (int i = 0; i < count; i++)
-		{
-			if (array1[i] != array2[i])
-				return false;
-		}
-
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected float PolygonArea(array<float> x, array<float> y)
-	{
-		float area;
-
-		int j;
-		for (int i = 0, count = x.Count(); i < count; ++i)
-		{
-			j = (i + 1) % count;
-			area += 0.5 * (x[i] * y[j] - x[j] * y[i]);
-		}
-
-		return area;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void GenerateTrees(array<float> polygon2D, AAB bbox)
-	{
-		vector bboxSize = bbox.GetSize();
-		float area = bboxSize[0] * bboxSize[2];
-		if (area <= 0.01)
+		if (bbox.m_vDimensions[0] * bbox.m_vDimensions[2] <= 0.01) // too small area
 			return;
 
-		GenerateClusters(polygon2D, bbox);
-
-		ForestGeneratorLevel level;
-		ForestGeneratorLevelType type;
-		int iterCount;
-		for (int i = 0, count = m_aLevels.Count(); i < count; i++)
+		// clusters
+		foreach (ForestGeneratorCluster cluster : m_aClusters)
 		{
-			level = m_aLevels[i];
-			type = level.m_Type;
+			if (!cluster.m_bGenerate || cluster.m_fRadius <= 0)
+				continue;
 
+			if (cluster.m_Type == SCR_EForestGeneratorClusterType.CIRCLE)
+				GenerateCircleCluster(ForestGeneratorCircleCluster.Cast(cluster), polygon2D, bbox);
+			else
+			if (cluster.m_Type == SCR_EForestGeneratorClusterType.STRIP)
+				GenerateStripCluster(ForestGeneratorStripCluster.Cast(cluster), polygon2D, bbox);
+		}
+
+		// then trees
+		foreach (ForestGeneratorLevel level : m_aLevels)
+		{
 			if (!level.m_bGenerate)
 				continue;
 
-			iterCount = level.m_fDensity * area * HECTARE_CONVERSION_FACTOR;
-
-			switch (type)
+			switch (level.m_eType)
 			{
-				case ForestGeneratorLevelType.TOP:
+				case SCR_EForestGeneratorLevelType.TOP:
 					GenerateTopTrees(polygon2D, bbox, ForestGeneratorTopLevel.Cast(level));
 					break;
 
-				case ForestGeneratorLevelType.OUTLINE:
+				case SCR_EForestGeneratorLevelType.OUTLINE:
 					GenerateOutlineTrees(polygon2D, bbox, ForestGeneratorOutline.Cast(level));
 					break;
 
-				case ForestGeneratorLevelType.BOTTOM:
+				case SCR_EForestGeneratorLevelType.BOTTOM:
 					GenerateBottomTrees(polygon2D, bbox, ForestGeneratorBottomLevel.Cast(level));
-					area = 0;
 					break;
 			}
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void GenerateClusters(array<float> polygon2D, AAB bbox)
-	{
-		ForestGeneratorCluster cluster;
-		ForestGeneratorClusterType type;
-		for (int i = 0, count = m_aClusters.Count(); i < count; i++)
-		{
-			cluster = m_aClusters[i];
-			if (!cluster.m_bGenerate)
-				continue;
-
-			type = cluster.GetClusterType();
-			switch (type)
-			{
-				case ForestGeneratorClusterType.CIRCLE:	GenerateCircleCluster(ForestGeneratorCircleCluster.Cast(cluster), polygon2D, bbox); break;
-				case ForestGeneratorClusterType.STRIP:	GenerateStripCluster(ForestGeneratorStripCluster.Cast(cluster), polygon2D, bbox); break;
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected int FindRectanglesInCircle(vector center, float radius, out array<ForestGeneratorRectangle> rectangles)
+	protected int FindRectanglesInCircle(vector center, float radius, out array<SCR_ForestGeneratorRectangle> rectangles)
 	{
 		int count = 0;
 		float deltaX, deltaY;
+		float radiusSq = radius * radius;
 
-		foreach (ForestGeneratorRectangle rectangle : m_aRectangles)
+		foreach (SCR_ForestGeneratorRectangle rectangle : m_aRectangles)
 		{
 			foreach (vector point : rectangle.m_aPoints)
 			{
 				deltaX = center[0] - Math.Max(rectangle.m_Line1.p1.m_vPos[0], Math.Min(center[0], rectangle.m_Line1.p1.m_vPos[0] + rectangle.m_fWidth));
 				deltaY = center[2] - Math.Max(rectangle.m_Line1.p1.m_vPos[2], Math.Min(center[2], rectangle.m_Line1.p1.m_vPos[2] + rectangle.m_fLength));
 
-				if (deltaX * deltaX + deltaY * deltaY < radius * radius)
+				if (deltaX * deltaX + deltaY * deltaY < radiusSq)
 				{
 					rectangles.Insert(rectangle);
 					count++;
@@ -1738,27 +1299,25 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected bool GetPointOutsideOutlines(notnull array<float> polygon2D, AAB bbox, out vector clusterCenter, int numberOfTries = 10, float aditionalDistance = 0)
+	protected bool GetPointOutsideOutlines(notnull array<float> polygon2D, SCR_AABB bbox, out vector clusterCenter, float additionalDistance = 0)
 	{
 		bool isInOutline = true;
 		int maxTriesToFindCenter = 10; // TODO replace with proper parameter.
 		int currentTriesCount = 0;
 
-		array<ForestGeneratorRectangle> rectangles;
-		ForestGeneratorRectangle rectangle;
+		array<SCR_ForestGeneratorRectangle> rectangles;
 		int rectanglesCount;
-		while (isInOutline)
+		while (isInOutline && currentTriesCount < maxTriesToFindCenter)
 		{
-			clusterCenter = GeneratePointInPolygon(polygon2D, bbox);
+			clusterCenter = m_RandomGenerator.GenerateRandomPoint(polygon2D, bbox.m_vMin, bbox.m_vMax);
 			rectangles = {};
 
-			rectanglesCount = FindRectanglesInCircle(clusterCenter, aditionalDistance + m_fOutlinesWidth, rectangles);
+			rectanglesCount = FindRectanglesInCircle(clusterCenter, additionalDistance + m_fMaxOutlinesWidth, rectangles);
 			isInOutline = false;
 
-			for (int i = 0; i < rectanglesCount; i++)
+			foreach (SCR_ForestGeneratorRectangle rectangle : rectangles)
 			{
-				rectangle = rectangles[i];
-				if (IsInOutline(rectangle, clusterCenter, aditionalDistance))
+				if (IsInOutline(rectangle, clusterCenter, additionalDistance))
 				{
 					isInOutline = true;
 					break;
@@ -1766,48 +1325,43 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 			}
 
 			currentTriesCount++;
-
-			if (currentTriesCount >= maxTriesToFindCenter)
-				break;
 		}
 
 		return currentTriesCount < maxTriesToFindCenter;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private void GenerateCircleCluster(ForestGeneratorCircleCluster cluster, array<float> polygon2D, AAB bbox)
+	protected void GenerateCircleCluster(notnull ForestGeneratorCircleCluster cluster, notnull array<float> polygon2D, notnull SCR_AABB bbox)
 	{
 		vector worldMat[4];
 		GetWorldTransform(worldMat);
 
-		float CDENSHA = 0;
-		if (m_RandomGenerator)
-			CDENSHA = SafeRandomFloat(cluster.m_fMinCDENSHA, cluster.m_fMaxCDENSHA);
+		float CDENSHA = SafeRandomFloatInclusive(cluster.m_fMinCDENSHA, cluster.m_fMaxCDENSHA);
 
-		int clusterCount = Math.Ceil(m_fArea * HECTARE_CONVERSION_FACTOR * CDENSHA);
 		vector clusterCenter;
-		SmallForestGeneratorClusterObject clusterObject;
-		int objectCount;
 		vector pointLocal;
 		SmallForestGeneratorClusterObject newClusterObject;
 		vector point;
 		WideForestGeneratorClusterObject wideObject;
-		for (int c = 0; c < clusterCount; c++)
+		for (int c, clusterCount = Math.Ceil(m_fArea * HECTARE_CONVERSION_FACTOR * CDENSHA); c < clusterCount; c++)
 		{
-			if (!GetPointOutsideOutlines(polygon2D, bbox, clusterCenter, aditionalDistance: cluster.m_fRadius))
+			if (!GetPointOutsideOutlines(polygon2D, bbox, clusterCenter, cluster.m_fRadius))
 				continue;
 
-			for (int x = 0; x < cluster.m_aObjects.Count(); x++)
-			{
-				clusterObject = cluster.m_aObjects[x];
-				objectCount = SafeRandomInt(clusterObject.m_iMinCount, clusterObject.m_iMaxCount);
+			bool isPolygonCheckUseless = SCR_Math3D.IsPointWithinSplineDistanceXZ(m_aShapePoints, clusterCenter, cluster.m_fRadius);
 
-				for (int o = 0; o < objectCount; o++)
+			foreach (SmallForestGeneratorClusterObject clusterObject : cluster.m_aObjects)
+			{
+				for (int o, objectCount = SafeRandomInt(clusterObject.m_iMinCount, clusterObject.m_iMaxCount); o < objectCount; o++)
 				{
 					pointLocal = GeneratePointInCircle(clusterObject.m_fMinRadius, clusterObject.m_fMaxRadius, clusterCenter);
-					if (Math2D.IsPointInPolygon(polygon2D, pointLocal[0], pointLocal[2]))
+					if (isPolygonCheckUseless || Math2D.IsPointInPolygon(polygon2D, pointLocal[0], pointLocal[2]))
 					{
-						newClusterObject = SmallForestGeneratorClusterObject.Cast(cluster.m_aObjects[x].Copy());
+						if (s_Benchmark)
+							s_Benchmark.BeginMeasure("clone");
+						newClusterObject = SmallForestGeneratorClusterObject.Cast(clusterObject.Clone());
+						if (s_Benchmark)
+							s_Benchmark.EndMeasure("clone");
 						if (!newClusterObject)
 							continue;
 
@@ -1826,8 +1380,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 						if (m_Grid.IsColliding(point, newClusterObject))
 							continue;
 
-						newClusterObject.m_Type = TreeType.CLUSTER;
-
+						newClusterObject.m_eType = SCR_ETreeType.CLUSTER;
 						m_Grid.AddEntry(newClusterObject, point);
 					}
 				}
@@ -1836,77 +1389,58 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private void GenerateStripCluster(ForestGeneratorStripCluster cluster, array<float> polygon2D, AAB bbox)
+	protected void GenerateStripCluster(notnull ForestGeneratorStripCluster cluster, notnull array<float> polygon2D, notnull SCR_AABB bbox)
 	{
 		vector worldMat[4];
 		GetWorldTransform(worldMat);
 
-		float radius = 0;
-		foreach (SmallForestGeneratorClusterObject clusterObject : cluster.m_aObjects)
-		{
-			if (clusterObject.m_fMinRadius > radius)
-				radius = clusterObject.m_fMinRadius;
-
-			if (clusterObject.m_fMaxRadius > radius)
-				radius = clusterObject.m_fMaxRadius;
-		}
-
-		if (radius == 0)
-			return;
-
-		float yaw = Math.RandomFloat(0, 360);
+		float yaw = m_RandomGenerator.RandFloatXY(0, 360);
 		vector direction = vector.FromYaw(yaw);
 		vector perpendicular;
 		perpendicular[0] = direction[2];
 		perpendicular[2] = -direction[0];
 
-		float CDENSHA = 0;
-		if (m_RandomGenerator)
-			CDENSHA = SafeRandomFloat(cluster.m_fMinCDENSHA, cluster.m_fMaxCDENSHA);
+		float CDENSHA = SafeRandomFloatInclusive(cluster.m_fMinCDENSHA, cluster.m_fMaxCDENSHA);
 
-		int clusterCount = Math.Ceil(m_fArea * HECTARE_CONVERSION_FACTOR * CDENSHA);
 		vector clusterCenter;
-		SmallForestGeneratorClusterObject clusterObject;
-		int objectCount;
 		vector pointLocal;
-		float distance;
-		int rnd;
-		float y01, y360, ySin, y;
 		vector offset;
 		vector point;
 		SmallForestGeneratorClusterObject newClusterObject;
 		WideForestGeneratorClusterObject wideObject;
-		for (int c = 0; c < clusterCount; c++)
+		for (int c, clusterCount = Math.Ceil(m_fArea * HECTARE_CONVERSION_FACTOR * CDENSHA); c < clusterCount; c++)
 		{
-			if (!GetPointOutsideOutlines(polygon2D, bbox, clusterCenter, aditionalDistance: cluster.m_fRadius))
+			if (!GetPointOutsideOutlines(polygon2D, bbox, clusterCenter, cluster.m_fRadius))
 				continue;
 
-			for (int x = 0; x < cluster.m_aObjects.Count(); x++)
-			{
-				clusterObject = cluster.m_aObjects[x];
-				objectCount = SafeRandomInt(clusterObject.m_iMinCount, clusterObject.m_iMaxCount);
+			bool isPolygonCheckUseless = SCR_Math3D.IsPointWithinSplineDistanceXZ(m_aShapePoints, clusterCenter, cluster.m_fRadius);
 
-				for (int o = 0; o < objectCount; o++)
+			foreach (SmallForestGeneratorClusterObject clusterObject : cluster.m_aObjects)
+			{
+				for (int o, objectCount = SafeRandomInt(clusterObject.m_iMinCount, clusterObject.m_iMaxCount); o < objectCount; o++)
 				{
-					distance = SafeRandomFloat(clusterObject.m_fMinRadius, clusterObject.m_fMaxRadius);
-					rnd = Math.RandomIntInclusive(0, 1);
+					float distance = SafeRandomFloatInclusive(clusterObject.m_fMinRadius, clusterObject.m_fMaxRadius);
+					int rnd = m_RandomGenerator.RandIntInclusive(0, 1);
 
 					if (rnd == 0)
-						distance *= -1;
+						distance = -distance;
 
-					y01 = distance / radius * cluster.m_fFrequency;
-					y360 = y01 * 360;
-					ySin = Math.Sin(y360 * Math.DEG2RAD);
-					y = ySin * cluster.m_fAmplitude;
+					float y01 = distance / cluster.m_fRadius * cluster.m_fFrequency;
+					float ySin = Math.Sin(y01 * 360 * Math.DEG2RAD);
+					float y = ySin * cluster.m_fAmplitude;
 
 					offset = vector.Zero;
-					offset[0] = Math.RandomFloat(0, cluster.m_fMaxXOffset);
-					offset[2] = Math.RandomFloat(0, cluster.m_fMaxYOffset);
+					offset[0] = SafeRandomFloatInclusive(0, cluster.m_fMaxXOffset);
+					offset[2] = SafeRandomFloatInclusive(0, cluster.m_fMaxYOffset);
 					pointLocal = (direction * distance) + (y * perpendicular) + clusterCenter + offset;
 
-					if (Math2D.IsPointInPolygon(polygon2D, pointLocal[0], pointLocal[2]))
+					if (isPolygonCheckUseless || Math2D.IsPointInPolygon(polygon2D, pointLocal[0], pointLocal[2]))
 					{
-						newClusterObject = SmallForestGeneratorClusterObject.Cast(cluster.m_aObjects[x].Copy());
+						if (s_Benchmark)
+							s_Benchmark.BeginMeasure("clone");
+						newClusterObject = SmallForestGeneratorClusterObject.Cast(clusterObject.Clone());
+						if (s_Benchmark)
+							s_Benchmark.EndMeasure("clone");
 						if (!newClusterObject)
 							continue;
 
@@ -1925,7 +1459,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 						if (m_Grid.IsColliding(point, newClusterObject))
 							continue;
 
-						newClusterObject.m_Type = TreeType.CLUSTER;
+						newClusterObject.m_eType = SCR_ETreeType.CLUSTER;
 						m_Grid.AddEntry(newClusterObject, point);
 					}
 				}
@@ -1934,35 +1468,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private vector GeneratePointInPolygon(notnull array<float> polygon2D, notnull AAB bbox)
-	{
-		vector point = GeneratePointInBbox(bbox);
-		while (!Math2D.IsPointInPolygon(polygon2D, point[0], point[2]))
-		{
-			point = GeneratePointInBbox(bbox);
-		}
-		return point;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	private vector GeneratePointInBbox(notnull AAB bbox)
-	{
-		return Vector(
-			Math.RandomFloat(bbox.m_vMin[0], bbox.m_vMax[0]),
-			Math.RandomFloat(bbox.m_vMin[1], bbox.m_vMax[1]),
-			Math.RandomFloat(bbox.m_vMin[2], bbox.m_vMax[2]));
-	}
-
-	//------------------------------------------------------------------------------------------------
-	private vector GeneratePointAlongLine(vector start, vector direction, vector perpendicular, float minDist, float maxDist)
-	{
-		float distanceOnLine = m_RandomGenerator.RandFloat01();
-		float distanceFromLine = SafeRandomFloat(minDist, maxDist);
-		return start + (direction * distanceOnLine) + (perpendicular * distanceFromLine);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	private float SafeRandomFloat(float min, float max)
+	protected float SafeRandomFloatInclusive(float min, float max)
 	{
 		if (min < max)
 			return m_RandomGenerator.RandFloatXY(min, max);
@@ -1970,95 +1476,93 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 		if (min == max)
 			return max;
 
-		Print("Some of your forest generator min value > max value.", LogLevel.WARNING);
+		Print("A forest generator object has some min value > max value at " + GetOrigin(), LogLevel.WARNING);
 		return m_RandomGenerator.RandFloatXY(max, min);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private int SafeRandomInt(int min, int max)
+	protected int SafeRandomInt(int min, int max)
 	{
 		if (min < max)
-			return Math.RandomIntInclusive(min, max);
+			return m_RandomGenerator.RandIntInclusive(min, max);
 
 		if (min == max)
 			return max;
 
-		Print("Your forest generator object has some min value > max value.", LogLevel.WARNING);
-		return Math.RandomIntInclusive(max, min);
+		Print("A forest generator object has some min value > max value at " + GetOrigin(), LogLevel.WARNING);
+		return m_RandomGenerator.RandIntInclusive(max, min);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private vector GeneratePointInCircle(float innerRadius, float outerRadius, vector circleCenter)
+	protected vector GeneratePointInCircle(float innerRadius, float outerRadius, vector circleCenter)
 	{
-		vector direction = GenerateRandomVectorBetweenAngles(0, 360);
-		float rand = SafeRandomFloat(innerRadius, outerRadius);
+		vector direction = vector.FromYaw(m_RandomGenerator.RandFloatXY(0, 360));
+		float rand = SafeRandomFloatInclusive(innerRadius, outerRadius);
 		return circleCenter + rand * direction;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private vector GeneratePointInCircle(float innerRadius, float outerRadius, ForestGeneratorPoint point)
+	protected vector GeneratePointInCircle(float innerRadius, float outerRadius, SCR_ForestGeneratorPoint point)
 	{
-		vector direction = GenerateRandomVectorBetweenAngles(point.m_fMinAngle, point.m_fMaxAngle);
-		float rand = SafeRandomFloat(innerRadius, outerRadius);
+		vector direction = vector.FromYaw(m_RandomGenerator.RandFloatXY(point.m_fMinAngle, point.m_fMaxAngle));
+		float rand = SafeRandomFloatInclusive(innerRadius, outerRadius);
 		return point.m_vPos + rand * direction;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private vector GenerateRandomVectorBetweenAngles(float angle1, float angle2)
+	protected vector GenerateRandomPointInRectangle(notnull SCR_ForestGeneratorRectangle rectangle)
 	{
-		return vector.FromYaw(m_RandomGenerator.RandFloatXY(angle1, angle2));
-	}
-
-	//------------------------------------------------------------------------------------------------
-	private vector GenerateRandomPointInRectangle(notnull ForestGeneratorRectangle rectangle)
-	{
-		return Vector(
+		return {
 			m_RandomGenerator.RandFloat01() * rectangle.m_fWidth + rectangle.m_Line1.p1.m_vPos[0],
 			0,
-			m_RandomGenerator.RandFloat01() * rectangle.m_fLength + rectangle.m_Line1.p1.m_vPos[2]);
+			m_RandomGenerator.RandFloat01() * rectangle.m_fLength + rectangle.m_Line1.p1.m_vPos[2]
+		};
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool GetIsAnyTreeValid(notnull array<ref TreeGroupClass> treeGroups)
+	protected bool GetIsAnyTreeValid(notnull array<ref TreeGroupClass> treeGroups)
 	{
-		ForestGeneratorTree tree;
-		for (int i = 0, iCnt = treeGroups.Count(); i < iCnt; ++i)
+		foreach (TreeGroupClass treeGroup : treeGroups)
 		{
-			if (treeGroups[i].m_fWeight <= 0)
+			if (treeGroup.m_fWeight <= 0)
 				continue;
 
-			for (int j = 0, jCnt = treeGroups[i].m_aTrees.Count(); j < jCnt; ++j)
+			foreach (ForestGeneratorTree tree : treeGroup.m_aTrees)
 			{
-				tree = treeGroups[i].m_aTrees[j];
-				if (tree.m_Prefab.Length() > 0 && tree.m_fWeight > 0)
+				if (tree.m_fWeight > 0 && !tree.m_Prefab.IsEmpty())
 					return true;
 			}
 		}
+
 		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void GenerateOutlineTrees(array<float> polygon, AAB bbox, ForestGeneratorOutline outline)
+	protected void GenerateOutlineTrees(array<float> polygon, SCR_AABB bbox, ForestGeneratorOutline outline)
 	{
-		if (!outline || !outline.m_aTreeGroups || outline.m_aTreeGroups.Count() < 1)
+		if (!outline || !outline.m_aTreeGroups || outline.m_aTreeGroups.IsEmpty())
 			return;
 
 		if (!GetIsAnyTreeValid(outline.m_aTreeGroups))
 			return;
 
-		array<ref ForestGeneratorPoint> currentOutlinePoints;
-		array<ref ForestGeneratorLine> currentOutlineLines;
+		SCR_ETreeType treeType;
+		array<ref SCR_ForestGeneratorPoint> currentOutlinePoints;
+		array<ref SCR_ForestGeneratorLine> currentOutlineLines;
 
-		switch (outline.m_OutlineType)
+		switch (outline.m_eOutlineType)
 		{
-			case ForestGeneratorOutlineType.SMALL:
+			case SCR_EForestGeneratorOutlineType.SMALL:
 			{
+				treeType = SCR_ETreeType.SMALL_OUTLINE;
 				currentOutlinePoints = m_aSmallOutlinePoints;
 				currentOutlineLines = m_aSmallOutlineLines;
 				break;
 			}
-			case ForestGeneratorOutlineType.MIDDLE:
+
+			case SCR_EForestGeneratorOutlineType.MIDDLE:
 			{
+				treeType = SCR_ETreeType.MIDDLE_OUTLINE;
 				currentOutlinePoints = m_aMiddleOutlinePoints;
 				currentOutlineLines = m_aMiddleOutlineLines;
 				break;
@@ -2068,50 +1572,67 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 		if (!currentOutlinePoints || !currentOutlineLines)
 			return;
 
-		array<float> groupProbas = {};
+		array<float> groupProbas = {}; // test
 		array<float> groupCounts = {};
 		groupCounts.Resize(outline.m_aTreeGroups.Count());
 
 		vector worldMat[4];
 		GetWorldTransform(worldMat);
 
-		int throwAwayCount = 0;
-		int linesCount = currentOutlineLines.Count();
+		bool useScaleCurve = outline.m_fOutlineScaleCurveDistance > 0 && !outline.m_aOutlineScaleCurve.IsEmpty();
+		float scaleCurveDistanceDivisor;
+		array<float> curveKnots;
+
+		if (useScaleCurve)
+		{
+			scaleCurveDistanceDivisor = 1 / outline.m_fOutlineScaleCurveDistance;
+			curveKnots = {};
+			foreach (vector scalePoint : outline.m_aOutlineScaleCurve)
+			{
+				curveKnots.Insert(scalePoint[0]);
+			}
+		}
+
 		int iterCount = 0;
 
 		vector direction, perpendicular, pointLocal, point;
 		float probaSumToNormalize, groupProba, probaSum;
 		int groupIdx;
 		ForestGeneratorTree tree;
-		for (int lineIter = 0; lineIter < linesCount; lineIter++)
+		foreach (SCR_ForestGeneratorLine line : currentOutlineLines)
 		{
-			direction = currentOutlineLines[lineIter].p2.m_vPos - currentOutlineLines[lineIter].p1.m_vPos;
-			perpendicular = Vector(direction[2], 0, -direction[0]);
+			direction = line.p2.m_vPos - line.p1.m_vPos;
+			perpendicular = { direction[2], 0, -direction[0] };
 			perpendicular.Normalize();
-			iterCount = outline.m_fDensity * (CalculateAreaForOutline(currentOutlineLines[lineIter], outline) * HECTARE_CONVERSION_FACTOR);
-			for (int treeIdx = 0; treeIdx < iterCount; ++treeIdx)
+			iterCount = outline.m_fDensity * (CalculateAreaForOutline(line, outline) * HECTARE_CONVERSION_FACTOR);
+			for (int treeIdx; treeIdx < iterCount; ++treeIdx)
 			{
-				pointLocal = GeneratePointAlongLine(currentOutlineLines[lineIter].p1.m_vPos, direction, perpendicular, outline.m_fMinDistance, outline.m_fMaxDistance);
+				// generate a point -along- the line (at a perpendicular distance)
+				pointLocal = line.p1.m_vPos + (direction * m_RandomGenerator.RandFloat01()) + (perpendicular * SafeRandomFloatInclusive(outline.m_fMinDistance, outline.m_fMaxDistance));
 				if (pointLocal == vector.Zero || !Math2D.IsPointInPolygon(polygon, pointLocal[0], pointLocal[2]))
-				{
-					throwAwayCount++;
 					continue;
-				}
 
 				point = pointLocal.Multiply4(worldMat);
 
 				// see which trees are around - count the types
-				groupProbas.Copy(outline.m_aGroupProbas);
-				for (int i = 0; i < groupCounts.Count(); ++i)
+				int groupProbaCount = groupProbas.Copy(outline.m_aGroupProbas);
+				for (int i, count = groupCounts.Count(); i < count; i++)
 				{
 					groupCounts[i] = 1;
 				}
 
-				m_Grid.CountEntriesAround(point, outline.m_fClusterRadius, groupCounts);
+				if (s_Benchmark)
+					s_Benchmark.BeginMeasure("gridCountEntriesAround");
+#ifdef COUNTENTRIES_BENCHMARK
+				if (m_bUseCountEntriesAround)
+#endif // COUNTENTRIES_BENCHMARK
+					m_Grid.CountEntriesAround(point, outline.m_fClusterRadius, groupCounts);
+				if (s_Benchmark)
+					s_Benchmark.EndMeasure("gridCountEntriesAround");
 
 				// skew the probability of given groups based on counts
 				probaSumToNormalize = 0;
-				for (int i = 0; i < groupProbas.Count(); ++i)
+				for (int i; i < groupProbaCount; i++)
 				{
 					groupProbas[i] = groupProbas[i] * Math.Pow(groupCounts[i], outline.m_fClusterStrength);
 					probaSumToNormalize += groupProbas[i];
@@ -2119,7 +1640,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 
 				if (probaSumToNormalize > 0)
 				{
-					for (int i = 0; i < groupProbas.Count(); ++i)
+					for (int i; i < groupProbaCount; i++)
 					{
 						groupProbas[i] = groupProbas[i] / probaSumToNormalize;
 					}
@@ -2128,7 +1649,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 				groupProba = m_RandomGenerator.RandFloat01();
 				groupIdx = groupProbas.Count() - 1; // last because there is less than in the loop
 				probaSum = 0;
-				for (int i = 0, count = groupProbas.Count(); i < count; ++i)
+				for (int i, count = groupProbas.Count(); i < count; ++i)
 				{
 					probaSum += groupProbas[i];
 					if (groupProba < probaSum) // less than to avoid accepting 0 probability tree
@@ -2143,22 +1664,32 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 				if (!IsEntryValid(tree, pointLocal))
 					continue;
 
-				switch (outline.m_OutlineType)
+				tree.m_eType = treeType;
+				if (useScaleCurve)
 				{
-					case ForestGeneratorOutlineType.SMALL:	tree.m_Type = TreeType.SOUTLINE; break;
-					case ForestGeneratorOutlineType.MIDDLE:	tree.m_Type = TreeType.MOUTLINE; break;
+					float distanceFromShape = SCR_Math3D.GetDistanceFromSplineXZ(m_aShapePoints, pointLocal);
+					if (distanceFromShape <= outline.m_fOutlineScaleCurveDistance)
+					{
+						// (m_fOutlineScaleCurveDistance - distanceFromShape) because right-to-left curve reading
+						float scaleFactor = Math3D.Curve(ECurveType.CatmullRom, (outline.m_fOutlineScaleCurveDistance - distanceFromShape) * scaleCurveDistanceDivisor, outline.m_aOutlineScaleCurve, curveKnots)[1];
+						if (scaleFactor < ForestGeneratorLevel.SCALE_CURVE_MIN_VALUE)
+							scaleFactor = ForestGeneratorLevel.SCALE_CURVE_MIN_VALUE;
+						else
+						if (scaleFactor > ForestGeneratorLevel.SCALE_CURVE_MAX_VALUE)
+							scaleFactor = ForestGeneratorLevel.SCALE_CURVE_MAX_VALUE;
+
+						tree.m_fScale *= scaleFactor;
+					}
 				}
+
 				m_Grid.AddEntry(tree, point);
 			}
 		}
 
-		ForestGeneratorPoint currentPoint;
-		int pointsCount = currentOutlinePoints.Count();
-		for (int pointIter = 0; pointIter < pointsCount; pointIter++)
+		foreach (SCR_ForestGeneratorPoint currentPoint : currentOutlinePoints)
 		{
-			currentPoint = currentOutlinePoints[pointIter];
 			iterCount = outline.m_fDensity * CalculateAreaForOutline(currentPoint, outline) * HECTARE_CONVERSION_FACTOR;
-			for (int treeIdx = 0; treeIdx < iterCount; treeIdx++)
+			for (int treeIdx; treeIdx < iterCount; treeIdx++)
 			{
 				pointLocal = GeneratePointInCircle(outline.m_fMinDistance, outline.m_fMaxDistance, currentPoint);
 
@@ -2171,40 +1702,46 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 					continue;
 
 				if (!Math2D.IsPointInPolygon(polygon, pointLocal[0], pointLocal[2]))
-				{
-					throwAwayCount++;
 					continue;
-				}
 
 				point = pointLocal.Multiply4(worldMat);
 
 				// see which trees are around - count the types
 				groupProbas.Copy(outline.m_aGroupProbas);
-				for (int i = 0; i < groupCounts.Count(); ++i)
+				for (int i, count = groupCounts.Count(); i < count; i++)
 				{
 					groupCounts[i] = 1;
 				}
 
-				m_Grid.CountEntriesAround(point, outline.m_fClusterRadius, groupCounts);
+				if (s_Benchmark)
+					s_Benchmark.BeginMeasure("gridCountEntriesAround");
+#ifdef COUNTENTRIES_BENCHMARK
+				if (m_bUseCountEntriesAround)
+#endif // COUNTENTRIES_BENCHMARK
+					m_Grid.CountEntriesAround(point, outline.m_fClusterRadius, groupCounts);
+				if (s_Benchmark)
+					s_Benchmark.EndMeasure("gridCountEntriesAround");
 
 				// skew the probability of given groups based on counts
 				probaSumToNormalize = 0;
-				for (int i = 0; i < groupProbas.Count(); ++i)
+				for (int i, count = groupProbas.Count(); i < count; i++)
 				{
 					groupProbas[i] = groupProbas[i] * Math.Pow(groupCounts[i], outline.m_fClusterStrength);
 					probaSumToNormalize += groupProbas[i];
 				}
 
-				for (int i = 0; i < groupProbas.Count(); ++i)
+				if (probaSumToNormalize != 0)
 				{
-					if (probaSumToNormalize != 0)
+					for (int i, count = groupProbas.Count(); i < count; i++)
+					{
 						groupProbas[i] = groupProbas[i] / probaSumToNormalize;
+					}
 				}
 
 				groupProba = m_RandomGenerator.RandFloat01();
 				groupIdx = groupProbas.Count() - 1; // last because there is less than in the loop
 				probaSum = 0;
-				for (int i = 0, count = groupProbas.Count(); i < count; ++i)
+				for (int i, count = groupProbas.Count(); i < count; i++)
 				{
 					probaSum += groupProbas[i];
 					if (groupProba < probaSum) // less than to avoid accepting 0 probability tree
@@ -2219,26 +1756,21 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 				if (!IsEntryValid(tree, pointLocal))
 					continue;
 
-				switch (outline.m_OutlineType)
-				{
-					case ForestGeneratorOutlineType.SMALL:	tree.m_Type = TreeType.SOUTLINE; break;
-					case ForestGeneratorOutlineType.MIDDLE:	tree.m_Type = TreeType.MOUTLINE; break;
-				}
-
+				tree.m_eType = treeType;
 				m_Grid.AddEntry(tree, point);
 			}
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool IsPointInProperDistanceFromLine(vector point, ForestGeneratorLine line, float minDistance, float maxDistance)
+	protected bool IsPointInProperDistanceFromLine(vector point, SCR_ForestGeneratorLine line, float minDistance, float maxDistance)
 	{
-		float distance = Math3D.PointLineSegmentDistance(Vector(point[0], 0, point[2]), Vector(line.p1.m_vPos[0], 0, line.p1.m_vPos[2]), Vector(line.p2.m_vPos[0], 0, line.p2.m_vPos[2]));
-		return distance > minDistance && distance < maxDistance;
+		float distance = Math3D.PointLineSegmentDistance({ point[0], 0, point[2] }, { line.p1.m_vPos[0], 0, line.p1.m_vPos[2] }, { line.p2.m_vPos[0], 0, line.p2.m_vPos[2] });
+		return distance >= minDistance && distance <= maxDistance;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool IsEntryValid(ForestGeneratorTree tree, vector pointLocal)
+	protected bool IsEntryValid(ForestGeneratorTree tree, vector pointLocal)
 	{
 		if (!tree)
 			return false;
@@ -2248,7 +1780,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 		{
 			float distance;
 			float minDistance;
-			foreach (ForestGeneratorLine line : m_aLines)
+			foreach (SCR_ForestGeneratorLine line : m_aLines)
 			{
 				distance = Math3D.PointLineSegmentDistance(pointLocal, line.p1.m_vPos, line.p2.m_vPos);
 				minDistance = fallenTree.GetMinDistanceFromLine();
@@ -2261,24 +1793,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private void GetPolygonPoints(array<float> polygon, out array<vector> points)
-	{
-		vector firstPoint;
-		vector nPoint;
-		for (int i = 0, count = polygon.Count(); i + 1 < count; i++)
-		{
-			nPoint = Vector(polygon[i], 0, polygon[i + 1]);
-			if (i == 0)
-				firstPoint = nPoint;
-
-			points.Insert(nPoint);
-			i++;
-		}
-		points.Insert(firstPoint);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void GenerateBottomTrees(array<float> polygon, AAB bbox, ForestGeneratorBottomLevel bottomLevel)
+	protected void GenerateBottomTrees(array<float> polygon, SCR_AABB bbox, ForestGeneratorBottomLevel bottomLevel)
 	{
 		if (!bottomLevel || bottomLevel.m_aTreeGroups.IsEmpty())
 			return;
@@ -2290,14 +1805,14 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 		float totalWeight = 0;
 		int groupCount = bottomLevel.m_aTreeGroups.Count();
 		groupProbas.Resize(groupCount);
-		for (int i = 0; i < groupCount; i++)
+		foreach (TreeGroupClass treeGroup : bottomLevel.m_aTreeGroups)
 		{
-			totalWeight += bottomLevel.m_aTreeGroups[i].m_fWeight;
+			totalWeight += treeGroup.m_fWeight;
 		}
 
 		if (totalWeight != 0)
 		{
-			for (int i = 0; i < groupCount; i++)
+			for (int i; i < groupCount; i++)
 			{
 				groupProbas[i] = (bottomLevel.m_aTreeGroups[i].m_fWeight / totalWeight);
 			}
@@ -2306,35 +1821,34 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 		vector worldMat[4];
 		GetWorldTransform(worldMat);
 
-		array<vector> points = {};
-		GetPolygonPoints(polygon, points);
+		bool useScaleCurve = bottomLevel.m_fOutlineScaleCurveDistance > 0 && !bottomLevel.m_aOutlineScaleCurve.IsEmpty();
+		float scaleCurveDistanceDivisor;
+		array<float> curveKnots;
 
-		bool checkOutline;
-		ForestGeneratorRectangle rectangle;
+		if (useScaleCurve)
+		{
+			scaleCurveDistanceDivisor = 1 / bottomLevel.m_fOutlineScaleCurveDistance;
+			curveKnots = {};
+			foreach (vector scalePoint : bottomLevel.m_aOutlineScaleCurve)
+			{
+				curveKnots.Insert(scalePoint[0]);
+			}
+		}
 
 		int expectedIterCount = m_fArea * HECTARE_CONVERSION_FACTOR * bottomLevel.m_fDensity;
-		int iterCount;
-		float perlinValue;
 		vector pointLocal;
 		vector point;
-		float rangeBeginning;
-		int groupIdx;
 		ForestGeneratorTree tree;
-		for (int rectIdx = 0, rectCount = m_aRectangles.Count(); rectIdx < rectCount; rectIdx++)
+		foreach (SCR_ForestGeneratorRectangle rectangle : m_aRectangles)
 		{
-			checkOutline = false;
-			rectangle = m_aRectangles[rectIdx];
-			if (!rectangle.m_aLines.IsEmpty())
-				checkOutline = true;
-
-			iterCount = bottomLevel.m_fDensity * m_aRectangles[rectIdx].m_fArea * HECTARE_CONVERSION_FACTOR;
-			for (int treeIdx = 0; treeIdx < iterCount; ++treeIdx)
+			int iterCount = bottomLevel.m_fDensity * rectangle.m_fArea * HECTARE_CONVERSION_FACTOR;
+			for (int treeIdx; treeIdx < iterCount; ++treeIdx)
 			{
 				expectedIterCount--;
 				// generate random point inside the shape (polygon at first)
 				pointLocal = GenerateRandomPointInRectangle(rectangle);
 
-				if (checkOutline)
+				if (!rectangle.m_aLines.IsEmpty())
 				{
 					if (!Math2D.IsPointInPolygon(polygon, pointLocal[0], pointLocal[2]))
 						continue;
@@ -2343,24 +1857,23 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 						continue;
 				}
 
-				perlinValue = Math.PerlinNoise01(pointLocal[0], 0, pointLocal[2]); // TODO Can we change the size of perlin noise?
-
+				float perlinValue = Math.PerlinNoise01(pointLocal[0], 0, pointLocal[2]); // TODO Can we change the size of perlin noise?
 				if (perlinValue > 1 || perlinValue < 0)
 				{
 					Print("Perlin value is out of range <0,1>, something went wrong!", LogLevel.ERROR);
 					continue;
 				}
 
-				rangeBeginning = 0;
-				groupIdx = 0;
-				for (int i = 0; i < groupCount; i++)
+				float rangeBeginning = 0;
+				int groupIdx = 0;
+				foreach (int i, float groupProba : groupProbas)
 				{
-					if (perlinValue > rangeBeginning && perlinValue < (groupProbas[i] + rangeBeginning))
+					if (perlinValue > rangeBeginning && perlinValue < (groupProba + rangeBeginning))
 					{
 						groupIdx = i;
 						break;
 					}
-					rangeBeginning += groupProbas[i];
+					rangeBeginning += groupProba;
 				}
 
 				point = pointLocal.Multiply4(worldMat);
@@ -2369,8 +1882,25 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 				if (!IsEntryValid(tree, pointLocal))
 					continue;
 
-				tree.m_Type = TreeType.BOTTOM;
+				tree.m_eType = SCR_ETreeType.BOTTOM;
 				tree.m_iDebugGroupIndex = groupIdx;
+				if (useScaleCurve)
+				{
+					float distanceFromShape = SCR_Math3D.GetDistanceFromSplineXZ(m_aShapePoints, pointLocal);
+					if (distanceFromShape <= bottomLevel.m_fOutlineScaleCurveDistance)
+					{
+						// (m_fOutlineScaleCurveDistance - distanceFromShape) because right-to-left curve reading
+						float scaleFactor = Math3D.Curve(ECurveType.CatmullRom, (bottomLevel.m_fOutlineScaleCurveDistance - distanceFromShape) * scaleCurveDistanceDivisor, bottomLevel.m_aOutlineScaleCurve, curveKnots)[1];
+						if (scaleFactor < ForestGeneratorLevel.SCALE_CURVE_MIN_VALUE)
+							scaleFactor = ForestGeneratorLevel.SCALE_CURVE_MIN_VALUE;
+						else
+						if (scaleFactor > ForestGeneratorLevel.SCALE_CURVE_MAX_VALUE)
+							scaleFactor = ForestGeneratorLevel.SCALE_CURVE_MAX_VALUE;
+
+						tree.m_fScale *= scaleFactor;
+					}
+				}
+
 				m_Grid.AddEntry(tree, point);
 			}
 		}
@@ -2385,7 +1915,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void GenerateTopTrees(array<float> polygon, AAB bbox, ForestGeneratorTopLevel topLevel)
+	protected void GenerateTopTrees(array<float> polygon, SCR_AABB bbox, ForestGeneratorTopLevel topLevel)
 	{
 		if (!topLevel || topLevel.m_aTreeGroups.IsEmpty())
 			return;
@@ -2399,38 +1929,38 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 
 		vector worldMat[4];
 		GetWorldTransform(worldMat);
+		
+		bool useScaleCurve = topLevel.m_fOutlineScaleCurveDistance > 0 && !topLevel.m_aOutlineScaleCurve.IsEmpty();
+		float scaleCurveDistanceDivisor;
+		array<float> curveKnots;
 
-		array<vector> points = {};
-		GetPolygonPoints(polygon, points);
-
-		bool checkOutline;
-		ForestGeneratorRectangle rectangle;
-		float area;
+		if (useScaleCurve)
+		{
+			scaleCurveDistanceDivisor = 1 / topLevel.m_fOutlineScaleCurveDistance;
+			curveKnots = {};
+			foreach (vector scalePoint : topLevel.m_aOutlineScaleCurve)
+			{
+				curveKnots.Insert(scalePoint[0]);
+			}
+		}
 
 		vector pointLocal;
 		int expectedIterCount = m_fArea * HECTARE_CONVERSION_FACTOR * topLevel.m_fDensity;
-		int iterCount = 0;
 		vector point;
-		float probaSumToNormalize, groupProba, probaSum;
-		int groupIdx;
 		ForestGeneratorTree tree;
-		for (int rectIdx = 0, rectCount = m_aRectangles.Count(); rectIdx < rectCount; rectIdx++)
+
+		foreach (SCR_ForestGeneratorRectangle rectangle : m_aRectangles)
 		{
-			checkOutline = false;
-			rectangle = m_aRectangles[rectIdx];
-			if (rectangle.m_aLines.Count() > 0)
-				checkOutline = true;
+			float area = rectangle.m_fArea * HECTARE_CONVERSION_FACTOR;
+			int iterCount = topLevel.m_fDensity * area;
 
-			area = m_aRectangles[rectIdx].m_fArea * HECTARE_CONVERSION_FACTOR;
-			iterCount = topLevel.m_fDensity * area;
-
-			for (int treeIdx = 0; treeIdx < iterCount; ++treeIdx)
+			for (int treeIdx; treeIdx < iterCount; ++treeIdx)
 			{
 				// generate random point inside the shape (polygon at first)
 				pointLocal = GenerateRandomPointInRectangle(rectangle);
 				expectedIterCount--;
 
-				if (checkOutline)
+				if (!rectangle.m_aLines.IsEmpty())
 				{
 					if (!Math2D.IsPointInPolygon(polygon, pointLocal[0], pointLocal[2]))
 						continue;
@@ -2443,16 +1973,24 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 
 				// see which trees are around - count the types
 				groupProbas.Copy(topLevel.m_aGroupProbas);
-				for (int i = 0; i < groupCounts.Count(); ++i)
+				for (int i, count = groupCounts.Count(); i < count; i++)
 				{
 					groupCounts[i] = 1;
 				}
 
-				m_Grid.CountEntriesAround(point, topLevel.m_fClusterRadius, groupCounts);
+				if (s_Benchmark)
+					s_Benchmark.BeginMeasure("gridCountEntriesAround");
+				// HERE is the "Invalid tree group index: 1, there are only 1 groups" error source
+#ifdef COUNTENTRIES_BENCHMARK
+				if (m_bUseCountEntriesAround)
+#endif // COUNTENTRIES_BENCHMARK
+					m_Grid.CountEntriesAround(point, topLevel.m_fClusterRadius, groupCounts);
+				if (s_Benchmark)
+					s_Benchmark.EndMeasure("gridCountEntriesAround");
 
 				// skew the probability of given groups based on counts
-				probaSumToNormalize = 0;
-				for (int i = 0; i < groupProbas.Count(); ++i)
+				float probaSumToNormalize = 0;
+				for (int i, count = groupProbas.Count(); i < count; i++)
 				{
 					groupProbas[i] = groupProbas[i] * Math.Pow(groupCounts[i], topLevel.m_fClusterStrength);
 					probaSumToNormalize += groupProbas[i];
@@ -2460,16 +1998,16 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 
 				if (probaSumToNormalize != 0)
 				{
-					for (int i = 0; i < groupProbas.Count(); ++i)
+					for (int i, count = groupProbas.Count(); i < count; i++)
 					{
 						groupProbas[i] = groupProbas[i] / probaSumToNormalize;
 					}
 				}
 
-				groupProba = m_RandomGenerator.RandFloat01();
-				groupIdx = groupProbas.Count() - 1; // last because there is less than in the loop
-				probaSum = 0;
-				for (int i = 0, count = groupProbas.Count(); i < count; ++i)
+				float groupProba = m_RandomGenerator.RandFloat01();
+				int groupIdx = groupProbas.Count() - 1; // last because there is less than in the loop
+				float probaSum = 0;
+				for (int i, count = groupProbas.Count(); i < count; ++i)
 				{
 					probaSum += groupProbas[i];
 					if (groupProba < probaSum) // less than to avoid accepting 0 probability tree
@@ -2483,7 +2021,24 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 				if (!IsEntryValid(tree, pointLocal))
 					continue;
 
-				tree.m_Type = TreeType.TOP;
+				tree.m_eType = SCR_ETreeType.TOP;
+				if (useScaleCurve)
+				{
+					float distanceFromShape = SCR_Math3D.GetDistanceFromSplineXZ(m_aShapePoints, pointLocal);
+					if (distanceFromShape <= topLevel.m_fOutlineScaleCurveDistance)
+					{
+						// (m_fOutlineScaleCurveDistance - distanceFromShape) because right-to-left curve reading
+						float scaleFactor = Math3D.Curve(ECurveType.CatmullRom, (topLevel.m_fOutlineScaleCurveDistance - distanceFromShape) * scaleCurveDistanceDivisor, topLevel.m_aOutlineScaleCurve, curveKnots)[1];
+						if (scaleFactor < ForestGeneratorLevel.SCALE_CURVE_MIN_VALUE)
+							scaleFactor = ForestGeneratorLevel.SCALE_CURVE_MIN_VALUE;
+						else
+						if (scaleFactor > ForestGeneratorLevel.SCALE_CURVE_MAX_VALUE)
+							scaleFactor = ForestGeneratorLevel.SCALE_CURVE_MAX_VALUE;
+
+						tree.m_fScale *= scaleFactor;
+					}
+				}
+
 				m_Grid.AddEntry(tree, point);
 			}
 		}
@@ -2498,7 +2053,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void GenerateTreeInsideRectangle(ForestGeneratorRectangle rectangle, ForestGeneratorLevel level, array<float> polygon, vector worldMat[4])
+	protected void GenerateTreeInsideRectangle(SCR_ForestGeneratorRectangle rectangle, ForestGeneratorLevel level, array<float> polygon, vector worldMat[4])
 	{
 		array<float> groupProbas = {};
 		array<float> groupCounts = {};
@@ -2507,7 +2062,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 		// generate random point inside the shape (polygon at first)
 		vector pointLocal = GenerateRandomPointInRectangle(rectangle);
 
-		if (rectangle.m_aLines.Count() > 0)
+		if (!rectangle.m_aLines.IsEmpty())
 		{
 			if (!Math2D.IsPointInPolygon(polygon, pointLocal[0], pointLocal[2]))
 				return;
@@ -2520,21 +2075,28 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 
 		// see which trees are around - count the types
 		groupProbas.Copy(level.m_aGroupProbas);
-		for (int i = 0; i < groupCounts.Count(); ++i)
+		for (int i, count = groupCounts.Count(); i < count; i++)
 		{
 			groupCounts[i] = 1;
 		}
 
-		if (level.m_Type == ForestGeneratorLevelType.TOP)
+		if (level.m_eType == SCR_EForestGeneratorLevelType.TOP)
 		{
 			ForestGeneratorTopLevel topLevel = ForestGeneratorTopLevel.Cast(level);
 			if (topLevel)
 			{
-				m_Grid.CountEntriesAround(point, topLevel.m_fClusterRadius, groupCounts);
+				if (s_Benchmark)
+					s_Benchmark.BeginMeasure("gridCountEntriesAround");
+#ifdef COUNTENTRIES_BENCHMARK
+				if (m_bUseCountEntriesAround)
+#endif // COUNTENTRIES_BENCHMARK
+					m_Grid.CountEntriesAround(point, topLevel.m_fClusterRadius, groupCounts);
+				if (s_Benchmark)
+					s_Benchmark.EndMeasure("gridCountEntriesAround");
 
 				// skew the probability of given groups based on counts
 				float probaSumToNormalize = 0;
-				for (int i = 0; i < groupProbas.Count(); ++i)
+				for (int i, count = groupProbas.Count(); i < count; i++)
 				{
 					groupProbas[i] = groupProbas[i] * Math.Pow(groupCounts[i], topLevel.m_fClusterStrength);
 					probaSumToNormalize += groupProbas[i];
@@ -2542,7 +2104,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 
 				if (probaSumToNormalize != 0)
 				{
-					for (int i = 0; i < groupProbas.Count(); ++i)
+					for (int i, count = groupProbas.Count(); i < count; i++)
 					{
 						groupProbas[i] = groupProbas[i] / probaSumToNormalize;
 					}
@@ -2553,7 +2115,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 		float groupProba = m_RandomGenerator.RandFloat01();
 		int groupIdx = groupProbas.Count() - 1; // last because there is less than in the loop
 		float probaSum = 0;
-		for (int i = 0, count = groupProbas.Count(); i < count; ++i)
+		for (int i, count = groupProbas.Count(); i < count; ++i)
 		{
 			probaSum += groupProbas[i];
 			if (groupProba < probaSum) // less than to avoid accepting 0 probability tree
@@ -2563,40 +2125,26 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 			}
 		}
 
-		if (groupIdx >= level.m_aTreeGroups.Count() || groupIdx < 0)
-			groupIdx = SafeRandomInt(0, level.m_aTreeGroups.Count() - 1);
+		if (!level.m_aTreeGroups.IsIndexValid(groupIdx))
+			groupIdx = m_RandomGenerator.RandInt(0, level.m_aTreeGroups.Count());
 
 		ForestGeneratorTree tree = SelectTreeToSpawn(point, level.m_aTreeGroups[groupIdx].m_aTrees);
 		if (!IsEntryValid(tree, pointLocal))
 			return;
 
-		tree.m_Type = TreeType.TOP;
+		tree.m_eType = SCR_ETreeType.TOP;
 		m_Grid.AddEntry(tree, point);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private void LoadOutlines()
+	protected ForestGeneratorTree SelectTreeToSpawn(vector point, array<ref ForestGeneratorTree> trees)
 	{
-		m_aOutlines.Clear();
-		ForestGeneratorOutline outline;
-		foreach (ForestGeneratorLevel level : m_aLevels)
-		{
-			outline = ForestGeneratorOutline.Cast(level);
-			if (outline)
-				m_aOutlines.Insert(outline);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	ForestGeneratorTree SelectTreeToSpawn(vector point, array<ref ForestGeneratorTree> trees)
-	{
-		// take a random tree type
 		float treeProba = m_RandomGenerator.RandFloat01();
 		int treeTypeIdx = trees.Count() - 1; // last because there is less than in the loop
-		float probaSum = 0;
-		for (int i = 0, count = trees.Count(); i < count; ++i)
+		float probaSum;
+		foreach (int i, ForestGeneratorTree tree : trees)
 		{
-			probaSum += trees[i].m_fWeight;
+			probaSum += tree.m_fWeight;
 			if (treeProba < probaSum) // less than to avoid accepting 0 probability tree
 			{
 				treeTypeIdx = i;
@@ -2604,10 +2152,12 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 			}
 		}
 
-		if (treeTypeIdx < 0)
-			return null;
+		if (s_Benchmark)
+			s_Benchmark.BeginMeasure("clone");
+		ForestGeneratorTree tree = ForestGeneratorTree.Cast(trees[treeTypeIdx].Clone());
+		if (s_Benchmark)
+			s_Benchmark.EndMeasure("clone");
 
-		ForestGeneratorTree tree = ForestGeneratorTree.Cast(trees[treeTypeIdx].Copy());
 		if (!tree)
 			return null;
 
@@ -2643,47 +2193,41 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetObjectScale(SCR_ForestGeneratorTreeBase object)
+	protected void SetObjectScale(SCR_ForestGeneratorTreeBase object)
 	{
-		object.m_fScale = SafeRandomFloat(object.m_fMinScale, object.m_fMaxScale);
+		object.m_fScale = SafeRandomFloatInclusive(object.m_fMinScale, object.m_fMaxScale);
 		object.AdjustScale();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected bool IsInOutline(ForestGeneratorRectangle rectangle, vector pointLocal, float aditionalDistance = 0)
+	protected bool IsInOutline(SCR_ForestGeneratorRectangle rectangle, vector pointLocal, float additionalDistance = 0)
 	{
 		float distance;
-		foreach (ForestGeneratorLine line : rectangle.m_aLines)
+		foreach (SCR_ForestGeneratorLine line : rectangle.m_aLines)
 		{
-			distance = Math3D.PointLineSegmentDistance(pointLocal, line.p1.m_vPos, line.p2.m_vPos);
-
 			foreach (ForestGeneratorOutline outline : m_aOutlines)
 			{
 				if (!outline.m_bGenerate)
 					continue;
 
-				switch (outline.m_OutlineType)
-				{
-					case ForestGeneratorOutlineType.SMALL:
-					{
-						if (line.p1.m_bSmallOutline && distance > outline.m_fMinDistance - aditionalDistance && distance < outline.m_fMaxDistance + aditionalDistance)
-							return true;
-						break;
-					}
-					case ForestGeneratorOutlineType.MIDDLE:
-					{
-						if (line.p1.m_bMiddleOutline && distance > outline.m_fMinDistance - aditionalDistance && distance < outline.m_fMaxDistance + aditionalDistance)
-							return true;
-						break;
-					}
-				}
+				if (outline.m_eOutlineType == SCR_EForestGeneratorOutlineType.SMALL && !line.p1.m_bSmallOutline)
+					continue;
+
+				if (outline.m_eOutlineType == SCR_EForestGeneratorOutlineType.MIDDLE && !line.p1.m_bMiddleOutline)
+					continue;
+
+				distance = Math3D.PointLineSegmentDistance(pointLocal, line.p1.m_vPos, line.p2.m_vPos);
+
+				if (distance > outline.m_fMinDistance - additionalDistance && distance < outline.m_fMaxDistance + additionalDistance)
+					return true;
 			}
 		}
+
 		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private float CalculateAreaForOutline(ForestGeneratorLine line, ForestGeneratorOutline outline)
+	protected float CalculateAreaForOutline(SCR_ForestGeneratorLine line, ForestGeneratorOutline outline)
 	{
 		if (!line || !outline)
 			return 0;
@@ -2692,98 +2236,41 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private float CalculateAreaForOutline(ForestGeneratorPoint point, ForestGeneratorOutline outline)
+	protected float CalculateAreaForOutline(SCR_ForestGeneratorPoint point, ForestGeneratorOutline outline)
 	{
 		if (!point || !outline)
 			return 0;
 
-		float areaBigger = Math.PI * Math.Pow(outline.m_fMaxDistance, 2);
-		float areaSmaller = Math.PI * Math.Pow(outline.m_fMinDistance, 2);
+		float areaBigger = Math.PI * outline.m_fMaxDistance * outline.m_fMaxDistance;
+		float areaSmaller = Math.PI * outline.m_fMinDistance * outline.m_fMinDistance;
 
 		return (point.m_fAngle / 360) * (areaBigger - areaSmaller);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private void ClockwiseCheck()
+	protected override void OnRegenerate()
 	{
-		int count = m_aPoints.Count();
-		if (count < 3)
-			return;
-
-		int sum = 0;
-		vector currentPoint;
-		vector nextPoint;
-		for (int i = 0; i < count; i++)
-		{
-			currentPoint = m_aPoints[i].m_vPos;
-			if (i == count -1)
-				nextPoint = m_aPoints[0].m_vPos;
-			else
-				nextPoint = m_aPoints[i+1].m_vPos;
-
-			sum += (nextPoint[0] - currentPoint[0]) * (nextPoint[2] + currentPoint[2]);
-		}
-
-		if (sum < 0)
-		{
-			// COUNTER-CLOCKWISE
-			int pointsCount = m_aPoints.Count();
-			int iterNum = pointsCount / 2;
-
-			ForestGeneratorPoint genPoint;
-			for (int i = 0; i < iterNum; i++)
-			{
-				genPoint = m_aPoints[i];
-				m_aPoints[i] = m_aPoints[pointsCount - 1 - i];
-				m_aPoints[pointsCount - 1 - i] = genPoint;
-			}
-		}
-/*
-		else
-		{
-			// CLOCKWISE
-		}
-*/
+		RegenerateForest(true);
 	}
 
-#ifdef _ALLOW_FOREST_REGENERATION
-	//------------------------------------------------------------------------------------------------
-	protected override void OnIntersectingShapeChangedXZInternal(IEntitySource shapeEntitySrc, IEntitySource other, array<vector> mins, array<vector> maxes)
-	{
-		if (!m_bAllowRegenerationByNearbyChanges || !shapeEntitySrc || !other)
-			return;
-
-		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
-		if (!worldEditorAPI)
-			return;
-
-		IEntitySource childEntitySource;
-		GeneratorBaseEntity generator;
-		for (int i = 0, childrenCount = other.GetNumChildren(); i < childrenCount; i++)
-		{
-			childEntitySource = other.GetChild(i);
-			generator = GeneratorBaseEntity.Cast(worldEditorAPI.SourceToEntity(childEntitySource));
-			if (!generator)
-				continue;
-
-			if (generator.IsInherited(SCR_PowerlineGeneratorEntity) ||
-				generator.IsInherited(RoadGeneratorEntity) ||
-				generator.IsInherited(RiverEntity))
-			{
-				OnShapeInitInternal(shapeEntitySrc, ShapeEntity.Cast(worldEditorAPI.SourceToEntity(shapeEntitySrc)));
-				return;
-			}
-		}
-	}
-#endif
+#endif // WORKBENCH
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void ForestGeneratorEntity(IEntitySource src, IEntity parent)
 	{
 #ifdef WORKBENCH
-		SetEventMask(EntityEvent.INIT);
-		m_Grid = new ForestGeneratorGrid(10);
-		m_RandomGenerator = new RandomGenerator();
-#endif
+		if (!s_DebugShapeManager)
+			s_DebugShapeManager = new SCR_DebugShapeManager();
+#endif // WORKBENCH
 	}
-};
+}
+
+enum SCR_ETreeType
+{
+	TOP,
+	BOTTOM,
+	MIDDLE_OUTLINE,
+	SMALL_OUTLINE,
+	CLUSTER,
+}

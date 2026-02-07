@@ -10,7 +10,9 @@ class SCR_DayDurationEditorAttribute: SCR_BaseValueListEditorAttribute
 		if (!IsGameMode(item)) 
 			return null;
 		
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		if (!timeManager) return null;
 		
 		return SCR_BaseEditorAttributeVar.CreateFloat(86400 / timeManager.GetDayDuration());
@@ -19,7 +21,9 @@ class SCR_DayDurationEditorAttribute: SCR_BaseValueListEditorAttribute
 	{
 		if (!var) return;
 		
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		if (!timeManager) return;
 
 		timeManager.SetDayDuration(86400 / var.GetFloat());

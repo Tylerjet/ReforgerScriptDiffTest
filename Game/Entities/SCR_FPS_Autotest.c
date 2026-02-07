@@ -20,6 +20,32 @@ class HeatmapData
 	}
 };
 
+//------------------------------------------------------------------------------------------------
+// Handles closing the game after the data is sent to the heatmap database
+class SCR_RestCallbackExample: RestCallback
+{
+	//------------------------------------------------------------------------------------------------
+    override void OnError(int errorCode)
+    {
+        Print("Sending data has failed", LogLevel.WARNING);
+		GetGame().RequestClose();
+    };
+ 
+	//------------------------------------------------------------------------------------------------
+    override void OnTimeout()
+    {
+        Print("Sending data has timed out", LogLevel.WARNING);
+		GetGame().RequestClose();		
+    };
+ 
+	//------------------------------------------------------------------------------------------------
+    override void OnSuccess(string data, int dataSize)
+    {
+        Print("Data sent successfully. Size: " + dataSize);
+		GetGame().RequestClose();
+    };
+}; 
+
 class SCR_HeatMap_Autotest: GenericEntity
 {
 	[Attribute("ScriptCamera1", UIWidgets.EditBox, "Name of camera entity", "")]
@@ -66,7 +92,18 @@ class SCR_HeatMap_Autotest: GenericEntity
 
 	[Attribute("14", UIWidgets.EditBox)]
 	private float timeOfTheDay;
-
+	
+	[Attribute("", UIWidgets.Auto)]
+	private string mapID;
+	
+	private ref map<EPlatform, string> platforms = new map<EPlatform, string>();
+	
+	private ref SCR_RestCallbackExample m_jsonCallback = new SCR_RestCallbackExample();
+	
+	private const string HEATMAP_URL = "https://ar-heatmap.bistudio.com/";
+	
+	protected bool m_bDoneGenerating = false;	//< Used to stop the benchmark after processing and sending data
+	
 	protected float m_timer; 			//< Used for counting how long camera stays on one place
 
 	private IEntity m_camera;			//< Entity used as camera, this one is auto moved by autotest
@@ -113,10 +150,11 @@ class SCR_HeatMap_Autotest: GenericEntity
 
 	override void EOnInit(IEntity owner)
 	{
-		if (GetGame().GetTimeAndWeatherManager())
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world.GetTimeAndWeatherManager())
 		{
-			GetGame().GetTimeAndWeatherManager().SetTimeOfTheDay(timeOfTheDay);
-			GetGame().GetTimeAndWeatherManager().SetIsDayAutoAdvanced(false);
+			world.GetTimeAndWeatherManager().SetTimeOfTheDay(timeOfTheDay);
+			world.GetTimeAndWeatherManager().SetIsDayAutoAdvanced(false);
 		}
 
 		area_only = (endX > 0 || endZ > 0 || startX > 0 || startZ > 0);
@@ -150,6 +188,11 @@ class SCR_HeatMap_Autotest: GenericEntity
 				endZ = m_worldSizeZ;
 			}
 		}
+		
+		platforms.Insert(EPlatform.WINDOWS, "62e0e57519098fc05e1b28fe");
+		platforms.Insert(EPlatform.XBOX_ONE, "62e0e58f19098fc05e1b28ff");
+		platforms.Insert(EPlatform.XBOX_SERIES_X, "632863b8211b59093a5afb79");
+		platforms.Insert(EPlatform.XBOX_SERIES_S, "632863cb211b59093a5afb7a");
 	}
 
 	override void EOnFrame(IEntity owner, float timeSlice)
@@ -159,7 +202,12 @@ class SCR_HeatMap_Autotest: GenericEntity
 		{
 			return;
 		}
-
+		
+		if (m_bDoneGenerating)
+		{
+			return;
+		}
+		
 		if (!m_camera)
 		{
 			Print("Camera entity cannot be found!", LogLevel.ERROR);
@@ -236,7 +284,7 @@ class SCR_HeatMap_Autotest: GenericEntity
 					GenerateDDS();
 					GenerateGeoJSON();
 					GenerateCSV();
-					GetGame().RequestClose(); //< End mission
+					m_bDoneGenerating = true;
 				}
 			}
 		}
@@ -345,7 +393,7 @@ class SCR_HeatMap_Autotest: GenericEntity
 	private string GetGeoJSONLine(HeatmapData val) //vector val)
 	{
 		string new_value = string.Format(
-			"{ \"type\": \"Feature\", \"properties\": { \"FPS\": \"%1\" }, \"geometry\": { \"type\": \"Point\", \"coordinates\": [ %2, %3, %4] } }",
+			"{ \"properties\": { \"FPS\": \"%1\" }, \"geometry\": { \"coordinates\": [ %2, %3, %4] } }",
 			Math.Floor(val.m_fps), val.m_x, val.m_z, val.m_y);
 
 		return new_value;
@@ -371,9 +419,27 @@ class SCR_HeatMap_Autotest: GenericEntity
 		file = FileIO.OpenFile("$logs:/" + mapName + "/" + filename, FileMode.WRITE);
 
 		WriteDataGJSON(file);
+		file.Close();		
+		file = FileIO.OpenFile("$logs:/" + mapName + "/" + filename, FileMode.READ);
+		
+		string data;
+		file.Read(data, file.GetLength());
 		file.Close();
 		
-		Print("Creating a geojson done");
+		RestContext restContext = GetGame().GetRestApi().GetContext(HEATMAP_URL);
+		
+		if (!restContext)
+		{
+			Print("Failed to get RestAPI context. Unable to send data", LogLevel.ERROR);
+			return;
+		}
+		
+		restContext.SetHeaders("Content-Type,application/json");
+		restContext.POST(m_jsonCallback, "api/fps-statistics", data);
+		
+		restContext = null;
+		
+		Print("Creating a json done");
 	}
 
 	private void GenerateCSV()
@@ -389,19 +455,33 @@ class SCR_HeatMap_Autotest: GenericEntity
 		WriteDataCSV(file);
 		file.Close();
 		
-		Print("Creating a geojson done");
+		Print("Creating a CSV done");
 	}
 
 	private void WriteDataGJSON(FileHandle file)
 	{
 		Print("Adding data to geojson");
 		
+		string platform;
+		platforms.Find(System.GetPlatform(), platform);
+		
+		if (!platform)
+		{
+			platform = "Invalid";
+		
+			Print("SCR_FPS_Autotest::Invalid platform, GJSON file will fail to post to database", LogLevel.ERROR);
+		}
+		
 		file.WriteLine("{");
+		file.WriteLine(string.Format("\"date\": \"%1\",", SCR_DateTimeHelper.GetDateTimeLocal()));
+		file.WriteLine(string.Format("\"platform\": \"%1\",", platform));
+		file.WriteLine(string.Format("\"map\": \"%1\",", mapID));
+		file.WriteLine("\"featurecollection\": {");
 		file.WriteLine("\"type\": \"FeatureCollection\",");
 		file.WriteLine("\"name\": \"fps\",");
-		file.WriteLine(string.Format("\"minfps\": \"%1\",", Math.Floor(min_fps)));
-		file.WriteLine(string.Format("\"maxfps\": \"%1\",", Math.Floor(max_fps)));
-		file.WriteLine(string.Format("\"avgfps\": \"%1\",", Math.Floor(avg_fps)));
+		file.WriteLine(string.Format("\"minfps\": %1,", Math.Floor(min_fps)));
+		file.WriteLine(string.Format("\"maxfps\": %1,", Math.Floor(max_fps)));
+		file.WriteLine(string.Format("\"avgfps\": %1,", Math.Floor(avg_fps)));
 		file.WriteLine("\"crs\": { \"type\": \"name\", \"properties\": { \"name\": \"urn:ogc:def:crs:EPSG::32632\" } },");
 		file.WriteLine("\"features\": [");
 
@@ -410,11 +490,11 @@ class SCR_HeatMap_Autotest: GenericEntity
 			string line_end = ",";
 			if (i == m_geojson_data.Count()-1)
 				line_end = string.Empty;
-
+			
 			file.WriteLine(GetGeoJSONLine(m_geojson_data[i]) + line_end);
 		}
 
-		file.WriteLine("]\n}");
+		file.WriteLine("]\n}\n}");
 	}
 
 	private void WriteDataCSV(FileHandle file)

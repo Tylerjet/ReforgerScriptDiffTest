@@ -1195,7 +1195,7 @@ class SCR_TreePartV2 : Tree
 				  IEntity pHitEntity, 
 				  inout vector outMat[3], 
 				  IEntity damageSource, 
-				  IEntity damageSourceParent, 
+				  notnull Instigator instigator, 
 				  int colliderID, 
 				  float speed)
 	{

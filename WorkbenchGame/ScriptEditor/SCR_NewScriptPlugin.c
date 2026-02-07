@@ -1,7 +1,7 @@
 [WorkbenchPluginAttribute("Create New Script", "", "CTRL+N", "", { "ScriptEditor" }, awesomeFontCode: 0xF1C9)]
 class SCR_NewScriptPlugin : WorkbenchPlugin
 {
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "File system where the new script file will be created", enums: ParamEnumAddons.FromEnum(), category: "General")]
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "File system where the new script file will be created", enums: ParamEnumAddons.FromEnum(titleFormat: 2, hideCoreModules: 2), category: "General")]
 	protected int m_iAddon;
 
 	[Attribute(defvalue: DEFAULT_DIRECTORY, desc: "File destination - the path can be selected in an addon (typically the Arma project) and Addon be defined to something else, the directory tree will then be created in said targeted addon", params: "unregFolders", category: "General")]
@@ -154,7 +154,15 @@ class SCR_NewScriptPlugin : WorkbenchPlugin
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("OK")]
-	protected void OkButton()
+	protected bool OkButton()
 	{
+		return true;
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	[ButtonAttribute("Cancel")]
+	protected bool CancelButton()
+	{
+		return false;
+	}
+}

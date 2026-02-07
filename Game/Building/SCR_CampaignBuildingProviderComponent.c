@@ -1,42 +1,83 @@
 [EntityEditorProps(category: "GameScripted/Building", description: "Component attached to a provider, responsible for basic provider behaviour.")]
-class SCR_CampaignBuildingProviderComponentClass : ScriptComponentClass
+class SCR_CampaignBuildingProviderComponentClass : SCR_MilitaryBaseLogicComponentClass
 {
 
-};
+}
 
 //------------------------------------------------------------------------------------------------
-class SCR_CampaignBuildingProviderComponent : ScriptComponent
+class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 {
 	[Attribute("0", UIWidgets.CheckBox, "Can the building mode at this provider executed only via user action?")]
 	protected bool m_bUserActionActivationOnly;
 
+	[Attribute("0", UIWidgets.CheckBox, "Register at nearby base, if available.")]
+	protected bool m_bRegisterAtBase;
+
 	[Attribute("50", UIWidgets.EditBox, "Building radius")]
 	protected float m_fBuildingRadius;
-	
+
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "Minimal rank that allows player to use the provider to build structures.", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
 	protected SCR_ECharacterRank m_iRank;
 
-	protected vector m_vProviderOrigin;
-	protected vector m_vNewProviderOrigin;
-	protected bool m_bProviderIsMoving;
-	protected bool m_bProviderMoveCheckRunning;
+	[Attribute("500", UIWidgets.EditBox, "Max. value for prop budget. if -1 is set, the budget is unlimited. Use with caution, might have a severe performance impact.")]
+	protected int m_iMaxPropValue;
+
+	[Attribute(desc: "Fill in the budgets to be used with this provider", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityBudget))]
+	protected ref array<EEditableEntityBudget> m_aBudgetsToEvaluate;
+
+	[Attribute(desc: "Traits this provider will provide. Each trait represents a tab in building interface. The tabs have to be defined in building mode's SCR_ContentBrowserEditorComponent.", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
+	protected ref array<EEditableEntityLabel> m_aAvailableTraits;
+
+	[RplProp()]
+	protected int m_iCurrentPropValue;
+
+	protected Physics m_ProviderPhysics;
+
+	protected SCR_ResourceComponent m_ResourceComponent;
 
 	protected ref array<int> m_aActiveUsersIDs = {};
 	protected ref array<int> m_aAvailableUsersIDs = {};
 
-	protected static ref ScriptInvoker s_OnProviderCreated = new ScriptInvoker();
+	protected static ref ScriptInvokerVoid s_OnProviderCreated = new ScriptInvokerVoid();
 
-	protected const float MOVING_CHECK_DISTANCE_SQ = 10;
-	protected const float STOPPING_CHECK_DISTANCE_SQ = 0.5;
 	protected const int MOVING_CHECK_PERIOD = 1000;
-	protected const int STOPPING_CHECK_PERIOD = 2000;
+	protected const int PROVIDER_SPEED_TO_REMOVE_BUILDING_SQ = 1;
+
+	//------------------------------------------------------------------------------------------------
+	override void RegisterBase(notnull SCR_MilitaryBaseComponent base)
+	{
+		if (!m_bRegisterAtBase)
+			return;
+
+		super.RegisterBase(base);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns if the provider can be registered at base or not.
+	bool CanRegisterAtMilitaryBase()
+	{
+		return m_bRegisterAtBase;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns a military base component of the base this provider is registered to. If is registered to more then one, it returns the 1st one.
+	SCR_MilitaryBaseComponent GetMilitaryBaseComponent()
+	{
+		array<SCR_MilitaryBaseComponent> bases = {};
+		GetBases(bases);
+
+		if (bases.IsEmpty())
+			return null;
+
+		return bases[0];
+	}
 
 	//------------------------------------------------------------------------------------------------
 	SCR_ECharacterRank GetAccessRank()
 	{
 		return m_iRank;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	float GetBuildingRadius()
 	{
@@ -44,14 +85,45 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	int GetMaxPropValue()
+	{
+		return m_iMaxPropValue;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetCurrentPropValue()
+	{
+		return m_iCurrentPropValue;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void AddPropValue(int value)
+	{
+		m_iCurrentPropValue += value;
+		Replication.BumpMe();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	array<EEditableEntityLabel> GetAvailableTraits()
+	{
+		array<EEditableEntityLabel> availableTraits = {};
+		availableTraits.Copy(m_aAvailableTraits);
+		return availableTraits;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
+
+		super.OnPostInit(owner);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
+		super.EOnInit(owner);
+
 		if (System.IsConsoleApp() || !GetGame().GetPlayerController())
 			SetOnProviderFactionChangedEvent();
 	}
@@ -134,46 +206,46 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 		editorManager.GetOnOpened().Insert(BuildingModeCreated);
 		networkComponent.RequestEnterBuildingMode(GetOwner(), playerID, m_bUserActionActivationOnly, UserActionUsed);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetOnPlayerTeleported(int playerID)
 	{
 		PlayerController playerController = GetGame().GetPlayerController();
 		if (!playerController)
-			return;	
-		
+			return;
+
 		SCR_PlayerTeleportedFeedbackComponent playerTeleportComponent = SCR_PlayerTeleportedFeedbackComponent.Cast(playerController.FindComponent(SCR_PlayerTeleportedFeedbackComponent));
 		if (!playerTeleportComponent)
 			return;
-		
+
 		playerTeleportComponent.GetOnPlayerTeleported().Insert(PlayerTeleported);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetOnPlayerConsciousnessChanged(int playerID)
 	{
 		IEntity player = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
 		if (!player)
 			return;
-		
+
 		EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(player.FindComponent(EventHandlerManagerComponent));
 		if (eventHandlerManager)
 			eventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged, false, true);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnConsciousnessChanged(bool conscious)
 	{
 		if (conscious)
 			return;
-		
+
 		SCR_CampaignBuildingNetworkComponent networkComponent = GetNetworkManager();
 		if (!networkComponent)
 			return;
 
 		networkComponent.RemoveEditorMode(SCR_PlayerController.GetLocalPlayerId(), GetOwner());
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void PlayerTeleported(SCR_EditableCharacterComponent character, bool isLongFade, SCR_EPlayerTeleportedReason teleportReason)
 	{
@@ -182,22 +254,21 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 			return;
 
 		networkComponent.RemoveEditorMode(SCR_PlayerController.GetLocalPlayerId(), GetOwner());
-		
+
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void RemoveOnConsciousnessChanged()
 	{
 		IEntity ent = SCR_PlayerController.GetLocalControlledEntity();
 		if (!ent)
 			return;
-		
+
 		EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(ent.FindComponent(EventHandlerManagerComponent));
 		if (eventHandlerManager)
 			eventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged, false);
 	}
-	
-	
+
 	//------------------------------------------------------------------------------------------------
 	// Insert a method called when the provider faction is changed. For an example base is taken by an enemy.
 	void SetOnProviderFactionChangedEvent()
@@ -216,7 +287,7 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 		if (!comp)
 			return;
 
-		comp.m_OnPlayerDeathWithParam.Insert(OnActiveUserDeath);
+		comp.GetOnPlayerDeathWithParam().Insert(OnActiveUserDeath);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -226,17 +297,17 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 		if (!comp)
 			return;
 
-		comp.m_OnPlayerDeathWithParam.Insert(OnAvailableUserDeath);
+		comp.GetOnPlayerDeathWithParam().Insert(OnAvailableUserDeath);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnActiveUserDeath(SCR_CharacterControllerComponent characterControllerComponent)
+	void OnActiveUserDeath(SCR_CharacterControllerComponent characterControllerComponent, IEntity instigatorEntity, notnull Instigator instigator)
 	{
 		RemoveActiveUser(GetPlayerIdFromCharacterController(characterControllerComponent));
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnAvailableUserDeath(SCR_CharacterControllerComponent characterControllerComponent)
+	void OnAvailableUserDeath(SCR_CharacterControllerComponent characterControllerComponent, IEntity instigatorEntity, notnull Instigator instigator)
 	{
 		RemoveAvailableUser(GetPlayerIdFromCharacterController(characterControllerComponent));
 	}
@@ -258,7 +329,7 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 		RemoveOnModeClosed();
 		RemoveOnConsciousnessChanged();
 		RemoveOnPlayerTeleported();
-		
+
 		SCR_CampaignBuildingNetworkComponent networkComponent = GetNetworkManager();
 		if (!networkComponent)
 			return;
@@ -267,7 +338,7 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static ScriptInvoker GetOnProviderCreated()
+	static ScriptInvokerVoid GetOnProviderCreated()
 	{
 		return s_OnProviderCreated;
 	}
@@ -281,18 +352,18 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 
 		editorManager.GetOnClosed().Remove(OnModeClosed);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void RemoveOnPlayerTeleported()
 	{
 		PlayerController playerController = GetGame().GetPlayerController();
 		if (!playerController)
-			return;	
-		
+			return;
+
 		SCR_PlayerTeleportedFeedbackComponent playerTeleportComponent = SCR_PlayerTeleportedFeedbackComponent.Cast(playerController.FindComponent(SCR_PlayerTeleportedFeedbackComponent));
 		if (!playerTeleportComponent)
 			return;
-		
+
 		playerTeleportComponent.GetOnPlayerTeleported().Remove(PlayerTeleported);
 	}
 
@@ -323,7 +394,7 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 
 		return core.GetEditorManager();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get Editor manager by player ID
 	protected SCR_EditorManagerEntity GetEditorManagerByID(int playerId)
@@ -367,7 +438,7 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 		if (!playerFaction)
 			return false;
 
-		IEntity provider = SCR_EntityHelper.GetMainParent(GetOwner(), true);
+		IEntity provider = GetOwner();
 		if (!provider)
 			return false;
 
@@ -377,11 +448,20 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 
 		return playerFaction == owningFaction;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected Faction GetEntityFaction(notnull IEntity ent)
 	{
 		FactionAffiliationComponent factionComp = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
+
+		// Seacrch for the faction component on parent entities as not always is it on the same component as this one (vehicle for an example)
+		while (!factionComp && ent)
+		{
+			ent = ent.GetParent();
+			if (ent)
+				factionComp = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
+		}
+
 		if (!factionComp)
 			return null;
 
@@ -401,10 +481,28 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Caches and returns the resource component.
+	SCR_ResourceComponent GetResourceComponent()
+	{
+		if (!m_ResourceComponent)
+			m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(GetOwner());
+		
+		return m_ResourceComponent;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Returns provider supply component
+	[Obsolete("SCR_CampaignBuildingProviderComponent.GetResourceComponent() should be used instead.")]
 	SCR_CampaignSuppliesComponent GetSuppliesComponent()
 	{
 		return SCR_CampaignSuppliesComponent.Cast(GetOwner().FindComponent(SCR_CampaignSuppliesComponent));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns true / false if this budget is suppose to be taken into account with this provider.
+	bool IsBudgetToEvaluate(EEditableEntityBudget blockingBudget)
+	{
+		return m_aBudgetsToEvaluate.Contains(blockingBudget);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -427,11 +525,11 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 			SCR_EditorManagerEntity editorManager = GetEditorManagerByID(playerId);
 			if (!editorManager)
 				return;
-			
+
 			SCR_EditorModeEntity modeEntity = SCR_EditorModeEntity.Cast(editorManager.FindModeEntity(EEditorMode.BUILDING));
 			if (!modeEntity)
 				return;
-						
+
 			if (m_aActiveUsersIDs.Contains(playerId))
 			{
 				RemoveActiveUser(playerId);
@@ -460,28 +558,26 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void CheckProviderMove()
+	//! Check if the provider velocity in meters per second is faster then allowed. If so, terminate  a building mode.
+	private void CheckProviderMove()
 	{
-		m_vNewProviderOrigin = GetOwner().GetOrigin();
-		if (m_vProviderOrigin == vector.Zero)
-		{
-			m_vProviderOrigin = m_vNewProviderOrigin;
-			return;
-		}
+		vector velocity = m_ProviderPhysics.GetVelocity();
 
-		if (vector.DistanceSqXZ(m_vNewProviderOrigin, m_vProviderOrigin) > MOVING_CHECK_DISTANCE_SQ)
-		{
+		if ((velocity.LengthSq()) > PROVIDER_SPEED_TO_REMOVE_BUILDING_SQ)
 			RemoveActiveUsers();
-		}
-
-		m_vProviderOrigin = m_vNewProviderOrigin;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Check if the provider is dynamic. If so, save his physic component for move check.
 	private bool IsProviderDynamic()
 	{
-		Physics ph = GetOwner().GetPhysics();
-		return ph && ph.IsDynamic();
+		IEntity mainParent = SCR_EntityHelper.GetMainParent(GetOwner(), true);
+		if (!mainParent)
+			return false;
+
+		m_ProviderPhysics = mainParent.GetPhysics();
+
+		return m_ProviderPhysics && m_ProviderPhysics.IsDynamic();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -494,8 +590,8 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	// Destructor
 	void ~SCR_CampaignBuildingProviderComponent()
-	{		
+	{
 		if (!m_aAvailableUsersIDs.IsEmpty())
 			RemoveActiveUsers();
 	}
-};
+}

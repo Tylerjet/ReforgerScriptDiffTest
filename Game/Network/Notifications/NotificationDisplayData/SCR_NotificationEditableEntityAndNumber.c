@@ -7,6 +7,9 @@ SCR_NotificationData: m_iParam2 = number
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(ENotification, "m_NotificationKey")]
 class SCR_NotificationEditableEntityAndNumber : SCR_NotificationDisplayData
 {
+	[Attribute("0", desc: "If true will get Character name (first, alias and surname) if the entity is a NPC otherwise will get the entity type name eg: Rifleman")]
+	protected bool m_bGetCharacterName;
+	
 	[Attribute(defvalue: "1", params: "1 1000")]
 	protected int m_iNumberDivider;
 	
@@ -29,7 +32,7 @@ class SCR_NotificationEditableEntityAndNumber : SCR_NotificationDisplayData
 		
 		string entityName;
 		data.GetNotificationTextEntries(entityName);
-		if (!GetEditableEntityName(entityID, entityName))
+		if (!GetEditableEntityName(entityID, entityName, m_bGetCharacterName))
 			return string.Empty;
 		
 		data.SetNotificationTextEntries(entityName, display1.ToString(), display2.ToString(), display3.ToString(), display4.ToString());

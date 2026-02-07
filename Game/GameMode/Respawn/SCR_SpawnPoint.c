@@ -8,7 +8,7 @@ class SCR_SpawnPointClass : SCR_PositionClass
 	// {
 	// 	return m_Info;
 	// }
-};
+}
 
 void SpawnPointDelegateMethod(SCR_SpawnPoint spawnPoint);
 typedef func SpawnPointDelegateMethod;
@@ -25,11 +25,11 @@ class SCR_SpawnPoint : SCR_Position
 	protected float m_fSpawnRadius;
 
 	[Attribute("Red", UIWidgets.EditBox, "Determines which faction can spawn on this spawn point."), RplProp(onRplName: "OnSetFactionKey")]
-	private string m_sFaction;
+	protected string m_sFaction;
 
 	[Attribute("0")]
 	protected bool m_bShowInDeployMapOnly;
-	
+
 	[Attribute("0", desc: "Use custom timer when deploying on this spawn point. Takes the remaining respawn time from SCR_TimedSpawnPointComponent")]
 	protected bool m_bTimedSpawnPoint;
 
@@ -38,6 +38,12 @@ class SCR_SpawnPoint : SCR_Position
 
 	[Attribute()]
 	protected ref SCR_UIInfo m_Info;
+
+	[Attribute("0", desc: "Allow usage of Spawn Positions in range")]
+	protected bool m_bUseNearbySpawnPositions;
+
+	[Attribute("100", desc: "Spawn position detection radius, in metres")]
+	protected float m_fSpawnPositionUsageRange;
 
 	// List of all spawn points
 	private static ref array<SCR_SpawnPoint> m_aSpawnPoints = new ref array<SCR_SpawnPoint>();
@@ -50,12 +56,56 @@ class SCR_SpawnPoint : SCR_Position
 
 	// spawn point will work as a spawn point group if it has any SCR_Position as its children
 	protected ref array<SCR_Position> m_aChildren = {};
-	
+
 	/*!
 		Authority:
 			Set of all pending players that have a reservation for this spawn point.
 	*/
 	protected ref set<int> m_ReservationLocks = new set<int>();
+	
+	protected ref ScriptInvokerBool  m_OnSetSpawnPointEnabled;
+	
+	[Attribute("1"), RplProp(onRplName: "OnSetEnabled")]
+	protected bool m_bSpawnPointEnabled;
+
+	//------------------------------------------------------------------------------------------------
+	bool IsSpawnPointVisibleForPlayer(int pid)
+	{
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsSpawnPointEnabled()
+	{
+		return m_bSpawnPointEnabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetSpawnPointEnabled_S(bool enabled)
+	{
+		if (enabled == m_bSpawnPointEnabled)
+			return;
+		
+		m_bSpawnPointEnabled = enabled;
+		OnSetEnabled();
+		Replication.BumpMe();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSetEnabled()
+	{
+		if (m_OnSetSpawnPointEnabled)
+			m_OnSetSpawnPointEnabled.Invoke(m_bSpawnPointEnabled);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerBool GetOnSpawnPointEnabled()
+	{
+		if (!m_OnSetSpawnPointEnabled)
+			m_OnSetSpawnPointEnabled = new ScriptInvokerBool();
+		
+		return m_OnSetSpawnPointEnabled;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -64,13 +114,22 @@ class SCR_SpawnPoint : SCR_Position
 			Derived logic can e.g. check amount of pending locks versus available compartments
 			for vehicle spawn points and similar.
 			\param playerId PlayerId of player who wants to reserve this point
+			\param[out] result Reason why respawn is disabled. Note that if returns true the reason will always be OK
 			\return Return true if reservation can proceed, false otherwise.
 	*/
-	bool CanReserveFor_S(int playerId)
+	bool CanReserveFor_S(int playerId, out SCR_ESpawnResult result = SCR_ESpawnResult.SPAWN_NOT_ALLOWED)
 	{
-		return true;
+		if (IsSpawnPointEnabled())
+		{
+			return true;
+		}
+		else 
+		{
+			result = SCR_ESpawnResult.NOT_ALLOWED_SPAWNPOINT_DISABLED;
+			return false;
+		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Authority:
@@ -82,7 +141,7 @@ class SCR_SpawnPoint : SCR_Position
 	{
 		return m_ReservationLocks.Contains(playerId);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Authority:
@@ -95,16 +154,16 @@ class SCR_SpawnPoint : SCR_Position
 		#ifdef _ENABLE_RESPAWN_LOGS
 		PrintFormat("%1::ReserveFor_S(playerId: %2, pointId: %3)", Type().ToString(), playerId, GetRplId());
 		#endif
-		
+
 		if (!m_ReservationLocks.Insert(playerId))
 		{
 			Debug.Error(string.Format("SCR_SpawnPoint reservation for playerId: %1 failed!", playerId));
 			return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Authority:
@@ -116,7 +175,7 @@ class SCR_SpawnPoint : SCR_Position
 		#ifdef _ENABLE_RESPAWN_LOGS
 		PrintFormat("%1::ClearReservationFor_S(playerId: %2, pointId: %3)", Type().ToString(), playerId, GetRplId());
 		#endif
-		
+
 		int index = m_ReservationLocks.Find(playerId);
 		if (index != -1)
 		{
@@ -178,7 +237,7 @@ class SCR_SpawnPoint : SCR_Position
 		Managed instance = Replication.FindItem(id);
 		if (!instance)
 			return null;
-		
+
 		RplComponent rplComponent = RplComponent.Cast(instance);
 		if (rplComponent)
 			return SCR_SpawnPoint.Cast(rplComponent.GetEntity());
@@ -187,8 +246,47 @@ class SCR_SpawnPoint : SCR_Position
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected bool GetEmptyPositionAndRotationInRange(out vector pos, out vector rot)
+	{
+		SCR_SpawnPositionComponentManager spawnPosManagerComponent = SCR_SpawnPositionComponentManager.GetInstance();
+		if (!spawnPosManagerComponent)
+			return false;
+
+		array<SCR_SpawnPositionComponent> positions = {};
+		int count = spawnPosManagerComponent.GetSpawnPositionsInRange(GetOrigin(), m_fSpawnPositionUsageRange, positions);
+		if (count < 0)
+			return false;
+
+		SCR_SpawnPositionComponent position;
+		
+		while (!positions.IsEmpty())
+		{
+			position = positions.GetRandomElement();
+
+			if (position.IsFree())
+			{
+				pos = position.GetOwner().GetOrigin();
+				rot = position.GetOwner().GetAngles();
+				return true;
+			}
+			else
+			{
+				positions.RemoveItem(position);
+			}
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void GetPositionAndRotation(out vector pos, out vector rot)
 	{
+		if (m_bUseNearbySpawnPositions)
+		{
+			if (GetEmptyPositionAndRotationInRange(pos, rot))
+				return;
+		}
+
 		if (m_aChildren.Count() > 1)
 		{
 			int id = m_aChildren.GetRandomIndex();
@@ -218,7 +316,7 @@ class SCR_SpawnPoint : SCR_Position
 	{
 		return m_aSpawnPoints.Find(spawnPoint);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	bool IsSpawnPointActive()
 	{
@@ -239,7 +337,7 @@ class SCR_SpawnPoint : SCR_Position
 	{
 		return m_bShowInDeployMapOnly;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void ApplyFactionChange(FactionAffiliationComponent owner, Faction previousFaction, Faction newFaction)
 	{
@@ -268,6 +366,18 @@ class SCR_SpawnPoint : SCR_Position
 	protected void OnSetFactionKey()
 	{
 		Event_SpawnPointFactionAssigned.Invoke(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetSpawnPositionRange(float range)
+	{
+		m_fSpawnPositionUsageRange = range;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetSpawnPositionRange()
+	{
+		return m_fSpawnPositionUsageRange;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -407,15 +517,15 @@ class SCR_SpawnPoint : SCR_Position
 		else
 			return m_Info;
 	}
-	
+
 	string GetSpawnPointName()
 	{
 		if (GetInfo())
 			return GetInfo().GetName();
-		
+
 		return string.Empty;
 	}
-	
+
 	bool IsTimed()
 	{
 		return m_bTimedSpawnPoint;
@@ -466,10 +576,13 @@ class SCR_SpawnPoint : SCR_Position
 	*/
 	bool PrepareSpawnedEntity_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{
+		if (!IsSpawnPointEnabled())
+			return false;
+		
 		// WS target position, pitch yaw roll angles in degrees
 		vector position, rotation;
 		GetPositionAndRotation(position, rotation);
-		
+
 		// apply transformation
 		entity.SetOrigin(position);
 		entity.SetAngles(rotation);
@@ -494,7 +607,7 @@ class SCR_SpawnPoint : SCR_Position
 	*/
 	bool CanFinalizeSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{
-		return true;
+		return IsSpawnPointEnabled();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -524,34 +637,41 @@ class SCR_SpawnPoint : SCR_Position
 			child = child.GetSibling();
 		}
 
+		InitFactionAffiliation(owner);
+
+		// Add to list of all points
+		m_aSpawnPoints.Insert(this);
+		Event_OnSpawnPointCountChanged.Invoke(m_sFaction);
+		Event_SpawnPointAdded.Invoke(this);
+
+		ClearFlags(EntityFlags.ACTIVE);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void InitFactionAffiliation(IEntity owner)
+	{
 		m_FactionAffiliationComponent = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
 		if (m_FactionAffiliationComponent)
 		{
 			m_FactionAffiliationComponent.GetOnFactionChanged().Insert(ApplyFactionChange);
 			Faction faction = m_FactionAffiliationComponent.GetAffiliatedFaction();
 			if (faction)
-			{
 				m_sFaction = faction.GetFactionKey();
-			}
 		}
-		
-		// Add to list of all points
-		m_aSpawnPoints.Insert(this);
-
-		ClearFlags(EntityFlags.ACTIVE);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override protected bool RplLoad(ScriptBitReader reader)
 	{
 		// Raise callback about adding of this point
 		Event_SpawnPointAdded.Invoke(this);
-		
+
 		// Update faction related stats
 		OnSetFactionKey();
-		Event_OnSpawnPointCountChanged.Invoke(m_sFaction);		
-		
+		Event_OnSpawnPointCountChanged.Invoke(m_sFaction);
+
 		return true;
-	}	
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_SpawnPoint(IEntitySource src, IEntity parent)
@@ -563,20 +683,20 @@ class SCR_SpawnPoint : SCR_Position
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_SpawnPoint()
 	{
-		// Raise events
-		Event_OnSpawnPointCountChanged.Invoke(m_sFaction);
-		Event_SpawnPointRemoved.Invoke(this);
-
 		// Remove from list of all points
 		if (m_aSpawnPoints)
 		{
 			m_aSpawnPoints.RemoveItem(this);
 		}
-		
+
+		//~ Raise events
+		Event_OnSpawnPointCountChanged.Invoke(m_sFaction);
+		Event_SpawnPointRemoved.Invoke(this);
+
 		// Remove callbacks
 		if (m_FactionAffiliationComponent)
 		{
 			m_FactionAffiliationComponent.GetOnFactionChanged().Remove(ApplyFactionChange);
 		}
 	}
-};
+}

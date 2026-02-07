@@ -18,15 +18,6 @@ class SCR_HintEditorComponent: SCR_BaseEditorComponent
 	[Attribute("1", desc: "When enabled, hints in the editor won't fade out on their own, players have to close them manually.")]
 	protected bool m_bInfiniteHints;
 	
-	
-	//--- Refresh hint, as it sometimes uses device-specific lines
-	protected void OnInputDeviceIsGamepad(bool isGamepad)
-	{
-		SCR_HintManagerComponent hintManager = SCR_HintManagerComponent.GetInstance();
-		if (hintManager)
-			hintManager.Refresh();
-	}
-	
 	override void EOnEditorActivate()
 	{
 		SCR_HintManagerComponent hintManager = SCR_HintManagerComponent.GetInstance();
@@ -39,8 +30,6 @@ class SCR_HintEditorComponent: SCR_BaseEditorComponent
 		SCR_HintEditorComponentClass prefabData = SCR_HintEditorComponentClass.Cast(GetEditorComponentData());
 		if (prefabData)
 			prefabData.Init(GetOwner());
-		
-		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 	}
 	override void EOnEditorDeactivate()
 	{
@@ -54,7 +43,9 @@ class SCR_HintEditorComponent: SCR_BaseEditorComponent
 		SCR_HintEditorComponentClass prefabData = SCR_HintEditorComponentClass.Cast(GetEditorComponentData());
 		if (prefabData)
 			prefabData.Exit(GetOwner());
-		
-		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
+	}
+	override void EOnEditorClose()
+	{
+		SCR_HintManagerComponent.HideHint();
 	}
 };

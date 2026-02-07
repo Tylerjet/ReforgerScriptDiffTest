@@ -33,6 +33,7 @@ class SCR_MapEditorComponent : SCR_BaseEditorComponent
 	void SetMapHandler(SCR_MapEditorUIComponent mapHandler)
 	{
 		m_MapHandler = mapHandler;
+		ShowMap(m_bWasMapOpened);
 	}
 	
 	ResourceName GetMapConfigPrefab()
@@ -98,24 +99,6 @@ class SCR_MapEditorComponent : SCR_BaseEditorComponent
 			ShowMap(false);
 		}
 	}
-	
-	protected void OnEditorModeChange(SCR_EditorModeEntity newModeEntity, SCR_EditorModeEntity oldModeEntity)
-	{
-		if (oldModeEntity)
-		{
-			
-		}
-		if (newModeEntity)
-		{
-			
-		}
-		
-		if (newModeEntity && m_MapHandler && m_bWasMapOpened)
-		{
-			ShowMap(true);
-		}
-	}
-	
 	protected SCR_MapEditorUIComponent FindMapHandler()
 	{
 		SCR_MenuEditorComponent menuComponent = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
@@ -149,7 +132,6 @@ class SCR_MapEditorComponent : SCR_BaseEditorComponent
 			return;
 		
 		m_EditorManager.GetOnLimitedChange().Insert(OnLimitedChange);
-		m_EditorManager.GetOnModeChange().Insert(OnEditorModeChange);
 		
 		SCR_PreviewEntityEditorComponent previewEntityComponent = SCR_PreviewEntityEditorComponent.Cast(SCR_PreviewEntityEditorComponent.GetInstance(SCR_PreviewEntityEditorComponent));
 		if (previewEntityComponent)

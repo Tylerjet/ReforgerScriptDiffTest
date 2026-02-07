@@ -133,9 +133,9 @@ class SCR_SliderEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 			else 
 			{
 				if (!m_bAlwaysHideSeconds)
-					return SCR_Global.GetTimeFormatting(value, m_eHideIfZero);
+					return SCR_FormatHelper.GetTimeFormatting(value, m_eHideIfZero);
 				else 
-					return SCR_Global.GetTimeFormattingHideSeconds(value, m_eHideIfZero);
+					return SCR_FormatHelper.GetTimeFormattingHideSeconds(value, m_eHideIfZero);
 			}
 		}
 			

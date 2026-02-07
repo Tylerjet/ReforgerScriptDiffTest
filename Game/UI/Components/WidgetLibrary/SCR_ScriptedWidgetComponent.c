@@ -1,8 +1,14 @@
 //! parent of all Scripted Widgets, even non-interactive ones
+void ScriptInvokerScriptedWidgetComponentMethod(SCR_ScriptedWidgetComponent component);
+typedef func ScriptInvokerScriptedWidgetComponentMethod;
+typedef ScriptInvokerBase<ScriptInvokerScriptedWidgetComponentMethod> ScriptInvokerScriptedWidgetComponent;
+
+//------------------------------------------------------------------------------------------------
 class SCR_ScriptedWidgetComponent : ScriptedWidgetComponent
 {
 	protected Widget m_wRoot;
 
+	//TODO: typed invoker ScriptInvokerScriptedWidgetComponent
 	ref ScriptInvoker m_OnClick = new ScriptInvoker;
 
 	//------------------------------------------------------------------------------------------------
@@ -45,5 +51,14 @@ class SCR_ScriptedWidgetComponent : ScriptedWidgetComponent
 	Widget GetRootWidget()
 	{
 		return m_wRoot;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsVisible()
+	{
+		if (!m_wRoot)
+			return false;
+		
+		return m_wRoot.IsVisible();
 	}
 };

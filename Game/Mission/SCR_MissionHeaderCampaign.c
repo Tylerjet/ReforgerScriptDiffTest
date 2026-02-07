@@ -8,11 +8,8 @@ class SCR_MissionHeaderCampaign : SCR_MissionHeader
 	
 	[Attribute("-1", UIWidgets.EditBox, "Maximum amount of active respawn radios (override, -1 for default)")]
 	int m_iMaximumRespawnRadios;
-	
-	[Attribute("3000", UIWidgets.EditBox, "How much supplies can the main HQ hold")]
-	int m_iMaximumHQSupplies;
-	
-	[Attribute("3000", UIWidgets.EditBox, "How much supplies should the main HQ start with")]
+
+	[Attribute("-1", UIWidgets.EditBox, "How much supplies should the main HQ start with")]
 	int m_iStartingHQSupplies;
 	
 	[Attribute("-1", UIWidgets.EditBox, "Minimum starting amount of supplies in small bases (override, -1 for default)")]

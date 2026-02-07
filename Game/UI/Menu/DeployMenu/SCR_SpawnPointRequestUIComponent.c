@@ -22,6 +22,7 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 		m_SpawnPointSelector.m_OnChanged.Insert(SelectSpawnPoint);
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(OnSpawnPointFactionChange);
+		SCR_SpawnPoint.Event_SpawnPointAdded.Insert(OnSpawnPointAdded);
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Insert(RemoveSpawnPoint);		
 	}
 
@@ -31,6 +32,7 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_SpawnPointSelector.m_OnChanged.Remove(SelectSpawnPoint);
 		
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Remove(OnSpawnPointFactionChange);
+		SCR_SpawnPoint.Event_SpawnPointAdded.Remove(OnSpawnPointAdded);
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Remove(RemoveSpawnPoint);		
 	}
 	
@@ -42,8 +44,8 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		if (spinbox.GetSpawnPointId(itemId) != m_SelectedSpawnPointId)
 		{
 			m_SelectedSpawnPointId = spinbox.GetSpawnPointId(itemId);
-			GetOnSpawnPointSelected().Invoke(m_SelectedSpawnPointId);
-			SGetOnSpawnPointSelected().Invoke(m_SelectedSpawnPointId);
+			GetOnSpawnPointSelected().Invoke(m_SelectedSpawnPointId, true);
+			SGetOnSpawnPointSelected().Invoke(m_SelectedSpawnPointId, true);
 		}
 	}
 
@@ -71,7 +73,7 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 	protected void AddSpawnPoint(SCR_SpawnPoint spawnPoint)
 	{
-		if (spawnPoint)
+		if (spawnPoint && spawnPoint.IsSpawnPointVisibleForPlayer(SCR_PlayerController.GetLocalPlayerId()))
 		{
 			RplId currentSpawnPointId = m_SelectedSpawnPointId;
 			string name = spawnPoint.GetSpawnPointName();
@@ -102,15 +104,18 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_SelectedSpawnPointId = GetCurrentRplId();
 		}
 	}
+	
+	protected void OnSpawnPointAdded(SCR_SpawnPoint spawnPoint)
+	{
+		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
+		if (playerFaction && playerFaction.GetFactionKey() == spawnPoint.GetFactionKey())
+			AddSpawnPoint(spawnPoint);
+	}
 
 	protected void OnSpawnPointFactionChange(SCR_SpawnPoint spawnPoint)
 	{
-		PlayerController pc = GetGame().GetPlayerController();
-		SCR_PlayerFactionAffiliationComponent plyFactionComp = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
-		if (!plyFactionComp || !plyFactionComp.GetAffiliatedFaction())
-			return;
-		
-		if (spawnPoint.GetFactionKey() == plyFactionComp.GetAffiliatedFaction().GetFactionKey())
+		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
+		if (playerFaction && playerFaction.GetFactionKey() == spawnPoint.GetFactionKey())
 			AddSpawnPoint(spawnPoint);
 		else
 			RemoveSpawnPoint(spawnPoint);
@@ -136,9 +141,34 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			return;
 		}
 
+		int pid = SCR_PlayerController.GetLocalPlayerId();
 		foreach (SCR_SpawnPoint info : infos)
 		{
-			AddSpawnPoint(info);
+			if (info.IsSpawnPointVisibleForPlayer(pid))
+				AddSpawnPoint(info);
+		}
+	}
+	
+	void UpdateRelevantSpawnPoints()
+	{
+		array<SCR_SpawnPoint> spawnPoints = m_SpawnPointSelector.GetSpawnPointsInList();
+		PlayerController pc = GetGame().GetPlayerController();
+		SCR_PlayerFactionAffiliationComponent plyFactionComp = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		array<SCR_SpawnPoint> playerSpawnPoints = SCR_SpawnPoint.GetSpawnPointsForFaction(plyFactionComp.GetAffiliatedFaction().GetFactionKey());
+
+		foreach (SCR_SpawnPoint sp : spawnPoints)
+		{
+			if (!sp.IsSpawnPointVisibleForPlayer(pc.GetPlayerId()))
+				RemoveSpawnPoint(sp);
+		}
+
+		foreach (SCR_SpawnPoint sp : playerSpawnPoints)
+		{
+			if (spawnPoints.Contains(sp))
+				continue;
+
+			if (sp.IsSpawnPointVisibleForPlayer(pc.GetPlayerId()))
+				AddSpawnPoint(sp);
 		}
 	}
 

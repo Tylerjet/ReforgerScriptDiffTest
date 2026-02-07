@@ -1,9 +1,6 @@
 [WorkbenchPluginAttribute(name: "Dedicated Server Tool", shortcut: "Ctrl+Shift+D", wbModules: {"WorldEditor"}, awesomeFontCode: 0xf233)]
 class DedicatedServerPlugin: WorldEditorPlugin
 {
-	[Attribute(desc: "Enable to start play mode and automatically connect to dedicated server.", category: "Server")]
-	protected bool m_bPlayAndConnect;
-	
 	[Attribute(desc: "Server configuration. Dedicated server cannot be launched without this!", category: "Server")]
 	protected ref DedicatedServerPluginCLI m_Config;
 	
@@ -16,11 +13,17 @@ class DedicatedServerPlugin: WorldEditorPlugin
 	[Attribute("0", desc: "Suppresses all sorts of errors (like asserts), so the game continues without stalling and disconnecting clients.", category: "Server")]
 	protected bool m_bNoThrow;
 	
-	[Attribute("", desc: "Basic backend logging. Can have one of following values:\n  \"Http\" - turn on logging of Http Response & Requests\n  <filename> - save data to profile\.backend folder", category: "Server")]
-	protected string m_sLogBackend;
+	[Attribute("", uiwidget: UIWidgets.ComboBox, desc: "Enable Backend logs\n- Basic: Turn on basic logs\n- Http: Turn on logging of Http Response & Requests\n- File: Turn on saving of related (mostly JSON) files send and/or recieved from backend into logs folder and subfolder .backend\n- Trace: Turn on logging of inner Http comm - valid only for libcurl (windows ATM)", category: "Server", enums: { ParamEnum("None", "0"), ParamEnum("Basic", "1"), ParamEnum("Http", "2"), ParamEnum("File", "3"), ParamEnum("Trace", "4")})]
+	protected int m_iLogBackend;
+	
+	[Attribute("", uiwidget: UIWidgets.ComboBox, desc: "llows manual rerouting to one of our Backend Environments (only in internal version, retail is baked to production system).\n- Dev: Internal development environment\n- Preprod: Preproduction\n- Submission: Submission (preproduction RC candidate environment for testing by QA)\n- Production: Production, this mean players\n- Local: For working without deployed version on your machine", category: "Server", enums: { ParamEnum("None", "0"), ParamEnum("Dev", "1"), ParamEnum("Preprod", "2"), ParamEnum("Submission", "3"), ParamEnum("Production", "4"), ParamEnum("Local", "5")})]
+	protected int m_iBackendEnv;
 	
 	[Attribute("30", desc: "Maximum FPS on the server. When 0, no limit will be set.", category: "Server")]
 	protected int m_iMaxFPS;
+	
+	[Attribute(LogLevel.NORMAL.ToString(), desc: "Set the highest shown log level.\nAll others below in the list will be included as well\n(e.g., VERBOSE also enables DEBUG, NORMAL, WARNING, etc, but not SPAM).", uiwidget: UIWidgets.ComboBox, category: "Server", enums: ParamEnumArray.FromEnum(LogLevel))]
+	protected int m_iLogLevel;
 	
 	[Attribute(desc: "Additional command line params.", category: "Server")]
 	protected string m_sParams;
@@ -101,11 +104,28 @@ class DedicatedServerPlugin: WorldEditorPlugin
 		if (m_bNoThrow)
 			process += " -nothrow";
 		
-		if (m_sLogBackend)
-			process += string.Format(" -backendLog %1", m_sLogBackend);
+		switch (m_iLogBackend)
+		{
+			case 1: process += " -backendLog"; break;
+			case 2: process += " -backendLog Http"; break;
+			case 3: process += " -backendLog File"; break;
+			case 4: process += " -backendLog Trace"; break;
+		}
+		
+		switch (m_iBackendEnv)
+		{
+			case 1: process += " -backendEnv Dev"; break;
+			case 2: process += " -backendEnv Preprod"; break;
+			case 3: process += " -backendEnv Submission"; break;
+			case 4: process += " -backendEnv Production"; break;
+			case 5: process += " -backendEnv Local"; break;
+		}
 
 		if (m_iMaxFPS > 0)
 			process += string.Format(" -maxFPS %1", m_iMaxFPS);
+		
+		if (m_iLogLevel != LogLevel.NORMAL)
+			process += string.Format(" -logLevel %1", typename.EnumToString(LogLevel, m_iLogLevel));
 		
 		if (m_sParams)
 			process += " " + m_sParams;
@@ -163,18 +183,7 @@ class DedicatedServerPlugin: WorldEditorPlugin
 				if (!conf.Handle)
 					Print("Peer #" + profileIndex + " couldn't run. Check if your PeerExecutable or other settings are correct", LogLevel.ERROR);
 			}
-		}		
-			
-		// Also make the WB join the server as a peer
-		if (m_bPlayAndConnect)
-			worldEditor.SwitchToGameMode();
-	}
-	override void OnGameModeStarted(string worldName, string gameMode, bool playFromCameraPos, vector cameraPosition, vector cameraAngles)
-	{
-		if (!m_bPlayAndConnect || !m_ServerHandle)
-			return;
-		
-		GameStateTransitions.RequestConnectViaIP("127.0.0.1");
+		}
 	}
 	override void OnGameModeEnded()
 	{
@@ -230,9 +239,9 @@ class DedicatedServerPluginCLI_Server: DedicatedServerPluginCLI
 			api.GetWorldPath(worldPath);
 		
 		if (m_MissionHeader)
-			outParam = string.Format("-server %1 -MissionHeader %2", worldPath.GetPath(), m_MissionHeader.GetPath());
+			outParam = string.Format("-server \"%1\" -MissionHeader \"%2\"", worldPath.GetPath(), m_MissionHeader.GetPath());
 		else
-			outParam = string.Format("-server %1", worldPath.GetPath());
+			outParam = string.Format("-server \"%1\"", worldPath.GetPath());
 		
 		if (m_sAdminPassword)
 			outParam += string.Format(" -adminPassword %1", m_sAdminPassword);
@@ -244,12 +253,16 @@ class DedicatedServerPluginCLI_Server: DedicatedServerPluginCLI
 [BaseContainerProps()]
 class DedicatedServerPluginCLI_Config: DedicatedServerPluginCLI
 {
-	[Attribute(desc: "JSON server configuration file.", uiwidget: UIWidgets.ResourceNamePicker, params: "json")]
+	[Attribute(desc: "JSON server configuration file. Does not work when the game is running with local (i.e., non-workshop) addons!", uiwidget: UIWidgets.ResourceNamePicker, params: "json")]
 	protected ResourceName m_Config;
 	
 	override bool GetCLI(out string outParam, WorldEditorAPI api)
 	{
-		outParam = string.Format("-config %1", m_Config.GetPath());
+		//--- Convert to absolute path, relative ResourceName is in the wrong format
+		string absPath;
+		Workbench.GetAbsolutePath(m_Config.GetPath(), absPath);
+		
+		outParam = string.Format("-config \"%1\"", absPath);
 		return !m_Config.IsEmpty();
 	}
 };

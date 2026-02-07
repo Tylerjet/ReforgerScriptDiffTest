@@ -5,6 +5,9 @@ class SCR_VehicleInventoryStorageManagerComponentClass : ScriptedInventoryStorag
 
 class SCR_VehicleInventoryStorageManagerComponent : ScriptedInventoryStorageManagerComponent
 {
+	ref ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod> m_OnItemAddedInvoker = new ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod>();
+	ref ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod> m_OnItemRemovedInvoker = new ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod>();
+	
 	//------------------------------------------------------------------------------------------------
 	protected override void FillInitialStorages(out array<BaseInventoryStorageComponent> storagesToAdd)
 	{
@@ -42,10 +45,17 @@ class SCR_VehicleInventoryStorageManagerComponent : ScriptedInventoryStorageMana
 		if (!pItemComponent)
 			return;
 		
-		GarbageManager garbageManager = GetGame().GetGarbageManager();
-		if (garbageManager)
+		if (m_OnItemAddedInvoker)
+			m_OnItemAddedInvoker.Invoke(item, storageOwner);
+		
+		ChimeraWorld world = ChimeraWorld.CastFrom(item.GetWorld());
+		if (world)
 		{
-			garbageManager.Withdraw(item);
+			GarbageSystem garbageSystem = world.GetGarbageSystem();
+			if (garbageSystem)
+			{
+				garbageSystem.Withdraw(item);
+			}
 		}
 	}
 
@@ -54,11 +64,15 @@ class SCR_VehicleInventoryStorageManagerComponent : ScriptedInventoryStorageMana
 	{
 		super.OnItemRemoved(storageOwner, item);
 		
-		GarbageManager garbageManager = GetGame().GetGarbageManager();
-		if (garbageManager)
+		if (m_OnItemRemovedInvoker)
+			m_OnItemRemovedInvoker.Invoke(item, storageOwner);
+		
+		ChimeraWorld world = ChimeraWorld.CastFrom(item.GetWorld());
+		if (world)
 		{
-			if (item.FindComponent(InventoryItemComponent))
-				garbageManager.Insert(item);
+			GarbageSystem garbageSystem = world.GetGarbageSystem();
+			if (garbageSystem)
+				garbageSystem.Insert(item);
 		}
 	}
 };

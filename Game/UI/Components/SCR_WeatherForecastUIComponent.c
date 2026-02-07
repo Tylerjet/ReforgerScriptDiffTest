@@ -24,6 +24,12 @@ class SCR_WeatherForecastUIComponent: ScriptedWidgetComponent
 	[Attribute("1", "Update freq of weather UI in seconds")]
 	protected float m_fUIUpdateFreq;
 	
+	[Attribute("MISSING NAME", desc: "Text shown if weather State has no weather name assigned")]
+	protected LocalizedString m_sUnknownWeatherName;
+	
+	[Attribute("{4B4B51FACB828BF9}UI/Textures/Tasks/TaskIcons/96/Icon_Task_Unknown.edds", desc: "Icon used when weather is unknown")]
+	protected ResourceName m_sUnknownWeatherIcon;
+	
 	protected bool m_bListeningToUpdate;
 	
 	protected TimeAndWeatherManagerEntity m_TimeAndWeatherEntity;
@@ -45,8 +51,19 @@ class SCR_WeatherForecastUIComponent: ScriptedWidgetComponent
 			return;
 		
 		WeatherState currentWeather = m_WeatherStateManager.GetCurrentState();		
-		m_wCurrentWeatherIcon.LoadImageTexture(0, currentWeather.GetIconPath());
-		m_wCurrentWeatherText.SetText(currentWeather.GetLocalizedName());
+
+		//~ Get weather name
+		string weatherName = currentWeather.GetLocalizedName();
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(weatherName))
+			weatherName = m_sUnknownWeatherName;
+			
+		//~ Get weather Icon
+		string weatherIcon = currentWeather.GetIconPath();
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(weatherIcon))
+			weatherIcon = m_sUnknownWeatherIcon;
+		
+		m_wCurrentWeatherText.SetText(weatherName);
+		m_wCurrentWeatherIcon.LoadImageTexture(0, weatherIcon);
 		
 		WeatherState nextWeather = m_WeatherStateManager.GetNextState();
 		if (!nextWeather)
@@ -89,11 +106,20 @@ class SCR_WeatherForecastUIComponent: ScriptedWidgetComponent
 					nextWeatherHour -= 24;
 			}
 			
-			m_wNextWeatherTimeText.SetTextFormat(SCR_Global.GetTimeFormattingHoursMinutes(nextWeatherHour, nextWeatherMinutes));
+			m_wNextWeatherTimeText.SetTextFormat(SCR_FormatHelper.GetTimeFormattingHoursMinutes(nextWeatherHour, nextWeatherMinutes));
 		}
+		
+		weatherName = nextWeather.GetLocalizedName();
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(weatherName))
+			weatherName = m_sUnknownWeatherName;
 			
-		m_wNextWeatherText.SetText(nextWeather.GetLocalizedName()); 
-		m_wNextWeatherIcon.LoadImageTexture(0, nextWeather.GetIconPath());
+		
+		weatherIcon = nextWeather.GetIconPath();
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(weatherIcon))
+			weatherIcon = m_sUnknownWeatherIcon;
+
+		m_wNextWeatherText.SetText(weatherName); 
+		m_wNextWeatherIcon.LoadImageTexture(0, weatherIcon);
 	}
 	
 	protected void ShowWeatherUI(bool show)
@@ -127,8 +153,10 @@ class SCR_WeatherForecastUIComponent: ScriptedWidgetComponent
 			return;
 		}
 		
-		m_wNextWeatherHolder = w.FindAnyWidget(m_sNextWeatherHolderName);		
-		m_TimeAndWeatherEntity = GetGame().GetTimeAndWeatherManager();
+		m_wNextWeatherHolder = w.FindAnyWidget(m_sNextWeatherHolderName);	
+		
+		ChimeraWorld world = GetGame().GetWorld();	
+		m_TimeAndWeatherEntity = world.GetTimeAndWeatherManager();
 		
 		if (!m_TimeAndWeatherEntity)
 		{

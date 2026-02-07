@@ -1,41 +1,35 @@
 #ifdef WORKBENCH
 class SCR_WorldEditorToolHelper
 {
-	protected static ResourceManager s_ResourceManager;
-	protected static WorldEditor s_WorldEditor;
-	protected static WorldEditorAPI s_WorldEditorAPI;
-
+	protected static ref array<IEntity> s_aTempEntities;
 	protected static ref array<ResourceName> s_aTempResourceNames;
 
 	//------------------------------------------------------------------------------------------------
+	//! Get the ResourceManager object
+	//! \return available ResourceManager or null if unavailable
 	static ResourceManager GetResourceManager()
 	{
-		if (!s_ResourceManager)
-			s_ResourceManager = Workbench.GetModule(ResourceManager);
-
-		return s_ResourceManager;
+		return Workbench.GetModule(ResourceManager);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get the WorldEditor object
+	//! \return available WorldEditor or null if unavailable
 	static WorldEditor GetWorldEditor()
 	{
-		if (!s_WorldEditor)
-			s_WorldEditor = Workbench.GetModule(WorldEditor);
-
-		return s_WorldEditor;
+		return Workbench.GetModule(WorldEditor);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get the World Editor API
+	//! \return available WorldEditorAPI or null if unavailable
 	static WorldEditorAPI GetWorldEditorAPI()
 	{
-		if (!s_WorldEditorAPI)
-		{
-			WorldEditor worldEditor = GetWorldEditor();
-			if (worldEditor)
-				s_WorldEditorAPI = worldEditor.GetApi();
-		}
+		WorldEditor worldEditor = GetWorldEditor();
+		if (!worldEditor)
+			return null;
 
-		return s_WorldEditorAPI;
+		return worldEditor.GetApi();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -74,6 +68,8 @@ class SCR_WorldEditorToolHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get a registered file's ResourceName (requires the .meta file)
+	//! \return the registered file's ResourceName
 	static ResourceName GetResourceNameFromFile(string absoluteFilePath)
 	{
 		MetaFile metaFile = GetResourceManager().GetMetaFile(absoluteFilePath);
@@ -103,7 +99,21 @@ class SCR_WorldEditorToolHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static array<ResourceName> GetSelectedOrOpenedResources(string wantedExtension = "", array<string> keywords = null)
+	//! Wrapper for the method below
+	//! \param wantedExtension (case-insensitive)
+	//! \param keywords words that should be present in the file name (case-insensitive)
+	//! \return an array of found ResourceNames - cannot be null
+	static array<ResourceName> GetSelectedOrOpenedResources(string wantedExtension, array<string> keywords = null)
+	{
+		return GetSelectedOrOpenedResources({ wantedExtension }, keywords);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get selected or opened resources
+	//! \param acceptedExtensions accepted extensions (case-insensitive)
+	//! \param keywords words that should be present in the file name (case-insensitive)
+	//! \return an array of found ResourceNames - cannot be null
+	static array<ResourceName> GetSelectedOrOpenedResources(array<string> acceptedExtensions = null, array<string> keywords = null)
 	{
 		array<ResourceName> tempResult = GetSelectedResources(true);
 		if (tempResult.IsEmpty())
@@ -116,20 +126,49 @@ class SCR_WorldEditorToolHelper
 		if (tempResult.IsEmpty())
 			return tempResult;
 
+		if (acceptedExtensions && acceptedExtensions.IsEmpty())
+			acceptedExtensions = null;
+
+		if (acceptedExtensions)
+		{
+			foreach (int i, string wantedExtension : acceptedExtensions)
+			{
+				wantedExtension.ToLower();
+				acceptedExtensions[i] = wantedExtension;
+			}
+		}
+
+		array<string> keywordsLC;
+		if (keywords && !keywords.IsEmpty())
+		{
+			keywordsLC = {};
+			foreach (string keyword : keywords)
+			{
+				if (keyword.IsEmpty())
+					continue;
+
+				keyword.ToLower();
+				keywordsLC.Insert(keyword);
+			}
+		}
+
 		array<ResourceName> result = {};
 
 		foreach (ResourceName resourceName : tempResult)
 		{
-			string extension;
-			string resourceNameLC = FilePath.StripExtension(resourceName, extension);
+			string resourceNameLC = resourceName;
+			resourceNameLC.ToLower();
 
-			if (!wantedExtension.IsEmpty() && extension != wantedExtension)
+			string extensionLC;
+			resourceNameLC = FilePath.StripExtension(resourceName, extensionLC);
+			extensionLC.ToLower();
+
+			if (acceptedExtensions && !acceptedExtensions.Contains(extensionLC))
 				continue;
 
 			resourceNameLC = FilePath.StripPath(resourceNameLC);
-			resourceNameLC.ToLower();
 
-			if (!keywords || SCR_StringHelper.ContainsEvery(resourceNameLC, keywords))
+			if (!keywordsLC || SCR_StringHelper.ContainsEvery(resourceNameLC, keywordsLC))
 				result.Insert(resourceName);
 		}
 
@@ -137,6 +176,9 @@ class SCR_WorldEditorToolHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get all ResourceName that are selected in the Resource Browser
+	//! \param recursive true to get a selected directory's files, false to stop at the directory
+	//! \return array of ResourceName of selected resources
 	static array<ResourceName> GetSelectedResources(bool recursive = true)
 	{
 		WorldEditor worldEditor = GetWorldEditor();
@@ -155,6 +197,12 @@ class SCR_WorldEditorToolHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Search Workbench-available files by extension and filters inside a provided directory
+	//! \param fileExtensions
+	//! \param searchStrArray
+	//! \param rootPath
+	//! \param recursive
+	//! \return found resources
 	static array<ResourceName> SearchWorkbenchResources(array<string> fileExtensions = null, array<string> searchStrArray = null, string rootPath = "", bool recursive = true)
 	{
 		array<ResourceName> result = {};
@@ -170,21 +218,28 @@ class SCR_WorldEditorToolHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Delete the entitySource's entity IF it exists
-	//! the provided entitySource can be null as well
+	//! \entitySource can be null
 	static void DeleteEntityFromSource(IEntitySource entitySource)
 	{
 		if (!entitySource)
 			return;
 
-		IEntity entity = GetWorldEditorAPI().SourceToEntity(entitySource);
-		if (entity)
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
+		if (!worldEditorAPI)
 		{
-			bool manageEditAction = BeginEntityAction();
-
-			GetWorldEditorAPI().DeleteEntity(entity);
-
-			EndEntityAction(manageEditAction);
+			Print("WorldEditorAPI is not available", LogLevel.ERROR);
+			return;
 		}
+
+		IEntity entity = worldEditorAPI.SourceToEntity(entitySource);
+		if (!entity)
+			return;
+
+		bool manageEditAction = BeginEntityAction();
+
+		worldEditorAPI.DeleteEntity(entity);
+
+		EndEntityAction(manageEditAction);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -192,7 +247,13 @@ class SCR_WorldEditorToolHelper
 	//! \return true if a BeginEntityAction has been called and EndEntityAction has to be called by EndEntityAction(), false otherwise
 	static bool BeginEntityAction()
 	{
-		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
+		if (!worldEditorAPI)
+		{
+			Print("WorldEditorAPI is not available", LogLevel.ERROR);
+			return false;
+		}
+
 		if (worldEditorAPI.IsDoingEditAction())
 		{
 			return false;
@@ -209,8 +270,60 @@ class SCR_WorldEditorToolHelper
 	//! \param manageEditAction if World Editor Entity Action should be terminated, result of an earlier BeginEntityAction call
 	static void EndEntityAction(bool manageEditAction)
 	{
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
+		if (!worldEditorAPI)
+		{
+			Print("WorldEditorAPI is not available", LogLevel.ERROR);
+			return;
+		}
+
 		if (manageEditAction)
-			SCR_WorldEditorToolHelper.GetWorldEditorAPI().EndEntityAction();
+			worldEditorAPI.EndEntityAction();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// one day, func arguments will be supported in script methods - /perhaps/
+//	static array<IEntity> QueryEntitiesByAABB(notnull World world, vector mins, vector maxs, QueryEntitiesCallback addEntity, QueryEntitiesCallback filterEntity = null, EQueryEntitiesFlags queryFlags = EQueryEntitiesFlags.ALL)
+//	{
+//		s_aTempEntities = {};
+//		world.QueryEntitiesByAABB(mins, maxs, addEntity, filterEntity, queryFlags);
+//		s_aTempEntities = null;
+//	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Return all entities found by moved sphere trace
+	//! \param traceSphere
+	//! \param world
+	//! \return found entities or null on error
+	static array<IEntity> TraceMoveEntitiesBySphere(notnull World world, notnull TraceSphere traceSphere)
+	{
+		array<IEntity> result = {};
+
+		s_aTempEntities = {};
+		world.TraceMove(traceSphere, TraceCallbackMethod);
+
+		result.Copy(s_aTempEntities);
+		s_aTempEntities = null;
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Return all entities found by sphere trace
+	//! \param traceSphere
+	//! \param world
+	//! \return found entities or null on error
+	static array<IEntity> TracePositionEntitiesBySphere(notnull World world, notnull TraceSphere traceSphere)
+	{
+		array<IEntity> result = {};
+
+		s_aTempEntities = {};
+		world.TracePosition(traceSphere, TraceCallbackMethod);
+
+		result.Copy(s_aTempEntities);
+		s_aTempEntities = null;
+
+		return result;
 	}
 
 	/*
@@ -218,10 +331,21 @@ class SCR_WorldEditorToolHelper
 	*/
 
 	//------------------------------------------------------------------------------------------------
-	//! WorkbenchSearchResourcesCallback method
+	//! WorkbenchSearchResourcesCallback method used for Workbench searches and Resource Browser-selected files
+	//! \param resName found ResourceName
+	//! \param filePath absolute filepath of said ResourceName if available, empty string otherwise
 	protected static void ResourceNameCallback(ResourceName resName, string filePath = "")
 	{
+		Print("DEBUG LINE | " + filePath + " " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.DEBUG);
 		s_aTempResourceNames.Insert(resName);
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	//! TraceEntitiesCallback method used for World tracing
+	protected static bool TraceCallbackMethod(notnull IEntity e, vector start = "0 0 0", vector dir = "0 0 0")
+	{
+		s_aTempEntities.Insert(e);
+		return true;
+	}
+}
 #endif

@@ -163,7 +163,7 @@ class SCR_BaseGameModeComponent : ScriptComponent
 	/*!
 		See SCR_BaseGameMode.HandlePlayerKilled.
 	*/
-	bool HandlePlayerKilled(int playerId, IEntity player, IEntity killer)
+	bool HandlePlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		return true; // by default, handle automatically
 	}
@@ -173,9 +173,10 @@ class SCR_BaseGameModeComponent : ScriptComponent
 		Called after a player gets killed.
 		\param playerId PlayerId of victim player.
 		\param player Entity of victim player if any.
-		\param killer Entity of killer instigator if any.
+		\param killerEntity Entity of killer instigator if any.
+		\param killer Instigator of the kill
 	*/
-	void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 
 	}
@@ -185,10 +186,11 @@ class SCR_BaseGameModeComponent : ScriptComponent
 		Called after player gets killed in cases where the kill was handled by the game mode,
 		supressing the default OnPlayerKilled behaviour. See also SCR_BaseGameMode.HandlePlayerKilled().
 		\param playerId PlayerId of victim player.
-		\param player Entity of victim player if any.
-		\param killer Entity of killer instigator if any.
+		\param playerEntity Entity of victim player if any.
+		\param killerEntity Entity of killer instigator if any.
+		\param killer Instigator of the kill
 	*/
-	void OnPlayerKilledHandled(int playerId, IEntity player, IEntity killer)
+	void OnPlayerKilledHandled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 	}
 
@@ -257,9 +259,10 @@ class SCR_BaseGameModeComponent : ScriptComponent
 		When a controllable entity is destroyed, this event is raised.
 		Entity is destroyed when DamageManager.OnStateChanged -> EDamageState.Destroyed
 		\param entity Destroyed entity that raised this event
-		\param instigator Instigator entity that destroyed our victim
+		\param killerEntity Instigator entity that destroyed our victim
+		\param killer Instigator of the kill
 	*/
-	void OnControllableDestroyed(IEntity entity, IEntity instigator)
+	void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
 	{
 	}
 	

@@ -150,4 +150,20 @@ class SCR_PhysicsHelper
 		return m_OnTraceFinished;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	static void ChangeSimulationState(IEntity ent, SimulationState simState, bool recursively = false)
+	{
+		Physics physics = ent.GetPhysics();
+		if (physics)
+			physics.ChangeSimulationState(simState);
+		
+		if (!recursively)
+			return;
+		
+		for (IEntity child = ent.GetChildren(); child; child = child.GetSibling())
+		{
+			ChangeSimulationState(child, simState, recursively);
+		}
+	}
+	
 };

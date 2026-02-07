@@ -5,7 +5,6 @@ Handles looped sounds such as leaves rustles, or crickets played on entities clo
 class SCR_LoopedPositionalSounds: SCR_AmbientSoundsEffect
 {
 	private const int MINIMUM_MOVE_DISTANCE_SQ = 2;
-	private const int LOOPED_SOUNDS_PROCESSING_INTERVAL = 250;
 	private const int INVALID = -1;	
 	private const int LOOP_SOUND_HEIGHT_LIMIT = 25;
 	private const int LOOP_SOUND_COUNT = 9;
@@ -16,9 +15,8 @@ class SCR_LoopedPositionalSounds: SCR_AmbientSoundsEffect
 	
 	private int m_iEntitySizeSignalIdx;
 	
-	private float m_fTimer;
 	//! Camera position where looped sounds were processed the last time	
-	private vector m_vCameraPosLooped;;
+	private vector m_vCameraPosLooped;
 	//! All closest entities arround camera				
 	private ref array<IEntity>  m_aClosestEntityID = new array<IEntity>;
 	//! Entities with plaing looped sound	
@@ -33,20 +31,15 @@ class SCR_LoopedPositionalSounds: SCR_AmbientSoundsEffect
 	override void Update(float worldTime, vector cameraPos)
 	{
 		HandleLoopedSounds(worldTime, cameraPos);
-		UpdateTreeFoliageSoundPosition(m_aLoopedSoundID, cameraPos);
+		UpdateTreeFoliageSoundPosition(cameraPos);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	private void HandleLoopedSounds(float worldTime, vector cameraPos)
-	{
-		// Limit processing by time and moved distance
-		if (worldTime < m_fTimer)
-			return;
-							
+	{							
 		if (vector.DistanceSqXZ(m_vCameraPosLooped, cameraPos) < MINIMUM_MOVE_DISTANCE_SQ)
 			return;
 		
-		m_fTimer = worldTime + LOOPED_SOUNDS_PROCESSING_INTERVAL;
 		m_vCameraPosLooped = cameraPos;
 		
 		m_aClosestEntityID.Clear();
@@ -223,9 +216,9 @@ class SCR_LoopedPositionalSounds: SCR_AmbientSoundsEffect
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	private void UpdateTreeFoliageSoundPosition(array<IEntity> entity, vector cameraPos)
+	private void UpdateTreeFoliageSoundPosition(vector cameraPos)
 	{		
-		for (int i = 0, size = entity.Count(); i < size; i++)
+		for (int i = 0, size = m_aLoopedSoundID.Count(); i < size; i++)
 		{
 			if (m_aTreeFoliage[i].m_bUpdatePosition == true)
 			{		

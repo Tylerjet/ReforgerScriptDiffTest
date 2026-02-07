@@ -6,7 +6,7 @@ Radial menu class for handling HUD part of menu.
 [BaseContainerProps()]
 class SCR_SelectionMenuDisplay : SCR_InfoDisplayExtended
 {	
-	protected const float FADE_IN_SPEED = UIConstants.FADE_RATE_FAST;
+	protected const float FADE_IN_SPEED = UIConstants.FADE_RATE_SUPER_FAST;
 	
 	[Attribute("", ".layout", desc: "Base layout that should be used for all entries that doesn't need custom layout.")]
 	protected ResourceName m_sEntryLayout;
@@ -71,6 +71,15 @@ class SCR_SelectionMenuDisplay : SCR_InfoDisplayExtended
 		
 		// Find widgets
 		m_wEntriesParent = GetRootWidget().FindAnyWidget(m_sEntriesParent);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DisplayOnSuspended()
+	{
+		super.DisplayOnSuspended();
+		
+		if (m_Menu)
+			m_Menu.Close();
 	}
 	
 	//------------------------------------------------------------------------------------------------

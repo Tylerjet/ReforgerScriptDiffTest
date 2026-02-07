@@ -27,7 +27,8 @@ class SCR_AttachItemFromInventoryAction : SCR_InventoryAction
 			CharacterControllerComponent ctrl = CharacterControllerComponent.Cast(pUserEntity.FindComponent(CharacterControllerComponent));
 			if (ctrl && magazine)
 			{
-				ctrl.ReloadWeaponWith(pOwnerEntity);
+				bool bEmpty = storage.Get(0) == null;
+				ctrl.ReloadWeaponWith(pOwnerEntity, !bEmpty);
 			}
 			else
 			{
@@ -37,7 +38,20 @@ class SCR_AttachItemFromInventoryAction : SCR_InventoryAction
 		}
 		else
 		{
-			manager.EquipWeaponAttachment(pOwnerEntity, pUserEntity);		
+			// Check if we want to reload a magazine, and use ReloadWeapopnWith if so.
+			// This prevents a race condition were the old magazine appears to be still in the weapon
+			// due to network lag
+			BaseMagazineComponent magazine = BaseMagazineComponent.Cast(pOwnerEntity.FindComponent(BaseMagazineComponent));
+			CharacterControllerComponent ctrl = CharacterControllerComponent.Cast(pUserEntity.FindComponent(CharacterControllerComponent));
+			if (ctrl && magazine)
+			{
+				bool bEmpty = storage.Get(0) == null;
+				ctrl.ReloadWeaponWith(pOwnerEntity, !bEmpty);
+			}
+			else
+			{
+				manager.EquipWeaponAttachment(pOwnerEntity, pUserEntity);		
+			}
 		}
 	}
 	

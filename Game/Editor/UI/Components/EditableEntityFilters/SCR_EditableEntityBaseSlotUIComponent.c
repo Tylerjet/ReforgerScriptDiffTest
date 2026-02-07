@@ -146,10 +146,10 @@ class SCR_EditableEntityBaseSlotUIComponent: ScriptedWidgetComponent
 		
 		m_Entity = entity;
 		
-		//--- Initialize faction color (set on the slot, child widgets inherit from it, s they don't need to set it individually)
+		//--- Initialize faction color (set on the slot, child widgets inherit from it, so they don't need to set it individually)
 		if (entity.HasEntityFlag(EEditableEntityFlag.HAS_FACTION))
 		{
-			GetGame().GetCallqueue().CallLater(SetFactionColor); //--- Delay because faction is not initialized when the entity was just created
+			SetFactionColor();
 		}
 		
 		if (entity.GetOnUIRefresh())

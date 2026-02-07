@@ -245,6 +245,10 @@ sealed class BaseWorld: pointer
 	proto external float GetTimeScale();
 	//! Returns time slice of the world.
 	proto external float GetTimeSlice();
+	//! Returns fixed time slice of the world.
+	proto external float GetFixedTimeSlice();
+	//! Returns physics time slice of the world.
+	proto external float GetPhysicsTimeSlice();
 	proto external IEntity FindEntityByName(string name);
 	proto external IEntity FindEntityByID(EntityID ID);
 	//! Returns true during edit mode in Workbench and in Ingame editor

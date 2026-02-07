@@ -18,6 +18,8 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	[Attribute(defvalue: "Task description.", desc: "The task description visible to the player.")]
 	protected string m_sDescriptionReconfigure;
 	
+	protected string m_sAffix;
+	
 	//**************************//
 	//PROTECTED MEMBER VARIABLES//
 	//**************************//
@@ -95,6 +97,9 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	//------------------------------------------------------------------------------------------------
 	override void DoNotifyAssignment(int assigneeID)
 	{
+		if (m_TargetBase.GetType() != SCR_ECampaignBaseType.BASE)
+			return;
+
 		SCR_CampaignNetworkComponent assigneeNetworkComponent = SCR_CampaignNetworkComponent.GetCampaignNetworkComponent(assigneeID);
 		if (!assigneeNetworkComponent)
 			return;
@@ -113,13 +118,26 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void SetIsPriority(bool isPrio)
+	{
+		super.SetIsPriority(isPrio);
+		
+		if (isPrio)
+			m_sAffix = "<br/><br/>#AR-Campaign_PriorityTaskInfo";
+		else
+			m_sAffix = string.Empty;
+		
+		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Return the description of this task.
 	override string GetDescription()
 	{
 		if (m_TargetBase && m_TargetBase.GetType() == SCR_ECampaignBaseType.RELAY)
-			return m_sDescriptionReconfigure;
+			return m_sDescriptionReconfigure + m_sAffix;
 		
-		return m_sDescription;
+		return m_sDescription + m_sAffix;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -189,7 +207,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 					if (m_bIsPriority)
 						multiplier = 1.5;
 
-					comp.AwardXP(playerEntity, rewardID, multiplier, isAssignee);
+					comp.AwardXP(playerId, rewardID, multiplier, isAssignee);
 				}
 			}
 		}

@@ -68,6 +68,9 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnReconnect() 
 	{ 
+		if (!m_OnPlayerReconnect)
+			m_OnPlayerReconnect = new ScriptInvoker();  
+		
 		return m_OnPlayerReconnect; 
 	}
 	

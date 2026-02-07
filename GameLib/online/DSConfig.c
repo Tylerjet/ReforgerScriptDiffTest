@@ -3,10 +3,10 @@ class DSGameConfig: JsonApiStruct
 	string name;
 	string scenarioId;
 	string hostedScenarioModId;
-	int maxPlayers
+	int maxPlayers;
 	string password;
 	string passwordAdmin;
-	bool visible
+	bool visible;
 
 	bool crossPlatform;
 	

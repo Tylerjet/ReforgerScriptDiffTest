@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------------------------
 class SCR_PlayerXPHandlerComponentClass : ScriptComponentClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 //! Takes care of player-specific XP handling
@@ -11,6 +11,10 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	[RplProp(condition: RplCondition.OwnerOnly)]
 	protected int m_iPlayerXP = 0;
 
+	protected int m_iPlayerXPSinceLastSpawn;
+
+	protected float m_fSuicidePenaltyTimestamp;
+
 	protected ref ScriptInvoker m_OnXPChanged;
 
 	//------------------------------------------------------------------------------------------------
@@ -18,6 +22,32 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	int GetPlayerXP()
 	{
 		return m_iPlayerXP;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Setter for player XP accumulated since last respawn
+	void SetPlayerXPSinceLastSpawn(int xp)
+	{
+		m_iPlayerXPSinceLastSpawn = xp;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Getter for player XP accumulated since last respawn
+	int GetPlayerXPSinceLastSpawn()
+	{
+		return m_iPlayerXPSinceLastSpawn;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetSuicidePenaltyTimestamp(float timestamp)
+	{
+		m_fSuicidePenaltyTimestamp = timestamp;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetSuicidePenaltyTimestamp()
+	{
+		return m_fSuicidePenaltyTimestamp;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -35,6 +65,12 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 		RplComponent rpl = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 
 		return (rpl && rpl.IsProxy());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnPlayerKilled()
+	{
+		m_iPlayerXPSinceLastSpawn = 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -98,8 +134,7 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 		if (!comp)
 			return;
 
-		IEntity controlledEnt = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
-		comp.AwardXP(controlledEnt, SCR_EXPRewards.CHEAT, reqXP);
+		comp.AwardXP(playerID, SCR_EXPRewards.CHEAT, reqXP);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -142,6 +177,10 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 		}
 
 		int XP = comp.GetXPRewardAmount(rewardID);
+
+		if (XP == 0)
+			return;
+
 		float skillXPMultiplier = 1;
 		//EProfileSkillID skillID = comp.GetXPRewardSkill(rewardID);
 		//auto profileManager = campaign.FindComponent(SCR_PlayerProfileManagerComponent); Replaced by SCR_PlayerData
@@ -173,10 +212,17 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 		}
 		//****
 		*****/
+		if (XPToAdd + XPToAddBySkill == 0)
+			return;
+
 		m_iPlayerXP += (XPToAdd + XPToAddBySkill);
+
+		if (rewardID != SCR_EXPRewards.VETERANCY)
+			m_iPlayerXPSinceLastSpawn += (XPToAdd + XPToAddBySkill);
+
 		Replication.BumpMe();
 		UpdatePlayerRank();
 
 		Rpc(RpcDo_OnPlayerXPChanged, m_iPlayerXP, XPToAdd + XPToAddBySkill, volunteer, rewardID, profileUsed, skillLevel);
 	}
-};
+}

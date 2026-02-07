@@ -27,11 +27,21 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 	
 	private static ref OnDeployMenuCloseInvoker s_OnMenuClose;
 
+	private DeployMenuSystem m_DeployMenuSystem;
+	private SCR_MenuSpawnLogic m_SpawnLogic;
+
 	//------------------------------------------------------------------------------------------------
 	protected override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
-		SetEventMask(owner, EntityEvent.FRAME);
+
+		SCR_RespawnSystemComponent rsc = SCR_RespawnSystemComponent.GetInstance();
+		if (!GetGame().InPlayMode() || (rsc && !rsc.CanOpenDeployMenu()))
+			return;				
+
+		World world = GetOwner().GetWorld();		
+		m_DeployMenuSystem = DeployMenuSystem.Cast(world.FindSystem(DeployMenuSystem));
+		m_DeployMenuSystem.Register(this);
 
 		m_RespawnComponent = SCR_RespawnComponent.Cast(owner.FindComponent(SCR_RespawnComponent));
 		if (!m_RespawnComponent)
@@ -51,25 +61,25 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		
 		m_PlyFactionAffil = SCR_PlayerFactionAffiliationComponent.Cast(owner.FindComponent(SCR_PlayerFactionAffiliationComponent));
 
-		m_RespawnComponent.GetOnRespawnReadyInvoker_O().Insert(SetReady);
+		m_RespawnComponent.GetOnRespawnReadyInvoker_O().Insert(OnRespawnReady);
 		m_RespawnComponent.GetOnRespawnResponseInvoker_O().Insert(SetNotReady);
+		m_SpawnLogic = SCR_MenuSpawnLogic.Cast(rsc.GetSpawnLogic());
+
+		SCR_ReconnectSynchronizationComponent reconnectComp = SCR_ReconnectSynchronizationComponent.Cast(owner.FindComponent(SCR_ReconnectSynchronizationComponent));
+		if (reconnectComp)
+			reconnectComp.GetOnPlayerReconnect().Insert(OnPlayerReconnect);
 
 		SCR_WelcomeScreenComponent welcomeScreenComp = SCR_WelcomeScreenComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_WelcomeScreenComponent));
 		if (!welcomeScreenComp)
-			m_bWelcomeClosed = true;
+			SetWelcomeClosed();	
 	}
 
-	protected override void EOnFrame(IEntity owner, float timeSlice)
+	void Update(float timeSlice)
 	{
-		super.EOnFrame(owner, timeSlice);
-
 #ifdef ENABLE_DIAG
 		if (SCR_RespawnComponent.Diag_IsCLISpawnEnabled())
 			return;
 #endif
-		if (!m_bReady)
-			return;
-
 		if (CanOpenWelcomeScreen())
 		{
 			if (!IsWelcomeScreenOpen())
@@ -85,15 +95,21 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 
 		if (CanOpenMenu())
 		{
-			if (!m_bFirstOpen && HasFaction() && !SCR_RoleSelectionMenu.GetRoleSelectionMenu())
+			if (HasPlayableFaction() && !SCR_RoleSelectionMenu.GetRoleSelectionMenu())
 			{
 				if (!SCR_DeployMenuMain.GetDeployMenu())
+				{
+					SCR_RoleSelectionMenu.CloseRoleSelectionMenu();
 					SCR_DeployMenuMain.OpenDeployMenu();
+				}
 			}
 			else
 			{
 				if (!SCR_RoleSelectionMenu.GetRoleSelectionMenu())
+				{
+					SCR_DeployMenuMain.CloseDeployMenu();
 					SCR_RoleSelectionMenu.OpenRoleSelectionMenu();
+				}
 				
 				m_bFirstOpen = false;
 			}
@@ -130,9 +146,14 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 			s_OnMenuClose.Invoke();
 	}
 	
-	protected bool HasFaction()
+	protected bool HasPlayableFaction()
 	{
-		return (m_PlyFactionAffil && m_PlyFactionAffil.GetAffiliatedFaction());
+		if (!m_PlyFactionAffil)
+			return false;
+
+		SCR_Faction faction = SCR_Faction.Cast(m_PlyFactionAffil.GetAffiliatedFaction());
+
+		return (faction && faction.IsPlayable());
 	}
 
 	protected bool CanOpenMenu()
@@ -157,11 +178,12 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 	
 	protected bool CanOpenWelcomeScreen()
 	{
-		if (m_bWelcomeClosed)
-			return false;
 		bool hasEntity = (m_PlayerController.IsPossessing() || m_PlayerController.GetControlledEntity());
-		bool hasDeadEntity = false;
 
+		if (m_bWelcomeClosed || hasEntity)
+			return false;
+
+		bool hasDeadEntity = false;
 		ChimeraCharacter character = ChimeraCharacter.Cast(m_PlayerController.GetControlledEntity());
 		if (character)
 			hasDeadEntity = character.GetCharacterController().IsDead();
@@ -175,9 +197,36 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		return canOpen;		
 	}
 
+	protected void OnRespawnReady()
+	{
+		if (m_bFirstOpen)
+		{
+			SetReady();
+			return;
+		}
+		
+		// Delay to next frame as current character deleted replication could by applied later than the respawn system RPC this event is raised from.
+		GetGame().GetCallqueue().Call(SetReadyDelayed);
+	}
+
+	protected void SetReadyDelayed()
+	{
+		IEntity controlledEntity = m_PlayerController.GetControlledEntity();
+		if (!controlledEntity || controlledEntity.IsDeleted())
+		{
+			SetReady();
+			return;
+		}
+
+		float delay = SCR_RespawnSystemComponent.GetInstance().GetDeployMenuOpenDelay_ms();
+		GetGame().GetCallqueue().CallLater(SetReady, delay, false);
+	}
+
 	protected void SetReady()
 	{
-		m_bReady = true;
+		if (m_SpawnLogic)
+			m_SpawnLogic.DestroyLoadingPlaceholder();
+		m_DeployMenuSystem.SetReady(true);
 	}
 	
 	void SetWelcomeClosed()
@@ -185,13 +234,30 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		m_bWelcomeClosed = true;
 	}
 
+	protected void OnPlayerReconnect(int state)
+	{
+		if (m_SpawnLogic)
+			m_SpawnLogic.DestroyLoadingPlaceholder();
+		m_bFirstOpen = false;
+		SetWelcomeClosed();
+	}
+
 	protected void SetNotReady(SCR_SpawnRequestComponent requestComponent, SCR_ESpawnResult response)
 	{
 		if (response == SCR_ESpawnResult.OK)
 		{
 			SCR_DeployMenuMain.CloseDeployMenu();
-			m_bReady = false;
+			SCR_RoleSelectionMenu.CloseRoleSelectionMenu();
+			CloseWelcomeScreen();
+			SetWelcomeClosed();
+			m_DeployMenuSystem.SetReady(false);
+			m_bFirstOpen = false;
 		}
+	}
+
+	bool UpdateLoadingPlaceholder(float dt)
+	{
+		return m_SpawnLogic.UpdateLoadingPlaceholder(dt);
 	}
 
 	static OnDeployMenuCloseInvoker SGetOnMenuClosed()
@@ -202,9 +268,13 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 		return s_OnMenuClose;
 	}
 	
-	void ~SCR_PlayerDeployMenuHandlerComponent()
+	override protected void OnDelete(IEntity owner)
 	{
 		if (s_OnMenuClose)
 			delete s_OnMenuClose;
+		
+		if (m_DeployMenuSystem)
+			m_DeployMenuSystem.Unregister(this);
+		super.OnDelete(owner);
 	}
 };

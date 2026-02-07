@@ -1,7 +1,8 @@
+// Attached on EditorModeBuilding prefab
 [ComponentEditorProps(category: "GameScripted/Editor", description: "Main conflict component for handling building editor mode", icon: "WBData/ComponentEditorProps/componentEditor.png")]
 class SCR_CampaignBuildingEditorComponentClass : SCR_BaseEditorComponentClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 
@@ -11,7 +12,6 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	protected ref array<RplId> m_aProvidersRplIds = {};
 	protected SCR_ContentBrowserEditorComponent m_ContentBrowserManager;
 	protected SCR_CampaignBuildingProviderComponent m_ForcedProviderComponent;
-	protected int m_PlayerId;
 
 	protected ref ScriptInvoker m_OnProviderChanged;
 
@@ -30,7 +30,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		if (!providerComponent || m_aProvidersComponents.Contains(providerComponent))
 			return;
 
-		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(providerComponent.GetOwner().FindComponent(SCR_CampaignMilitaryBaseComponent));
+		SCR_MilitaryBaseComponent base = providerComponent.GetMilitaryBaseComponent();
 		if (base)
 			m_aProvidersComponents.InsertAt(providerComponent, 0);
 		else
@@ -52,6 +52,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Return provider component of current provider.
 	SCR_CampaignBuildingProviderComponent GetProviderComponent()
 	{
 		if (m_ForcedProviderComponent)
@@ -93,6 +94,33 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	bool GetProviderResourceComponent(out SCR_ResourceComponent resourceComponent)
+	{
+		if (m_aProvidersComponents.IsEmpty())
+			return false;
+
+		resourceComponent = SCR_ResourceComponent.FindResourceComponent(GetProviderEntity());
+		
+		if (resourceComponent)
+			return true;
+
+		IEntity parent = GetProviderEntity();
+		
+		while (parent)
+		{
+			resourceComponent = SCR_ResourceComponent.FindResourceComponent(parent);
+			
+			if (resourceComponent)
+				return true;
+
+			parent = parent.GetParent();
+		}
+		
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[Obsolete("SCR_CampaignBuildingEditorComponent.GetProviderResourceComponent() should be used instead.")]
 	bool GetProviderSuppliesComponent(out SCR_CampaignSuppliesComponent suppliesComponent)
 	{
 		if (m_aProvidersComponents.IsEmpty())
@@ -167,7 +195,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 
 	//------------------------------------------------------------------------------------------------
 	//~  This function will add/remove the faction label of the saved editor state. Thus displaying the correct faction entities in the menu
-	protected void AddRemoveFactionLabel(SCR_CampaignFaction faction, bool addLabel)
+	protected void AddRemoveFactionLabel(SCR_Faction faction, bool addLabel)
 	{
 		if (!faction)
 			return;
@@ -206,7 +234,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		SCR_CampaignBuildingProviderComponent providerComponenet = GetProviderComponent();
 		if (!providerComponenet)
 			return;
-		
+
 		if (!System.IsConsoleApp() && GetGame().GetPlayerController())
 		{
 			ScriptedGameTriggerEntity trigger = SpawnClientTrigger();
@@ -214,7 +242,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			if (trigger)
 			{
 				trigger.SetSphereRadius(providerComponenet.GetBuildingRadius());
-				
+
 				SCR_CampaignBuildingAreaMeshComponent areaMeshComponent = SCR_CampaignBuildingAreaMeshComponent.Cast(trigger.FindComponent(SCR_CampaignBuildingAreaMeshComponent));
 				if (areaMeshComponent && areaMeshComponent.ShouldEnableFrameUpdateDuringEditor())
 				{
@@ -239,51 +267,134 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 				buildingFaction = factionComponent.GetDefaultAffiliatedFaction();
 
 			if (buildingFaction)
-				AddRemoveFactionLabel(SCR_CampaignFaction.Cast(buildingFaction), true);
+				AddRemoveFactionLabel(SCR_Faction.Cast(buildingFaction), true);
 		}
 
-		//~ Todo: Fix first tab being broken
-		//~ Hotfix for first tab being broken
-		m_ContentBrowserManager.SetStateTabVisible(0, false);
-		
-		//~ Hide services in base show if outside base. Make sure given index is 0 if above hotfix is removed
-		m_ContentBrowserManager.SetStateTabVisible(1, GetProviderEntity().FindComponent(SCR_CampaignMilitaryBaseComponent) != null);
+		array<SCR_EditorContentBrowserSaveStateDataUI> contentBrowserStates = {};
+		int tabsCount = m_ContentBrowserManager.GetContentBrowserTabStates(contentBrowserStates);
+
+		for (int i = 0; i < tabsCount; i++)
+		{
+			if (!contentBrowserStates[i])
+				continue;
+			
+			//~ Todo: Fix first tab being broken
+			//~ Hotfix for first tab being broken
+			if (i == 0 || !CanBeShown(contentBrowserStates[i]))
+				m_ContentBrowserManager.SetStateTabVisible(i, false);
+		}
+
+		ToggleBuildingTool(false);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if the given tab can be shown
+	bool CanBeShown(notnull SCR_EditorContentBrowserSaveStateDataUI tab)
+	{
+		if (!TabContainLabel(tab))
+			return false;
+
+		return tab.CanBeShown();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if the given tabUI contains any label set on provider.
+	bool TabContainLabel(SCR_EditorContentBrowserSaveStateDataUI tab)
+	{
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
+		if (!providerComponent)
+			return false;
+
+		array<EEditableEntityLabel> labels = providerComponent.GetAvailableTraits();
+
+		foreach (EEditableEntityLabel label : labels)
+		{
+			if (tab.ContainsLabel(label))
+				return true;
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns true if the provider is a base
+	bool IsProviderBase()
+	{
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
+		if (!providerComponent)
+			return false;
+
+		return providerComponent.GetMilitaryBaseComponent();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ToggleBuildingTool(bool mode)
+	{
+		IEntity player = EntityUtils.GetPlayer();
+		if (!player)
+			return;
+
+		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(player);
+		if (!gadgetManager)
+			return;
+		
+		SCR_GadgetComponent gadgetComponent = gadgetManager.GetHeldGadgetComponent();
+		if (!gadgetComponent)
+			return;
+		
+		if (gadgetComponent.GetType() == EGadgetType.BUILDING_TOOL)
+			gadgetManager.ToggleHeldGadget(mode);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	SCR_ECharacterRank GetUserRank()
-	{		
+	{
 		int playerId = SCR_PlayerController.GetLocalPlayerId();
-		
+
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
 		if (!playerController)
 			return SCR_ECharacterRank.INVALID;
-		
+
 		return SCR_CharacterRankComponent.GetCharacterRank(playerController.GetControlledEntity());
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorOpenServer()
 	{
-		SCR_CampaignMilitaryBaseComponent base;
-		
+		SCR_MilitaryBaseComponent base;
+
 		if (GetProviderEntity())
-			base = SCR_CampaignMilitaryBaseComponent.Cast(GetProviderEntity().FindComponent(SCR_CampaignMilitaryBaseComponent));
-		
+		{
+			SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(GetProviderEntity().FindComponent(SCR_CampaignBuildingProviderComponent));
+			if (!providerComponent)
+				return;
+
+			base = providerComponent.GetMilitaryBaseComponent();
+		}
+
 		if (base)
-			return; 
-		
+			return;
+
 		GetGame().GetWorld().QueryEntitiesBySphere(GetProviderEntity().GetOrigin(), GetProviderComponent().GetBuildingRadius(), AssociateCompositionsToProvider, null, EQueryEntitiesFlags.ALL);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorCloseServer()
 	{
+		ToggleBuildingTool(true);
+
+		if (!GetProviderEntity())
+			return;
+
 		// In case the provider of the building was the base, don't remove it's stamp from component. So the composition can't be build from another providers
-		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(GetProviderEntity().FindComponent(SCR_CampaignMilitaryBaseComponent));
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(GetProviderEntity().FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (!providerComponent)
+			return;
+
+		SCR_MilitaryBaseComponent base = providerComponent.GetMilitaryBaseComponent();
 		if (base)
-			return; 
-		
+			return;
+
 		GetGame().GetWorld().QueryEntitiesBySphere(GetProviderEntity().GetOrigin(), GetProviderComponent().GetBuildingRadius(), UnassignCompositionProvider, null, EQueryEntitiesFlags.ALL);
 	}
 
@@ -311,7 +422,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		SCR_EditableEntityComponent editableComponent = SCR_EditableEntityComponent.Cast(ent.FindComponent(SCR_EditableEntityComponent));
 		if (!editableComponent || editableComponent.GetParentEntity())
 			return true;
-		
+
 		SCR_CampaignBuildingCompositionComponent comp = SCR_CampaignBuildingCompositionComponent.Cast(ent.FindComponent(SCR_CampaignBuildingCompositionComponent));
 		if (!comp)
 			return true;
@@ -350,6 +461,8 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			if (buildingFaction)
 				AddRemoveFactionLabel(SCR_CampaignFaction.Cast(buildingFaction), false);
 		}
+		
+		ToggleBuildingTool(true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -359,7 +472,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
 		if (!providerComponent)
 			return null;
-		
+
 		return providerComponent.GetOwner();
 	}
 
@@ -449,4 +562,4 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 
 		return true;
 	}
-};
+}

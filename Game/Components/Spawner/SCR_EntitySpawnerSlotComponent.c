@@ -73,6 +73,7 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 	protected SCR_SpawnerSlotManager m_SlotManager;
 	protected SCR_EntityLabelPointComponent m_RallyPointLabelComponent;
 	protected ref array<ChimeraCharacter> m_aCharacterArray;
+	protected ref array<IEntity> m_aExcludedEntities;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns true, if SCR_EntityLabelPointComponent is in range defined by m_fMaxRallyPointDistance
@@ -132,9 +133,12 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 
 		TraceOBB trace = new TraceOBB();
 		GetOwner().GetWorldTransform(trace.Mat);
-
+		
+		if (!m_aExcludedEntities)
+			FillExcludedEntities();
+		
 		trace.Start = GetOwner().GetOrigin();
-		trace.Exclude = GetOwner();
+		trace.ExcludeArray = m_aExcludedEntities;
 		trace.LayerMask = EPhysicsLayerPresets.Projectile;
 		trace.Flags = TraceFlags.ENTS;
 		trace.Mins = prefabData.GetMinBoundsVector();
@@ -164,10 +168,13 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 		array<ChimeraCharacter> characterArray = {};
 		GetCharactersInSlot(characterArray);
 		
+		if (characterArray.IsEmpty())
+			return;
+		
 		//Obtain all empty terrain positions
 		array <vector> positions = {};
-		if (SCR_WorldTools.FindAllEmptyTerrainPositions(positions, GetOwner().GetOrigin(), prefabData.GetTeleportMaximumDistance(), prefabData.GetTeleportSearchSize()) == 0)
-				return;
+		if (SCR_WorldTools.FindAllEmptyTerrainPositions(positions, GetOwner().GetOrigin(), prefabData.GetTeleportMaximumDistance(), prefabData.GetTeleportSearchSize(), maxResults:characterArray.Count()) == 0)
+			return;
 		
 		vector transform[4];
 		PlayerController playerController;
@@ -223,6 +230,33 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 		
 		m_aCharacterArray = null;
 		return characterArray.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void FillExcludedEntities()
+	{
+		m_aExcludedEntities = {};
+	
+		SCR_EditableEntityComponent comp = SCR_EditableEntityComponent.Cast(GetOwner().FindComponent(SCR_EditableEntityComponent));
+		if (!comp)
+			return;
+		
+		set<SCR_EditableEntityComponent> childrenSet = new set<SCR_EditableEntityComponent> ();
+		SCR_EditableEntityComponent parent = comp.GetParentEntity();
+		if (!parent)
+			return;
+		
+		parent.GetChildren(childrenSet);
+		foreach(SCR_EditableEntityComponent editableChildren : childrenSet)
+		{
+			if (!editableChildren)
+				continue;
+			
+			m_aExcludedEntities.Insert(editableChildren.GetOwner());
+		}
+			
+		m_aExcludedEntities.Insert(parent.GetOwner());
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -324,7 +358,7 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 			DrawDebugShape();
 #endif
 
-		if (!GetGame().GetGameMode())
+		if (SCR_Global.IsEditMode())
 			return;
 
 		m_SlotManager = SCR_SpawnerSlotManager.GetInstance();
@@ -351,7 +385,6 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 		if (m_bShowDebugShape)
 			SetEventMask(owner, EntityEvent.FRAME);
 #endif
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 
 	//------------------------------------------------------------------------------------------------

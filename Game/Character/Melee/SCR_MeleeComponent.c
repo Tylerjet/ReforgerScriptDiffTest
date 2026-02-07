@@ -204,20 +204,35 @@ class SCR_MeleeComponent : ScriptComponent
 		if (!startEntity)
 			return null;
 		
-		DamageManagerComponent damageManager;
-		SCR_HitZoneContainerComponent hitzoneContainer = SCR_HitZoneContainerComponent.Cast(startEntity.FindComponent(SCR_HitZoneContainerComponent));
+		DamageManagerComponent damageManager = DamageManagerComponent.Cast(startEntity.FindComponent(DamageManagerComponent));
+		if (damageManager)
+		{
+			hitzone = damageManager.GetDefaultHitZone();
+			return damageManager;
+		}
+			
+		DamageManagerComponent tempManager;
 		
 		while (startEntity)
 		{
-			damageManager = DamageManagerComponent.Cast(startEntity.FindComponent(DamageManagerComponent));
-			if (damageManager)
-				break;
+			//if the parent entity has a multiphase destruction we don't want to pass the damage
+			//Because multi phase destructibles can be quite big and be separated by multiple entities on the hierarchy
+			tempManager = DamageManagerComponent.Cast(startEntity.FindComponent(DamageManagerComponent));
+			if (tempManager)
+			{
+				//if its a multiphase destructible, we dont pass dmg.
+				if (!SCR_DestructionMultiPhaseComponent.Cast(tempManager))
+				{	
+					damageManager = tempManager;
+					break;
+				}
+			}
 			
 			startEntity = startEntity.GetParent();
 		}
 		
-		if (hitzoneContainer && damageManager && hitzoneContainer != damageManager)
-			hitzone = hitzoneContainer.GetDefaultHitZone();
+		if (damageManager)
+			hitzone = damageManager.GetDefaultHitZone();
 		
 		return damageManager;
 	}
@@ -262,7 +277,7 @@ class SCR_MeleeComponent : ScriptComponent
 			hitPosDirNorm,
 			m_MeleeHitData.m_Entity, 
 			hitzone,
-			GetOwner(), // This is a workaround, to make the character the damage instigator, just pass any child of the character as damageSource
+			Instigator.CreateInstigator(GetOwner()),
 			m_MeleeHitData.m_SurfaceProps,
 			m_MeleeHitData.m_iColliderIndex, 
 			m_MeleeHitData.m_iNodeIndex);

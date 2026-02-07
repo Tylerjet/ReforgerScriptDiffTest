@@ -72,7 +72,8 @@ class SCR_IngameDateUIComponent : ScriptedWidgetComponent
 			return;
 		}
 		
-		m_TimeAndWeatherManagerEntity = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		m_TimeAndWeatherManagerEntity = world.GetTimeAndWeatherManager();
 		if (!m_TimeAndWeatherManagerEntity)
 		{
 			Print("'SCR_IngameDateUIComponent' could not find the TimeAndWeatherManager", LogLevel.ERROR);

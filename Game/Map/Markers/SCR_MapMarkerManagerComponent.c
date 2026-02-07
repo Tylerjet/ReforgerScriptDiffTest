@@ -15,6 +15,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	
 	protected ref array<ref SCR_MapMarkerBase> m_aLocalMarkers = {};		// client side markers
 	protected ref array<ref SCR_MapMarkerBase> m_aStaticMarkers = {};		// replicated static markers, one time RPC call for sync
+	protected ref array<ref SCR_MapMarkerBase> m_aDisabledMarkers = {};		// client side markers
 	protected ref array<SCR_MapMarkerEntity> m_aDynamicMarkers = {};		// dynamically replicated markers
 	
 	protected SCR_MapMarkerSyncComponent m_MarkerSyncComp;
@@ -289,6 +290,26 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Enable/disable static marker
+	void SetStaticMarkerDisabled(notnull SCR_MapMarkerBase marker, bool state)
+	{
+		if (state)
+		{
+			if (m_aLocalMarkers.RemoveItem(marker) || m_aStaticMarkers.RemoveItem(marker))
+				m_aDisabledMarkers.Insert(marker);
+		}
+		else 
+		{
+			m_aDisabledMarkers.RemoveItem(marker);
+			
+			if (marker.GetMarkerID() == -1)
+				m_aLocalMarkers.Insert(marker);
+			else 
+				m_aStaticMarkers.Insert(marker);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Registers the marker within manager, called by the marker entity
 	void RegisterDynamicMarker(SCR_MapMarkerEntity markerEnt)
 	{
@@ -380,7 +401,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	{
 		SetStreamRulesForPlayer(playerID);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	// OVERRIDES
 	//------------------------------------------------------------------------------------------------
@@ -413,9 +434,10 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			writer.WriteInt(marker.GetMarkerID());
 			writer.WriteInt(marker.GetMarkerOwnerID());
 			writer.WriteInt(marker.GetMarkerConfigID());
-			writer.WriteInt(marker.GetType());
+			writer.Write(marker.GetRotation(), 16);
+			writer.Write(marker.GetType(), 8);
 			writer.Write(marker.GetColorEntry(), 8);
-			writer.Write(marker.GetIconEntry(), 8);
+			writer.Write(marker.GetIconEntry(), 16);
 			writer.WriteString(marker.GetCustomText());
 		}
 		
@@ -430,7 +452,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		if (count == 0)
 			return true;
 		
-		int posX, posY, markerID, markerOwnerID, markerConfigID, markerType, colorID, iconID;
+		int posX, posY, markerID, markerOwnerID, markerConfigID, markerType, colorID, iconID, rotation;
 		string customText;
 		SCR_MapMarkerBase marker;
 		Faction markerFaction;
@@ -444,9 +466,10 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			reader.ReadInt(markerID);
 			reader.ReadInt(markerOwnerID);
 			reader.ReadInt(markerConfigID);
-			reader.ReadInt(markerType);
+			reader.Read(rotation, 16);
+			reader.Read(markerType, 8);
 			reader.Read(colorID, 8);
-			reader.Read(iconID, 8);
+			reader.Read(iconID, 16);
 			reader.ReadString(customText);	
 			
 			marker = new SCR_MapMarkerBase();
@@ -455,6 +478,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			marker.SetMarkerID(markerID);
 			marker.SetMarkerOwnerID(markerOwnerID);
 			marker.SetMarkerConfigID(markerConfigID);
+			marker.SetRotation(rotation);
 			marker.SetColorEntry(colorID);
 			marker.SetIconEntry(iconID);
 			marker.SetCustomText(customText);
@@ -487,7 +511,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	override protected void EOnInit(IEntity owner)
-	{
+	{	
 		if (!m_pGameMode.IsMaster())	// init server logic below
 			return;
 		

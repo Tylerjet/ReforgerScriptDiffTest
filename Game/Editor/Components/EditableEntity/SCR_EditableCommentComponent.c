@@ -1,7 +1,7 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
 class SCR_EditableCommentComponentClass : SCR_EditableEntityComponentClass
 {
-};
+}
 
 /** @ingroup Editable_Entities
 */
@@ -151,4 +151,4 @@ class SCR_EditableCommentComponent : SCR_EditableEntityComponent
 		DebugTextWorldSpace.Create(genericOwner.GetWorld(), displayName, DebugTextFlags.CENTER | DebugTextFlags.FACE_CAMERA | DebugTextFlags.ONCE, pos[0], pos[1], pos[2], testSize, color, colorBackground);
 	}
 #endif
-};
+}

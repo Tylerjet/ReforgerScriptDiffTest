@@ -80,6 +80,9 @@ class SCR_PopUpNotification : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void Offset(bool down)
 	{
+		if (!m_wPopupMsg || !m_wPopupMsgSmall || !m_wStatusProgress)
+			return;
+
 		if (down == m_bOffset)
 			return;
 		

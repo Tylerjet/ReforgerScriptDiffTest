@@ -267,25 +267,8 @@ class SCR_DownloadSequence
 			
 			if (downloading)
 			{	
-				if (Revision.AreEqual(downloading.GetTargetRevision(), revision))
-				{
-					// Proccess with same version
-					OnDependencyPatchSizeLoadResponse(null);
-				}
-				else
-				{
-					// Prevent processing
-					m_aDependenciesIssues.Insert(dependency);
-					
-					// Check loading is finished
-					int count = m_iPatchesLoaded + m_aDependenciesIssues.Count();
-		
-					if (count == m_aDependencies.Count())
-					{
-						if (m_OnDependenciesLoadingPrevented)
-							m_OnDependenciesLoadingPrevented.Invoke(this, m_aDependenciesIssues);
-					}
-				}
+				// Proccess with same version
+				OnDependencyPatchSizeLoadResponse(null);
 				
 				continue;
 			}
@@ -392,27 +375,17 @@ class SCR_DownloadSequence
 	
 	//------------------------------------------------------------------------------------------------
 	protected void CheckAllPatchSizeLoaded()
-	{
-		// Check issues
-		if (!m_aDependenciesIssues.IsEmpty())
-		{
-			int count = m_iPatchesLoaded + m_aDependenciesIssues.Count();
-			
-			if (count == m_aDependencies.Count())
-			{
-				if (m_OnDependenciesLoadingPrevented)
-					m_OnDependenciesLoadingPrevented.Invoke(this, m_aDependenciesIssues);
-				
-				return;
-			}
-		}
-
+	{	
 		// All loaded 
 		if (m_iPatchesLoaded == m_aDependencies.Count())
 		{
 			m_aPatchSizeCallbacks.Clear();
 			AllPatchSizeLoaded();
 		}
+		
+		// Check issues
+		if (m_OnDependenciesLoadingPrevented && !m_aDependenciesIssues.IsEmpty() && m_aDependencies.Count() == m_iPatchesLoaded + m_aDependenciesIssues.Count())
+			m_OnDependenciesLoadingPrevented.Invoke(this, m_aDependenciesIssues);
 	}
 	
 	//------------------------------------------------------------------------------------------------

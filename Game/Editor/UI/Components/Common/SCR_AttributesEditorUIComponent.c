@@ -110,8 +110,8 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 	protected Widget m_ContentHolder;
 	protected Widget m_ButtonCloseAndSaveButton;
 	protected Widget m_ButtonCloseButton;
-	protected SCR_NavigationButtonComponent m_ResetButton;
-	protected SCR_NavigationButtonComponent m_GamepadToggleEnableButton;
+	protected SCR_InputButtonComponent m_ResetButton;
+	protected SCR_InputButtonComponent m_GamepadToggleEnableButton;
 	protected SCR_BaseEditorAttributeUIComponent m_GamepadFocusAttribute;
 	
 	//Ref
@@ -346,7 +346,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		
 		Widget resetButton =  widget.FindAnyWidget(m_sButtonResetWidgetName);
 		if (resetButton)
-			m_ResetButton = SCR_NavigationButtonComponent.Cast(resetButton.FindHandler(SCR_NavigationButtonComponent));
+			m_ResetButton = SCR_InputButtonComponent.Cast(resetButton.FindHandler(SCR_InputButtonComponent));
 		if (m_ResetButton)
 			m_ResetButton.SetEnabled(false);
 		
@@ -357,7 +357,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		Widget gamePadToggle =  widget.FindAnyWidget(m_sGamepadToggleAttributeButtonName);
 		if (gamePadToggle)
 		{
-			m_GamepadToggleEnableButton = SCR_NavigationButtonComponent.Cast(gamePadToggle.FindHandler(SCR_NavigationButtonComponent));
+			m_GamepadToggleEnableButton = SCR_InputButtonComponent.Cast(gamePadToggle.FindHandler(SCR_InputButtonComponent));
 			
 			if (m_GamepadToggleEnableButton)
 				m_GamepadToggleEnableButton.SetEnabled(false);

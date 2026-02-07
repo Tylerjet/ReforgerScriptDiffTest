@@ -59,6 +59,8 @@ class GenericEntity: IEntity
 	\param params See the TransformResetParams documentation.
 	*/
 	proto external private void OnTransformResetImplNative(TransformResetParams params);
+	proto external protected void ConnectToDiagSystem();
+	proto external protected void DisconnectFromDiagSystem();
 	/*!
 	Notifies the entity that its transformation has been discontinuously changed.
 
@@ -80,6 +82,7 @@ class GenericEntity: IEntity
 
 	// callbacks
 
+	event protected void EOnDiag(IEntity owner, float timeSlice);
 	/*!
 	* Event when entity is activated.
 	*/
@@ -142,6 +145,8 @@ class GenericEntity: IEntity
 	event void _WB_OnKeyDown(int keyCode);
 	//! Called after entity gets created in map during editing or when deleted entity gets restored after undo action. This event isn't called by loading map!!! If you need an event that is being called after every entity creation then use WB_OnInit instead it. You can use editor API here and do some additional edit actions which will be part of the same "create entity" action.
 	event void _WB_OnCreate(IEntitySource src);
+	//! Parent entity has been changed ( it's available through src->GetParent() ). prevParentSrc is a pointer to a previous parent (if any)
+	event void _WB_OnParentChange(IEntitySource src, IEntitySource prevParentSrc);
 	//! This entity is going to be deleted. You can use editor API here and do some additional edit actions which will be part of the same "entity delete" action.
 	event void _WB_OnDelete(IEntitySource src);
 	//! This entity has been renamed. You can use editor API here and do some additional edit actions which will be part of the same "entity rename" action.

@@ -48,7 +48,11 @@ class SCR_SelectionMenuEntryPreviewComponent : SCR_SelectionMenuEntryComponent
 			return;
 
 		// Get manager and render preview 
-		ItemPreviewManagerEntity manager = GetGame().GetItemPreviewManager();
+		ChimeraWorld world = ChimeraWorld.CastFrom(item.GetWorld());
+		if (!world)
+			return;
+		
+		ItemPreviewManagerEntity manager = world.GetItemPreviewManager();
 		if (!manager)
 			return;
 		

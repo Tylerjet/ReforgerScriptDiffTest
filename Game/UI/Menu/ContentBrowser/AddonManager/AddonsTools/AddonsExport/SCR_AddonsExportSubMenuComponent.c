@@ -19,7 +19,7 @@ class SCR_AddonsExportSubMenuComponent : SCR_SubMenuBase
 	
 	protected string m_sGeneratedText;
 	
-	protected SCR_NavigationButtonComponent m_NavCopyComponent;
+	protected SCR_InputButtonComponent m_NavCopyComponent;
 	
 	//---------------------------------------------------------------------------------------------------
 	// Override 

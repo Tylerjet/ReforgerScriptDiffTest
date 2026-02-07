@@ -335,6 +335,9 @@ class SCR_BaseTaskManager : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void DeleteTask(SCR_BaseTask task)
 	{
+		if (m_aTasksToDelete.Contains(task))
+			return;
+		
 		m_aTasksToDelete.Insert(task);
 		task.OnDelete();
 	}
@@ -660,6 +663,12 @@ class SCR_BaseTaskManager : GenericEntity
 			delete taskToDelete;
 		}
 		
+		for (int i = m_aFinishedTaskList.Count() - 1; i >= 0; i--)
+		{
+			if (!m_aFinishedTaskList[i])
+				m_aFinishedTaskList.Remove(i);
+		}
+		
 		m_aTasksToDelete.Clear();
 	}
 	//------------------------------------------------------------------------------------------------
@@ -811,7 +820,6 @@ class SCR_BaseTaskManager : GenericEntity
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SHOW_ALL_TASKS, "", "Print all tasks", "Tasks", false);
 #endif
 		SetEventMask(EntityEvent.FRAME | EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetFlags(EntityFlags.NO_LINK, false);
 		
 		//Register to Script Invokers

@@ -28,8 +28,9 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 	bool AttachTo(IEntity target)
 	{
 		//--- No target, already attached target or inactive target - ignore
-		if (!target || target == m_Target || !SCR_Enum.HasFlag(target.GetFlags(), EntityFlags.ACTIVE | EntityFlags.TRACEABLE)) return false;
-		
+		if (!target || target == m_Target || !SCR_Enum.HasFlag(target.GetFlags(), EntityFlags.TRACEABLE))
+			return false;
+
 		SCR_ManualCamera camera = GetCameraEntity();
 		if (!camera) return false;
 		
@@ -103,10 +104,19 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 		}
 	}
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
-	{		
+	{
+		
 		//--- Target deleted, detach
 		if (m_AttachHelper && !m_Target)
 			Detach();
+		
+		if (!param.isManualInputEnabled)
+		{
+			if (m_Widget)
+				m_Widget.SetVisible(false);
+			
+			return;
+		}
 		
 		//--- Change attachment on input
 		switch (m_AttachType)
@@ -152,12 +162,14 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 				param.isDirty = true;
 			}
 			
-			if (m_Widget) m_Widget.SetVisible(m_Target != null);
+			if (m_Widget)
+				m_Widget.SetVisible(m_Target != null);
 		};
 		
 		//--- Update GUI
 		if (m_Widget && m_Target)
 		{
+			m_Widget.SetVisible(true);
 			vector screenPos = m_Widget.GetWorkspace().ProjWorldToScreen(m_AttachHelper.GetOrigin(), param.world);
 			if (screenPos[2] > 0) FrameSlot.SetPos(m_Widget, screenPos[0], screenPos[1]);
 		}

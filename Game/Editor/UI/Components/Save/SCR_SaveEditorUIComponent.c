@@ -12,6 +12,9 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	[Attribute()]
 	protected bool m_bCurrentMissionOnly;
 	
+	[Attribute("SaveScroller")]
+	protected string m_sScrollWidgetName;
+	
 	[Attribute("SaveList")]
 	protected string m_sListWidgetName;
 	
@@ -20,6 +23,9 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	
 	[Attribute("ExitButton")]
 	protected string m_sCloseButtonWidgetName;
+	
+	[Attribute("DeleteButton")]
+	protected string m_sDeleteButtonWidgetName;
 	
 	[Attribute("OverrideButton")]
 	protected string m_sOverrideButtonWidgetName;
@@ -30,23 +36,38 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	[Attribute("ConfirmPrompt")]
 	protected string m_sConfirmPromptWidgetName;
 	
+	[Attribute("DeletePrompt")]
+	protected string m_sDeletePromptWidgetName;
+	
+	[Attribute("LoadBadVersionPrompt")]
+	protected string m_sLoadBadVersionPromptWidgetName;
+	
+	[Attribute("LoadBadAddonsPrompt")]
+	protected string m_sLoadBadAddonsPromptWidgetName;
+	
 	[Attribute("EntryName")]
 	protected string m_sEntryNameWidgetName;
 	
-	[Attribute("PreviewImage")]
-	protected string m_sPreviewImageWidgetName;
-	
-	[Attribute("PreviewName")]
-	protected string m_sPreviewNameWidgetName;
+	[Attribute("SaveMetaLine")]
+	protected string m_sEntryMeta;
 	
 	[Attribute("PreviewDate")]
-	protected string m_sPreviewDateWidgetName;
+	protected string m_sEntryDateWidgetName;
 	
 	[Attribute("PreviewTime")]
-	protected string m_sPreviewTimeWidgetName;
+	protected string m_sEntryTimeWidgetName;
 	
 	[Attribute("PreviewWorld")]
-	protected string m_sPreviewWorldWidgetName;
+	protected string m_sEntryMissionNameWidgetName;
+	
+	[Attribute("EntryVersion")]
+	protected string m_sEntryVersionWidgetName;
+	
+	[Attribute("PreviewImage")]
+	protected string m_sEntryImageWidgetName;
+	
+	[Attribute("SaveImage")]
+	protected string m_sEntryIconWidgetName;
 	
 	[Attribute("#AR-Date_Format")]
 	protected string m_sDateFormat;
@@ -57,51 +78,104 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	[Attribute(uiwidget: UIWidgets.ResourceNamePicker, params: "layout")]
 	protected ResourceName m_sEntryLayout;
 	
-	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, params: "edds")]
-	protected ResourceName m_sFallbackImage;
-	
-	[Attribute("")]
+	[Attribute("session_save_override")]
 	protected string m_sConfirmPrompt;
 	
+	[Attribute("session_delete")]
+	protected string m_sDeletePrompt;
+	
+	[Attribute("session_load_bad_version")]
+	protected string m_sLoadBadVersionPrompt;
+	
+	[Attribute("session_load_bad_addons")]
+	protected string m_sLoadBadAddonsPrompt;
+	
 	protected Widget m_wRoot;
+	protected ScrollLayoutWidget m_wScroll;
 	protected Widget m_wList;
-	protected Widget m_wConfirmPrompt;
-	protected ImageWidget m_wPreviewImage;
-	protected TextWidget m_wPreviewName;
-	protected TextWidget m_wPreviewDate;
-	protected TextWidget m_wPreviewTime;
-	protected TextWidget m_wPreviewWorld;
-	protected SCR_NavigationButtonComponent m_OverrideButton;
-	protected SCR_NavigationButtonComponent m_ConfirmButton;
+	protected Widget m_wLastFocusedEntry;
+	
+	protected SCR_InputButtonComponent m_DeleteButton;
+	protected SCR_InputButtonComponent m_OverrideButton;
+	protected SCR_InputButtonComponent m_ConfirmButton;
 	protected SCR_EditBoxComponent m_SaveNameInput;
 	
+	protected SCR_ConfigurableDialogUi m_ConfirmPrompt;
+	protected SCR_ConfigurableDialogUi m_DeletePrompt;
+	protected SCR_ConfigurableDialogUi m_LoadBadVersionPrompt;
+	protected SCR_ConfigurableDialogUi m_LoadBadAddonsPrompt;
+	
+	protected float m_fSliderPosY = -1;
+	protected Widget m_wSelectedWidget;
+	protected string m_sSelectedFileName;
+	
 	protected ref map<Widget, string> m_mEntries = new map<Widget, string>();
+	protected ref map<string, string> m_mEntryNames = new map<string, string>(); //--- file name, display name
+	protected ref array<Widget> m_aEntriesHidden = {};
+	protected ref array<Widget> m_aEntriesToShow = {};
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Control buttons
 	//////////////////////////////////////////////////////////////////////////////////////////
-	protected void OnClose(SCR_NavigationButtonComponent button, string actionName)
+	protected void OnClose(SCR_InputButtonComponent button, string actionName)
 	{
 		CloseMenu();
 	}
 
 	//----------------------------------------------------------------------------------------
-	protected void OnConfirm(SCR_NavigationButtonComponent button, string actionName)
+	protected void OnConfirm(SCR_InputButtonComponent button, string actionName)
 	{
-		if (m_bIsLoad)
-		{
-			//--- Loading a file leads to restart, ask first
-			ShowConfirmPrompt();
-		}
-		else
+		// Save dialogs
+		if (!m_bIsLoad)
 		{
 			string customName = m_SaveNameInput.GetValue();
 			if (GetGame().GetSaveManager().FileExists(m_eWriteSaveType, customName))
-				//--- Overriding existing file - ask first
-				ShowConfirmPrompt();
+			{
+				//--- Confirm prompt
+				m_ConfirmPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sConfirmPrompt);
+				m_ConfirmPrompt.m_OnConfirm.Insert(OnConfirmPrompt);
+			}
 			else
+			{
 				//--- Creating a new file - save directly
 				OnConfirmPrompt();
+				return;
+			}
+			
+			m_ConfirmPrompt.SetTitle(m_SaveNameInput.GetValue());
+			return;
+		}
+		
+		//--- Loading a file leads to restart, ask first
+		string displayName = m_mEntryNames[m_sSelectedFileName];
+		string fileName;
+		if (m_mEntries.Find(GetGame().GetWorkspace().GetFocusedWidget(), fileName))
+		{
+			SCR_MetaStruct meta = GetGame().GetSaveManager().GetMeta(fileName);
+			if (meta)
+			{
+				if (!meta.IsVersionCompatible())
+				{
+					// Warning - incompatible version
+					m_LoadBadVersionPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sLoadBadVersionPrompt);
+					m_LoadBadVersionPrompt.m_OnConfirm.Insert(LoadEntry);
+					m_LoadBadVersionPrompt.SetTitle(displayName);
+					return;
+				}
+				else if (!meta.AreAddonsCompatible())
+				{
+					// Warning - incompatible addons
+					m_LoadBadAddonsPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sLoadBadAddonsPrompt);
+					m_LoadBadAddonsPrompt.m_OnConfirm.Insert(LoadEntry);
+					m_LoadBadAddonsPrompt.SetTitle(displayName);
+					return;
+				}
+			}
+			
+			//--- Confirm prompt
+			m_ConfirmPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sConfirmPrompt);
+			m_ConfirmPrompt.m_OnConfirm.Insert(OnConfirmPrompt);
+			m_ConfirmPrompt.SetTitle(displayName);
 		}
 	}
 
@@ -109,47 +183,66 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	protected void OnConfirmPrompt()
 	{
 		if (m_bIsLoad)
-		{
-			string fileName;
-			if (m_mEntries.Find(GetGame().GetWorkspace().GetFocusedWidget(), fileName))
-				GetGame().GetSaveManager().RestartAndLoad(fileName);
-		}
+			LoadEntry();
 		else
-		{
-			string customName = m_SaveNameInput.GetValue();
-			GetGame().GetSaveManager().Save(m_eWriteSaveType, customName);
-		}
-		
-		HideConfirmPrompt();
+			SaveEntry();
+
 		CloseMenu();
 	}
-
+	
 	//----------------------------------------------------------------------------------------
-	protected void ShowConfirmPrompt()
-	{
-		m_wConfirmPrompt.SetOpacity(1);
-		m_wConfirmPrompt.SetVisible(true);
-		m_wConfirmPrompt.SetEnabled(true);
-		GetGame().GetWorkspace().AddModal(m_wConfirmPrompt, m_wConfirmPrompt);
+	//! Callback on clicking delete button or actoin
+	protected void OnDelete(SCR_InputButtonComponent button, string actionName)
+	{	
+		// Open delete dialog
+		m_DeletePrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sDeletePrompt); //--- ToDo: Unique tag
+		m_DeletePrompt.m_OnConfirm.Insert(OnDeletePrompt);
+		
+		// Setup string
+		string displayName = m_mEntryNames[m_sSelectedFileName];
+		m_DeletePrompt.SetTitle(displayName);
 	}
 
 	//----------------------------------------------------------------------------------------
-	protected void HideConfirmPrompt()
+	protected void OnDeletePrompt()
 	{
-		m_wConfirmPrompt.SetVisible(false);
-		m_wConfirmPrompt.SetEnabled(false);
-		GetGame().GetWorkspace().RemoveModal(m_wConfirmPrompt);
+		//--- Delete the file
+		GetGame().GetSaveManager().Delete(m_sSelectedFileName);
+		
+		//--- Update GUI
+		m_mEntries.Remove(m_wSelectedWidget);
+		m_mEntryNames.Remove(m_sSelectedFileName);
+		
+		m_wSelectedWidget.RemoveFromHierarchy();
+		SelectEntry(null, string.Empty);
 	}
-
+	
 	//----------------------------------------------------------------------------------------
 	protected void CloseMenu()
 	{
 		//--- Confirmation prompt opened, ignore
-		if (m_wConfirmPrompt.IsEnabled())
+		if (GetGame().GetWorkspace().GetModal() != m_wRoot)
 			return;
 		
 		MenuBase menu = MenuBase.Cast(m_wRoot.FindHandler(MenuBase));
 		menu.Close();
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////////////
+	// Main operations
+	//////////////////////////////////////////////////////////////////////////////////////////
+	protected void SaveEntry()
+	{
+		string customName = m_SaveNameInput.GetValue();
+		GetGame().GetSaveManager().Save(m_eWriteSaveType, customName);
+	}
+	
+	//----------------------------------------------------------------------------------------
+	protected void LoadEntry()
+	{
+		string fileName;
+		if (m_mEntries.Find(m_wLastFocusedEntry, fileName))
+			GetGame().GetSaveManager().RestartAndLoad(fileName);
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -158,56 +251,23 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	protected void SelectEntry(Widget w, string fileName)
 	{
 		string customName = GetGame().GetSaveManager().GetCustomName(fileName);
-		
-		m_wPreviewName.SetText(customName);
-		
 		m_SaveNameInput.SetValue(customName);
+
+		m_wSelectedWidget = w;		
+		m_sSelectedFileName = fileName;
+		
 		UpdateButtons();
-		
-		bool isDefined;
-		SCR_MetaStruct meta = GetGame().GetSaveManager().GetMeta(fileName);
-		if (meta)
-		{
-			Resource missionHeaderResource = Resource.Load(meta.GetHeaderResource());
-			SCR_MissionHeader missionHeader;
-			
-			if (missionHeaderResource.IsValid())
-				missionHeader = SCR_MissionHeader.Cast(BaseContainerTools.CreateInstanceFromContainer(missionHeaderResource.GetResource().ToBaseContainer()));
-			
-			if (missionHeader)
-			{
-				if (missionHeader.m_sIcon)
-					m_wPreviewImage.LoadImageTexture(0, missionHeader.m_sIcon);
-				
-				int y, m, d, hh, mm;
-				meta.GetDateAndTime(y, m, d, hh, mm);
-				m_wPreviewDate.SetVisible(true);
-				m_wPreviewDate.SetTextFormat(m_sDateFormat, d, SCR_DateTimeHelper.GetMonthString(m), y);
-				
-				m_wPreviewTime.SetVisible(true);
-				m_wPreviewTime.SetText(SCR_Global.GetTimeFormattingHoursMinutes(hh, mm));
-				
-				//m_wPreviewWorld.SetVisible(true);
-				m_wPreviewWorld.SetText(missionHeader.m_sName);
-				
-				isDefined = true;
-			}
-		}
-		
-		if (!isDefined)
-		{
-			m_wPreviewImage.LoadImageTexture(0, m_sFallbackImage);
-			m_wPreviewDate.SetVisible(false);
-			m_wPreviewTime.SetVisible(false);
-			//m_wPreviewWorld.SetVisible(false);
-			m_wPreviewWorld.SetText("Unknown"); //--- ToDo: Localize
-		}
 	}
 	protected void UpdateButtons()
 	{
 		string customName = m_SaveNameInput.GetValue();
 		bool isValid = !customName.IsEmpty();
-		bool isOverride = customName && GetGame().GetSaveManager().FileExists(m_eWriteSaveType, customName);
+		bool isOverride = !m_bIsLoad && customName && GetGame().GetSaveManager().FileExists(m_eWriteSaveType, customName);
+		
+		if (m_bIsLoad)
+			m_DeleteButton.SetEnabled(m_sSelectedFileName && GetGame().GetSaveManager().FileExists(m_sSelectedFileName));
+		else
+			m_DeleteButton.SetEnabled(isOverride);
 		
 		m_OverrideButton.SetVisible(isOverride, false);
 		m_OverrideButton.SetEnabled(isOverride && isValid);
@@ -215,16 +275,187 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 		m_ConfirmButton.SetVisible(!isOverride, false);
 		m_ConfirmButton.SetEnabled(!isOverride && isValid);
 	}
+	protected void OnFrame()
+	{
+		//--- Ignore if all entries were shown
+		if (m_aEntriesHidden.IsEmpty())
+		{
+			GetGame().GetCallqueue().Remove(OnFrame);
+			return;
+		}
+		
+		float sliderPosX, sliderPosY;
+		m_wScroll.GetSliderPos(sliderPosX, sliderPosY);
+		
+		if (sliderPosY != m_fSliderPosY)
+		{
+			float scrollPosX, scrollPosY, scrollSizeW, scrollSizeH;
+			m_wScroll.GetScreenPos(scrollPosX, scrollPosY);
+			m_wScroll.GetScreenSize(scrollSizeW, scrollSizeH);
+			
+			//--- Widget not loaded yet, terminate
+			if (scrollSizeH == 0)
+				return;
+			
+			//--- Find widgets in view
+			foreach (int i, Widget entryWidget: m_aEntriesHidden)
+			{
+				//--- Already shown
+				if (entryWidget.GetOpacity() > 0)
+					continue;
+				
+				float posX, posY, sizeW, sizeH;
+				entryWidget.GetScreenPos(posX, posY);
+				entryWidget.GetScreenSize(sizeW, sizeH);
+				
+				if ((posY + sizeH) > scrollPosY && posY < (scrollPosY + scrollSizeH))
+				{
+					//--- When the entry is in the scrolled view, mark it for showing
+					if (!m_aEntriesToShow.Contains(entryWidget))
+						m_aEntriesToShow.Insert(entryWidget);
+				}
+				else
+				{
+					//--- When the entry is not in the scrolled view, removing it from queue of entries to show again (to prioritize entries that are actually shown)
+					m_aEntriesToShow.RemoveItemOrdered(entryWidget);
+				}
+			}
+		}
+		
+		//--- Process the queue of entries to show, with one entry per frame
+		if (!m_aEntriesToShow.IsEmpty())
+		{
+			Widget entryWidget = m_aEntriesToShow[0];
+			if (entryWidget.GetOpacity() == 0)
+			{
+				TextWidget entryNameWidget = TextWidget.Cast(entryWidget.FindAnyWidget(m_sEntryNameWidgetName));
+				ImageWidget entryImageWidget = ImageWidget.Cast(entryWidget.FindAnyWidget(m_sEntryImageWidgetName));
+				ImageWidget entryIconWidget = ImageWidget.Cast(entryWidget.FindAnyWidget(m_sEntryIconWidgetName));
+				
+				string fileName = m_mEntries[entryWidget];
+				string entryName = GetGame().GetSaveManager().GetCustomName(fileName);
+				
+				SCR_MetaStruct meta = GetGame().GetSaveManager().GetMeta(fileName);
+				if (meta && meta.IsValid())
+				{
+					int y, m, d, hh, mm;
+					meta.GetDateAndTime(y, m, d, hh, mm);
+					
+					SCR_UIInfo info = GetGame().GetSaveManager().GetSaveTypeInfo(fileName);
+					string displayName = entryName;
+					Color imageColor = Color.White;;
+					if (info)
+					{
+						info.SetIconTo(entryIconWidget);
+						displayName = info.GetName() + " " + displayName; //--- Hardcoded space separator, ToDo: Solve using %1 in the string itself?
+						
+						SCR_ColorUIInfo colorInfo = SCR_ColorUIInfo.Cast(info);
+						if (colorInfo)
+							imageColor = colorInfo.GetColor();
+					}
+					m_mEntryNames.Insert(fileName, displayName);
+					
+					entryNameWidget.SetText(displayName);
+					
+					TextWidget entryDateWidget = TextWidget.Cast(entryWidget.FindAnyWidget(m_sEntryDateWidgetName));
+					entryDateWidget.SetTextFormat(m_sDateFormat, d, SCR_DateTimeHelper.GetMonthString(m), y);
+					
+					TextWidget entryTimeWidget = TextWidget.Cast(entryWidget.FindAnyWidget(m_sEntryTimeWidgetName));
+					entryTimeWidget.SetText(SCR_FormatHelper.GetTimeFormattingHoursMinutes(hh, mm));
+					
+					TextWidget entryVersionWidget = TextWidget.Cast(entryWidget.FindAnyWidget(m_sEntryVersionWidgetName));
+					string versionText;
+					bool isVersionCompatible = meta.IsVersionCompatible(versionText);
+					entryVersionWidget.SetText(versionText);
+					if (!isVersionCompatible)
+						entryVersionWidget.SetColor(UIColors.WARNING);
+					
+					Resource missionHeaderResource = Resource.Load(meta.GetHeaderResource());
+					if (missionHeaderResource.IsValid())
+					{
+						SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(BaseContainerTools.CreateInstanceFromContainer(missionHeaderResource.GetResource().ToBaseContainer()));
+						
+						TextWidget entryMissionNameWidget = TextWidget.Cast(entryWidget.FindAnyWidget(m_sEntryMissionNameWidgetName));
+						entryMissionNameWidget.SetText(missionHeader.m_sName);
+						
+						if (missionHeader.m_sIcon)
+						{
+							entryImageWidget.LoadImageTexture(0, missionHeader.m_sIcon);
+							entryImageWidget.SetColor(imageColor);
+						}
+					}
+					
+					if (!meta.AreAddonsCompatible())
+					{
+						entryIconWidget.SetColor(UIColors.WARNING);
+					}
+				}
+				else
+				{
+					//--- Meta file missing or invalid
+					entryNameWidget.SetText(entryName);
+					entryImageWidget.SetVisible(false);
+					
+					Widget entryMetaWidget = entryWidget.FindAnyWidget(m_sEntryMeta);
+					entryMetaWidget.SetVisible(false);
+					
+					entryIconWidget.SetColor(UIColors.WARNING);
+				}
+				
+				AnimateWidget.Opacity(entryWidget, 1, 3);
+			}
+			else if (entryWidget.GetOpacity() > 0)
+			{
+				//--- Started fading in, move on to the next entry
+				m_aEntriesToShow.RemoveOrdered(0);
+				m_aEntriesHidden.RemoveItemOrdered(entryWidget);
+			}
+		}
+		
+		m_fSliderPosY = sliderPosY;
+	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Overrides
 	//////////////////////////////////////////////////////////////////////////////////////////
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
+		if (w.GetParent() != m_wList)
+			return false;
+		
 		//--- Save entry
 		string fileName;
 		if (m_mEntries.Find(w, fileName))
 			SelectEntry(w, fileName);
+		
+		return false;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		string fileName;
+		
+		if (m_mEntries.Find(w, fileName))
+		{
+			m_wLastFocusedEntry = w;
+			SelectEntry(w, fileName);
+		}
+		
+		return false;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	override bool OnDoubleClick(Widget w, int x, int y, int button)
+	{
+		if (w.GetParent() != m_wList)
+			return false;
+		
+		//--- Select
+		OnClick(w, x, y, button);
+		
+		//--- Activate
+		OnConfirm(null, string.Empty);
 		
 		return false;
 	}
@@ -238,36 +469,29 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 		//--- Find all widgets
 		m_wRoot = w;
 		m_wList = w.FindAnyWidget(m_sListWidgetName);
-		m_wConfirmPrompt = w.FindAnyWidget(m_sConfirmPromptWidgetName);
-		m_wPreviewImage = ImageWidget.Cast(w.FindAnyWidget(m_sPreviewImageWidgetName));
-		m_wPreviewName = TextWidget.Cast(w.FindAnyWidget(m_sPreviewNameWidgetName));
-		m_wPreviewDate = TextWidget.Cast(w.FindAnyWidget(m_sPreviewDateWidgetName));
-		m_wPreviewTime = TextWidget.Cast(w.FindAnyWidget(m_sPreviewTimeWidgetName));
-		m_wPreviewWorld = TextWidget.Cast(w.FindAnyWidget(m_sPreviewWorldWidgetName));
+		m_wScroll = ScrollLayoutWidget.Cast(w.FindAnyWidget(m_sScrollWidgetName));
 		
 		//--- Name input field
 		m_SaveNameInput = SCR_EditBoxComponent.GetEditBoxComponent(m_sNameInputWidgetName, w);
 		m_SaveNameInput.m_OnChanged.Insert(UpdateButtons);
 		
-		//--- Confirm prompt
-		SCR_ConfigurableDialogUi confirmPrompt = SCR_ConfigurableDialogUi.Cast(m_wConfirmPrompt.FindHandler(SCR_ConfigurableDialogUi));
-		SCR_ConfigurableDialogUi.InitFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sConfirmPrompt, m_wConfirmPrompt); //--- ToDo: Unique tag
-		confirmPrompt.m_OnConfirm.Insert(OnConfirmPrompt);
-		confirmPrompt.m_OnClose.Insert(HideConfirmPrompt);
-		confirmPrompt.m_OnCancel.Insert(HideConfirmPrompt);
-		
 		//--- Assign control buttons
 		Widget closeButtonWidget = w.FindAnyWidget(m_sCloseButtonWidgetName);
+		Widget deleteButtonWidget = w.FindAnyWidget(m_sDeleteButtonWidgetName);
 		Widget overrideButtonWidget = w.FindAnyWidget(m_sOverrideButtonWidgetName);
 		Widget confirmButtonWidget = w.FindAnyWidget(m_sConfirmButtonWidgetName);
 		
-		SCR_NavigationButtonComponent closeButton = SCR_NavigationButtonComponent.Cast(closeButtonWidget.FindHandler(SCR_NavigationButtonComponent));
-		m_OverrideButton = SCR_NavigationButtonComponent.Cast(overrideButtonWidget.FindHandler(SCR_NavigationButtonComponent));
-		m_ConfirmButton = SCR_NavigationButtonComponent.Cast(confirmButtonWidget.FindHandler(SCR_NavigationButtonComponent));
+		SCR_InputButtonComponent closeButton = SCR_InputButtonComponent.Cast(closeButtonWidget.FindHandler(SCR_InputButtonComponent));
+		m_DeleteButton = SCR_InputButtonComponent.Cast(deleteButtonWidget.FindHandler(SCR_InputButtonComponent));
+		m_OverrideButton = SCR_InputButtonComponent.Cast(overrideButtonWidget.FindHandler(SCR_InputButtonComponent));
+		m_ConfirmButton = SCR_InputButtonComponent.Cast(confirmButtonWidget.FindHandler(SCR_InputButtonComponent));
 		
 		closeButton.m_OnActivated.Insert(OnClose);
+		m_DeleteButton.m_OnActivated.Insert(OnDelete);
 		m_OverrideButton.m_OnActivated.Insert(OnConfirm);
 		m_ConfirmButton.m_OnActivated.Insert(OnConfirm);
+		
+		UpdateButtons();
 		
 		//--- Clear the list first
 		SCR_WidgetHelper.RemoveAllChildren(m_wList);
@@ -279,33 +503,33 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 		
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		
-		/*
-		if (!m_bIsLoad)
-		{
-			entryWidget = workspace.CreateWidgets(m_sCreateLayout, m_wList);
-			m_mEntries.Insert(entryWidget, "CreateNew");
-			SelectEntry(entryWidget, "CreateNew");
-		}
-		*/
+		//--- Used for testing to artifically inflate the amount of entries
+		int debugCoef = 1;
 		
 		Widget entryWidget;
 		TextWidget entryNameWidget;
-		for (int i = 0; i < fileCount; i++)
+		for (int i = 0; i < fileCount * debugCoef; i++)
 		{
-			string fileName = fileNames[i];
+			int ii = i % fileCount;
+			string fileName = fileNames[ii];
 			entryWidget = workspace.CreateWidgets(m_sEntryLayout, m_wList);
 			m_mEntries.Insert(entryWidget, fileName);
+			m_aEntriesHidden.Insert(entryWidget);
 			
-			string entryName = GetGame().GetSaveManager().GetCustomName(fileName);
-			entryNameWidget = TextWidget.Cast(entryWidget.FindAnyWidget(m_sEntryNameWidgetName));
-			
-			if (entryName)
-				entryNameWidget.SetText(entryName);
-			else
-				entryNameWidget.SetText(fileName);
+			//--- Hide by default
+			entryWidget.SetOpacity(0);
 			
 			if (m_bIsLoad && i == 0)
 				SelectEntry(entryWidget, fileName);
 		}
+		
+		//--- Initiate periodic check which will load and show metadata only for entries that are actually shown. Doing it all at once here would be too expensive.
+		GetGame().GetCallqueue().CallLater(OnFrame, 1, true);
+	}
+	
+	//----------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		GetGame().GetCallqueue().Remove(OnFrame);
 	}
 };

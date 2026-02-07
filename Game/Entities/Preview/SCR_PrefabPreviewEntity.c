@@ -10,7 +10,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, category: "Prefab Preview Entity", params: "et")]
 	protected ResourceName m_SourcePrefab;
 	
-	[Attribute("{58F07022C12D0CF5}Assets/Editor/PlacingPreview/Preview.emat", UIWidgets.ResourcePickerThumbnail, "Maerial used when regenerating the preview.", category: "Preview", params: "emat")]
+	[Attribute("{58F07022C12D0CF5}Assets/Editor/PlacingPreview/Preview.emat", UIWidgets.ResourcePickerThumbnail, "Material used when regenerating the preview.", category: "Preview", params: "emat")]
 	private ResourceName m_PreviewMaterial;
 	
 	/*!
@@ -237,106 +237,162 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 						entryLocal.m_Flags |= EPreviewEntityFlag.ORIENT_CHILDREN;
 					
 					break;
-				}
+				}				
 				case (componentType.IsInherited(SCR_HorizontalAlignComponent)):
 				{
 					entryLocal.m_Flags |= EPreviewEntityFlag.HORIZONTAL;
 					break;
 				}
-				case (componentType.IsInherited(SCR_TriggerAreaMeshComponent)):
+				//~ Area mesh previews. Add any new area mesh preview here that inherent from SCR_BaseAreaMeshComponent!
+				case (componentType.IsInherited(SCR_BaseAreaMeshComponent)):
 				{
-					//~ Get Shape
-					componentSource.Get("m_eShape", areaMeshShape);
-					if (areaMeshShape == EAreaMeshShape.ELLIPSE)
-						entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
-					else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
-						entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
-					else
+					//~ Only show area mesh preview if editor is open and unlimited
+					SCR_EditorModeEntity mode = SCR_EditorModeEntity.GetInstance();
+					if (!SCR_EditorManagerEntity.IsOpenedInstance() || !mode || mode.IsLimited())
 						break;
-					
-					float radius, height;
-					entitySource.Get("SphereRadius", radius);
-					componentSource.Get("m_fHeight", height);
-					
-					entryLocal.m_vScale = Vector(radius, height, radius);
-					
-					break;
-				}
-				case (componentType.IsInherited(SCR_WaypointAreaMeshComponent)):
-				{
-					//~ Get Shape
-					componentSource.Get("m_eShape", areaMeshShape);
-					if (areaMeshShape == EAreaMeshShape.ELLIPSE)
-						entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
-					else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
-						entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
-					else
+						
+					//~ Area mesh previews
+					switch (true)
+					{
+						case (componentType.IsInherited(SCR_TriggerAreaMeshComponent)):
+						{
+							//~ Get Shape
+							componentSource.Get("m_eShape", areaMeshShape);
+							if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+								entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
+							else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+								entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
+							else
+								break;
+							
+							float radius, height;
+							entitySource.Get("SphereRadius", radius);
+							componentSource.Get("m_fHeight", height);
+							
+							entryLocal.m_vScale = Vector(radius, height, radius);
+							
+							break;
+						}
+						case (componentType.IsInherited(SCR_WaypointAreaMeshComponent)):
+						{
+							//~ Get Shape
+							componentSource.Get("m_eShape", areaMeshShape);
+							if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+								entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
+							else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+								entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
+							else
+								break;
+							
+							float radius, height;
+							entitySource.Get("CompletionRadius", radius);
+							componentSource.Get("m_fHeight", height);
+							
+							entryLocal.m_vScale = Vector(radius, height, radius);
+							
+							break;
+						}
+						case (componentType.IsInherited(SCR_SpawnPointAreaMeshComponent)):
+						{
+							//~ Get Shape
+							componentSource.Get("m_eShape", areaMeshShape);
+							if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+								entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
+							else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+								entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
+							else
+								break;
+							
+							float radius, height;
+							entitySource.Get("m_fSpawnRadius", radius);
+							componentSource.Get("m_fHeight", height);
+							
+							entryLocal.m_vScale = Vector(radius, height, radius);
+							
+							break;
+						}
+						case (componentType.IsInherited(SCR_CustomAreaMeshComponent)):
+						{
+							//~ Get Shape
+							componentSource.Get("m_eShape", areaMeshShape);
+							if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+								entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
+							else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+								entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
+							else
+								break;
+							
+							float radius, height;
+							componentSource.Get("m_fRadius", radius);
+							componentSource.Get("m_fHeight", height);
+							
+							entryLocal.m_vScale = Vector(radius, height, radius);
+							
+							break;
+						}
+						case (componentType.IsInherited(SCR_ZoneRestrictionAreaMeshComponent)):
+						{
+							//~ Get Shape
+							componentSource.Get("m_eShape", areaMeshShape);
+							if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+								entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
+							else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+								entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
+							else
+								break;
+							
+							float radius, height;
+							entitySource.Get("m_fZoneRadius", radius);
+							componentSource.Get("m_fHeight", height);
+							
+							entryLocal.m_vScale = Vector(radius, height, radius);
+							
+							break;
+						}
+						case (componentType.IsInherited(SCR_SupportStationAreaMeshComponent)):
+						{						
+							//~ Get Shape
+							componentSource.Get("m_eShape", areaMeshShape);
+							if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+								entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
+							else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+								entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
+							else
+								break;
+								
+							//~ Get SCR_BaseSupportStationComponent
+							for (int c = 0; c < componentCount; c++)
+							{
+								IEntityComponentSource supportStation_componentSource = entitySource.GetComponent(c);
+								
+								bool supportStation_componentEnabled;
+								supportStation_componentSource.Get("Enabled", supportStation_componentEnabled);
+								if (!supportStation_componentEnabled)
+									continue;
+								
+								string supportStation_componentClassName = supportStation_componentSource.GetClassName();
+								if (!supportStation_componentClassName.ToType().IsInherited(SCR_BaseSupportStationComponent))
+									continue;
+								
+								float radius, height;
+								supportStation_componentSource.Get("m_fRange", radius);
+								componentSource.Get("m_fHeight", height);
+								
+								entryLocal.m_vScale = Vector(radius, height, radius);
+								break;
+							}
+							
+							//~ Fails to get the radius from the Support Station component so use preview instead
+							float radius, height;
+							componentSource.Get("m_fRadius", radius);
+							componentSource.Get("m_fHeight", height);
+							entryLocal.m_vScale = Vector(radius, height, radius);
+							
+							break;
+						}
+						
 						break;
-					
-					float radius, height;
-					entitySource.Get("CompletionRadius", radius);
-					componentSource.Get("m_fHeight", height);
-					
-					entryLocal.m_vScale = Vector(radius, height, radius);
-					
-					break;
-				}
-				case (componentType.IsInherited(SCR_SpawnPointAreaMeshComponent)):
-				{
-					//~ Get Shape
-					componentSource.Get("m_eShape", areaMeshShape);
-					if (areaMeshShape == EAreaMeshShape.ELLIPSE)
-						entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
-					else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
-						entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
-					else
-						break;
-					
-					float radius, height;
-					entitySource.Get("m_fSpawnRadius", radius);
-					componentSource.Get("m_fHeight", height);
-					
-					entryLocal.m_vScale = Vector(radius, height, radius);
-					
-					break;
-				}
-				case (componentType.IsInherited(SCR_CustomAreaMeshComponent)):
-				{
-					//~ Get Shape
-					componentSource.Get("m_eShape", areaMeshShape);
-					if (areaMeshShape == EAreaMeshShape.ELLIPSE)
-						entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
-					else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
-						entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
-					else
-						break;
-					
-					float radius, height;
-					componentSource.Get("m_fRadius", radius);
-					componentSource.Get("m_fHeight", height);
-					
-					entryLocal.m_vScale = Vector(radius, height, radius);
-					
-					break;
-				}
-				case (componentType.IsInherited(SCR_ZoneRestrictionAreaMeshComponent)):
-				{
-					//~ Get Shape
-					componentSource.Get("m_eShape", areaMeshShape);
-					if (areaMeshShape == EAreaMeshShape.ELLIPSE)
-						entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
-					else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
-						entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
-					else
-						break;
-					
-					float radius, height;
-					entitySource.Get("m_fZoneRadius", radius);
-					componentSource.Get("m_fHeight", height);
-					
-					entryLocal.m_vScale = Vector(radius, height, radius);
-					
-					break;
+					}
 				}
 			}
 		}

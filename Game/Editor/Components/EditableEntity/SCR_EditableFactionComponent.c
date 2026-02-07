@@ -97,9 +97,9 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		if (SCR_Global.IsEditMode(GetOwner()) || Replication.IsClient())
 			return;
 	
-		//Init count
-		InitSpawnPointCount(); 
-		InitTaskCount();
+		//Init count. Call one frame later to make sure the counts are correct
+		GetGame().GetCallqueue().CallLater(InitSpawnPointCount); 
+		GetGame().GetCallqueue().CallLater(InitTaskCount);
 		
 		//Spawnpoints
 		SCR_SpawnPoint.Event_OnSpawnPointCountChanged.Insert(OnSpawnPointsChanged);
@@ -127,7 +127,7 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		m_iSpawnPointCount = spawnPointCount;
 	}
 	
-	protected void OnSpawnpointFactionChanged()
+	protected void OnSpawnpointFactionChanged(SCR_SpawnPoint spawnPoint)
 	{
 		OnSpawnPointsChanged(m_Faction.GetFactionKey());
 	}
@@ -135,7 +135,7 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	//---------------------------------------- On Faction Spawnpoints changed ----------------------------------------\\
 	//Called on server
 	protected void OnSpawnPointsChanged(string factionKey)
-	{
+	{		
 		if (factionKey != m_Faction.GetFactionKey()) 
 			return;
 		
@@ -153,7 +153,7 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		}
 		else if (spawnPointCount == 1 && !m_ScrFaction.IsPlayable())
 		{
-			SetFactionPlayableServer(true);
+			//SetFactionPlayableServer(true);
 			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_FACTION_CHANGED_NO_GM);
 		}
 		

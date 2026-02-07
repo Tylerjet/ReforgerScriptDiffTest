@@ -23,6 +23,12 @@ class SCR_ScenarioFrameworkTaskSupportEntity : SCR_BaseTaskSupportEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetTaskEntity(IEntity entity)
+	{
+		m_Entity = entity;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	SCR_BaseTask CreateTask(SCR_ScenarioFrameworkLayerTask layer)
 	{
 		m_Entity = layer.GetSpawnedEntity();
@@ -43,5 +49,28 @@ class SCR_ScenarioFrameworkTaskSupportEntity : SCR_BaseTaskSupportEntity
 			return null;
 
 		return SCR_Faction.Cast(character.GetFaction());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//This should only be called on the server!
+	void SetTaskExecutionBriefing(notnull SCR_ScenarioFrameworkTask task, string description)
+	{
+		int taskID = task.GetTaskID();
+		RPC_TaskExecutionBriefing(taskID, description);
+		Rpc(RPC_TaskExecutionBriefing, taskID, description);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_TaskExecutionBriefing(int taskID, string description)
+	{
+		if (!GetTaskManager())
+			return;
+		
+		SCR_ScenarioFrameworkTask task = SCR_ScenarioFrameworkTask.Cast(GetTaskManager().GetTask(taskID));
+		if (!task)
+			return;
+		
+		task.SetTaskExecutionBriefing(description);
 	}
 }

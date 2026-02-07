@@ -33,22 +33,28 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	{
 		super.OnActionSelected();
 		m_bSelected = true;
+		EnableFriendlyFireCheck(true);
+	}
+	
+	//----------------------------------------------------------------------------------
+	override void OnActionDeselected()
+	{
+		super.OnActionDeselected();
+		EnableFriendlyFireCheck(false);
 	}
 
 	//----------------------------------------------------------------------------------
 	override void OnActionCompleted()
 	{
-		if (GetActionState() == EAIActionState.COMPLETED || GetActionState() == EAIActionState.FAILED)
-			return;
 		super.OnActionCompleted();
+		EnableFriendlyFireCheck(false);
 	}
 	
 	//----------------------------------------------------------------------------------
 	override void OnActionFailed()
 	{
-		if (GetActionState() == EAIActionState.COMPLETED || GetActionState() == EAIActionState.FAILED)
-			return;
 		super.OnActionFailed();
+		EnableFriendlyFireCheck(false);
 	}
 	
 	//----------------------------------------------------------------------------------
@@ -103,7 +109,7 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 			return;
 		
 		AIAgent agent = AIAgent.Cast(m_Utility.GetOwner());
-		if (!agent | !m_AIWorld)
+		if (!agent || !m_AIWorld)
 			return;
 		
 		//Ensure there's at least 1 grenade in the inventory
@@ -127,7 +133,7 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 		if (!mailbox)
 			return;
 		
-		SCR_AIMessage_ThrowGrenadeTo msg = SCR_AIMessage_ThrowGrenadeTo.Cast(mailbox.CreateMessage(m_AIWorld.GetGoalMessageOfType(EMessageType_Goal.THROW_GRENADE_TO)));
+		SCR_AIMessage_ThrowGrenadeTo msg = new SCR_AIMessage_ThrowGrenadeTo();
 		if (!msg)
 			Debug.Error("Unable to create valid message!");
 		msg.SetText(reason);
@@ -162,5 +168,11 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 		float distanceDelay = (1.4 * distance) / (300 + distance);
 		
 		m_fWaitTime.m_Value = threatDelay + distanceDelay;
+	}
+	
+	void EnableFriendlyFireCheck(bool enable)
+	{
+		if (m_Utility && m_Utility.m_PerceptionComponent)
+			m_Utility.m_PerceptionComponent.SetFriendlyFireCheck(enable);
 	}
 };

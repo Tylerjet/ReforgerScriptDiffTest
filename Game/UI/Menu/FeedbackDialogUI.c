@@ -284,7 +284,7 @@ class FeedbackDialogUI: DialogUI
 	protected static float m_fLastFeedbackTime = -float.MAX;
 	protected static const float FEEDBACK_SEND_TIMEOUT = 5000; // ms
 	
-	SCR_NavigationButtonComponent m_CreateAccount;	
+	SCR_InputButtonComponent m_CreateAccount;	
 	protected bool m_bShouldEnableConfirmButton;
 	
 	//------------------------------------------------------------------------------------------------
@@ -309,6 +309,31 @@ class FeedbackDialogUI: DialogUI
 			GetGame().GetWorkspace().SetFocusedWidget(m_Type.GetRootWidget());
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(float tDelta)
+	{
+		super.OnMenuUpdate(tDelta);
+		
+		GetGame().GetInputManager().ActivateContext("InteractableDialogContext");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static FeedbackDialogUI OpenFeedbackDialog()
+	{
+		ArmaReforgerScripted game = GetGame();
+		if (!game)
+			return null;
+
+		MenuManager menuManager = game.GetMenuManager();
+		if (!menuManager)
+			return null;
+
+		MenuBase dialog = menuManager.FindMenuByPreset(ChimeraMenuPreset.FeedbackDialog);
+		if (!dialog)
+			dialog = menuManager.OpenDialog(ChimeraMenuPreset.FeedbackDialog, DialogPriority.INFORMATIVE, 0, true);
+
+		return FeedbackDialogUI.Cast(dialog);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	static bool CanSendFeedback()
@@ -373,7 +398,7 @@ class FeedbackDialogUI: DialogUI
 			m_Category.SetCurrentItem(0);
 		}
 		
-		m_CreateAccount = SCR_NavigationButtonComponent.GetNavigationButtonComponent("CreateAccount", w);
+		m_CreateAccount = SCR_InputButtonComponent.GetInputButtonComponent("CreateAccount", w);
 		if (m_CreateAccount)
 			m_CreateAccount.m_OnActivated.Insert(OnCreateAccount);
 		
@@ -385,13 +410,13 @@ class FeedbackDialogUI: DialogUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnWriteModeLeave()
+	protected void OnWriteModeLeave(string text)
 	{
-		OnTextChange();
+		OnTextChange(text);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnTextChange()
+	protected void OnTextChange(string text)
 	{
 		if (!m_Confirm)
 			return;

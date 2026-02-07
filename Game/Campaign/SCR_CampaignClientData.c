@@ -2,11 +2,12 @@
 //! Used for storing client data to be reapplied for reconnecting clients
 class SCR_CampaignClientData
 {
-	private string m_sID;
-	private int m_iXP;
-	private vector m_vPos;
-	private int m_iFaction = -1;
-	private ref array<string> m_aInventory = new array<string>();
+	protected string m_sID;
+	protected int m_iXP;
+	protected int m_iFaction = -1;
+	protected float m_fLastSuicideTimestamp;
+	protected float m_fRespawnPenalty;
+	protected float m_fLastPenaltyDeductionTimestamp;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Setter for client ID
@@ -35,21 +36,7 @@ class SCR_CampaignClientData
 	{
 		return m_iXP;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Setter for player's starting position
-	void SetStartingPosition(vector pos)
-	{
-		m_vPos = pos;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Getter for player's starting position
-	vector GetStartingPosition()
-	{
-		return m_vPos;
-	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Setter for player's faction
 	void SetFactionIndex(int faction)
@@ -65,28 +52,38 @@ class SCR_CampaignClientData
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Setter for player's inventory
-	void SetInventory(int PlayerID)
+	void SetRespawnPenalty(float penalty)
 	{
-		
+		m_fRespawnPenalty = Math.Max(0, penalty);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Getter for player's inventory
-	void GetInventory(out notnull array<string> inventory)
+	float GetRespawnPenalty()
 	{
-		inventory = m_aInventory;
+		return m_fRespawnPenalty;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_CampaignClientData()
+	void SetLastSuicideTimestamp(float timestamp)
 	{
-		
+		m_fLastSuicideTimestamp = timestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void ~SCR_CampaignClientData()
+	float GetLastSuicideTimestamp()
 	{
-		m_aInventory = null;
+		return m_fLastSuicideTimestamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetLastPenaltyDeductionTimestamp(float timestamp)
+	{
+		m_fLastPenaltyDeductionTimestamp = timestamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetLastPenaltyDeductionTimestamp()
+	{
+		return m_fLastPenaltyDeductionTimestamp;
 	}
 };

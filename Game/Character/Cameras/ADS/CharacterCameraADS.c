@@ -37,6 +37,11 @@ class CharacterCameraADS extends CharacterCameraBase
 		m_iJumpAnimTagId = GameAnimationUtils.RegisterAnimationTag("TagFall");
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override void OnDeactivate(ScriptedCameraItem pNextCamera)
+	{
+		OnBlendingOut(1);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnBlendIn()
@@ -297,6 +302,15 @@ class CharacterCameraADS extends CharacterCameraBase
 		// We have sights in right hand prop hand character MS..
 		vector cameraBoneMS[4];
 		anim.GetBoneMatrix(GetCameraBoneIndex(), cameraBoneMS);
+		
+		// If last stable position is uninitialized, there are few cases
+		// where the interpolation will start at the character origin, creating
+		// a very visually unpleasing jump/stutter. Using head bone transformation
+		// should be at least somewhat relevant and should reduce this issue significantly.
+		if (m_lastStablePos == vector.Zero)
+		{
+			m_lastStablePos = cameraBoneMS[3];
+		}
 
 		// Now let us project the position onto the head in MS
 		// rayOrigin:
@@ -334,9 +348,7 @@ class CharacterCameraADS extends CharacterCameraBase
 
 		// Take look angles directly and correct those for character pitch
 		vector aimingAnglesMS = cameraData.m_vLookAngles;
-		// ! Note that for during weapon deployment this correction is undesirable.
-		if (!m_ControllerComponent.GetIsWeaponDeployed())
-			aimingAnglesMS[1] = aimingAnglesMS[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+		aimingAnglesMS[1] = aimingAnglesMS[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
 
 		// Use as intended
 		Math3D.AnglesToMatrix(aimingAnglesMS, sightsMS);
@@ -378,7 +390,7 @@ class CharacterCameraADS extends CharacterCameraBase
 					// Unless both tags are active, at which case we just try to somehow stabilize
 					// the result, otherwise we would get jitter again
 					if (sm_TagADSTransitionIn != -1 && animComponent.IsPrimaryTag(sm_TagADSTransitionIn))
-						m_OwnerCharacter.GetBoneMatrix(sm_iCameraBoneIndex, cameraBoneMS);
+						anim.GetBoneMatrix(sm_iCameraBoneIndex, cameraBoneMS);
 					
 					m_lastStablePos = cameraBoneMS[3];
 					isUnstable = true;
@@ -455,14 +467,23 @@ class CharacterCameraADS extends CharacterCameraBase
 		}
 		else
 		{
-			pOutResult.m_bAllowInterpolation = false;
-			Math3D.MatrixCopy(sightsMS, pOutResult.m_CameraTM);
+			// Order of operations in hierarchical updates and the way camera interpolation
+			// works has forced my hand to recompute all of this into the prop bone (hand) space
+			// so we can ensure that we don't reparent the camera along the way, there still might
+			// be a tiny bit of grain, but this section has already caused enough of pain
+			pOutResult.m_iDirectBone = m_iHandBoneIndex;
+			pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativeTransform;
+			pOutResult.m_CameraTM[3] = sightsMS[3];
+			Math3D.AnglesToMatrix(aimingAnglesMS, pOutResult.m_CameraTM);
+			vector directTM[4];
+			m_OwnerCharacter.GetAnimation().GetBoneMatrix(pOutResult.m_iDirectBone, directTM);
+			Math3D.MatrixInvMultiply4(directTM, pOutResult.m_CameraTM, pOutResult.m_CameraTM);
 		}
 
 		pOutResult.m_fFOV = Math.Lerp(targetFOV, GetBaseFOV(), m_fFreelookBlendAlpha);
 		pOutResult.m_fDistance = 0;
 		pOutResult.m_fNearPlane = 0.0125;
-		pOutResult.m_bAllowInterpolation = allowInterpolation && (shouldStabilize == m_bWasStabilizedLastFrame);
+		pOutResult.m_bAllowInterpolation = allowInterpolation;// && (shouldStabilize == m_bWasStabilizedLastFrame);
 		pOutResult.m_fUseHeading = 1.0;
 		pOutResult.m_bUpdateWhenBlendOut = true;
 		pOutResult.m_fPositionModelSpace = 0.0;
@@ -747,19 +768,20 @@ class CharacterCameraADS extends CharacterCameraBase
 		// Store freelook state
 		m_pCameraData.m_bFreeLook = canFreelook && (m_ControllerComponent.IsFreeLookEnabled() || m_bForceFreeLook);
 
-		int solveMethod = 0;
 		#ifdef ENABLE_DIAG
-			solveMethod = DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_CHARACTER_ADS_CAMERA);
-		#endif
+			int solveMethod = DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_CHARACTER_ADS_CAMERA);
 
-		if (solveMethod == 1)
-			SolveCameraHandAttach(m_pCameraData, pOutResult, pDt, false);
-		else if (solveMethod == 2)
-			SolveCameraHeadAttach(m_pCameraData, pOutResult);
-		else if (solveMethod == 3)
-			SolveCameraHandAttach(m_pCameraData, pOutResult, pDt, true);
-		else // :-)
+			if (solveMethod == 1)
+				SolveCameraHandAttach(m_pCameraData, pOutResult, pDt, false);
+			else if (solveMethod == 2)
+				SolveCameraHeadAttach(m_pCameraData, pOutResult);
+			else if (solveMethod == 3)
+				SolveCameraHandAttach(m_pCameraData, pOutResult, pDt, true);
+			else // :-)
+				SolveNewMethod(m_pCameraData, pOutResult, pDt, true);
+		#else
 			SolveNewMethod(m_pCameraData, pOutResult, pDt, true);
+		#endif 
 
 		CameraManager cameraMgr = GetGame().GetCameraManager();
 		if (cameraMgr != null)

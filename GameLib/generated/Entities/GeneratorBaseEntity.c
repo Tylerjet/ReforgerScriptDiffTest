@@ -56,7 +56,7 @@ class GeneratorBaseEntity: GenericEntity
 	\param propertyID Name of the property that was changed
 	\param pointIndices Indices of points on which the properties were changed.
 	*/
-	event protected void OnPointDataChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, int situation, string propertyID, array<int> pointIndices);
+	event protected void OnPointDataChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, PointChangedSituation situation, string propertyID, array<int> pointIndices);
 	/*!
 	Specific implementation for given generator which can directly react to changes in points.
 	Workbench API functions may be called from here, do NOT wrap them in begin/end entity edit.
@@ -66,7 +66,7 @@ class GeneratorBaseEntity: GenericEntity
 	\param pointIndex Index of the point on which the property was changed.
 	\param position vector in LS at which the situation happened.
 	*/
-	event protected void OnPointChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, int situation, int pointIndex, vector position);
+	event protected void OnPointChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, PointChangedSituation situation, int pointIndex, vector position);
 	/*!
 	Implementation of what should happen when anchor snapping happens
 	Called from `OnShapeChanged`. Should not be called directly.
@@ -122,11 +122,11 @@ class GeneratorBaseEntity: GenericEntity
 	/*!
 	Called when PointData on one of the points has been changed. OnShapeChanged is also called in that case.
 	*/
-	proto external void OnPointDataChanged(IEntitySource src, ShapeEntity shapeEntity, int situation, string propertyID, array<int> pointIndices);
+	proto external void OnPointDataChanged(IEntitySource src, ShapeEntity shapeEntity, PointChangedSituation situation, string propertyID, array<int> pointIndices);
 	/*!
 	Called when a point was changed. OnShapeChanged is also called in that case.
 	*/
-	proto external void OnPointChanged(IEntitySource src, ShapeEntity shapeEntity, int situation, int pointIndex, vector position);
+	proto external void OnPointChanged(IEntitySource src, ShapeEntity shapeEntity, PointChangedSituation situation, int pointIndex, vector position);
 	/*!
 	Called when anchor snapping happend, either a parent's anchor snapped to something or something to a parent's anchor
 	Handles calling either script or c++ implementation of OnAnchorSnappedInternal

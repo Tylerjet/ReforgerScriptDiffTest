@@ -16,8 +16,8 @@ class AIAnimalClass: AIAgentClass
 class AIAnimal: AIAgent
 {
 	proto external int GetSoundMapTag();
-	//A danger event happened in server, this calls to "ReactDanger" in clients.
-	proto external void CallReactToDanger();
+	//A danger event happened in server, this calls to "ReactDanger" in clients. Returns false if it can not spawn/activate
+	proto external bool CallReactToDanger();
 
 	// callbacks
 

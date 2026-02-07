@@ -16,7 +16,10 @@ class SCR_DateAttributeDynamicDescription : SCR_BaseAttributeDynamicDescription
 		super.InitDynamicDescription(attribute);
 		
 		if (!m_TimeAndWeatherManager)
-			m_TimeAndWeatherManager = GetGame().GetTimeAndWeatherManager();
+		{
+			ChimeraWorld world = GetGame().GetWorld();
+			m_TimeAndWeatherManager = world.GetTimeAndWeatherManager();
+		}
 		
 		if (!m_AttributeManager)
 			m_AttributeManager = SCR_AttributesManagerEditorComponent.Cast(SCR_AttributesManagerEditorComponent.GetInstance(SCR_AttributesManagerEditorComponent));
@@ -76,11 +79,11 @@ class SCR_DateAttributeDynamicDescription : SCR_BaseAttributeDynamicDescription
 		if (!hasSunRise)
 			sunRiseName = m_sNoSunriseSunSet;
 		else 
-			sunRiseName = SCR_Global.GetTimeFormattingHideSeconds(sunRiseTime * 3600, ETimeFormatParam.DAYS);
+			sunRiseName = SCR_FormatHelper.GetTimeFormattingHideSeconds(sunRiseTime * 3600, ETimeFormatParam.DAYS);
 		if (!hasSunRise)
 			sunSetName = m_sNoSunriseSunSet;
 		else 
-			sunSetName = SCR_Global.GetTimeFormattingHideSeconds(sunSetTime * 3600, ETimeFormatParam.DAYS);
+			sunSetName = SCR_FormatHelper.GetTimeFormattingHideSeconds(sunSetTime * 3600, ETimeFormatParam.DAYS);
 		
 		uiInfo = m_DescriptionDisplayInfo;
 		param1 = sunRiseName;

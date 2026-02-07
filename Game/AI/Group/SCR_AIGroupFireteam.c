@@ -43,6 +43,30 @@ class SCR_AIGroupFireteam : Managed
 	}
 	
 	//--------------------------------------------------------------------------
+	AIAgent GetMember(int id)
+	{
+		if (!m_aAgents.IsIndexValid(id))
+			return null;
+		
+		return m_aAgents[id];
+	}
+	
+	//--------------------------------------------------------------------------
+	IEntity GetFirstMemberEntity()
+	{
+		if (m_aAgents.IsEmpty())
+			return null;
+		foreach (AIAgent agent : m_aAgents)
+		{
+			if (!agent)
+				continue;
+			IEntity controlledEntity = agent.GetControlledEntity();
+			return controlledEntity;
+		}
+		return null;
+	}
+	
+	//--------------------------------------------------------------------------
 	void GetMembers(notnull array<AIAgent> outAgents)
 	{
 		outAgents.Clear();

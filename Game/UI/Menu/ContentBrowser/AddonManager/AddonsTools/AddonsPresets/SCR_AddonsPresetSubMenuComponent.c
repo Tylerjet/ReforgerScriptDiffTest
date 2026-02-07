@@ -9,7 +9,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	protected ref SCR_AddonsPresetSubMenuWidgets m_Widgets = new SCR_AddonsPresetSubMenuWidgets();
 	
 	protected ref array<ref SCR_WorkshopAddonPreset> m_aPresets = {};
-	protected ref array<ref SCR_AddonLinePresetComponent> m_aPresetLines = {};
+	protected ref array<SCR_AddonLinePresetComponent> m_aPresetLines = {};
 	
 	protected ref SCR_WorkshopAddonPreset m_InteractivePreset;
 	
@@ -18,10 +18,10 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	protected SCR_WorkshopAddonPreset m_CreatedPreset;
 	
 	// Navigation buttons 
-	protected SCR_NavigationButtonComponent m_NavLoad;
-	protected SCR_NavigationButtonComponent m_NavOverride;
-	protected SCR_NavigationButtonComponent m_NavDelete;
-	protected SCR_NavigationButtonComponent m_NavRename;
+	protected SCR_InputButtonComponent m_NavLoad;
+	protected SCR_InputButtonComponent m_NavOverride;
+	protected SCR_InputButtonComponent m_NavDelete;
+	protected SCR_InputButtonComponent m_NavRename;
 	
 	// Invokers 
 	protected ref ScriptInvoker<bool> Event_OnRename;
@@ -56,6 +56,13 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	}
 	
 	//---------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+		GetGame().SaveUserSettings();
+	}
+	
+	//---------------------------------------------------------------------------------------------------
 	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
 	{
 		// Create new buttons 
@@ -64,41 +71,50 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 			m_NavLoad = CreateNavigationButton("MenuSelect", "#AR-PauseMenu_Load", true);
 			m_NavLoad.m_OnActivated.Insert(OnLoadButton);
 		}
-		
-		if (!m_NavOverride)
-		{
-			m_NavOverride = CreateNavigationButton("MenuFavourite", "#AR-PauseMenu_Save", true);
-			m_NavOverride.m_OnActivated.Insert(OnOverrideButton);
-		}
-		
-		if (!m_NavDelete)
-		{
-			m_NavDelete = CreateNavigationButton("WorkshopUnsubscribe", "#AR-Workshop_ButtonDelete", true);
-			m_NavDelete.m_OnActivated.Insert(OnDeleteButton);
-		}
-		
+
 		if (!m_NavRename)
 		{
-			m_NavRename = CreateNavigationButton("MenuRefresh", "#AR-MainMenu_Rename", true);
+			m_NavRename = CreateNavigationButton("MenuRename", "#AR-MainMenu_Rename", true);
 			m_NavRename.m_OnActivated.Insert(OnRenameButton);
 		}
-		
+
+		if (!m_NavDelete)
+		{
+			m_NavDelete = CreateNavigationButton("MenuDelete", "#AR-Workshop_ButtonDelete", true);
+			m_NavDelete.m_OnActivated.Insert(OnDeleteButton);
+		}
+
+		if (!m_NavOverride)
+		{
+			m_NavOverride = CreateNavigationButton("MenuSave", "#AR-PauseMenu_Save", true);
+			m_NavOverride.m_OnActivated.Insert(OnOverrideButton);
+		}
+
 		super.OnMenuShow(parentMenu);
 		
 		UpdatePresetListbox();
 		
-		// Setup used preset highligh
+		
+		if (!GetGame().InPlayMode())
+			return;
+		
 		SCR_AddonManager.GetInstance().GetPresetStorage().GetEventOnUsedPresetChanged().Insert(OnUsedPresetChanged);
+		
+		// This will update the footer buttons and make sure there's something always focused
+		GetGame().GetWorkspace().SetFocusedWidget(null);
+		GetGame().GetWorkspace().SetFocusedWidget(m_Widgets.m_ButonNewPreset);
 	}
 	
 	//---------------------------------------------------------------------------------------------------
 	// Display list 
 	//---------------------------------------------------------------------------------------------------
-	
 	//---------------------------------------------------------------------------------------------------
 	//! Display list of current addon presets
 	void UpdatePresetListbox()
 	{
+		if (!m_Widgets || !m_Widgets.m_ScrollPresetsComponent)
+			return;
+		
 		SCR_ListBoxComponent lb = m_Widgets.m_ScrollPresetsComponent;
 		if (!lb)
 			return;
@@ -109,7 +125,10 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 		
 		m_aPresetLines.Clear();
 		
-		// Read data 
+		// Read data
+		if (!GetGame().InPlayMode())
+			return;
+		
 		SCR_WorkshopAddonManagerPresetStorage presetStorage = SCR_AddonManager.GetInstance().GetPresetStorage();
 		m_aPresets = presetStorage.GetAllPresets();
 		
@@ -132,7 +151,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 			
 			line.SetPreset(preset);
 			line.UpdateWidgets();
-			
+
 			line.GetEventOnNameChanged().Insert(RenamePreset);
 			line.GetEventOnNameEditStart().Insert(OnNameEditStart);
 			line.GetEventOnLoad().Insert(LoadPreset);
@@ -242,9 +261,9 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	//---------------------------------------------------------------------------------------------------
 	protected void OnUsedPresetChanged(string name)
 	{
-		for (int i = 0, count = m_aPresets.Count(); i < count; i++)
+		foreach (SCR_AddonLinePresetComponent preset : m_aPresetLines)
 		{
-			m_aPresetLines[i].SetSelected(m_aPresetLines[i].GetName() == name);
+			preset.SetSelected(preset.GetName() == name);
 		}
 	}
 	
@@ -306,9 +325,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 		line.ShowDefaultName();
 		line.StartEditName();
 		
-		line.GetEventOnNameChanged().Insert(Callback_OnNameNewPreset);		
-		line.GetEventOnFocusLost().Insert(Callback_OnNameNewPreset);
-		line.GetEventOnNameEditLeave().Insert(Callback_OnNewPresetFocusLost);
+		SetupLineCreationState(line);
 		
 		InvokeEventOnRename(false);
 		OnRename(false);
@@ -317,6 +334,8 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	//---------------------------------------------------------------------------------------------------
 	protected void Callback_OnNameNewPreset(SCR_AddonLinePresetComponent line, string name)
 	{
+		ClearLineCreationState(line);
+		
 		SCR_WorkshopAddonPreset preset = SCR_AddonManager.GetInstance().CreatePresetFromEnabledAddons(name);
 		
 		// Check states
@@ -336,22 +355,48 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 		SCR_AddonManager.GetInstance().GetPresetStorage().SavePreset(preset);
 		UpdatePresetListbox();
 		
-		line.GetEventOnNameChanged().Remove(Callback_OnNameNewPreset);
-		line.GetEventOnFocusLost().Remove(Callback_OnNameNewPreset);
-		line.GetEventOnNameEditLeave().Remove(Callback_OnNewPresetFocusLost);
-		
 		InvokeEventOnRename(true);
 		OnRename(true);
+		
+		m_Widgets.m_ScrollPresetsComponent.SetFocusOnFirstItem();
 	}
 	
 	//---------------------------------------------------------------------------------------------------
 	protected void Callback_OnNewPresetFocusLost(SCR_AddonLinePresetComponent line)
 	{
 		UpdatePresetListbox();
+		ClearLineCreationState(line);
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	protected void SetupLineCreationState(SCR_AddonLinePresetComponent line)
+	{
+		m_Widgets.m_ButonNewPresetComponent.SetEnabled(false);
+		SetExistingLinesEnabled(false);
+		
+		line.GetEventOnNameChanged().Insert(Callback_OnNameNewPreset);
+		line.GetEventOnFocusLost().Insert(Callback_OnNameNewPreset);
+		line.GetEventOnNameEditLeave().Insert(Callback_OnNewPresetFocusLost);
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	protected void ClearLineCreationState(SCR_AddonLinePresetComponent line)
+	{
+		m_Widgets.m_ButonNewPresetComponent.SetEnabled(true);
+		SetExistingLinesEnabled(true);
 		
 		line.GetEventOnNameChanged().Remove(Callback_OnNameNewPreset);
 		line.GetEventOnFocusLost().Remove(Callback_OnNameNewPreset);
 		line.GetEventOnNameEditLeave().Remove(Callback_OnNewPresetFocusLost);
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	protected void SetExistingLinesEnabled(bool enabled)
+	{
+		foreach (SCR_AddonLinePresetComponent line : m_aPresetLines)
+		{
+			line.SetEnabled(enabled);		
+		}
 	}
 	
 	//---------------------------------------------------------------------------------------------------
@@ -559,7 +604,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	{
 		if (done)
 		{
-			// Show focused widget controsl 
+			// Show focused widget controls 
 			if (GetGame().GetWorkspace().GetFocusedWidget() == m_Widgets.m_ButonNewPreset)
 				OnNewPresetFocus();
 			else
@@ -603,8 +648,6 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 		
 		if (focusedLine)
 			OverridePreset(focusedLine);
-		else
-			CreateNewPreset();
 	}
 	
 	//---------------------------------------------------------------------------------------------------

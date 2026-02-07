@@ -110,28 +110,6 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void ActivateGadgetFlag()
-	{
-		super.ActivateGadgetFlag();
-		
-		if (System.IsConsoleApp())
-			return;
-
-		SetEventMask(GetOwner(), EntityEvent.FRAME);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void DeactivateGadgetFlag()
-	{
-		super.DeactivateGadgetFlag();
-		
-		if (System.IsConsoleApp())
-			return;
-		
-		ClearEventMask(GetOwner(), EntityEvent.FRAME);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	void ~SCR_BinocularsComponent()
 	{
 		if (m_RootWidget)

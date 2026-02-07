@@ -5,8 +5,7 @@ enum EWorkshopTabId
 };
 
 //------------------------------------------------------------------------------------------------
-//! The super menu class for content browser
-//! It owns ContentBrowserTabManager object.
+//! The super menu class for WORKSHOP content browser
 class ContentBrowserUI : SCR_SuperMenuBase
 {
 	static const string SERVICE_NAME_WS = "reforger-workshop-api";
@@ -14,7 +13,7 @@ class ContentBrowserUI : SCR_SuperMenuBase
 	
 	protected Widget m_wRoot;
 	
-	protected SCR_NavigationButtonComponent m_NavBack;
+	protected SCR_InputButtonComponent m_NavBack;
 	
 	float m_fTimerLowFreqUpdate;
 	
@@ -60,7 +59,7 @@ class ContentBrowserUI : SCR_SuperMenuBase
 		m_wRoot = GetRootWidget();
 		
 		// Setup the 'back' nav button
-		m_NavBack = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Back", m_wRoot);
+		m_NavBack = SCR_InputButtonComponent.GetInputButtonComponent("Back", m_wRoot);
 		m_NavBack.m_OnActivated.Insert(OnNavButtonClose);
 	}
 	
@@ -92,7 +91,6 @@ class ContentBrowserUI : SCR_SuperMenuBase
 			m_fTimerLowFreqUpdate -= 1;
 		}
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Update non important UI elements
@@ -142,12 +140,13 @@ class ContentBrowserUI : SCR_SuperMenuBase
 			m_OnlineSubMenu = subMenu;
 			
 			if (m_OnlineSubMenu)
-			{
-				m_OnlineSubMenu.GetOnTimeoutDialogClose().Insert(OpenOfflineTab);
-			}
+				m_OnlineSubMenu.GetOnRequestOpenOfflinePage().Insert(OpenOfflineTab);
 		}
+		
 		else if (subMenu.m_eMode == EContentBrowserAddonsSubMenuMode.MODE_OFFLINE)
+		{
 			m_OfflineSubMenu = subMenu;
+		}
 	}
 	
 		

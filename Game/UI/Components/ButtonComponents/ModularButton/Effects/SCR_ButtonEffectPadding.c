@@ -2,7 +2,7 @@
 Effect which changes all padding values of a target widget.
 */
 
-[BaseContainerProps(), SCR_ButtonEffectTitleAttribute("Padding", "m_sWidgetName")]
+[BaseContainerProps(configRoot : true), SCR_ButtonEffectTitleAttribute("Padding", "m_sWidgetName")]
 class SCR_ButtonEffectPadding : SCR_ButtonEffectWidgetBase
 {
 	[Attribute(defvalue: "0.2", UIWidgets.EditBox, "Duration of animation")]

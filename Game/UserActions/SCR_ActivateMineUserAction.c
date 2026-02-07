@@ -101,7 +101,7 @@ class SCR_ActivateMineUserAction : ScriptedUserAction
 			charWorldMat[3] = pOwnerEntity.GetOrigin();
 			PointInfo ptWS = new PointInfo();
 			ptWS.Set(null, "", charWorldMat);
-			charController.TryUseItemOverrideParams(pOwnerEntity, false, itemActionId, 3, 0, 15.0, 0, 0, false, ptWS);
+			charController.TryUseItemOverrideParams(pOwnerEntity, false, false, itemActionId, 3, 0, 15.0, 0, 0, false, ptWS);
 		}
 		
 		pOwnerEntity.GetTransform(mat);

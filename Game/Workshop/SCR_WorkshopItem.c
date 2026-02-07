@@ -33,6 +33,7 @@ class SCR_WorkshopItem
 	ref ScriptInvoker m_OnOfflineStateChanged = new ref ScriptInvoker();	// (SCR_WorkshopItem item, bool newState) - Called when the addon was downloaded first time or deleted (OFFLINE flag changed its value)
 	ref ScriptInvoker m_OnReportStateChanged = new ref ScriptInvoker();	// (SCR_WorkshopItem, bool newReported) - Called when reported state has changed
 	ref ScriptInvoker m_OnMyReportLoaded = new ref ScriptInvoker();		// (SCR_WorkshopItem item) - called after report loading is done.
+	ref ScriptInvoker m_OnMyReportLoadError = new ref ScriptInvoker();
 	ref ScriptInvoker m_OnRedownload = new ref ScriptInvoker();
 	ref ScriptInvoker m_OnCanceled = new ref ScriptInvoker();
 	
@@ -350,7 +351,7 @@ class SCR_WorkshopItem
 		
 		m_bFavourite = true;
 		
-		m_Item.SetFavourite(favourite);
+		m_Item.SetFavorite(favourite);
 		m_bFavourite = favourite;
 		
 		#ifdef WORKSHOP_DEBUG
@@ -510,7 +511,10 @@ class SCR_WorkshopItem
 		if (!m_Item)
 			return false;
 		
-		if (!GetOffline())
+		// Check if addon has download progress
+		Revision downloadingRevision = m_Item.GetDownloadingRevision();
+		
+		if (!downloadingRevision && !GetOffline())
 			return true; // Already deleted
 		
 		m_Item.DeleteLocally();
@@ -523,7 +527,14 @@ class SCR_WorkshopItem
 		
 		return true;
 	}
-	
+	//-----------------------------------------------------------------------------------------------
+	void DeleteDownloadProgress()
+	{
+		if (!m_Item)
+			return;
+		m_Item.DeleteDownloadProgress();
+		SetChanged();
+	}
 	//-----------------------------------------------------------------------------------------------
 	string GetName()
 	{
@@ -1318,22 +1329,16 @@ class SCR_WorkshopItem
 		m_OnMyReportLoaded.Invoke(this);
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	protected void Callback_LoadMyReport_OnError()
+	{
+		m_OnMyReportLoadError.Invoke(this);
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected void Callback_LoadMyReport_OnTimeout()
 	{
-		m_OnTimeout.Invoke(this);
-	}
-	
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_LoadMyReport_OnError()
-	{
-		// Error might happen if there is no report at all
-		// Let's report success anyway
-		m_OnMyReportLoaded.Invoke(this);
-
-		CustomDebugError("SCR_WorkshopItem failed to load report");
+		m_OnMyReportLoadError.Invoke(this);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -1730,8 +1735,6 @@ class SCR_WorkshopItem
 				_print(string.Format("OnChanged: Internal_Update: Download Progress Changed: %1", newProgress));
 				#endif
 				*/
-				
-				SetChanged();
 				m_fPrevDownloadProgress = newProgress;
 			}
 			
@@ -1990,9 +1993,11 @@ class SCR_WorkshopItem
 		{
 			if (m_Item)
 			{
-				if (m_Item.GetBackendEnv() == GetGame().GetBackendApi().GetBackendEnv())
+				if (m_Item.GetStateFlags() & EWorkshopItemState.EWSTATE_ONLINE)
+				{
 					m_Item.AskDetail(m_CallbackAskDetails);			// Internally both methods perform the same request
-				m_bWaitingLoadDetails = true;
+					m_bWaitingLoadDetails = true;
+				}
 			}
 			else if (m_Dependency)
 			{
@@ -2168,7 +2173,7 @@ class SCR_WorkshopItem
 			m_bSubscribed = m_Item.IsSubscribed();
 			m_bMyRating = m_Item.MyRating();
 			m_bMyRatingSet = m_Item.IsRatingSet();
-			m_bFavourite = m_Item.IsFavourite();
+			m_bFavourite = m_Item.IsFavorite();
 			
 			if (m_Item.IsEnabled())
 				m_Item.NotifyPlay();

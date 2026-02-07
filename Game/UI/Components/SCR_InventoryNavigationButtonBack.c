@@ -1,7 +1,7 @@
 //! Interactive non-focus button showing hint, and triggering actions 
 
 //------------------------------------------------------------------------------------------------
-class SCR_InventoryNavigationButtonBack : SCR_NavigationButtonComponent 
+class SCR_InventoryNavigationButtonBack : SCR_InputButtonComponent 
 {
 	protected bool m_bCloseWithGamepad;
 	protected SCR_InventoryStorageBaseUI m_pParentStorage = null;
@@ -27,7 +27,7 @@ class SCR_InventoryNavigationButtonBack : SCR_NavigationButtonComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected void OnInput()
+	override protected void OnInput(float value, EActionTrigger reason)
 	{
 		if (!m_wRoot)
 			return;

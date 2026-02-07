@@ -1,19 +1,18 @@
-enum EFireState
+enum EFireState // Rename to SCR_EBurningState - we have conflict with gamecode
 {
 	NONE,
 	SMOKING_LIGHT,
 	SMOKING_HEAVY,
 	SMOKING_IGNITING,
 	BURNING
-};
+}
 
-// TODO: Turn flammability into destruction handler
 class SCR_FlammableHitZone : SCR_DestructibleHitzone
 {
 	protected static const float		FIRE_TERRAIN_HEIGHT_TOLERANCE = 2.2; // Prevents spawning of ground fire effect if the vehicle is too high (in meters)
 	protected static const float 		LIGHT_EMISSIVITY_START = 5;
 
-	protected int						m_iFireInstigatorID;
+	protected Instigator				m_FireInstigator;
 	protected EFireState				m_eFireState;
 	protected float						m_fFireRate;
 	protected float						m_fLightSmokeReductionRate;
@@ -23,63 +22,85 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 	protected float						m_fFireDamageRateMax;
 	protected float						m_fUpdateFireTime;
 	protected bool						m_bIsUpdatingFire;
-	protected bool						m_bIsBurning;
+	protected bool						m_bIsFireRateLocked;
 
 	protected ref array<LightEntity> m_aLightEntities;
 
-	[Attribute("", desc: "Data for flame lighting that is visible when vehicle burns" ,UIWidgets.Object, "", category: "Flammability")]
+	[Attribute("", desc: "Data for flame lighting that is visible when vehicle burns", UIWidgets.Object, "", category: "Flammability")]
 	protected ref array<ref SCR_BaseLightData> m_aLightData;
 
-	[Attribute(defvalue: "8", desc: "Fire damage applied to occupants of a burning vehicle each second (hp)", params: "0 100 0.01", category: "Flammability")]
+	// Burning configuration - amount of damage, burning rates etc.
+	[Attribute(defvalue: "1", desc: "Fire damage multiplier\n[x * 100%]", params: "0 1000 0.01", category: "Flammability")]
+	protected float m_fFireMultiplier;
+
+	[Attribute(defvalue: "0", desc: "Fire damage applied to occupants of a burning vehicle each second (hp)", params: "0 100 0.01", category: "Flammability")]
+	protected float m_fIncendiaryReduction;
+
+	[Attribute(defvalue: "0", desc: "Minimum incendiary damage\n[hp]", params: "0 100 0.01", category: "Flammability")]
+	protected float m_fIncendiaryThreshold;
+
+	[Attribute(defvalue: "8", desc: "Fire damage applied to occupants of a burning vehicle each second\n[hp]", params: "0 100 0.01", category: "Flammability")]
 	protected float m_fFireDamageOccupants;
-	[Attribute(defvalue: "600", desc: "Maximum time for light smoke to stop (s)", params: "0 10000 0.1", category: "Flammability")]
+
+	[Attribute(defvalue: "600", desc: "Maximum time for light smoke to stop\n[s]", params: "0 10000 0.1", category: "Flammability")]
 	protected float m_fLightSmokeStopTime;
-	[Attribute(defvalue: "1800", desc: "Maximum time for heavy smoke to become light smoke (s)", params: "0 10000 0.1", category: "Flammability")]
+
+	[Attribute(defvalue: "1800", desc: "Maximum time for heavy smoke to become light smoke\n[s]", params: "0 10000 0.1", category: "Flammability")]
 	protected float m_fHeavySmokeStopTime;
-	[Attribute(defvalue: "180", desc: "Maximum time for igniting smoke to become fire (s)", params: "0 10000 0.1", category: "Flammability")]
+
+	[Attribute(defvalue: "180", desc: "Maximum time for igniting smoke to become fire\n[s]", params: "0 10000 0.1", category: "Flammability")]
 	protected float m_fIgnitingSmokeStokeTime;
-	[Attribute(defvalue: "60", desc: "Minimum time for burning hitzone down (s) \n ! Determines maximum fire damage over time", params: "0 10000 0.1", category: "Flammability")]
+
+	[Attribute(defvalue: "60", desc: "Minimum time for burning hitzone down\nDetermines maximum fire rate\n[s]", params: "0 10000 0.1", category: "Flammability")]
 	protected float m_fMinFireBurningTime;
-	[Attribute(defvalue: "240", desc: "Maxium time for burning hitzone down (s) \n ! Determines minimum fire damage over time", params: "0 10000 0.1", category: "Flammability")]
+
+	[Attribute(defvalue: "240", desc: "Maximum time for burning hitzone down\nDetermines minimum fire rate\n[s]", params: "0 10000 0.1", category: "Flammability")]
 	protected float m_fMaxFireBurningTime;
-	[Attribute(defvalue: "0.1", uiwidget: UIWidgets.Slider, desc: "Light smoke effect threshold \n ! % of minimum fire damage over time", params: "0 1 0.01", category: "Flammability")]
+
+	[Attribute(defvalue: "120", desc: "Burning time of the object after destruction\n[s]", params: "0 1000 1", category: "Effects")]
+	protected float m_fBurningTime;
+
+	[Attribute(defvalue: "0.1", uiwidget: UIWidgets.Slider, desc: "Light smoke effect threshold\n[x * minimum fire rate]", params: "0 1 0.01", category: "Flammability")]
 	protected float m_fLightSmokeThreshold;
-	[Attribute(defvalue: "0.5", uiwidget: UIWidgets.Slider, desc: "Heavy smoke effect threshold \n ! % of minimum fire damage over time", params: "0 1 0.01", category: "Flammability")]
+
+	[Attribute(defvalue: "0.5", uiwidget: UIWidgets.Slider, desc: "Heavy smoke effect threshold\n[x * minimum fire rate]", params: "0 1 0.01", category: "Flammability")]
 	protected float m_fHeavySmokeThreshold;
-	[Attribute(defvalue: "0.8", uiwidget: UIWidgets.Slider, desc: "Igniting smoke effect threshold \n ! % of minimum fire damage over time", params: "0 1 0.01", category: "Flammability")]
+
+	[Attribute(defvalue: "0.8", uiwidget: UIWidgets.Slider, desc: "Igniting smoke effect threshold\n[x * minimum fire rate]", params: "0 1 0.01", category: "Flammability")]
 	protected float m_fIgnitingSmokeThreshold;
 
+	// Particle effects
 	[Attribute(desc: "Particle effect for light smoke", params: "ptc", category: "Effects")]
 	protected ResourceName m_sDamagedParticle;
+
 	[Attribute(desc: "Particle effect for heavy smoke", params: "ptc", category: "Effects")]
 	protected ResourceName m_sDamagedParticleHeavy;
-	[Attribute(desc: "Particle effect for destruction flame", params: "ptc", category: "Effects")]
-	protected ResourceName m_sDestructionParticle;
-	[Attribute(desc: "Particle effect for burning down after destruction", params: "ptc", category: "Effects")]
+
+	[Attribute(desc: "Particle effect for fire", params: "ptc", category: "Effects")]
 	protected ResourceName m_sBurningParticle;
-	[Attribute(desc: "Fire particle on the ground under object after the wreck stops moving", params: "ptc", category: "Effects")]
+
+	[Attribute(desc: "Particle effect for fire on ground under object after the wreck stops moving", params: "ptc", category: "Effects")]
 	protected ResourceName m_sBurningGroundParticle;
 
-	[Attribute(defvalue: "120", desc: "Burning time of the object after its explosion (s)", params: "0 1000 1", category: "Effects")]
-	protected float m_fBurningTime;
-	[Attribute(uiwidget: UIWidgets.Coords, "Position of the effect in model space", category: "Effects")]
-	protected vector m_vParticleOffset;
-	[Attribute(defvalue: "1", desc: "Minimum water depth to stop the fire", params: "0 100 0.1", category: "Flammability")]
+	[Attribute(defvalue: "1", desc: "Minimum water depth to stop the fire\n[m]", params: "0 100 0.1", category: "Flammability")]
 	protected float m_fWaterDepthThreshold;
 
+	[Attribute(defvalue: "FireState", desc: "Fire state signal name", category: "Flammability")]
+	protected string m_sFireStateSignal;
+
+	// Repairs
+	[Attribute(EVehicleHitZoneGroup.HULL.ToString(), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EVehicleHitZoneGroup))]
+	protected EVehicleHitZoneGroup m_eHitZoneGroup;
+
 	// Audio features
-	protected int						m_iFireStateSignalIdx;
+	protected SignalsManagerComponent	m_SignalsManager;
+	protected int						m_iFireStateSignalIdx = -1;	// Damage particles
 
-	// Damage particles
-	protected ParticleEffectEntity		m_pDmgParticleLight; // Lighter damage particle emitter
-	protected ParticleEffectEntity		m_pDmgParticleHeavy; // Darker damage particle emitter
-
-	// Destruction particles
-	protected ParticleEffectEntity		m_pDstParticle; // Destruction particle
-	protected ParticleEffectEntity		m_pBurningGroundParticle; // Burning fuel on ground particle
-
-	// Burning particles
-	protected ParticleEffectEntity		m_pBurningParticle; // Rapid fire damage particle emitter
+	// Fire particles
+	protected ParticleEffectEntity		m_DamagedParticleLight; // Lighter damage particle emitter
+	protected ParticleEffectEntity		m_DamagedParticleHeavy; // Darker damage particle emitter
+	protected ParticleEffectEntity		m_BurningParticle; // Rapid fire damage particle emitter
+	protected ParticleEffectEntity		m_BurningGroundParticle; // Burning fuel on ground particle
 
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -88,9 +109,19 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 
 		InitFireRates();
 
-		SignalsManagerComponent signalsManager = SignalsManagerComponent.Cast(pOwnerEntity.FindComponent(SignalsManagerComponent));
-		if (signalsManager)
-			m_iFireStateSignalIdx = signalsManager.AddOrFindSignal("FireState");
+		SCR_VehicleDamageManagerComponent damageManager = SCR_VehicleDamageManagerComponent.Cast(m_RootDamageManager);
+		if (damageManager)
+			damageManager.RegisterFlammableHitZone(this);
+
+		m_SignalsManager = SignalsManagerComponent.Cast(pOwnerEntity.FindComponent(SignalsManagerComponent));
+		if (m_SignalsManager && !m_sFireStateSignal.IsEmpty())
+			m_iFireStateSignalIdx = m_SignalsManager.AddOrFindSignal(m_sFireStateSignal);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override EHitZoneGroup GetHitZoneGroup()
+	{
+		return m_eHitZoneGroup;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -109,12 +140,15 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 	void InitFireRates()
 	{
 		float maxDamage = GetMaxHealth();
+		
+		if (m_fFireMultiplier <= 0)
+			return;
 
 		if (m_fMinFireBurningTime > 0)
-			m_fFireDamageRateMax = maxDamage / m_fMinFireBurningTime;
+			m_fFireDamageRateMax = maxDamage / (m_fMinFireBurningTime * m_fFireMultiplier);
 
 		if (m_fMaxFireBurningTime > 0)
-			m_fFireDamageRateMin = maxDamage / m_fMaxFireBurningTime;
+			m_fFireDamageRateMin = maxDamage / (m_fMaxFireBurningTime * m_fFireMultiplier);
 
 		if (m_fLightSmokeStopTime > 0)
 			m_fLightSmokeReductionRate = m_fFireDamageRateMin * (m_fHeavySmokeThreshold - m_fLightSmokeThreshold) / m_fLightSmokeStopTime;
@@ -128,72 +162,101 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Called after damage multipliers and thresholds are applied to received impacts and damage is applied to hitzone.
-	This is also called when transmitting the damage to parent hitzones!
-	\param type Type of damage
-	\param damage Amount of damage received
-	\param pOriginalHitzone Original hitzone that got dealt damage, as this might be transmitted damage.
-	\param instigator Damage source parent entity (soldier, vehicle, ...)
-	\param hitTransform [hitPosition, hitDirection, hitNormal]
-	\param speed Projectile speed in time of impact
-	\param colliderID ID of the collider receiving damage
-	\param nodeID ID of the node of the collider receiving damage
+	Calculates the amount of damage a hitzone will receive.
+	\param damageType Damage type
+	\param rawDamage Incoming damage, without any modifiers taken into account
+	\param hitEntity Damaged entity
+	\param struckHitZone Hitzone to be damaged
+	\param damageSource Projectile
+	\param instigator Instigator
+	\param hitMaterial Surface physics material
+	\param colliderID Collider ID if provided
+	\param hitTransform Position, direction and normal
+	\param impactVelocity Projectile velocity at impact
+	\param nodeID Bone index in mesh object
+	\param isDOT True if this is a calculation for DamageOverTime
 	*/
-	override void OnDamage(EDamageType type, float damage, HitZone pOriginalHitzone, IEntity instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID)
+	override float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, notnull Instigator instigator, const GameMaterial hitMaterial, int colliderID, inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
 	{
-		super.OnDamage(type, damage, pOriginalHitzone, instigator, hitTransform, speed, colliderID, nodeID);
+		// Incendiary damage has different thresholds
+		if (damageType == EDamageType.INCENDIARY && !isDOT)
+		{
+			ComputeIncendiaryDamage(rawDamage, instigator);
+			return 0;
+		}
 
-		if (this != pOriginalHitzone)
+		float damage = rawDamage;
+		if (damageType == EDamageType.FIRE)
+			damage *= m_fFireMultiplier;
+
+		return super.ComputeEffectiveDamage(damageType, damage, hitEntity, struckHitZone, damageSource, instigator, hitMaterial, colliderID, hitTransform, impactVelocity, nodeID, isDOT);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Modify fire rate based on received incendiary impacts
+	\param rawDamage Incendiary damage to be handled
+	\param instigator Instigator of the incendiary damage
+	*/
+	void ComputeIncendiaryDamage(float rawDamage, notnull Instigator instigator)
+	{
+		//apply base multiplier
+		float incendiaryDamage = rawDamage * GetBaseDamageMultiplier();
+		//apply damage multiplier for this specific damage type
+		incendiaryDamage *= GetDamageMultiplier(EDamageType.INCENDIARY);
+
+		//Extinguishing does not receive reduction or thresholds
+		if (incendiaryDamage > 0)
+		{
+			//apply flat damage reduction
+			incendiaryDamage -= m_fIncendiaryReduction;
+
+			//if its less than the damage threshold we discard the damage.
+			//if the damage to take becomes negative (healing) because of the flat damage reduction, this should reset it back to 0 dmg to take.
+			if (incendiaryDamage < m_fIncendiaryThreshold)
+				incendiaryDamage = 0;
+		}
+
+		// Ignore insignificant incendiary rate change
+		float newFireRate = Math.Clamp(m_fFireRate + incendiaryDamage, 0, m_fFireDamageRateMax);
+		if (float.AlmostEqual(newFireRate, m_fFireRate))
 			return;
 
-		if (IsProxy())
-			return;
-
-		if (GetDamageState() == EDamageState.DESTROYED)
-			return;
-
-		// Incendiary or explosive ammo can set this kind of hitzone on fire
-		if (type != EDamageType.INCENDIARY)
-			return;
-
-		SetFireRate(m_fFireRate + damage);
+		SetFireRate(newFireRate);
 
 		// Last shot that sets the vehicle on fire is going to be remembered as instigator of fire
-		if (m_eFireState == EFireState.SMOKING_IGNITING || (m_iFireInstigatorID == 0 && m_eFireState == EFireState.BURNING))
+		if (m_eFireState == EFireState.SMOKING_IGNITING)
+			SetFireInstigator(instigator);
+		else if (m_eFireState == EFireState.BURNING && (!m_FireInstigator || m_FireInstigator.GetInstigatorType() == InstigatorType.INSTIGATOR_NONE))
 			SetFireInstigator(instigator);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Inform damage manager about fire instigator
-	void SetFireInstigator(IEntity instigator)
+	protected void SetFireInstigator(Instigator instigator)
 	{
-		int instigatorID;
-
-		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
-		if (damageManager)
-		{
-			damageManager.SetInstigatorEntity(instigator);
-			instigatorID = damageManager.GetInstigatorID();
-		}
-
-		SetFireInstigatorID(instigatorID);
+		m_FireInstigator = instigator;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Inform damage manager about fire instigator
-	void SetFireInstigatorID(int instigatorID)
+	Instigator GetFireInstigator()
 	{
-		m_iFireInstigatorID = instigatorID;
+		if (m_FireInstigator)
+			return m_FireInstigator;
 
-		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
-		if (damageManager)
-			damageManager.SetInstigatorID(m_iFireInstigatorID);
+		return Instigator.CreateInstigator(null);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Destruction logic
 	override void OnDamageStateChanged()
 	{
+		// Override instigator before destruction is requested
+		DamageManagerComponent damageManager = DamageManagerComponent.Cast(GetHitZoneContainer());
+		if (m_FireInstigator && damageManager.GetDefaultHitZone() == this && GetDamageState() == EDamageState.DESTROYED)
+			damageManager.SetInstigator(m_FireInstigator);
+
 		super.OnDamageStateChanged();
 
 		if (!GetGame().GetWorld())
@@ -217,6 +280,7 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 	void SetFireRate(float fireRate)
 	{
 		m_fFireRate = fireRate;
+		m_bIsFireRateLocked = false;
 		UpdateFireRate(true);
 	}
 
@@ -307,7 +371,7 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 
 		// Clean the fire instigator if the fire is extinguished
 		if (m_eFireState < EFireState.SMOKING_IGNITING)
-			SetFireInstigatorID(0);
+			SetFireInstigator(null);
 
 		// Send update to remote clients
 		array<HitZone> hitZones = {};
@@ -351,7 +415,7 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 	\param deltaTime Time passed in seconds since last update
 	\return fireRate
 	*/
-	private float CalculateNewFireRate(float fireRate, float deltaTime)
+	protected float CalculateNewFireRate(float fireRate, float deltaTime)
 	{
 		float depth;
 		if (fireRate > 0 && SCR_WorldTools.IsObjectUnderwater(GetOwner(), m_vParticleOffset, -1, depth) && depth > m_fWaterDepthThreshold)
@@ -384,7 +448,7 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 	\param fireRate Current rate of fire
 	\param deltaTime Time passed in seconds since last update
 	*/
-	private void ApplyFireDamage(float fireRate, float deltaTime)
+	protected void ApplyFireDamage(float fireRate, float deltaTime)
 	{
 		if (fireRate < m_fFireDamageRateMin || GetDamageState() == EDamageState.DESTROYED)
 		{
@@ -394,24 +458,17 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 
 		SetDamageOverTime(EDamageType.FIRE, fireRate);
 
-		IEntity instigator;
-		if (m_iFireInstigatorID != 0)
-		{
-			SetFireInstigatorID(m_iFireInstigatorID);
-			instigator = GetGame().GetPlayerManager().GetPlayerControlledEntity(m_iFireInstigatorID);
-		}
+		Instigator instigator = m_FireInstigator;
+		if (!instigator)
+			instigator = Instigator.CreateInstigator(null);
 
-		/*
-		// Damage surrounding hitzones
-		// TODO: Optimize and exclude current hitzone
-		SCR_VehicleDamageManagerComponent damageManager = SCR_VehicleDamageManagerComponent.Cast(GetHitZoneContainer());
-		if (damageManager)
-			damageManager.DamageSurroundingHitzones(GetOwner().CoordToParent(m_vParticleOffset), fireRate, EDamageType.INCENDIARY);
-		*/
+		// Damage random physical hitzones
+		if (GetHitZoneContainer() == m_RootDamageManager && m_RootDamageManager.GetDefaultHitZone() == this)
+			m_RootDamageManager.DamageRandomHitZones(fireRate, EDamageType.FIRE, instigator);
 
 		// Deal damage to crew depending on how much the fire is stoked
 		// TODO: Deal damage based on distance from fire
-		if (!m_pCompartmentManager)
+		if (!m_CompartmentManager)
 			return;
 
 		float damageOccupants = m_fFireDamageOccupants * deltaTime;
@@ -419,14 +476,14 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 			damageOccupants *= fireRate / m_fFireDamageRateMin;
 
 		if (damageOccupants > 0)
-			m_pCompartmentManager.DamageOccupants(damageOccupants, EDamageType.FIRE, instigator, false, false);
+			m_CompartmentManager.DamageOccupants(damageOccupants, EDamageType.FIRE, instigator, false, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Flammable hitzone is not immediately set on fire.
 	//! At first it generates smoke which can spontaneously extinguish or ignite itself.
 	//! Damage is applied once fire rate exceeds damage threshold.
-	private void UpdateFireRate(bool forceUpdate = false)
+	protected void UpdateFireRate(bool forceUpdate = false)
 	{
 		if (IsProxy())
 			return;
@@ -438,7 +495,7 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 		IEntity owner = GetOwner();
 		if (!owner)
 		{
-			LockFireRate();
+			StopFireRateUpdate();
 			return;
 		}
 
@@ -446,14 +503,15 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 			return;
 
 		// Scale damage by time passed
-		float deltaTime = 0;
+		float deltaTime;
 		float currentTime = world.GetWorldTime();
 
 		if (m_fUpdateFireTime > 0)
 			deltaTime = (currentTime - m_fUpdateFireTime) * 0.001; // Convert to seconds
 
 		float previousFireRate = m_fFireRate;
-		m_fFireRate = CalculateNewFireRate(previousFireRate, deltaTime);
+		if (!m_bIsFireRateLocked)
+			m_fFireRate = CalculateNewFireRate(previousFireRate, deltaTime);
 
 		// Extinguishing should also force RPC and removal of queued call so that clients stop updating fire rate
 		if (m_fFireRate == 0 && previousFireRate > 0)
@@ -463,7 +521,7 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 
 		// Clear any scheduled call in the queue
 		if (forceUpdate)
-			LockFireRate();
+			StopFireRateUpdate();
 
 		// Schedule future update
 		if (m_fFireRate > 0)
@@ -489,11 +547,18 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Stop fire rate updates until incendiary damage is received
-	void LockFireRate()
+	//! Stop fire rate updates until requested again
+	void StopFireRateUpdate()
 	{
 		m_bIsUpdatingFire = false;
 		GetGame().GetCallqueue().Remove(UpdateFireRate);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Temporarily stop fire rate changes until incendiary damage is received again
+	void LockFireRate(bool locked = true)
+	{
+		m_bIsFireRateLocked = locked;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -523,24 +588,11 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 		ScriptCallQueue queue = GetGame().GetCallqueue();
 		queue.CallLater(StopDestructionFire, m_fBurningTime * 1000);
 		queue.CallLater(StartDestructionGroundFire, 1000, true);
-
-		// Particles are only relevant for non-dedicated clients
-		if (System.IsConsoleApp())
-			return;
-
-		if (!m_pDstParticle && !m_sDestructionParticle.IsEmpty())
-		{
-			ParticleEffectEntitySpawnParams spawnParams();
-			spawnParams.Transform[3] = m_vParticleOffset;
-			spawnParams.Parent = owner;
-			spawnParams.UseFrameEvent = true;
-			m_pDstParticle = ParticleEffectEntity.SpawnParticleEffect(m_sDestructionParticle, spawnParams);
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Attempts to spawn fire effect on the ground under the burning wreck.
-	private void StartDestructionGroundFire()
+	protected void StartDestructionGroundFire()
 	{
 		IEntity owner = GetOwner();
 		if (!owner)
@@ -579,21 +631,20 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 			return;
 
 		// Stop existing effect so that it gets removed and does not have to be tracked again
-		if (m_pBurningGroundParticle)
-			m_pBurningGroundParticle.StopEmission();
+		if (m_BurningGroundParticle)
+			m_BurningGroundParticle.StopEmission();
 
 		position[1] = surfaceY;
 
-		if (!m_sDestructionParticle.IsEmpty())
-		{
-			ParticleEffectEntitySpawnParams spawnParams();
-			spawnParams.Transform[3] = position;
-			spawnParams.UseFrameEvent = true;
-			m_pBurningGroundParticle = ParticleEffectEntity.SpawnParticleEffect(m_sBurningGroundParticle, spawnParams);
-		}
-			
+		if (m_sDestructionParticle.IsEmpty())
+			return;
+
+		ParticleEffectEntitySpawnParams spawnParams();
+		spawnParams.Transform[3] = position;
+		m_BurningGroundParticle = ParticleEffectEntity.SpawnParticleEffect(m_sBurningGroundParticle, spawnParams);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	// Stops fire on vehicle and on the ground
 	void StopDestructionFire()
 	{
@@ -603,13 +654,13 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 		queue.Remove(StartDestructionGroundFire);
 		queue.Remove(StopDestructionFire);
 
-		if (m_pBurningGroundParticle)
-			m_pBurningGroundParticle.StopEmission();
+		if (m_BurningGroundParticle)
+			m_BurningGroundParticle.StopEmission();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Logic when vehicle is damaged
-	private void UpdateFireEffects(EFireState fireState)
+	protected void UpdateFireEffects(EFireState fireState)
 	{
 		// No need to play particles on headless client
 		if (System.IsConsoleApp())
@@ -620,90 +671,60 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 		if (!owner)
 			return;
 
-		SignalsManagerComponent signalsManager = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
-		if (signalsManager)
-			signalsManager.SetSignalValue(m_iFireStateSignalIdx, fireState);
+		if (m_SignalsManager && m_iFireStateSignalIdx != -1)
+			m_SignalsManager.SetSignalValue(m_iFireStateSignalIdx, fireState);
 
-		// Requiring all the particles to be defined simplifies the logic.
-		if (m_sDamagedParticle.IsEmpty() || m_sDamagedParticleHeavy.IsEmpty() || m_sBurningParticle.IsEmpty())
-			return;
-
-		// This part is terrible, it should be refactored
-		if (!m_pDmgParticleLight || !m_pDmgParticleHeavy || !m_pBurningParticle)
+		// Create particle emitters
+		if (!m_DamagedParticleLight || !m_DamagedParticleHeavy || !m_BurningParticle)
 		{
 			ParticleEffectEntitySpawnParams spawnParams();
 			spawnParams.Transform[3] = m_vParticleOffset;
 			spawnParams.Parent = owner;
 			spawnParams.PlayOnSpawn = false;
 			spawnParams.UseFrameEvent = true;
-			
+
 			// Spawn particles on object
-			if (!m_pDmgParticleLight)
-			{
-				m_pDmgParticleLight = ParticleEffectEntity.SpawnParticleEffect(m_sDamagedParticle, spawnParams);
-			}
+			if (!m_DamagedParticleLight && !m_sDamagedParticle.IsEmpty())
+				m_DamagedParticleLight = ParticleEffectEntity.SpawnParticleEffect(m_sDamagedParticle, spawnParams);
 
-			if (!m_pDmgParticleHeavy)
-			{
-				m_pDmgParticleHeavy = ParticleEffectEntity.SpawnParticleEffect(m_sDamagedParticleHeavy, spawnParams);
-			}
+			if (!m_DamagedParticleHeavy && !m_sDamagedParticleHeavy.IsEmpty())
+				m_DamagedParticleHeavy = ParticleEffectEntity.SpawnParticleEffect(m_sDamagedParticleHeavy, spawnParams);
 
-			if (!m_pBurningParticle)
-			{
-				m_pBurningParticle = ParticleEffectEntity.SpawnParticleEffect(m_sBurningParticle, spawnParams);
-			}
+			if (!m_BurningParticle && !m_sBurningParticle.IsEmpty())
+				m_BurningParticle = ParticleEffectEntity.SpawnParticleEffect(m_sBurningParticle, spawnParams);
 		}
 
-		// Switch particle states
-		// start fire
+		// Fire light
 		if (fireState == EFireState.BURNING)
-		{
-			if (!m_bIsBurning)
-			{
-				m_pBurningParticle.Stop();
-				m_bIsBurning = true;
-			}
-
-			m_pDmgParticleLight.StopEmission();
-			m_pDmgParticleHeavy.StopEmission();
-			m_pBurningParticle.Play();
 			FireLightOn();
-		}
 		else
-		{
-			m_bIsBurning = false;
+			FireLightOff();
 
-			// igniting smoke
-			if (fireState == EFireState.SMOKING_IGNITING)
-			{
-				m_pDmgParticleLight.StopEmission();
-				m_pDmgParticleHeavy.Play();
-				m_pBurningParticle.StopEmission();
-				FireLightOff();
-			}
-			// dark smoke
-			else if (fireState == EFireState.SMOKING_HEAVY)
-			{
-				m_pDmgParticleLight.StopEmission();
-				m_pDmgParticleHeavy.Play();
-				m_pBurningParticle.StopEmission();
-				FireLightOff();
-			}
-			// light smoke
-			else if (fireState == EFireState.SMOKING_LIGHT)
-			{
-				m_pDmgParticleLight.Play();
-				m_pDmgParticleHeavy.StopEmission();
-				m_pBurningParticle.StopEmission();
-				FireLightOff();
-			}
+		// Fire
+		if (m_BurningParticle)
+		{
+			if (fireState == EFireState.BURNING)
+				m_BurningParticle.Play();
 			else
-			{
-				m_pDmgParticleLight.StopEmission();
-				m_pDmgParticleHeavy.StopEmission();
-				m_pBurningParticle.StopEmission();
-				FireLightOff();
-			}
+				m_BurningParticle.StopEmission();
+		}
+
+		// Dark smoke
+		if (m_DamagedParticleHeavy)
+		{
+			if (fireState == EFireState.SMOKING_HEAVY || fireState == EFireState.SMOKING_IGNITING)
+				m_DamagedParticleHeavy.Play();
+			else
+				m_DamagedParticleHeavy.StopEmission();
+		}
+
+		// Light smoke
+		if (m_DamagedParticleLight)
+		{
+			if (fireState == EFireState.SMOKING_LIGHT)
+				m_DamagedParticleLight.Play();
+			else
+				m_DamagedParticleLight.StopEmission();
 		}
 	}
 
@@ -749,4 +770,4 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 
 		m_aLightEntities = null;
 	}
-};
+}

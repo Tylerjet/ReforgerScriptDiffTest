@@ -7,17 +7,17 @@ class SCR_SuppliesBaseTooltipDetail: SCR_EntityTooltipDetail
 	
 	override void UpdateDetail(SCR_EditableEntityComponent entity)
 	{
-		if (!m_SuppliesComponent) return;
+		/*if (!m_SuppliesComponent) return;
 		
 		if (m_Bar)
 			m_Bar.SetValue(m_SuppliesComponent.GetSupplies() / m_SuppliesComponent.GetSuppliesMax());
 		if (m_Value)
-			m_Value.SetText(m_SuppliesComponent.GetSupplies().ToString());
+			m_Value.SetText(m_SuppliesComponent.GetSupplies().ToString());*/
 	}
 	
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
-		m_SuppliesComponent = SCR_CampaignSuppliesComponent.GetSuppliesComponent(entity.GetOwner());
+		/*m_SuppliesComponent = SCR_CampaignSuppliesComponent.GetSuppliesComponent(entity.GetOwner());
 		if (!m_SuppliesComponent)
 			return false;
 		
@@ -30,6 +30,8 @@ class SCR_SuppliesBaseTooltipDetail: SCR_EntityTooltipDetail
 		if (barWidget)
 			m_Bar = SCR_WLibProgressBarComponent.Cast(barWidget.FindHandler(SCR_WLibProgressBarComponent));
 		
-		return (m_Value || m_Bar);
+		return (m_Value || m_Bar);*/
+		
+		return false;
 	}
 };

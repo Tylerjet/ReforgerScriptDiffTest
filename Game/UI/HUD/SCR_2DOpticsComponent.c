@@ -324,11 +324,11 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 	static ref ScriptInvokerBase<OnSightsADSChanged> s_OnSightsADSChanged = new ScriptInvokerBase<OnSightsADSChanged>();
 	static ref ScriptInvokerBase<On2DOpticsADSChange> s_On2DOpticADSChanged = new ScriptInvokerBase<On2DOpticsADSChange>();
-	protected ref ScriptInvoker s_OnSetupOpticImage = new ScriptInvoker();
+	protected ref ScriptInvokerVoid s_OnSetupOpticImage = new ScriptInvokerVoid();
 	protected ref ScriptInvokerBase<On2DOpticsIlluminationChange> s_OnIlluminationChange = new ScriptInvokerBase<On2DOpticsIlluminationChange>();
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker OnSetupOpticImage()
+	ScriptInvokerVoid OnSetupOpticImage()
 	{
 		return s_OnSetupOpticImage;
 	}
@@ -595,7 +595,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 		// Get sight orientation
 		// Turrets require local sight transform for reliability
-		vector sightMat[4];
 		GetSightsTransform(sightMat, true);
 
 		// Add optic orientation
@@ -767,6 +766,56 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	vector GetCameraAngles()
 	{
 		return m_vCameraAngles;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		\param matrix Out transformation from character's model space to our local space.
+	*/
+	void GetCharacterToLocalTransform(out vector result[4])
+	{
+		vector temp[4];
+		Math3D.MatrixIdentity4(temp);
+		
+		IEntity parent = GetOwner();
+		IEntity lastNode = parent;
+		
+		while (lastNode)
+		{
+			// Stop on character, that is final node
+			ChimeraCharacter chara = ChimeraCharacter.Cast(lastNode);
+			if (chara)
+				break;
+			
+			vector localTransform[4];
+			lastNode.GetLocalTransform(localTransform);
+			
+			// If using a pivot, we need to apply the pivot transformation
+			TNodeId pivotIndex = lastNode.GetPivot();
+			if (pivotIndex != -1)
+			{
+				// Multiply pivot * local TM = model TM
+				IEntity parentNode = lastNode.GetParent();
+				if (parentNode)
+				{
+					vector pivotTM[4];
+					parentNode.GetAnimation().GetBoneMatrix(pivotIndex, pivotTM);
+					
+					// This should not be happening - there should
+					// rather be no pivot, yet it triggers at times.
+					// ??? TODO@AS: See if we can have better API for pivoting like this
+					if (!SCR_Math3D.IsMatrixEmpty(pivotTM))
+						Math3D.MatrixMultiply4(pivotTM, localTransform, localTransform);
+				}
+			}
+			
+			Math3D.MatrixMultiply4(localTransform, temp, result);
+			Math3D.MatrixCopy(result, temp);
+			
+			lastNode = lastNode.GetParent();
+		}
+		
+		Math3D.MatrixGetInverse4(temp, result);
 	}
 
 	//------------------------------------------------------------------------------------------------

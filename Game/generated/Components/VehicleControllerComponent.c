@@ -20,6 +20,18 @@ class VehicleControllerComponent: CompartmentControllerComponent
 	static proto EVehicleDrivingAssistanceMode GetDrivingAssistanceMode();
 	//! Sets the global driving assistance mode.
 	static proto void SetDrivingAssistanceMode(EVehicleDrivingAssistanceMode mode);
+	//! Returns the base of simulation component associated with this controller.
+	proto external VehicleBaseSimulation GetBaseSimulation();
+	//! Returns the fuel manager associated with this controller.
+	proto external FuelManagerComponent GetFuelManager();
+	//! Returns the light manager associated with this controller.
+	proto external BaseLightManagerComponent GetLightManager();
+	//! Returns the pilot compartment slot associated with this controller.
+	proto external PilotCompartmentSlot GetPilotCompartmentSlot();
+	//! Returns the signals manager associated with this controller.
+	proto external SignalsManagerComponent GetSignalsManager();
+	//! Returns the weapon manager associated with this controller.
+	proto external BaseWeaponManagerComponent GetWeaponManager();
 	//! Try to start the engine with the chance of getting the engine not started based on engine startup chance.
 	proto external void TryStartEngine();
 	/*!

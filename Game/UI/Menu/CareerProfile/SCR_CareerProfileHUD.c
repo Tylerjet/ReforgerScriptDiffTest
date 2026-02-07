@@ -61,15 +61,6 @@ class SCR_CareerProfileHUD: ScriptedWidgetComponent
 				if (characterLoadoutHandler)
 				{
 					ItemPreviewManagerEntity previewManager = characterLoadoutHandler.GetPreviewManagerEntity();
-					
-					if (!previewManager)
-					{
-						Resource res = Resource.Load(previewManagerResource);
-						if (res.IsValid())
-							GetGame().SpawnEntityPrefabLocal(res);
-						previewManager = GetGame().GetItemPreviewManager();
-					}
-					
 					ItemPreviewWidget previewWidget = characterLoadoutHandler.GetItemPreviewWidget();
 					
 					if (previewManager && previewWidget)

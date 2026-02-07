@@ -1,14 +1,14 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_EditableCharacterComponentClass: SCR_EditableEntityComponentClass
+class SCR_EditableCharacterComponentClass : SCR_EditableEntityComponentClass
 {
 	[Attribute(category: "Character", params: "et")]
 	private ResourceName m_PrefabGroup;
-	
+
 	ResourceName GetPrefabGroup()
 	{
 		return m_PrefabGroup;
 	}
-};
+}
 
 /** @ingroup Editable_Entities
 */
@@ -29,9 +29,11 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	[RplProp()]
 	protected bool m_bIsPlayerPending;
 
+	protected bool m_bShouldRecalculateDrawDistance;
+
 	//~ Authority only, Allows character to be forced into a specific vehicle position and will delete it if failed
 	protected ref array<ECompartmentType> m_aForceVehicleCompartments;
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetIsPlayerPending(int playerId)
 	{
@@ -58,7 +60,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	{
 		return m_Agent;
 	}
-	
+
 	/*!
 	Get event called when character is moved in the vehicle by GM and systems
 	Called only on server.
@@ -69,7 +71,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	{
 		return Event_OnCharacterMovedInVehicle;
 	}
-	
+
 	/*!
 	Create a new group and add the character to the group (Server only)
 	\return The created group
@@ -77,19 +79,19 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	SCR_EditableEntityComponent CreateGroupForCharacter()
 	{
 		if (!m_Agent) return null;
-		
+
 		GenericEntity owner = GetOwner();
 		if (!owner) return null;
 
 		//--- Create group
 		SCR_EditableCharacterComponentClass prefabData = SCR_EditableCharacterComponentClass.Cast(GetEditableEntityData());
 		if (!prefabData) return null;
-		
+
 		EntitySpawnParams params = new EntitySpawnParams();
 		params.Transform[3] = m_Agent.GetControlledEntity().GetOrigin();
 		IEntity groupEntity = GetGame().SpawnEntityPrefab(Resource.Load(prefabData.GetPrefabGroup()), owner.GetWorld(), params);
 		if (!groupEntity) return null;
-		
+
 		AIGroup group = AIGroup.Cast(groupEntity);
 		if (!group)
 		{
@@ -97,7 +99,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			delete groupEntity;
 			return null;
 		}
-				
+
 		SCR_EditableEntityComponent groupEditableEntity = SCR_EditableEntityComponent.GetEditableEntity(groupEntity);
 		if (!groupEditableEntity)
 		{
@@ -105,7 +107,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			delete groupEntity;
 			return null;
 		}
-		
+
 		//--- Set group's faction
 		SCR_AIGroup groupScripted = SCR_AIGroup.Cast(group);
 		if (groupScripted)
@@ -117,19 +119,19 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 				if (faction) groupScripted.InitFactionKey(faction.GetFactionKey());
 			}
 		}
-		
+
 		//--- Add the entity to the group
 		group.AddAgent(m_Agent);
-//		
+//
 		//group.SetWorldTransform(matrix);
-		
+
 		return groupEditableEntity;
 	}
 	protected bool IsPlayer(IEntity owner = null)
 	{
 		if (m_inDeadPlayerID != 0)
 			return true;
-		
+
 		if (owner)
 		{
 			return SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(owner) > 0;
@@ -143,50 +145,50 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			return m_Owner == SCR_PlayerController.GetLocalMainEntity();
 		}
 	}
-	
+
 	//~ Check if local player is owner of entity
 	protected bool IsLocalPlayerOwner()
 	{
 		//~ Not replicated so always owner
 		if (!IsReplicated())
 			return true;
-		
+
 		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		return !rplComp || rplComp.IsOwner();
 	}
-	
+
 	/*!
 	Check if character is Player or Possessed by a player
 	\return true if controlled by player
 	*/
-	bool IsPlayerOrPossesed() 
+	bool IsPlayerOrPossesed()
 	{
 		return !m_AgentControlComponent || !m_AgentControlComponent.IsAIActivated();
 	}
-	
+
 	protected void OnDestroyed(IEntity owner)
 	{
 		//--- Cache player's ID upon death, so we can access it later
 		m_inDeadPlayerID = SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(GetOwner());
-		
+
 		m_OnUIRefresh.Invoke();
 	}
-	
+
 	override bool Delete(bool changedByUser = false, bool updateNavmesh = true)
 	{
 		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
 		if (compartmentAccess)
 		{
-		
+
 			BaseCompartmentSlot slot = compartmentAccess.GetCompartment();
 			if (slot)
 				slot.SetCompartmentAccessible(true);
-			
+
 		}
-		
+
 		return super.Delete(updateNavmesh);
 	}
-	
+
 	/*!
 	Called by SCR_EditableGroupComponent when faction is changed
 	*/
@@ -199,40 +201,40 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	{
 		if (!parentEntity)
 			return true;
-		
+
 		EEditableEntityType type = parentEntity.GetEntityType();
-		return type == EEditableEntityType.GROUP || type == EEditableEntityType.CHARACTER || type == EEditableEntityType.VEHICLE;             
+		return type == EEditableEntityType.GROUP || type == EEditableEntityType.CHARACTER || type == EEditableEntityType.VEHICLE;
 	}
 	*/
-	
+
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected override void SetTransformOwner(vector transform[4])
 	{
 		super.SetTransformOwner(transform);
-		
+
 		PlayerTeleportedFeedback(false);
 	}
-	
+
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void PlayerTeleportedFeedback(bool isLongFade)
 	{
 		if (!m_Owner)
 			return;
-		
+
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (!playerController)
 			return;
-		
+
 		if (m_Owner != playerController.GetLocalControlledEntity())
-       		return;
-	
+			return;
+
 		SCR_PlayerTeleportedFeedbackComponent playerTeleportedComponent = SCR_PlayerTeleportedFeedbackComponent.Cast(playerController.FindComponent(SCR_PlayerTeleportedFeedbackComponent));
 		if (!playerTeleportedComponent)
 			return;
-		
+
 		playerTeleportedComponent.PlayerTeleported(GetOwner(), isLongFade, SCR_EPlayerTeleportedReason.EDITOR);
 	}
-	
+
 	/*!
 	Called when character was moved by Parent (aka when in vehicle)
 	Checks if player controlled and if Owned by local player. If true shows feedback
@@ -243,18 +245,38 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			Rpc(PlayerTeleportedFeedback, isLongFade);
 	}
 	
+	//--- #HACK - when the game is paused, unpause it to ensure that the character is moved in/out of a compartment, which is an operation that needs simulation to be running
+	protected void UpdateCompartment(IEntity newParent)
+	{
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world.IsGameTimePaused())
+		{
+			world.PauseGameTime(false);
+			GetGame().GetCallqueue().CallLater(WaitForCompartmentUpdate, 1, true, newParent);
+		}
+	}
+	protected void WaitForCompartmentUpdate(IEntity newParent)
+	{
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world.IsGameTimePaused() || !GetOwner() || CompartmentAccessComponent.GetVehicleIn(GetOwner()) == newParent)
+		{
+			world.PauseGameTime(true);
+			GetGame().GetCallqueue().Remove(WaitForCompartmentUpdate);
+		}
+	}
+
 	override SCR_EditableEntityComponent SetParentEntity(SCR_EditableEntityComponent parentEntity, bool changedByUser = false)
 	{
 		//--- When moving to root or non-AI-compatible layer, create a group for the character in that layer
 		if (changedByUser && IsServer() && !GetOwner().IsDeleted() && !IsDestroyed())
-		{			
+		{
 			AIControlComponent aiControl = AIControlComponent.Cast(GetOwner().FindComponent(AIControlComponent));
-			if (aiControl && aiControl.IsAIActivated()) 
+			if (aiControl && aiControl.IsAIActivated())
 			{
 				EEditableEntityType parentType = EEditableEntityType.GENERIC;
 				if (parentEntity)
 					parentType = parentEntity.GetEntityType();
-				
+
 				if (parentType == EEditableEntityType.GENERIC)
 				{
 					SCR_EditableEntityComponent parentEntityPrev = parentEntity;
@@ -264,27 +286,27 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 				}
 			}
 		}
-		
+
 		return super.SetParentEntity(parentEntity);
 	}
-	
+
 	//~ Authority Only. When spawned will force characters into vehicle position
 	override void ForceVehicleCompartments(notnull array<ECompartmentType> forceVehicleCompartments)
 	{
 		if (forceVehicleCompartments.IsEmpty())
 			return;
-		
+
 		m_aForceVehicleCompartments = {};
-		
-		foreach (ECompartmentType compartment: forceVehicleCompartments)
+
+		foreach (ECompartmentType compartment : forceVehicleCompartments)
 			m_aForceVehicleCompartments.Insert(compartment);
 	}
-	
+
 	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser)
-	{					
+	{
 		EEditableEntityType parentType;
 		if (parentEntity) parentType = parentEntity.GetEntityType();
-		
+
 		switch (parentType)
 		{
 			case EEditableEntityType.VEHICLE:
@@ -292,7 +314,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 				//~ Checks if called for owner and is Player or possessed. Show teleport feedback
 				if (IsPlayerOrPossesed() && IsLocalPlayerOwner())
 					PlayerTeleportedFeedback(true);
-				
+
 				//--- Execute on server, MoveInVehicle handles distribution to clients
 				if (Replication.IsServer())
 				{
@@ -304,69 +326,75 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 						Event_OnCharacterMovedInVehicle.Invoke(this, null);
 						break;
 					};
-					
+
 					SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
 					if (compartmentAccess)
 					{
 						GenericEntity parentOwner = parentEntity.GetOwner();
 						bool isAi = !IsPlayerOrPossesed();
-						
+
 						//Add vehicle to group
 						if (isAi)
 							AddUsableVehicle(parentOwner);
-						
+
 						//~ Try placing character into vehicle
 						if (!m_aForceVehicleCompartments || m_aForceVehicleCompartments.IsEmpty())
 						{
 							//~ Try to add character to any free vehicle slot
-							if (!isAi && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Pilot)) 
+							if (!isAi && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Pilot))
 							{
+								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
 								break;
 							}
-							if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Turret)) 
+							if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Turret))
 							{
+								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
 								break;
 							}
 							if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Cargo))
 							{
+								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
 								break;
 							}
 						}
-						
+
 						//~ Force character into vehicle. Will delete the character if it fails to find a valid empty compartment
-						else 
+						else
 						{
-							if (m_aForceVehicleCompartments.Contains(ECompartmentType.Pilot) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Pilot)) 
+							if (m_aForceVehicleCompartments.Contains(ECompartmentType.Pilot) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Pilot))
 							{
+								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
 								break;
 							}
-							if (m_aForceVehicleCompartments.Contains(ECompartmentType.Turret) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Turret)) 
+							if (m_aForceVehicleCompartments.Contains(ECompartmentType.Turret) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Turret))
 							{
+								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
 								break;
 							}
 							if (m_aForceVehicleCompartments.Contains(ECompartmentType.Cargo) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Cargo))
 							{
+								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
 								break;
 							}
-							
+
 							//~ Failed to move in vehicle means delete character
 							Event_OnCharacterMovedInVehicle.Invoke(this, null);
-							
+
 							//~ Delete the next frame so entity is correctly initialized and delete is valid
 							GetGame().GetCallqueue().CallLater(Delete, param1: false, param2: true);
 						}
-						
+
 						//~ Failed to move in vehicle
 						Event_OnCharacterMovedInVehicle.Invoke(this, null);
 					}
 				}
-				
+
 				break;
 			}
 			case EEditableEntityType.GROUP:
@@ -385,7 +413,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 				super.OnParentEntityChanged(null, parentEntityPrev, changedByUser);
 			}
 		}
-		
+
 		if (m_aForceVehicleCompartments)
 			m_aForceVehicleCompartments = null;
 
@@ -394,7 +422,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		//SetParentEntity(newGroup);
 	}
 	override void SetTransform(vector transform[4], bool changedByUser = false)
-	{		
+	{
 		//--- Move out of a vehicle
 		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(GetOwner().FindComponent(CompartmentAccessComponent));
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
@@ -403,23 +431,25 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			//Unregister from vehicle on next frame (checks with delay as all characters might be dragged out at the same time and it would think the vehicle is still occupied)
 			if (IsServer())
 				GetGame().GetCallqueue().CallLater(RemoveUsableVehicle, 100, false, GetVehicle().GetOwner(), true);
-			
+
 			//~ If moved out vehicle by GM. Check if player or possessed. If true send teleport feedback request
 			if (changedByUser && IsPlayerOrPossesed())
 				Rpc(PlayerTeleportedFeedback, false);
-			
+
 			compartmentAccess.MoveOutVehicle(-1, transform);
 			
+			UpdateCompartment(null);
+
 			return;
 		}
-		
+
 		//--- Make sure characters don't fall through ground
 		transform[3][1] = Math.Max(transform[3][1], GetOwner().GetWorld().GetSurfaceY(transform[3][0], transform[3][2]));
-		
+
 		super.SetTransform(transform, changedByUser);
-	}	
+	}
 	override int GetPlayerID()
-	{		
+	{
 		if (IsDestroyed())
 			return m_inDeadPlayerID;
 		else
@@ -430,7 +460,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		//--- Destroyed entities have no faction
 		if (IsDestroyed())
 			return null;
-		
+
 		//--- Get player faction
 		int playerID = GetPlayerID();
 		if (playerID > 0)
@@ -443,7 +473,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 					return faction;
 			}
 		}
-		
+
 		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(m_Owner.FindComponent(FactionAffiliationComponent));
 		if (factionAffiliation)
 			return factionAffiliation.GetAffiliatedFaction();
@@ -471,22 +501,22 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			return null;
 	}
 	override int GetCrew(out notnull array<CompartmentAccessComponent> crewCompartmentAccess, bool ignorePlayers = true)
-	{		
+	{
 		//Ignore player
 		if (ignorePlayers)
 		{
 			if (GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(GetOwner()) > 0)
 				return 0;
 		}
-		
+
 		//Check if is in vehicle
 		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(GetOwner().FindComponent(CompartmentAccessComponent));
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
 			crewCompartmentAccess.Insert(compartmentAccess);
-		
+
 		return crewCompartmentAccess.Count();
 	}
-	
+
 	/*!
 	Add useable vehicle to group which registers the vehicle to the group. Call on server.
 	\param vehicle IEntity vehicle
@@ -495,81 +525,81 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	{
 		if (IsPlayer() || !GetAIGroup())
 			return;
-		
+
 		SCR_EditableGroupComponent group = SCR_EditableGroupComponent.Cast(GetAIGroup());
-		
+
 		if (!group)
 			return;
-		
+
 		SCR_AIGroup aiGroup = group.GetAIGroupComponent();
 		if (!aiGroup)
 			return;
-		
+
 		array<IEntity> usableVehicles = new array<IEntity>;
 		aiGroup.GetUsableVehicles(usableVehicles);
-		
+
 		if (!usableVehicles.Contains(vehicle))
 		{
 			aiGroup.AddUsableVehicle(vehicle);
 		}
 	}
-	
+
 	/*!
 	Remove useable vehicle from group which unregisters the vehicle from the group. Call on server.
-	NOTE: If All characters of a group are told to exit the vehicle at the same time and checkIfVehicleStillUsed  is true, then the function will think the vehicle is still in use by the group!
+	NOTE: If All characters of a group are told to exit the vehicle at the same time and checkIfVehicleStillUsed is true, then the function will think the vehicle is still in use by the group!
 	\param vehicle IEntity vehicle
 	*/
 	void RemoveUsableVehicle(IEntity vehicle, bool checkIfVehicleStillUsed = true)
 	{
 		if (IsPlayer() || !GetAIGroup())
 			return;
-		
+
 		SCR_EditableGroupComponent group = SCR_EditableGroupComponent.Cast(GetAIGroup());
-		
+
 		if (!group)
 			return;
-		
+
 		SCR_AIGroup aiGroup = group.GetAIGroupComponent();
 		if (!aiGroup)
 			return;
-		
+
 		array<IEntity> usableVehicles = new array<IEntity>;
-		
+
 		//Check if vehicle is used by group
 		aiGroup.GetUsableVehicles(usableVehicles);
 		if (!usableVehicles.Contains(vehicle))
 			return;
-		
+
 		if (checkIfVehicleStillUsed)
 		{
 			set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>;
 			group.GetChildren(entities, true);
-			
+
 			SCR_EditableVehicleComponent editableVehicle = SCR_EditableVehicleComponent.Cast(vehicle.FindComponent(SCR_EditableVehicleComponent));
 			if (editableVehicle)
 			{
 				SCR_EditableEntityComponent crew;
 				array<CompartmentAccessComponent> crewCompartmentAccess = new array<CompartmentAccessComponent>;
 				editableVehicle.GetCrew(crewCompartmentAccess, true);
-				
-				foreach (CompartmentAccessComponent compartment: crewCompartmentAccess)
+
+				foreach (CompartmentAccessComponent compartment : crewCompartmentAccess)
 				{
 					crew = SCR_EditableEntityComponent.Cast(compartment.GetOwner().FindComponent(SCR_EditableEntityComponent));
 
 					if (crew == null || crew == this)
-						continue;						
-					
+						continue;
+
 					//Vehicle is still used by group
 					if (entities.Contains(crew) && !compartment.IsGettingOut())
 						return;
 				}
 			}
 		}
-		
+
 		//Remove vehicle
 		aiGroup.RemoveUsableVehicle(vehicle);
 	}
-	
+
 	/*!
 	Remove all useable vehicle from group which unregisters all vehicles from the group. Call on server.
 	*/
@@ -577,23 +607,31 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	{
 		if (IsPlayer() || !GetAIGroup())
 			return;
-		
+
 		array<IEntity> usableVehicles = new array<IEntity>;
 		m_Group.GetUsableVehicles(usableVehicles);
-		
-		foreach (IEntity vehicle: usableVehicles)
+
+		foreach (IEntity vehicle : usableVehicles)
 			m_Group.RemoveUsableVehicle(vehicle);
 	}*/
-	
+
 	override float GetMaxDrawDistanceSq()
 	{
 		if (HasEntityState(EEditableEntityState.PLAYER))
 		{
-			if (m_fPlayerDrawDistance == 0)
+			if (m_bShouldRecalculateDrawDistance || m_fPlayerDrawDistance == 0)
 			{
 				SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
-				m_fPlayerDrawDistance = core.GetPlayerDrawDistanceSq();
+
+				SCR_EditableEntityComponent vehicle = GetVehicle();
+				int playerId = GetPlayerID();
+
+				bool isPlayerInVehicle = vehicle && playerId > 0;
+				m_fPlayerDrawDistance = core.GetPlayerDrawDistanceSq(isPlayerInVehicle);
+
+				m_bShouldRecalculateDrawDistance = false;
 			}
+
 			return m_fPlayerDrawDistance;
 		}
 		else
@@ -601,19 +639,30 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			return m_fMaxDrawDistance;
 		}
 	}
+
+	void OnPlayerCharacterEnterCompartment(IEntity compartmentEntity)
+	{
+		m_bShouldRecalculateDrawDistance = true;
+	}
+
+	void OnPlayerCharacterExitCompartment(IEntity compartmentEntity)
+	{
+		m_bShouldRecalculateDrawDistance = true;
+	}
+
 	override SCR_EditableEntityComponent EOnEditorPlace(out SCR_EditableEntityComponent parent, SCR_EditableEntityComponent recipient, EEditorPlacingFlags flags, bool isQueue)
 	{
 		GenericEntity owner = GetOwner();
-		
+
 		//--- Entity is a player, don't activate AI
 		if (flags & EEditorPlacingFlags.CHARACTER_PLAYER)
 			return this;
-		
+
 		//--- Activate AI
 		m_AgentControlComponent = AIControlComponent.Cast(owner.FindComponent(AIControlComponent));
 		if (m_AgentControlComponent)
 			m_AgentControlComponent.ActivateAI();
-		
+
 		if (parent && AIGroup.Cast(parent.GetOwner()))
 		{
 			//--- Creating inside of a group - add character to it
@@ -636,14 +685,18 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		if (control)
 			control.ActivateAI();
 	}
-	override bool Serialize(out SCR_EditableEntityComponent target = null, out int targetIndex = -1, out bool isDestroyed = false)
+	override bool Serialize(out SCR_EditableEntityComponent outTarget = null, out int outTargetIndex = -1, out EEditableEntitySaveFlag outSaveFlags = 0)
 	{
-		if (super.Serialize(target, targetIndex, isDestroyed) && !IsPlayer())
+		//--- Save SP player
+		if (!Replication.IsRunning() && IsPlayer())
+			outSaveFlags |= EEditableEntitySaveFlag.PLAYER;
+			
+		if (super.Serialize(outTarget, outTargetIndex, outSaveFlags))
 		{
 			SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
 			if (compartmentAccess)
-				target = SCR_EditableEntityComponent.GetEditableEntity(compartmentAccess.GetVehicle(targetIndex));
-			
+				outTarget = SCR_EditableEntityComponent.GetEditableEntity(compartmentAccess.GetVehicle(outTargetIndex));
+
 			return true;
 		}
 		else
@@ -655,25 +708,25 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	{
 		if (!target)
 			return;
-			
+
 		BaseCompartmentManagerComponent compartmentManager = BaseCompartmentManagerComponent.Cast(target.GetOwner().FindComponent(BaseCompartmentManagerComponent));
 		array<BaseCompartmentSlot> compartments = {};
 		compartmentManager.GetCompartments(compartments);
-		
-		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));	
+
+		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
 		compartmentAccess.MoveInVehicle(target.GetOwner(), compartments[targetValue]);
 	}
-	
+
 	override void OnPostInit(IEntity owner)
 	{
 		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_DISABLE))
 			return;
-		
+
 		super.OnPostInit(owner);
-		
+
 		if (SCR_Global.IsEditMode(owner))
 			return;
-		
+
 		if (Replication.IsServer())
 		{
 			if (GetEntityType() != EEditableEntityType.CHARACTER)
@@ -681,14 +734,14 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 				Print(string.Format("SCR_EditableCharacterComponent must have type set to CHARACTER, it's %1!", typename.EnumToString(EEditableEntityType, GetEntityType())), LogLevel.ERROR);
 				return;
 			}
-			
+
 			m_AgentControlComponent = AIControlComponent.Cast(m_Owner.FindComponent(AIControlComponent));
 			if (m_AgentControlComponent)
 				m_Agent = m_AgentControlComponent.GetControlAIAgent();
 		}
-		
+
 		EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(owner.FindComponent(EventHandlerManagerComponent));
 		if (eventHandlerManager)
 			eventHandlerManager.RegisterScriptHandler("OnDestroyed", owner, OnDestroyed);
 	}
-};
+}

@@ -87,6 +87,13 @@ class SCR_AIThreatSystem
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Sum of all threats without the effect of injuries - used for deciding to patch oneself
+	float GetThreatMeasureWithoutInjuryFactor()
+	{
+		return m_fThreatTotal - m_fThreatInjury;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	float GetThreatMeasure()
 	{
 		return m_fThreatTotal;

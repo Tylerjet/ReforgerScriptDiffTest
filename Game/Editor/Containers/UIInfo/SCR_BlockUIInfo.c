@@ -26,6 +26,36 @@ class SCR_BlockUIInfo: SCR_UIInfo
 		}
 		return description;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get Name of selected description block without formatting (raw).
+	\param Int - index of Item in Description Block array
+	\return Unformatted Name set in selected Description block. - Empty if index out of bounce.
+	*/
+	LocalizedString GetUnformattedDescriptionBlockName(int index)
+	{
+		if (index > m_aDescriptionBlocks.Count())
+			return string.Empty;
+		
+		return m_aDescriptionBlocks[index].Name;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Changes the Name (text) of selected Description Block.
+	Call SCR_HintManagerComponent.Refresh() to update shown hint to display changed text.
+	\param Int - index of Item in Description Block array
+	\param LocalizedString - string that is going to be inserted in the Name. (Needs to be Localized)
+	*/
+	void SetDescriptionBlockName(int index, LocalizedString text)
+	{
+		if (index > m_aDescriptionBlocks.Count())
+			return;
+
+		Name = text;
+	}
+	
 };
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_SubBlockUIName: SCR_UIName
@@ -43,7 +73,7 @@ class SCR_BulletPointBlockUIName: SCR_SubBlockUIName
 {	
 	override LocalizedString GetName()
 	{
-		return "<image set='{73BAE6966DBC17CB}UI/Imagesets/Hint/Hint.imageset' name='Bullet' scale='1'/>" + super.GetName(); //--- ToDo: Don't hard-code
+		return "<image set='{73BAE6966DBC17CB}UI/Imagesets/Hint/Hint.imageset' name='Bullet' scale='1'/>" + " " + super.GetName(); //--- ToDo: Don't hard-code
 	}
 };
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
@@ -51,7 +81,7 @@ class SCR_TipBlockUIName: SCR_SubBlockUIName
 {
 	override LocalizedString GetName()
 	{
-		return "<color rgba='255,255,255,160'><image set='{73BAE6966DBC17CB}UI/Imagesets/Hint/Hint.imageset' name='Tip' scale='1'/> <i>" + super.GetName() + "</i></color>"; //--- ToDo: Don't hard-code
+		return "<color rgba='255,255,255,160'><image set='{73BAE6966DBC17CB}UI/Imagesets/Hint/Hint.imageset' name='Tip' scale='1'/>" + " " + super.GetName() + "</color>"; //--- ToDo: Don't hard-code
 	}
 };
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
@@ -77,23 +107,14 @@ class SCR_ActionBlockUIName: SCR_DeviceBlockUIName
 	[Attribute()]
 	protected string m_sActionName;
 	
-	protected const string m_sDelimiter = " - ";
+	protected const string m_sDelimiter = "<br/>";
 	
 	override LocalizedString GetName()
 	{
 		//--- ToDo: Turn color conversion to general function
-		Color sRGBA = new Color(UIColors.CONTRAST_COLOR.R(), UIColors.CONTRAST_COLOR.G(), UIColors.CONTRAST_COLOR.B(), UIColors.CONTRAST_COLOR.A());
-		
-		//--- Convert to sRGBA format for rich text
-		sRGBA.LinearToSRGB();
-		
-		//--- Convert to ints, no fractions allowed in rich text
-		int colorR = sRGBA.R() * 255;
-		int colorG = sRGBA.G() * 255;
-		int colorB = sRGBA.B() * 255;
-		int colorA = sRGBA.A() * 255;
-		
-		return string.Format("<color rgba='%2,%3,%4,%5'><action name='%1' scale='1'/></color>", m_sActionName, colorR, colorG, colorB, colorA) + m_sDelimiter + super.GetName();
+		Color sRGBA = UIColors.CONTRAST_COLOR;	
+
+		return m_sDelimiter + super.GetName() + "<br/><br/>" + string.Format("<color rgba=%2><action name='%1' scale='1.7'/></color>", m_sActionName, UIColors.SRGBAFloatToInt(sRGBA)) + "</br>";
 	}
 };
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
@@ -106,21 +127,12 @@ class SCR_KeyBlockUIName: SCR_DeviceBlockUIName
 	protected const LocalizedString m_sDoubleModifier = "#ENF-DoubleModifier";
 	protected const LocalizedString m_sComboModifier = "#ENF-ComboModifier";
 	protected const LocalizedString m_sEllipsisModifier = "..."; //--- ToDo: Localize
-	protected const LocalizedString m_sDelimiter = " - "; //--- ToDo: Localize
+	protected const LocalizedString m_sDelimiter = "<br/>"; //--- ToDo: Localize
 	
 	override LocalizedString GetName()
 	{
 		//--- ToDo: Turn color conversion to general function
-		Color sRGBA = new Color(UIColors.CONTRAST_COLOR.R(), UIColors.CONTRAST_COLOR.G(), UIColors.CONTRAST_COLOR.B(), UIColors.CONTRAST_COLOR.A());
-		
-		//--- Convert to sRGBA format for rich text
-		sRGBA.LinearToSRGB();
-		
-		//--- Convert to ints, no fractions allowed in rich text
-		int colorR = sRGBA.R() * 255;
-		int colorG = sRGBA.G() * 255;
-		int colorB = sRGBA.B() * 255;
-		int colorA = sRGBA.A() * 255;
+		Color sRGBA = UIColors.CONTRAST_COLOR;
 		
 		LocalizedString keys;
 		foreach (int i, SCR_KeyBlockEntry entry: m_aKeys)
@@ -139,9 +151,9 @@ class SCR_KeyBlockUIName: SCR_DeviceBlockUIName
 				case 1: keys += m_sHoldModifier; break;
 				case 2: keys += m_sDoubleModifier; break;
 			}
-			keys += string.Format("<%2 name='%1' scale='1.25'/>", entry.m_sKey, entry.m_Tag);
+			keys += string.Format("<%2 name='%1' scale='1.7'/>", entry.m_sKey, entry.m_Tag);
 		}
-		return string.Format("<color rgba='%2,%3,%4,%5'>%1</color>", keys, colorR, colorG, colorB, colorA) + m_sDelimiter + super.GetName();
+		return m_sDelimiter + super.GetName() + "<br/>" + string.Format("<color rgba='%2'>%1</color>", keys, UIColors.SRGBAFloatToInt(sRGBA)) + "</br>";	
 	}
 };
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("m_sKey")]
@@ -191,6 +203,36 @@ class SCR_SimpleTagBlockUIName: SCR_SubBlockUIName
 		return super.IsInline() || m_iTags & 1; //--- <p> is always inline, we don't want extra <br/> there
 	}
 };
+
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
+class SCR_ImageBlockUIName: SCR_SubBlockUIName
+{
+	[Attribute(params: "imageset", uiwidget: UIWidgets.ResourcePickerThumbnail)]
+	protected ResourceName m_sImageSet;
+	
+	[Attribute(desc: "This defines name of the image in the set.")]
+	protected string m_sImage;
+	
+	[Attribute(desc: "Defines the scale of the Icon.", defvalue: "1")]
+	protected float m_fScale;
+	
+	[Attribute(defvalue: "1 1 1 1")]
+	protected ref Color m_fColor;
+
+	override LocalizedString GetName()
+	{
+		LocalizedString text;
+
+		if (m_sImage == string.Empty)
+		{
+			Print("HINT SYSTEM: No Icon name defined! Check 'Image'!", LogLevel.WARNING);
+			return "";
+		}
+		
+		return "</br>" + string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.SRGBAFloatToInt(m_fColor), m_sImageSet, m_sImage, m_fScale) + "</br>";
+	}
+};
+
 /*
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_TagBlockUIName: SCR_SubBlockUIName

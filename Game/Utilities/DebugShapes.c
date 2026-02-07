@@ -2,7 +2,7 @@
 *	This file contains additional debug shape functions
 *************************************************************************************/
 
-//-----------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------
 // Visualizes a bone in an entity with axial lines
 void ShowBoneDebug(IEntity ent, int bone, float scale)
 {
@@ -11,7 +11,7 @@ void ShowBoneDebug(IEntity ent, int bone, float scale)
 	{
 		vector mat[4];
 		ent.GetTransform(mat);
-		
+
 		vector pBase = boneMat[3];
 		vector p0 = boneMat[0] * scale + boneMat[3];
 		vector p1 = boneMat[1] * scale + boneMat[3];
@@ -24,16 +24,16 @@ void ShowBoneDebug(IEntity ent, int bone, float scale)
 		Shape.Create(ShapeType.LINE, ARGB(255, 0, 255, 0), ShapeFlags.ONCE|ShapeFlags.NOZBUFFER, pBase, p1);
 		Shape.Create(ShapeType.LINE, ARGB(255, 0, 0, 255), ShapeFlags.ONCE|ShapeFlags.NOZBUFFER, pBase, p2);
 	}
-};
+}
 
-//-----------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------
 Shape CreateCone(vector pos, vector aroundDir, float coneAngX, float coneAngY, float coneLength, int color, int subdivisions, ShapeFlags flags)
 {
 	if (subdivisions < 2)
 		subdivisions = 2;
 	if (subdivisions > 50)
 		subdivisions = 50;
-	
+
 	vector rt = "1 0 0";
 	if (rt == aroundDir)
 		rt = "0 1 0";
@@ -41,15 +41,15 @@ Shape CreateCone(vector pos, vector aroundDir, float coneAngX, float coneAngY, f
 	fw.Normalize();
 	rt = aroundDir * fw;
 	rt.Normalize();
-	
+
 	vector mat[3];
 	mat[0] = rt;
 	mat[1] = aroundDir;
 	mat[2] = fw;
-	
+
 	float sectionDeg = 360 / subdivisions;
 	subdivisions++;
-	
+
 	vector pts[200];
 	int curPts = 0;
 	for (int i = 0; i < subdivisions; i++)
@@ -58,10 +58,10 @@ Shape CreateCone(vector pos, vector aroundDir, float coneAngX, float coneAngY, f
 		xValue *= xValue;
 		float yValue = Math.Cos(sectionDeg * i * Math.DEG2RAD);
 		yValue *= yValue;
-		
+
 		float lineAng = Math.AbsFloat(xValue * coneAngX);
 		lineAng += Math.AbsFloat(yValue * coneAngY);
-		
+
 		vector pt = Vector(0, 0, coneLength);
 		vector rotMat[3];
 		Math3D.AnglesToMatrix(Vector(sectionDeg * i, 90 - lineAng, 0), rotMat);
@@ -75,18 +75,18 @@ Shape CreateCone(vector pos, vector aroundDir, float coneAngX, float coneAngY, f
 		curPts++;
 	}
 	pts[curPts] = pts[0];
-	
-	return Shape.CreateLines(color, flags, pts, curPts);
-};
 
-//-----------------------------------------------------------------------------------------------------------
+	return Shape.CreateLines(color, flags, pts, curPts);
+}
+
+//------------------------------------------------------------------------------------------------
 Shape CreateCircle(vector pos, vector aroundDir, float radius, int color, int subdivisions, ShapeFlags flags)
 {
 	if (subdivisions < 2)
 		subdivisions = 2;
 	if (subdivisions > 50)
 		subdivisions = 50;
-	
+
 	vector rt = "1 0 0";
 	if (rt == aroundDir)
 		rt = "0 1 0";
@@ -94,15 +94,15 @@ Shape CreateCircle(vector pos, vector aroundDir, float radius, int color, int su
 	fw.Normalize();
 	rt = aroundDir * fw;
 	rt.Normalize();
-	
+
 	vector mat[3];
 	mat[0] = rt;
 	mat[1] = aroundDir;
 	mat[2] = fw;
-	
+
 	float sectionDeg = 360 / subdivisions;
 	subdivisions++;
-	
+
 	vector pts[51];
 	for (int i = 0; i < subdivisions; i++)
 	{
@@ -111,11 +111,57 @@ Shape CreateCircle(vector pos, vector aroundDir, float radius, int color, int su
 		pts[i] = pt + pos;
 	}
 	pts[subdivisions - 1] = pts[0];
-	
-	return Shape.CreateLines(color, flags, pts, subdivisions);
-};
 
-//-----------------------------------------------------------------------------------------------------------
+	return Shape.CreateLines(color, flags, pts, subdivisions);
+}
+
+//------------------------------------------------------------------------------------------------
+Shape CreateCircleArc(vector pos, vector aroundDir, vector forwardDir, float angMin, float angMax, float radius, int color, int subdivisions, ShapeFlags flags)
+{
+	if (subdivisions < 2)
+		subdivisions = 2;
+
+	if (subdivisions > 50)
+		subdivisions = 50;
+
+	if (angMin > angMax)
+	{
+		float angTmp = angMin;
+		angMin = angMax;
+		angMax = angTmp;
+	}
+
+	if (angMin > 360 || angMax > 360)
+		return CreateCircle(pos, aroundDir, radius, color, subdivisions, flags);
+
+	vector rt = aroundDir * forwardDir;
+	rt.Normalize();
+
+	vector mat[3];
+	mat[0] = rt;
+	mat[1] = aroundDir;
+	mat[2] = forwardDir;
+
+	float sectionDeg = Math.AbsFloat(angMax - angMin) / subdivisions;
+
+	subdivisions++;
+
+	vector pts[51];
+	for (int i = 0; i < subdivisions; i++)
+	{
+		vector pt = vector.FromYaw(sectionDeg * i + angMin) * radius;
+		pt = pt.Multiply3(mat);
+		pts[i] = pos + pt;
+	}
+
+	return Shape.CreateLines(color, flags, pts, subdivisions);
+}
+
+//------------------------------------------------------------------------------------------------
+//! if angMin > angMax, a full circle will be drawn - use forwardDir to draw e.g 350deg-10deg arc
+//! \param angMin min angle in degrees
+//! \param angMax max angle in degrees
+//! \param radius in metres
 Shape CreateCircleSlice(vector pos, vector aroundDir, vector forwardDir, float angMin, float angMax, float radius, int color, int subdivisions, ShapeFlags flags)
 {
 	if (subdivisions < 2)
@@ -124,19 +170,19 @@ Shape CreateCircleSlice(vector pos, vector aroundDir, vector forwardDir, float a
 		subdivisions = 50;
 	if (angMin > angMax) // Min greater than max, do full circle
 		return CreateCircle(pos, aroundDir, radius, color, subdivisions, flags);
-	
+
 	subdivisions++;
-	
+
 	vector rt = aroundDir * forwardDir;
 	rt.Normalize();
-	
+
 	vector mat[3];
 	mat[0] = rt;
 	mat[1] = aroundDir;
 	mat[2] = forwardDir;
-	
+
 	float sectionDeg = Math.AbsFloat(angMax - angMin) / (subdivisions - 1);
-	
+
 	vector pts[53];
 	for (int i = 0; i < subdivisions; i++)
 	{
@@ -148,45 +194,45 @@ Shape CreateCircleSlice(vector pos, vector aroundDir, vector forwardDir, float a
 	subdivisions += 2;
 	pts[0] = pos;
 	pts[subdivisions - 1] = pos;
-	
-	return Shape.CreateLines(color, flags, pts, subdivisions);
-};
 
-//-----------------------------------------------------------------------------------------------------------
+	return Shape.CreateLines(color, flags, pts, subdivisions);
+}
+
+//------------------------------------------------------------------------------------------------
 void CreateArrowLinkLines(vector from, vector to, vector faceDir, float size, int numArrows, int color, ShapeFlags flags)
 {
 	if (numArrows == 0)
 		return;
-	
+
 	vector fw = to - from;
 	fw.Normalize();
 	vector rt = faceDir * fw;
 	rt.Normalize();
 	vector up = fw * rt;
 	up.Normalize();
-	
+
 	vector scaledMat[3];
 	scaledMat[0] = rt;
 	scaledMat[1] = up;
 	scaledMat[2] = fw;
-	
+
 	Shape shp;
-	
+
 	vector pts[3];
-	
+
 	float distInc = vector.Distance(from, to) / numArrows;
 	for (int i = 0; i < numArrows; i++)
 	{
-		
+
 		vector pos = fw * (distInc * i) + from;
 		pts[0] = Vector(-1, 0, 0).Multiply3(scaledMat) * size + pos;
 		pts[1] = Vector(0, 0, 0.5).Multiply3(scaledMat) * size + pos;
 		pts[2] = Vector(1, 0, 0).Multiply3(scaledMat) * size + pos;
 		shp = Shape.CreateLines(color, flags, pts, 3);
 	}
-};
+}
 
-//-----------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------
 void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFlags flags, array<ref Shape> output = null, float scaleWidth = 1, bool doBackground = false, int backgroundColor = 0x80000000)
 {
 	vector scaledMat[4];
@@ -194,13 +240,13 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 	scaledMat[1] = mat[1] * size;
 	scaledMat[2] = mat[2];
 	scaledMat[3] = mat[3];
-	
+
 	vector pts[14];
-	
+
 	int numLetters = text.Length();
 	float offsetStartLeft = numLetters * -0.5;
 	Shape shp;
-	
+
 	// Add background
 	if (doBackground)
 	{
@@ -209,27 +255,27 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 			bgFlags |= ShapeFlags.ONCE;
 		if (flags & ShapeFlags.NOZBUFFER)
 			bgFlags |= ShapeFlags.NOZBUFFER;
-		
+
 		shp = Shape.Create(ShapeType.BBOX, backgroundColor, bgFlags, Vector(offsetStartLeft - 0.25, -0.25, 0.01), Vector(-offsetStartLeft + 0.25, 1.25, 0.01));
 		shp.SetMatrix(scaledMat);
 		if (output)
 			output.Insert(shp);
 	}
-	
+
 	for (int i = 0; i < numLetters; i++)
 	{
 		float start = i + offsetStartLeft + 0.1;
 		string letter = text.Get(i);
 		string letterUpper = letter;
 		letterUpper.ToUpper();
-		
+
 		float caseScale;
 		if (letterUpper == letter) // Is upper case
 			caseScale = 1;
 		else
 			caseScale = 0.6;
-		
-		switch(letterUpper)
+
+		switch (letterUpper)
 		{
 			// Letters --------------------------------------------
 			case "A":
@@ -263,7 +309,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "C":
@@ -280,7 +326,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "D":
@@ -296,7 +342,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "E":
@@ -344,7 +390,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "H":
@@ -405,7 +451,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp = Shape.CreateLines(color, flags, pts, 7);
 				shp.SetMatrix(scaledMat);
 				if (output)
-					output.Insert(shp);				
+					output.Insert(shp);
 				break;
 			}
 			case "L":
@@ -417,7 +463,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "M":
@@ -431,7 +477,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "N":
@@ -444,7 +490,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "O":
@@ -462,7 +508,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "P":
@@ -479,7 +525,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "Q":
@@ -497,14 +543,14 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				pts[0] = Vector(start + 0.4, caseScale * 0.2, 0);
 				pts[1] = Vector(start + 0.6, 0, 0);
 				shp = Shape.CreateLines(color, flags, pts, 2);
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "R":
@@ -522,14 +568,14 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				pts[0] = Vector(start + 0.2, caseScale * 0.5, 0);
 				pts[1] = Vector(start + 0.5, 0, 0);
 				shp = Shape.CreateLines(color, flags, pts, 2);
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "S":
@@ -550,7 +596,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "T":
@@ -577,7 +623,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "V":
@@ -589,7 +635,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "W":
@@ -603,7 +649,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "X":
@@ -644,10 +690,10 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
-			
+
 			// Numbers --------------------------------------------
 			case "0":
 			{
@@ -665,7 +711,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "1":
@@ -693,7 +739,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "3":
@@ -708,7 +754,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				pts[0] = Vector(start + 0.4, 0.45, 0);
 				pts[1] = Vector(start + 0.5, 0.2, 0);
 				pts[2] = Vector(start + 0.4, 0, 0);
@@ -718,7 +764,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "4":
@@ -733,7 +779,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "5":
@@ -751,7 +797,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "6":
@@ -772,7 +818,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "7":
@@ -784,7 +830,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "8":
@@ -800,7 +846,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				pts[0] = Vector(start + 0.2, 0.5, 0);
 				pts[1] = Vector(start + 0.1, 0.3, 0);
 				pts[2] = Vector(start + 0.1, 0.2, 0);
@@ -813,7 +859,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "9":
@@ -836,10 +882,10 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
-			
+
 			// Special --------------------------------------------
 			case "_":
 			{
@@ -849,7 +895,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "-":
@@ -860,7 +906,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "+":
@@ -887,7 +933,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case ":":
@@ -901,7 +947,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				pts[0] = Vector(start + 0.3, 0.6, 0);
 				pts[1] = Vector(start + 0.3, 0.65, 0);
 				pts[2] = Vector(start + 0.25, 0.65, 0);
@@ -911,7 +957,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "!":
@@ -925,7 +971,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				pts[0] = Vector(start + 0.3, 0, 0);
 				pts[1] = Vector(start + 0.3, 0.05, 0);
 				pts[2] = Vector(start + 0.25, 0.05, 0);
@@ -935,7 +981,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case ",":
@@ -949,7 +995,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "'":
@@ -963,7 +1009,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "/":
@@ -974,7 +1020,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 			case "%":
@@ -985,7 +1031,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				pts[0] = Vector(start + 0.2, 0.5, 0);
 				pts[1] = Vector(start + 0.05, 0.7, 0);
 				pts[2] = Vector(start + 0.2, 0.9, 0);
@@ -995,7 +1041,7 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				pts[0] = Vector(start + 0.6, 0.1, 0);
 				pts[1] = Vector(start + 0.45, 0.3, 0);
 				pts[2] = Vector(start + 0.6, 0.5, 0);
@@ -1005,12 +1051,12 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 				shp.SetMatrix(scaledMat);
 				if (output)
 					output.Insert(shp);
-				
+
 				break;
 			}
 		}
 	}
-	
+
 	/*
 	vector pts[53];
 	for (int i = 0; i < subdivisions; i++)
@@ -1024,6 +1070,6 @@ void CreateSimpleText(string text, vector mat[4], float size, int color, ShapeFl
 	subdivisions += 2;
 	pts[0] = pos;
 	pts[subdivisions - 1] = pos;
-	
-	return Shape.CreateLines(color, flags, pts, subdivisions);*/
-};
+
+	return Shape.CreateLines(color, flags, pts, subdivisions); */
+}

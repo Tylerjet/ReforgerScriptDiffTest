@@ -15,7 +15,8 @@ class SCR_DaytimeCondition : SCR_AvailableActionCondition
 		if (!data)
 			return false;
 
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();	
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		if (!timeManager)
 			return false;
 

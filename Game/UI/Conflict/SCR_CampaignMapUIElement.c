@@ -20,6 +20,8 @@ class SCR_CampaignMapUIElement : SCR_MapUIElement
 	protected string m_sSupplyDepot;
 	[Attribute("VehicleDepot")]
 	protected string m_sVehicleDepot;
+	[Attribute("Heli_Pad")]
+	protected string m_sHelipad;
 	[Attribute("Unknown")]
 	protected string m_sFactionNeutral;
 	[Attribute("Relay")]

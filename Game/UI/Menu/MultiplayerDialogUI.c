@@ -100,6 +100,10 @@ class MultiplayerDialogUI: SCR_ConfigurableDialogUi //DialogUI
 		if (m_EditIP)
 		{
 			m_EditIP.m_OnChanged.Insert(CheckValidInput);
+			
+			Widget focus = m_EditIP.GetRootWidget();
+			if (focus)
+				GetGame().GetWorkspace().SetFocusedWidget(focus);
 		}
 		
 		// Port edit
@@ -139,7 +143,7 @@ class MultiplayerDialogUI: SCR_ConfigurableDialogUi //DialogUI
 		}
 
 		// Set the confirm button enabled or disabled
-		CheckValidInput(m_EditIP, string.Empty);																						   
+		CheckValidInput(m_EditIP, string.Empty);																				   
 	}
 	
 	//------------------------------------------------------------------------------------------------

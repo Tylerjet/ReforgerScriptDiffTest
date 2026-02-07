@@ -1,19 +1,20 @@
 //------------------------------------------------------------------------------------------------
 class ServerHostingUI : SCR_TabDialog
 {
-	protected static string DIALOG_TAG_SAVE_CONFIRM = "save_confirm";
-	protected static string DIALOG_TAG_SAVE_SUCCESS = "save_successful";
-	protected static string DIALOG_TAG_SAVE_FAIL = "save_failed";
-	protected static string DIALOG_TAG_SAVE_OVERRIDE = "save_override";
-	protected static string DIALOG_TAG_NO_CONNECTION = "no_connection";
+	protected static string DIALOG_TAG_SAVE_CONFIRM = 	"save_confirm";
+	protected static string DIALOG_TAG_SAVE_SUCCESS = 	"save_successful";
+	protected static string DIALOG_TAG_SAVE_FAIL = 		"save_failed";
+	protected static string DIALOG_TAG_SAVE_OVERRIDE = 	"save_override";
+	protected static string DIALOG_TAG_NO_CONNECTION = 	"no_connection";
 	
 	protected static string JSON_POSTFIX = ".json";
 	
-	protected static string DIALOG_OVERRIDE = "#AR-ServerHosting_OverrideWarning";
-	protected static string DIALOG_SAVED = "#AR_-ServerHosting_SaveSuccessful";
+	protected static string DIALOG_OVERRIDE =	"#AR-ServerHosting_OverrideWarning";
+	protected static string DIALOG_SAVED = 		"#AR-ServerHosting_SaveSuccessful";
 	
-	protected const string COLOR_TAG = "<color rgba='226,168,79,255'>";
-	protected const string COLOR_TAG_END = "</color>";
+	protected const string COLOR_TAG = 		"<color rgba='%1'>";
+	protected const string COLOR_TAG_END = 	"</color>";
+	protected const Color SERVER_CONFIG_NAME_COLOR = UIColors.CONTRAST_COLOR;
 	
 	protected ref SCR_SuperMenuComponent m_SuperMenuComponent;
 	
@@ -102,6 +103,14 @@ class ServerHostingUI : SCR_TabDialog
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(float tDelta)
+	{
+		super.OnMenuUpdate(tDelta);
+		
+		GetGame().GetInputManager().ActivateContext("InteractableDialogContext");
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Hotfix for when fadein is not finished 
 	protected void FinishFadeIn()
 	{
@@ -182,7 +191,7 @@ class ServerHostingUI : SCR_TabDialog
 			return;
 		
 		// Check connection - prevent host 
-		if (!GetGame().GetBackendApi().IsActive())
+		if (!GetGame().GetBackendApi().IsActive() || !SCR_ServicesStatusHelper.AreMultiplayerServicesAvailable())
 		{
 			SCR_ConfigurableDialogUi.CreateFromPreset(m_ConfigList.GetDialogs(), DIALOG_TAG_NO_CONNECTION);
 			return;
@@ -249,7 +258,8 @@ class ServerHostingUI : SCR_TabDialog
 				// Display config exists
 				SCR_ConfigurableDialogUi overrideDialog = SCR_ConfigurableDialogUi.CreateFromPreset(m_ConfigList.GetDialogs(), DIALOG_TAG_SAVE_OVERRIDE);
 				
-				string msg = WidgetManager.Translate(DIALOG_OVERRIDE, name, COLOR_TAG, COLOR_TAG_END);
+				string color = string.Format(COLOR_TAG, UIColors.SRGBAFloatToInt(SERVER_CONFIG_NAME_COLOR));
+				string msg = WidgetManager.Translate(DIALOG_OVERRIDE, name, color, COLOR_TAG_END);
 				overrideDialog.SetMessage(msg);
 				overrideDialog.m_OnConfirm.Insert(OnOverrideConfirm);
 				
@@ -284,7 +294,8 @@ class ServerHostingUI : SCR_TabDialog
 			{
 				if (name + JSON_POSTFIX == configs[i])
 				{
-					string msg = WidgetManager.Translate(DIALOG_SAVED, paths[i], COLOR_TAG, COLOR_TAG_END);
+					string color = string.Format(COLOR_TAG, UIColors.SRGBAFloatToInt(SERVER_CONFIG_NAME_COLOR));
+					string msg = WidgetManager.Translate(DIALOG_SAVED, paths[i], color, COLOR_TAG_END);
 					
 					if (dialog)
 						dialog.SetMessage(msg);		

@@ -174,6 +174,12 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnInputQuickBind(float value, EActionTrigger reason)
+	{
+		ToggleVisible();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnMapOpen(MapConfiguration config)
 	{
 		super.OnMapOpen(config);
@@ -221,6 +227,8 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, m_sToolMenuIconName, 10); // add to menu
 			m_ToolMenuEntry.m_OnClick.Insert(ToggleVisible);
 			m_ToolMenuEntry.SetEnabled(true);
+			
+			GetGame().GetInputManager().AddActionListener("MapToolProtractor", EActionTrigger.DOWN, OnInputQuickBind);
 		}
 	}
 	

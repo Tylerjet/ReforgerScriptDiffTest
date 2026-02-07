@@ -85,11 +85,11 @@ class SCR_SpawnLogic
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnPlayerKilled_S(int playerId, IEntity player, IEntity killer)
+	void OnPlayerKilled_S(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		PrintFormat("%1::OnPlayerKilled_S(playerId: %2, playerEntity: %3, killerEntity: %4)",
-			Type().ToString(), playerId, player, killer);
+		PrintFormat("%1::OnPlayerKilled_S(playerId: %2, playerEntity: %3, killerEntity: %4, killerId: %5)",
+			Type().ToString(), playerId, playerEntity, killerEntity, killer.GetInstigatorPlayerID());
 		#endif
 
 		OnPlayerEntityLost_S(playerId);

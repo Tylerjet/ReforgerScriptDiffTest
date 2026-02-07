@@ -9,8 +9,15 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class ChimeraWorld: BaseWorld
+sealed class ChimeraWorld: World
 {
+	//! Returns the time and weather manager entity
+	proto external TimeAndWeatherManagerEntity GetTimeAndWeatherManager();
+	proto external TagManager GetTagManager();
+	// Returns garbage manager instance or null if none.
+	proto external GarbageSystem GetGarbageSystem();
+	proto external RadioManagerEntity GetRadioManager();
+	proto external ItemPreviewManagerEntity GetItemPreviewManager();
 	proto external MusicManager GetMusicManager();
 	proto external SoundWorld GetSoundWorld();
 	/*!
@@ -35,6 +42,11 @@ sealed class ChimeraWorld: BaseWorld
 	proto external void RegisterEntityToBeUpdatedWhileGameIsPaused(IEntity entity);
 	//! Unregister the entity, it will not be updated anymore while the game is paused.
 	proto external void UnregisterEntityToBeUpdatedWhileGameIsPaused(IEntity entity);
+	//! Get 2D observers position
+	proto external int GetObservers(notnull array<vector> observers);
+	//! Get 2D multiplayer observers position
+	proto external int GetMPObservers(notnull array<vector> observers);
+	static proto ChimeraWorld CastFrom(BaseWorld world);
 }
 
 /*!

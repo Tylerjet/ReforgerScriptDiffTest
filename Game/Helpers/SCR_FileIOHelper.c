@@ -46,4 +46,53 @@ class SCR_FileIOHelper
 
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get file content as array of lines
+	//! \return array of lines or null if file does not exist or cannot be opened
+	static array<string> ReadFileContent(string absoluteFilePath)
+	{
+		FileHandle fileHandle = FileIO.OpenFile(absoluteFilePath, FileMode.READ);
+		if (!fileHandle)
+		{
+			Print("Could not open " + absoluteFilePath, LogLevel.WARNING);
+			return null;
+		}
+
+		string lineContent;
+		array<string> result = {};
+		while (!fileHandle.IsEOF())
+		{
+			fileHandle.ReadLine(lineContent);
+			result.Insert(lineContent);
+		}
+
+		fileHandle.Close();
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Write all lines in the file, replacing all its content
+	//! \param absoluteFilePath
+	//! \param lines
+	//! \return true on success, false otherwise
+	static bool WriteFileContent(string absoluteFilePath, notnull array<string> lines)
+	{
+		FileHandle fileHandle = FileIO.OpenFile(absoluteFilePath, FileMode.WRITE);
+		if (!fileHandle)
+		{
+			Print("Could not open " + absoluteFilePath, LogLevel.WARNING);
+			return false;
+		}
+
+		foreach (int lineNumber, string line : lines)
+		{
+			fileHandle.WriteLine(line);
+		}
+
+		fileHandle.Close();
+
+		return true;
+	}
 }

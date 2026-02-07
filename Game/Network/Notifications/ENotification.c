@@ -95,6 +95,8 @@ enum ENotification
 	EDITOR_SERVICE_BUILD = 529, ///< Shows the name of the player, type of service and base where the service was built.
 	EDITOR_SERVICE_DISASSEMBLED = 530, ///< Shows the name of the player, type of service and base where the service was disassembled.
 	EDITOR_PREVIEWING_IN_NIGHTMODE = 531, ///< Local player is previewing datetime or weather in night mode. This means night mode is disabled until previewing is done
+	EDITOR_COMPOSITION_UNDER_CONSTRUCTION = 532, ///< Composition cannot be moved or deleted because the construction works has begun.
+	EDITOR_PLACING_NO_MORE_COMPOSITIONS_AT_BASE = 533, ///< Player cannot place more compositions at the base
 	
 	//AI
 	//EDITOR_AI_GROUP_ELIMINATED = 600, ///< An AI group was eliminated - (param1 = EditableEntityID)
@@ -115,8 +117,8 @@ enum ENotification
 	EDITOR_ATTRIBUTES_RESPAWN_TIME_CHANGED = 713, ///< GM changed respawn time - (param1 = GM id, param2 = NewTime)
 	EDITOR_ATTRIBUTES_DAY_ADVANCE_ENABLED = 714, ///< If GM enables time advancement - (param1: GM)
 	EDITOR_ATTRIBUTES_DAY_ADVANCE_DISABLED = 715,///< If GM Disables time advancement - (param1: GM)
-	EDITOR_ATTRIBUTES_ENABLE_RESPAWN_ON_PLAYER = 719, ///< Called when GM enableds spawning on Radio operators (param1 = GM)
-	EDITOR_ATTRIBUTES_DISABLE_RESPAWN_ON_PLAYER = 720, ///< Called when GM disales spawning on Radio operators (param1 = GM)
+	EDITOR_ATTRIBUTES_ENABLE_RESPAWN_ON_PLAYER = 719, ///< Called when GM enables spawning on Radio operators (param1 = GM)
+	EDITOR_ATTRIBUTES_DISABLE_RESPAWN_ON_PLAYER = 720, ///< Called when GM disables spawning on Radio operators (param1 = GM)
 	EDITOR_ATTRIBUTES_FACTION_CHANGED_NO_GM = 721, ///< Called when GM places a spawnpoint but the faction was not enabled
 	EDITOR_ATTRIBUTES_ENABLED_AMBIENT_MUSIC = 724, ///< When the GM enables server wide ambient music (param1 = GM that enables it)
 	EDITOR_ATTRIBUTES_DISABLED_AMBIENT_MUSIC = 725, ///< When the GM disables server wide ambient music (param1 = GM that disables it)	EDITOR_GM_ENABLED_AMBIENT_MUSIC = 522, ///< When the GM enables server wide ambient music (param1 = GM that enables it)
@@ -140,6 +142,14 @@ enum ENotification
 	EDITOR_GLOBAL_NIGHTMODE_DISABLED = 741, ///< GM changed the nightmode to false (param1 = GM)
 	EDITOR_CHANGED_LOADOUT_SAVE_BLACKLIST = 742, ///< GM changed which items players can save in their loadout (param1 = GM)
 	
+	EDITOR_ATTRIBUTES_ENABLE_RESPAWN_ON_RADIO_VEHICLE = 743, ///< Called when GM enables spawning on Radio vehicles (param1 = GM)
+	EDITOR_ATTRIBUTES_DISABLE_RESPAWN_ON_RADIO_VEHICLE = 744, ///< Called when GM disables spawning on Radio vehicles (param1 = GM)
+	EDITOR_ATTRIBUTES_ENABLE_DEPLOYABLE_RADIO_SPAWNPOINT = 745, ///< Called when GM enables deploying radio back pack spawn points for players (param1 = GM)
+	EDITOR_ATTRIBUTES_DISABLE_DEPLOYABLE_RADIO_SPAWNPOINT = 746, ///< Called when GM disables deploying radio back pack spawn points for players (param1 = GM)
+	
+	EDITOR_ATTRIBUTES_ENABLE_GLOBAL_SUPPLY_USAGE = 747, ///< Called when GM enables Global supplies usage (param1 = GM)
+	EDITOR_ATTRIBUTES_DISABLE_GLOBAL_SUPPLY_USAGE = 748, ///< Called when GM disables Global supplies usage (param1 = GM)
+	
 	//GM
 	EDITOR_PLAYER_BECAME_GM = 800, ///<Player become GM - (param1 = PlayerID)
 	EDITOR_GM_LEFT = 801, ///<Player become GM - (param1 = PlayerID)
@@ -159,12 +169,25 @@ enum ENotification
 	VOTING_EDITOR_IN_START = 1000, ///< Voting started to become GM (param1 = player id)
 	VOTING_EDITOR_IN_SUCCEED = 1001, ///< Voting succeeded to become GM (param1 = player id)
 	VOTING_EDITOR_IN_FAIL = 1002, ///< Voting failed to become GM (param1 = player id)
-	VOTING_EDITOR_OUT_START = 1003, ///< Voting started to remove GM (param1 = player id)
-	VOTING_EDITOR_OUT_SUCCEED = 1004, ///< Voting succeeded to remove GM (param1 = player id)
-	VOTING_EDITOR_OUT_FAIL = 1005, ///< Voting failed to remove GM (param1 = player id)
-	VOTING_KICK_START = 1006, ///< Voting started to kick player (param1 = player id)
-	VOTING_KICK_SUCCEED = 1007, ///< Voting succeeded to kick player (param1 = player id)
-	VOTING_KICK_FAIL = 1008, ///< Voting failed to kick player (param1 = player id)
+	VOTING_EDITOR_IN_VOTE_CASTED = 1003, ///< Voting failed to become GM (param1 = player id)
+	VOTING_EDITOR_IN_VOTE_ABSTAINED = 1004, ///< Voting cast locally by player to make other GM (param1 = player id)
+	VOTING_EDITOR_OUT_START = 1010,///< Voting abstained locally by player to make other GM (param1 = player id)
+	VOTING_EDITOR_OUT_SUCCEED = 1011, ///< Voting succeeded to remove GM (param1 = player id)
+	VOTING_EDITOR_OUT_FAIL = 1012, ///< Voting failed to remove GM (param1 = player id)
+	VOTING_EDITOR_OUT_VOTE_CASTED = 1013, ///< Voting cast locally by player to remove other GM (param1 = player id)
+	VOTING_EDITOR_OUT_VOTE_ABSTAINED = 1014, ///< Voting abstained locally by player to remove other GM (param1 = player id)
+	VOTING_KICK_START = 1020, ///< Voting started to kick player (param1 = player id)
+	VOTING_KICK_SUCCEED = 1021, ///< Voting succeeded to kick player (param1 = player id)
+	VOTING_KICK_FAIL = 1022, ///< Voting failed to kick player (param1 = player id)
+	VOTING_KICK_VOTE_CASTED = 1023, ///< Voting Cast locally to kick player (param1 = player id)
+	VOTING_KICK_VOTE_ABSTAINED = 1024, ///< Voting Abstained localy to kick player (param1 = player id)
+	VOTING_AUTO_KICK_START = 1025, ///< Voting started to Auto kick player (param1 = player id)
+	VOTING_AUTO_BAN_LIGHT_START = 1030, ///< Voting started to auto light ban player (param1 = player id)
+	VOTING_AUTO_BAN_HEAVY_START = 1031, ///< Voting started to auto heavy ban player (param1 = player id)
+	VOTING_BAN_SUCCEED = 1032, ///< Voting succeeded to auto light/heavy ban player (param1 = player id)
+	VOTING_BAN_FAIL = 1033, ///< Voting failed to auto light/heavy ban player (param1 = player id)
+	VOTING_BAN_VOTE_CASTED = 1034, ///< Voting Cast locally to auto light/heavy ban player (param1 = player id)
+	VOTING_BAN_VOTE_ABSTAINED = 1035, ///< Voting Abstained localy to auto light/heavy ban player (param1 = player id)
 	
 	//GROUPS 
 	GROUPS_PLAYER_JOINED = 1101, ///< Player joined the group (param1 = player id)
@@ -191,5 +214,45 @@ enum ENotification
 	
 	//COMMANDING
 	COMMANDING_NO_RIGHTS = 1300,
+	
+	SUPPORTSTATION_HEALED_BY_OTHER_UPDATE = 1400, ///< Player is being healed by another Character (param1 = Healer entity RplID, param2: hitzoneGroupId, param2: health scaled)
+	SUPPORTSTATION_HEALED_BY_OTHER_DONE_NOT_FULL = 1401,///< Player is being healed by another Character, healing is done but support station cannot heal more (param1 = Healer entity RplID, param2: hitzoneGroupId, param2: health scaled)
+	SUPPORTSTATION_HEALED_BY_OTHER_DONE = 1458, ///< Player has fully healed an hitzone group of a Character (param1 = Healer entity RplID, param2: hitzoneGroupId)
+
+	SUPPORTSTATION_FIRE_EXTINGUISHED_VEHICLE_BY_OTHER_UPDATE = 1402, ///< Character is extinguising a fire on a vehicle you are in. The fire is still there (param1 = Repairer entity RplID)
+	SUPPORTSTATION_FIRE_EXTINGUISHED_VEHICLE_BY_OTHER_DONE = 1403, ///< Character is extinguising a fire on a vehicle you are in. The fire is gone (param1 = Repairer entity RplID)
+	
+	SUPPORTSTATION_REPAIRED_BY_OTHER_UPDATE = 1404, ///< Vehicle player is in is being repaired by another Character. (param1 = Healer entity RplID, param2: hitzoneGroupId, param2: health scaled)
+	SUPPORTSTATION_REPAIRED_BY_OTHER_DONE_NOT_FULL = 1405, ///< Vehicle player is in is being repaired by another Character. Repair of hitzone group is done but hitzone group is not fully repaired (param1 = Repairer entity RplID, param2: hitzoneGroupId)
+	SUPPORTSTATION_REPAIRED_BY_OTHER_DONE = 1406, ///< Vehicle player is in is being repaired by another Character. Repair of hitzone group is done (param1 = Repairer entity RplID, param2: hitzoneGroupId)
+	
+	SUPPORTSTATION_REFUELED_BY_OTHER_UPDATE = 1407, ///< Vehicle player is in is being refueled by another Character. (param1 = Healer entity RplID, param2: fuelpercentage)
+	SUPPORTSTATION_REFUELED_BY_OTHER_TANK_FULL = 1408,  ///< Vehicle player is in is being refueled by another Character. The fuel tank that was being refueled is full but not all fuel tanks are full (param1 = Healer entity RplID)
+	SUPPORTSTATION_REFUELED_BY_OTHER_DONE = 1409, ///< Vehicle player is in is being refueled by another Character. All fuel tanks are full (param1 = Healer entity RplID)
+	
+	SUPPORTSTATION_RESUPPLIED_BY_OTHER_AMMO = 1410, ///< Player held weapon ammo is being resupplied by another character (param1 = Resupplier entity RplID)
+	SUPPORTSTATION_RESUPPLIED_BY_OTHER_UGL = 1411, ///< Player held weapon UGL ammo is being resupplied by another character (param1 = Resupplier entity RplID)
+	SUPPORTSTATION_RESUPPLIED_BY_OTHER_GRENADE = 1412, ///< Player grenades are being resupplied by another character (param1 = Resupplier entity RplID)
+	SUPPORTSTATION_RESUPPLIED_BY_OTHER_BANDAGE = 1413, ///< Player bandages are being resupplied by another character (param1 = Resupplier entity RplID)
+	SUPPORTSTATION_RESUPPLIED_BY_OTHER_MORPHINE = 1414, ///< Player morphine are being resupplied by another character (param1 = Resupplier entity RplID)
+	
+	CHECK_FUEL = 1415, ///< Checks fuel of vehicle (param1 = Fuel percentage)
+	
+	//FAST TRAVEL
+	FASTTRAVEL_AVAILABLE = 1500,
+	FASTTRAVEL_UNAVAILABLE = 1501,
+	FASTTRAVEL_PLAYER_LOCATION_WRONG = 1502,
+	FASTTRAVEL_PLAYER_LOCATION_CANCELLED = 1503,
+	FASTTRAVEL_DONE = 1504,
+	FASTTRAVEL_ENEMIES_NEARBY = 1505,
+
+	//DEPLOYABLE INVENTORY ITEMS
+	DEPLOYABLE_SPAWNPOINTS_NEARBY_SPAWNPOINT = 1600,
+	DEPLOYABLE_SPAWNPOINTS_NEARBY_PLAYERS = 1601,
+	DEPLOYABLE_SPAWNPOINTS_DEPLOYED_SPAWNPOINT_LIMIT = 1602,
+	DEPLOYABLE_SPAWNPOINTS_DISPLAY_RESPAWN_COUNT = 1603,
+	DEPLOYABLE_SPAWNPOINTS_DISPLAY_GROUP = 1604,
+	DEPLOYABLE_SPAWNPOINTS_NEARBY_BASE = 1605,
+	DEPLOYABLE_SPAWNPOINTS_NEARBY_HQ = 1606
 };
 

@@ -36,18 +36,19 @@ class SCR_RespawnComponent : RespawnComponent
 	// Parent entity's rpl component
 	protected RplComponent m_RplComponent;
 	// RespawnSystemComponent - has to be attached on a gameMode entity
-	
-	
-	private static ref ScriptInvoker s_OnSpawn = new ScriptInvoker();
-	[Obsolete("Use SCR_RespawnComponent.GetOnRespawnResponseInvoker_O() instead")]
-	static ScriptInvoker SGetOnSpawn() 
-	{ 
-		return s_OnSpawn;
-	}
 
 	//! List of all request components - children of this component, stored by their assigned type.
 	//! See also:SCR_SpawnRequestComponent.GetDataType()
 	protected ref map<typename, SCR_SpawnRequestComponent> m_mRequestComponents = new map<typename, SCR_SpawnRequestComponent>();
+	
+	private static ref ScriptInvokerVoid s_OnLocalPlayerSpawned = new ScriptInvokerVoid();
+	
+	//------------------------------------------------------------------------------------------------
+	//~ Called when player spawns locally
+	static ScriptInvokerVoid SGetOnLocalPlayerSpawned() 
+	{ 
+		return s_OnLocalPlayerSpawned;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	// ON RESPAWN READY (notification from server to e.g. open respawn menu)
@@ -83,7 +84,7 @@ class SCR_RespawnComponent : RespawnComponent
 	// ON CAN RESPAWN RESPONSE
 	protected ref OnCanRespawnResponseInvoker m_OnCanRespawnResponseInvoker_O = new OnCanRespawnResponseInvoker();
 	/*!
-		Returns an invoker that is invoked after this component *receives* a response from teh authority about
+		Returns an invoker that is invoked after this component *receives* a response from the authority about
 		prior sent ask can-request.
 	*/
 	OnCanRespawnResponseInvoker GetOnCanRespawnResponseInvoker_O()
@@ -341,7 +342,7 @@ class SCR_RespawnComponent : RespawnComponent
 	override void OnPostInit(IEntity owner)
 	{
 		#ifdef ENABLE_DIAG
-		SetEventMask(owner, EntityEvent.FRAME | EntityEvent.DIAG);
+		ConnectToDiagSystem(owner);
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_DIAG, "", "Respawn Component", "GameMode");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_TIME, "", "Respawn Time Measures", "GameMode");
 		#endif
@@ -370,6 +371,14 @@ class SCR_RespawnComponent : RespawnComponent
 			Print("No game mode found in the world, SCR_RespawnComponent will not function correctly!", LogLevel.ERROR);
 			return;
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		DisconnectFromDiagSystem(owner);
+		
+		super.OnDelete(owner);
 	}
 	
 	

@@ -10,7 +10,7 @@ class SCR_AmbientInsectsComponent : ScriptComponent
 	protected int m_iUpdateRate;
 
 	[Attribute()]
-	protected ref array<ref SCR_AmbientInsectsEffect> m_aAmbientSoundsEffect;
+	protected ref array<ref SCR_AmbientInsectsEffect> m_aAmbientInsectsEffect;
 
 	// Components
 	protected SignalsManagerComponent m_LocalSignalsManager;
@@ -54,6 +54,12 @@ class SCR_AmbientInsectsComponent : ScriptComponent
 	{
 		return m_fWindSpeed;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveInsectEffect(SCR_AmbientInsectsEffect effect)
+	{
+		m_aAmbientInsectsEffect.RemoveItem(effect);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void Update(IEntity owner)
@@ -69,10 +75,12 @@ class SCR_AmbientInsectsComponent : ScriptComponent
 		m_fTimeOfDay = m_LocalSignalsManager.GetSignalValue(m_iSunAngleSignalIdx) / 360;
 		m_fRainIntensity = m_GlobalSignalsManager.GetSignalValue(m_iRainIntensitySignalIdx);
 		m_fWindSpeed = m_GlobalSignalsManager.GetSignalValue(m_iWindSpeedSignalIdx);
-
-		foreach (SCR_AmbientInsectsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
+		
+		//We are using for loop because these effects can get removed during run-time from the update loop
+		for (int i = m_aAmbientInsectsEffect.Count() - 1; i >= 0; i--)
 		{
-			ambientSoundsEffect.Update(worldTime, cameraPos, m_fTimeOfDay, m_fRainIntensity);
+			if (m_aAmbientInsectsEffect.IsIndexValid(i))
+				m_aAmbientInsectsEffect[i].Update(worldTime, cameraPos, m_fTimeOfDay, m_fRainIntensity);
 		}
 	}
 
@@ -114,9 +122,9 @@ class SCR_AmbientInsectsComponent : ScriptComponent
 			return;
 		}
 
-		foreach (SCR_AmbientInsectsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
+		foreach (SCR_AmbientInsectsEffect ambientInsectsEffect : m_aAmbientInsectsEffect)
 		{
-			ambientSoundsEffect.OnPostInit(m_AmbientSoundsComponent, this, m_LocalSignalsManager);
+			ambientInsectsEffect.OnPostInit(m_AmbientSoundsComponent, this, m_LocalSignalsManager);
 		}
 
 		Update(owner);

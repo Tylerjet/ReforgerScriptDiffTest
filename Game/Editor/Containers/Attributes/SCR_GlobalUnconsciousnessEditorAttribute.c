@@ -1,6 +1,5 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_GlobalUnconsciousnessEditorAttribute : SCR_BaseEditorAttribute
-
 {	
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{		
@@ -57,13 +56,13 @@ class SCR_GlobalUnconsciousnessEditorAttribute : SCR_BaseEditorAttribute
 				continue;
 			
 			if (characterDamageManager.GetState() == EDamageState.DESTROYED)
-    			continue;
+				continue;
 				
 			if (!characterDamageManager.IsDamageHandlingEnabled())
 				continue;
 			
 			if (characterDamageManager.GetIsUnconscious())
-				characterDamageManager.Kill();
+				characterDamageManager.Kill(Instigator.CreateInstigator(null));
 		}
 	}
 };

@@ -7,6 +7,9 @@ typedef func SCR_AIGroupPerceptionOnNoEnemy;
 void SCR_AIGroupPerceptionOnEnemyDetected(SCR_AIGroup group, SCR_AITargetInfo target);
 typedef func SCR_AIGroupPerceptionOnEnemyDetected;
 
+void SCR_AIGroupPerceptionOnEnemyDetectedFiltered(SCR_AIGroup group, SCR_AITargetInfo target, AIAgent reporter);
+typedef func SCR_AIGroupPerceptionOnEnemyDetectedFiltered;
+
 class SCR_AIGroupPerception : Managed
 {
 	const float TARGET_LOST_THRESHOLD_S = 10.0;
@@ -20,6 +23,7 @@ class SCR_AIGroupPerception : Managed
 	
 	protected ref ScriptInvokerBase<SCR_AIOnTargetClusterStateDeleted> Event_OnTargetClusterStateDeleted = new ScriptInvokerBase<SCR_AIOnTargetClusterStateDeleted>();
 	protected ref ScriptInvokerBase<SCR_AIGroupPerceptionOnEnemyDetected> Event_OnEnemyDetected;
+	protected ref ScriptInvokerBase<SCR_AIGroupPerceptionOnEnemyDetectedFiltered> Event_OnEnemyDetectedFiltered;
 	protected ref ScriptInvokerBase<SCR_AIGroupPerceptionOnNoEnemy> Event_OnNoEnemy;
 	
 	ref array<IEntity> m_aTargetEntities = new ref array<IEntity>;						// Read only! Don't dare to modify it!
@@ -47,6 +51,17 @@ class SCR_AIGroupPerception : Managed
 			Event_OnEnemyDetected = new ScriptInvokerBase<SCR_AIGroupPerceptionOnEnemyDetected>();
 		
 		return Event_OnEnemyDetected;
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	//! This is similar to OnEnemyDetected event, but it will be invoked only once per group perception update,
+	//! You should use this if you don't need every detected target, but need to know when anything has been detected
+	ScriptInvokerBase<SCR_AIGroupPerceptionOnEnemyDetectedFiltered> GetOnEnemyDetectedFiltered()
+	{
+		if (!Event_OnEnemyDetectedFiltered)
+			Event_OnEnemyDetectedFiltered = new ScriptInvokerBase<SCR_AIGroupPerceptionOnEnemyDetectedFiltered>();
+		
+		return Event_OnEnemyDetectedFiltered;
 	}
 	
 	//---------------------------------------------------------------------------------------------------
@@ -87,14 +102,16 @@ class SCR_AIGroupPerception : Managed
 	
 	//---------------------------------------------------------------------------------------------------
 	// Adds or updates target from BaseTarget
-	// ! Doesn't call the event
-	void AddOrUpdateTarget(notnull BaseTarget target)
+	SCR_AITargetInfo AddOrUpdateTarget(notnull BaseTarget target, out bool outNewTarget)
 	{
 		IEntity enemy = target.GetTargetEntity();
 		
 		if (!enemy)
-			return;
-		
+		{
+			outNewTarget = false;
+			return null;
+		}
+			
 		int id = m_aTargetEntities.Find(enemy);
 		if (id > -1)
 		{
@@ -103,8 +120,11 @@ class SCR_AIGroupPerception : Managed
 			
 			// Ignore if destroyed or disarmed
 			if (oldCategory == EAITargetInfoCategory.DESTROYED || oldCategory == EAITargetInfoCategory.DISARMED)
-				return;
-			
+			{
+				outNewTarget = false;
+				return oldTargetInfo;
+			}
+				
 			// This target was already found
 			// Which newTimestamp to use? Depends on target category
 			float newTimestamp;
@@ -125,15 +145,19 @@ class SCR_AIGroupPerception : Managed
 				}
 			}
 			
-			return;
+			outNewTarget = false;
+			return oldTargetInfo;
 		}		
 		
 		// new enemy found
 		
 		// Ignore if disarmed
 		if (target.IsDisarmed())
-			return;
-		
+		{
+			outNewTarget = false;
+			return null;
+		}
+			
 		SCR_AITargetInfo targetInfo = new SCR_AITargetInfo();
 		targetInfo.InitFromBaseTarget(target);
 				
@@ -145,7 +169,8 @@ class SCR_AIGroupPerception : Managed
 			Event_OnEnemyDetected.Invoke(m_Group, targetInfo);
 		}
 		
-		return;
+		outNewTarget = true;
+		return targetInfo;
 	}
 	
 	//---------------------------------------------------------------------------------------------------
@@ -195,6 +220,11 @@ class SCR_AIGroupPerception : Managed
 		m_Group.GetAgents(agents);
 		
 		array<BaseTarget> targets = {};
+		
+		bool targetIsNew;
+		SCR_AITargetInfo targetInfo;
+		bool invokedEvent = false;
+		
 		foreach (SCR_AIInfoComponent infoComp : m_Utility.m_aInfoComponents)
 		{
 			PerceptionComponent perception = infoComp.m_Perception;
@@ -203,14 +233,34 @@ class SCR_AIGroupPerception : Managed
 			perception.GetTargetsList(targets, ETargetCategory.DETECTED);
 			foreach (BaseTarget baseTarget : targets)
 			{
-				AddOrUpdateTarget(baseTarget);
+				targetInfo = AddOrUpdateTarget(baseTarget, targetIsNew);
+				
+				if (targetIsNew && !invokedEvent)
+				{
+					if (Event_OnEnemyDetectedFiltered)
+					{
+						AIAgent reporter = AIAgent.Cast(infoComp.GetOwner());
+						Event_OnEnemyDetectedFiltered.Invoke(m_Group, targetInfo, reporter);
+					}
+					invokedEvent = true;
+				}
 			}
 			
 			targets.Clear();
 			perception.GetTargetsList(targets, ETargetCategory.ENEMY);
 			foreach (BaseTarget baseTarget : targets)
 			{
-				AddOrUpdateTarget(baseTarget);
+				targetInfo = AddOrUpdateTarget(baseTarget, targetIsNew);
+				
+				if (targetIsNew && !invokedEvent)
+				{
+					if (Event_OnEnemyDetectedFiltered)
+					{
+						AIAgent reporter = AIAgent.Cast(infoComp.GetOwner());
+						Event_OnEnemyDetectedFiltered.Invoke(m_Group, targetInfo, reporter);
+					}
+					invokedEvent = true;
+				}
 			}
 		}
 	}

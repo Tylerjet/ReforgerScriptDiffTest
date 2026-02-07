@@ -352,6 +352,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 			FindEntry("disableThirdPerson").SetValue(SCR_JsonApiStructHandler.BoolToString(gamePropertiesSCr.disableThirdPerson));
 			FindEntry("VONDisableUI").SetValue(SCR_JsonApiStructHandler.BoolToString(gamePropertiesSCr.VONDisableUI));
 			FindEntry("VONDisableDirectSpeechUI").SetValue(SCR_JsonApiStructHandler.BoolToString(gamePropertiesSCr.VONDisableDirectSpeechUI));
+			FindEntry("VONCanTransmitCrossFaction").SetValue(SCR_JsonApiStructHandler.BoolToString(gamePropertiesSCr.VONCanTransmitCrossFaction));
 			FindEntry("serverMaxViewDistance").SetValue(gamePropertiesSCr.serverMaxViewDistance.ToString());
 			FindEntry("networkViewDistance").SetValue(gamePropertiesSCr.networkViewDistance.ToString());
 			FindEntry("serverMinGrassDistance").SetValue(gamePropertiesSCr.serverMinGrassDistance.ToString());

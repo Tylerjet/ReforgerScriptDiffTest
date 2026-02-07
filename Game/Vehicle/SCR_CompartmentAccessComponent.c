@@ -106,7 +106,7 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 	\param compartmentType Type of compartment
 	\return Compartment, null if none was found
 	*/
-	BaseCompartmentSlot FindFreeAndAccessibleCompartment(IEntity vehicle, ECompartmentType compartmentType)
+	BaseCompartmentSlot FindFreeAndAccessibleCompartment(IEntity vehicle, ECompartmentType compartmentType, BaseCompartmentSlot customSlot = null)
 	{
 		BaseCompartmentManagerComponent compartmentManager = BaseCompartmentManagerComponent.Cast(vehicle.FindComponent(BaseCompartmentManagerComponent));
 		if (!compartmentManager)
@@ -114,6 +114,21 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 		
 		array<BaseCompartmentSlot> compartments = {};
 		compartmentManager.GetCompartments(compartments);
+		
+		if (customSlot)
+		{
+			if (!customSlot.IsCompartmentAccessible())
+				return null;
+			if (customSlot.IsGetInLockedFor(GetOwner()))
+				return null;
+			if (customSlot.GetOccupant())
+				return null;
+			if (compartmentType != GetCompartmentType(customSlot))
+				return null;
+			
+			return customSlot;
+		}
+
 		foreach (BaseCompartmentSlot compartment: compartments)
 		{
 			if (!compartment.IsCompartmentAccessible())
@@ -150,16 +165,16 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 	\param compartmentType Type of compartment
 	\return True if the request was successful
 	*/
-	bool MoveInVehicle(IEntity vehicle, ECompartmentType compartmentType)
+	bool MoveInVehicle(IEntity vehicle, ECompartmentType compartmentType, BaseCompartmentSlot customSlot = null)
 	{
 		if (!vehicle)
 			return false;
 		
 		//--- Find suitable slot
-		BaseCompartmentSlot slot = FindFreeAndAccessibleCompartment(vehicle, compartmentType);
+		BaseCompartmentSlot slot = FindFreeAndAccessibleCompartment(vehicle, compartmentType, customSlot);
 		if (!slot)
 			return false;
-		
+
 		//--- Move character in the slot (must be called where character is local)		
 		IEntity slotEntity = slot.GetOwner();
 		RplComponent slotRplComponent = RplComponent.Cast(slotEntity.FindComponent(RplComponent));
@@ -251,14 +266,8 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 	\param compartment Queried compartment
 	\return Compartment type, or -1 if invalid
 	*/
-	static ECompartmentType GetCompartmentType(BaseCompartmentSlot compartment)
+	static ECompartmentType GetCompartmentType(notnull BaseCompartmentSlot compartment)
 	{
-		switch (compartment.Type())
-		{
-			case CargoCompartmentSlot: return ECompartmentType.Cargo;
-			case PilotCompartmentSlot: return ECompartmentType.Pilot;
-			case TurretCompartmentSlot:	return ECompartmentType.Turret;
-		}
-		return -1;			
+		return compartment.GetType();		
 	}
 };

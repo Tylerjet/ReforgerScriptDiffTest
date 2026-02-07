@@ -1,4 +1,4 @@
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseContainerCustomTitleResourceName("m_sWorldPath", true)]
 class SCR_ManualCameraSave
 {
 	[Attribute()]
@@ -11,7 +11,7 @@ class SCR_ManualCameraSave
 	ref array<ref SCR_ManualCameraComponentSave> m_aComponentData;
 };
 
-[BaseContainerProps()]
+[BaseContainerProps(), BaseContainerCustomTitleField("m_sTypeName")]
 class SCR_ManualCameraComponentSave
 {
 	[Attribute()]

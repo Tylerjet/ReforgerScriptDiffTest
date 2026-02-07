@@ -54,9 +54,9 @@ class SCR_AISetPosition : AITaskScripted
 			originOfObject = SAComponent.GetOwner().GetOrigin();
 			positionToTeleport = originOfObject + SAComponent.GetActionOffset();
 		}
-		else if (GetVariableType(true,TARGET_PORT) == TurretCompartmentSlot)
+		else if (GetVariableType(true,TARGET_PORT).IsInherited(BaseCompartmentSlot))
 		{
-			TurretCompartmentSlot compartmentSlot;
+			BaseCompartmentSlot compartmentSlot;
 			CompartmentAccessComponent CAComponent = CompartmentAccessComponent.Cast(entityToTeleport.FindComponent(CompartmentAccessComponent));
 			IEntity vehicle;
 			

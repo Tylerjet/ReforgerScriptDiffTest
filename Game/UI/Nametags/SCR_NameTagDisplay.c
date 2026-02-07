@@ -50,7 +50,7 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		
 	//------------------------------------------------------------------------------------------------
 	//! SCR_GameModeBase event
-	protected void OnControllableDestroyed(IEntity entity, IEntity instigator)
+	protected void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
 	{
 		if (!m_CurrentPlayerTag)
 			return;

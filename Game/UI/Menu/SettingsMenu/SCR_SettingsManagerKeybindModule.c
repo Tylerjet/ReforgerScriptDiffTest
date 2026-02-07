@@ -83,12 +83,12 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetFilterForActionByIndex(string actionName, string actionPreset, int filterIndex, int keybindIndex, EInputDeviceType device = EInputDeviceType.KEYBOARD)
+	void SetFilterForActionByIndex(string actionName, string actionPreset, int filterIndex, int keybindIndex, SCR_EActionPrefixType prefixType, EInputDeviceType device = EInputDeviceType.KEYBOARD)
 	{
 		if (!m_Binding)
 			return;
 		
-		array<ref SCR_KeyBindingFilter> filters = GetFilters();
+		array<ref SCR_KeyBindingFilter> filters = GetFilters(prefixType);
 		if (!filters)
 			return;
 		
@@ -103,7 +103,7 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 			m_Binding.Save();
 		}
 		
-		m_Binding.SetFilter(actionName, device, actionPreset, keybindIndex, filter.filterString);
+		m_Binding.SetFilter(actionName, device, actionPreset, keybindIndex, filter.m_sFilterString);
 		m_Binding.Save();
 	}
 	
@@ -121,17 +121,24 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		if (!bind)
 			return;
 		
-		m_Binding.AddBinding(actionName, preset, bind.bindString, filterName);
+		m_Binding.AddBinding(actionName, preset, bind.m_sBindString, filterName);
 		m_Binding.Save();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	array<ref SCR_KeyBindingFilter> GetFilters()
+	array<ref SCR_KeyBindingFilter> GetFilters(SCR_EActionPrefixType filterType)
 	{
 		if (!m_KeybindConfig)
 			return null;
 		
-		return m_KeybindConfig.inputFilters;
+		array <ref SCR_KeyBindingFilter> foundFilters = {};
+		foreach (SCR_KeyBindingFilter filter : m_KeybindConfig.m_aInputFilters)
+		{
+			if (filter.GetFilterType() == filterType)
+				foundFilters.Insert(filter);
+		}
+		
+		return foundFilters;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -140,7 +147,16 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		if (!m_KeybindConfig)
 			return null;
 		
-		return m_KeybindConfig.inputBinds;
+		return m_KeybindConfig.m_aInputBinds;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_KeyBindingCombo> GetCustomComboKeys()
+	{
+		if (!m_KeybindConfig)
+			return null;
+		
+		return m_KeybindConfig.m_aComboKeys;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -156,6 +172,7 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		array<string> conflicts = {};
 		array<string> presets = {};
 		m_Binding.GetConflicts(actionName, indices, conflicts, presets, EInputDeviceType.KEYBOARD, preset);
+		
 		if (conflicts.IsEmpty())
 			return false;
 		
@@ -167,11 +184,11 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 			if (indices[index] != bindIndex)
 				continue;
 			
-			foreach (SCR_KeyBindingCategory category : m_KeybindConfig.keyBindingCategories)
+			foreach (SCR_KeyBindingCategory category : m_KeybindConfig.m_KeyBindingCategories)
 			{
-				foreach (SCR_KeyBindingEntry entry : category.keyBindingEntries)
+				foreach (SCR_KeyBindingEntry entry : category.m_KeyBindingEntries)
 				{
-					if (entry.actionName == "separator" || entry.actionName != action || entry.preset != presets[index]) 
+					if (entry.m_sActionName == "separator" || entry.m_sActionName != action || entry.m_sPreset != presets[index]) 
 						continue;
 					
 					foundActions.Insert(entry);
@@ -189,6 +206,24 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	{		
 		m_Binding.StartCapture(actionName, EInputDeviceType.KEYBOARD, preset, false);
 		m_Binding.SaveCapture();
+		m_Binding.Save();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddComboToActionByIndex(string actionName, string preset, int comboIndex, int keybindIndex, string filterName = string.Empty, int comboPosition = 0)
+	{
+		if (!m_Binding)
+			return;
+		
+		array<ref SCR_KeyBindingCombo> combos = GetCustomComboKeys();
+		if (!combos)
+			return;
+		
+		SCR_KeyBindingCombo combo = combos.Get(comboIndex);
+		if (!combo)
+			return;
+		
+		m_Binding.InsertCombo(actionName, preset, combo.m_sComboString, filterName, keybindIndex, comboPosition);
 		m_Binding.Save();
 	}
 }

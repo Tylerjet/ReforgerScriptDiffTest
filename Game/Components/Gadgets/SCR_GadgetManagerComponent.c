@@ -46,7 +46,7 @@ class SCR_GadgetInvokersInitState
 			return;
 		
 		m_Controller = controller;
-		m_Controller.m_OnPlayerDeathWithParam.Insert(m_GadgetManager.OnPlayerDeath);
+		m_Controller.GetOnPlayerDeathWithParam().Insert(m_GadgetManager.OnPlayerDeath);
 		m_Controller.m_OnGadgetFocusStateChangedInvoker.Insert(m_GadgetManager.OnGadgetFocusStateChanged);
 		
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -83,7 +83,7 @@ class SCR_GadgetInvokersInitState
 	{	
 		if (m_Controller)
 		{
-			m_Controller.m_OnPlayerDeathWithParam.Remove(m_GadgetManager.OnPlayerDeath);
+			m_Controller.GetOnPlayerDeathWithParam().Remove(m_GadgetManager.OnPlayerDeath);
 			m_Controller.m_OnGadgetFocusStateChangedInvoker.Remove(m_GadgetManager.OnGadgetFocusStateChanged);
 		}
 		
@@ -106,7 +106,7 @@ class SCR_GadgetInvokersInitState
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	void SCR_GadgetInvokersInitState(SCR_GadgetManagerComponent gadgetManager)
+	void SCR_GadgetInvokersInitState(notnull SCR_GadgetManagerComponent gadgetManager)
 	{
 		m_GadgetManager = gadgetManager;
 	}
@@ -440,6 +440,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 					return;
 				
 				m_HiddenGadgetComponent = gadgetComp;
+				
+				ConnectToGadgetsManagerSystem();
 			}
 			else
 			{
@@ -455,6 +457,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			m_HeldGadget = gadget;
 			m_HeldGadgetComponent = gadgetComp;
 			m_HiddenGadgetComponent = null;
+			ConnectToGadgetsManagerSystem();
 		}
 	}
 	
@@ -496,7 +499,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	// EVENTS
 	//------------------------------------------------------------------------------------------------
 	//! SCR_InventoryStorageManagerComponent, called on every add to slot, not only to inventory
-	protected void OnItemAdded(IEntity item, BaseInventoryStorageComponent storageOwner)
+	void OnItemAdded(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{		
 		SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
 		if (!gadgetComp)
@@ -544,7 +547,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_InventoryStorageManagerComponent, called on every remove from slot, not only from inventory
-	protected void OnItemRemoved(IEntity item, BaseInventoryStorageComponent storageOwner)
+	void OnItemRemoved(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{
 		SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
 		if (!gadgetComp)
@@ -586,7 +589,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CharacterControllerComponent event
-	protected void OnPlayerDeath(SCR_CharacterControllerComponent charController, IEntity instigator)
+	void OnPlayerDeath(SCR_CharacterControllerComponent charController, IEntity instigatorEntity, notnull Instigator instigator)
 	{		
 		if (!charController || charController != m_Controller)
 			return;
@@ -595,12 +598,12 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		m_pInvokersState.Clear(GetOwner());
 		UnregisterVONEntries();
 		UnregisterInputs();
-		ClearEventMask(GetOwner(), EntityEvent.FRAME);
+		DisconnectFromGadgetsManagerSystem();
 	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CharacterControllerComponent event
-	protected void OnControlledByPlayer(IEntity owner, bool controlled)
+	void OnControlledByPlayer(IEntity owner, bool controlled)
 	{		
 		if (System.IsConsoleApp())	// hotfix for this being called on DS when other players control their characters
 			return;
@@ -613,20 +616,20 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			m_pInvokersState.CleanupLocalInvokers(GetOwner());
 			UnregisterInputs();
 			UnregisterVONEntries();
-			ClearEventMask(owner, EntityEvent.FRAME);
+			DisconnectFromGadgetsManagerSystem();
 		}
 		else if (owner)
 		{			
 			m_pInvokersState.InitControlledInvokers(owner, m_Controller);
 			RegisterInputs();
 			RegisterVONEntries();
-			SetEventMask(owner, EntityEvent.FRAME);
+			ConnectToGadgetsManagerSystem();
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! CharacterControllerComponent event
-	protected void OnGadgetStateChanged(IEntity gadget, bool isInHand, bool isOnGround)
+	void OnGadgetStateChanged(IEntity gadget, bool isInHand, bool isOnGround)
 	{
 		SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(gadget.FindComponent(SCR_GadgetComponent));
 		if (!gadgetComp)
@@ -669,7 +672,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! CharacterControllerComponent event, used only for local character
-	protected void OnGadgetFocusStateChanged(IEntity gadget, bool isFocused)
+	void OnGadgetFocusStateChanged(IEntity gadget, bool isFocused)
 	{
 		SCR_GadgetComponent gadgetComponent;
 		if (gadget)
@@ -699,7 +702,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			
 	//------------------------------------------------------------------------------------------------
 	//! SCR_EditorManagerEntity event  //TODO we shouldnt need this, probably needs to be dependent on camera instead
-	protected void OnEditorOpened()
+	void OnEditorOpened()
 	{
 		ClearToggleState();
 	}
@@ -723,6 +726,23 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			return;
 		
 		HandleInput(gadget, value);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Explicit flashlight toggle action
+	protected void ActionFlashlightToggle(float value, EActionTrigger reason)
+	{
+		// Search quickslots first, then inventory
+		IEntity flashlight = GetQuickslotGadgetByType(EGadgetType.FLASHLIGHT);
+		if (!flashlight)
+			flashlight = GetGadgetByType(EGadgetType.FLASHLIGHT);
+		
+		if (!flashlight)
+			return;
+
+		SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(flashlight.FindComponent(SCR_GadgetComponent));
+		if (gadgetComp)
+			gadgetComp.ActivateAction();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -878,6 +898,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		m_InputManager.AddActionListener("GadgetCompass", EActionTrigger.DOWN, OnGadgetInput);
 		m_InputManager.AddActionListener("GadgetBinoculars", EActionTrigger.DOWN, OnGadgetInput);
 		m_InputManager.AddActionListener("GadgetFlashlight", EActionTrigger.DOWN, OnGadgetInput);
+		m_InputManager.AddActionListener("GadgetFlashlightToggle", EActionTrigger.DOWN, ActionFlashlightToggle);
 		m_InputManager.AddActionListener("GadgetWatch", EActionTrigger.DOWN, OnGadgetInput);
 		m_InputManager.AddActionListener("GadgetADS", EActionTrigger.DOWN, OnGadgetADS);
 		m_InputManager.AddActionListener("GadgetADSHold", EActionTrigger.DOWN, OnGadgetADSHold);
@@ -899,6 +920,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		m_InputManager.RemoveActionListener("GadgetCompass", EActionTrigger.DOWN, OnGadgetInput);
 		m_InputManager.RemoveActionListener("GadgetBinoculars", EActionTrigger.DOWN, OnGadgetInput);
 		m_InputManager.RemoveActionListener("GadgetFlashlight", EActionTrigger.DOWN, OnGadgetInput);
+		m_InputManager.RemoveActionListener("GadgetFlashlightToggle", EActionTrigger.DOWN, ActionFlashlightToggle);
 		m_InputManager.RemoveActionListener("GadgetWatch", EActionTrigger.DOWN, OnGadgetInput);
 		m_InputManager.RemoveActionListener("GadgetADS", EActionTrigger.DOWN, OnGadgetADS);
 		m_InputManager.RemoveActionListener("GadgetADSHold", EActionTrigger.DOWN, OnGadgetADSHold);
@@ -957,7 +979,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 				RegisterVONEntries();
 			}
 			else
-				ClearEventMask(owner, EntityEvent.FRAME);	// if not controlled entity, clear frame
+				DisconnectFromGadgetsManagerSystem();	// if not controlled entity, clear frame
 		}
 	}
 	
@@ -1007,24 +1029,48 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		
 		gadgetComp.OnToggleActive(state);
     }
+	
+	protected void ConnectToGadgetsManagerSystem()
+	{
+		World world = GetOwner().GetWorld();
+		GadgetManagersSystem gadgetManagersSystem = GadgetManagersSystem.Cast(world.FindSystem(GadgetManagersSystem));
+		if (!gadgetManagersSystem)
+			return;
+		
+		gadgetManagersSystem.Register(this);
+	}
+	
+	protected void DisconnectFromGadgetsManagerSystem()
+	{
+		World world = GetOwner().GetWorld();
+		GadgetManagersSystem gadgetManagersSystem = GadgetManagersSystem.Cast(world.FindSystem(GadgetManagersSystem));
+		if (!gadgetManagersSystem)
+			return;
+		
+		gadgetManagersSystem.Unregister(this);
+	}
+	
+	override void OnDelete(IEntity owner)
+	{
+		DisconnectFromGadgetsManagerSystem();
+		
+		super.OnDelete(owner);
+	}
 		
 	#ifndef DISABLE_GADGETS	
-		//------------------------------------------------------------------------------------------------
-		override bool OnTicksOnRemoteProxy() 
-		{ 
-			return true; // FRAME mask needed for couple frames to add invoker listeners before it is removed
-		};
-	
 		//------------------------------------------------------------------------------------------------	
 		//! runs only on local client
-		override void EOnFrame(IEntity owner, float timeSlice)
+		void Update(float timeSlice)
 		{			
 			if (!m_pInvokersState.IsInit())
-				InitComponent(owner);
+				InitComponent(GetOwner());
 
 			// context
 			if (!m_InputManager || !(m_HeldGadgetComponent || m_HiddenGadgetComponent))
+			{
+				DisconnectFromGadgetsManagerSystem();
 				return;
+			}
 
 			SCR_GadgetComponent gadgetComp;
 			if (m_HeldGadgetComponent)
@@ -1060,7 +1106,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		override void OnPostInit(IEntity owner)
 		{
 			if ( g_Game.InPlayMode() )
-				SetEventMask(owner, EntityEvent.FRAME);	
+				ConnectToGadgetsManagerSystem();
 
 			// init arrays
 			typename gadgetTypes = EGadgetType;

@@ -1,7 +1,11 @@
 /*!
 Classes for Scenario dialogs
 */
+void ScriptInvokerMissionWorkshopItemMethod(MissionWorkshopItem item);
+typedef func ScriptInvokerMissionWorkshopItemMethod;
+typedef ScriptInvokerBase<ScriptInvokerMissionWorkshopItemMethod> ScriptInvokerMissionWorkshopItem;
 
+//------------------------------------------------------------------------------------------------
 class SCR_ScenarioDialogs
 {
 	static protected const ResourceName DIALOGS_CONFIG = "{F020A20CC93DB3C7}Configs/ContentBrowser/ScenarioDialogs.conf";
@@ -13,35 +17,44 @@ class SCR_ScenarioDialogs
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static SCR_ScenarioConfirmationDialogUi CreateScenarioConfirmationDialog(SCR_ContentBrowser_ScenarioLineComponent line, ScriptInvoker onFavoritesResponse = null)
+	static SCR_ScenarioConfirmationDialogUi CreateScenarioConfirmationDialog(MissionWorkshopItem scenario, ScriptInvokerBool onFavoritesResponse = null)
 	{
-		SCR_ScenarioConfirmationDialogUi dialogUI = new SCR_ScenarioConfirmationDialogUi(line, onFavoritesResponse);
+		SCR_ScenarioConfirmationDialogUi dialogUI = new SCR_ScenarioConfirmationDialogUi(scenario, onFavoritesResponse);
 		SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "SCENARIO_CONFIRMATION", dialogUI);
 
 		return dialogUI;
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 {
-	protected SCR_ContentBrowser_ScenarioLineComponent m_Line;
+	MissionWorkshopItem m_Scenario;
 
-	protected Widget m_wFavoriteImage;
-	protected SCR_NavigationButtonComponent m_Favorite;
+	protected SCR_InputButtonComponent m_Favorite;
+	protected SCR_InputButtonComponent m_Host;
+	protected SCR_InputButtonComponent m_FindServers;
 	
+	protected SCR_ModularButtonComponent m_FavoriteStarButton;
+
+	//! If true, the dialog itself will set the scenario favorite state, otherwise it will live it to the menu or handler class
+	protected bool m_bHandleFavoriting = true;
+
+	protected ref ScriptInvokerMissionWorkshopItem m_OnFavorite;
+
 	//This should probably be a setting in SCR_HorizontalScrollAnimationComponent, as this is a bandaid solution to the title flickering
 	protected const int MAX_TITLE_LENGTH = 55;
 
-	ref ScriptInvoker<SCR_ContentBrowser_ScenarioLineComponent> m_OnFavorite = new ScriptInvoker();
-
 	//------------------------------------------------------------------------------------------------
-	void SCR_ScenarioConfirmationDialogUi(SCR_ContentBrowser_ScenarioLineComponent line, ScriptInvoker onFavoritesResponse = null)
+	void SCR_ScenarioConfirmationDialogUi(MissionWorkshopItem scenario, ScriptInvokerBool onFavoritesResponse = null)
 	{
-		m_Line = line;
+		m_Scenario = scenario;
 
 		if (onFavoritesResponse)
+		{
+			m_bHandleFavoriting = false;
 			onFavoritesResponse.Insert(UpdateFavoriteWidgets);
+		}
 	}
 
 	//! OVERRIDES
@@ -50,22 +63,22 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 	{
 		super.OnMenuOpen(preset);
 
-		if (!m_Line)
+		if (!m_Scenario)
 			return;
 
-		MissionWorkshopItem scenario = m_Line.GetScenario();
-		if (!scenario)
-			return;
-
+		// Connection state
+		SCR_ServicesStatusHelper.RefreshPing();
+		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Insert(OnCommStatusCheckFinished);
+		
 		//! Update visuals
-		SetTitle(scenario.Name());
+		SetTitle(m_Scenario.Name());
 
 		Widget backgroundImageBackend = GetRootWidget().FindAnyWidget("BackgroundImageBackend");
 		if (backgroundImageBackend)
 		{
 			SCR_ScenarioBackendImageComponent backendImageComp = SCR_ScenarioBackendImageComponent.Cast(backgroundImageBackend.FindHandler(SCR_ScenarioBackendImageComponent));
 			if (backendImageComp)
-				backendImageComp.SetScenarioAndImage(scenario, scenario.Thumbnail());
+				backendImageComp.SetScenarioAndImage(m_Scenario, m_Scenario.Thumbnail());
 		}
 
 		//! Content layout
@@ -84,7 +97,7 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 		TextWidget sourceNameTextCommunity = TextWidget.Cast(contentLayoutRoot.FindAnyWidget("SourceNameTextCommunity"));
 
 		//! Type and player count
-		int playerCount = scenario.GetPlayerCount();
+		int playerCount = m_Scenario.GetPlayerCount();
 		bool mp = playerCount > 1;
 		singlePlayerImage.SetVisible(!mp);
 		multiPlayerImage.SetVisible(mp);
@@ -96,7 +109,7 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 
 		//! Source addon
 		bool isSourceAddonValid;
-		WorkshopItem sourceAddon = scenario.GetOwner();
+		WorkshopItem sourceAddon = m_Scenario.GetOwner();
 
 		if (sourceAddon)
 		{
@@ -114,27 +127,34 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 		sourceNameTextCommunity.SetVisible(isSourceAddonValid);
 
 		//! Buttons
-		SCR_MissionHeader header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(scenario.Id()));
+		SCR_MissionHeader header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(m_Scenario.Id()));
 		bool canBeLoaded = header && GetGame().GetSaveManager().HasLatestSave(header);
-		string playLabel = "#AR-Workshop_ButtonPlay";
-		if (canBeLoaded)
-			playLabel = "#AR-PauseMenu_Continue";
 
-		SCR_NavigationButtonComponent confirm = FindButton("confirm");
+		SCR_InputButtonComponent confirm = FindButton("confirm");
 		if (confirm)
-			confirm.SetLabel(playLabel);
+			confirm.SetVisible(!canBeLoaded);
 
-		SCR_NavigationButtonComponent restart = FindButton("restart");
+		SCR_InputButtonComponent load = FindButton("load");
+		if (load)
+			load.SetVisible(canBeLoaded);
+
+		SCR_InputButtonComponent restart = FindButton("restart");
 		if (restart)
 			restart.SetVisible(canBeLoaded, false);
 
-		SCR_NavigationButtonComponent join = FindButton("join");
-		if (join)
-			join.SetVisible(mp, false);
+		m_FindServers = FindButton("join");
+		if (m_FindServers)
+		{
+			m_FindServers.SetVisible(mp, false);
+			SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_FindServers, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
+		}
 
-		SCR_NavigationButtonComponent host = FindButton("host");
-		if (host)
-			host.SetVisible(mp && !GetGame().IsPlatformGameConsole() /*&& SCR_ContentBrowser_ScenarioSubMenu.GetHostingAllowed()*/, false);
+		m_Host = FindButton("host");
+		if (m_Host)
+		{
+			m_Host.SetVisible(mp && !GetGame().IsPlatformGameConsole() /*&& SCR_ContentBrowser_ScenarioSubMenu.GetHostingAllowed()*/, false);
+			SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_Host, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
+		}
 
 		m_Favorite = FindButton("favorite");
 		if (m_Favorite)
@@ -144,51 +164,75 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 		Widget favButton = m_wRoot.FindAnyWidget("FavoriteButton");
 		if (favButton)
 		{
-			SCR_ButtonComponent favButtonComp = SCR_ButtonComponent.Cast(favButton.FindHandler(SCR_ButtonComponent));
-			if (favButtonComp)
-				favButtonComp.m_OnClicked.Insert(OnFavoritesButton);
+			m_FavoriteStarButton = SCR_ModularButtonComponent.FindComponent(favButton);
+			if (m_FavoriteStarButton)
+				m_FavoriteStarButton.m_OnClicked.Insert(OnFavoritesButton);
 		}
 
-		m_wFavoriteImage = m_wRoot.FindAnyWidget("FavoriteImage");
-
 		//! Favorites widgets update
-		UpdateFavoriteWidgets(scenario.IsFavorite());
+		UpdateFavoriteWidgets(m_Scenario.IsFavorite());
 	}
 
-
+	//----------------------------------------------------------------------------------------
+	override void OnMenuClose()
+	{
+		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
+	}
+	
 	//------------------------------------------------------------------------------------------------
-	override void OnButtonPressed(SCR_NavigationButtonComponent button)
+	override void OnButtonPressed(SCR_InputButtonComponent button)
 	{
 		super.OnButtonPressed(button);
 
 		if (m_sLastPressedButtonTag != "favorite")
 			Close();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void SetTitle(string text)
 	{
 		super.SetTitle(text);
-		
+
 		Widget titleFrame = m_wRoot.FindAnyWidget("TitleFrame");
 		if (!titleFrame)
 			return;
-		
+
 		SCR_HorizontalScrollAnimationComponent scrollComp = SCR_HorizontalScrollAnimationComponent.Cast(titleFrame.FindHandler(SCR_HorizontalScrollAnimationComponent));
 		if (!scrollComp)
 			return;
-		
+
 		if (text.Length() < MAX_TITLE_LENGTH)
 			scrollComp.AnimationStop();
 		else
 			scrollComp.AnimationStart();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void OnCommStatusCheckFinished(SCR_ECommStatus status, float responseTime, float lastSuccessTime, float lastFailTime)
+	{
+		if (m_FindServers)
+			SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_FindServers, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
+
+		if (m_Host)
+			SCR_ServicesStatusHelper.SetConnectionButtonEnabled(m_Host, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
+	}
+	
 	//! PROTECTED
 	//------------------------------------------------------------------------------------------------
 	protected void OnFavoritesButton()
 	{
-		m_OnFavorite.Invoke(m_Line);
+		if (!m_Scenario)
+			return;
+
+		if (!m_bHandleFavoriting && m_OnFavorite)
+		{
+			m_OnFavorite.Invoke(m_Scenario);
+			return;
+		}
+
+		bool isFavorite = !m_Scenario.IsFavorite();
+		m_Scenario.SetFavorite(isFavorite);
+		UpdateFavoriteWidgets(isFavorite);
 	}
 
 
@@ -196,27 +240,31 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 	protected void UpdateFavoriteWidgets(bool isFavorite)
 	{
 		// Footer Button
-		string label = "#AR-Workshop_ButtonAddToFavourites";
+		string label = UIConstants.FAVORITE_LABEL_ADD;
 		if (isFavorite)
-			label = "#AR-Workshop_ButtonRemoveFavourites";
+			label = UIConstants.FAVORITE_LABEL_REMOVE;
 
 		m_Favorite.SetLabel(label);
 
 		// Star Button
-		if (m_wFavoriteImage)
-		{
-			if (isFavorite)
-				AnimateWidget.Color(m_wFavoriteImage, UIColors.CONTRAST_COLOR, UIConstants.FADE_RATE_FAST);
-			else
-				AnimateWidget.Color(m_wFavoriteImage, UIColors.LIGHT_GREY, UIConstants.FADE_RATE_FAST);
-		}
+		if (m_FavoriteStarButton)
+			m_FavoriteStarButton.SetToggled(isFavorite, false);
 	}
-
 
 	//! PUBLIC
 	//------------------------------------------------------------------------------------------------
-	SCR_ContentBrowser_ScenarioLineComponent GetLine()
-	{ 
-		return m_Line; 
+	MissionWorkshopItem GetScenario()
+	{
+		return m_Scenario;
 	}
-};
+	
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerMissionWorkshopItem GetOnFavorite()
+	{
+		if (!m_OnFavorite)
+			m_OnFavorite = new ScriptInvokerMissionWorkshopItem();
+
+		return m_OnFavorite;
+	}
+}

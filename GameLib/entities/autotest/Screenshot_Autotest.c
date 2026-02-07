@@ -19,7 +19,7 @@ class Screenshot_WaypointClass: GenericEntityClass
 Autotest entity for taking screenshots. It sets specific camera transformation to values of waypoints which needs to be set as a child. The child needs to be Screenshot_Waypoint entity.
 First it sets camera transform to the waypoint defined as a child, then it waits a step time on order to have everything loaded and stable FPS, then it takes a screenshots and since the screenshot is taken across several frames, it waits for this as well.
 When the camera is transformed to the position and rotation of the waypoint entity, the EOnEnter method is called on the waypoint entity. Some custom code can be executed here.
-Screenshots are save into $logs:ENTITY_NAME directory by default. This can be overriden by executable parameter screenshot-autotest-output-dir (DO NOT PLACE ENDING '/' AFTER THE DIR PATH)
+Screenshots are save into $logs:ENTITY_NAME directory by default. This can be overriden by executable parameter autotest-output-dir (DO NOT PLACE ENDING '/' AFTER THE DIR PATH)
 Besides the screenshot itself, also a metafile is saved with addition information (position, orientation, fps). The name of the metafile is the same as the screenshot with .txt as a suffix and it is saved into the same location
 Autotest can also store summary information, the it is stored in the summary.txt file.
 */
@@ -57,7 +57,7 @@ class Screenshot_Autotest: GenericEntity
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
 		SetFlags(EntityFlags.ACTIVE, true);
 
-		System.GetCLIParam("screenshot-autotest-output-dir", m_directory);
+		System.GetCLIParam("autotest-output-dir", m_directory);
 
 		if (m_directory.Length() == 0)
 		{
@@ -143,10 +143,12 @@ class Screenshot_Autotest: GenericEntity
 
 			string screenshotFilename = string.Format("%1/%2.bmp", m_directory, m_waypoint.GetName());
 			string metadataFilename = screenshotFilename + ".txt";
+			string summaryFilename = string.Format("%1/%2", m_directory, "summary_locations.csv");
 
 			m_timeFromScreenshot = m_timeFromStart;
 
 			FileIO.MakeDirectory(m_directory); // no need to create it for every screenshot, but better then have it in constructor or in init, because directory would be created when placing entity into the world in editor which might not be intended
+			MakeLocationsCSVSummaryFile(summaryFilename);
 			MakeScreenshotMetafile(metadataFilename);
 			System.MakeScreenshot(screenshotFilename);
 		}
@@ -212,6 +214,39 @@ class Screenshot_Autotest: GenericEntity
 
 			descrFile.Close();
 			Print("Summary file successfully saved into " + filename);
+		}
+	}
+
+	private void MakeLocationsCSVSummaryFile(string filename)
+	{
+		FileHandle descrFile;
+
+		if(!FileIO.FileExists(filename))
+		{
+			descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
+
+			if(descrFile)
+			{
+				descrFile.WriteLine("Scene name,FPS,Frame time (ms),Timestamp");
+				
+				descrFile.Close();
+				Print("Headers successfully saved into " + filename);
+			}
+		}
+		
+		descrFile = FileIO.OpenFile(filename, FileMode.APPEND);
+
+		if(descrFile)
+		{
+			descrFile.WriteLine(string.Format("%1,%2,%3,%4",
+				m_waypoint.GetName(),
+				System.GetFPS(),
+				1000.0 * System.GetFrameTimeS(),
+				GetCurrentTimestamp()
+			));
+
+			descrFile.Close();
+			Print("Scene data successfully saved into " + filename);
 		}
 	}
 

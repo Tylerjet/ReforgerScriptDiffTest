@@ -32,7 +32,7 @@ class SCR_CampaignReconfigureRelayUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
-		if (!pOwnerEntity)
+		if (!pOwnerEntity || !GetGame().InPlayMode())
 			return;
 		
 		IEntity parent = pOwnerEntity.GetParent();

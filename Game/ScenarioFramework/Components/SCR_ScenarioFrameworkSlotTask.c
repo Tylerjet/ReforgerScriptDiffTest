@@ -8,10 +8,13 @@ class SCR_ScenarioFrameworkSlotTaskClass : SCR_ScenarioFrameworkSlotBaseClass
 class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 {
 	[Attribute(desc: "Name of the task in list of tasks", category: "Task")]		
-	protected string 		m_sTaskTitle;
+	protected LocalizedString m_sTaskTitle;
 	
-	[Attribute(desc: "Description of the task", category: "Task", )]			//TODO: make config, memory
-	protected string 		m_sTaskDescription;
+	[Attribute(desc: "Description of the task", category: "Task")]
+	protected LocalizedString m_sTaskDescription;
+	
+	[Attribute(desc: "Text for the Execution category in Briefing", category: "Task")]
+	protected LocalizedString m_sTaskExecutionBriefing;
 		
 	[Attribute(defvalue: "1", desc: "What to do once task is finished", UIWidgets.Auto, category: "OnTaskFinish")];
 	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnFinished;
@@ -85,15 +88,13 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 		m_TaskLayer = GetParentTaskLayer();
 		if (m_TaskLayer)
 		{
-			if (m_TaskLayer.GetTaskSubject())
-			{
-				PrintFormat("ScenarioFramework: Warning, another Task Subject is already set for the task layer %1", m_TaskLayer.GetOwner().GetName(), LogLevel.WARNING);
-				return;
-			}
-			
 			m_TaskLayer.SetTaskSubject(this);
 			if (m_Entity)
 				m_TaskLayer.SetEntity(m_Entity);
+			
+			SCR_ScenarioFrameworkTask task = m_TaskLayer.GetTask();
+			if (task)
+				task.SetSlotTask(this);
 		}
 		else
 		{
@@ -102,9 +103,15 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	string GetTaskTitle(int iState = 0) 
+	LocalizedString GetTaskTitle(int iState = 0) 
 	{ 
 		return m_sTaskTitle;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	LocalizedString GetTaskExecutionBriefing() 
+	{ 
+		return m_sTaskExecutionBriefing;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -116,11 +123,11 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 		if (!m_sOverrideObjectDisplayName.IsEmpty())
 			return string.Format(WidgetManager.Translate(m_sTaskDescription, m_sOverrideObjectDisplayName));
 		
-		SCR_EditableEntityComponent editableEntityComp = SCR_EditableEntityComponent.Cast(m_Entity.FindComponent(SCR_EditableEntityComponent));
-		if (!editableEntityComp)
+		string entityDisplayName = GetSpawnedEntityDisplayName();
+		if (entityDisplayName == string.Empty)
 			return m_sTaskDescription;
 		
-		return string.Format(WidgetManager.Translate(m_sTaskDescription, editableEntityComp.GetDisplayName()));
+		return string.Format(WidgetManager.Translate(m_sTaskDescription, entityDisplayName));
 	}	
 	
 	//------------------------------------------------------------------------------------------------
@@ -142,17 +149,102 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT, bool bInit = true)
+	override void DynamicReinit()
 	{
-		if (m_eActivationType != activation)
+		Init(null, SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DynamicDespawn()
+	{
+		GetOnAllChildrenSpawned().Remove(DynamicDespawn);
+		if (!m_Entity && !SCR_StringHelper.IsEmptyOrWhiteSpace(m_sObjectToSpawn))
+		{
+			GetOnAllChildrenSpawned().Insert(DynamicDespawn);
+			return;
+		}
+		
+		if (!m_bInitiated || m_bExcludeFromDynamicDespawn)
+			return;
+		
+		if (m_Entity)
+			m_vPosition = m_Entity.GetOrigin();
+		
+		m_bInitiated = false;
+		m_bDynamicallyDespawned = true;
+		SCR_EntityHelper.DeleteEntityAndChildren(m_Entity);
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
+	{
+		if (m_bInitiated)
+			return;
+		
+		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
 			return;
 		
 		bool tempTerminated = m_bIsTerminated;
 		m_bIsTerminated = false;
 		
-		super.Init(area, activation);
-		m_bIsTerminated = tempTerminated;
-		StoreTaskSubjectToParentTaskLayer();
-	}
+		if (m_bIsTerminated)
+			return;
+		
+		if (m_Entity && !m_bEnableRepeatedSpawn)
+		{
+			IEntity entity = GetOwner().GetParent();
+			if (!entity)
+				return;
+				
+			SCR_ScenarioFrameworkLayerBase layerBase = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+			if (!layerBase)
+				return;
+				
+			if (!layerBase.GetEnableRepeatedSpawn())
+			{
+				Print(string.Format("ScenarioFramework: Object %1 already exists and won't be spawned for %2, exiting...", m_Entity, GetOwner().GetName()), LogLevel.ERROR);
+				return;
+			}
+		}
+		
+		// Handles inheritance of faction settings from parents
+		if (m_sFactionKey.IsEmpty() && m_ParentLayer && !m_ParentLayer.GetFactionKey().IsEmpty())
+			SetFactionKey(m_ParentLayer.GetFactionKey());
+		
+		if (!m_bUseExistingWorldAsset)
+		{
+			m_Entity = SpawnAsset();
+		}
+		else
+		{
+			QueryObjectsInRange();	//sets the m_Entity in subsequent callback
+		}
+		
+		GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawned);
+		
+		if (!m_Entity)
+		{
+			InvokeAllChildrenSpawned();
+			return;
+		}
+		
+		if (!m_sID.IsEmpty())
+			m_Entity.SetName(m_sID);	
+		
+		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(m_Entity.FindComponent(ScriptedDamageManagerComponent));
+		if (objectDmgManager)
+			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
+		
+		if (Vehicle.Cast(m_Entity))
+		{
+			EventHandlerManagerComponent ehManager = EventHandlerManagerComponent.Cast(m_Entity.FindComponent(EventHandlerManagerComponent));
+			if (ehManager)
+				ehManager.RegisterScriptHandler("OnCompartmentEntered", this, OnCompartmentEntered, false, true);
+		}
 			
+		StoreTaskSubjectToParentTaskLayer();
+		m_bIsTerminated = tempTerminated;
+		
+		InvokeAllChildrenSpawned();
+	}
 }

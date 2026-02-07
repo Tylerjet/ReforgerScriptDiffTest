@@ -78,6 +78,7 @@ class SCR_DeathScreenEffect : SCR_BaseScreenEffect
 		if (!m_wDeath)
 			return;
 
+		AnimateWidget.StopAllAnimations(m_wDeath);
 		AnimateWidget.Opacity(m_wDeath, DEATHEFFECT_FADEIN_OPACITY_TARGET, DEATHEFFECT_FADEIN_OPACITY_DURATION);
 		AnimateWidget.AlphaMask(m_wDeath, DEATHEFFECT_FADEIN_PROGRESSION_TARGET, DEATHEFFECT_FADEIN_PROGRESSION_DURACTION);
 	}
@@ -94,6 +95,7 @@ class SCR_DeathScreenEffect : SCR_BaseScreenEffect
 		if (m_pDamageManager.GetState() != EDamageState.DESTROYED)
 			return;
 		
+		AnimateWidget.StopAllAnimations(m_wDeath);
 		AnimateWidget.Opacity(m_wDeath, INSTADEATHEFFECT_FADEIN_OPACITY_TARGET, INSTADEATHEFFECT_FADEIN_OPACITY_DURATION);
 		AnimateWidget.AlphaMask(m_wDeath, INSTADEATHEFFECT_FADEIN_PROGRESSION_TARGET, INSTADEATHEFFECT_FADEIN_PROGRESSION_DURACTION);
 	}

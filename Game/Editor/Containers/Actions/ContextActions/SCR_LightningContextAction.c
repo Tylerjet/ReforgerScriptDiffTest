@@ -7,17 +7,18 @@ class SCR_LightningContextAction : SCR_BaseContextAction
 	
 	override bool CanBeShown(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
-		vector positionCheck;
-		//~ Only allow lightning strike if entity has a position
-		if (hoveredEntity && !hoveredEntity.GetPos(positionCheck))
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world.IsGameTimePaused())
 			return false;
 		
-		return true;
+		//~ Only allow lightning strike if entity has a position
+		vector positionCheck;
+		return !hoveredEntity || hoveredEntity.GetPos(positionCheck);
 	}
 	
 	override bool CanBePerformed(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
-		return true;
+		return CanBeShown(hoveredEntity, selectedEntities, cursorWorldPosition, flags);
 	}
 	
 	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition,int flags, int param = -1)

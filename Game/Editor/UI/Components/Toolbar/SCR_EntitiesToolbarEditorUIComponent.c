@@ -82,7 +82,7 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		CloseDialog();
 	}
-	protected void OnTypeTab(SCR_TabViewComponent tabTypes, int index, SCR_TabViewContent tab)
+	protected void OnTypeTab(SCR_TabViewComponent tabView, SCR_TabViewContent tabContent, int index)
 	{
 		m_iTab = index;
 		m_Type = m_aEntityTypeTabs[index].GetType();
@@ -241,7 +241,7 @@ class SCR_EntitiesToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 				
 				//Init tab
 				if (m_aEntityTypeTabs.Count() > 0)
-					OnTypeTab(null, 0, null);
+					OnTypeTab(null, null, 0);
 			}
 		}
 		

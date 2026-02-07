@@ -267,7 +267,7 @@ class SCR_AddonManager : GenericEntity
 
 	//-----------------------------------------------------------------------------------------------
 	//! Returns true when external addon configuration is used (through CLI or other means)
-	static bool GetAddonsEnabledExternally()
+	protected static bool GetAddonsEnabledExternally()
 	{
 		return System.IsCLIParam(ADDONS_CLI);
 	}
@@ -747,6 +747,20 @@ class SCR_AddonManager : GenericEntity
 		//SCR_DownloadManager.GetInstance().DownloadAddons(pendingDownloads);
 		
 		m_OnAddonsChecked.Invoke();
+		
+		//show reload failure
+		array<string> addonIds = {};
+		GetGame().ReloadFailureAddons(addonIds);
+		array<ref SCR_WorkshopItem> arr = {};
+		foreach(auto addon: addonIds)
+		{
+			SCR_WorkshopItem wi = GetItem(addon);
+			if (wi)
+				arr.Insert(wi);
+		}
+		
+		if (!arr.IsEmpty())
+			SCR_AddonListDialog.CreateFailedToStartWithMods(arr);
 	}
 
 

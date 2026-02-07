@@ -26,6 +26,11 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 		EPreviewEntityFlag flags = EPreviewEntityFlag.IGNORE_TERRAIN | EPreviewEntityFlag.IGNORE_PREFAB | EPreviewEntityFlag.ONLY_EDITABLE;
 		
 		SCR_RefPreviewEntity refEntity = SCR_RefPreviewEntity.Cast(SCR_RefPreviewEntity.SpawnPreviewFromEditableEntity(entity, "SCR_RefPreviewEntity", GetGame().GetWorld(), null, material, flags));
+		if (!refEntity)
+		{
+			Print("SCR_RefPreviewEntity:: refEntity was not spawned!", LogLevel.WARNING);
+			return;
+		}
 		
 		refEntity.m_EditableEntity = entity;
 		refEntity.SetAsInstant();
@@ -45,12 +50,13 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 		//--- Get navmesh rebuild areas *BEFORE* the change
 		SCR_AIWorld aiWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
 		array<ref Tuple2<vector, vector>> areas = new array<ref Tuple2<vector, vector>>; //--- Min, max
+		array<bool> redoAreas = new array<bool>;
 		if (aiWorld)
 		{
 			foreach (SCR_BasePreviewEntity child: m_aChildren)
 			{			
 				if (child.m_Entity)
-					aiWorld.GetNavmeshRebuildAreas(child.m_Entity, areas);
+					aiWorld.GetNavmeshRebuildAreas(child.m_Entity, areas, redoAreas);
 			}
 		}
 		
@@ -72,11 +78,11 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 					{
 						childRef.ApplyChild(param, true, m_aEditedEntities, m_bIsInstant);
 						if (child.m_Entity)
-							aiWorld.GetNavmeshRebuildAreas(child.m_Entity, areas);
+							aiWorld.GetNavmeshRebuildAreas(child.m_Entity, areas, redoAreas);
 					}
 				}
 			}
-			aiWorld.RequestNavmeshRebuildAreas(areas);
+			aiWorld.RequestNavmeshRebuildAreas(areas, redoAreas);
 		}
 		else
 		{

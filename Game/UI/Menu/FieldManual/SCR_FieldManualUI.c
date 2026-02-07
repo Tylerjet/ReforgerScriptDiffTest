@@ -1,10 +1,9 @@
 class SCR_FieldManualUI : MenuRootBase
 {
 	protected TextWidget m_wMenuTitle;
-	protected SCR_TabViewComponent m_MenuTabView;
 	protected VerticalLayoutWidget m_wMenuCategoryList;
 	protected SCR_EditBoxSearchComponent m_MenuSearchbar;
-	protected SCR_NavigationButtonComponent m_MenuBtnBack;
+	protected SCR_InputButtonComponent m_MenuBtnBack;
 
 	protected Widget m_wReadingWidget;
 	protected SCR_BreadCrumbsComponent m_BreadCrumbsComponent;
@@ -51,6 +50,8 @@ class SCR_FieldManualUI : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuOpen()
 	{
+		super.OnMenuOpen();
+		
 		Widget rootWidget = GetRootWidget();
 		SCR_ConfigUIComponent component = SCR_ConfigUIComponent.Cast(rootWidget.FindHandler(SCR_ConfigUIComponent));
 		if (!component)
@@ -91,22 +92,6 @@ class SCR_FieldManualUI : MenuRootBase
 			return;
 		}
 
-		Widget tabViewRoot = menuFrame.FindAnyWidget("TabViewRoot0");
-		if (!tabViewRoot)
-		{
-			Print("no tab view root | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
-			Close();
-			return;
-		}
-
-		SCR_TabViewComponent menuTabViewComponent = SCR_TabViewComponent.Cast(tabViewRoot.FindHandler(SCR_TabViewComponent));
-		if (!menuTabViewComponent)
-		{
-			Print("no menu tab view component | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.WARNING);
-			Close();
-			return;
-		}
-
 		Widget readingWidget = rootWidget.FindAnyWidget("ReadingWidget");
 
 		TextWidget entryTitle = TextWidget.Cast(readingWidget.FindAnyWidget("EntryTitle"));
@@ -118,7 +103,7 @@ class SCR_FieldManualUI : MenuRootBase
 			return;
 		}
 
-		SCR_NavigationButtonComponent backButtonMenuFrame = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Back", menuFrame);
+		SCR_InputButtonComponent backButtonMenuFrame = SCR_InputButtonComponent.GetInputButtonComponent("Back", menuFrame);
 		if (!backButtonMenuFrame || !backButtonMenuFrame.m_OnClicked)
 		{
 			Print(string.Format("missing menu frame's back button menu (%1) or m_OnClicked (%2) | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, backButtonMenuFrame != null, backButtonMenuFrame.m_OnClicked != null), LogLevel.WARNING);
@@ -129,7 +114,6 @@ class SCR_FieldManualUI : MenuRootBase
 		m_MenuBtnBack = backButtonMenuFrame;
 
 		m_wMenuTitle = menuTitle;
-		m_MenuTabView = menuTabViewComponent;
 		m_wMenuCategoryList = menuCategoryList;
 		m_wMenuGridLayout = menuGridLayout;
 
@@ -169,6 +153,8 @@ class SCR_FieldManualUI : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuShow()
 	{
+		super.OnMenuShow();
+		
 		CreateCategoryMenuWidgets();
 		CloseReadingPanel();
 		OpenFirstSubCategory();
@@ -191,6 +177,9 @@ class SCR_FieldManualUI : MenuRootBase
 	{
 		m_bIsInSearchMode = false;
 		SetCurrentEntryByWidget(w);
+		
+		if (m_wLastClickedSubCategory)
+			GetGame().GetWorkspace().SetFocusedWidget(m_wLastClickedSubCategory);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -261,9 +250,6 @@ class SCR_FieldManualUI : MenuRootBase
 
 		SCR_WidgetHelper.RemoveAllChildren(m_wMenuGridLayout);
 
-//		if (m_wGridScrollLayoutWidget)
-//			m_wGridScrollLayoutWidget.SetSliderPosPixels(0, 0);
-
 		if (!entries || entries.Count() < 1)
 			return;
 
@@ -295,6 +281,9 @@ class SCR_FieldManualUI : MenuRootBase
 				m_mWidgetEntryMap.Insert(button, entry);
 			}
 		}
+		
+		if (m_wGridScrollLayoutWidget)
+			m_wGridScrollLayoutWidget.SetSliderPos(0, 0);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -401,7 +390,11 @@ class SCR_FieldManualUI : MenuRootBase
 		if (!entity)
 			return false;
 
-		ItemPreviewManagerEntity manager = GetGame().GetItemPreviewManager();
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		if (!world)
+			return false;
+		
+		ItemPreviewManagerEntity manager = world.GetItemPreviewManager();
 		if (!manager)
 			return false;
 
@@ -611,15 +604,7 @@ class SCR_FieldManualUI : MenuRootBase
 		{
 			m_wMenuTitle.SetText(m_ConfigRoot.m_sTitle);
 		}
-/*
-		if (m_MenuTabView)
-		{
-			m_MenuTabView.AddTab("", m_ConfigRoot.m_sDefaultTabName);
-			m_MenuTabView.AddTab("", m_ConfigRoot.m_sModsTabName);
-			m_MenuTabView.ShowTab(0, false, false);
-			m_MenuTabView.EnableTab(1, false, false);
-		}
-// */
+
 		Widget subCategoryWidget;
 		ButtonWidget button;
 		foreach (SCR_FieldManualConfigCategory category : m_ConfigRoot.m_aCategories)

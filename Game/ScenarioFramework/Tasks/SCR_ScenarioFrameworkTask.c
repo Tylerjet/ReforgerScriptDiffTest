@@ -10,27 +10,8 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	protected IEntity 												m_Asset;
 	protected SCR_ScenarioFrameworkTaskSupportEntity		 		m_SupportEntity;
 	protected SCR_ScenarioFrameworkLayerTask						m_Layer;
-	protected bool													m_bInitiated = false;
-
-	//------------------------------------------------------------------------------------------------
-	//!
-	/*
-	void ShowPopUpMessage(string subtitle)
-	{
-		if (!m_bInitiated)
-			return;
-
-		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!gameModeManager)
-			return;
-		else
-		{
-			gameModeManager.PopUpMessage(GetTitle(), subtitle);
-		}
-		//if (m_bInitiated)
-			//SCR_PopUpNotification.GetInstance().PopupMsg(GetTitle(), text2: subtitle);
-	}
-	*/
+	protected SCR_ScenarioFrameworkSlotTask							m_SlotTask;
+	protected string 												m_sTaskExecutionBriefing;
 	
 	//------------------------------------------------------------------------------------------------
 	void SetTaskState(SCR_TaskState state)
@@ -54,21 +35,33 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	//! An event called when the state of this task has been changed.
 	override void OnStateChanged(SCR_TaskState previousState, SCR_TaskState newState)
 	{
+		if (!m_Layer)
+			return;
+		
 		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!gameModeManager || !gameModeManager.IsMaster() || !m_Layer)
+		if (!gameModeManager || !gameModeManager.IsMaster())
 			return;
 
-		m_Layer.GetTaskSubject().OnTaskStateChanged(newState);
-		m_Layer.OnTaskStateChanged(previousState, newState);
+		if (m_SlotTask)
+		{
+			m_SlotTask.OnTaskStateChanged(newState);
+		}
+		else
+		{
+			SCR_ScenarioFrameworkSlotTask slotTask = m_Layer.GetTaskSubject();
+			if (slotTask)
+				slotTask.OnTaskStateChanged(newState);
+			else
+				Print("ScenarioFramework: Task Subject not found for task", LogLevel.ERROR);
+		}
 		
-		if (SCR_FactionManager.SGetLocalPlayerFaction() != m_TargetFaction)
-			return;
+		m_Layer.OnTaskStateChanged(previousState, newState);
 				
 		if (newState == SCR_TaskState.FINISHED)
-			gameModeManager.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFinished-UC");
+			gameModeManager.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFinished-UC", m_TargetFaction.GetFactionKey());
 
 		if (newState == SCR_TaskState.CANCELLED)
-			gameModeManager.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFailed-UC");
+			gameModeManager.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFailed-UC", m_TargetFaction.GetFactionKey());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -83,11 +76,50 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	{
 		m_Asset = object;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RehookTaskSubject(IEntity object)
+	{
+		m_Asset = object;
+		
+		if (m_SupportEntity)
+			m_SupportEntity.SetTaskEntity(m_Asset);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	IEntity GetTaskSubject()
 	{
 		return m_Asset;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetSlotTask(SCR_ScenarioFrameworkSlotTask slotTask)
+	{
+		m_SlotTask = slotTask;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_ScenarioFrameworkSlotTask GetSlotTask()
+	{
+		return m_SlotTask;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_ScenarioFrameworkTaskSupportEntity GetSupportEntity()
+	{
+		return m_SupportEntity;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetTaskExecutionBriefing(string text)
+	{
+		m_sTaskExecutionBriefing = text;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetTaskExecutionBriefing() 
+	{ 
+		return m_sTaskExecutionBriefing;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -110,7 +142,6 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 		if (SCR_Global.IsEditMode(this))
 			return;
 
-		//m_SupportEntity = SCR_ScenarioFrameworkTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskSupportEntity));
 		SetSupportEntity();
 		if (!m_SupportEntity)
 			return;
@@ -118,19 +149,22 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 		m_Asset = m_SupportEntity.GetTaskEntity();
 		if (!m_Asset)
 		{
-			m_SupportEntity.CancelTask(this.GetTaskID());
-			Print("ScenarioFramework: Task subject not found!", LogLevel.ERROR);
-			return;
+			if (m_SlotTask)
+				m_Asset = m_SlotTask.GetSpawnedEntity();
+			
+			if (!m_Asset)
+			{
+				m_SupportEntity.CancelTask(this.GetTaskID());
+				Print("ScenarioFramework: Task subject not found!", LogLevel.ERROR);
+				return;
+			}
+			
+			m_SupportEntity.SetTaskEntity(m_Asset);
 		}
-
-		if (!m_SupportEntity)
-			return;
 
 		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
 		if (!gameModeManager)
 			return;
-
-		m_bInitiated = true;
 	}
 
 	//------------------------------------------------------------------------------------------------

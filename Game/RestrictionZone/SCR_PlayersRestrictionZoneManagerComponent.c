@@ -377,13 +377,13 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 	}	
 	
 	//~Todo: Test what happens if player is deleted
-	protected void OnPlayerKilled(int playerID, IEntity player, IEntity killer)
+	protected void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		if (m_aRestrictionZones.IsEmpty())
 			return;
 		
-		if (m_PlayerRestrictionZoneData.Contains(playerID))
-			SetPlayerZoneData(playerID, null, false, false, -1);
+		if (m_PlayerRestrictionZoneData.Contains(playerId))
+			SetPlayerZoneData(playerId, null, false, false, -1);
 	}
 	
 	override void EOnInit(IEntity owner)
@@ -410,7 +410,6 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		{
 			gameMode.GetOnPlayerDisconnected().Insert(OnPlayerDisconnect);
 			gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
-			gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
 		}
 	}
 
@@ -434,7 +433,6 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		if (gameMode)
 		{
 			gameMode.GetOnPlayerDisconnected().Remove(OnPlayerDisconnect);
-			gameMode.GetOnPlayerKilled().Remove(OnPlayerKilled);
 			gameMode.GetOnPlayerKilled().Remove(OnPlayerKilled);
 		}
 		

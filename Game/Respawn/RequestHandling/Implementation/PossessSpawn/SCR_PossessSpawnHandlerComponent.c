@@ -91,8 +91,41 @@ class SCR_PossessSpawnHandlerComponent : SCR_SpawnHandlerComponent
 		Managed rplComponent = Replication.FindItem(possessData.GetRplId());
 		return rplComponent != null;
 	}
-	override bool CanRequestSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data)
+	override bool CanRequestSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, out SCR_ESpawnResult result)
 	{
-		return m_bIgnoreConditions || super.CanRequestSpawn_S(requestComponent, data);
+		return m_bIgnoreConditions || super.CanRequestSpawn_S(requestComponent, data, result);
 	}
+	
+	override void OnFinalizeDone_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
+	{
+		// Assign possessed entity's faction to the player
+		PlayerController pc = requestComponent.GetPlayerController();
+		SCR_PlayerFactionAffiliationComponent playerFactionComp = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		Faction targetFaction = GetFactionFromPrefab(entity.GetPrefabData().GetPrefabName());
+		if (!targetFaction || targetFaction == playerFactionComp.GetAffiliatedFaction())
+			return;
+
+		playerFactionComp.SetAffiliatedFaction(targetFaction);
+
+		// Notify faction manager
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		factionManager.UpdatePlayerFaction_S(playerFactionComp);
+
+		// Notify game mode
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		gameMode.OnPlayerFactionSet_S(playerFactionComp, targetFaction);	
+	}
+
+	protected Faction GetFactionFromPrefab(ResourceName prefab)
+	{
+		Resource res = Resource.Load(prefab);
+		IEntityComponentSource src = SCR_BaseContainerTools.FindComponentSource(res, FactionAffiliationComponent);
+		if (!src)
+			return null;
+
+		string factionKey;
+		src.Get("faction affiliation", factionKey);
+
+		return GetGame().GetFactionManager().GetFactionByKey(factionKey);
+	}	
 };

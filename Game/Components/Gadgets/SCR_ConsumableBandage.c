@@ -21,7 +21,7 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 		damageMgr.GetBandageAnimHitzones(animParams.m_intParam, hitZones);
 		if (hitZones.IsEmpty())
 		{
-			hzGroup = damageMgr.GetMostDOTHitzoneGroup(EDamageType.BLEEDING);
+			hzGroup = damageMgr.GetCharMostDOTHitzoneGroup(EDamageType.BLEEDING);
 		}
 		else
 		{
@@ -87,9 +87,9 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 		}
 		else
 		{
-			ECharacterHitZoneGroup hzGroup = damageMgr.GetMostDOTHitzoneGroup(EDamageType.BLEEDING);
+			ECharacterHitZoneGroup hzGroup = damageMgr.GetCharMostDOTHitzoneGroup(EDamageType.BLEEDING);
 			array<HitZone> hitzones = {};
-			damageMgr.GetGroupHitZones(hzGroup, hitzones);
+			damageMgr.GetHitZonesOfGroup(hzGroup, hitzones);
 			if (!hitzones || hitzones.IsEmpty())
 				return null;
 				

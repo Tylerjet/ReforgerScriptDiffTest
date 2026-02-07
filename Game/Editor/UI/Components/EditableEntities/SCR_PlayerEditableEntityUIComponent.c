@@ -9,25 +9,11 @@ class SCR_PlayerEditableEntityUIComponent: SCR_BaseEditableEntityUIComponent
 	
 	protected void SetName(TextWidget nameWidget, int playerID)
 	{
-#ifdef FAKE_PLAYER
-		string playerName = lobby.GetPlayerName(playerID);
-		if (playerName.IsEmpty())
-		{
-			if (playerID == 0)
-				return;
-			else
-				playerName = SCR_DebugEditorComponent.GetFakePlayerName(playerID);
-		}
-		
-		nameWidget.SetText(playerName);
-		GetGame().GetCallqueue().Remove(SetName);
-#else
 		string playerName = GetGame().GetPlayerManager().GetPlayerName(playerID);
 		if (playerName.IsEmpty()) return;
-		
+
 		nameWidget.SetText(GetGame().GetPlayerManager().GetPlayerName(playerID));
 		GetGame().GetCallqueue().Remove(SetName);
-#endif
 	}
 	
 	override void OnShownOffScreen(bool offScreen)

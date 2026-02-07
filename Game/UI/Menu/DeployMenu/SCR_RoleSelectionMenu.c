@@ -14,8 +14,9 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 	protected SCR_PlayerFactionAffiliationComponent m_PlyFactionAffilComp;
 	protected SCR_PlayerLoadoutComponent m_PlyLoadoutComp;
 
-	protected SCR_NavigationButtonComponent m_ContinueButton;
-	protected SCR_NavigationButtonComponent m_GroupOpenButton;
+	protected SCR_InputButtonComponent m_ContinueButton;
+	protected SCR_InputButtonComponent m_GroupOpenButton;
+	protected SCR_InputButtonComponent m_ViewProfileButton;
 
 	protected Widget m_wPersistentFaction;
 	protected TextWidget m_wScenarioTimeElapsed;
@@ -24,6 +25,8 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 	
 	protected int m_iMaxPlayerCount;	
 	protected float m_fTimer = 0;
+	
+	protected int m_iLastFocusedEntryPlayerId;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
@@ -82,29 +85,36 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		FindRequestHandlers();
 		HookEvents();
 
-		m_ContinueButton = SCR_NavigationButtonComponent.GetNavigationButtonComponent("CloseButton", GetRootWidget());
+		m_ContinueButton = SCR_InputButtonComponent.GetInputButtonComponent("CloseButton", GetRootWidget());
 		if (m_ContinueButton)
 		{
 			m_ContinueButton.m_OnActivated.Insert(Close);
 			m_ContinueButton.SetEnabled(CanContinue());
 		}
 
-		m_GroupOpenButton = SCR_NavigationButtonComponent.GetNavigationButtonComponent("GroupMenu", GetRootWidget());
+		m_GroupOpenButton = SCR_InputButtonComponent.GetInputButtonComponent("GroupMenu", GetRootWidget());
 		if (m_GroupOpenButton)
 		{
 			m_GroupOpenButton.m_OnActivated.Insert(OpenGroupMenu);
 			m_GroupOpenButton.SetEnabled(CanOpenGroupMenu());
 		}		
 
+		m_ViewProfileButton = SCR_InputButtonComponent.GetInputButtonComponent("ViewProfile", GetRootWidget());
+		if (m_ViewProfileButton)
+		{
+			UpdateViewProfileButton(true);
+			m_ViewProfileButton.m_OnActivated.Insert(OnViewProfile);
+		}
+		
 		Widget chat = GetRootWidget().FindAnyWidget("ChatPanel");
 		if (chat)
 			m_ChatPanel = SCR_ChatPanel.Cast(chat.FindHandler(SCR_ChatPanel));
 
-		m_ChatButton = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ChatButton", GetRootWidget());
+		m_ChatButton = SCR_InputButtonComponent.GetInputButtonComponent("ChatButton", GetRootWidget());
 		if (m_ChatButton)
 			m_ChatButton.m_OnActivated.Insert(OnChatToggle);
 
-		m_PauseButton = SCR_NavigationButtonComponent.GetNavigationButtonComponent("PauseButton", GetRootWidget());
+		m_PauseButton = SCR_InputButtonComponent.GetInputButtonComponent("PauseButton", GetRootWidget());
 		if (m_PauseButton)
 			m_PauseButton.m_OnActivated.Insert(OnPauseMenu);
 		InitMapPlain();
@@ -143,13 +153,15 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 			editorManager.AutoInit();
 
 		GetGame().GetInputManager().AddActionListener("ShowScoreboard", EActionTrigger.DOWN, OpenPlayerList);
-		GetGame().GetInputManager().AddActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
+		
+		super.OnMenuFocusGained();
 	}
 
 	override void OnMenuFocusLost()
 	{
 		GetGame().GetInputManager().RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, OpenPlayerList);
-		GetGame().GetInputManager().RemoveActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
+		
+		super.OnMenuFocusLost();
 	}
 
 	//! Find request handlers based on the layout configuration.
@@ -170,13 +182,15 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		m_PlyLoadoutComp.GetOnPlayerLoadoutResponseInvoker_O().Insert(OnPlayerLoadoutResponse);
 
 		m_FactionRequestUIHandler.GetOnButtonFocused().Insert(ShowFactionPlayerList);
-		m_FactionRequestUIHandler.GetOnMouseLeft().Insert(OnMouseLeft);
 		m_FactionRequestUIHandler.GetOnFactionRequested().Insert(OnPlayerFactionResponse);
 
 		m_LoadoutRequestUIHandler.GetOnButtonFocused().Insert(ShowLoadoutList);
 		m_LoadoutRequestUIHandler.GetOnMouseLeft().Insert(OnMouseLeft);
+		m_LoadoutRequestUIHandler.GetOnPlayerEntryFocused().Insert(OnPlayerEntryFocused);
+		m_LoadoutRequestUIHandler.GetOnPlayerEntryFocusLost().Insert(OnPlayerEntryFocusLost);
 
 		m_GroupRequestUIHandler.GetOnMouseLeft().Insert(OnMouseLeft);
+		m_GroupRequestUIHandler.GetOnButtonFocused().Insert(ShowLoadoutList);
 
 		m_GroupRequestUIHandler.GetOnPlayerGroupJoined().Insert(OnPlayerGroupJoined);
 		m_GroupRequestUIHandler.GetOnLocalPlayerGroupJoined().Insert(OnLocalGroupJoined);
@@ -285,34 +299,43 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		if (response)
 		{
 			m_FactionRequestUIHandler.OnPlayerFactionAssigned(component.GetAffiliatedFaction());
-	
-			// If groups are enabled, update them first, otherwise just show players assigned to the faction
-			if (m_GroupRequestUIHandler && m_GroupRequestUIHandler.IsEnabled())
+			if (factionIndex == -1)
 			{
-				Widget list = m_FactionRequestUIHandler.GetFactionButton(factionIndex).GetList();;
-				m_GroupRequestUIHandler.SetListWidget(list);
-				m_GroupRequestUIHandler.ShowAvailableGroups(component.GetAffiliatedFaction());
-				m_LoadoutRequestUIHandler.ShowAvailableLoadouts(component.GetAffiliatedFaction());
+				m_GroupRequestUIHandler.SetExpanded(false);
+				m_FactionRequestUIHandler.SetExpanded(false);
 			}
 			else
 			{
-				Widget list = m_FactionRequestUIHandler.GetFactionButton(factionIndex).GetGridList();			
-				m_LoadoutRequestUIHandler.SetListWidget(list);
-				m_LoadoutRequestUIHandler.ShowAvailableLoadouts(component.GetAffiliatedFaction());
-	
-				array<int> players = {};
-				GetGame().GetPlayerManager().GetPlayers(players);
-				foreach (int pid : players)
+				// If groups are enabled, update them first, otherwise just show players assigned to the faction
+				if (m_GroupRequestUIHandler && m_GroupRequestUIHandler.IsEnabled())
 				{
-					if (SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(pid)) != component.GetAffiliatedFaction())
-						players.RemoveItem(pid);
+					Widget list = m_FactionRequestUIHandler.GetFactionButton(factionIndex).GetList();;
+					m_GroupRequestUIHandler.SetListWidget(list);
+					m_GroupRequestUIHandler.ShowAvailableGroups(component.GetAffiliatedFaction());
+					m_LoadoutRequestUIHandler.ShowAvailableLoadouts(component.GetAffiliatedFaction());
 				}
-	
-				m_LoadoutRequestUIHandler.ShowPlayerLoadouts(players);
+				else
+				{
+					Widget list = m_FactionRequestUIHandler.GetFactionButton(factionIndex).GetGridList();
+					m_LoadoutRequestUIHandler.SetListWidget(list);
+					m_LoadoutRequestUIHandler.ShowAvailableLoadouts(component.GetAffiliatedFaction());
+
+					array<int> players = {};
+					GetGame().GetPlayerManager().GetPlayers(players);
+					foreach (int pid : players)
+					{
+						if (SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(pid)) != component.GetAffiliatedFaction())
+							players.RemoveItem(pid);
+					}
+
+					m_LoadoutRequestUIHandler.ShowPlayerLoadouts(players);
+				}	
 			}
 	
 			m_GroupOpenButton.SetEnabled(CanOpenGroupMenu());
 			m_ContinueButton.SetEnabled(CanContinue());
+			if (m_wPersistentFaction)
+				m_wPersistentFaction.SetVisible(false);
 		}
 
 		m_FactionRequestUIHandler.Unlock();
@@ -377,6 +400,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 	
 	protected void OnPauseMenu()
 	{
+		UpdateViewProfileButton(true);
 		GetGame().OpenPauseMenu(false, true);
 	}
 
@@ -387,7 +411,35 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		if (m_MapEntity && m_MapEntity.IsOpen())
 			m_MapEntity.CloseMap();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerEntryFocused(int id)
+	{
+		m_iLastFocusedEntryPlayerId = id;
+		UpdateViewProfileButton();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerEntryFocusLost(Widget w)
+	{
+		UpdateViewProfileButton(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnViewProfile()
+	{
+		GetGame().GetPlayerManager().ShowUserProfile(m_iLastFocusedEntryPlayerId);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateViewProfileButton(bool forceHidden = false)
+	{
+		if (!m_ViewProfileButton)
+			return;
 
+		m_ViewProfileButton.SetVisible(!forceHidden && GetGame().GetPlayerManager().IsUserProfileAvailable(m_iLastFocusedEntryPlayerId), false);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Open role selection menu.

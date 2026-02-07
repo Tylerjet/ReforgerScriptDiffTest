@@ -8,6 +8,9 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	[Attribute("TickboxHolder")]
 	protected string m_sTickBoxAttributeName;
 	
+	[Attribute("AttributeHolder")]
+	protected string m_sAttributeHolder;
+	
 	[Attribute("GamePadLockedSelector")]
 	protected string m_sGamePadLockedSelectorName;
 	
@@ -29,6 +32,7 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	protected SCR_AttributesManagerEditorComponent m_AttributeManager;
 	protected InputManager m_InputManager;
 	protected Widget m_SubAttributeIndicator;
+	protected Widget m_wAttributeHolder;
 	
 	protected bool m_bEnabledByAttribute;
 	protected bool m_bEnabledByTickbox;
@@ -225,6 +229,21 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		else if (attribute.GetHasConflictingValues())
 		{
 			m_TickBoxAttribute.InitTickbox(attribute.GetIsOverridingValues(), this, linkedOverrideAttributeType);	
+		}
+		
+		// Setup attribut holder 
+		m_wAttributeHolder = w.FindAnyWidget(m_sAttributeHolder);
+		if (m_wAttributeHolder)
+		{
+			Widget child = m_wAttributeHolder.GetChildren();
+			if (child)
+			{
+				// Setup event handler and callbacks 
+				SCR_EventHandlerComponent eventHandler = new SCR_EventHandlerComponent();
+				eventHandler.GetOnFocus().Insert(OnFocusAttributeWidget);
+				child.AddHandler(eventHandler);
+				
+			}
 		}
 	}
 	
@@ -549,6 +568,14 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		return m_bIsFocused;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Callback for focus of widget used
+	protected void OnFocusAttributeWidget(Widget w)
+	{
+		OnFocus(w, 0, 0);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//If enabled UI is focused
 	override bool OnFocus(Widget w, int x, int y)
 	{
@@ -565,6 +592,7 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//If enabled UI is lost focus
 	override bool OnFocusLost(Widget w, int x, int y)
 	{		
@@ -584,10 +612,6 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{	
 		Event_OnMouseLeave.Invoke();
-		
-		if (enterW != null)
-			HideAttributeDescription();
-		
 		return false;
 	}
 	

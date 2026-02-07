@@ -7,7 +7,7 @@ class SCR_ServerInfoUIComponent : ScriptedWidgetComponent
 	protected void OnReceive(int fps, int memoryKB, int tickCount)
 	{
 		int memoryMB = memoryKB / 1024;
-		string uptime = SCR_Global.GetTimeFormatting(tickCount / 1000);
+		string uptime = SCR_FormatHelper.GetTimeFormatting(tickCount / 1000);
 		
 		m_Text.SetTextFormat("FPS: %1<br />Uptime: %2<br />Memory: %3 MB", fps, uptime, memoryMB);
 	}

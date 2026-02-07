@@ -20,6 +20,20 @@ enum ECallbackState
 	FINAL = 4
 };
 
+//------------------------------------------------------------------------------------------------
+enum EResupplyUnavailableReason
+{
+	//~ If multiple reasons for Resupply Unavailible than the Highst enum will be used
+	NONE,
+	NO_VALID_WEAPON = 10,
+	ENOUGH_ITEMS = 20,
+	NOT_IN_GIVEN_STORAGE = 30,
+	INVENTORY_FULL = 40,
+
+	//~ Resupply was valid. Add invalid reasons above
+	RESUPPLY_VALID = 99999,
+};
+
 class SCR_HoldableItemPredicate: InventorySearchPredicate
 {
     ECommonItemType wanted;
@@ -392,8 +406,8 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	private IEntity 											m_pStorageToOpen;
 	protected ref SCR_ResupplyMagazinesCallback						m_ResupplyMagazineCallback;
 	
-	ref ScriptInvoker<IEntity, BaseInventoryStorageComponent>	m_OnItemAddedInvoker		= new ref ScriptInvoker<IEntity, BaseInventoryStorageComponent>();
-	ref ScriptInvoker<IEntity, BaseInventoryStorageComponent>	m_OnItemRemovedInvoker		= new ref ScriptInvoker<IEntity, BaseInventoryStorageComponent>();
+	ref ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod> m_OnItemAddedInvoker = new ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod>();
+	ref ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod> m_OnItemRemovedInvoker = new ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod>();
 
 	ref ScriptInvoker<bool> 									m_OnInventoryOpenInvoker	= new ref ScriptInvoker<bool>();
 	ref ScriptInvoker<bool> 									m_OnQuickBarOpenInvoker		= new ref ScriptInvoker<bool>();
@@ -460,11 +474,15 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			m_OnItemAddedInvoker.Invoke( item, storageOwner );
 		
 		// Withdraw item from gc collection
-		GarbageManager garbageManager = GetGame().GetGarbageManager();
-		if (garbageManager)
+		ChimeraWorld world = ChimeraWorld.CastFrom(item.GetWorld());
+		if (world)
 		{
-			if (item.FindComponent(InventoryItemComponent))
-				garbageManager.Withdraw(item);
+			GarbageSystem garbageSystem = world.GetGarbageSystem();
+			if (garbageSystem)
+			{
+				if (item.FindComponent(InventoryItemComponent))
+					garbageSystem.Withdraw(item);
+			}
 		}
 	}
 	
@@ -481,11 +499,12 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			m_OnItemRemovedInvoker.Invoke( item, storageOwner );
 
 		// Insert item into gc collection
-		GarbageManager garbageManager = GetGame().GetGarbageManager();
-		if (garbageManager)
+		ChimeraWorld world = ChimeraWorld.CastFrom(item.GetWorld());
+		if (world)
 		{
-			if (item.FindComponent(InventoryItemComponent))
-				garbageManager.Insert(item);
+			GarbageSystem garbageSystem = world.GetGarbageSystem();
+			if (garbageSystem)
+				garbageSystem.Insert(item);
 		}
 	}
 	//------------------------------------------------------------------------------------------------
@@ -1081,20 +1100,133 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Resupply all weapons so they have given number of magazines.
-	/param maxMagazineCount Desired number of magazines
+	Get if resupply magazines action is availible with the given magazine count.
+	Note it does not check if inventory has free space
+	\param resupplyMagazineCount How many magazines will be resupplied
+	\param[out] resupplyUnavailibleReason The reason why the Resupplied failed if it failed
+	\param muzzleType (optional) If you want the Resupply to only check specific muzzle types. -1 to Ignore
+	\param mustBeInStorage (Optional) If storage is given than it will check if the item you try to resupply is in the storage. Used in tadum with Arsenal to give player magazines that are in that arsenal.
+	\return true if resupply is availible.
 	*/
-	void ResupplyMagazines(int maxMagazineCount = 4)
+	bool IsResupplyMagazinesAvailable(int resupplyMagazineCount = 4, out EResupplyUnavailableReason resupplyUnavailableReason = EResupplyUnavailableReason.NONE, EMuzzleType muzzleType = -1, InventoryStorageManagerComponent mustBeInStorage = null)
 	{
 		BaseWeaponManagerComponent weaponsManager = BaseWeaponManagerComponent.Cast(GetOwner().FindComponent(BaseWeaponManagerComponent));
+		if (!weaponsManager)
+			return false;
 
 		array<IEntity> weaponList = {};
 		weaponsManager.GetWeaponsList(weaponList);
 
-		if (!m_ResupplyMagazineCallback)
-			m_ResupplyMagazineCallback = new SCR_ResupplyMagazinesCallback(this);
+		bool foundValidWeapon = false;
+		ResourceName magazineOrProjectilePrefab;
+		IEntity spawnedMagazine;
 
-		foreach (IEntity weapon: weaponList)
+		foreach (IEntity weapon : weaponList)
+		{
+			BaseWeaponComponent comp = BaseWeaponComponent.Cast(weapon.FindComponent(BaseWeaponComponent));
+			if (!comp)
+				continue;
+
+			string weaponSlotType = comp.GetWeaponSlotType();
+
+			// Only refill primary and secondary weapons
+			if ((weaponSlotType != "primary" && weaponSlotType != "secondary"))
+				continue;
+
+			array<BaseMuzzleComponent> muzzles = {};
+
+			//~ Get base muzzle to only supply magazines
+			comp.GetMuzzlesList(muzzles);
+			foreach (BaseMuzzleComponent muzzle : muzzles)
+			{
+				if (muzzleType != -1 && muzzle.GetMuzzleType() != muzzleType)
+					continue;
+
+				SCR_MuzzleInMagComponent inMagMuzzle = SCR_MuzzleInMagComponent.Cast(muzzle);
+				if (inMagMuzzle && !inMagMuzzle.CanBeReloaded())
+					continue;
+
+				magazineOrProjectilePrefab = muzzle.GetDefaultMagazineOrProjectileName();
+				if (SCR_StringHelper.IsEmptyOrWhiteSpace(magazineOrProjectilePrefab))
+					continue;
+
+				//~ At least one valid weapon was found
+				foundValidWeapon = true;
+
+				//~ If storage is given check if magazine or projectile is in storage and only allow resupply if it is (Does not care for amount and intended use is with Arsenal)
+				if (mustBeInStorage)
+				{
+					SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
+					if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineOrProjectilePrefab)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(magazineOrProjectilePrefab) < 1))
+					{
+						if (resupplyUnavailableReason < EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE)
+							resupplyUnavailableReason = EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
+
+						continue;
+					}
+				}
+
+				//~ Check if there are already enough magazines
+				if (resupplyMagazineCount - GetMagazineCountByMuzzle(muzzle) <= 0)
+				{
+					if (resupplyUnavailableReason < EResupplyUnavailableReason.ENOUGH_ITEMS)
+						resupplyUnavailableReason = EResupplyUnavailableReason.ENOUGH_ITEMS;
+
+					continue;
+				}
+
+				//~ Spawn magazine and check if it can be stored
+				spawnedMagazine = GetGame().SpawnEntityPrefabLocal(Resource.Load(magazineOrProjectilePrefab));
+				if (spawnedMagazine)
+				{
+					//~ Not enough storage so set Unavalible reason to Inventory full
+					if (!FindStorageForInsert(spawnedMagazine, m_pStorage))
+					{
+						if (resupplyUnavailableReason < EResupplyUnavailableReason.INVENTORY_FULL)
+							resupplyUnavailableReason = EResupplyUnavailableReason.INVENTORY_FULL;
+
+						delete spawnedMagazine;
+						continue;
+					}
+
+					delete spawnedMagazine;
+				}
+
+				//~ Passes all the checks
+				//~ Set reason none just in case as resupply is availible
+				resupplyUnavailableReason = EResupplyUnavailableReason.NONE;
+
+				//~ All checks passed and at least one magazine can be added so function returns true
+				return true;
+			}
+		}
+
+		//~ Did not have any valid weapons so set unavailible reason to no valid weapon
+		if (!foundValidWeapon)
+			resupplyUnavailableReason = EResupplyUnavailableReason.NO_VALID_WEAPON;
+
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get map of all items (ResourceName) and count to add to inventory on resupply
+	\param maxMagazineCount Desired number of magazines
+	\param muzzleType (optional) If you want to Resupply only check specific muzzle types. -1 to Ignore
+	\param mustBeInStorage (Optional) If storage is given than it will check if the item you try to check is in the storage. Used in tadum with Arsenal to give player magazines that are in that arsenal.
+	*/
+	void GetValidResupplyItemsAndCount(out notnull map<ResourceName, int> validResupplyItems, int maxMagazineCount = 4, EMuzzleType muzzleType = -1, InventoryStorageManagerComponent mustBeInStorage = null)
+	{
+		validResupplyItems.Clear();
+
+		BaseWeaponManagerComponent weaponsManager = BaseWeaponManagerComponent.Cast(GetOwner().FindComponent(BaseWeaponManagerComponent));
+		if (!weaponsManager)
+			return;
+		
+		array<IEntity> weaponList = {};
+		weaponsManager.GetWeaponsList(weaponList);
+
+		foreach (IEntity weapon : weaponList)
 		{
 			BaseWeaponComponent comp = BaseWeaponComponent.Cast(weapon.FindComponent(BaseWeaponComponent));
 			string weaponSlotType = comp.GetWeaponSlotType();
@@ -1103,24 +1235,165 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			if (!(weaponSlotType == "primary" || weaponSlotType == "secondary"))
 				continue;
 
-			int resupplyCount = maxMagazineCount - GetMagazineCountByWeapon(comp);
-			if (resupplyCount <= 0)
-				continue;
+			array<BaseMuzzleComponent> muzzles = {};
 
-			MuzzleComponent muzzleComponent = MuzzleComponent.Cast(comp.GetCurrentMuzzle());
-			if (!muzzleComponent)
-				continue;
+			//~ Get base muzzle to only supply magazines
+			comp.GetMuzzlesList(muzzles);
+			foreach (BaseMuzzleComponent muzzle : muzzles)
+			{
+				if (muzzleType != -1 && muzzle.GetMuzzleType() != muzzleType)
+					continue;
 
-			ResourceName magazinePrefab = muzzleComponent.GetDefaultMagazinePrefab().GetResourceName();
-			m_ResupplyMagazineCallback.Insert(magazinePrefab, resupplyCount);
+				SCR_MuzzleInMagComponent inMagMuzzle = SCR_MuzzleInMagComponent.Cast(muzzle);
+				if (inMagMuzzle && !inMagMuzzle.CanBeReloaded())
+					continue;
+
+				ResourceName magazineOrProjectilePrefab = muzzle.GetDefaultMagazineOrProjectileName();
+				if (SCR_StringHelper.IsEmptyOrWhiteSpace(magazineOrProjectilePrefab))
+					continue;
+
+				//~ Get current magazine count and see if it needs to be increased
+				int resupplyCount = maxMagazineCount - GetMagazineCountByMuzzle(muzzle);
+				if (resupplyCount <= 0)
+					continue;
+
+				//~ If storage is given check if magazine or projectile is in storage and only allow resupply if it is (Does not care for amount and intended use is with Arsenal)
+				if (mustBeInStorage)
+				{
+					SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
+					if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineOrProjectilePrefab)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(magazineOrProjectilePrefab) < 1))
+						continue;
+				}
+
+				//~ Add magazine to be resupplied
+				if (!validResupplyItems.Contains(magazineOrProjectilePrefab))
+					validResupplyItems.Insert(magazineOrProjectilePrefab, resupplyCount);
+				//~ Update count till max
+				else
+					validResupplyItems[magazineOrProjectilePrefab] = Math.Clamp(validResupplyItems[magazineOrProjectilePrefab] + resupplyCount, 0, maxMagazineCount);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Resupply all weapons in map with the given number of magazines.
+	\param validResupplyItems Map of ResourceNames and amount to add to inventory
+	*/
+	void ResupplyMagazines(notnull map<ResourceName, int> validResupplyItems)
+	{
+		//~ Nothing to resupply
+		if (validResupplyItems.IsEmpty())
+			return;
+		
+		if (!m_ResupplyMagazineCallback)
+			m_ResupplyMagazineCallback = new SCR_ResupplyMagazinesCallback(this);
+
+		//~ Resupply each given entry
+		foreach (ResourceName itemPrefab, int count : validResupplyItems)
+		{
+			m_ResupplyMagazineCallback.Insert(itemPrefab, count);
 		}
 
 		m_ResupplyMagazineCallback.Start();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Resupply all weapons so they have given number of magazines.
+	\param maxMagazineCount Desired number of magazines
+	\param muzzleType (optional) If you want to Resupply only check specific muzzle types. -1 to Ignore
+	\param mustBeInStorage (Optional) If storage is given than it will check if the item you try to check is in the storage. Used in tadum with Arsenal to give player magazines that are in that arsenal.
+	*/
+	void ResupplyMagazines(int maxMagazineCount = 4, EMuzzleType muzzleType = -1, InventoryStorageManagerComponent mustBeInStorage = null)
+	{
+		//~ Get resupply prefabs
+		map<ResourceName, int> validResupplyItems = new map<ResourceName, int>();
+		GetValidResupplyItemsAndCount(validResupplyItems, maxMagazineCount, muzzleType, mustBeInStorage);
+		
+		//~ Resupply
+		ResupplyMagazines(validResupplyItems);
+	}
 
+	//------------------------------------------------------------------------------------------------
 	void EndResupplyMagazines()
 	{
 		delete m_ResupplyMagazineCallback;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	EResupplyUnavailableReason CanResupplyMuzzle(notnull BaseMuzzleComponent muzzle, int maxMagazineCount = -1, InventoryStorageManagerComponent mustBeInStorage = null, out int currentMagazineAmount = -1)
+	{
+		//~ Cannot resupply weapons that cannot be ressupplied like the US rocket Launcer
+		SCR_MuzzleInMagComponent inMagMuzzle = SCR_MuzzleInMagComponent.Cast(muzzle);
+		if (inMagMuzzle && !inMagMuzzle.CanBeReloaded())
+			return EResupplyUnavailableReason.NO_VALID_WEAPON;
+
+		//~ Get default magazine to resupply
+		ResourceName magazineToResupply = muzzle.GetDefaultMagazineOrProjectileName();
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(magazineToResupply))
+			return EResupplyUnavailableReason.NO_VALID_WEAPON;
+		
+		//~ Check if it is in arsenal or in the storage
+		if (mustBeInStorage)
+		{
+			SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
+			if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineToResupply)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(magazineToResupply) < 1))
+				return EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
+		}
+		
+		//~ Already has enough magazines
+		currentMagazineAmount = GetMagazineCountByMuzzle(muzzle);
+		if (maxMagazineCount > 0 && currentMagazineAmount >= maxMagazineCount)
+			return EResupplyUnavailableReason.ENOUGH_ITEMS;
+		
+		//~ Spawn item and check if it can be stored
+		IEntity spawnMagazine = GetGame().SpawnEntityPrefabLocal(Resource.Load(magazineToResupply));
+		if (spawnMagazine)
+		{
+			//~ Not enough storage so set Unavalible reason to Inventory full
+			if (!FindStorageForInsert(spawnMagazine, m_pStorage))
+			{
+				delete spawnMagazine;
+				return EResupplyUnavailableReason.INVENTORY_FULL;
+			}
+
+			delete spawnMagazine;
+		}
+				
+		return EResupplyUnavailableReason.RESUPPLY_VALID;	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	EResupplyUnavailableReason CanResupplyItem(ResourceName itemToResupply, int maxItemCount = -1, InventoryStorageManagerComponent mustBeInStorage = null, out int currentItemAmount = -1)
+	{
+		//~ Check if it is in arsenal or in the storage
+		if (mustBeInStorage)
+		{
+			SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
+			if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(itemToResupply)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(itemToResupply) < 1))
+				return EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
+		}
+		
+		//~ Already has enough of the item in storage
+		currentItemAmount = GetDepositItemCountByResource(itemToResupply);
+		if (maxItemCount > 0 && currentItemAmount >= maxItemCount)
+			return EResupplyUnavailableReason.ENOUGH_ITEMS;
+			
+		//~ Spawn item and check if it can be stored
+		IEntity spawnedItem = GetGame().SpawnEntityPrefabLocal(Resource.Load(itemToResupply));
+		if (spawnedItem)
+		{
+			//~ Not enough storage so set Unavalible reason to Inventory full
+			if (!FindStorageForInsert(spawnedItem, m_pStorage))
+			{
+				delete spawnedItem;
+				return EResupplyUnavailableReason.INVENTORY_FULL;
+			}
+			delete spawnedItem;
+		}
+	
+		return EResupplyUnavailableReason.RESUPPLY_VALID;
 	}
 	
 	//------------------------------------------------------------------------------------------------

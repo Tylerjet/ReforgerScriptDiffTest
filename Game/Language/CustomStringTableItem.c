@@ -51,7 +51,7 @@ class CustomStringTableItem: ScriptStringTableItem
 	[Attribute(category:"Custom", uiwidget: UIWidgets.CheckBox)]
 	bool NonTranslatable;
 	
-	[Attribute(category:"Custom")]
+	[Attribute(category:"Custom", desc: "Provide a number of how many W characters fit before we have a cut-off or overlap of this string, not a number of regular characters.")]
 	int MaxLength;
 	
 	[Attribute(category:"Meta", uiwidget: UIWidgets.Date)]

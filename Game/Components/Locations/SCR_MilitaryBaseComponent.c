@@ -1,7 +1,11 @@
+void ScriptInvokerServiceUnregisteredMethod(SCR_MilitaryBaseComponent militaryBaseComponent, SCR_ServicePointComponent serviceComponent);
+typedef func ScriptInvokerServiceUnregisteredMethod;
+typedef ScriptInvokerBase<ScriptInvokerServiceUnregisteredMethod> ScriptInvokerServiceUnregistered;
+
 //------------------------------------------------------------------------------------------------
 class SCR_MilitaryBaseComponentClass : ScriptComponentClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_MilitaryBaseComponent : ScriptComponent
@@ -24,16 +28,30 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	[Attribute(ENotification.BASE_SEIZING_DONE_ENEMIES.ToString(), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(ENotification))]
 	protected ENotification m_eCapturedByEnemiesNotification;
 
+	static const int INVALID_BASE_CALLSIGN = -1;
+
+	protected int m_iCallsignSignal = INVALID_BASE_CALLSIGN;
+
+	protected string m_sCallsign;
+	protected string m_sCallsignUpper;
+	protected string m_sCallsignNameOnly;
+	protected string m_sCallsignNameOnlyUC;
+
 	protected ref ScriptInvoker m_OnRadiusChanged;
 	protected ref ScriptInvoker m_OnServiceRegistered;
+	protected ref ScriptInvokerServiceUnregistered m_OnServiceUnregistered;
 
 	protected ref array<SCR_MilitaryBaseLogicComponent> m_aSystems = {};
+	protected ref array<SCR_ServicePointDelegateComponent> m_aServiceDelegates = {};
 
 	protected RplComponent m_RplComponent;
 	protected SCR_FactionAffiliationComponent m_FactionComponent;
 
 	[RplProp(onRplName: "OnCapturingFactionChanged")]
 	protected FactionKey m_sCapturingFaction;
+
+	[RplProp(onRplName: "OnCallsignAssigned")]
+	protected int m_iCallsign = INVALID_BASE_CALLSIGN;
 
 	//------------------------------------------------------------------------------------------------
 	protected bool IsProxy()
@@ -56,6 +74,18 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void SetCallsignIndexAutomatic(int index)
+	{
+		m_iCallsign = index;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetCallsignIndex(int index)
+	{
+		m_iCallsign = index;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnRadiusChanged()
 	{
 		if (!m_OnRadiusChanged)
@@ -71,6 +101,112 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 			m_OnServiceRegistered = new ScriptInvoker();
 
 		return m_OnServiceRegistered;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerServiceUnregistered GetOnServiceUnregistered()
+	{
+		if (!m_OnServiceUnregistered)
+			m_OnServiceUnregistered = new ScriptInvokerServiceUnregistered();
+
+		return m_OnServiceUnregistered;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetCallsign(notnull SCR_Faction faction)
+	{
+		if (m_iCallsign == INVALID_BASE_CALLSIGN)
+			return;
+
+		SCR_MilitaryBaseCallsign callsignInfo = faction.GetBaseCallsignByIndex(m_iCallsign);
+
+		if (!callsignInfo)
+			return;
+
+		m_sCallsign = callsignInfo.GetCallsign();
+		m_sCallsignNameOnly = callsignInfo.GetCallsignShort();
+		m_sCallsignNameOnlyUC = callsignInfo.GetCallsignUpperCase();
+		m_iCallsignSignal = callsignInfo.GetSignalIndex();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetCallsign()
+	{
+		return m_iCallsign;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetCallsignSignal()
+	{
+		return m_iCallsignSignal;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnCallsignAssigned()
+	{
+		SCR_Faction faction = SCR_Faction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
+
+		if (faction)
+		{
+			SetCallsign(faction);
+			return;
+		}
+
+		PlayerController pc = GetGame().GetPlayerController();
+
+		if (!pc)
+			return;
+
+		SCR_PlayerFactionAffiliationComponent playerFactionAff = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
+
+		if (!playerFactionAff)
+			return;
+
+		playerFactionAff.GetOnPlayerFactionResponseInvoker_O().Insert(OnPlayerFactionResponse_O);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerFactionResponse_O(SCR_PlayerFactionAffiliationComponent component, int factionIndex, bool response)
+	{
+		if (!response)
+			return;
+
+		FactionManager factionManager = GetGame().GetFactionManager();
+
+		if (!factionManager)
+			return;
+
+		SCR_Faction faction = SCR_Faction.Cast(factionManager.GetFactionByIndex(factionIndex));
+
+		if (!faction)
+			return;
+
+		SetCallsign(faction);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// return callsign name only (eg. "Matros" instead of "Point Matros")
+	LocalizedString GetCallsignDisplayNameOnly()
+	{
+		return m_sCallsignNameOnly;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	LocalizedString GetCallsignDisplayName()
+	{
+		return m_sCallsign;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	LocalizedString GetCallsignDisplayNameOnlyUC()
+	{
+		return m_sCallsignNameOnlyUC;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	LocalizedString GetCallsignDisplayNameUpperCase()
+	{
+		return m_sCallsignUpper;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -139,6 +275,68 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 
 			if (service && service.GetType() == type)
 				return service;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetServiceDelegates(out array<SCR_ServicePointDelegateComponent> delegates = null)
+	{
+		int count;
+
+		foreach (SCR_ServicePointDelegateComponent delegate : m_aServiceDelegates)
+		{
+			if (delegate)
+			{
+				count++;
+
+				if (delegates)
+					delegates.Insert(delegate);
+			}
+		}
+
+		return count;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetServiceDelegatesByType(out array<SCR_ServicePointDelegateComponent> delegates, SCR_EServicePointType type)
+	{
+		int count;
+
+		foreach (SCR_ServicePointDelegateComponent delegate : m_aServiceDelegates)
+		{
+			if (delegate && delegate.GetType() == type)
+			{
+				count++;
+
+				if (delegates)
+					delegates.Insert(delegate);
+			}
+		}
+
+		return count;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_ServicePointDelegateComponent GetServiceDelegateByLabel(EEditableEntityLabel label)
+	{
+		foreach (SCR_ServicePointDelegateComponent delegate : m_aServiceDelegates)
+		{
+			if (delegate && delegate.GetLabel() == label)
+				return delegate;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_ServicePointDelegateComponent GetServiceDelegateByType(SCR_EServicePointType type)
+	{
+		foreach (SCR_ServicePointDelegateComponent delegate : m_aServiceDelegates)
+		{
+			if (delegate && delegate.GetType() == type)
+				return delegate;
 		}
 
 		return null;
@@ -257,6 +455,9 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 
 		foreach (SCR_MilitaryBaseLogicComponent comp : m_aSystems)
 		{
+			if (!comp)
+				continue;
+
 			comp.OnBaseFactionChanged(faction);
 		}
 
@@ -292,6 +493,25 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// To be overridden in inherited classes. Called every time the status of the regiestered service has changed.
+	void OnServiceStateChanged(SCR_EServicePointStatus state, notnull SCR_ServicePointComponent serviceComponent)
+	{
+
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void RegisterServiceDelegate(notnull SCR_ServicePointDelegateComponent delegate)
+	{
+		m_aServiceDelegates.Insert(delegate);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void UnregisterServiceDelegate(notnull SCR_ServicePointDelegateComponent delegate)
+	{
+		m_aServiceDelegates.RemoveItem(delegate);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void RegisterLogicComponent(notnull SCR_MilitaryBaseLogicComponent component)
 	{
 		if (m_aSystems.Contains(component))
@@ -307,6 +527,11 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 				m_OnServiceRegistered.Invoke(this, service);
 
 			SCR_MilitaryBaseManager.GetInstance().OnServiceRegisteredInBase(service, this);
+			service.GetOnServiceStateChanged().Insert(OnServiceStateChanged);
+		}
+		else
+		{
+			SCR_MilitaryBaseManager.GetInstance().OnLogicRegisteredInBase(component, this);
 		}
 
 		SCR_FlagComponent flag = SCR_FlagComponent.Cast(component);
@@ -340,7 +565,13 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
 
 		if (service && baseManager)
+		{
 			baseManager.OnServiceUnregisteredInBase(service, this);
+			service.GetOnServiceStateChanged().Remove(OnServiceStateChanged);
+
+			if (m_OnServiceUnregistered)
+				m_OnServiceUnregistered.Invoke(this, service);
+		}
 
 		if (!IsProxy())
 		{
@@ -491,13 +722,27 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void EOnInit(IEntity owner)
+	{
+		super.EOnInit(owner);
+
+		// Check for play mode again in case init event was set from outside of this class
+		if (!GetGame().InPlayMode())
+			return;
+
+		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance();
+
+		if (baseManager)
+			baseManager.RegisterBase(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
+		super.OnPostInit(owner);
+
 		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 		m_FactionComponent = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
-
-		if (m_FactionComponent)
-			m_FactionComponent.GetOnFactionChanged().Insert(OnFactionChanged);
 
 		// Attributes check
 		if (!m_RplComponent)
@@ -515,7 +760,10 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 		if (!GetGame().InPlayMode())
 			return;
 
-		SCR_MilitaryBaseManager.GetInstance().RegisterBase(this);
+		if (m_FactionComponent)
+			m_FactionComponent.GetOnFactionChanged().Insert(OnFactionChanged);
+
+		SetEventMask(owner, EntityEvent.INIT);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -529,4 +777,4 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 				component.UnregisterBase(this);
 		}
 	}
-};
+}

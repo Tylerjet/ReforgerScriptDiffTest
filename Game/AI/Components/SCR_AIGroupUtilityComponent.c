@@ -21,6 +21,9 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	protected bool m_bNewGroupMemberAdded;
 	protected ref SCR_AIActionBase m_CurrentActivity;
 	
+	// Waypoint state
+	protected ref SCR_AIWaypointState m_WaypointState;
+	
 	// Group perception and clusters
 	ref SCR_AIGroupPerception m_Perception;
 	
@@ -56,7 +59,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		#endif
 		
 		// Read messages
-		SCR_AIMessageBase msgBase = m_Mailbox.ReadMessage();
+		AIMessage msgBase = m_Mailbox.ReadMessage(true);
 		if (msgBase)
 		{
 			SCR_AIMessageGoal msgGoal = SCR_AIMessageGoal.Cast(msgBase);
@@ -208,27 +211,118 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	//---------------------------------------------------------------------------------------------------
 	void OnWaypointCompleted(AIWaypoint waypoint)
 	{
-		if (waypoint)
-			CancelActivitiesRelatedToWaypoint(waypoint);
+		if (m_WaypointState && waypoint)
+			m_WaypointState.OnDeselected();
+		
+		m_WaypointState = null;
 	}
 	
 	//---------------------------------------------------------------------------------------------------
 	void OnWaypointRemoved(AIWaypoint waypoint, bool isCurrentWaypoint)
 	{
-		if (waypoint && isCurrentWaypoint)
-			CancelActivitiesRelatedToWaypoint(waypoint);
+		// Remove old wp state, if it existed
+		if (isCurrentWaypoint)
+		{
+			if (waypoint && m_WaypointState)
+				m_WaypointState.OnDeselected();
+			
+			m_WaypointState = null;
+		}
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	protected void CancelActivitiesRelatedToWaypoint(notnull AIWaypoint waypoint)
+	void OnCurrentWaypointChanged(AIWaypoint currentWp, AIWaypoint prevWp)
+	{
+		// Remove old wp state, if it existed
+		if (m_WaypointState && prevWp)
+			m_WaypointState.OnDeselected();
+		
+		m_WaypointState = null;
+		
+		// Create new wp state
+		if (currentWp)
+		{
+			SCR_AIWaypoint scrCurrentWp = SCR_AIWaypoint.Cast(currentWp);
+			if (scrCurrentWp)
+			{
+				SCR_AIWaypointState wpState = scrCurrentWp.CreateWaypointState(this);
+				if (wpState)
+				{
+					m_WaypointState = wpState;
+					m_WaypointState.OnSelected();
+				}
+			}
+		}
+	}
+		
+	//---------------------------------------------------------------------------------------------------
+	void OnExecuteWaypointTree()
+	{
+		if (m_WaypointState)
+			m_WaypointState.OnExecuteWaypointTree();
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	//! Called from m_Perception
+	void OnEnemyDetectedFiltered(SCR_AIGroup group, SCR_AITargetInfo target, AIAgent reporter)
+	{
+		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(reporter);
+		if (!agent)
+			return;
+		
+		SCR_AICommsHandler commsHandler = agent.m_UtilityComponent.m_CommsHandler;
+		
+		// Ignore if the talk request can be optimized out
+		if (commsHandler.CanBypass())
+			return;
+		
+		SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_CONTACT, target.m_Entity, target.m_vWorldPos,
+			enumSignal: 0, transmitIfNoReceivers: true, preset: SCR_EAITalkRequestPreset.MEDIUM);
+		commsHandler.AddRequest(rq);
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	void OnTargetClusterStateChanged(SCR_AITargetClusterState state, EAITargetClusterState prevState, EAITargetClusterState newState)
+	{
+		// If we've lost enemies at some place, make the assigned fireteams report that
+		if (newState == EAITargetClusterState.LOST &&
+			(prevState == EAITargetClusterState.INVESTIGATING || prevState == EAITargetClusterState.ATTACKING) &&
+			state.m_Activity)
+		{
+			SCR_AIFireteamsActivity ftActivity = SCR_AIFireteamsActivity.Cast(state.m_Activity);
+			if (ftActivity)
+			{
+				TFireteamLockRefArray fireteamLocks = {};
+				ftActivity.GetAssignedFireteams(fireteamLocks);
+				foreach (SCR_AIGroupFireteamLock ftLock : fireteamLocks)
+				{
+					AIAgent reporterAgent = ftLock.GetFireteam().GetMember(0);
+					if (!reporterAgent)
+						continue;
+					SCR_AICommsHandler commsHandler = SCR_AISoundHandling.FindCommsHandler(reporterAgent);
+					if (!commsHandler)
+						continue;
+					if (commsHandler.CanBypass())
+						continue;
+					
+					SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_CLEAR, null, vector.Zero, 0, 0, SCR_EAITalkRequestPreset.MEDIUM);
+					commsHandler.AddRequest(rq);
+				}
+			}
+		}
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	void CancelActivitiesRelatedToWaypoint(notnull AIWaypoint waypoint, typename activityType = typename.Empty)
 	{
 		array<ref AIActionBase> actions = {};
 		GetActions(actions);
+		bool checkType = activityType != typename.Empty;
 		foreach (AIActionBase action : actions)
 		{
 			SCR_AIActivityBase activity = SCR_AIActivityBase.Cast(action);
 			
-			if (!activity)
+			if (!activity || (checkType && !activity.IsInherited(activityType)))
 				continue;
 			
 			if (activity.m_RelatedWaypoint == waypoint)
@@ -282,14 +376,17 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		m_Owner.GetOnAgentRemoved().Insert(OnAgentRemoved);
 		m_Owner.GetOnWaypointCompleted().Insert(OnWaypointCompleted);
 		m_Owner.GetOnWaypointRemoved().Insert(OnWaypointRemoved);
+		m_Owner.GetOnCurrentWaypointChanged().Insert(OnCurrentWaypointChanged);
 		
 		m_GroupInfo = SCR_AIGroupInfoComponent.Cast(m_Owner.FindComponent(SCR_AIGroupInfoComponent));
 		
 		m_TargetClusterProcessor = new SCR_AIGroupTargetClusterProcessor(this);
+		m_TargetClusterProcessor.m_OnClusterStateChanged.Insert(OnTargetClusterStateChanged);
 		
 		m_FireteamMgr = new SCR_AIGroupFireteamManager(m_Owner);
 		
 		m_Perception = new SCR_AIGroupPerception(this, m_Owner);
+		m_Perception.GetOnEnemyDetectedFiltered().Insert(OnEnemyDetectedFiltered);
 		
 		m_Mailbox = SCR_MailboxComponent.Cast(m_Owner.FindComponent(SCR_MailboxComponent));
 		

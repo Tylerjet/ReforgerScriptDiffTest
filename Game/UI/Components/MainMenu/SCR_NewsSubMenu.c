@@ -18,28 +18,58 @@ class SCR_NewsEntry
 	}
 };
 
+//------------------------------------------------------------------------------------------------
 class SCR_NewsSubMenu : SCR_SubMenuBase
 {
 	[Attribute("{02155A85F2DC521F}UI/layouts/Menus/PlayMenu/PlayMenuTile.layout", UIWidgets.ResourceNamePicker, "", "layout")]
 	protected ResourceName m_Layout;
 
-	protected ref array<ref SCR_NewsEntry> m_aEntries = {};
+	protected static ref array<ref SCR_NewsEntry> m_aEntries = {};
 
 	protected SCR_GalleryComponent m_Gallery;
-	protected int m_iCurrentIndex;
-
+	protected SCR_SimpleMessageComponent m_SimpleMessage;
+	
+	protected ref ScriptInvokerVoid m_OnRequestCommunityPage;
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
 	{
 		super.OnMenuOpen(parentMenu);
 		m_Gallery = SCR_GalleryComponent.GetGalleryComponent("Gallery", m_wRoot);
-		MainMenuUI.GetNewsEntries(m_aEntries);
-		SetNewsEntries();
+		
+		Widget simpleMessageRoot = m_wRoot.FindAnyWidget("SimpleMessage");
+		if (simpleMessageRoot)
+			m_SimpleMessage = SCR_SimpleMessageComponent.Cast(simpleMessageRoot.FindHandler(SCR_SimpleMessageComponent));
+		
+		SCR_ServicesStatusHelper.RefreshPing();
+		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Insert(OnCommStatusCheckFinished);
+		
+		if (m_SimpleMessage && SCR_ServicesStatusHelper.GetLastReceivedCommStatus() != SCR_ECommStatus.FINISHED && m_aEntries.IsEmpty())
+			m_SimpleMessage.SetVisible(true);
+		else
+			SetNewsEntries();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuClose(SCR_SuperMenuBase parentMenu)
+	{
+		super.OnMenuClose(parentMenu);
+		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetNewsEntries()
+	protected void SetNewsEntries()
 	{
+		MainMenuUI.GetNewsEntries(m_aEntries);
+		if (m_aEntries.IsEmpty())
+		{
+			ShowErrorDialog();
+			return;
+		}
+		
+		if (m_SimpleMessage)
+			m_SimpleMessage.SetVisible(false);
+		
 		m_Gallery.ClearAll();
 		
 		foreach (SCR_NewsEntry entry : m_aEntries)
@@ -63,11 +93,46 @@ class SCR_NewsSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnRead(SCR_NewsTileComponent comp)
 	{
-		
 		string url = comp.m_Entry.m_Item.URL();
 		if (url.IsEmpty())
 			return;
 		
 		GetGame().GetPlatformService().OpenBrowser(url);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnCommStatusCheckFinished(SCR_ECommStatus status, float responseTime, float lastSuccessTime, float lastFailTime)
+	{	
+		if (SCR_ProfileSuperMenu.GetCurrentPage() != SCR_EProfileSuperMenuTabId.NEWS)
+			return;
+
+		if (status == SCR_ECommStatus.FINISHED)
+			SetNewsEntries();
+		else
+			ShowErrorDialog();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ShowErrorDialog()
+	{
+		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateTimeoutOkDialog();
+		if (dialog)
+			dialog.m_OnClose.Insert(OnErrorDialogClose);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnErrorDialogClose()
+	{
+		if (m_OnRequestCommunityPage)
+			m_OnRequestCommunityPage.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetRequestCommunityPage()
+	{
+		if (!m_OnRequestCommunityPage)
+			m_OnRequestCommunityPage = new ScriptInvokerVoid();
+		
+		return m_OnRequestCommunityPage;
 	}
 };

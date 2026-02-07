@@ -15,29 +15,26 @@ class SCR_GMMenuEntry : Managed
 		m_bIsRecent = recent;
 		m_bIsRecommended = recommended;
 	}
-	
+
 	void SetTile(SCR_GMMenuTileComponent tile, Widget widget)
 	{
 		m_Tile = tile;
 		m_wRoot = widget;
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
-class SCR_GMMenu: ChimeraMenuBase
+class SCR_GMMenu : ChimeraMenuBase
 {
-	protected ResourceName m_Layout = "{02155A85F2DC521F}UI/layouts/Menus/GMMenu/GMMenuTile.layout";
-	protected ResourceName m_Config = "{CA59D3A983A1BBAB}Configs/GMMenu/GMMenuEntries.conf";
+	protected ResourceName m_sLayout = "{02155A85F2DC521F}UI/layouts/Menus/GMMenu/GMMenuTile.layout";
+	protected ResourceName m_sConfig = "{CA59D3A983A1BBAB}Configs/GMMenu/GMMenuEntries.conf";
 	protected SCR_GalleryComponent m_Gallery;
 	protected WorkshopApi m_WorkshopAPI;
 	protected SCR_GMMenuTileComponent m_CurrentTile;
 	protected Widget m_wRoot;
 	protected ref array<ref SCR_GMMenuEntry> m_aEntries = {};
-	
+
 	const int THRESHOLD_RECENTLY_PLAYED = 60 * 60 * 24 * 7;
-	
-	protected string m_sSectionTitle = "#AR-MainMenu_Editor_Name";
-	protected string m_sTitleWidgetName = "Title";		
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
@@ -47,35 +44,40 @@ class SCR_GMMenu: ChimeraMenuBase
 		m_Gallery = SCR_GalleryComponent.GetGalleryComponent("Gallery", m_wRoot);
 		m_WorkshopAPI = GetGame().GetBackendApi().GetWorkshop();
 
-		SCR_NavigationButtonComponent back = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Back", m_wRoot);
+		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent("Back", m_wRoot);
 		if (back)
 			back.m_OnActivated.Insert(OnBack);
 
 		PrepareHeaders();
 		PrepareWidgets();
-		
+
 		if (m_aEntries.Count() > 0)
 			m_Gallery.SetFocusedItem(0, true);
-		
-		TextWidget title = TextWidget.Cast(GetRootWidget().FindAnyWidget(m_sTitleWidgetName));
-		if (title)
-			title.SetText(m_sSectionTitle);		
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override void OnMenuFocusGained()
+	{
+		if (m_CurrentTile)
+			GetGame().GetWorkspace().SetFocusedWidget(m_CurrentTile.GetRootWidget(), true);
+
+		super.OnMenuFocusGained();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void PrepareHeaders()
 	{
-		Resource resource = BaseContainerTools.LoadContainer(m_Config);
+		Resource resource = BaseContainerTools.LoadContainer(m_sConfig);
 		if (!resource)
 			return;
-		
+
 		BaseContainer cont = resource.GetResource().ToBaseContainer();
 		if (!cont)
 			return;
-		
+
 		array<ResourceName> missions = {};
 		cont.Get("m_aGameMasterScenarios", missions);
-		
+
 		if (!missions)
 			return;
 
@@ -84,41 +86,41 @@ class SCR_GMMenu: ChimeraMenuBase
 			MissionWorkshopItem item = GetMission(str);
 			if (!item || !IsUnique(item, m_aEntries))
 				continue;
-			
+
 			m_aEntries.Insert(new SCR_GMMenuEntry(item, false, false, false));
-		}			
+		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	MissionWorkshopItem GetMission(ResourceName rsc)
 	{
 		return m_WorkshopAPI.GetInGameScenario(rsc);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected bool IsUnique(MissionWorkshopItem item, array<ref SCR_GMMenuEntry> entries)
 	{
 		if (!item)
 			return false;
-		
+
 		foreach (SCR_GMMenuEntry entry : entries)
 		{
 			if (!entry || !entry.m_Header)
 				continue;
-			
+
 			if (item == entry.m_Header)
 				return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void PrepareWidgets()
 	{
 		foreach (SCR_GMMenuEntry entry : m_aEntries)
 		{
-			Widget w = GetGame().GetWorkspace().CreateWidgets(m_Layout, m_wRoot);
+			Widget w = GetGame().GetWorkspace().CreateWidgets(m_sLayout, m_wRoot);
 			if (!w)
 				continue;
 
@@ -133,11 +135,11 @@ class SCR_GMMenu: ChimeraMenuBase
 			tile.m_OnFindServer.Insert(OnFindServer);
 			tile.m_OnFocused.Insert(OnTileFocused);
 			tile.ShowMission(entry.m_Header, entry.m_bIsFeatured, entry.m_bIsRecent, entry.m_bIsRecommended);
-			
+
 			m_Gallery.AddItem(w);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnBack()
 	{
@@ -149,7 +151,7 @@ class SCR_GMMenu: ChimeraMenuBase
 	{
 		GetGame().GetSaveManager().ResetFileNameToLoad();
 		TryPlayScenario(tile.m_Item);
-		
+
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.EditorSelectionMenu);
 	}
 
@@ -161,59 +163,68 @@ class SCR_GMMenu: ChimeraMenuBase
 			GetGame().GetSaveManager().SetFileNameToLoad(header);
 		else
 			GetGame().GetSaveManager().ResetFileNameToLoad();
-		
+
 		TryPlayScenario(tile.m_Item);
-		
+
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.EditorSelectionMenu);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void OnRestart(SCR_GMMenuTileComponent tile)
+	protected void OnRestart(SCR_GMMenuTileComponent tile)
+	{
+		m_CurrentTile = tile;
+
+		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog("scenario_restart");
+		dialog.m_OnConfirm.Insert(OnRestartConfirmed);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnRestartConfirmed()
 	{
 		GetGame().GetSaveManager().ResetFileNameToLoad();
-		SCR_WorkshopUiCommon.TryPlayScenario(tile.m_Item);
-		
+		SCR_WorkshopUiCommon.TryPlayScenario(m_CurrentTile.m_Item);
+
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.EditorSelectionMenu);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnTileFocused(SCR_GMMenuTileComponent tile)
 	{
 		m_CurrentTile = tile;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void TryPlayScenario(MissionWorkshopItem scenario)
 	{
 		if (!scenario)
 			return;
-		
+
 		SCR_WorkshopUiCommon.TryPlayScenario(scenario);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void PlayCurrentScenario()
 	{
 		TryPlayScenario(m_CurrentTile.m_Item);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void FindCurrentScenarioServers()
 	{
 			MissionWorkshopItem scenario = GetGame().GetBackendApi().GetWorkshop().GetInGameScenario(m_CurrentTile.m_Header.GetHeaderResourceName());
 			if (!scenario)
 				return;
-			
+
 			ServerBrowserMenuUI.OpenWithScenarioFilter(scenario);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlayMission()
 	{
 		// If possible, load the save
 		if (!m_CurrentTile || !m_CurrentTile.m_Header)
 			return;
-		
+
 		GetGame().GetSaveManager().SetFileNameToLoad(m_CurrentTile.m_Header);
 		TryPlayScenario(m_CurrentTile.m_Item);
 	}
@@ -223,4 +234,4 @@ class SCR_GMMenu: ChimeraMenuBase
 	{
 		FindCurrentScenarioServers();
 	}
-};
+}

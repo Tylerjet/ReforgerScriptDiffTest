@@ -31,7 +31,7 @@ class SCR_BaseAudioScriptedUserAction : SCR_ScriptedUserAction
 			//~ Check if sound was played. If true simply play it and return
 			if (soundComponent.GetEventIndex(m_sActionSoundEffectEventName) > 0)
 			{
-				soundComponent.SoundEventOffset(m_sActionSoundEffectEventName, m_vActionOffset);
+				soundComponent.SoundEventOffset(m_sActionSoundEffectEventName, GetLocalPositionAction());
 				return;
 			}
 			else 
@@ -51,7 +51,7 @@ class SCR_BaseAudioScriptedUserAction : SCR_ScriptedUserAction
 		vector transform[4];
 		vector mat[4];
 		pOwnerEntity.GetTransform(mat);
-		transform[3] = GetActionWorldPosition();
+		transform[3] = GetWorldPositionAction();
 		
 		//~ Create new config
 		SCR_AudioSourceConfiguration audioConfig = new SCR_AudioSourceConfiguration();

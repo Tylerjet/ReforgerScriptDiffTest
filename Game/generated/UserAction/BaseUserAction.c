@@ -35,6 +35,10 @@ class BaseUserAction: ScriptAndConfig
 
 	//! Returns the index of the context this action is registered in as or -1 if none
 	proto external int GetContextIndex(string sContextName);
+	//! Setter for m_pActiveContext
+	proto external void SetActiveContext(UserActionContext context);
+	//! Getter for m_pActiveContext
+	proto external UserActionContext GetActiveContext();
 	//! Can this action be performed by the user?
 	proto external bool CanBePerformed(IEntity user);
 	//! Can this action be shown in the UI for the user?
@@ -53,6 +57,8 @@ class BaseUserAction: ScriptAndConfig
 	proto external string GetActionDescription();
 	//! Returns the visibility range of this action in metres.
 	proto external float GetVisibilityRange();
+	//! Sets the duration of this action in seconds.
+	proto external void SetActionDuration(float duration);
 	//! Returns the duration of this action in seconds.
 	proto external float GetActionDuration();
 	//! Returns the progress of this action in seconds.

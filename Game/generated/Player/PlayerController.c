@@ -48,7 +48,7 @@ class PlayerController: GenericController
 	proto external bool IsVonAllowed();
 	//! Returns True if the user has given role assigned
 	proto external bool HasRole(EPlayerRole role);
-	proto external void SetCharacterCameraRenderActive(bool active);
+	proto external bool SetCharacterCameraRenderActive(bool active);
 	proto external int GetPlayerId();
 	proto external int GetRplIdentity();
 	/*!
@@ -95,10 +95,8 @@ class PlayerController: GenericController
 	//! Runs every time the controlled entity has been changed.
 	event protected void OnControlledEntityChanged(IEntity from, IEntity to);
 	//! Runs every time the controlled entity die.
-	event protected void OnDestroyed(IEntity killer);
-	//! Runs at the beggining of each frame
-	//! Character entity might be null
-	event void OnPrepareTestCase(ActionManager am, float dt, IEntity characterEntity);
+	event protected void OnDestroyed(notnull Instigator killer);
+	event void OnUpdate(float timeSlice);
 }
 
 /*!

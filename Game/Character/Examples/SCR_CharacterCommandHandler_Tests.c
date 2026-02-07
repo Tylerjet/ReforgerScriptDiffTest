@@ -18,7 +18,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		float die = pInputCtx.GetDie();
 		if ( die != 0.0 )
 		{
-			StartCommand_Death(die);
+			GetCommandModifier_Death().StartDeath();
 
 			return true;
 		}
@@ -80,7 +80,7 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 		vector charTM[4];
 		m_OwnerEntity.GetTransform(charTM);
 		vector pp = charTM[3];
-		vector wl = CharacterCommandSwim.WaterLevelCheck(m_OwnerEntity, pp);
+		vector wl = pInputCtx.GetWaterLevel();
 
 		if( pCurrentCommandID == ECharacterCommandIDs.SWIM )
 		{

@@ -38,7 +38,8 @@ class SCR_DateAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 	{	
 		super.Init(w, attribute);
 		
-		m_TimeAndWeatherManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		m_TimeAndWeatherManager = world.GetTimeAndWeatherManager();
 		
 		if (!m_TimeAndWeatherManager)
 		{
@@ -156,7 +157,8 @@ class SCR_DateAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 
 		if (count == 0) return;
 		
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		if (!timeManager) return;
 		
 		float daytime;		
@@ -317,6 +319,15 @@ class SCR_DateAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		UpdateDateMoonPhaseIcon();
 		
 		OnChange(null, 0, 0, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------\
+	override bool OnMouseEnter(Widget w, int x, int y)
+	{
+		super.OnMouseEnter(w, x, y);
+		
+		GetGame().GetWorkspace().SetFocusedWidget(m_comboBox0.GetRootWidget());
+		return true;
 	}
 	
 	override void HandlerDeattached(Widget w)

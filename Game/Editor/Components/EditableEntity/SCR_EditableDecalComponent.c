@@ -61,6 +61,8 @@ class SCR_EditableDecalComponent: SCR_EditableEntityComponent
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT);
+		owner.SetFlags(EntityFlags.NO_LINK | EntityFlags.NO_TREE);
+		owner.ClearFlags(EntityFlags.TRACEABLE);
 	}
 	override void OnDelete(IEntity owner)
 	{

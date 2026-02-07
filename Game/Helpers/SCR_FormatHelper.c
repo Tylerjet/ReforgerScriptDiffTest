@@ -1,6 +1,40 @@
 class SCR_FormatHelper
 {
 	//------------------------------------------------------------------------------------------------
+	/*!
+	Get percentage string with which is formated with 0, 1 or 2 decimals depended on the given float
+	\param percentage Percentage in (0% to 100%)
+	\return Either Percentage int, Percentage with one decimal or with two decimals
+	*/
+	static string GetPercentageString(float percentage)
+	{
+		if (percentage == 0)
+			return percentage.ToString();
+		
+		string percentageString;
+		
+		float leftOver;
+		
+		//~ Has no deci
+		if (percentage > 0)
+			leftOver = percentage - (int)percentage;
+		else 
+			leftOver = percentage + (int)percentage;
+		
+		if (leftOver == 0)
+			percentageString = percentage.ToString(lenDec: 0);
+		//~ Remove a deci if it is 0
+		else 
+		{
+			percentageString = percentage.ToString(lenDec: 2);
+			if (percentageString.Get(percentageString.Length() -1) == "0")
+				percentageString = percentageString.Substring(0, percentageString.Length() -1);
+		}
+		
+		return percentageString;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! \return datetime in format "yyyy-mm-dd hh:ii:ss"
 	static string FormatDateTime(int year, int month, int day, int hour, int minute, int second)
 	{

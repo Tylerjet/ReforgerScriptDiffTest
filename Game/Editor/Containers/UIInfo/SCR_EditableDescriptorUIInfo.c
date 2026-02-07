@@ -34,7 +34,7 @@ class SCR_EditableDescriptorUIInfo: SCR_EditableEntityUIInfo
 	*/
 	void SetLocationName(vector pos)
 	{
-		m_sLocationName = SCR_MapEntity.GetGridPos(pos);
+		m_sLocationName = SCR_MapEntity.GetGridLabel(pos);
 		//EncodeName();
 	}
 	/*

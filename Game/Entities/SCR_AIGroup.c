@@ -1,3 +1,6 @@
+void ScriptInvokerAIGroup(SCR_AIGroup group);
+typedef func ScriptInvokerAIGroup;
+
 [EntityEditorProps(category: "GameScripted/AI")]
 class SCR_AIGroupClass : ChimeraAIGroupClass
 {
@@ -49,6 +52,14 @@ class SCR_AIGroupClass : ChimeraAIGroupClass
 		return count;
 	}
 };
+
+class SCR_AIGroup_DelayedSpawn
+{
+	bool snapToTerrain;
+	int index;
+	ResourceName resourceName;
+	bool editMode;
+};	
 
 class SCR_AIGroup : ChimeraAIGroup
 {
@@ -151,6 +162,78 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected SCR_AIGroup m_SlaveGroup;
 	protected SCR_AIGroup m_MasterGroup;
 	protected ref array<SCR_ChimeraCharacter> m_aAIMembers = {};		
+	
+	// entity spawn list
+	protected ref array<ref SCR_AIGroup_DelayedSpawn> m_delayedSpawnList = {};
+	protected ref ScriptInvokerBase<ScriptInvokerAIGroup> Event_OnAllDelayedEntitySpawned;
+
+	//------------------------------------------------------------------------------------------------
+	int GetNumberOfMembersToSpawn()
+	{
+		return m_iNumOfMembersToSpawn;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override void EOnFrame(IEntity owner, float timeSlice)
+	{
+		// No more entities in the list? Turn off frame events
+		if (m_delayedSpawnList.IsEmpty())
+		{
+			EndDelayedSpawn();
+			return;
+		}
+
+		// Spawn a singular AI entity this frame
+		int spawnIndex = m_delayedSpawnList.Count() - 1;
+		SpawnDelayedGroupMember(spawnIndex);
+		m_delayedSpawnList.Remove(spawnIndex);
+		
+		// Notify all delayed spawning is done
+		if (m_delayedSpawnList.IsEmpty() && Event_OnAllDelayedEntitySpawned)
+			Event_OnAllDelayedEntitySpawned.Invoke(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SpawnDelayedGroupMember(int spawnIndex)
+	{
+		SpawnGroupMember(
+			m_delayedSpawnList.Get(spawnIndex).snapToTerrain,
+			m_delayedSpawnList.Get(spawnIndex).index,
+			m_delayedSpawnList.Get(spawnIndex).resourceName,
+			m_delayedSpawnList.Get(spawnIndex).editMode,
+			spawnIndex == 0 // isLast
+		);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SpawnAllImmediately()
+	{
+		for (int spawnIndex = m_delayedSpawnList.Count() - 1; spawnIndex >= 0; spawnIndex--)
+			SpawnDelayedGroupMember(spawnIndex);
+		
+		m_delayedSpawnList.Clear();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void BeginDelayedSpawn()
+	{
+		SetEventMask(EntityEvent.FRAME);
+		
+		// Allow this entity to frame/tick while in Game Master Mode
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world)
+			world.RegisterEntityToBeUpdatedWhileGameIsPaused(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void EndDelayedSpawn()
+	{
+		ClearEventMask(EntityEvent.FRAME);
+		
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world)
+			world.UnregisterEntityToBeUpdatedWhileGameIsPaused(this);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	bool HasRequesterID(int id)
@@ -502,12 +585,18 @@ class SCR_AIGroup : ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	string GetCustomDescription()
 	{	
+		if (!GetGame().GetPlayerController().CanViewContentCreatedBy(m_iDescriptionAuthorID))
+			return string.Empty;
+		
 		return m_sCustomDescription;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	string GetCustomName()
-	{
+	{	
+		if (!GetGame().GetPlayerController().CanViewContentCreatedBy(m_iNameAuthorID))
+			return string.Empty;
+		
 		return m_sCustomName;
 	}
 	
@@ -765,7 +854,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnMemberDeath(notnull SCR_CharacterControllerComponent memberController, IEntity instigator)
+	void OnMemberDeath(notnull SCR_CharacterControllerComponent memberController, IEntity killerEntity, Instigator killer)
 	{
 		//This event is only called for members of the group, so it's safe to call QueueAddAgent automatically
 		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(memberController.GetCharacter());
@@ -781,7 +870,7 @@ class SCR_AIGroup : ChimeraAIGroup
 		if (!characterController)
 			return;
 	
-		characterController.m_OnPlayerDeathWithParam.Insert(OnMemberDeath);
+		characterController.GetOnPlayerDeathWithParam().Insert(OnMemberDeath);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -894,7 +983,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	void RPC_SetPrivate(bool isPrivate)
 	{
 		m_bPrivate = isPrivate;
-		s_OnPrivateGroupChanged.Invoke();
+		s_OnPrivateGroupChanged.Invoke(m_iGroupID, isPrivate);
 		
 		if (!isPrivate)
 		{
@@ -943,7 +1032,8 @@ class SCR_AIGroup : ChimeraAIGroup
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoAddRequester(int playerID)
 	{
-			m_aRequesterIDs.Insert(playerID);
+		m_aRequesterIDs.Insert(playerID);
+		s_OnJoinPrivateGroupRequest.Invoke();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1067,23 +1157,22 @@ class SCR_AIGroup : ChimeraAIGroup
 			return;
 		}
 		
+#ifdef WORKBENCH
 		if (!editMode)
 		{
-			//--- Get AI components
+			//--- Are AI components valid?
 			AIFormationComponent AIFormation = AIFormationComponent.Cast(FindComponent(AIFormationComponent));
+			
 			if (!AIFormation)
-			{
 				Print(string.Format("Group %1 does not have AIFormationComponent! Team members will not be spawned.", this), LogLevel.WARNING);
-				return;
-			}
-			AIFormationDefinition formationDefinition = AIFormation.GetFormation();
-			if (!formationDefinition)
+			else
 			{
-				Print(string.Format("Formation of group %1 not found in SCR_AIWorld! Team members will not be spawned.", this), LogLevel.WARNING);
-				return;
+				AIFormationDefinition formationDefinition = AIFormation.GetFormation();
+				if (!formationDefinition)
+					Print(string.Format("Formation of group %1 not found in SCR_AIWorld! Team members will not be spawned.", this), LogLevel.WARNING);
 			}
 		}
-		
+#endif
 		//--- Apply global override
 		bool snapToTerrain = m_bSnapToTerrain;
 		if (s_bIgnoreSnapToTerrain)
@@ -1100,21 +1189,29 @@ class SCR_AIGroup : ChimeraAIGroup
 		
 		 m_iNumOfMembersToSpawn = Math.Min(entityResourceNames.Count(), m_iMaxUnitsToSpawn);
 		//--- Create group members
-		for (int i = 0; i < m_iNumOfMembersToSpawn; i++)
+		for (int i = m_iNumOfMembersToSpawn-1; i >= 0; i--)
 		{
-			bool isLast = i == (m_iNumOfMembersToSpawn - 1);
-			if (!editMode && (m_fMemberSpawnDelay > 0 || IsLoaded()))
-			{
-				// Delay is defined and sequential spawning is used to preserve performance.
-				// Also used when the delay is 0, but the group is placed in the world, to prevent replication issues.
-				GetGame().GetCallqueue().CallLater(SpawnGroupMember, m_fMemberSpawnDelay * i, false, snapToTerrain, i, entityResourceNames[i], editMode, isLast);
-			}
-			else
-			{
-				SpawnGroupMember(snapToTerrain, i, entityResourceNames[i], editMode, isLast);
-			}
+			// Spawn group across multiple frames
+			SCR_AIGroup_DelayedSpawn delaySpawn = new SCR_AIGroup_DelayedSpawn();
+			delaySpawn.snapToTerrain	= snapToTerrain;
+			delaySpawn.index			= i;
+			delaySpawn.resourceName		= entityResourceNames[i];
+			delaySpawn.editMode			= editMode;
+			
+			m_delayedSpawnList.Insert(delaySpawn);
 		}
-		
+
+		if (editMode)
+		{
+			//--- Edit mode has no game world, spawn immediately
+			SpawnAllImmediately();
+		}
+		else
+		{
+			//--- Enable the frame event and frames when paused
+			BeginDelayedSpawn();
+		}
+
 		//--- Call group init if it cannot be called by the last spawned entity
 		if (m_iNumOfMembersToSpawn == 0)
 			Event_OnInit.Invoke(this);
@@ -1122,7 +1219,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	
 	protected void SpawnGroupMember(bool snapToTerrain, int index, ResourceName res, bool editMode, bool isLast)
 	{
-		if (!GetGame().GetAIWorld().CanAICharacterBeAdded())
+		if (!GetGame().GetAIWorld().CanLimitedAIBeAdded())
 		{
 			if (isLast)
 				Event_OnInit.Invoke(this);
@@ -1146,11 +1243,9 @@ class SCR_AIGroup : ChimeraAIGroup
 		else
 			pos = CoordToParent(Vector(index, 0, 0));
 		
-		
-		
-		float surfaceY = world.GetSurfaceY(pos[0], pos[2]);
-		if (snapToTerrain && pos[1] < surfaceY)
+		if (snapToTerrain)
 		{
+			float surfaceY = world.GetSurfaceY(pos[0], pos[2]);
 			pos[1] = surfaceY;
 		}
 		
@@ -1161,6 +1256,14 @@ class SCR_AIGroup : ChimeraAIGroup
 			float groundHeight = world.GetSurfaceY(pos[0], pos[2]);
 			if (pos[1] < groundHeight)
 				pos[1] = groundHeight;
+			vector outWaterSurfacePoint;
+			EWaterSurfaceType waterSurfaceType;
+			vector transformWS[4];
+			vector obbExtents;
+			if (ChimeraWorldUtils.TryGetWaterSurface(GetWorld(), pos, outWaterSurfacePoint, waterSurfaceType, transformWS, obbExtents))
+			{
+				pos = outWaterSurfacePoint;
+			}
 		}
 		
 		spawnParams.Transform[3] = pos;
@@ -1169,10 +1272,14 @@ class SCR_AIGroup : ChimeraAIGroup
 		if (!member)
 			return;
 		
+		// Move in to vehicle 
+		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(member.FindComponent(SCR_EditableEntityComponent));
+		
+		
 		if (editMode)
 			m_aSceneGroupUnitInstances.Insert(member);
 		
-		AddAIEntityToGroup(member,index+1);
+		AddAIEntityToGroup(member);
 		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(member.FindComponent(FactionAffiliationComponent));
 		
 		if (factionAffiliation)
@@ -1325,7 +1432,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool AddAIEntityToGroup(IEntity entity, int unitId)
+	bool AddAIEntityToGroup(IEntity entity)
 	{
 		if (!entity) return false;
 		
@@ -1410,13 +1517,19 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void GetAllocatedCompartments(out array<BaseCompartmentSlot> allocatedCompartments)
+	{
+		 allocatedCompartments = m_aAllocatedCompartments;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void AllocateCompartment(BaseCompartmentSlot compartment)
 	{
 		if (!compartment)
 			return;
 		if (m_aAllocatedCompartments.Find(compartment) > -1)
 		{
-			Print("Trying to allocate same compartment twice!", LogLevel.WARNING);			
+			Print("Trying to allocate same compartment twice!", LogLevel.WARNING);
 			return;
 		};
 		m_aAllocatedCompartments.Insert(compartment);
@@ -1707,6 +1820,15 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	ScriptInvokerBase<ScriptInvokerAIGroup> GetOnAllDelayedEntitySpawned()
+	{
+		if (!Event_OnAllDelayedEntitySpawned)
+			Event_OnAllDelayedEntitySpawned = new ScriptInvokerBase<ScriptInvokerAIGroup>(); 
+		
+		return Event_OnAllDelayedEntitySpawned;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnEmpty()
 	{
 		Event_OnEmpty.Invoke();
@@ -1835,6 +1957,12 @@ class SCR_AIGroup : ChimeraAIGroup
 	bool GetSpawnImmediately()
 	{
 		return m_bSpawnImmediately;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetSpawnImmediately(bool spawnImmediately)
+	{
+		m_bSpawnImmediately = spawnImmediately;
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -5,7 +5,7 @@ class SCR_PrefabHelper
 	protected static const string MESHOBJECT_CLASSNAME = "MeshObject";
 	protected static const string DEFAULT_PARENT_PREFAB = "GenericEntity";
 	protected static const string PREFAB_DOTTED_EXTENSION = ".et";
-	protected static const string PREFAB_BASE_SUFFIX = "_base";
+	static const string PREFAB_BASE_SUFFIX = "_base"; //<! used by SCR_PrefabManagementTool to strip it when creating a child
 
 	//------------------------------------------------------------------------------------------------
 	//! Create a clone of the provided prefab at the provided destination, overriding file if any
@@ -427,6 +427,20 @@ class SCR_PrefabHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Get the absolute file path of the provided resourceName
+	//! \param resourceName the resourceName from which to obtain the absolute file path
+	//! \param mustExist if true, the file MUST exist to return a valid value
+	//! \return the provided resourceName's absolute file path or string.Empty on error / file not existing with mustExist true
+	static string GetResourceNameAbsolutePath(ResourceName resourceName, bool mustExist = true)
+	{
+		string result;
+		if (!Workbench.GetAbsolutePath(resourceName.GetPath(), result, mustExist))
+			return string.Empty;
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Gives the target's directory the source directory's hierarchy/path
 	//! Relative paths are expected, so separator must be slash (/)
 	//! @code
@@ -584,6 +598,22 @@ class SCR_PrefabHelper
 		}
 
 		return metaFile.GetResourceID();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Update a Prefab
+	//! \param actualPrefab the spawned Prefab's IEntitySource ancestor
+	//! \return true on success, false on failure
+	static bool UpdatePrefab(IEntitySource actualPrefab)
+	{
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
+		if (!worldEditorAPI)
+		{
+			Print("WorldEditorAPI is not available", LogLevel.ERROR);
+			return false;
+		}
+
+		return worldEditorAPI.SaveEntityTemplate(actualPrefab);
 	}
 
 	//------------------------------------------------------------------------------------------------

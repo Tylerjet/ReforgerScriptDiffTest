@@ -18,7 +18,7 @@ class ForestGeneratorGrid: Managed
 	proto external void Resize(float x, float y);
 	proto external void SetPointOffset(float x, float y);
 	proto external bool IsColliding(vector pos, ForestGeneratorTreeBase tree, array<int> entriesCollideWith = null);
-	proto external void CountEntriesAround(vector pos, float radius, array<float> treesAround);
+	proto external void CountEntriesAround(vector pos, float radius, out array<float> treesAround);
 	proto external int GetEntryCount();
 	proto SCR_ForestGeneratorTreeBase GetEntry(int index, out vector position);
 	proto external void AddEntry(SCR_ForestGeneratorTreeBase tree, vector position);

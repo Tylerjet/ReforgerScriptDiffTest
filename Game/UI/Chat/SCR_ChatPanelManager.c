@@ -29,8 +29,7 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 	// Registered chat commands
 	protected ref map<string, ref ChatCommandInvoker> m_mCommands = new map<string, ref ScriptInvokerBase<ChatCommandCallback>>;
 	
-	ScriptedChatEntity m_ChatEntity;
-	
+	ScriptedChatEntity m_ChatEntity;	
 	
 	//------------------------------------------------------------------------------------------------
 	// PUBLIC
@@ -206,11 +205,13 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 	{
 		if (!m_aChatPanels.Contains(panel))
 			m_aChatPanels.Insert(panel);
+		
+		CloseAllChatPanels();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void Unregister(SCR_ChatPanel panel)
-	{
+	{		
 		m_aChatPanels.RemoveItem(panel);
 	}
 	

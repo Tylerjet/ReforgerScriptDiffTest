@@ -32,22 +32,23 @@ Manager of basic entity transformation in all axes, e.g., translation or rotatio
 */
 class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 {	
-	private ref set<SCR_EditableEntityComponent> m_aEditedEntities;
-	private ref map<SCR_EditableEntityComponent, vector> m_mServerEntityStartingPosition = new ref map<SCR_EditableEntityComponent, vector>;
-	private SCR_EditableEntityComponent m_EditedPivot;
-	private SCR_EditableEntityComponent m_EditedLayer;
-	private SCR_RefPreviewEntity m_RefEntity;
-	private SCR_StatesEditorComponent m_StatesManager;
-	private SCR_PreviewEntityEditorComponent m_PreviewManager;
-	private bool m_bIsComposition;
+	protected ref set<SCR_EditableEntityComponent> m_aEditedEntities;
+	protected ref map<SCR_EditableEntityComponent, vector> m_mServerEntityStartingPosition = new ref map<SCR_EditableEntityComponent, vector>();
+	protected SCR_EditableEntityComponent m_EditedPivot;
+	protected SCR_EditableEntityComponent m_EditedLayer;
+	protected SCR_RefPreviewEntity m_RefEntity;
+	protected SCR_StatesEditorComponent m_StatesManager;
+	protected SCR_PreviewEntityEditorComponent m_PreviewManager;
+	protected bool m_bIsComposition;
+	protected bool m_bCanBeTransformed = true;
 	
-	private ref ScriptInvoker Event_OnTransformationRequest = new ScriptInvoker;
-	private ref ScriptInvoker Event_OnTransformationStart = new ScriptInvoker;
-	private ref ScriptInvoker Event_OnTransformationConfirm = new ScriptInvoker;
-	private ref ScriptInvoker Event_OnTransformationCancel = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnTransformationRequest = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnTransformationStart = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnTransformationConfirm = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnTransformationCancel = new ScriptInvoker;
 	
 	//Server only script invokers
-	private ref ScriptInvoker Event_OnTransformationConfirmServer = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnTransformationConfirmServer = new ScriptInvoker;
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Start
@@ -392,6 +393,14 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 	ScriptInvoker GetOnTransformationCancel()
 	{
 		return Event_OnTransformationCancel;
+	}
+	bool CanBeTransformed()
+	{
+		return m_bCanBeTransformed;
+	}
+	void SetCanBeTransformed(bool val)
+	{
+		m_bCanBeTransformed = val;
 	}
 	protected void Clean()
 	{

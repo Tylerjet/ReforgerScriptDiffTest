@@ -15,8 +15,8 @@ class CameraBaseClass: GenericEntityClass
 
 class CameraBase: GenericEntity
 {
-	//! Manually applies transformation. This is usually done in EOnPostFrame automatically for cameras used by CameraManager.
-	proto external void ApplyTransform(IEntity owner, float timeslice, int cameraIndex);
+	//! Manually applies transformation. This is usually done in EOnPostFrame automatically.
+	proto external void ApplyTransform(float timeslice);
 	//! Get current camera world transformation
 	proto external void GetWorldCameraTransform(out vector mat[4]);
 	/*!
@@ -66,6 +66,11 @@ class CameraBase: GenericEntity
 	*/
 	proto external void SetFarPlane(float farPlane);
 	/*!
+	Set the current camera index.
+	\param cameraIndex The new camera index.
+	*/
+	proto external void SetCameraIndex(int cameraIndex);
+	/*!
 	Get the current camera index.
 	\return Returns the camera index.
 	*/
@@ -76,6 +81,10 @@ class CameraBase: GenericEntity
 	\param userSetName user name of the lens flare set (used only when type is set to User)
 	*/
 	proto external void SetLensFlareSet(CameraLensFlareSetType type, string userName);
+	//! Test if the AABB is visible against the view frustum of the camera
+	proto external bool IsAABBVisible(vector mins, vector maxs);
+	//! Test if the sphere is visible against the view frustum of the camera
+	proto external bool IsSphereVisible(vector origin, float radius);
 
 	// callbacks
 

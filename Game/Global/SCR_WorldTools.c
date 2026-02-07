@@ -130,11 +130,12 @@ class SCR_WorldTools
 	\param areaRadius Radius of queried area
 	\param cylinderRadius Expected cylinder radius
 	\param cylinderHeight Expected cylinder full height
+	\param maxResults Maximum number of desired results to return
 	\param flags Tracing flags
 	\param world World which is being traced
 	\return Number of found positions
 	*/
-	static int FindAllEmptyTerrainPositions(out notnull array<vector> outPositions, vector areaCenter, float areaRadius, float cylinderRadius = 0.5, float cylinderHeight = 2, TraceFlags flags = TraceFlags.ENTS | TraceFlags.OCEAN, BaseWorld world = null)
+	static int FindAllEmptyTerrainPositions(out notnull array<vector> outPositions, vector areaCenter, float areaRadius, float cylinderRadius = 0.5, float cylinderHeight = 2, int maxResults = -1, TraceFlags flags = TraceFlags.ENTS | TraceFlags.OCEAN, BaseWorld world = null)
 	{
 		//--- Incorrect params
 		if (areaRadius <= 0 || cylinderRadius <= 0 || cylinderHeight <= 0)
@@ -186,6 +187,9 @@ class SCR_WorldTools
 					if (TraceCylinder(position + cylinderVectorOffset, cylinderRadius, cylinderHeight, flags, world))
 						outPositions.Insert(position);
 				}
+				
+				if (maxResults > -1 && outPositions.Count() >= maxResults)
+					break;
 			}
 		}
 		return outPositions.Count();

@@ -22,7 +22,21 @@ class SCR_AmbientSoundsEffect
 		m_LocalSignalsManager = signalsManagerComponent;
 	}
 	
+	//------------------------------------------------------------------------------------------------	
+	/*
+	Called by SCR_AmbientSoundComponent in OnInit()
+	*/	
+	void OnInit()
+	{
+		
+	}
+	
 #ifdef ENABLE_DIAG
+	//------------------------------------------------------------------------------------------------
+	void UpdateDebug(float worldTime)
+	{
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void ReloadConfig()
 	{

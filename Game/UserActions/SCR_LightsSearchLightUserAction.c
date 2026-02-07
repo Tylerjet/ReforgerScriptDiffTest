@@ -10,10 +10,15 @@ class SCR_LightsSearchLightUserAction : LightUserAction
 		if (!lightManager)
 			return;
 		
-		bool lightsState = !lightManager.GetLightsState(ELightType.SearchLight);
-				
-		lightManager.SetLightsState(ELightType.SearchLight, lightsState);
+		bool lightsState;	
 		
+		lightsState = lightManager.GetLightsState(ELightType.SearchLight);
+
+		if (RplSession.Mode() != RplMode.Client)
+			lightsState = !lightsState;
+
+		lightManager.SetLightsState(ELightType.SearchLight, lightsState);
+
 		// Sound		
 		PlaySound(pOwnerEntity, lightsState);
 	}

@@ -139,12 +139,11 @@ class SCR_GameModeLastStand : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void HandleOnCharacterDeath(notnull CharacterControllerComponent characterController, IEntity instigator)
+	override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator instigator)
 	{
-		super.HandleOnCharacterDeath(characterController, instigator);
+		super.OnControllableDestroyed(entity, killerEntity, instigator);
 		
-		IEntity victimEntity = characterController.GetCharacter();
-		m_aEnemySoldiers.RemoveItemOrdered(victimEntity);
+		m_aEnemySoldiers.RemoveItemOrdered(entity);
 	}
 	
 	//------------------------------------------------------------------------------------------------

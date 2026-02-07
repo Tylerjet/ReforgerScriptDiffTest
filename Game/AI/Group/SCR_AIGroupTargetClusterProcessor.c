@@ -1,5 +1,8 @@
 // Processes group's target clusters, performs decisions about what to do with them
 
+void SCR_AITargetClusterStateChanged(SCR_AITargetClusterState state, EAITargetClusterState prevState, EAITargetClusterState newState);
+typedef func SCR_AITargetClusterStateChanged;
+
 class SCR_AIGroupTargetClusterProcessor : Managed
 {
 	protected const float INITIAL_DECISION_DELAY_MS = 5000.0;
@@ -9,6 +12,8 @@ class SCR_AIGroupTargetClusterProcessor : Managed
 	protected const float MAX_CLUSTER_AGE_S = 120.0;
 	
 	protected SCR_AIGroupUtilityComponent m_Utility; // Owner utility component of this
+	
+	ref ScriptInvokerBase<SCR_AITargetClusterStateChanged> m_OnClusterStateChanged = new ScriptInvokerBase<SCR_AITargetClusterStateChanged>();
 	
 	//---------------------------------------------------------------------------
 	void UpdateCluster(SCR_AIGroupTargetCluster c, SCR_AITargetClusterState s, float deltaTime_ms)
@@ -181,6 +186,7 @@ class SCR_AIGroupTargetClusterProcessor : Managed
 		
 		s.m_ePrevState = s.m_eState;
 		s.m_eState = newState;
+		m_OnClusterStateChanged.Invoke(s, s.m_ePrevState, s.m_eState);
 	}
 	
 	void AssignActivity(notnull SCR_AITargetClusterState s, notnull SCR_AIActivityBase activity)
@@ -283,6 +289,10 @@ class SCR_AIGroupTargetClusterProcessor : Managed
 						ftsMain.Remove(ftsMain.Count()-1);
 						ftsAux.Insert(ftLock);
 					}
+					else if (m_Utility.m_FireteamMgr.FindFreeFireteams(newFireteams, 1))
+					{
+						SCR_AIGroupFireteamLock.TryLockFireteams(newFireteams, ftsAux, true);
+					}
 				}
 				else if(ftsAux.Count() > 1)
 				{
@@ -293,17 +303,6 @@ class SCR_AIGroupTargetClusterProcessor : Managed
 						ftsMain.Insert(ftLock);
 						ftsAux.Remove(ftsAux.Count()-1);
 					}
-				}
-				
-				else if (m_Utility.m_FireteamMgr.FindFreeFireteams(newFireteams, 1))
-				{
-					ftsAux = {};
-					SCR_AIGroupFireteamLock.TryLockFireteams(newFireteams, ftsAux, true);
-				}
-				else
-				{
-					// No return, we can continue without aux fireteams
-					ftsAux = {};
 				}
 				
 				break;

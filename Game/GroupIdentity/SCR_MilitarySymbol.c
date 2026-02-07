@@ -204,7 +204,7 @@ class SCR_BaseContainerMilitarySymbol: BaseContainerCustomTitle
 		EMilitarySymbolIcon icons;
 		source.Get("m_Icons", icons);
 		
-		EMilitarySymbolAmplifier amplifier;
+		EMilitarySymbolAmplifier amplifier;	
 		source.Get("m_Amplifier", amplifier);
 		
 		string identityName = typename.EnumToString(EMilitarySymbolIdentity, identity);

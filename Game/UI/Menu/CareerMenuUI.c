@@ -28,12 +28,7 @@ class CareerMenuUI: ChimeraMenuBase
 	static CareerMenuUI m_sInstance;
 	ref CareerBackendData m_BackendData;
 	protected ref CareerCallback m_Callback = new ref CareerCallback();
-	SCR_AccountWidgetComponent m_AccountComponent;
-	
-	/*[MenuBindAttribute()]
-	ButtonWidget Profile;*/
-	
-	
+
 	[MenuBindAttribute()]
 	ButtonWidget Back;
 
@@ -43,13 +38,6 @@ class CareerMenuUI: ChimeraMenuBase
 	{
 		if (IsFocused())
 			Close();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[MenuBindAttribute()]
-	void Account()
-	{
-		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.LoginDialog);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -149,6 +137,8 @@ class CareerMenuUI: ChimeraMenuBase
 			if (backendApi)
 				backendApi.PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterGet, m_Callback, m_BackendData, 0);
 		}
+		
+		super.OnMenuUpdate(tDelta);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -173,6 +163,8 @@ class CareerMenuUI: ChimeraMenuBase
 			string profileName = SCR_Global.GetProfileName();
 			m_EditPlayerName.SetValue(profileName);
 		}
+		
+		super.OnMenuShow();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -202,15 +194,15 @@ class CareerMenuUI: ChimeraMenuBase
 			OnLoadoutChange(m_LoadoutStatistics.GetCurrentLoadoutId());
 		}
 		
-		Widget account = w.FindAnyWidget("AccountWidget");
-		if (account)
-			m_AccountComponent = SCR_AccountWidgetComponent.Cast(account.FindHandler(SCR_AccountWidgetComponent));
+		super.OnMenuOpen();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{
 		m_sInstance = null;
+		
+		super.OnMenuClose();
 	}
 	
 	//------------------------------------------------------------------------------------------------

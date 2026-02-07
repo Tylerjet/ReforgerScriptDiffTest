@@ -46,9 +46,9 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 	
 #ifndef DISABLE_WATERPHYSICS
 	//------------------------------------------------------------------------------------------------
-	override void SimulateWaterPhysics(notnull IEntity owner, float timeSlice)
+	override void SimulateWaterPhysics(float timeSlice)
 	{
-		super.SimulateWaterPhysics(owner, timeSlice);
+		super.SimulateWaterPhysics(timeSlice);
 		
 		// Buoyancy changes
 		if (!m_bIsLeaking)
@@ -59,7 +59,7 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 				if (m_fBuoyancyLossCurrent > 0 && m_fBuoyancy > -1)
 				{
 					m_bIsLeaking = true;
-					SetEventMask(owner, EntityEvent.FIXEDFRAME);
+					ConnectToVehicleWaterPhysicsSystem();
 				}
 			}
 			else
@@ -68,13 +68,15 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 				if (m_fBuoyancyGain > 0 && m_fBuoyancy < m_fBuoyancyInitial)
 				{
 					m_bIsLeaking = true;
-					SetEventMask(owner, EntityEvent.FIXEDFRAME);
+					ConnectToVehicleWaterPhysicsSystem();
 				}
 			}
 		}
 		
 		if (!GetInWater())
 			return;
+		
+		IEntity owner = GetOwner();
 		
 		Physics physics = owner.GetPhysics();
 		if (!physics)
@@ -175,7 +177,7 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void EOnFixedFrame(IEntity owner, float timeSlice)
+	void UpdateFixed(float timeSlice)
 	{
 		float buoyancySignalValue;
 		
@@ -189,7 +191,7 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 			if (m_fBuoyancy <= -1)
 			{
 				m_fBuoyancy = -1;
-				ClearEventMask(owner, EntityEvent.FIXEDFRAME);
+				DisconnectFromVehicleWaterPhysicsSystem();
 				m_bIsLeaking = false;
 				buoyancySignalValue = 0;
 			}
@@ -204,7 +206,7 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 			if (m_fBuoyancy >= m_fBuoyancyInitial)
 			{
 				m_fBuoyancy = m_fBuoyancyInitial;
-				ClearEventMask(owner, EntityEvent.FIXEDFRAME);
+				DisconnectFromVehicleWaterPhysicsSystem();
 				m_bIsLeaking = false;
 				buoyancySignalValue = 0;
 			}
@@ -215,6 +217,26 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 		// If < 0, than leaking	
 		if (m_pSignalsManagerComponent)
 			m_pSignalsManagerComponent.SetSignalValue(m_iBuoyancySignalIdx, buoyancySignalValue);
+	}
+	
+	protected void ConnectToVehicleWaterPhysicsSystem()
+	{
+		World world = GetOwner().GetWorld();
+		VehicleWaterPhysicsSystem updateSystem = VehicleWaterPhysicsSystem.Cast(world.FindSystem(VehicleWaterPhysicsSystem));
+		if (!updateSystem)
+			return;
+		
+		updateSystem.Register(this);
+	}
+	
+	protected void DisconnectFromVehicleWaterPhysicsSystem()
+	{
+		World world = GetOwner().GetWorld();
+		VehicleWaterPhysicsSystem updateSystem = VehicleWaterPhysicsSystem.Cast(world.FindSystem(VehicleWaterPhysicsSystem));
+		if (!updateSystem)
+			return;
+		
+		updateSystem.Unregister(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -260,6 +282,14 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 			m_pNwkCarMovementComponent = NwkCarMovementComponent.Cast(owner.FindComponent(NwkCarMovementComponent));
 			m_pRplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		DisconnectFromVehicleWaterPhysicsSystem();
+		
+		super.OnDelete(owner);
 	}
 	
 	//------------------------------------------------------------------------------------------------

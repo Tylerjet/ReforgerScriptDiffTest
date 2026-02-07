@@ -818,6 +818,9 @@ class SCR_SelectionMenuControllerInputs
 	
 	[Attribute("0", desc: "If checked, menu won't open if there are no entries in the menu")]
 	bool m_bPreventEmptyMenuOpen;
+	
+	[Attribute("1", UIWidgets.Slider, desc: "Unchecked will prevent opening of radial menu while character is unconcious.")]
+	bool m_bShowWhileUnconcious;
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_SelectionMenuOpening(string openAction = "")

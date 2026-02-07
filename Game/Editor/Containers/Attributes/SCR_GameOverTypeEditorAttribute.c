@@ -159,6 +159,10 @@ class SCR_GameOverTypeEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		}
 	}
 	
+	override bool IsSerializable()
+	{
+		return false;
+	}
 	override int GetEntries(notnull array<ref SCR_BaseEditorAttributeEntry> outEntries)
 	{
 		CreatePresets();		

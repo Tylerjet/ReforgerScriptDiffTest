@@ -36,7 +36,7 @@ class SCR_AttributesButtonEditorUIComponent: SCR_BaseEditorUIComponent
 	
 	override void HandlerAttachedScripted(Widget w)
 	{		
-		SCR_NavigationButtonComponent navButton = SCR_NavigationButtonComponent.Cast(w.FindHandler(SCR_NavigationButtonComponent));
+		SCR_InputButtonComponent navButton = SCR_InputButtonComponent.Cast(w.FindHandler(SCR_InputButtonComponent));
 		if (navButton)
 			navButton.m_OnActivated.Insert(OnButtonAction);
 		else

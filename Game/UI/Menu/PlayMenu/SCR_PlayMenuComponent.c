@@ -144,7 +144,7 @@ class SCR_PlayMenuComponent : ScriptedWidgetComponent
 	{
 		m_iSelectedItem = m_aWidgets.Find(w);
 	}
-	
+	/*
 	//------------------------------------------------------------------------------------------------
 	protected void OnItemLeft()
 	{
@@ -210,7 +210,7 @@ class SCR_PlayMenuComponent : ScriptedWidgetComponent
 		if (!m_aWidgets[nextItem].IsEnabled())
 			SetFocusedItem(nextItem);
 	}	
-			
+	*/
 	//------------------------------------------------------------------------------------------------
 	void SetFocusedItem(int index)
 	{

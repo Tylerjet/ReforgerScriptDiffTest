@@ -6,6 +6,15 @@ Do not modify, this script is generated
 
 class Game
 {
+	protected BaseWorld m_World;
+	protected InputManager m_InputManager;
+	protected MenuManager m_MenuManager;
+	protected WorkspaceWidget m_WorkspaceWidget;
+	sealed BaseWorld GetWorld() { return m_World; }
+	sealed InputManager GetInputManager() { return m_InputManager; }
+	sealed MenuManager GetMenuManager() { return m_MenuManager; }
+	sealed WorkspaceWidget GetWorkspace() { return m_WorkspaceWidget; }
+
 	/*!
 	\brief Returns path of world file loaded
 	*/
@@ -35,13 +44,17 @@ class Game
 	*/
 	proto external void SaveUserSettings();
 	/*!
+	\brief Determines the availability of save storage.
+	Game can try to call PlatformService::ObtainSaveDataAsync()
+	which would reinitilize the storage access if possible.
+	\return If the game is capable of accessing save storage.
+	*/
+	proto external bool IsSaveStorageAvailable();
+	/*!
 	\brief Backend Api access class
 	*/
 	proto external BackendApi GetBackendApi();
-	/*!
-	\brief Stats Api access class
-	*/
-	proto external StatsApi GetStatsApi();
+	proto external BackendDebugApi GetBackendDebugApi();
 	/*!
 	\brief RESTful Api request access class
 	*/
@@ -85,18 +98,8 @@ class Game
 	@return True if the game is in play mode. False otherwise.
 	*/
 	proto external bool InPlayMode();
-	/*!
-	\warning Obsolete - Game state do not have a conpcet of SafeMode
-	\return false
-	*/
-	[Obsolete("Game state have no concept of 'SafeMode'")]
-	proto external bool IsSafeMode();
-	proto external int FailureAddon(out notnull array<string> addons);
+	proto external int ReloadFailureAddons(out notnull array<string> addons);
 	proto external ScriptModule GetScriptModule();
-	proto external BaseWorld GetWorld();
-	proto external InputManager GetInputManager();
-	proto external MenuManager GetMenuManager();
-	proto external WorkspaceWidget GetWorkspace();
 	proto external PlatformService GetPlatformService();
 	//! Return true if executable is developer build.
 	static proto bool IsDev();
@@ -196,4 +199,9 @@ class Game
 	event void PlayGameConfig(ResourceName sResource, string addonsList);
 	event ref array<ResourceName> GetDefaultGameConfigs();
 	event Managed ReadGameConfig(string sResource);
+	/*!
+	\brief Event which is called on Gamepad Connection/Disconnection.
+	@param isConnected is false on disconnection, true on re-connection.
+	*/
+	event void OnGamepadConnectionStatus(bool isConnected);
 }

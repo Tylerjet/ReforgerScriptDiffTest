@@ -7,7 +7,7 @@ Must be attached to a vertical scroll widget.
 
 // #define GAMEPAD_SCROLL_DEBUG
 
-class SCR_GamepadScrollComponent : ScriptedWidgetComponent
+class SCR_GamepadScrollComponent : SCR_ScriptedWidgetComponent
 {
 	[Attribute("1", UIWidgets.CheckBox, "When true and scroll input is detected, the component will try to find a new focused widget, or will reset focused widget to null if no suitable widget found")]
 	protected bool m_bTryFindNewFocus;
@@ -27,7 +27,10 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 	protected ref array<Widget> m_aDebugMarksBusy;
 #endif
 
-	//-------------------------------------------------------------------------------
+	protected bool m_bShouldBeEnabled = true;
+	protected bool m_bForceDisabled;
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
@@ -41,16 +44,36 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 		m_aDebugMarksPool = {};
 		m_aDebugMarksBusy = {};
 		#endif
+
+		SCR_MenuHelper.GetOnMenuFocusGained().Insert(OnMenuFocusGained);
+		SCR_MenuHelper.GetOnMenuFocusLost().Insert(OnMenuFocusLost);
 	}
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		if (!SCR_Global.IsEditMode())
 			GetGame().GetCallqueue().Remove(OnEachFrame);
+
+		SCR_MenuHelper.GetOnMenuFocusGained().Remove(OnMenuFocusGained);
+		SCR_MenuHelper.GetOnMenuFocusLost().Remove(OnMenuFocusLost);
 	}
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	protected void OnMenuFocusGained(ChimeraMenuBase menu)
+	{
+		if (menu == ChimeraMenuBase.GetOwnerMenu(m_wRoot))
+			SetForceDisabled(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnMenuFocusLost(ChimeraMenuBase menu)
+	{
+		if (menu == ChimeraMenuBase.GetOwnerMenu(m_wRoot))
+			SetForceDisabled(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void OnEachFrame()
 	{
 		if (!m_wScroll)
@@ -60,7 +83,7 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 		Update(tDelta, m_wScroll);
 	}
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Call this from the menu, or if used as widget component it gets called automatically
 	void Update(float tDelta, ScrollLayoutWidget wScroll)
 	{
@@ -96,7 +119,7 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 #endif
 	}
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected static void HandleGamepadScrolling(float tDelta, ScrollLayoutWidget wScroll)
 	{
 		Widget scrollContent = wScroll.GetChildren();
@@ -124,13 +147,13 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 		wScroll.SetSliderPosPixels(0, yPosAbsNew);
 	}
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected static float GetVScrollInput()
 	{
 		return GetGame().GetInputManager().GetActionValue("MenuScrollVertical");
 	}
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	// Try to unfocus current focused widget if it's out of scroll bounds
 	protected static void TryUnfocusWidget(Widget scroll)
 	{
@@ -146,7 +169,7 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 			GetGame().GetWorkspace().SetFocusedWidget(null);
 	}
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Tries to find the new widget to focus
 	protected void TryFindNewFocus(ScrollLayoutWidget wScroll)
 	{
@@ -198,7 +221,7 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 		GetGame().GetWorkspace().SetFocusedWidget(newFocus);
 	}
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns reference point of the scroll widget
 	protected static vector GetReferencePoint(ScrollLayoutWidget wScroll)
 	{
@@ -219,12 +242,12 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 		focusedWidget.GetScreenPos(xPos, yPos);
 		focusedWidget.GetScreenSize(width, height);
 		SCR_Rect2D focusedRect = GetWidgetRect(focusedWidget);
-		refPoint[0] = width / 2 + xPos - 1;
+		refPoint[0] = width * 0.5 + xPos - 1;
 
 		return refPoint;
 	}
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	// Returns metric between a point and a widget
 	protected static float GetFocusMetric(vector v0, Widget w)
 	{
@@ -238,10 +261,10 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 		float dx = v0[0] - v1[0];
 		float dy = v0[1] - v1[1];
 
-		return 100*Math.AbsFloat(dy) + Math.AbsFloat(dx);
+		return 100 *Math.AbsFloat(dy) + Math.AbsFloat(dx);
 	}
 
-	//-------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns a rect created from widget's GetScreenPos and GetScreenSize
 	static SCR_Rect2D GetWidgetRect(Widget w)
 	{
@@ -262,7 +285,7 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 		return SCR_Rect2D.FromPosAndSize(pos, size);
 	}
 
-	//-------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Finds all buttons recursively
 	static void FindAllButtons(Widget w, array<Widget> arrayOut)
 	{
@@ -282,39 +305,59 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 		}
 	}
 
-	//-------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	void SetTryFindNewFocus(bool tryFindNewFocus)
 	{
 		m_bTryFindNewFocus = tryFindNewFocus;
 	}
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	void SetEnabled(bool enabled)
 	{
-		m_bScrollEnabled = enabled;
-		if (enabled)
-			GetGame().GetCallqueue().CallLater(OnEachFrame, 1, true);
-		else
-			GetGame().GetCallqueue().Remove(OnEachFrame);
+		m_bShouldBeEnabled = enabled;
+		SetEnabled_Internal(enabled);
 	}
 
-//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	void SetEnabled_Internal(bool enabled)
+	{
+		GetGame().GetCallqueue().Remove(OnEachFrame);
+
+		m_bScrollEnabled = enabled && !m_bForceDisabled;
+		if (m_bScrollEnabled)
+			GetGame().GetCallqueue().CallLater(OnEachFrame, 1, true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetForceDisabled(bool forceDisabled)
+	{
+		m_bForceDisabled = forceDisabled;
+
+		if (forceDisabled)
+			SetEnabled_Internal(false);
+		else
+			SetEnabled_Internal(m_bShouldBeEnabled);
+	}
+
+//------------------------------------------------------------------------------------------------
 // Handling of debug markers
-//-------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------
 
 #ifdef GAMEPAD_SCROLL_DEBUG
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void DebugMarks_StartUpdate()
 	{
 		// Return debug marks back to pool
 		foreach (Widget w : m_aDebugMarksBusy)
+		{
 			m_aDebugMarksPool.Insert(w);
+		}
 
 		m_aDebugMarksBusy.Clear();
 	}
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	// Puts a debug mark on this position. Must be called each frame!!
 	// This must be used only between DebugMarks_StartUpdate and DebugMarks_EndUpdate
 	protected void PlaceDebugMark(vector pos, string text)
@@ -341,13 +384,15 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 		FrameSlot.SetPos(w, workspace.DPIUnscale(pos[0]), workspace.DPIUnscale(pos[1]));
 	}
 
-	//-------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void DebugMarks_EndUpdate()
 	{
 		// Hide all in the pool - by now they have either been used or they are not needed now
 		foreach (Widget w : m_aDebugMarksPool)
+		{
 			w.SetVisible(false);
+		}
 	}
 
 #endif
-};
+}

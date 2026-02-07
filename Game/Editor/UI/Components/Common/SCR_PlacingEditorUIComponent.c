@@ -7,7 +7,6 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 	
 	private InputManager m_InputManager;
 	private SCR_StatesEditorComponent m_StatesManager;
-	private SCR_PlacingEditorComponent m_PlacingManager;
 	private SCR_CursorEditorUIComponent m_CursorComponent;
 	private SCR_EntitiesEditorUIComponent m_EntitiesComponent;
 	private SCR_SelectionEditorUIComponent m_SelectionComponent;
@@ -93,7 +92,7 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 					//--- Get all widgets under cursor
 					int mouseX, mouseY;
 					m_CursorComponent.GetCursorPos(mouseX, mouseY);
-					array<ref Widget> widgets = new array<ref Widget>;
+					array<Widget> widgets = new array<Widget>;
 					WidgetManager.TraceWidgets(mouseX, mouseY, rootWidget, widgets);
 					
 					//--- Check if the widgets are whitelisted. If not, terminate
@@ -182,9 +181,12 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 	{
 		GetMenu().GetOnMenuUpdate().Remove(OnMenuUpdate);
 	}
-	override protected bool CanShowAsDisabled()
+	override protected SCR_EPreviewState GetPreviewStateToShow()
 	{
-		return !m_PlacingManager.CanCreateEntity();
+		if (m_PlacingManager && m_PlacingManager.CanCreateEntity())
+			return SCR_EPreviewState.PLACEABLE;
+		else
+			return SCR_EPreviewState.BLOCKED;
 	}
 	override void HandlerAttachedScripted(Widget w)
 	{
@@ -202,10 +204,7 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 			if (m_EntitiesComponent) m_aClickWhitelist.Insert(m_EntitiesComponent.GetWidget());
 		}
 		if (!m_CursorComponent) Print("SCR_PlacingEditorUIComponent requires SCR_CursorEditorUIComponent!", LogLevel.ERROR);
-		
-		m_PlacingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
-		if (!m_PlacingManager) return;
-		
+				
 		m_PlacingManager.GetOnSelectedPrefabChange().Insert(OnSelectedPrefabChange);
 		
 		m_StatesManager = SCR_StatesEditorComponent.Cast(SCR_StatesEditorComponent.GetInstance(SCR_StatesEditorComponent));

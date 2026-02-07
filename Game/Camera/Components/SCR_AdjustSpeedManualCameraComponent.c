@@ -91,7 +91,13 @@ class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 	}
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
-		if (!param.isManualInputEnabled) return;
+		if (!param.isManualInputEnabled)
+		{
+			if (m_Widget)
+				m_Widget.SetVisible(false);
+			
+			return;
+		}
 		
 		//--- Adjust
 		if (param.flag & EManualCameraFlag.ROTATE)

@@ -13,6 +13,8 @@ class SCR_EditableEntityCoreBudgetSetting
 	protected int m_iCurrentBudget;
 
 	protected SCR_BudgetEditorComponent m_BudgetEditor;
+	/*! Reserved budget is used for budget that is not yet added to the current budget */
+	protected int m_iReservedBudget;
 
 	EEditableEntityBudget GetBudgetType()
 	{
@@ -31,6 +33,29 @@ class SCR_EditableEntityCoreBudgetSetting
 		return m_Info;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	/*! Returns reserved budget */
+	int GetReservedBudget()
+	{
+		return m_iReservedBudget;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*! Adds reserved budget */
+	void ReserveBudget(int reserveValue)
+	{
+		m_iReservedBudget += reserveValue;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*! Removes reserved budget */
+	void UnreserveBudget(int reserveValue)
+	{
+		m_iReservedBudget -= reserveValue;
+		if (m_iReservedBudget < 0)
+			m_iReservedBudget = 0;
+	}
+
 	int SetCurrentBudget(int budgetValue)
 	{
 		int oldBudget = m_iCurrentBudget;
@@ -43,7 +68,7 @@ class SCR_EditableEntityCoreBudgetSetting
 	{
 		int budgetCostValue = GetMinBudgetCost();
 		if (budgetCost) budgetCostValue = budgetCost.GetBudgetValue();
-		
+
 		int budgetChange = Math.Max(budgetCostValue, GetMinBudgetCost());
 		m_iCurrentBudget += budgetChange;
 

@@ -11,7 +11,7 @@ class SCR_CampaignBuildingPlacingEditorComponentClass : SCR_PlacingEditorCompone
 
 		return false;
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
@@ -25,18 +25,16 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	protected IEntity m_Provider;
 	protected ECantBuildNotificationType m_eBlockingReason;
 	protected SCR_EditablePreviewEntity m_PreviewEnt;
-	protected ref array<ref Tuple2<SCR_BasePreviewEntity, float>> m_CompositionEntities = {};
 
-	protected float m_fSafezoneRadius = 10;
-	//Adding this value to a sea level as the composition preview, even above sea doesn't have it's Y value exactly a zero.
-	protected static const float SEA_LEVEL_OFFSET = 0.01;
-	protected static const float BOUNDING_BOX_FACTOR = 0.3;
-	
 	//------------------------------------------------------------------------------------------------
 	//! Return the base which belongs to a provider (if any)
-	protected bool GetProviderBase(out SCR_CampaignMilitaryBaseComponent base)
+	protected bool GetProviderBase(out SCR_MilitaryBaseComponent base)
 	{
-		base = SCR_CampaignMilitaryBaseComponent.Cast(m_Provider.FindComponent(SCR_CampaignMilitaryBaseComponent));
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_Provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (!providerComponent)
+			return false;
+
+		base = SCR_MilitaryBaseComponent.Cast(m_Provider.FindComponent(SCR_MilitaryBaseComponent));
 		if (!base)
 			return false;
 
@@ -50,10 +48,11 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 		if (!previewEnt)
 			return;
 
-		m_PreviewEnt = previewEnt;
-		SetInitialCanBeCreatedState(previewEnt);
-		SetSafezoneRadius(previewEnt);
-		GetAllEntitiesToEvaluate(previewEnt);
+		SCR_CampaignBuildingPlacingObstructionEditorComponent obstructionComponent = SCR_CampaignBuildingPlacingObstructionEditorComponent.Cast(FindEditorComponent(SCR_CampaignBuildingPlacingObstructionEditorComponent, true, true));
+		if (!obstructionComponent)
+			return;
+
+		obstructionComponent.OnPreviewCreated(previewEnt);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -101,7 +100,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 			SCR_CampaignBuildingCompositionComponent compositionComponent = SCR_CampaignBuildingCompositionComponent.Cast(entityOwner.FindComponent(SCR_CampaignBuildingCompositionComponent));
 			if (!compositionComponent)
 				continue;
-			
+
 			SetProviderAndBuilder(compositionComponent);
 		}
 	}
@@ -113,18 +112,22 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 		IEntity provider = m_CampaignBuildingComponent.GetProviderEntity();
 		if (!provider)
 			return;
-		
+
 		SCR_EditorManagerEntity managerEnt = GetManager();
 			if (!managerEnt)
 				return;
-			
+
 		int id = managerEnt.GetPlayerID();
 
 		compositionComponent.SetBuilderId(id);
 		compositionComponent.SetProviderEntity(provider);
 
 		// Don't set up this hook if the provider is a base. We don't want to change the ownership here
-		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(provider.FindComponent(SCR_CampaignMilitaryBaseComponent));
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (!providerComponent)
+			return;
+
+		SCR_MilitaryBaseComponent base = providerComponent.GetMilitaryBaseComponent();
 		if (base)
 			return;
 
@@ -150,46 +153,19 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 		if (soundEvent && pos)
 			AudioSystem.PlayEvent(soundEvent, SCR_SoundEvent.SOUND_BUILD, transform, new array<string>, new array<float>);
 	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected bool CanPlaceEntityServer(IEntityComponentSource editableEntitySource, out EEditableEntityBudget blockingBudget, bool updatePreview, bool showNotification)
-	{
-		bool canPlaceManager = true;
-
-		if (IsServiceCapReached(editableEntitySource))
-			return false;
-
-		return canPlaceManager && super.CanPlaceEntityServer(editableEntitySource, blockingBudget, updatePreview, showNotification);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	bool IsServiceCapReached(IEntityComponentSource editableEntitySource)
-	{
-		SCR_CampaignMilitaryBaseComponent base;
-		if (!GetProviderBase(base))
-			return false;
-
-		SCR_EditableEntityUIInfo editableUIInfo = SCR_EditableEntityUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(editableEntitySource));
-		if (!editableUIInfo)
-			return false;
-
-		array<EEditableEntityLabel> entityLabels = {};
-		array<SCR_ServicePointComponent> baseServices = {};
-		editableUIInfo.GetEntityLabels(entityLabels);
-		int count = base.GetServices(baseServices);
-
-		for (int i = 0; i < count; i++)
-		{
-			if (entityLabels.Contains(baseServices[i].GetLabel()))
-			{
-				SCR_NotificationsComponent.SendToPlayer(GetManager().GetPlayerID(), ENotification.EDITOR_PLACING_NO_MORE_INSTANCES);
-				return true;
-			}
-		}
-
-		return false;
-	}
 	
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	override protected void CreateEntityServer(SCR_EditorPreviewParams params, RplId prefabID, int playerID, int entityIndex, bool isQueue, array<RplId> recipientIds)
+	{
+		// Cancel spawning of the composition instantly and spawn a composition layout instead.
+		SCR_EditorLinkComponent.IgnoreSpawning(true);
+
+		// Cancel a services registration to base - register once the final structure is erected.
+		SCR_ServicePointComponent.SpawnAsOffline(true);
+		
+		super.CreateEntityServer(params, prefabID, playerID, entityIndex, isQueue, recipientIds);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// Check if the preview is outisde of the building radius. if preview doesn't exist return false - preview doesn't exist on server and the same CanCreateEntity is used on server too.
 	bool IsPreviewOutOfRange()
@@ -201,27 +177,41 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool CanCreateEntity(out ENotification outNotification = -1)
+	//! Search for the outline that is assigned to this composition to be spawned.
+	ResourceName GetOutlineToSpawn(notnull SCR_EditableEntityComponent entity)
 	{
-		if (IsPreviewOutOfRange())
-			return false;
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return string.Empty;
 
-		CheckPosition();
+		SCR_CampaignBuildingManagerComponent buildingManagerComponent = SCR_CampaignBuildingManagerComponent.Cast(gameMode.FindComponent(SCR_CampaignBuildingManagerComponent));
+		if (!buildingManagerComponent)
+			return string.Empty;
 
-		SCR_CampaignBuildingPlacingEditorComponentClass componentData = SCR_CampaignBuildingPlacingEditorComponentClass.Cast(GetComponentData(GetOwner()));
-		if (!componentData)
-			return false;
+		SCR_CampaignBuildingCompositionOutlineManager outlineManager = buildingManagerComponent.GetOutlineManager();
+		if (!outlineManager)
+			return string.Empty;
 
-		if (m_bCanBeCreated || componentData.ContainPrefab(GetSelectedPrefab()))
-			return true;
+		return outlineManager.GetCompositionOutline(entity);
+	}
 
-		switch (m_eBlockingReason)
+	//------------------------------------------------------------------------------------------------
+	override bool CanCreateEntity(out ENotification outNotification = -1, inout SCR_EPreviewState previewStateToShow = SCR_EPreviewState.PLACEABLE)
+	{
+		SCR_CampaignBuildingPlacingObstructionEditorComponent obstructionComponent = SCR_CampaignBuildingPlacingObstructionEditorComponent.Cast(FindEditorComponent(SCR_CampaignBuildingPlacingObstructionEditorComponent, true, true));
+		if (!obstructionComponent)
 		{
-			case ECantBuildNotificationType.OUT_OF_AREA: outNotification = ENotification.EDITOR_PLACING_OUT_OF_CAMPAIGN_BUILDING_ZONE; break;
-			case ECantBuildNotificationType.BLOCKED: outNotification = ENotification.EDITOR_PLACING_BLOCKED; break;
+			outNotification = ENotification.EDITOR_PLACING_BLOCKED;
+			return false;
 		}
 
-		return false;
+		if (obstructionComponent.IsPreviewOutOfRange(outNotification))
+		{
+			previewStateToShow = SCR_EPreviewState.BLOCKED;
+			return false;
+		}
+
+		return obstructionComponent.CanCreate(outNotification, previewStateToShow);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -279,144 +269,10 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	{
 		GetOnPlaceEntityServer().Remove(OnPlaceEntityServer);
 	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Set the safe zone radius around the center of the preview in which can't be any entities with simulated physic.
-	protected void SetSafezoneRadius(notnull SCR_EditablePreviewEntity previewEnt)
-	{
-		vector vectorMin, vectorMax;
-		previewEnt.GetPreviewBounds(vectorMin, vectorMax);
-		float dist = vector.DistanceXZ(vectorMin, vectorMax);
-		m_fSafezoneRadius = dist * BOUNDING_BOX_FACTOR;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Make an array of all entities to evaluate
-	protected void GetAllEntitiesToEvaluate(notnull SCR_EditablePreviewEntity rootEnt)
-	{
-		m_CompositionEntities.Clear();
-
-		array<SCR_BasePreviewEntity> previewEntities = rootEnt.GetPreviewChildren();
-		if (previewEntities.IsEmpty())
-			return;
-
-		foreach (SCR_BasePreviewEntity ent : previewEntities)
-		{
-			array<SCR_BasePreviewEntity> previewEntities1 = ent.GetPreviewChildren();
-			if (!previewEntities1)
-			{
-
-				// one entity composition. it's root has to go to the list.
-				float protectionRadius = GetEntityProtectionRadius(ent);
-				if (protectionRadius > 0)
-				{
-					if (ent.GetOrigin()[1] > 0)
-						continue;
-
-					m_CompositionEntities.Insert(new Tuple2<SCR_BasePreviewEntity, float>(ent, protectionRadius));
-				}
-
-				return;
-			}
-
-			foreach (SCR_BasePreviewEntity ent1 : previewEntities1)
-			{
-				float protectionRadius = GetEntityProtectionRadius(ent1);
-				if (protectionRadius > 0)
-				{
-					if (ent.GetOrigin()[1] > 0)
-						continue;
-
-					m_CompositionEntities.Insert(new Tuple2<SCR_BasePreviewEntity, float>(ent1, protectionRadius));
-				}
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Check the preview position. Is suitable to build the composition here?
-	protected bool CheckPosition()
-	{
-		m_bCanBeCreated = true;
-
-		foreach (Tuple2<SCR_BasePreviewEntity, float> compositionEntity : m_CompositionEntities)
-		{
-			if (compositionEntity.param1 && !CheckEntityPosition(compositionEntity.param1.GetOrigin(), compositionEntity.param2))
-			{
-				m_bCanBeCreated = false;
-				break;
-			}
-		}
-
-		return m_bCanBeCreated;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Calculate a sphere radius about the entity which will be tested for obstruction
-	protected float GetEntityProtectionRadius(notnull SCR_BasePreviewEntity ent)
-	{
-		vector vectorMin, vectorMax;
-		ent.GetBounds(vectorMin, vectorMax);
-		return vector.DistanceXZ(vectorMin, vectorMax) * BOUNDING_BOX_FACTOR;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected bool CheckEntityPosition(vector pos, float safeZoneRadius)
-	{
-		BaseWorld world = GetOwner().GetWorld();
-		if (!world)
-			return false;
-
-		// First do the sea level check as it is cheep and don't need to continue with trace if the composition is in the sea.
-		if (pos[1] < world.GetOceanBaseHeight() + SEA_LEVEL_OFFSET)
-			return false;
-
-		// Check clipping with another entity. If can't be placed don't continue.
-		if (TraceEntityOnPosition(pos, world, safeZoneRadius))
-			return false;
-
-		// Check if the placing isn't blocked because the origin of the preview is in water.
-		// ToDo: Light version of TryGetWaterSurface method which doesn't provide out parameters, just a bool.
-		vector outWaterSurfacePoint;
-		EWaterSurfaceType outType;
-		vector transformWS[4];
-		vector obbExtents;
-
-		if (ChimeraWorldUtils.TryGetWaterSurface(world, pos, outWaterSurfacePoint, outType, transformWS, obbExtents))
-			return false;
-
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Trace at the position of the preview to find any possibly cliping entities.
-	protected bool TraceEntityOnPosition(vector position, notnull BaseWorld world, float safeZoneRadius)
-	{
-		TraceSphere sphere = new TraceSphere();
-		sphere.Radius = safeZoneRadius;
-		sphere.Start = position;
-		sphere.LayerMask = EPhysicsLayerPresets.Projectile;
-		sphere.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
-
-		float done = world.TracePosition(sphere, null);
-		if (done > 0)
-			return false;
-
-		m_eBlockingReason = ECantBuildNotificationType.BLOCKED;
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Filter out entities without simulated physic.
-	protected bool IsIgnoredBlockingEntity(notnull IEntity ent)
-	{
-		Physics physics = ent.GetPhysics();
-		return (!physics || physics.GetSimulationState() == SimulationState.NONE);
-	}
-};
+}
 
 enum ECantBuildNotificationType
 {
 	OUT_OF_AREA = 0,
 	BLOCKED = 1,
-};
+}

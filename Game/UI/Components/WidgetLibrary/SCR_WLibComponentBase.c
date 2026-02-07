@@ -190,15 +190,6 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool IsVisible()
-	{
-		if (!m_wRoot)
-			return false;
-		
-		return m_wRoot.IsVisible();
-	}
-
-	//------------------------------------------------------------------------------------------------
 	bool IsEnabled()
 	{
 		if (!m_wRoot)

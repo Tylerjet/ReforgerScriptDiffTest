@@ -5,6 +5,7 @@ class SCR_MapCompassUI: SCR_MapRTWBaseUI
 	const string ICON_NAME = "compass";
 	
 	protected SCR_CompassComponent m_CompassComp;
+	protected string m_sPrefabResource;
 
 	//------------------------------------------------------------------------------------------------
 	override void SetWidgetNames()
@@ -30,13 +31,13 @@ class SCR_MapCompassUI: SCR_MapRTWBaseUI
 	{								
 		if (m_CompassComp)
 		{
-			IEntity player = SCR_PlayerController.GetLocalControlledEntity();
-			if (!player)
+			ChimeraCharacter player = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+			if (!player || !player.GetCharacterController())
 				return;
 			
-			vector anglesPlayer = player.GetAngles();
 			vector anglesCompass = vector.Zero;
-			anglesCompass[1] = anglesPlayer[1];
+			anglesCompass[1] = player.GetCharacterController().GetInputContext().GetHeadingAngle() * Math.RAD2DEG;
+			
 			m_RTEntity.SetAngles(anglesCompass);
 			
 			// activate, apply proc anims
@@ -45,35 +46,53 @@ class SCR_MapCompassUI: SCR_MapRTWBaseUI
 			
 			// tick the frame
 			float tick = System.GetFrameTimeS();
-			m_CompassComp.EOnFrame( m_RTEntity, tick );
+			m_CompassComp.Update( tick );
 		}
 		
 		// update		
 		BaseWorld previewWorld = m_RTWorld.GetRef();
 		previewWorld.UpdateEntities();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnInputQuickBind(float value, EActionTrigger reason)
+	{
+		SetVisible(!m_bIsVisible);
+	}
 		
+	//------------------------------------------------------------------------------------------------
+	protected override string GetPrefabResource()
+	{
+		return m_sPrefabResource;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void SetVisible(bool visible)
 	{		
 		if (visible)
 		{
-			// No compass equipped
-			if (!FindRelatedGadget())
+			IEntity compass = FindRelatedGadget();
+			if (!compass)
 			{
 				super.SetVisible(false);
 				return;
 			}
 			
+			SCR_CompassComponent compassComp = SCR_CompassComponent.Cast(compass.FindComponent(SCR_CompassComponent));
+			if (!compassComp)
+				return;
+			
+			m_sPrefabResource = compassComp.GetMapPrefabResource();
+			
 			super.SetVisible(visible);
 					
-			// Prep compass 
-			m_CompassComp.Init2DMapCompass();
-			
 			// Start anim
 			ScriptCallQueue queue = GetGame().GetCallqueue();
 			if (queue)
 				queue.CallLater(UpdateCompassEntity, 0, true);
+			
+			UpdateCompassEntity();
+			m_CompassComp.Init2DMapCompass();
 		}
 		else 
 		{
@@ -94,6 +113,8 @@ class SCR_MapCompassUI: SCR_MapRTWBaseUI
 		{
 			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 11);
 			m_ToolMenuEntry.m_OnClick.Insert(ToggleVisible);
+			
+			GetGame().GetInputManager().AddActionListener("MapToolCompass", EActionTrigger.DOWN, OnInputQuickBind);
 		}
 	}
 	

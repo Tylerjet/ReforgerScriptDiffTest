@@ -202,9 +202,27 @@ class OnJoinRoomSB extends ServerBrowserCallback
 
 //------------------------------------------------------------------------------------------------
 //! Parameters for joining server
-class RoomPasswordJoinParam extends JsonApiStruct
+class RoomJoinData extends JsonApiStruct
 {	
 	string m_Password = "";
+	
+	// Ban related data
+	string scope = "";
+	string type = "";
+	string reason = "";
+	string issuer = "";
+	int expiresAt = 0;
+	int createdAt = 0;
+	
+	void RoomJoinData()
+	{
+		RegV("scope");
+		RegV("type");
+		RegV("reason");
+		RegV("issuer");
+		RegV("expiresAt");
+		RegV("createdAt");
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPack()

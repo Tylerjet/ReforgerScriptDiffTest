@@ -99,11 +99,11 @@ class ServerDetailsMenuUI: ChimeraMenuBase
 	//protected SCR_DetailsPanelContentComponent m_DetailPanelMods;
 	
 	// Buttons 
-	protected SCR_NavigationButtonComponent m_ButtonBack;
-	protected SCR_NavigationButtonComponent m_NavHandleButton;
-	protected SCR_NavigationButtonComponent m_NavJoin;
-	protected SCR_NavigationButtonComponent m_NavFavorite;
-	protected SCR_NavigationButtonComponent m_NavModDetails;
+	protected SCR_InputButtonComponent m_ButtonBack;
+	protected SCR_InputButtonComponent m_NavHandleButton;
+	protected SCR_InputButtonComponent m_NavJoin;
+	protected SCR_InputButtonComponent m_NavFavorite;
+	protected SCR_InputButtonComponent m_NavModDetails;
 	protected SCR_MultipleStatesButtonComponent m_BtnModsHandling;
 	
 	// Details widgets 
@@ -215,7 +215,7 @@ class ServerDetailsMenuUI: ChimeraMenuBase
 		UpdateDetailsEntries();
 		
 		// Load mods 
-		if (m_ModsManager.GetModsLoaded())
+		if (m_Room.IsDownloadListLoaded())
 			SetupRequiredMods();
 		else
 			m_ModsManager.GetOnGetAllDependencies().Insert(SetupRequiredMods); 
@@ -250,7 +250,7 @@ class ServerDetailsMenuUI: ChimeraMenuBase
 		// Navigation buttons 
 		Widget wNavJoin = GetRootWidget().FindAnyWidget(WIDGET_BUTTON_JOIN);
 		if (wNavJoin)
-			m_NavJoin = SCR_NavigationButtonComponent.Cast(wNavJoin.FindHandler(SCR_NavigationButtonComponent));
+			m_NavJoin = SCR_InputButtonComponent.Cast(wNavJoin.FindHandler(SCR_InputButtonComponent));
 
 		// SEtup buttons 
 		NavButtonByName(m_NavFavorite, WIDGET_BUTTON_FAVORITE).m_OnActivated.Insert(OnActionfavorite);
@@ -260,13 +260,13 @@ class ServerDetailsMenuUI: ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	//! Find nav button based by given name
 	//! Save nav button in reference button
-	protected SCR_NavigationButtonComponent NavButtonByName(out SCR_NavigationButtonComponent navButton, string widgetName)
+	protected SCR_InputButtonComponent NavButtonByName(out SCR_InputButtonComponent navButton, string widgetName)
 	{		
 		Widget wButton = GetRootWidget().FindAnyWidget(widgetName);
 		if (!wButton)
 			return null;
 		
-		navButton = SCR_NavigationButtonComponent.Cast(wButton.FindHandler(SCR_NavigationButtonComponent));
+		navButton = SCR_InputButtonComponent.Cast(wButton.FindHandler(SCR_InputButtonComponent));
 		
 		return navButton;
 	}
@@ -389,7 +389,7 @@ class ServerDetailsMenuUI: ChimeraMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnActionDownload(SCR_NavigationButtonComponent navComponent, string actionName)
+	void OnActionDownload(SCR_InputButtonComponent navComponent, string actionName)
 	{
 		// Mods not selected -> go to mods page  
 		int modsTabId = 1;

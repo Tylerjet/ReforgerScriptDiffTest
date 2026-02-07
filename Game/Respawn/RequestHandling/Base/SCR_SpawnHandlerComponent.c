@@ -72,11 +72,12 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		// is dropped without ever reaching the game.
 		if (!ValidateData_S(requestComponent, data))
 			return SCR_ESpawnResult.CANNOT_VALIDATE;
-
+		
 		// See if player can be spawned with provided data,
 		// this can be e.g. based on gamemodes
-		if (!CanRequestSpawn_S(requestComponent, data))
-			return SCR_ESpawnResult.SPAWN_NOT_ALLOWED;
+		SCR_ESpawnResult requestResult;
+		if (!CanRequestSpawn_S(requestComponent, data, requestResult))
+			return requestResult;
 
 		return SCR_ESpawnResult.OK;
 	}
@@ -128,7 +129,7 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	*/
 	void OnFinalizeBegin_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{
-		if (SCR_BaseGameMode.Cast(GetGame().GetGameMode()).IsSpawnPreloadEnabled())
+		if (SCR_BaseGameMode.Cast(GetGame().GetGameMode()).CanStartSpawnPreload())
 			requestComponent.StartSpawnPreload(data.GetPosition());
 	}
 
@@ -191,7 +192,7 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		Handle game logic, ask game mode, respawn timers -> anything relevant for proper evaluation.
 		Return true if spawn is possible, false otherwise.
 	*/
-	bool CanRequestSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data)
+	bool CanRequestSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, out SCR_ESpawnResult result)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
 		PrintFormat("%1::CanRequestSpawn_S(playerId: %2, data: %3)", Type().ToString(),
@@ -199,7 +200,7 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		#endif
 
 		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
-		return respawnSystem.CanRequestSpawn_S(requestComponent, this, data);
+		return respawnSystem.CanRequestSpawn_S(requestComponent, this, data, result);
 	}
 
 	//------------------------------------------------------------------------------------------------

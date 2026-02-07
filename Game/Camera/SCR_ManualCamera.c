@@ -216,6 +216,28 @@ class SCR_ManualCamera: SCR_CameraBase
 		}
 		return null;
 	}
+	bool TrySwitchToControlledEntityCamera()
+	{
+		//--- Don't switch when this camera is not active
+		if (!m_CameraManager || m_CameraManager.CurrentCamera() != this)
+			return false;
+		
+		// We primarily want the player to return to his controlled entity camera
+		CameraBase camera = GetGame().GetPlayerController().GetPlayerCamera();
+		
+		// Only if that fails we just use the next best previously created camera
+		if (!camera)
+			camera = GetPreviousCamera();
+		
+		if (camera) 
+		{
+			m_CameraManager.SetCamera(camera);
+			return true;
+		}
+		
+		return false;
+		
+	}
 	void SwitchToPreviousCamera()
 	{
 		//--- Don't switch when this camera is not current
@@ -446,11 +468,7 @@ class SCR_ManualCamera: SCR_CameraBase
 		SetFlags(EntityFlags.ACTIVE);
 		SetEventMask(EntityEvent.INIT | EntityEvent.POSTFRAME);
 		
-		// TODO@AS: Due to one of the storages in CameraManager being name-based,
-		// multiple cameras of the same name can get mixed up and register/unregister incorrectly.
-		// For now just name each camera uniquely until the underlying issue is resolved.
-		// SetName("ManualCamera");
-		SetName(GetID().ToString());
+		SetName("ManualCamera");
 	}
 	void ~SCR_ManualCamera()
 	{

@@ -165,6 +165,12 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 			}	
 		}
 		
+		if (m_ToolboxType == EAttributeToolBoxType.SELECTABLE_BUTTON)
+		{
+			int value = var.GetInt();
+			m_ToolBoxComponent.SetFocusedItem(value);
+		}
+		
 		super.Init(w, attribute);
 	}	
 	
@@ -410,6 +416,7 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		UpdateButtonBorder(index);
 	}
 	
+	/*
 	//Set focus of current selected element
 	override bool OnFocus(Widget w, int x, int y)
 	{
@@ -427,6 +434,7 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		m_ToolBoxComponent.SetFocusedItem(var.GetInt(), false);
 		return super.OnFocus(w, x, y);
 	}
+	*/
 	
 	override void HandlerDeattached(Widget w)
 	{

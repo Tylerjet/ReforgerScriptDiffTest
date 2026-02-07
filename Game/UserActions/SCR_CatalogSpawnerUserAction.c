@@ -3,11 +3,22 @@ Action to spawn entities using the ActionsManagerComponent
 */
 class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 {
+	[Attribute(defvalue: EResourceType.SUPPLIES.ToString(), uiwidget: UIWidgets.ComboBox, desc: "Sets the type of Resource to be used.\nOnly a transaction matching Resource types can be successfully concluded.", enums: ParamEnumArray.FromEnum(EResourceType))]
+	protected EResourceType m_eResourceType;
+	
+	protected SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandleConsumer;
+	protected SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandleGenerator;
+	protected SCR_ResourceComponent m_ResourceComponent;
+	protected SCR_ResourceGenerator m_ResourceGenerator;
+	protected SCR_ResourceConsumer m_ResourceConsumer;
+	
+	protected RplId m_ResourceInventoryPlayerComponentRplId;
 	protected SCR_CatalogEntitySpawnerComponent m_EntitySpawner; 
 	protected SCR_EEntityRequestStatus m_iRequestStatus;
 	protected SCR_EntitySpawnerSlotComponent m_PreviewSlot;
 	protected SCR_EntityCatalogEntry m_EntityData
 	protected SCR_EntityCatalogSpawnerData m_EntitySpawnerData;
+	protected bool m_bIsSelected;
 	
 	//------------------------------------------------------------------------------------------------
 	void SetSpawnerData(SCR_EntityCatalogEntry entityData)
@@ -49,20 +60,34 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 			
 			parent = parent.GetParent();
 		}
+		
+		if (!m_EntitySpawner)
+			return;
+		
+		m_ResourceComponent = m_EntitySpawner.GetSpawnerResourceComponent();
+		
+		if (!m_ResourceComponent)
+			return;
+		
+		m_ResourceGenerator	= m_ResourceComponent.GetGenerator(EResourceGeneratorID.DEFAULT, m_eResourceType);
+		m_ResourceConsumer	= m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, m_eResourceType);
 	}
 	//------------------------------------------------------------------------------------------------
 	override void OnActionSelected()
 	{
+		m_bIsSelected = true;
+		
 		if (!m_EntitySpawner)
 			return;
 		
 		if (IsAnySlotAvailable())
-			m_EntitySpawner.CreatePreviewEntity(m_EntityData, m_PreviewSlot);
+			m_EntitySpawner.CreatePreviewEntity(m_EntityData, m_PreviewSlot, m_iRequestStatus);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnActionDeselected()
 	{
+		m_bIsSelected = false;
 		m_EntitySpawner.DeletePreviewEntity();
 	}
 	
@@ -72,7 +97,9 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 		if (!m_EntitySpawner)
 			return;
 		
-		PlayerController playerController = GetGame().GetPlayerController();
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity);
+		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		
 		if (!playerController)
 			return;
 		
@@ -88,13 +115,13 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 		m_EntitySpawner.AddKnownOccupiedSlot(usedPreviewSlot);
 		
 		if (IsAnySlotAvailable())
-			m_EntitySpawner.CreatePreviewEntity(m_EntityData, m_PreviewSlot);
+			m_EntitySpawner.CreatePreviewEntity(m_EntityData, m_PreviewSlot, m_iRequestStatus);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool GetActionNameScript(out string outName)
 	{
-		if (!m_EntitySpawner || !m_EntitySpawnerData)
+		if (!m_EntitySpawner || !m_EntitySpawnerData || !m_EntitySpawner.GetSpawnerResourceComponent())
 			return false;
 		
 		ActionNameParams[0] = m_EntitySpawnerData.GetOverwriteName();
@@ -104,7 +131,7 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 		if (m_EntitySpawner.IsSuppliesConsumptionEnabled())
 		{
 			ActionNameParams[1] = m_EntitySpawnerData.GetSupplyCost().ToString();
-			ActionNameParams[2] = m_EntitySpawner.GetSpawnerSupplies().ToString();
+			ActionNameParams[2] = m_EntitySpawner.GetSpawnerResourceValue().ToString();
 		}
 
 		outName = "#AR-EntitySpawner_Request";
@@ -118,8 +145,8 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 			return;
 		
 		m_PreviewSlot = previewSlot;
-		if (m_PreviewSlot)
-			m_EntitySpawner.CreatePreviewEntity(m_EntityData, m_PreviewSlot);
+		if (m_PreviewSlot && m_bIsSelected)
+			m_EntitySpawner.CreatePreviewEntity(m_EntityData, m_PreviewSlot, m_iRequestStatus);
 		
 	}
 	
@@ -142,6 +169,33 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 		if (!m_EntitySpawner)
 			return false;
 		
+		if (!m_ResourceComponent)
+			m_ResourceComponent = m_EntitySpawner.GetSpawnerResourceComponent();
+		
+		if (!m_ResourceInventoryPlayerComponentRplId  || !m_ResourceInventoryPlayerComponentRplId.IsValid())
+			m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
+		
+		if (!m_ResourceComponent 
+		||	!m_ResourceInventoryPlayerComponentRplId.IsValid()
+		||	!m_ResourceGenerator	&& !m_ResourceComponent.GetGenerator(EResourceGeneratorID.DEFAULT, m_eResourceType, m_ResourceGenerator)
+		||	!m_ResourceConsumer		&& !m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, m_eResourceType, m_ResourceConsumer))
+		{
+			SetCannotPerformReason("#AR-Supplies_CannotPerform_Generic");
+			
+			return false;
+		}
+		
+		if (m_ResourceSubscriptionHandleConsumer)
+			m_ResourceSubscriptionHandleConsumer.Poke();
+		else
+			m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceConsumer, m_ResourceInventoryPlayerComponentRplId);
+		
+		if (m_ResourceSubscriptionHandleGenerator)
+			m_ResourceSubscriptionHandleGenerator.Poke();
+		else
+			m_ResourceSubscriptionHandleGenerator = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandleGraceful(m_ResourceGenerator, m_ResourceInventoryPlayerComponentRplId);
+		
+		
 		switch (m_iRequestStatus)
 		{
 			case SCR_EEntityRequestStatus.GROUP_FULL:
@@ -158,7 +212,7 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 			
 			case SCR_EEntityRequestStatus.NOT_ENOUGH_SUPPLIES:
 			{
-				SetCannotPerformReason("");
+				SetCannotPerformReason("#AR-Supplies_CannotPerform_Generic");
 				break;
 			}
 				

@@ -23,7 +23,11 @@ class SCR_ClockHandComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		m_TimeManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = ChimeraWorld.CastFrom(owner.GetWorld());
+		if (!world)
+			return;
+		
+		m_TimeManager = world.GetTimeAndWeatherManager();
 		if (!m_TimeManager)
 			return;
 		

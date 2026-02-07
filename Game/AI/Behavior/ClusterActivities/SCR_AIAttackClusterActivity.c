@@ -70,6 +70,23 @@ class SCR_AIAttackClusterActivity : SCR_AIFireteamsClusterActivity
 		
 		if (!m_bOrdersSent)
 		{
+			SCR_ChimeraAIAgent leader = SCR_ChimeraAIAgent.Cast(m_Utility.m_Owner.GetLeaderAgent());
+			if (leader)
+			{
+				SCR_AICommsHandler commsHandler = SCR_AISoundHandling.FindCommsHandler(leader);
+				if (!commsHandler.CanBypass())
+				{
+					foreach (SCR_AIGroupFireteamLock ftLock : m_aFireteamsAttack)
+					{
+						IEntity talkRequestEntity = ftLock.GetFireteam().GetFirstMemberEntity();		
+						
+						int flankValue = Math.RandomIntInclusive(0, 1);
+						SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_FLANK, talkRequestEntity, vector.Zero, flankValue, false, SCR_EAITalkRequestPreset.MANDATORY);
+						commsHandler.AddRequest(rq);
+					}
+				}
+			}
+			
 			SendAttackMessages();
 			m_bOrdersSent = true;
 		}
@@ -182,10 +199,12 @@ class SCR_AIAttackClusterActivity : SCR_AIFireteamsClusterActivity
 	{
 		// List all assigned fireteams
 		string str = "FTs: (";
-		foreach (SCR_AIGroupFireteamLock ftLock : m_aAssignedFireteams)
-		{
+		foreach (SCR_AIGroupFireteamLock ftLock : m_aFireteamsAttack)
 			str = str + string.Format("%1, ", m_Utility.m_FireteamMgr.GetFireteamId(ftLock.GetFireteam()));
-		}
+		str = str + "| ";
+		foreach (SCR_AIGroupFireteamLock ftLock : m_aFireteamsCover)
+			str = str + string.Format("%1, ", m_Utility.m_FireteamMgr.GetFireteamId(ftLock.GetFireteam()));
+		
 		str = str + string.Format(") => C: %1", m_Utility.m_Perception.GetTargetClusterStateId(m_ClusterState));
 		
 		return str;

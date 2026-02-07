@@ -59,7 +59,7 @@ class SCR_WorldEntityDelegateEditorComponent: SCR_BaseEditorComponent
 			if (traceEntity)
 			{
 				SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.GetEditableEntity(traceEntity);
-				if (!editableEntity)
+				if (!editableEntity || !editableEntity.HasEntityState(EEditableEntityState.INTERACTIVE))
 				{
 					BaseActionsManagerComponent actionsManager = BaseActionsManagerComponent.Cast(traceEntity.FindComponent(BaseActionsManagerComponent));
 					if (actionsManager && actionsManager.GetActionsCount() == 1)

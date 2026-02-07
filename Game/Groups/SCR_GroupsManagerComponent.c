@@ -300,7 +300,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		
 		for (int i = playableGroups.Count() - 1; i >= 0; i--)
 		{
-			if (playableGroups[i].IsPlayerInGroup(playerID))
+			if (playableGroups[i] && playableGroups[i].IsPlayerInGroup(playerID))
 				return playableGroups[i];
 		}
 		
@@ -564,12 +564,13 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void DeleteAndUnregisterGroup(notnull SCR_AIGroup group)
 	{
+		m_OnPlayableGroupRemoved.Invoke(group);
 		UnregisterGroup(group);
 		delete group;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void UnregisterGroup(SCR_AIGroup group)
+	void UnregisterGroup(notnull SCR_AIGroup group)
 	{
 		Faction faction = group.GetFaction();
 		if (!faction)
@@ -588,7 +589,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		{
 			foreach (SCR_AIGroup checkedGroup: existingGroups)
 			{
-				if (checkedGroup.GetRadioFrequency() == frequency)
+				if (checkedGroup && checkedGroup.GetRadioFrequency() == frequency)
 					foundGroupsWithFrequency++;
 			}
 		}
@@ -596,6 +597,13 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		//if there is only our group with this frequency or none, release it before changing our frequency
 		if (foundGroupsWithFrequency <= 1)
 			ReleaseFrequency(frequency, faction);
+		
+		SCR_AIGroup slaveGroup = group.GetSlave();
+		
+		//in case the slave group doesnt have any AIs in it, delete
+		//mourTodo: handle what the AIs should do in case their master group is deleted
+		if (slaveGroup && slaveGroup.GetAgentsCount() <= 0)
+			delete slaveGroup;
 		
 		if (groups.Find(group) >= 0)
 			groups.RemoveItem(group);
@@ -695,6 +703,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		
 		for (int i = factionGroups.Count() - 1; i >= 0; i--)
 		{
+			if (!factionGroups[i])
+				return null;
+			
 			if (factionGroups[i].GetPlayerCount() == 0)
 				return factionGroups[i];
 		}
@@ -739,6 +750,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			SCR_AIGroup slaveGroup = SCR_AIGroup.Cast(groupEntity);
 			if (!slaveGroup)
 				return null;
+			
+			slaveGroup.Deactivate();
 			
 			RplComponent RplComp = RplComponent.Cast(slaveGroup.FindComponent(RplComponent));
 			if (!RplComp)
@@ -1121,6 +1134,33 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void OnPlayerReconnected(SCR_ReconnectData reconnectData)
+	{
+		int playerID = reconnectData.m_iPlayerId;
+		SCR_AIGroup group = GetPlayerGroup(playerID);
+		if (group)
+			return;
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		Faction faction = factionManager.GetPlayerFaction(playerID);
+		if (!faction)
+			return;
+		
+		group = GetFirstNotFullForFaction(faction);
+		if (group)
+		{
+			AddPlayerToGroup(group.GetGroupID(), playerID);
+			return;
+		}
+			
+		group = CreateNewPlayableGroup(faction);
+		if (!group)
+			return;
+		
+		AddPlayerToGroup(group.GetGroupID(), playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
@@ -1136,6 +1176,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		SCR_BaseGameMode gameMode = GetGameMode();
 		gameMode.GetOnPlayerSpawned().Insert(TunePlayersFrequency);
 		
+		SCR_ReconnectComponent reconnectComp = SCR_ReconnectComponent.Cast(gameMode.FindComponent(SCR_ReconnectComponent));
+		if (reconnectComp)
+			reconnectComp.GetOnReconnect().Insert(OnPlayerReconnected);
 		
 		m_bConfirmedByPlayer = false;
 		

@@ -57,9 +57,9 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 	
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT, bool bInit = true)
+	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
-		if (m_eActivationType != activation)
+		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
 			return;
 		
 		super.Init(area, activation);
@@ -74,6 +74,7 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 		SCR_TaskDeliver task = SCR_TaskDeliver.Cast(m_TaskLayer.GetTask());
 		if (task)
 		{
+			task.SetTaskLayer(m_TaskLayer);
 			task.SetDeliveryTrigger(trigger);
 			task.UpdateTaskTitleAndDescription();
 		}
@@ -97,6 +98,7 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 					task = SCR_TaskDeliver.Cast(m_TaskLayer.GetTask());
 					if (task)
 					{
+						task.SetTaskLayer(m_TaskLayer);
 						task.SetDeliveryTrigger(trigger);
 						task.UpdateTaskTitleAndDescription();
 					}
@@ -107,5 +109,29 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 				}
 			}
 		}
+		
+		GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawnedDelivery);
+		InvokeAllChildrenSpawned();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void AfterAllChildrenSpawned()
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AfterAllChildrenSpawnedDelivery()
+	{
+		m_bInitiated = true;
+		
+		foreach (SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)
+		{
+			plugin.Init(this);
+		}
+
+		if (m_ParentLayer)
+			m_ParentLayer.CheckAllChildrenSpawned(this);
+
+		GetOnAllChildrenSpawned().Remove(AfterAllChildrenSpawnedDelivery);
 	}
 };

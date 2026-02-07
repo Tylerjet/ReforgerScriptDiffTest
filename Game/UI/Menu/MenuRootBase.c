@@ -18,7 +18,8 @@ class MenuRootBase : ChimeraMenuBase
 	protected ref ScriptInvoker m_EventOnMenuClose;
 	
 	protected SCR_ChatPanel m_ChatPanel;
-
+	protected SCR_DynamicFooterComponent m_DynamicFooter;
+	
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnMenuFocusGained()
 	{
@@ -119,6 +120,12 @@ class MenuRootBase : ChimeraMenuBase
 	{
 		return m_MenuRootComponent;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_DynamicFooterComponent GetFooterComponent()
+	{
+		return m_DynamicFooter;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuFocusGained()
@@ -188,6 +195,7 @@ class MenuRootBase : ChimeraMenuBase
 	{
 		super.OnMenuInit();
 		m_MenuRootComponent = MenuRootComponent.GetRootOf(this);
+		m_DynamicFooter = SCR_DynamicFooterComponent.FindComponentInHierarchy(GetRootWidget());
 		if (m_MenuRootComponent)
 			m_MenuRootComponent.Init(this);
 		if (m_EventOnMenuInit)

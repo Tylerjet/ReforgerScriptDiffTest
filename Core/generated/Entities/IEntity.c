@@ -86,12 +86,6 @@ class IEntity: Managed
 	*/
 	event protected void EOnPhysicsActive(IEntity owner, bool activeState);
 	/*!
-	Event every frame after EOnFrame, when "Entity diag" is enabled from the debug menu.
-	\param owner The owner entity
-	\param timeSlice Time slice of simulation step
-	*/
-	event protected void EOnDiag(IEntity owner, float timeSlice);
-	/*!
 	Event every fixed frame.
 	\param owner The owner entity
 	\param timeSlice Fixed time step
@@ -165,7 +159,7 @@ class IEntity: Managed
 	/*!
 	Returns top-parent of this entity.
 	\return
-	Pointer to root entity, or nullptr, when we are not child.
+	Pointer to root entity, or self, when we are not child.
 	*/
 	proto external IEntity GetRootParent();
 	/*!
@@ -521,20 +515,6 @@ class IEntity: Managed
 	proto external void	GetBoneNames(out notnull array<string> boneNames);
 	[Obsolete("Use GetAnimation().GetBoneLocalMatrix() instead")]
 	proto external bool	GetBoneLocalMatrix(TNodeId bone, out vector mat[4]);
-	[Obsolete("Use GetParticles().OverridePrevPos() instead")]
-	proto external void ResetParticlePosition();
-	[Obsolete("Use GetParticles().Restart() instead")]
-	proto external void RestartParticle(bool invalidatePrevPos = false);
-	[Obsolete("Use GetParticles.GetNumParticles() instead")]
-	proto external int GetParticleCount();
-	[Obsolete("Use GetParticles().SetParam() instead")]
-	proto external void SetParticleParm(int emitter, EmitterParam parameter, void value);
-	[Obsolete("Use GetParticles().GetParam() instead")]
-	proto external void GetParticleParm(int emitter, EmitterParam parameter, out void value);
-	[Obsolete("Use GetParticles().GetParamOrig() instead")]
-	proto external void GetParticleParmOriginal(int emitter, EmitterParam parameter, out void value);
-	[Obsolete("Use GetParticles().GetEmitterNames() or GetParticles().GetNumEmitters() instead")]
-	proto external int GetParticleEmitters(out string emitters[], int max);
 	/*!
 	Finds first occurance of the coresponding component.
 	\param typeName type of the component

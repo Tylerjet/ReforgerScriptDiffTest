@@ -6,5 +6,5 @@ enum SCR_EArsenalItemMode
 	AMMUNITION = 16,
 	CONSUMABLE = 32,
 	ATTACHMENT = 64,
-	
+	SUPPORT_STATION = 128,
 };

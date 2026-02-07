@@ -62,7 +62,7 @@ class SCR_MapMarkerEntrySquadLeader: SCR_MapMarkerEntryDynamic
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_BaseGameMode event
-	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity)
+	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{		
 		UpdateMarkerTarget(playerId);
 	}
@@ -130,5 +130,14 @@ class SCR_MapMarkerEntrySquadLeader: SCR_MapMarkerEntryDynamic
 		SCR_AIGroup.GetOnCustomNameChanged().Remove(OnGroupCustomNameChanged);
 		SCR_AIGroup.GetOnCustomNameChanged().Insert(OnGroupCustomNameChanged);
 		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMapLayerChangedDynamic(SCR_MapMarkerDynamicWComponent widgetComp, int layerID)
+	{
+		if (layerID > 1) 
+			widgetComp.SetTextVisible(false);
+		else
+			widgetComp.SetTextVisible(true);	
 	}
 }

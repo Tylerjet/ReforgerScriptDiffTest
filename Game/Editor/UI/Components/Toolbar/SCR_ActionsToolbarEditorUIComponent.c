@@ -164,6 +164,16 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		if (!m_EditorActionsComponent)
 			return;
 		
+		//--- Initialize all actions
+		array<SCR_BaseEditorAction> actions = {};
+		SCR_EditorToolbarAction toolbarAction;
+		for (int i = 0, count = m_EditorActionsComponent.GetActions(actions); i < count; i++)
+		{
+			toolbarAction = SCR_EditorToolbarAction.Cast(actions[i]);
+			if (toolbarAction)
+				toolbarAction.OnInit(this);
+		}
+		
 		//--- ToDo: Don't hardcode, but allow each action to set its refresh event
 		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		if (placingManager)
@@ -192,6 +202,19 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
+		
+		//--- Terminate all actions
+		if (m_EditorActionsComponent)
+		{
+			array<SCR_BaseEditorAction> actions = {};
+			SCR_EditorToolbarAction toolbarAction;
+			for (int i = 0, count = m_EditorActionsComponent.GetActions(actions); i < count; i++)
+			{
+				toolbarAction = SCR_EditorToolbarAction.Cast(actions[i]);
+				if (toolbarAction)
+					toolbarAction.OnExit(this);
+			}
+		}
 		
 		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, false, true));
 		if (placingManager)

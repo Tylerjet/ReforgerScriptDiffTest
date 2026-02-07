@@ -18,7 +18,6 @@ class UIColors
 	static const ref Color DARK_SAGE        			= Color.FromSRGBA(86, 92, 84, 255);
 	static const ref Color DARK_GREY					= Color.FromSRGBA(85, 85, 85, 255);
 	static const ref Color LIGHT_GREY             		= Color.FromSRGBA(255, 255, 255, 179);
-	static const ref Color CONTRAST_COLOR	 			= Color.FromSRGBA(226, 167, 79, 255);
 	static const ref Color TRANSPARENT      			= Color.FromSRGBA(0, 0, 0, 0);
 
 	// Refined UI colors
@@ -37,13 +36,54 @@ class UIColors
 	static const ref Color BACKGROUND_HOVERED			= Color.FromSRGBA(0, 0, 0, 153);
 	
 	static const ref Color WARNING_FOCUSED				= Color.FromSRGBA(249, 67, 67, 107);
-	static const ref Color WARNING						= Color.FromSRGBA(249, 67, 67, 255);
-	static const ref Color CONFIRM						= Color.FromSRGBA(67, 194, 93, 255);
 	static const ref Color INFO							= Color.FromSRGBA(0, 128, 255, 255);
+	
+	// From Manual
+	static const ref Color HIGHLIGHTED					= Color.FromSRGBA(255, 203, 123, 255);	//#FFCB7B
+	static const ref Color NEUTRAL_INFORMATION			= Color.FromSRGBA(255, 255, 255, 255);	//#FFFFFF
+	static const ref Color NEUTRAL_ACTIVE_STANDBY		= Color.FromSRGBA(189, 189, 188, 255); 	//#BDBDBC
+	static const ref Color IDLE_ACTIVE					= Color.FromSRGBA(255, 255, 255, 179);	//#FFFFFF at 70% Alpha
+	static const ref Color IDLE_DISABLED				= Color.FromSRGBA(77, 77, 77, 255);		//#4D4D4D
+	static const ref Color IDLE_DISABLED_TRANSPARENT	= Color.FromSRGBA(77, 77, 77, 153);		//60% #4D4D4D
+	static const ref Color WARNING						= Color.FromSRGBA(249, 67, 67, 255);	//#f94343
+	static const ref Color CONFIRM						= Color.FromSRGBA(67, 194, 93, 255);	//#43C25D Manual calls it POSITIVE green
+	static const ref Color CONTRAST_COLOR	 			= Color.FromSRGBA(226, 167, 79, 255); 	//#e2a74f REFORGER ORANGE
+	static const ref Color ONLINE	 					= Color.FromSRGBA(0, 128, 255, 255); 	//#0080FF
+	static const ref Color EDIT_WIDGET_BACKGROUND 		= Color.FromSRGBA(42, 42, 42, 255);		//#2a2a2a
 	
 	//~ editor
 	static const ref Color EDITOR_ICON_COLOR_NEUTRAL	= Color.FromSRGBA(255, 255, 255, 255); ///< Colors for Editor Icons when an entity does not have an assigned faction and is not destroyed
 	static const ref Color EDITOR_ICON_COLOR_DESTROYED	= Color(0.25, 0.25, 0.25, 1); ///< Colors for Editor Icons when an entity is dead or destroyed
+
+	//------------------------------------------------------------------------------------------------
+	// Returns the color in a format usable as default of Attributes
+	static string GetColorAttribute(Color color)
+	{
+		if (color)
+			return string.Format("%1 %2 %3 %4", color.R(), color.G(), color.B(), color.A());
+
+		return "1 1 1 1";
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static string SRGBAFloatToInt(Color color)
+	{
+		if (!color)
+			return "255, 255, 255, 255";
+		
+		Color returnColor = new Color(color.R(), color.G(), color.B(), color.A());
+		
+		//--- Convert to sRGBA format for rich text
+		returnColor.LinearToSRGB();
+
+		//--- Convert to ints, no fractions allowed in rich text
+		int colorR = returnColor.R() * 255;
+		int colorG = returnColor.G() * 255;
+		int colorB = returnColor.B() * 255;
+		int colorA = returnColor.A() * 255;
+		
+		return string.Format("%1, %2, %3, %4", colorR, colorG, colorB, colorA);
+	}
 };
 
 class GUIColors
@@ -88,9 +128,25 @@ class UIConstants
 	static const float FADE_RATE_SLOW = 1; // Used for fading out elements that should be visible for some time
 	static const float FADE_RATE_SUPER_SLOW = 0.2; // Very slow fade out
 	
+	// Common labels
+	static const string FAVORITE_LABEL_ADD = "#AR-Workshop_ButtonAddToFavourites";
+	static const string FAVORITE_LABEL_REMOVE = "#AR-Workshop_ButtonRemoveFavourites";
+	
+	// Common icons
+	static const ResourceName ICONS_IMAGE_SET = "{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
+	static const ResourceName ICONS_GLOW_IMAGE_SET = "{00FE3DBDFD15227B}UI/Textures/Icons/icons_wrapperUI-glow.imageset";
+
+	// Values
     const float DISABLED_WIDGET_OPACITY = 0.3;
     const float ENABLED_WIDGET_OPACITY = 1;
 	
 	const int LOADING_SCREEN_Z_ORDER = 1000;
 	const int SPLASH_SCREEN_Z_ORDER = 1001;
+	
+	// Menu base actions
+	static const string MENU_ACTION_LEFT = "MenuLeft";
+	static const string MENU_ACTION_RIGHT = "MenuRight";
+	static const string MENU_ACTION_UP = "MenuUp";
+	static const string MENU_ACTION_DOWN = "MenuDown";
+	static const string MENU_ACTION_BACK = "MenuBack";
 };

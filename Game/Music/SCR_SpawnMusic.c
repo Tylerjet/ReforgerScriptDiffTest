@@ -2,9 +2,9 @@ class SCR_SpawnMusic : ScriptedMusic
 {
 	MusicManager m_MusicManager;
 	
-	//~ On Spawn
+	//~ On local player spawned
 	protected void OnPlayerSpawned()
-	{	
+	{
 		m_MusicManager.Play(SCR_SoundEvent.SOUND_ONSPAWN);	
 	}
 	
@@ -19,11 +19,14 @@ class SCR_SpawnMusic : ScriptedMusic
 		if (!m_MusicManager)
 			return;
 		
-		SCR_RespawnComponent.SGetOnSpawn().Insert(OnPlayerSpawned);
+		SCR_RespawnComponent.SGetOnLocalPlayerSpawned().Insert(OnPlayerSpawned);
 	}
 	
 	override void OnDelete()
 	{
-		SCR_RespawnComponent.SGetOnSpawn().Remove(OnPlayerSpawned);
+		if (!m_MusicManager)
+			return;
+		
+		SCR_RespawnComponent.SGetOnLocalPlayerSpawned().Remove(OnPlayerSpawned);
 	}
 }

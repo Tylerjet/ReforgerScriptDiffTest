@@ -16,10 +16,10 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 	protected const string ACCEPT_INVITE = "#AR-DeployMenu_AcceptInvite";
 	
 	protected static SCR_PlayerControllerGroupComponent s_PlayerGroupController;
-	protected SCR_NavigationButtonComponent m_AddGroupButton;
-	protected SCR_NavigationButtonComponent m_JoinGroupButton;
-	protected SCR_NavigationButtonComponent m_AcceptInviteButton;
-	protected SCR_NavigationButtonComponent m_GroupSettingsButton;
+	protected SCR_InputButtonComponent m_AddGroupButton;
+	protected SCR_InputButtonComponent m_JoinGroupButton;
+	protected SCR_InputButtonComponent m_AcceptInviteButton;
+	protected SCR_InputButtonComponent m_GroupSettingsButton;
 	protected Faction m_PlayerFaction;
 	protected SCR_GroupsManagerComponent m_GroupManager;
 	protected SCR_ChatPanel m_ChatPanelComponent;
@@ -121,7 +121,7 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static void InitGroups(Widget grid, SCR_NavigationButtonComponent addGroupButton, SCR_NavigationButtonComponent joinGroupButton, SCR_NavigationButtonComponent groupSettingsButton, ResourceName buttonWidgetLayout, SCR_SuperMenuBase parentMenu)
+	static void InitGroups(Widget grid, SCR_InputButtonComponent addGroupButton, SCR_InputButtonComponent joinGroupButton, SCR_InputButtonComponent groupSettingsButton, ResourceName buttonWidgetLayout, SCR_SuperMenuBase parentMenu)
 	{
 		if (!grid)
 			return;
@@ -163,7 +163,7 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected static void UpdateGroups(notnull Widget gridWidget, SCR_NavigationButtonComponent addGroupbutton, SCR_NavigationButtonComponent joinGroupButton, SCR_NavigationButtonComponent groupSettingsButton, ResourceName buttonWidgetLayout, SCR_SuperMenuBase parentMenu)
+	protected static void UpdateGroups(notnull Widget gridWidget, SCR_InputButtonComponent addGroupbutton, SCR_InputButtonComponent joinGroupButton, SCR_InputButtonComponent groupSettingsButton, ResourceName buttonWidgetLayout, SCR_SuperMenuBase parentMenu)
 	{
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (!factionManager)
@@ -425,7 +425,7 @@ class SCR_GroupSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected static void SetGroupSettingsButton(notnull SCR_NavigationButtonComponent button)
+	protected static void SetGroupSettingsButton(notnull SCR_InputButtonComponent button)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();		
 		if (!groupsManager)

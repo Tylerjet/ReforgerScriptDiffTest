@@ -195,13 +195,26 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 				ImageWidget traitIcon;
 				if (faction)
 				{
-					if (FindTraitIcon(traitIndex, traitWidget, traitIcon))
+					SCR_ContentBrowserEditorComponent contentBrowser = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent, false, true));
+					if (!contentBrowser || contentBrowser.AreFactionsShownOnContentCards())
 					{
-						traitWidget.SetVisible(true);
-						traitIcon.LoadImageTexture(0, faction.GetUIInfo().GetIconPath());
+						if (FindTraitIcon(traitIndex, traitWidget, traitIcon))
+						{
+							traitWidget.SetVisible(true);
+							traitIcon.LoadImageTexture(0, faction.GetUIInfo().GetIconPath());
+						}
 					}
 				}
 				
+				EEditorMode editorMode = 0;
+				SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
+				if (editorManager) 
+				{
+					SCR_EditorModeEntity modeEntity = editorManager.GetCurrentModeEntity();
+					if (modeEntity)
+						editorMode = modeEntity.GetModeType();
+				}		
+						
 				//--- Find traits in labels
 				SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 				if (core)
@@ -211,7 +224,10 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 					SCR_UIInfo labelInfo;
 					for (int i, count = infoCard.GetEntityLabels(labels); i < count; i++)
 					{
-						if (core.GetLabelGroupType(labels[i], labelGroup) && m_sTraitLabelGroups.Contains(labelGroup) && core.GetLabelUIInfo(labels[i], labelInfo) && labelInfo.HasIcon())
+						if (!core.GetLabelUIInfoIfValid(labels[i], editorMode, labelInfo))
+							continue;
+						
+						if (core.GetLabelGroupType(labels[i], labelGroup) && m_sTraitLabelGroups.Contains(labelGroup) && labelInfo.HasIcon())
 						{
 							if (FindTraitIcon(traitIndex, traitWidget, traitIcon))
 							{

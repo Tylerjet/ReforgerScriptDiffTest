@@ -144,6 +144,16 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		m_CustomHint = SCR_HintUIInfo.CreateInfo(description, name, duration, type, fieldManualEntry, isTimerVisible);
 		return Show(m_CustomHint, isSilent);
 	}
+	bool ClearHint()
+	{
+		if(m_LatestHint)
+		{
+			m_LatestHint = null;
+			return true;
+		}
+		else
+			return false;
+	}
 	/*!
 	Repeat previously shown hint.
 	\return True if the hint was shown
@@ -353,6 +363,17 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		SCR_HintManagerComponent hintManager = GetInstance();
 		if (hintManager)
 			return hintManager.ShowCustom(description, name, duration, isSilent, EHint.UNDEFINED, fieldManualEntry, isTimerVisible);
+		else
+			return false;
+	}
+	/*!
+	Clear the last used hint so it no longer shows.
+	*/
+	static bool ClearLatestHint()
+	{
+		SCR_HintManagerComponent hintManager = GetInstance();
+		if (hintManager)
+			return hintManager.ClearHint();
 		else
 			return false;
 	}

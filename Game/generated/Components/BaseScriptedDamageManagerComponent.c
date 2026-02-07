@@ -25,6 +25,7 @@ class BaseScriptedDamageManagerComponent: SCR_DamageManagerComponent
 	\param owner Entity this component is attached to.
 	*/
 	event protected void OnInit(IEntity owner);
+	event protected void OnDelete(IEntity owner);
 	/*!
 	Called during EOnFrame.
 	\param owner Entity this component is attached to.
@@ -39,7 +40,14 @@ class BaseScriptedDamageManagerComponent: SCR_DamageManagerComponent
 	\param timeSlice Delta time since last update.
 	*/
 	event protected void OnDiag(IEntity owner, float timeSlice);
-	event protected void OnDamage(EDamageType type, float damage, HitZone pHitZone, IEntity instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID);
+	event protected void OnDamage(EDamageType type, float damage, HitZone pHitZone, notnull Instigator instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID);
+	/*!
+	Called whenever an instigator is going to be set.
+	\param currentInstigator: This damage manager's last instigator
+	\param newInstigator: The new instigator for this damage manager
+	\return If it returns true, newInstigator will become the new current instigator for the damage manager and it will receive kill credit.
+	*/
+	event bool ShouldOverrideInstigator(notnull Instigator currentInstigator, notnull Instigator newInstigator);
 }
 
 /*!

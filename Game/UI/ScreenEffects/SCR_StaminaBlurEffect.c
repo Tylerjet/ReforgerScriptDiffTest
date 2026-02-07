@@ -8,15 +8,14 @@ class SCR_StaminaBlurEffect : SCR_BaseScreenEffect
 	protected const float STAMINA_CLEAREFFECT_DELAY 					= 2000;
 	protected const float STAMINA_EFFECT_THRESHOLD 						= 0.45;
 	
-	[Attribute( defvalue: "0.1111", uiwidget: UIWidgets.EditBox, desc: "Duration of the blurriness upon taking damage" )]
+	[Attribute( defvalue: "0.1111", uiwidget: UIWidgets.EditBox, desc: "Blur intensity multiplier" )]
 	protected float m_fStaminaBlurMultiplier;
 
 	//Blurriness
 	private static float s_fBlurriness;
-	private static float s_fBlurrinessSize;
-	private static float s_fBlurFactor;
 	private static bool s_bEnableRadialBlur;
 	protected const string RADIAL_BLUR_EMAT 							= "{B011FE0AD21E2447}UI/Materials/ScreenEffects_BlurPP.emat";
+	
 	// Widgets
 	private ImageWidget 												m_wSupression;
 	
@@ -30,10 +29,6 @@ class SCR_StaminaBlurEffect : SCR_BaseScreenEffect
 	// Owner data
 	protected SignalsManagerComponent m_pSignalsManager;
 	
-	//Character
-	protected ChimeraCharacter m_pCharacterEntity;
-	protected SCR_CharacterDamageManagerComponent m_pDamageManager;
-	
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStartDraw(IEntity owner)
 	{
@@ -43,18 +38,16 @@ class SCR_StaminaBlurEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
  	override void DisplayControlledEntityChanged(IEntity from, IEntity to)
 	{
-		m_pCharacterEntity = ChimeraCharacter.Cast(to);
-		if (!m_pCharacterEntity)
+		ChimeraCharacter characterEntity = ChimeraCharacter.Cast(to);
+		if (!characterEntity)
 			return;
 
-		m_pDamageManager = SCR_CharacterDamageManagerComponent.Cast(m_pCharacterEntity.GetDamageManager());
-		
 		// Audio components for damage-related audio effects
-		m_pSignalsManager = SignalsManagerComponent.Cast(m_pCharacterEntity.FindComponent(SignalsManagerComponent));
+		m_pSignalsManager = SignalsManagerComponent.Cast(characterEntity.FindComponent(SignalsManagerComponent));
 		if (m_pSignalsManager)
 			m_iStaminaSignal = m_pSignalsManager.FindSignal("Exhaustion");
 		
-		m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), RADIAL_BLUR_PRIORITY,PostProcessEffectType.RadialBlur, RADIAL_BLUR_EMAT);
+		characterEntity.GetWorld().SetCameraPostProcessEffect(characterEntity.GetWorld().GetCurrentCameraId(), RADIAL_BLUR_PRIORITY,PostProcessEffectType.RadialBlur, RADIAL_BLUR_EMAT);
 	}
 
 	//------------------------------------------------------------------------------------------------

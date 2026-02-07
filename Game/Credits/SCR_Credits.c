@@ -56,7 +56,7 @@ class SCR_Credits: ChimeraMenuBase
 		
 		super.OnMenuOpen();
 		// Subscribe to buttons
-		SCR_NavigationButtonComponent back = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Back", m_wFooter);
+		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent("Back", m_wFooter);
 		if (back)
 			back.m_OnActivated.Insert(EndCredits);
 		

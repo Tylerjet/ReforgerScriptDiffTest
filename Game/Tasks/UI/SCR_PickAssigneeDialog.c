@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------------------------
 class SCR_PickAssigneeDialog : ChimeraMenuBase
 {
-	protected SCR_NavigationButtonComponent m_CloseButton;
-	protected SCR_NavigationButtonComponent m_PickAssigneeButton;
+	protected SCR_InputButtonComponent m_CloseButton;
+	protected SCR_InputButtonComponent m_PickAssigneeButton;
 	protected SCR_BaseTaskExecutor m_SelectedTaskExecutor;
 	
 	//------------------------------------------------------------------------------------------------
@@ -37,10 +37,10 @@ class SCR_PickAssigneeDialog : ChimeraMenuBase
 	{
 		m_SelectedTaskExecutor = null;
 
-		m_CloseButton = SCR_NavigationButtonComponent.GetNavigationButtonComponent("CloseButton", GetRootWidget());
+		m_CloseButton = SCR_InputButtonComponent.GetInputButtonComponent("CloseButton", GetRootWidget());
 		if (m_CloseButton)
 			m_CloseButton.m_OnActivated.Insert(CloseDialog);
-		m_PickAssigneeButton = SCR_NavigationButtonComponent.GetNavigationButtonComponent("PickAssigneeButton", GetRootWidget());
+		m_PickAssigneeButton = SCR_InputButtonComponent.GetInputButtonComponent("PickAssigneeButton", GetRootWidget());
 		if (m_PickAssigneeButton)
 			m_PickAssigneeButton.m_OnActivated.Insert(PickAssignee);
 	}

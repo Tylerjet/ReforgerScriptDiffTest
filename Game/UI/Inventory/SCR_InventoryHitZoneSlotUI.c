@@ -20,22 +20,36 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 		SCR_CharacterControllerComponent charCtrl = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
 		if (charCtrl.GetRightHandItem() == item || charCtrl.GetAttachedGadgetAtLeftHandSlot() == item)
 		{
-			ApplyLater(item);
+			ApplyItem(item, true, false);
 			return true;
 		}
 		
-		charCtrl.m_OnGadgetStateChangedInvoker.Insert(OnApplyEffect);
+		charCtrl.m_OnGadgetStateChangedInvoker.Insert(ApplyItem);
 
 		return true;
 	}
 
-	protected void OnApplyEffect(IEntity gadget, bool isInHand, bool isOnGround)
+	//------------------------------------------------------------------------------------------------
+	protected void ApplyItem(IEntity gadget, bool isInHand, bool isOnGround)
 	{
 		if (!m_pParentContainer)
 			return;
 
-		if (isInHand)
-			GetGame().GetCallqueue().CallLater(ApplyLater, 100, false, gadget); // hotfix because m_OnGadgetStateChangedInvoker doesn't wait for anim to be complete
+		if (!isInHand)
+			return;
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(m_Player);
+		InventoryItemComponent itemComp = InventoryItemComponent.Cast(gadget.FindComponent(InventoryItemComponent));
+
+		SCR_CharacterControllerComponent charCtrl = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		SCR_ConsumableItemComponent comp = SCR_ConsumableItemComponent.Cast(gadget.FindComponent(SCR_ConsumableItemComponent));
+		SCR_ConsumableEffectHealthItems effect = SCR_ConsumableEffectHealthItems.Cast(comp.GetConsumableEffect());
+		if (!effect)
+			return;
+		
+		effect.ActivateEffect(character, character, gadget, effect.GetAnimationParameters(character, m_pParentContainer.GetHitZoneGroup()));
+		itemComp.RequestUserLock(character, true);
+		charCtrl.m_OnGadgetStateChangedInvoker.Remove(ApplyItem);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -48,21 +62,6 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 		SCR_ConsumableEffectHealthItems effect = SCR_ConsumableEffectHealthItems.Cast(comp.GetConsumableEffect());
 
 		return effect && effect.CanApplyEffectToHZ(m_Player, m_Player, m_pParentContainer.GetHitZoneGroup());
-	}
-
-	protected void ApplyLater(IEntity gadget)
-	{
-		ChimeraCharacter character = ChimeraCharacter.Cast(m_Player);
-		InventoryItemComponent itemComp = InventoryItemComponent.Cast(gadget.FindComponent(InventoryItemComponent));
-
-		SCR_CharacterControllerComponent charCtrl = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
-		SCR_ConsumableItemComponent comp = SCR_ConsumableItemComponent.Cast(gadget.FindComponent(SCR_ConsumableItemComponent));
-		SCR_ConsumableEffectHealthItems effect = SCR_ConsumableEffectHealthItems.Cast(comp.GetConsumableEffect());
-		if (effect)
-			effect.ActivateEffect(character, character, gadget, effect.GetAnimationParameters(character, m_pParentContainer.GetHitZoneGroup()));
-
-		itemComp.RequestUserLock(character, true);
-		charCtrl.m_OnGadgetStateChangedInvoker.Remove(OnApplyEffect);
 	}
 
 	void SetTourniquetted(bool tourniquetted)

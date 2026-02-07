@@ -201,6 +201,11 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 		if (old != current && !m_RplComponent || !m_RplComponent.IsProxy())
 		{
 			SCR_LoadoutManager loadoutManager = GetGame().GetLoadoutManager();
+			if (!loadoutManager)
+			{
+				Print("Loadout manager is missing in the world!", LogLevel.ERROR);
+				return;
+			}
 			int previous = loadoutManager.GetLoadoutIndex(m_Loadout);	
 			
 			// Loadout is existant, see whether it is possible to be kept,

@@ -8,10 +8,10 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 	TextWidget m_wTypeText;
 	TextWidget m_wName;
 	TextWidget m_wDescription;
-	SCR_NavigationButtonComponent m_Play;
-	SCR_NavigationButtonComponent m_Continue;
-	SCR_NavigationButtonComponent m_Restart;
-	SCR_NavigationButtonComponent m_FindServer;
+	SCR_InputButtonComponent m_Play;
+	SCR_InputButtonComponent m_Continue;
+	SCR_InputButtonComponent m_Restart;
+	SCR_InputButtonComponent m_FindServer;
 	Widget m_wFooter;
 
 	// All return SCR_GMMenuTileComponent as script invoker
@@ -29,19 +29,19 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 		m_wDescription = TextWidget.Cast(w.FindAnyWidget("Description"));
 		m_wFooter = w.FindAnyWidget("Footer");
 		m_wFeatured = w.FindAnyWidget("Featured");
-		m_Play = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Play", w);
+		m_Play = SCR_InputButtonComponent.GetInputButtonComponent("Play", w);
 		if (m_Play)
 			m_Play.m_OnActivated.Insert(OnPlay);
 		
-		m_Continue = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Continue", w);
+		m_Continue = SCR_InputButtonComponent.GetInputButtonComponent("Continue", w);
 		if (m_Continue)
 			m_Continue.m_OnActivated.Insert(OnContinue);
 
-		m_FindServer = SCR_NavigationButtonComponent.GetNavigationButtonComponent("FindServer", w);
+		m_FindServer = SCR_InputButtonComponent.GetInputButtonComponent("FindServer", w);
 		if (m_FindServer)
 			m_FindServer.m_OnActivated.Insert(OnFindServer);
 		
-		m_Restart = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Restart", w);
+		m_Restart = SCR_InputButtonComponent.GetInputButtonComponent("Restart", w);
 		if (m_Restart)
 			m_Restart.m_OnActivated.Insert(OnRestart);
 		

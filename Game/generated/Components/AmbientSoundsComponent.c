@@ -21,7 +21,7 @@ class AmbientSoundsComponent: SoundComponent
 	proto external bool GetRiver(const vector pos, out notnull array<float> count);
 	proto external IEntity GetRandomTree(int index, float minHeight);
 	proto external void GetClosestEntities(int soundTypeIdx, int nEntities, out notnull array<IEntity> output);
-	proto void TracePointToTerrain(const vector point, const vector offset, inout float hitHeight, inout int iSoundGroup);
+	proto void TracePointToTerrain(const vector point, inout int iSoundGroup);
 }
 
 /*!

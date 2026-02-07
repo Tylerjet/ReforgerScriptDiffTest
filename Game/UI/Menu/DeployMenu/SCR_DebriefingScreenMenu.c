@@ -36,7 +36,7 @@ class SCR_DebriefingScreenMenu : SCR_WelcomeScreenMenu
 		Widget continueBtn = GetRootWidget().FindAnyWidget("CloseButton");
 		if (continueBtn)
 		{
-			SCR_NavigationButtonComponent continueButton = SCR_NavigationButtonComponent.Cast(continueBtn.FindHandler(SCR_NavigationButtonComponent));
+			SCR_InputButtonComponent continueButton = SCR_InputButtonComponent.Cast(continueBtn.FindHandler(SCR_InputButtonComponent));
 			if (continueButton)
 				continueButton.m_OnActivated.Insert(ReturnToMenu);
 			
@@ -48,7 +48,7 @@ class SCR_DebriefingScreenMenu : SCR_WelcomeScreenMenu
 		Widget pauseMenuBtn = GetRootWidget().FindAnyWidget("PauseButton");
 		if (pauseMenuBtn)
 		{
-			SCR_NavigationButtonComponent pauseMenuButton = SCR_NavigationButtonComponent.Cast(pauseMenuBtn.FindHandler(SCR_NavigationButtonComponent));
+			SCR_InputButtonComponent pauseMenuButton = SCR_InputButtonComponent.Cast(pauseMenuBtn.FindHandler(SCR_InputButtonComponent));
 			if (pauseMenuButton)
 				pauseMenuButton.m_OnActivated.Insert(OpenPauseMenu);
 		}
@@ -57,7 +57,7 @@ class SCR_DebriefingScreenMenu : SCR_WelcomeScreenMenu
 		if (chat)
 			m_ChatPanel = SCR_ChatPanel.Cast(chat.FindHandler(SCR_ChatPanel));
 
-		m_ChatButton = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ChatButton", GetRootWidget());
+		m_ChatButton = SCR_InputButtonComponent.GetInputButtonComponent("ChatButton", GetRootWidget());
 		if (m_ChatButton)
 			m_ChatButton.m_OnActivated.Insert(OnChatToggle);
 

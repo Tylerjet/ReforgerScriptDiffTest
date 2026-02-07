@@ -3,26 +3,27 @@
 
 class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 {
-	static private ResourceName							m_ItemPreviewManagerPrefab = "{9F18C476AB860F3B}Prefabs/World/Game/ItemPreviewManager.et";
-	static private Widget								s_wQuickSlotStorage;
-	static private ref SCR_InventoryStorageQuickSlotsUI	s_pQuickSlotStorage;
-	protected InventoryStorageManagerComponent			m_pInventoryManager;
-	protected IEntity									m_Owner;
+	protected static ResourceName							m_ItemPreviewManagerPrefab = "{9F18C476AB860F3B}Prefabs/World/Game/ItemPreviewManager.et"; // This could be attribute
+	protected static Widget									s_wQuickSlotStorage;
+	protected static ref SCR_InventoryStorageQuickSlotsUI	s_pQuickSlotStorage;
 
-	bool 												m_bOpened;
+	static bool 										s_bOpened;
 
 	[Attribute( "{A1E61EF091EAC47C}UI/layouts/Menus/Inventory/InventoryQuickSlotsGrid.layout" )]
-	string m_sQuickSlotGridLayout;
+	protected string m_sQuickSlotGridLayout;
 	
 	//------------------------------------------------------------------------ USER METHODS ----------------------------------------------------------------------
 	
 	
 	//------------------------------------------------------------------------------------------------
-	static void RefreshQuickSlots()
+	static void RefreshQuickSlots(int id = -1)
 	{
 		if (s_pQuickSlotStorage)
 		{
-			s_pQuickSlotStorage.RefreshQuickSlots();
+			if (id < 0)
+				s_pQuickSlotStorage.RefreshQuickSlots();
+			else
+				s_pQuickSlotStorage.RefreshSlot(id);
 			s_pQuickSlotStorage.HighlightLastSelectedSlot();
 		}
 	}
@@ -30,19 +31,21 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 	//------------------------------------------------------------------------------------------------
 	protected void Init( IEntity owner )
 	{
-		m_Owner = owner;
+		s_bOpened = false;
 
-		if ( !m_Owner || !m_wRoot )
+		if (!owner || !m_wRoot)
 			return;
 
-		m_pInventoryManager = InventoryStorageManagerComponent.Cast( owner.FindComponent( InventoryStorageManagerComponent ) );
-
-		//instantiate the preview manager
-		if (!GetGame().GetItemPreviewManager())
+		ChimeraWorld world = ChimeraWorld.CastFrom(owner.GetWorld());
+		if (world)
 		{
-			Resource rsc = Resource.Load(m_ItemPreviewManagerPrefab);
-			if (rsc.IsValid())
-				GetGame().SpawnEntityPrefabLocal(rsc);
+			//instantiate the preview manager
+			if (!world.GetItemPreviewManager())
+			{
+				Resource rsc = Resource.Load(m_ItemPreviewManagerPrefab);
+				if (rsc.IsValid())
+					GetGame().SpawnEntityPrefabLocal(rsc, world);
+			}
 		}
 
 		InputManager inputManager = GetGame().GetInputManager();;
@@ -75,15 +78,20 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 	//------------------------------------------------------------------------------------------------
     void Action_OpenQuickSelectionBar()
     {
-		if (m_bOpened)
+		if (s_bOpened)
 			return;
 
-		ChimeraCharacter character = ChimeraCharacter.Cast(m_Owner);
-		if (character && character.GetCharacterController() && character.GetCharacterController().IsUnconscious())
+		ChimeraCharacter character = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		CharacterControllerComponent controller;
+
+		if (character)
+			controller = character.GetCharacterController();
+
+		if (controller && controller.IsUnconscious())
 			return;		
 		
     		GetGame().GetInputManager().AddActionListener("CharacterSwitchWeapon", EActionTrigger.VALUE, Action_SelectSlot );
-    		m_bOpened = true;
+    		s_bOpened = true;
     		GetGame().GetCallqueue().Remove( ShowQuickSlots );		// if there's a delayed Show method from the previous quick bar usage, purge it
 		if ( !m_wRoot )
 			return;
@@ -105,19 +113,22 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 		BlurWidget wBlur = BlurWidget.Cast( m_wRoot.FindAnyWidget( "wBlur" ) );
 		if ( wBlur ) 
 			wBlur.SetVisible( true );
-		
-		SCR_InventoryStorageManagerComponent invMan = SCR_InventoryStorageManagerComponent.Cast(m_pInventoryManager);
-		if (invMan)
-			invMan.m_OnQuickBarOpenInvoker.Invoke(true);
-		
+
 		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_OPEN);
+		
+		if (!controller)
+			return;
+		
+		SCR_InventoryStorageManagerComponent inventory = SCR_InventoryStorageManagerComponent.Cast(controller.GetInventoryStorageManager());
+		if (inventory)
+			inventory.m_OnQuickBarOpenInvoker.Invoke(true);
     }
 	
     //------------------------------------------------------------------------------------------------
     void Action_CloseQuickSelectionBar()
     {
     	GetGame().GetInputManager().RemoveActionListener("CharacterSwitchWeapon", EActionTrigger.VALUE, Action_SelectSlot );
-    	m_bOpened = false;
+    	s_bOpened = false;
 		if ( !m_wRoot )
 			return;	
 		BlurWidget wBlur = BlurWidget.Cast( m_wRoot.FindAnyWidget( "wBlur" ) );
@@ -129,9 +140,17 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 		else
 			Show( false, UIConstants.FADE_RATE_DEFAULT );
 		
-		SCR_InventoryStorageManagerComponent invMan = SCR_InventoryStorageManagerComponent.Cast(m_pInventoryManager);
-		if (invMan)
-			invMan.m_OnQuickBarOpenInvoker.Invoke(false);
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		if (!character)
+			return;
+
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+
+		SCR_InventoryStorageManagerComponent inventory = SCR_InventoryStorageManagerComponent.Cast(controller.GetInventoryStorageManager());
+		if (inventory)
+			inventory.m_OnQuickBarOpenInvoker.Invoke(false);
     }
 
 	//------------------------------------------------------------------------------------------------
@@ -145,7 +164,7 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 	//------------------------------------------------------------------------------------------------
     void Action_SelectSlot()
 	{
-		if (!m_bOpened || !s_pQuickSlotStorage)
+		if (!s_bOpened || !s_pQuickSlotStorage)
 			return;
 		
 		int targetSlot = -1;
@@ -181,7 +200,7 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 	//------------------------------------------------------------------------------------------------
 	override void UpdateValues(IEntity owner, float timeSlice)
 	{
-		if (!m_bOpened)
+		if (!s_bOpened)
 			return;
 
 	    GetGame().GetInputManager().ActivateContext("WeaponSelectionContext");

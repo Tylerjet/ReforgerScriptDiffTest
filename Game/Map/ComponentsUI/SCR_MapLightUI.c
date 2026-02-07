@@ -195,7 +195,8 @@ class SCR_MapLightUI : SCR_MapUIBaseComponent
 		if (m_wLightOverlay)
 			m_wLightOverlay.SetVisible(false);
 
-		m_TimeMgr = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		m_TimeMgr = world.GetTimeAndWeatherManager();
 		if (m_TimeMgr)
 		{
 			m_TimeMgr.GetSunriseHour(m_fSunriseTime);

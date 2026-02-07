@@ -179,6 +179,16 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		return m_wRoot;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	bool SetVisible(bool visible)
+	{
+		if (!m_wRoot)
+			return false;
+		
+		m_wRoot.SetVisible(visible);
+		
+		return true;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns first effect with given tag
@@ -661,5 +671,17 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	bool GetIsFocusOnMouseEnter()
 	{
 		return m_bFocusOnMouseEnter;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetIsFocusOnMouseEnter(bool focus)
+	{
+		m_bFocusOnMouseEnter = focus;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetCurrentStateName()
+	{
+		return typename.EnumToString(EModularButtonState, m_eState);
 	}
 };

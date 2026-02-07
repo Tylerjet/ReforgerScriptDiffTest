@@ -25,7 +25,14 @@ class SCR_InitWeatherComponent: SCR_BaseGameModeComponent
 		if (m_sInitialStartingWeatherId.IsEmpty())
 			return;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
+		if (!world) 
+		{
+			Print("SCR_InitWeatherComponent is not inside a ChimeraWorld", LogLevel.WARNING);
+			return;
+		}
+		
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) 
 		{
 			Print("SCR_InitWeatherComponent could not find TimeAndWeatherManagerEntity", LogLevel.WARNING);

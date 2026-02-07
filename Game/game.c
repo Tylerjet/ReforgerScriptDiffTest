@@ -43,6 +43,7 @@ class ArmaReforgerScripted : ChimeraGame
 	protected ScriptedChatEntity			m_ChatEntity;
 	protected ref SCR_GameCoresManager		m_CoresManager;
 	protected ref SCR_SettingsManager		m_SettingsManager;
+	protected ref SCR_ProfaneFilter		m_ProfanityFilter;
 	protected SCR_SaveManagerCore			m_SaveManagerCore;
 	protected SCR_BuildingDestructionManagerComponent m_BuildingDestructionManager;
 	protected SCR_SpawnerAIGroupManagerComponent m_SpawnerAIGroupManager;
@@ -77,6 +78,9 @@ class ArmaReforgerScripted : ChimeraGame
 
 	//ref SCR_RCONCommander m_dsCommander;
 	
+	protected ref SCR_ResourceGrid m_ResourceGrid;
+	protected ref SCR_ResourceSystemSubscriptionManager m_ResourceSystemSubscriptionManager;
+	
 	//------------------------------------------------------------------------------------------------
 	void ~ArmaReforgerScripted()
 	{
@@ -88,6 +92,25 @@ class ArmaReforgerScripted : ChimeraGame
 	{
 		return m_DataCollectorComponent;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_ResourceGrid GetResourceGrid()
+	{
+		if (!m_ResourceGrid)
+			m_ResourceGrid = new SCR_ResourceGrid();
+		
+		return m_ResourceGrid;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_ResourceSystemSubscriptionManager GetResourceSystemSubscriptionManager()
+	{
+		if (!m_ResourceSystemSubscriptionManager)
+			m_ResourceSystemSubscriptionManager = new SCR_ResourceSystemSubscriptionManager();
+		
+		return m_ResourceSystemSubscriptionManager;
+	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	void RegisterDataCollector(SCR_DataCollectorComponent instance)
@@ -167,6 +190,14 @@ class ArmaReforgerScripted : ChimeraGame
 		return m_SettingsManager;
 	}
 	
+	SCR_ProfaneFilter GetProfanityFilter()
+	{
+		if (!m_ProfanityFilter)
+			m_ProfanityFilter = new SCR_ProfaneFilter();
+		
+		return m_ProfanityFilter;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	SCR_SaveManagerCore GetSaveManager()
 	{
@@ -225,7 +256,6 @@ class ArmaReforgerScripted : ChimeraGame
 	override protected void OnMissionSet(MissionHeader mission)
 	{
 		m_OnMissionSetInvoker.Invoke(mission);
-		Print("OnMissionSet");
 
 		SCR_MissionHeader pHeader = SCR_MissionHeader.Cast(mission);
 		if (pHeader)
@@ -638,12 +668,6 @@ class ArmaReforgerScripted : ChimeraGame
 	{
 		OpenGroupMenu();
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	static void OnInstantVote()
-	{
-		SCR_VoterComponent.InstantVote();
-	}
 
 	//------------------------------------------------------------------------------------------------
 	static void OpenPauseMenu(bool hideParentMenu = true, bool fadeBackground = false)
@@ -756,7 +780,6 @@ class ArmaReforgerScripted : ChimeraGame
 		InputManager inputManager = GetInputManager();
 		inputManager.AddActionListener("ShowScoreboard", EActionTrigger.DOWN, OnShowPlayerList);
 		inputManager.AddActionListener("ShowGroupMenu", EActionTrigger.DOWN, OnShowGroupMenu);
-		inputManager.AddActionListener("InstantVote", EActionTrigger.DOWN, OnInstantVote);
 		inputManager.AddActionListener("MenuOpen", EActionTrigger.DOWN, OnMenuOpen);
 		
 		#ifdef WORKBENCH
@@ -770,7 +793,6 @@ class ArmaReforgerScripted : ChimeraGame
 		InputManager inputManager = GetInputManager();
 		inputManager.RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, OnShowPlayerList);
 		inputManager.RemoveActionListener("ShowGroupMenu", EActionTrigger.DOWN, OnShowGroupMenu);
-		inputManager.RemoveActionListener("InstantVote", EActionTrigger.DOWN, OnInstantVote);
 		inputManager.RemoveActionListener("MenuOpen", EActionTrigger.DOWN, OnMenuOpen);
 		
 		#ifdef WORKBENCH
@@ -1005,7 +1027,7 @@ class ArmaReforgerScripted : ChimeraGame
 		{
 			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_UI_LOG_UNDER_CURSOR, 0);
 
-			array<ref Widget> widgets = {};
+			array<Widget> widgets = {};
 			int mouseX, mouseY;
 			WidgetManager.GetMousePos(mouseX, mouseY);
 			WidgetManager.TraceWidgets(mouseX, mouseY, GetGame().GetWorkspace(), widgets);
@@ -1036,7 +1058,18 @@ class ArmaReforgerScripted : ChimeraGame
 	{
 		m_HUDManager = hud;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	void LoadSave(string fileName)
+	{
+		//--- Remove .json extension
+		string ext;
+		string fileNameFiltered = FilePath.StripExtension(fileName, ext);
+		if (ext == "json")
+			fileName = fileNameFiltered;
+		
+		GetSaveManager().RestartAndLoad(fileName);
+	};
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Registers provided loadout manager as the one used by the game.
@@ -1296,6 +1329,16 @@ class ArmaReforgerScripted : ChimeraGame
 			return true;
 		#else
 			return false;
+		#endif
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	//! Open gamepad disconnected warning dialog
+	override void OnGamepadConnectionStatus(bool isConnected)
+	{
+		#ifndef AUTOTEST
+		if (!isConnected && IsPlatformGameConsole())
+			SCR_GamepadRemovalUI.OpenGamepadRemovalDialog();
 		#endif
 	}
 };

@@ -56,7 +56,6 @@ class SCR_HUDLayout
 				SCR_HUDGroupUIComponent groupComponent = SCR_HUDGroupUIComponent.Cast(iteratedChildWidget.FindHandler(SCR_HUDGroupUIComponent));
 				if (!groupComponent)
 				{
-					Print("[SCR_HUDManagerComponent] A Group Widget must have a SCR_HUDGroupUIComponent component attached to it! Check: " + iteratedWidget.GetName(), LogLevel.ERROR);
 					iteratedChildWidget = iteratedChildWidget.GetSibling();
 					continue;
 				}

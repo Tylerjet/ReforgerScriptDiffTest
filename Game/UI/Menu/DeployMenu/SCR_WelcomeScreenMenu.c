@@ -48,7 +48,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 		Widget continueBtn = GetRootWidget().FindAnyWidget("CloseButton");
 		if (continueBtn)
 		{
-			SCR_NavigationButtonComponent continueButton = SCR_NavigationButtonComponent.Cast(continueBtn.FindHandler(SCR_NavigationButtonComponent));
+			SCR_InputButtonComponent continueButton = SCR_InputButtonComponent.Cast(continueBtn.FindHandler(SCR_InputButtonComponent));
 			if (continueButton)
 				continueButton.m_OnActivated.Insert(CloseWelcomeScreenMenu);
 		}
@@ -56,7 +56,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 		Widget pauseMenuBtn = GetRootWidget().FindAnyWidget("PauseButton");
 		if (pauseMenuBtn)
 		{
-			SCR_NavigationButtonComponent pauseMenuButton = SCR_NavigationButtonComponent.Cast(pauseMenuBtn.FindHandler(SCR_NavigationButtonComponent));
+			SCR_InputButtonComponent pauseMenuButton = SCR_InputButtonComponent.Cast(pauseMenuBtn.FindHandler(SCR_InputButtonComponent));
 			if (pauseMenuButton)
 				pauseMenuButton.m_OnActivated.Insert(OpenPauseMenu);
 		}
@@ -65,7 +65,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 		if (chat)
 			m_ChatPanel = SCR_ChatPanel.Cast(chat.FindHandler(SCR_ChatPanel));
 
-		m_ChatButton = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ChatButton", GetRootWidget());
+		m_ChatButton = SCR_InputButtonComponent.GetInputButtonComponent("ChatButton", GetRootWidget());
 		if (m_ChatButton)
 			m_ChatButton.m_OnActivated.Insert(OnChatToggle);
 
@@ -102,6 +102,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Adds action listeners when menu is focused
 	override void OnMenuFocusGained()
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -109,17 +110,21 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 			editorManager.AutoInit();
 
 		GetGame().GetInputManager().AddActionListener("ShowScoreboard", EActionTrigger.DOWN, OpenPlayerList);
-		GetGame().GetInputManager().AddActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
+		
+		super.OnMenuFocusGained();
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Removes action listeners when menu loses focus
 	override void OnMenuFocusLost()
 	{
 		GetGame().GetInputManager().RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, OpenPlayerList);
-		GetGame().GetInputManager().RemoveActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
+		
+		super.OnMenuFocusLost();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Opens pause menu
 	protected void OpenPauseMenu()
 	{
 		GetGame().OpenPauseMenu(false, true);
@@ -149,6 +154,9 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 	override void OnMenuUpdate(float tDelta)
 	{
 		super.OnMenuUpdate(tDelta);
+		
+		GetGame().GetInputManager().ActivateContext("DeployMenuContext");
+		GetGame().GetInputManager().ActivateContext("MenuWithEditorContext");
 		
 		if (m_ChatPanel)
 			m_ChatPanel.OnUpdateChat(tDelta);

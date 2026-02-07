@@ -582,7 +582,9 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	void Action_TasksClose()
 	{
 		m_SelectedTask = null;
-		Action_HideTasks();
+		
+		if (m_bVisible)
+			Action_HideTasks();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -724,7 +726,9 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	void OnMapClose(MapConfiguration config)
 	{
 		m_bTaskContextEnabled = false;
-		Action_HideTasks();
+
+		if (m_bVisible)
+			Action_HideTasks();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -852,14 +856,13 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
-		owner.SetFlags(EntityFlags.ACTIVE);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_PlayerController Event
 	//! Listeners are added back because they are previously removed on
 	//! unconsciousness and if character dies, they need to added back.
-	protected void OnDestroyed(IEntity killer)
+	protected void OnDestroyed(Instigator killer, IEntity killerEntity)
 	{		
 		m_bIsUnconscious = false;
 	}
@@ -969,7 +972,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 
-		SCR_NavigationButtonComponent hideTasks = SCR_NavigationButtonComponent.GetNavigationButtonComponent("HideTasksButton", m_wUI);
+		SCR_InputButtonComponent hideTasks = SCR_InputButtonComponent.GetInputButtonComponent("HideTasksButton", m_wUI);
 		if (hideTasks)
 			hideTasks.m_OnActivated.Insert(Action_TasksClose);
 

@@ -4,7 +4,7 @@ It refreshes itself periodically.
 */
 
 class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
-{	
+{		
 	protected ref MissionWorkshopItem m_Scenario;
 	protected SCR_MissionHeader m_Header;
 	
@@ -47,7 +47,7 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 			m_Widgets.m_NameText.SetText(string.Empty);
 			m_Widgets.m_TypeOverlay.SetVisible(false);
 			m_Widgets.m_AuthorNameText.SetText(string.Empty);
-			m_Widgets.m_DescriptionText.SetText(string.Empty);
+			SetDescriptionText(string.Empty);
 			m_Widgets.m_BackendImageComponent.SetScenarioAndImage(null, null);
 			return;
 		}
@@ -59,10 +59,7 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		else if (m_Scenario)
 			title = m_Scenario.Name();
 
-		//title.ToUpper();
 		m_Widgets.m_NameText.SetText(title);
-		
-		//Print(string.Format("UpdateAllWidgets"), LogLevel.WARNING);
 		
 		// Author name
 		// We don't have author name in scenario header now.
@@ -77,40 +74,17 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 				m_Widgets.m_AuthorNameText.SetText("Bohemia Interactive");
 		}
 		
-		// Type
-		/*if (m_Header)
-		{
-			string gameModeText = m_Header.m_sGameMode;
-			m_Widgets.m_TypeText.SetText(m_Header.m_sGameMode);
-			m_Widgets.m_TypeOverlay.SetVisible(!gameModeText.IsEmpty());
-		}
-		else
-		{
-			m_Widgets.m_TypeOverlay.SetVisible(false);
-			m_Widgets.m_TypeText.SetText(string.Empty);
-		}
-		
-		m_Widgets.m_TypeOverlay.SetVisible(GetGame().IsDev());
-		
-		if (GetGame().IsDev())
-			m_Widgets.m_TypeText.SetText(m_Scenario.Id());
-		
-		*/
-		
 		// Description
 		if (m_Header)
-			m_Widgets.m_DescriptionText.SetText(m_Header.m_sDescription);
+			SetDescriptionText(m_Header.m_sDescription);
 		else if(m_Scenario)
-			m_Widgets.m_DescriptionText.SetText(m_Scenario.Description());
+			SetDescriptionText(m_Scenario.Description());
 		
 		// Image
 		if (m_Scenario)
 			m_Widgets.m_BackendImageComponent.SetScenarioAndImage(m_Scenario, m_Scenario.Thumbnail());
 		else
 			m_Widgets.m_BackendImageComponent.SetScenarioAndImage(m_Scenario, null);
-		
-		// World name
-		// Not supported yet
 	}
 	
 	

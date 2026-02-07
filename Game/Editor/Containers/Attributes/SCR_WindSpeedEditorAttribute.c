@@ -7,7 +7,9 @@ class SCR_WindSpeedEditorAttribute : SCR_BaseValueListEditorAttribute
 		//If opened in global attributes
 		if (!IsGameMode(item)) return null;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) return null;
 		
 		return SCR_BaseEditorAttributeVar.CreateFloat(weatherManager.GetWindSpeed());
@@ -18,7 +20,9 @@ class SCR_WindSpeedEditorAttribute : SCR_BaseValueListEditorAttribute
 		if (!var) 
 			return;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) 
 			return;
 		
@@ -28,7 +32,8 @@ class SCR_WindSpeedEditorAttribute : SCR_BaseValueListEditorAttribute
 	override int GetEntries(notnull array<ref SCR_BaseEditorAttributeEntry> outEntries)
 	{
 		//Make sure max wind speed is set to heighest wind speed in varients
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (weatherManager)
 		{
 			array<ref WeatherState> weatherStates = new array<ref WeatherState>;

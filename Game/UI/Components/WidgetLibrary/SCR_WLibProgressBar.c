@@ -2,6 +2,8 @@
 //------------------------------------------------------------------------------------------------
 class SCR_WLibProgressBarComponent : ScriptedWidgetComponent
 {
+	protected const string WIDGET_CHANGE = "Change";
+	
 	[Attribute("0")]
 	protected float m_fMin;
 
@@ -28,14 +30,19 @@ class SCR_WLibProgressBarComponent : ScriptedWidgetComponent
 
 	protected Widget m_wRoot;
 	protected Widget m_wBar;
+	protected Widget m_wChange;
 	protected Widget m_wSpacer;
+	
+	protected float m_fChange;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_wRoot = w;
 		m_wSpacer = w.FindAnyWidget("Spacer");
+		m_wChange = w.FindAnyWidget(WIDGET_CHANGE);
 		m_wBar = w.FindAnyWidget("Bar");
+		
 		if (m_wBar)
 		{
 			m_wBar.SetColor(m_SliderColor);
@@ -72,18 +79,26 @@ class SCR_WLibProgressBarComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetChange(float value)
+	{
+		m_fChange = value;
+		UpdateVisuals(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void UpdateVisuals(bool animate = true)
 	{
 		if (!m_wSpacer || !m_wBar)
 			return;
 		
-		float progress, currentProgress;
+		float progress, currentProgress, change;
 		float range = m_fMax - m_fMin;
 		if (range <= 0)
 			return;
 		
 		currentProgress = HorizontalLayoutSlot.GetFillWeight(m_wBar);
 		progress = m_fValue / range;
+		change = m_fChange / range;
 		progress = Math.Clamp(progress, 0, 1);
 
 		if (animate && m_fAnimationTime > 0 && currentProgress != progress)
@@ -93,12 +108,14 @@ class SCR_WLibProgressBarComponent : ScriptedWidgetComponent
 				speed = speed * (1 / Math.AbsFloat(currentProgress - progress));
 			
 			AnimateWidget.LayoutFill(m_wBar, progress, speed);
-			AnimateWidget.LayoutFill(m_wSpacer, 1 - progress, speed);
+			AnimateWidget.LayoutFill(m_wChange, change, speed);
+			AnimateWidget.LayoutFill(m_wSpacer, 1 - progress - change, speed);
 		}
 		else
 		{
 			HorizontalLayoutSlot.SetFillWeight(m_wBar, progress);
-			HorizontalLayoutSlot.SetFillWeight(m_wSpacer, 1 - progress);
+			HorizontalLayoutSlot.SetFillWeight(m_wChange, change);
+			HorizontalLayoutSlot.SetFillWeight(m_wSpacer, 1 - progress - change);
 		}
 	}
 	
@@ -117,6 +134,13 @@ class SCR_WLibProgressBarComponent : ScriptedWidgetComponent
 	{
 		m_SliderColor = newColor;
 		m_wBar.SetColor(m_SliderColor);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetSliderChangeColor(Color newColor)
+	{
+		if (m_wChange)
+			m_wChange.SetColor(newColor);
 	}
 
 	//------------------------------------------------------------------------------------------------

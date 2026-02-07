@@ -16,6 +16,8 @@ class CarControllerComponentClass: VehicleControllerComponentClass
 class CarControllerComponent: VehicleControllerComponent
 {
 	proto external void Shutdown();
+	//! Returns the simulation component associated with this controller.
+	proto external VehicleWheeledSimulation GetWheeledSimulation();
 	//! returns true if throttle "turbo" modifier is active
 	proto external bool IsThrottleTurbo();
 	//! returns true if handbrake is active

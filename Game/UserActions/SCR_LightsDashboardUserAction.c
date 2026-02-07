@@ -10,10 +10,15 @@ class SCR_LightsDashboardUserAction : LightUserAction
 		if (!lightManager)
 			return;
 		
-		bool lightsState = !lightManager.GetLightsState(ELightType.Dashboard);
-				
-		lightManager.SetLightsState(ELightType.Dashboard, lightsState);
+		bool lightsState;	
 		
+		lightsState = lightManager.GetLightsState(ELightType.Dashboard);
+
+		if (RplSession.Mode() != RplMode.Client)
+			lightsState = !lightsState;
+		
+		lightManager.SetLightsState(ELightType.Dashboard, lightsState);
+
 		// Sound		
 		PlaySound(pOwnerEntity, lightsState);
 	}

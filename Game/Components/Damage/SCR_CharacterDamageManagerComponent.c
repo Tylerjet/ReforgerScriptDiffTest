@@ -1,12 +1,12 @@
 enum ECharacterHitZoneGroup : EHitZoneGroup
 {
-	HEAD = 1,
-	UPPERTORSO = 2,
-	LOWERTORSO = 3,
-	LEFTARM = 4,
-	RIGHTARM = 5,
-	LEFTLEG = 6,
-	RIGHTLEG = 7
+	HEAD = 10,
+	UPPERTORSO = 20,
+	LOWERTORSO = 30,
+	LEFTARM = 40,
+	RIGHTARM = 50,
+	LEFTLEG = 60,
+	RIGHTLEG = 70,
 }
 
 //------------------------------------------------------------------------------------------------
@@ -27,7 +27,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	const float DEATH_BLEEDOUT_SCALE = 4;
 
 	// Static array for all limbs
-	static const ref array<ECharacterHitZoneGroup> LIMB_GROUPS = {ECharacterHitZoneGroup.LEFTARM, ECharacterHitZoneGroup.RIGHTARM, ECharacterHitZoneGroup.LEFTLEG, ECharacterHitZoneGroup.RIGHTLEG, ECharacterHitZoneGroup.HEAD, ECharacterHitZoneGroup.UPPERTORSO, ECharacterHitZoneGroup.LOWERTORSO};
+	static ref array<ECharacterHitZoneGroup> LIMB_GROUPS;
 	static const ref array<ECharacterHitZoneGroup> EXTREMITY_LIMB_GROUPS = {ECharacterHitZoneGroup.LEFTARM, ECharacterHitZoneGroup.RIGHTARM, ECharacterHitZoneGroup.LEFTLEG, ECharacterHitZoneGroup.RIGHTLEG};
 	
 	//replicated arrays for clients
@@ -41,6 +41,10 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	protected ref map<HitZone, ParticleEffectEntity> m_mBleedingParticles;
 	protected SCR_CharacterResilienceHitZone m_pResilienceHitZone;
 	protected SCR_CharacterHeadHitZone m_pHeadHitZone;
+
+	// audio
+	protected SCR_CommunicationSoundComponent m_CommunicationSound;
+
 	static protected SCR_GameModeHealthSettings s_HealthSettings;
  	
 	protected bool m_bDOTScaleChangedByGM;
@@ -74,10 +78,11 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	event override void OnInit(IEntity owner)
 	{
 		SCR_BaseGameMode baseGameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (!baseGameMode)
-			return;
-
-		s_HealthSettings = baseGameMode.GetGameModeHealthSettings();
+		if (baseGameMode)
+			s_HealthSettings = baseGameMode.GetGameModeHealthSettings();
+		
+		LIMB_GROUPS = {};
+		SCR_Enum.GetEnumValues(ECharacterHitZoneGroup, LIMB_GROUPS);
 		
 #ifdef ENABLE_DIAG
 		DiagInit(owner);
@@ -144,28 +149,15 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		// If unconsciousness is not allowed, kill character
 		if (!GetPermitUnconsciousness())
 		{
-			Kill(GetInstigatorEntity());
+			Kill(GetInstigator());
 			return;
 		}
 
 		if (m_pBloodHitZone && m_pBloodHitZone.GetDamageState() == ECharacterBloodState.DESTROYED)
 		{
-			Kill(GetInstigatorEntity());
+			Kill(GetInstigator());
 			return;
 		}
-
-		CharacterAnimationComponent animComponent = controller.GetAnimationComponent();
-		if (!animComponent)
-			return;
-
-		CharacterCommandHandlerComponent commandHandlerComp = animComponent.GetCommandHandler();
-		if (!commandHandlerComp)
-			return;
-
-		// To do: Create drowning feature
-		vector waterLevel = commandHandlerComp.GetRelativeWaterLevel();
-		if (waterLevel[0] > FACE_UNDERWATER_DEPTH)
-			Kill(GetInstigatorEntity());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -222,11 +214,29 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 					armorAttr.m_eProtection,
 					armorAttr.m_aProtectedHitZones,
 					armorAttr.m_aProtectedDamageTypes,
+					armorAttr.m_MaterialResourceName
 				);
 
 				InsertArmorData(hitZone, armoredClothItemData);
 			}
 		}
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	override GameMaterial OverrideHitMaterial(HitZone struckHitzone)
+	{
+		SCR_CharacterHitZone charHitZone = SCR_CharacterHitZone.Cast(struckHitzone);
+		if (!charHitZone)
+			return null;
+		
+		SCR_ArmoredClothItemData armorData = GetArmorData(charHitZone);
+		if (!armorData)
+			return null;
+		
+		if (!armorData.m_Material)
+			return null;
+		
+		return armorData.m_Material.GetResource().ToBaseContainer();
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -258,6 +268,34 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		
 		return 0;
 	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Function called from SCR_ArmorDamageManagerComponent in case player is shot in armor. Applies effects
+	void ArmorHitEventEffects(float damage)
+	{
+		SoundHit(true, EDamageType.KINETIC);
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+		
+		CharacterInputContext context = controller.GetInputContext();
+
+		if (context)
+			context.SetHit(EHitReactionType.HIT_REACTION_LIGHT, 0);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Function called from SCR_ArmorDamageManagerComponent in case player is shot in armor. Applies damage
+	void ArmorHitEventDamage(EDamageType type, float damage, IEntity instigator)
+	{
+		if (m_pResilienceHitZone)
+			m_pResilienceHitZone.HandleDamage(damage, type, instigator);
+	}
 
 	//-----------------------------------------------------------------------------------------------------------
 	//! Invoked every time the DoT is added to certain hitZone.
@@ -267,9 +305,16 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 
 		if (hz.IsProxy())
 			return;
+		
+		// Play heal sound and cancel regeneration when bleeding starts
+		if (dType == EDamageType.HEALING)
+		{
+			SoundHeal();
+			return;
+		}
 
 		// Cancel regeneration when bleeding starts
-		if (dType == EDamageType.REGENERATION || dType == EDamageType.HEALING)
+		if (dType == EDamageType.REGENERATION)
 			return;
 
 		SCR_RegeneratingHitZone regenHZ = SCR_RegeneratingHitZone.Cast(hz);
@@ -302,9 +347,60 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		super.OnDamageStateChanged(state);
 		
 		if (state == EDamageState.DESTROYED)
+		{
+			SoundDeath();
 			RemoveAllBleedingParticlesAfterDeath();
+		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void SoundHit(bool critical, EDamageType damageType)
+	{
+		// Ignore if already dead
+		if (GetState() == EDamageState.DESTROYED)
+			return;
+
+		// Ignore if knocked out
+		if (GetIsUnconscious())
+			return;
+
+		if (m_CommunicationSound)
+			m_CommunicationSound.SoundEventHit(critical, damageType);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Tell m_CommunicationSound to stop character from screaming, otherwise ignore
+	void SoundKnockout()
+	{
+		if (m_CommunicationSound && m_CommunicationSound.IsPlaying())
+			m_CommunicationSound.SoundEventDeath(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Tell m_CommunicationSound that this character is now dead
+	void SoundDeath()
+	{
+		bool silent;
+
+		// Silent if killed with headshot
+		if (m_pHeadHitZone && m_pHeadHitZone.GetDamageState() == EDamageState.DESTROYED)
+			silent = true;
+
+		// Silent if already knocked out
+		if (GetIsUnconscious())
+			silent = true;
+
+		if (m_CommunicationSound)
+			m_CommunicationSound.SoundEventDeath(silent);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SoundHeal()
+	{
+		if (!GetIsUnconscious() && m_CommunicationSound)
+			m_CommunicationSound.DelayedSoundEventPriority(SCR_SoundEvent.SOUND_VOICE_PAIN_RELIEVE, SCR_ECommunicationSoundEventPriority.SOUND_PAIN_RELIEVE, SCR_CommunicationSoundComponent.DEFAULT_EVENT_PRIORITY_DELAY);
+	}
+	
 	//-----------------------------------------------------------------------------------------------------------
 	//!	Clean up blood particle sources after death
 	void RemoveAllBleedingParticlesAfterDeath()
@@ -600,7 +696,11 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 			return;
 		}
 		
-		m_aGroupBleedingRates = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+		m_aGroupBleedingRates = {};
+		foreach(int enumValue : LIMB_GROUPS)
+		{
+			m_aGroupBleedingRates.Insert(0);
+		}
 
 		foreach (SCR_BleedingHitZoneParameters localBleedingHZParams : m_pBloodHitZone.GetHitZoneDOTMap())
 		{
@@ -618,7 +718,8 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 			else
 				bleedingDamage = localBleedingHZParams.m_fDamageOverTime * m_fTourniquetStrengthMultiplier;
 			
-			m_aGroupBleedingRates[hitZoneGroup] = m_aGroupBleedingRates[hitZoneGroup] + localBleedingHZParams.m_fDamageOverTime;
+			int hitzoneGroupIndex = LIMB_GROUPS.Find(hitZoneGroup);
+			m_aGroupBleedingRates[hitzoneGroupIndex] = m_aGroupBleedingRates[hitzoneGroupIndex] + localBleedingHZParams.m_fDamageOverTime;
 			
 			totalBleedingDamage += bleedingDamage;
 		}
@@ -696,16 +797,32 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		if (!hitZone.TryGetColliderDescription(GetOwner(), colliderDescriptorIndex, transform, boneIndex, boneNode))
 			return;
 
+		// Create particle emitter
 		ParticleEffectEntitySpawnParams spawnParams();
 		spawnParams.Parent = GetOwner();
 		spawnParams.PivotID = boneNode;
 		ParticleEffectEntity particleEmitter = ParticleEffectEntity.SpawnParticleEffect(m_sBleedingParticle, spawnParams);
-		particleEmitter.GetParticles().MultParam(-1, EmitterParam.BIRTH_RATE, bleedingRate * m_fBleedingParticleRateScale);
+		if (System.IsConsoleApp())
+			return;		
+		
+		if (!particleEmitter)
+		{
+			Print("Particle emitter: " + particleEmitter.ToString() + " There was a problem with creating the particle emitter: " + m_sBleedingParticle, LogLevel.WARNING);
+			return;
+		}
 
+		// Track particle emitter in array
 		if (!m_mBleedingParticles)
 			m_mBleedingParticles = new map<HitZone, ParticleEffectEntity>;
 
 		m_mBleedingParticles.Insert(hitZone, particleEmitter);
+
+		// Play particles
+		Particles particles = particleEmitter.GetParticles();
+		if (particles)
+			particles.MultParam(-1, EmitterParam.BIRTH_RATE, bleedingRate * m_fBleedingParticleRateScale);
+		else
+			Print("Particle: " + particles.ToString() + " Bleeding particle likely not created properly: " + m_sBleedingParticle, LogLevel.WARNING);
 	}
 
 	//-----------------------------------------------------------------------------------------------------------
@@ -756,8 +873,6 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 
 		if (m_pBloodHitZone)
 			m_pBloodHitZone.SetDamageOverTime(EDamageType.BLEEDING, 0);
-
-		SetInstigatorEntity(null);
 	}
 
 	//-----------------------------------------------------------------------------------------------------------
@@ -781,9 +896,6 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 
 			RemoveBleedingHitZone(hitZone);
 		}
-
-		if (!m_aBleedingHitZones || m_aBleedingHitZones.IsEmpty())
-			SetInstigatorEntity(null);
 	}
 
 	//-----------------------------------------------------------------------------------------------------------
@@ -832,19 +944,6 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		SCR_CharacterHitZone hitzone = SCR_CharacterHitZone.Cast(validHitZones.GetRandomElement());
 		AddBleedingHitZone(hitzone);
 	}
-
-	//-----------------------------------------------------------------------------------------------------------
-	void GetGroupHitZones(ECharacterHitZoneGroup hitZoneGroup, out notnull array<HitZone> GroupHitZones)
-	{
-		array<HitZone> allGroupedHitZones = {};
-		GetAllHitZones(allGroupedHitZones);
-		foreach (HitZone hitzone : allGroupedHitZones)
-		{
-			SCR_CharacterHitZone charHitZone = SCR_CharacterHitZone.Cast(hitzone);
-			if (charHitZone && charHitZone.GetHitZoneGroup() == hitZoneGroup)
-				GroupHitZones.Insert(hitzone);
-		}
-	}	
 	
 	//-----------------------------------------------------------------------------------------------------------
 	ECharacterHitZoneGroup FindAssociatedHitZoneGroup(EBandagingAnimationBodyParts bodyPartToBandage)
@@ -933,7 +1032,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		if (group < 0 && group >= m_aGroupBleedingRates.Count())
 			return 0;
 		
-		return m_aGroupBleedingRates[group];
+		return m_aGroupBleedingRates[LIMB_GROUPS.Find(group)];
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -947,15 +1046,19 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	private void SetGroupBleedingRate(ECharacterHitZoneGroup group, float rate)
 	{
 		if (!m_aGroupBleedingRates && rate > 0)
-			m_aGroupBleedingRates = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+		{		
+			m_aGroupBleedingRates = {};
+			foreach(int enumValue : LIMB_GROUPS)
+			{
+				m_aGroupBleedingRates.Insert(0);
+			}
+		}
 		
-		if (!m_aGroupBleedingRates)
+		//If trying to set bleeding rate to current bleeding rate, fail
+		if (!m_aGroupBleedingRates || m_aGroupBleedingRates[LIMB_GROUPS.Find(group)] == rate)
 			return;
 		
-		if (m_aGroupBleedingRates[group] == rate)
-			return;
-		
-		m_aGroupBleedingRates[group] = rate;
+		m_aGroupBleedingRates[LIMB_GROUPS.Find(group)] = rate;
 		
 		foreach (float bleedingRate: m_aGroupBleedingRates)
 		{
@@ -963,28 +1066,17 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 				return;			
 		}
 		
+		//If having failed to set any bleedingrates, set array back to null
 		m_aGroupBleedingRates = null;
 	}
-		
+	
 	//-----------------------------------------------------------------------------------------------------------
-	float GetGroupDamageOverTime(ECharacterHitZoneGroup hitZoneGroup, EDamageType damageType)
+	override float GetGroupDamageOverTime(ECharacterHitZoneGroup hitZoneGroup, EDamageType damageType)
 	{
 		if (damageType == EDamageType.BLEEDING)
 			return GetGroupBleedingRate(hitZoneGroup);
 
-		float totalGroupDamage;
-		array<HitZone> GroupedHitZones = {};
-		GetGroupHitZones(hitZoneGroup, GroupedHitZones);
-		SCR_CharacterHitZone charHitZone;
-		
-		foreach (HitZone hitzone : GroupedHitZones)
-		{
-			charHitZone = SCR_CharacterHitZone.Cast(hitzone);
-			if (charHitZone && charHitZone.GetHitZoneGroup() == hitZoneGroup)
-				totalGroupDamage += charHitZone.GetDamageOverTime(damageType);	
-		}
-		
-		return totalGroupDamage;
+		return super.GetGroupDamageOverTime(hitZoneGroup, damageType);
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -992,7 +1084,6 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	{
 		return m_aTourniquettedGroups && m_aTourniquettedGroups.Contains(hitZoneGroup);
 	}	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	void SetTourniquettedGroup(ECharacterHitZoneGroup hitZoneGroup, bool setTourniquetted)
@@ -1018,7 +1109,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		}
 		
 		UpdateBleedingHitZones();
-		UpdateGroupDamage(hitZoneGroup);
+		UpdateCharacterGroupDamage(hitZoneGroup);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1099,7 +1190,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
-	void UpdateGroupDamage(ECharacterHitZoneGroup hitZoneGroup)
+	void UpdateCharacterGroupDamage(ECharacterHitZoneGroup hitZoneGroup)
 	{
 		float AIMING_DAMAGE_MULTIPLIER = 4;
 		float TOURNIQUETTED_LEG_DAMAGE = 0.7;
@@ -1148,7 +1239,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	\param onlyExtremities Only compare the 4 extremities (both arms, both legs)
 	\param ignoreTQdHitZones Ignore tourniquetted limbs when looking for the one most bleeding one
 	*/
-	ECharacterHitZoneGroup GetMostDOTHitzoneGroup(EDamageType damageType, bool onlyExtremities = false, bool ignoreTQdHitZones = false)
+	ECharacterHitZoneGroup GetCharMostDOTHitzoneGroup(EDamageType damageType, bool onlyExtremities = false, bool ignoreTQdHitZones = false)
 	{
 		if (!m_aBleedingHitZones)
 			return null;
@@ -1184,6 +1275,8 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 				continue;
 
 			float DOT = m_pBloodHitZone.GetPhysicalHZBleedingDOT(charHitZone);
+			if (DOT == 0)
+				continue;
 			
 			// GetPhysicalHZBleedingDOT() is unaware of tourniquet status, so it is reduced seperately here.
 			if (GetGroupTourniquetted(group))
@@ -1191,12 +1284,12 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 				DOT *= m_fTourniquetStrengthMultiplier;
 				if (ignoreTQdHitZones)
 				{
-					DOTValues[group] = 0;
+					DOTValues[LIMB_GROUPS.Find(group)] = 0;
 					continue;
 				}
 			}
 			
-			DOTValues[group] = DOTValues[group] + DOT;
+			DOTValues[LIMB_GROUPS.Find(group)] = DOTValues[LIMB_GROUPS.Find(group)] + DOT;
 		}
 		
 		ECharacterHitZoneGroup mostDOTHitZoneGroup;
@@ -1210,7 +1303,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 			}
 		}
 		
-		return mostDOTHitZoneGroup;
+		return LIMB_GROUPS.Get(mostDOTHitZoneGroup);
 	}
 
 	//-----------------------------------------------------------------------------------------------------------
@@ -1258,29 +1351,31 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		return string.Empty;
 	}
 	
-#ifdef ENABLE_DIAG		
 	//------------------------------------------------------------------------------------------------ 
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
-		
+		m_CommunicationSound = SCR_CommunicationSoundComponent.Cast(owner.FindComponent(SCR_CommunicationSoundComponent));
+#ifdef ENABLE_DIAG
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_LOG_PLAYER_DAMAGE,"","Log player damage","GameCode");
 		
 		if (System.IsCLIParam("logPlayerDamage"))
 			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_CHARACTER_LOG_PLAYER_DAMAGE, true);
+#endif
 	}
 
+#ifdef ENABLE_DIAG
 	//-----------------------------------------------------------------------------------------------------------
 	protected override void OnDamage(
 				EDamageType type,
 				float damage,
 				HitZone pHitZone,
-				IEntity instigator,
+				notnull Instigator instigator,
 				inout vector hitTransform[3],
 				float speed,
 				int colliderID,
 				int nodeID)
-	{
+	{		
 		super.OnDamage(type, damage, pHitZone, instigator, hitTransform, speed, colliderID, nodeID);
 
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_LOG_PLAYER_DAMAGE))
@@ -1294,7 +1389,9 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 				return;
 			
 			string instigatorName;
-			int instigatorID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(instigator);
+			int instigatorID = instigator.GetInstigatorPlayerID();
+			IEntity instigatorEntity = instigator.GetInstigatorEntity();
+			
 			if (instigatorID > 0)
 			{
 				instigatorName = GetGame().GetPlayerManager().GetPlayerName(instigatorID);
@@ -1302,29 +1399,29 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 			else
 			{
 				ResourceName prefabName;
-				if (instigator)
+				if (instigatorEntity)
 				{
-					EntityPrefabData prefabData = instigator.GetPrefabData();
+					EntityPrefabData prefabData = instigatorEntity.GetPrefabData();
 					if (prefabData)
 						prefabName = prefabData.GetPrefabName();
 				}
 				
 				if (prefabName.IsEmpty())
 				{
-					if (instigator)
+					if (instigatorEntity)
 					{
-						instigatorName = ((instigator.GetID()).ToString());
+						instigatorName = ((instigatorEntity.GetID()).ToString());
 					}
 					else
 					{
-					instigatorName = instigator.ToString();
+						instigatorName = instigatorEntity.ToString();
 					}
 				}
 				else
 				{
 					TStringArray strs = new TStringArray;
 					prefabName.Split("/", strs, true);
-					instigatorName = ((instigator.GetID()).ToString()) + strs[strs.Count() - 1];
+					instigatorName = ((instigatorEntity.GetID()).ToString()) + strs[strs.Count() - 1];
 				}
 			}
 			
@@ -1351,7 +1448,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 				}
 			}
 
-			if (EntityUtils.IsPlayer(instigator) || EntityUtils.IsPlayer(hzOwner))
+			if (EntityUtils.IsPlayer(instigatorEntity) || EntityUtils.IsPlayer(hzOwner))
 				PrintFormat("HIT LOG: (%1) damaged (%2) - [Damage = %3, Speed = %4]", instigatorName, hzOwnerName, damage, speed);
 		}
 	}
@@ -1359,10 +1456,17 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	
 	
 #ifdef ENABLE_DIAG
+	override void OnDelete(IEntity owner)
+	{
+		DisconnectFromDiagSystem(owner);
+		
+		super.OnDelete(owner);
+	}
+	
 	//-----------------------------------------------------------------------------------------------------------
 	void DiagInit(IEntity owner)
 	{
-		SetEventMask(owner, EntityEvent.DIAG);
+		ConnectToDiagSystem(owner);
 		// Register to debug menu
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_DAMAGE,"","Deal damage debug","Character");
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_CHARACTER_DAMAGE,0);
@@ -1386,7 +1490,8 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 			
 			DbgUI.Text("See: GameCode >> Hit Zones >> Player HitZones for damages");
 			DbgUI.Text("Applying damage from client is NOT possible");
-			DbgUI.Text("Y to reduce head health by 10");
+			DbgUI.Text("Y to apply every damagetype as a DOT at once to Chest");
+			DbgUI.Text("Only conventional DOT damage are shown in debug");
 			DbgUI.Text("U to reduce chest health by 10");
 			DbgUI.Text("I to reduce right thigh health by 10");
 			DbgUI.Text("O to reduce left thigh health by 10");
@@ -1398,23 +1503,23 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 			
 			if (Debug.KeyState(KeyCode.KC_Y))
 			{
-				Debug.ClearKey(KeyCode.KC_Y);
-				HandleDamage(EDamageType.TRUE, 10, hitPosDirNorm, GetGame().GetPlayerController().GetControlledEntity(), m_pHeadHitZone, GetGame().GetPlayerController().GetControlledEntity(), null, -1, -1);
+				Debug.ClearKey(KeyCode.KC_Y);				
+				Print(HealHitZones(10, true, true));
 			}
 			if (Debug.KeyState(KeyCode.KC_U))
 			{
 				Debug.ClearKey(KeyCode.KC_U);
-				HandleDamage(EDamageType.TRUE, 10, hitPosDirNorm, GetGame().GetPlayerController().GetControlledEntity(), GetHitZoneByName("Chest"), GetGame().GetPlayerController().GetControlledEntity(), null, -1, -1);
+				Print(HealHitZones(10, false, true));	
 			}
 			if (Debug.KeyState(KeyCode.KC_I))
 			{
 				Debug.ClearKey(KeyCode.KC_I);
-				HandleDamage(EDamageType.TRUE, 10, hitPosDirNorm, GetGame().GetPlayerController().GetControlledEntity(), GetHitZoneByName("RThigh"), GetGame().GetPlayerController().GetControlledEntity(), null, -1, -1);
+				HandleDamage(EDamageType.TRUE, 10, hitPosDirNorm, GetGame().GetPlayerController().GetControlledEntity(), GetHitZoneByName("RThigh"), Instigator.CreateInstigator(GetGame().GetPlayerController().GetControlledEntity()), null, -1, -1);
 			}
 			if (Debug.KeyState(KeyCode.KC_O))
 			{
 				Debug.ClearKey(KeyCode.KC_O);
-				HandleDamage(EDamageType.TRUE, 10, hitPosDirNorm, GetGame().GetPlayerController().GetControlledEntity(), GetHitZoneByName("LThigh"), GetGame().GetPlayerController().GetControlledEntity(), null, -1, -1);
+				HandleDamage(EDamageType.TRUE, 10, hitPosDirNorm, GetGame().GetPlayerController().GetControlledEntity(), GetHitZoneByName("LThigh"), Instigator.CreateInstigator(GetGame().GetPlayerController().GetControlledEntity()), null, -1, -1);
 			}
 			if (Debug.KeyState(KeyCode.KC_P))
 			{

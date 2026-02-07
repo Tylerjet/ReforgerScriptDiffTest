@@ -55,13 +55,8 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	protected float m_fTempTimeSlice;
 	protected bool m_bTaskEvaluated;
 	protected bool m_bEvaluationSet;
-	#ifndef AR_SCENARIO_FRAMEWORK_TIMESTAMP
-	protected float m_fEvaluateTimeStart;
-	protected float m_fEvaluateTimeEnd;
-	#else
 	protected WorldTimestamp m_fEvaluateTimeStart;
 	protected WorldTimestamp m_fEvaluateTimeEnd;
-	#endif
 
 	protected Widget m_wRoot;
 	protected Widget m_wInfoOverlay;
@@ -220,14 +215,9 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	{
 		if (m_fDefendTime > 0)
 		{
-			#ifndef AR_SCENARIO_FRAMEWORK_TIMESTAMP
-			m_fEvaluateTimeStart = Replication.Time();
-			m_fEvaluateTimeEnd = m_fEvaluateTimeStart + (m_fDefendTime * 1000);
-			#else
 			ChimeraWorld world = GetOwner().GetWorld();
 			m_fEvaluateTimeStart = world.GetServerTimestamp();
 			m_fEvaluateTimeEnd = m_fEvaluateTimeStart.PlusSeconds(m_fDefendTime);
-			#endif
 			m_bEvaluationSet = true;
 		}
 
@@ -253,15 +243,48 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 			}
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DynamicDespawn()
+	{
+	}
 
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT, bool bInit = true)
+	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
-		if (m_eActivationType != activation)
+		if (m_bInitiated)
+			return;
+		
+		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
 			return;
 
-		super.Init(area, activation, bInit);
+		super.Init(area, activation);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void AfterAllChildrenSpawned()
+	{
+		m_bInitiated = true;
+		
+		ActivateLogic();
+		foreach (SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)
+		{
+			plugin.Init(this);
+		}
+		
+		foreach(SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
+		{
+			activationAction.Init(GetOwner());
+		}
 
+		if (m_ParentLayer)
+			m_ParentLayer.CheckAllChildrenSpawned(this);
+
+		GetOnAllChildrenSpawned().Remove(AfterAllChildrenSpawned);
+
+		if (m_fRepeatedSpawnTimer >= 0)
+			RepeatedSpawn();
+		
 		if (!m_sTriggerName.IsEmpty())
 			FindCharacterTriggerEntity();
 
@@ -269,7 +292,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 		SetupEvaluation();
 		OnPostInit(GetOwner());
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
@@ -283,7 +306,14 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	//------------------------------------------------------------------------------------------------
 	void InitHUD()
 	{
-		m_wRoot = GetGame().GetHUDManager().CreateLayout(m_sCountdownHUD, EHudLayers.MEDIUM, 0);
+		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		if (!hudManager)
+			return;
+		
+		m_wRoot = hudManager.CreateLayout(m_sCountdownHUD, EHudLayers.MEDIUM, 0);
+		if (!m_wRoot)
+			return;
+		
 		m_wInfoOverlay = m_wRoot.FindAnyWidget("Info");
 		m_wCountdownOverlay = m_wRoot.FindAnyWidget("Countdown");
 		ImageWidget leftFlag = ImageWidget.Cast(m_wRoot.FindAnyWidget("FlagSideBlue"));
@@ -305,7 +335,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 		winScoreSideLeft.SetVisible(false);
 		winScoreSideRight.SetVisible(false);
 
-		string shownTime = SCR_Global.GetTimeFormatting(m_fTempCountdown, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);
+		string shownTime = SCR_FormatHelper.GetTimeFormatting(m_fTempCountdown, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);
 		m_wCountdown.SetText(shownTime);
 
 		m_wFlavour.SetText(m_sFormattedCountdownTitle);
@@ -319,7 +349,13 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	{
 		m_fTempTimeSlice = 0;
 		m_fTempCountdown--;
-
+		
+		int taskID = -1;
+		if (m_Task)
+			taskID = m_Task.GetTaskID();
+		
+		Rpc(RpcDo_UpdateHUD, m_fTempCountdown, taskID);
+		
 		if (!m_wRoot)
 			return;
 
@@ -343,7 +379,54 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 			return;
 		}
 
-		string shownTime = SCR_Global.GetTimeFormatting(m_fTempCountdown, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);
+		string shownTime = SCR_FormatHelper.GetTimeFormatting(m_fTempCountdown, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);
+		m_wCountdown.SetText(shownTime);
+
+		m_wFlavour.SetText(m_sFormattedCountdownTitle);
+		m_wRoot.SetVisible(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_UpdateHUD(float countdown, int taskID)
+	{
+		m_fTempCountdown = countdown;
+		
+		if (!m_wRoot)
+		{
+			InitHUD();
+			if (!m_wRoot)
+				return;
+		}
+		
+		if (!m_Task)
+		{
+			SCR_BaseTaskManager taskManager = GetTaskManager();
+			if (taskManager)
+				m_Task = SCR_ScenarioFrameworkTask.Cast(taskManager.GetTask(taskID));
+		}
+
+		if (m_fTempCountdown < 0 || !m_Task || !m_bDisplayCountdownHUD)
+		{
+			if (m_bDelayedEvaluation && m_bDisplayDelayedEvaluationText && !m_bTaskEvaluated)
+			{
+				m_wFlavour.SetText(m_sFormattedDelayedEvaluationText);
+				m_wRoot.SetVisible(true);
+				m_wCountdownOverlay.SetVisible(false);
+				return;
+			}
+
+			m_wRoot.SetVisible(false);
+			return;
+		}
+
+		if (m_Task.GetTaskState() == SCR_TaskState.CANCELLED || m_Task.GetTaskState() == SCR_TaskState.FINISHED)
+		{
+			m_wRoot.SetVisible(false);
+			return;
+		}
+
+		string shownTime = SCR_FormatHelper.GetTimeFormatting(m_fTempCountdown, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);
 		m_wCountdown.SetText(shownTime);
 
 		m_wFlavour.SetText(m_sFormattedCountdownTitle);
@@ -409,12 +492,8 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 			CheckAttackerLayers();
 		}
 
-		#ifndef AR_SCENARIO_FRAMEWORK_TIMESTAMP
-		if (!m_bTaskEvaluated && m_bEvaluationSet && (Replication.Time() >= m_fEvaluateTimeEnd))
-		#else
 		ChimeraWorld world = owner.GetWorld();
 		if (!m_bTaskEvaluated && m_bEvaluationSet && world.GetServerTimestamp().GreaterEqual(m_fEvaluateTimeEnd))
-		#endif
 		{
 			if (m_bDelayedEvaluation && m_fTempTimeSlice >= 5)
 				CheckAttackerLayers();

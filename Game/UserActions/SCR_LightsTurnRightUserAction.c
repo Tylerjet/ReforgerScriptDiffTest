@@ -10,7 +10,13 @@ class SCR_LightsTurnRightUserAction : LightUserAction
 		if (!lightManager)
 			return;
 
-		bool lightsState = !lightManager.GetLightsState(ELightType.Hazard, 1);
+		bool lightsState;	
+		
+		lightsState = lightManager.GetLightsState(ELightType.Hazard, 1);
+
+		if (RplSession.Mode() != RplMode.Client)
+			lightsState = !lightsState;
+
 		lightManager.SetLightsState(ELightType.Hazard, lightsState, 1);
 
 		if (lightsState)

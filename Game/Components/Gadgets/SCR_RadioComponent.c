@@ -241,7 +241,10 @@ class SCR_RadioComponent : SCR_GadgetComponent
 		m_aProcAnims.Insert(animCtx);
 
 		if (!clumpAnim)
+		{
 			m_bAnimInProgress = true;
+			ConnectToGadgetsSystem();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -291,6 +294,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 		{
 			m_bAnimInProgress = false;
 			m_aProcAnims.Clear();
+			DisconnectFromGadgetsSystem();
 		}
 	}
 
@@ -383,39 +387,16 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	override void ActivateGadgetFlag()
-	{
-		super.ActivateGadgetFlag();
-		
-		if (System.IsConsoleApp())
-			return;
-
-		SetEventMask(GetOwner(), EntityEvent.FRAME);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void DeactivateGadgetFlag()
-	{
-		super.DeactivateGadgetFlag();
-		
-		if (System.IsConsoleApp())
-			return;
-		
-		ClearEventMask(GetOwner(), EntityEvent.FRAME);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
+	override void Update(float timeSlice)
 	{
 		// knob anim
-		if (m_bAnimInProgress)
-			AnimKnob(timeSlice);
-
-		/*string rot = "anim: %2";
-		DbgUI.Begin("Radio debug");
-		DbgUI.Text( string.Format(rot, m_bAnimInProgress ) );
-		DbgUI.Text("  ");
-		DbgUI.End();*/
+		if (!m_bAnimInProgress)
+		{
+			DisconnectFromGadgetsSystem();
+			return;
+		}
+		
+		AnimKnob(timeSlice);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -430,13 +411,6 @@ class SCR_RadioComponent : SCR_GadgetComponent
 
 		// signal manager
 		m_SignalManager = SignalsManagerComponent.Cast(owner.FindComponent( SignalsManagerComponent ) );
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_RadioComponent()
-	{
-		if (m_aProcAnims)
-			delete m_aProcAnims;
 	}
 
 };

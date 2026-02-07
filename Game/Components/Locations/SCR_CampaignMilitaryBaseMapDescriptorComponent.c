@@ -127,10 +127,24 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 				return;
 			
 			SCR_CampaignMilitaryBaseComponent otherBase = SCR_CampaignMilitaryBaseComponent.Cast(otherEndOwner.FindComponent(SCR_CampaignMilitaryBaseComponent));
-			SCR_CampaignMobileAssemblyComponent mobileHQ = SCR_CampaignMobileAssemblyComponent.Cast(otherEndOwner.FindComponent(SCR_CampaignMobileAssemblyComponent));
+			SCR_CampaignMobileAssemblyStandaloneComponent mobileHQ;
 			
-			if (!otherBase && !mobileHQ)
-				return;
+			if (!otherBase)
+			{
+				SCR_SpawnPoint spawnpoint = SCR_SpawnPoint.Cast(otherEndOwner);
+				
+				if (spawnpoint)
+				{
+					SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetPlayerFaction(GetGame().GetPlayerController().GetPlayerId()));
+					SCR_CampaignMobileAssemblyStandaloneComponent factionMHQ = faction.GetMobileAssembly();
+					
+					if (factionMHQ && factionMHQ.GetOwner() == spawnpoint)
+						mobileHQ = factionMHQ;
+				}
+				
+				if (!mobileHQ)
+					return;
+			}
 			
 			if ((mobileHQ && m_Base.CanReachByRadio(mobileHQ)) || (otherBase && m_Base.CanReachByRadio(otherBase)))
 				c.SetA(linesData.GetHighlightedAlpha());
@@ -146,12 +160,15 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void UnregisterMyMapLinks()
+	void UnregisterMyMapLinks(bool unlinkHQ = false)
 	{
 		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
 		
 		for (int i = m_aMapLinks.Count() - 1; i >= 0; i--)
 		{
+			if (!m_aMapLinks.IsIndexValid(i))
+				continue;
+			
 			MapLink link = m_aMapLinks[i];
 			
 			if (!link)
@@ -163,9 +180,14 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 				otherBaseOwner = link.Target().Entity();
 			else
 				otherBaseOwner = link.Owner().Entity();
-			
-			if (!otherBaseOwner)
+		
+			if (!otherBaseOwner || (unlinkHQ && SCR_SpawnPoint.Cast(otherBaseOwner) != null))
+			{
+				link.Target().UnLink(Item());
+				Item().UnLink(link.Target());
+				UnregisterMapLink(link);
 				continue;
+			}
 			
 			SCR_CampaignMilitaryBaseComponent otherBase = SCR_CampaignMilitaryBaseComponent.Cast(otherBaseOwner.FindComponent(SCR_CampaignMilitaryBaseComponent));
 			
@@ -175,21 +197,12 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 				UnregisterMapLink(link);
 				Item().UnLink(otherBase.GetMapDescriptor().Item());
 				otherBase.GetMapDescriptor().Item().UnLink(Item());
-				continue;
 			}
-			
-			SCR_CampaignMobileAssemblyComponent mobileHQ = SCR_CampaignMobileAssemblyComponent.Cast(otherBaseOwner.FindComponent(SCR_CampaignMobileAssemblyComponent));
-			
-			if (!mobileHQ)
-				continue;
-			
-			UnregisterMapLink(link);
-			Item().UnLink(mobileHQ.GetMapItem());
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void HandleMapLinks()
+	void HandleMapLinks(bool unlinkHQ = false)
 	{
 		if (m_Base.IsHQ() && m_Base.GetFaction() != SCR_FactionManager.SGetLocalPlayerFaction())
 			return;
@@ -199,26 +212,31 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 		if (!campaign)
 			return;
 
-		UnregisterMyMapLinks();
+		UnregisterMyMapLinks(unlinkHQ);
 		SCR_CampaignFaction localPlayerFaction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
 		
 		if (!localPlayerFaction)
 			return;
 		
-		SCR_CampaignMobileAssemblyComponent mobileHQ = localPlayerFaction.GetMobileAssembly();
+		SCR_CampaignMobileAssemblyStandaloneComponent mobileHQ = localPlayerFaction.GetMobileAssembly();
 		MapItem mobilehqMapItem;
 		
 		if (mobileHQ)
 		{
-			SCR_MapDescriptorComponent desc = SCR_MapDescriptorComponent.Cast(mobileHQ.GetOwner().FindComponent(SCR_MapDescriptorComponent));
+			SCR_SpawnPoint spawnpoint = SCR_SpawnPoint.Cast(mobileHQ.GetOwner());
 			
-			if (desc && mobileHQ.IsInRadioRange())
+			if (spawnpoint)
 			{
-				array<SCR_CampaignMilitaryBaseComponent> basesInRangeOfMobileHQ = {};
-				mobileHQ.GetBasesInRange(basesInRangeOfMobileHQ);
+				SCR_MapDescriptorComponent desc = SCR_MapDescriptorComponent.Cast(spawnpoint.FindComponent(SCR_MapDescriptorComponent));
 				
-				if (basesInRangeOfMobileHQ.Contains(m_Base))
-					mobilehqMapItem = desc.Item();
+				if (desc && mobileHQ.IsInRadioRange())
+				{
+					array<SCR_CampaignMilitaryBaseComponent> basesInRangeOfMobileHQ = {};
+					mobileHQ.GetBasesInRange(basesInRangeOfMobileHQ);
+					
+					if (basesInRangeOfMobileHQ.Contains(m_Base))
+						mobilehqMapItem = desc.Item();
+				}
 			}
 		}
 		
@@ -241,7 +259,7 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 			MapLink link = Item().LinkTo(mobilehq);
 			ColorMapLink(link);
 			RegisterMapLink(link);
-			SCR_CampaignMobileAssemblyComponent comp = SCR_CampaignFaction.Cast(localPlayerFaction).GetMobileAssembly();
+			SCR_CampaignMobileAssemblyStandaloneComponent comp = SCR_CampaignFaction.Cast(localPlayerFaction).GetMobileAssembly();
 			
 			if (comp)
 				comp.AddMapLink(link);
@@ -306,7 +324,7 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 		// Update base icon color
 		EFactionMapID factionMapID = EFactionMapID.UNKNOWN;
 		bool isInRange = m_Base.IsHQRadioTrafficPossible(playerFactionCampaign);
-		
+
 		// Show proper faction color only for HQs or bases within radio signal
 		if (m_Base.GetFaction() && (m_Base.IsHQ() || isInRange))
 		{
@@ -320,23 +338,17 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 		
 		Item().SetFactionIndex(factionMapID);
 
-		array<SCR_ServicePointComponent> services = {};
-		m_Base.GetServices(services);
+		array<SCR_ServicePointDelegateComponent> delegates = {};
+		m_Base.GetServiceDelegates(delegates);
 		
-		foreach (SCR_ServicePointComponent service: services)
+		foreach (SCR_ServicePointDelegateComponent delegate: delegates)
 		{
-			IEntity owner = service.GetOwner();
+			IEntity owner = delegate.GetOwner();
 			
 			if (!owner)
 				continue;
 			
 			SCR_ServicePointMapDescriptorComponent comp = SCR_ServicePointMapDescriptorComponent.Cast(owner.FindComponent(SCR_ServicePointMapDescriptorComponent));
-
-			if (!comp)
-			{
-				IEntity compositionParent = SCR_EntityHelper.GetMainParent(owner, true);
-				comp = SCR_ServicePointMapDescriptorComponent.Cast(compositionParent.FindComponent(SCR_ServicePointMapDescriptorComponent));
-			}
 
 			if (comp)
 			{

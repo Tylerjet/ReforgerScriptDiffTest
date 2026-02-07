@@ -46,11 +46,12 @@ class SCR_ScenarioFrameworkActionInputOnTaskEventIncreaseCounter : SCR_ScenarioF
 		{
 			taskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetTaskLayer();
 			if (taskLayer)
+			{
 				sTaskLayerName = taskLayer.GetOwner().GetName();
+				if (taskLayer.GetLayerTaskResolvedBeforeLoad())
+					return;
+			}
 		} 
-		
-		if (taskLayer.GetLayerTaskResolvedBeforeLoad())
-			return;
 		
 		if (m_sTaskLayerName.IsEmpty() || m_sTaskLayerName == sTaskLayerName)
 		{
@@ -59,9 +60,12 @@ class SCR_ScenarioFrameworkActionInputOnTaskEventIncreaseCounter : SCR_ScenarioF
 				
 			if (mask & SCR_ETaskEventMask.TASK_PROPERTY_CHANGED && !(mask & SCR_ETaskEventMask.TASK_CREATED) && !(mask & SCR_ETaskEventMask.TASK_FINISHED) && !(mask & SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED))
 			{	
-				SCR_ScenarioFrameworkSlotTask subject = taskLayer.GetTaskSubject();
-				if (subject)
-					subject.OnTaskStateChanged(m_eEventName)
+				if (taskLayer)
+				{
+					SCR_ScenarioFrameworkSlotTask subject = taskLayer.GetTaskSubject();
+					if (subject)
+						subject.OnTaskStateChanged(m_eEventName)
+				}
 			}	
 		}
 	}	
@@ -128,7 +132,8 @@ class SCR_ScenarioFrameworkActionInputCheckEntitiesInTrigger : SCR_ScenarioFrame
 	//------------------------------------------------------------------------------------------------
 	void RegisterOnChange()
 	{
-		m_Trigger.GetOnChange().Insert(OnActivate);
+		if (m_Trigger)
+			m_Trigger.GetOnChange().Insert(OnActivate);
 	}
 	
 	//------------------------------------------------------------------------------------------------

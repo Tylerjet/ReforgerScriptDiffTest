@@ -16,6 +16,7 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	
 	ref SCR_AIThreatSystem m_ThreatSystem;
 	ref SCR_AILookAction m_LookAction;
+	ref SCR_AICommsHandler m_CommsHandler;
 	ref SCR_AIBehaviorBase m_CurrentBehavior; // Used for avoiding constant casting, outside of this class use GetCurrentBehavior()
 
 	protected ref BaseTarget m_UnknownTarget;
@@ -55,7 +56,7 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		m_CombatComponent.UpdatePerceptionFactor(m_PerceptionComponent, m_ThreatSystem);
 
 		// Read messages
-		SCR_AIMessageBase msgBase = m_Mailbox.ReadMessage();
+		AIMessage msgBase = m_Mailbox.ReadMessage(true);
 		if (msgBase)
 		{
 			SCR_AIMessageGoal msgGoal = SCR_AIMessageGoal.Cast(msgBase);
@@ -182,6 +183,10 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		
 		m_CurrentBehavior.OnActionExecuted();
 		
+		// Update comms handler
+		if (m_CommsHandler.m_bNeedUpdate)
+			m_CommsHandler.Update(deltaTime);
+		
 		#ifdef AI_DEBUG
 		AddDebugMessage("EvaluateBehavior END\n");
 		#endif
@@ -255,6 +260,13 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		m_LookAction = new ref SCR_AILookAction(this, false); // LookAction is not regular behavior and is evaluated separately
 		m_ConfigComponent.AddDefaultBehaviors(this);
 		m_Mailbox = SCR_MailboxComponent.Cast(owner.FindComponent(SCR_MailboxComponent));
+		m_CommsHandler = new SCR_AICommsHandler(m_OwnerEntity, agent);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void EOnDiag(IEntity owner, float timeSlice)
+	{
+		m_CommsHandler.EOnDiag(timeSlice);
 	}
 	
 	//------------------------------------------------------------------------------------------------

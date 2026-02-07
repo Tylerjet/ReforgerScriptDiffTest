@@ -253,7 +253,7 @@ class SCR_NameTagRulesetBase : Managed
 		TraceParam param = new TraceParam;
 		param.Start = m_CurrentPlayerTag.m_vEntHeadPos;
 		param.End = data.m_vEntHeadPos + HEAD_LOS_OFFSET;
-		param.LayerMask = EPhysicsLayerDefs.Perception;
+		param.LayerMask = EPhysicsLayerDefs.Projectile;
 		param.Flags = TraceFlags.ANY_CONTACT | TraceFlags.WORLD | TraceFlags.ENTS; 
 		param.Exclude = m_CurrentPlayerTag.m_Entity;
 			
@@ -446,12 +446,15 @@ class SCR_NameTagRulesetBase : Managed
 	//! Uses provided nametag data to determine which tags pass the visibility conditions and filters them into a new array
 	//! \param timeSlice is frame time slice
 	protected void DetermineVisibility(float timeSlice)
-	{				
+	{			
 		int count = m_aNameTags.Count();
 		
 		// Primary set of visibility conditions
 		for ( int i = 0; i < count; i++ )  
 		{					
+			if (!m_aNameTags.IsIndexValid(i))
+				continue;
+			
 			SCR_NameTagData data = m_aNameTags.Get(i);
 			if (!data)
 				continue;

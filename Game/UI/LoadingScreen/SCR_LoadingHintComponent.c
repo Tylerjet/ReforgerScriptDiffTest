@@ -1,11 +1,8 @@
 //------------------------------------------------------------------------------------------------
 class SCR_LoadingHintComponent : ScriptedWidgetComponent
 {
-	[Attribute("-1", desc: "Show specific hint, otherwise show hints randomly")]
-	protected int m_iShowSpecificHint;
-	
-	[Attribute("10")]
-	protected float m_fSwitchTime;
+	protected const int HINT_INDEX = -1;
+	protected const float SWITCH_TIME = 10;
 	
 	protected int m_iHintCount;
 	protected int m_iHintIndex = -1;
@@ -30,16 +27,19 @@ class SCR_LoadingHintComponent : ScriptedWidgetComponent
 		}
 		
 		Resource resource = BaseContainerTools.LoadContainer(m_Config);
+		
 		if (!resource)
 			return;
 		
 		BaseContainer entries = resource.GetResource().ToBaseContainer();
+		
 		if (!entries)
 			return;
+		
 		entries.Get("m_aHints", m_aAllHints);
 
 		// Show first hint
-		ShowHint(m_iShowSpecificHint);
+		ShowHint(HINT_INDEX);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -57,29 +57,26 @@ class SCR_LoadingHintComponent : ScriptedWidgetComponent
 		cont.Set("m_aReadHints", m_aReadHints);
 		GetGame().UserSettingsChanged();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		// Mark the current hint read if shown for infinite time
-		if (m_fSwitchTime < 0)
+		if (SWITCH_TIME < 0)
 			MarkHintRead();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void Update(float timeSlice)
 	{
-		if (m_fSwitchTime <= 0)
-			return;
-		
 		m_fTime += timeSlice;
 		
-		if (m_fTime < m_fSwitchTime)
+		if (m_fTime < SWITCH_TIME)
 			return;
 		
 		// Switch to a new hint
 		MarkHintRead();
-		ShowHint(m_iShowSpecificHint);
+		ShowHint(HINT_INDEX);
 		m_fTime = 0;
 	}
 

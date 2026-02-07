@@ -121,10 +121,10 @@ class SCR_DataCollectorBasicActionsModule : SCR_DataCollectorModule
 #endif
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerKilled(int playerID, IEntity player, IEntity killer)
+	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		super.OnPlayerKilled(playerID, player, killer);
-		m_mTrackedPlayers.Remove(playerID);
+		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
+		m_mTrackedPlayers.Remove(playerId);
 	}
 
 	//------------------------------------------------------------------------------------------------

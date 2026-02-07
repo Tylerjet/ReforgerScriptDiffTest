@@ -441,7 +441,7 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	protected void OnPlayerScoreChanged(int playerId, SCR_ScoreInfo scoreInfo)
 	{
 		m_OnPlayerScoreChangedInvoker.Invoke(playerId, scoreInfo);
-		StatsApi statsApi = GetGame().GetStatsApi();
+		GameStatsApi statsApi = GetGame().GetStatsApi();
 		if (statsApi)
 			statsApi.PlayerScore(playerId, scoreInfo);
 	}
@@ -637,7 +637,17 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 
 		SetEventMask(owner, EntityEvent.INIT);
 		#ifdef ENABLE_DIAG
-		SetEventMask(owner, EntityEvent.DIAG);
+		ConnectToDiagSystem(owner);
 		#endif
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		#ifdef ENABLE_DIAG
+		DisconnectFromDiagSystem(owner);
+		#endif
+		
+		super.OnDelete(owner);
 	}
 };

@@ -6,40 +6,20 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
-		if (!pOwnerEntity || !pUserEntity)
+		if (!pOwnerEntity)
 			return;
-
-		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
-		if (!character)
-			return;
-
-		BaseCompartmentSlot targetCompartment = GetCompartmentSlot();
-		if (!targetCompartment)
-			return;
-
-		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
-		if (!compartmentAccess)
-			return;
-
-		int index = GetRelevantDoorIndex(pUserEntity);
-
-		CompartmentDoorInfo doorInfo = targetCompartment.GetDoorInfo(index);
 
 		BaseCompartmentSlot compartment = GetCompartmentSlot();
 		if (!compartment)
 			return;
 
-		IEntity targetCasualty = compartment.GetOccupant();
-
-		ChimeraCharacter targetCharacter = ChimeraCharacter.Cast(targetCasualty);
-		if (!targetCharacter)
+		ChimeraCharacter casualty = ChimeraCharacter.Cast(compartment.GetOccupant());
+		if (!casualty)
 			return;
 
-		CompartmentAccessComponent casualtyCompartmentAccess = targetCharacter.GetCompartmentAccessComponent();
-		if (!casualtyCompartmentAccess)
-			return;
-
-		casualtyCompartmentAccess.EjectOutOfVehicle();
+		CompartmentAccessComponent casualtyCompartmentAccess = casualty.GetCompartmentAccessComponent();
+		if (casualtyCompartmentAccess)
+			casualtyCompartmentAccess.EjectOutOfVehicle();
 
 		super.PerformAction(pOwnerEntity, pUserEntity);
 	}
@@ -59,8 +39,13 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 		if (!compartmentAccess)
 			return false;
 
+		// Restrict removing casualty from another compartment in case the section does not match
+		BaseCompartmentSlot characterCompartment = compartmentAccess.GetCompartment();
+		if (characterCompartment && characterCompartment.GetCompartmentSection() != compartment.GetCompartmentSection())
+			return false;
+
 		IEntity owner = compartment.GetOwner();
-		Vehicle vehicle = Vehicle.Cast(SCR_EntityHelper.GetMainParent(owner, true));
+		Vehicle vehicle = Vehicle.Cast(owner.GetRootParent());
 		if (vehicle)
 		{
 			Faction characterFaction = character.GetFaction();
@@ -109,18 +94,19 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 		if (compartmentAccess.IsGettingIn() || compartmentAccess.IsGettingOut())
 			return false;
 
-		IEntity occupant = compartment.GetOccupant();
-		if (!occupant)
+		// Restrict removing casualty from another compartment in case the section does not match
+		BaseCompartmentSlot characterCompartment = compartmentAccess.GetCompartment();
+		if (characterCompartment && characterCompartment.GetCompartmentSection() != compartment.GetCompartmentSection())
 			return false;
 
-		ChimeraCharacter targetCharacter = ChimeraCharacter.Cast(compartment.GetOccupant());
-		if (!targetCharacter)
+		ChimeraCharacter casualty = ChimeraCharacter.Cast(compartment.GetOccupant());
+		if (!casualty)
 			return false;
 
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(targetCharacter.GetCharacterController());
+		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(casualty.GetCharacterController());
 		if (!controller)
 			return false;
-		
+
 		return controller.GetLifeState() != ECharacterLifeState.ALIVE;
 	}
 
@@ -129,4 +115,4 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 	{
 		return false;
 	}
-};
+}

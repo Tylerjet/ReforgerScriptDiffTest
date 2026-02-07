@@ -93,6 +93,7 @@ class SCR_AIWorld : AIWorld
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_TARGET_LASTSEEN,"","Show target last seen","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SELECT_FIXED_AGENT,"","Select fixed AIAgent","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_DEBUG_COVERS,"","Debug cover search","AIScript");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_COMMS_HANDLERS,"", "Show Comms Handlers","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_PERCEPTION_PANEL,"","Show perception panel","AIScript");
 
 #ifdef AI_DEBUG
@@ -196,19 +197,21 @@ class SCR_AIWorld : AIWorld
 	Regenerate navmesh in given areas.
 	\param areas Array of areas in format (min bounds, max bounds)
 	*/
-	void RequestNavmeshRebuildAreas(notnull array<ref Tuple2<vector, vector>> areas)
+	void RequestNavmeshRebuildAreas(notnull array<ref Tuple2<vector, vector>> areas, notnull array<bool> redoRoads)
 	{
 #ifdef DEBUG_NAVMESH_REBUILD_AREAS
 		vector points[19];
 		m_DebugNavmeshRebuildAreas.Clear();
 #endif
+		int i = 0;
 		foreach (Tuple2<vector, vector> area: areas)
 		{
-			RequestNavmeshRebuild(area.param1, area.param2);
+			RequestNavmeshRebuild(area.param1, area.param2, redoRoads[i]);
 #ifdef DEBUG_NAVMESH_REBUILD_AREAS
 			SCR_Shape.GetBoundsPoints(area.param1, area.param2, points);
 			m_DebugNavmeshRebuildAreas.Insert(Shape.CreateLines(Color.BLUE, ShapeFlags.NOZBUFFER, points, 19));
 #endif
+			++i;
 		}
 	}
 	/*!
@@ -218,14 +221,15 @@ class SCR_AIWorld : AIWorld
 	void RequestNavmeshRebuildEntity(IEntity entity)
 	{
 		array<ref Tuple2<vector, vector>> areas = new array<ref Tuple2<vector, vector>>; //--- Min, max
-		GetNavmeshRebuildAreas(entity, areas);
-		RequestNavmeshRebuildAreas(areas);
+		array<bool> redoRoads = new array<bool>;
+		GetNavmeshRebuildAreas(entity, areas, redoRoads);
+		RequestNavmeshRebuildAreas(areas, redoRoads);
 	}
 	/*!
 	Get navmesh regeneration areas based on entity and its children.
 	\param[out] areas Array of areas in format (min bounds, max bounds). Not cleared, will expand on existing areas.
 	*/
-	void GetNavmeshRebuildAreas(IEntity entity, out notnull array<ref Tuple2<vector, vector>> outAreas)
+	void GetNavmeshRebuildAreas(IEntity entity, out notnull array<ref Tuple2<vector, vector>> outAreas, out notnull array<bool> redoRoads)
 	{
 		//--- No entity, no rebuild needed
 		if (!entity)
@@ -256,14 +260,22 @@ class SCR_AIWorld : AIWorld
 			
 			//--- No suitable bounds found, create new ones
 			if (!found)
+			{
 				outAreas.Insert(new Tuple2<vector, vector>(boundMin, boundMax));
+				
+				//Check if the entity has a navlink and it has a link that applies to vehicles
+				NavmeshCustomLinkComponent hasNavlink = NavmeshCustomLinkComponent.Cast(entity.FindComponent(NavmeshCustomLinkComponent));
+				bool value = true;
+				if (hasNavlink)
+					value = hasNavlink.HasLinkOfNavmeshType("BTRlike");
+				redoRoads.Insert(!value);
+			}
 		}
-		
 		//--- Process children
 		IEntity child = entity.GetChildren();
 		while (child)
 		{
-			GetNavmeshRebuildAreas(child, outAreas);
+			GetNavmeshRebuildAreas(child, outAreas, redoRoads);
 			child = child.GetSibling();
 		}
 	}

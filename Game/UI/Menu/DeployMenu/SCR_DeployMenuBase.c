@@ -2,9 +2,9 @@
 //! Base deploy menu class.
 class SCR_DeployMenuBase : ChimeraMenuBase
 {
-	protected SCR_NavigationButtonComponent m_PauseButton;
-	protected SCR_NavigationButtonComponent m_GameMasterButton;
-	protected SCR_NavigationButtonComponent m_ChatButton;
+	protected SCR_InputButtonComponent m_PauseButton;
+	protected SCR_InputButtonComponent m_GameMasterButton;
+	protected SCR_InputButtonComponent m_ChatButton;
 
 	protected SCR_ChatPanel m_ChatPanel;
 	protected SCR_MapEntity m_MapEntity;
@@ -17,7 +17,7 @@ class SCR_DeployMenuBase : ChimeraMenuBase
 		if (s_OnMenuOpen)
 			s_OnMenuOpen.Invoke();
 
-		m_GameMasterButton = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Editor", GetRootWidget());
+		m_GameMasterButton = SCR_InputButtonComponent.GetInputButtonComponent("Editor", GetRootWidget());
 		if (m_GameMasterButton)
 		{
 			SCR_EditorManagerEntity editor = SCR_EditorManagerEntity.GetInstance();
@@ -27,6 +27,8 @@ class SCR_DeployMenuBase : ChimeraMenuBase
 				editor.GetOnLimitedChange().Insert(OnEditorLimitedChanged);
 			}
 		}
+		
+		super.OnMenuOpen();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -46,6 +48,8 @@ class SCR_DeployMenuBase : ChimeraMenuBase
 		MuteSounds(false);
 		if (m_MapEntity && m_MapEntity.IsOpen())
 			m_MapEntity.CloseMap();
+		
+		super.OnMenuClose();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -94,7 +98,7 @@ class SCR_DeployMenuBase : ChimeraMenuBase
 //------------------------------------------------------------------------------------------------
 //! Main deploy menu with the map present.
 class SCR_DeployMenuMain : SCR_DeployMenuBase
-{
+{	
 	protected SCR_DeployMenuHandler m_MenuHandler;
 
 	protected SCR_LoadoutRequestUIComponent m_LoadoutRequestUIHandler;
@@ -126,11 +130,67 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	protected SCR_TimedSpawnPointComponent m_TimedSpawnPointTimer;
 	protected int m_iPreviousTime = 0;
 	protected bool m_bRespawnRequested = false;
+	protected bool m_bSuppliesEnabled;
 	protected SCR_RespawnSystemComponent m_RespawnSystemComp;
+	protected SCR_RespawnComponent m_RespawnComponent;
 
 	protected int m_iPlayerId;
 	
 	protected bool m_bMapContextAllowed = true;
+	
+	protected bool m_bCanRespawnAtSpawnPoint;
+	
+	protected SCR_UIInfoSpawnRequestResult m_UIInfoSpawnRequestResult;
+	protected bool m_bDisplayTime;
+	
+	protected float m_fCurrentCanSpawnUpdateTime;
+	protected const float CHECK_CAN_SPAWN_SPAWNPOINT_TIME = 1; //~ Time (in seconds) when the system should request if the player can spawn. Note this request is send to server
+	protected const string FALLBACK_DEPLOY_STRING = "#AR-ButtonSelectDeploy"; //~ Time (in seconds) when the system should request if the player can spawn. Note this request is send to server
+	
+	protected SCR_InputButtonComponent m_GroupOpenButton;
+	
+	//~ A timer that disables the respawn button for x seconds after it has been pressed to prevent players from sending multiple spawn requests
+	protected float m_fCurrentDeployTimeOut;
+	protected const float DEPLOY_TIME_OUT = 0.5;
+	
+	//----------------------------------------------------------------------------------------------
+	int GetLoadoutCost(SCR_PlayerLoadoutComponent component)
+	{
+		int cost;
+		
+		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
+		if (!entityCatalogManager)
+			return 0;
+			
+		SCR_Faction faction = SCR_Faction.Cast(m_PlyFactionAffilComp.GetAffiliatedFaction());
+		if (!faction)
+			return 0;
+			
+		SCR_BasePlayerLoadout playerLoadout = component.GetLoadout();
+		if (!playerLoadout)
+			return 0;
+			
+		ResourceName loadoutResource = playerLoadout.GetLoadoutResource();
+		if (!loadoutResource)
+			return 0;
+			
+		Resource resource = Resource.Load(loadoutResource);
+		if (!resource)
+			return 0;
+			
+		SCR_EntityCatalogEntry entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.CHARACTER, resource.GetResource().GetResourceName(), faction);
+		if (!entry)
+			return 0;
+			
+		SCR_EntityCatalogSpawnerData data = SCR_EntityCatalogSpawnerData.Cast(entry.GetEntityDataOfType(SCR_EntityCatalogSpawnerData));
+		if (!data)
+			return 0;
+	
+		cost = data.GetSupplyCost();
+		
+		return cost;
+	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Sets map context active based on whether or not any of the selectors are focused with a gamepad.
@@ -143,12 +203,17 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	override void OnMenuOpen()
 	{
 		super.OnMenuOpen();
-
+		ResetRespawnResultVars();
+		
 		m_wMenuFrame = GetRootWidget().FindAnyWidget("MenuFrame");
 
 		m_GameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		m_MenuHandler = SCR_DeployMenuHandler.Cast(GetRootWidget().FindHandler(SCR_DeployMenuHandler));
 		m_RespawnSystemComp = SCR_RespawnSystemComponent.GetInstance();
+		m_RespawnComponent = SCR_RespawnComponent.GetInstance();
+		if (m_RespawnComponent)
+			m_RespawnComponent.GetOnCanRespawnResponseInvoker_O().Insert(OnCanRespawnRequestResponse);	
+		
 		m_MapEntity = SCR_MapEntity.GetMapInstance();
 
 		if (!m_MapEntity)
@@ -162,8 +227,12 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 
 		m_RespawnButton = SCR_DeployButton.Cast(m_wRespawnButton.FindHandler(SCR_DeployButton));
 		if (m_RespawnButton)
-			m_RespawnButton.m_OnClicked.Insert(RequestRespawn);
-
+		{
+			//~ Set enabled false so players cannot press the button right after init
+			m_RespawnButton.SetEnabled(false);
+			m_RespawnButton.m_OnActivated.Insert(RequestRespawn);
+		}
+		
 		Widget spinnerRoot = GetRootWidget().FindAnyWidget("LoadingSpinner");
 		m_wLoadingSpinner = spinnerRoot.FindAnyWidget("Spinner");
 		if (m_wLoadingSpinner)
@@ -200,14 +269,18 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		if (chat)
 			m_ChatPanel = SCR_ChatPanel.Cast(chat.FindHandler(SCR_ChatPanel));
 
-		m_ChatButton = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ChatButton", GetRootWidget());
+		m_ChatButton = SCR_InputButtonComponent.GetInputButtonComponent("ChatButton", GetRootWidget());
 		if (m_ChatButton)
 			m_ChatButton.m_OnActivated.Insert(OnChatToggle);
 
-		m_PauseButton = SCR_NavigationButtonComponent.GetNavigationButtonComponent("PauseButton", GetRootWidget());
+		m_PauseButton = SCR_InputButtonComponent.GetInputButtonComponent("PauseButton", GetRootWidget());
 		if (m_PauseButton)
 			m_PauseButton.m_OnActivated.Insert(OnPauseMenu);
 
+		m_GroupOpenButton = SCR_InputButtonComponent.GetInputButtonComponent("GroupManager", GetRootWidget());
+		if (m_GroupOpenButton)
+			m_GroupOpenButton.m_OnActivated.Insert(OpenGroupMenu);
+		
 		HookEvents();
 		InitMapDeploy();
 	}
@@ -219,17 +292,21 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 
 		if (m_MapEntity && m_MapEntity.IsOpen())
 			m_MapEntity.CloseMap();
+		
+		if (m_RespawnComponent)
+			m_RespawnComponent.GetOnCanRespawnResponseInvoker_O().Remove(OnCanRespawnRequestResponse);	
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuFocusLost()
 	{
 		GetGame().GetInputManager().RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, OpenPlayerList);
-		GetGame().GetInputManager().RemoveActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
 		GetGame().GetInputManager().RemoveActionListener("DeployMenuSelect", EActionTrigger.DOWN, RequestRespawn);
 		
 		GetGame().GetInputManager().RemoveActionListener("SpawnPointNext", EActionTrigger.DOWN, NextSpawn);
 		GetGame().GetInputManager().RemoveActionListener("SpawnPointPrev", EActionTrigger.DOWN, PrevSpawn);
+		
+		super.OnMenuFocusLost();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -240,11 +317,12 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 			editorManager.AutoInit();
 
 		GetGame().GetInputManager().AddActionListener("ShowScoreboard", EActionTrigger.DOWN, OpenPlayerList);
-		GetGame().GetInputManager().AddActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
 		GetGame().GetInputManager().AddActionListener("DeployMenuSelect", EActionTrigger.DOWN, RequestRespawn);
 
 		GetGame().GetInputManager().AddActionListener("SpawnPointNext", EActionTrigger.DOWN, NextSpawn);
 		GetGame().GetInputManager().AddActionListener("SpawnPointPrev", EActionTrigger.DOWN, PrevSpawn);
+		
+		super.OnMenuFocusGained();
 	}
 
 	//! Select next available spawn point.
@@ -269,7 +347,12 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 
 		m_LoadoutRequestUIHandler.ShowAvailableLoadouts(plyFaction);
 		m_GroupRequestUIHandler.ShowAvailableGroups(plyFaction);
+		if (!m_GroupRequestUIHandler.GetPlayerGroup())
+			m_GroupRequestUIHandler.JoinGroupAutomatically();
 		m_SpawnPointRequestUIHandler.ShowAvailableSpawnPoints(plyFaction);
+		
+		// If the player gets killed while the pause menu is opened, we need to move it on top of the deploy screen
+		PauseMenuUI.MoveToTop();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -279,11 +362,14 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 
 		if (m_MapEntity && m_MapEntity.IsOpen())
 			m_MapEntity.CloseMap();
+		
+		m_fCurrentDeployTimeOut = 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
 	{
+		m_RespawnButton.SetSuppliesEnabled(m_bSuppliesEnabled);
 		GetGame().GetInputManager().ActivateContext("DeployMenuContext");
 		GetGame().GetInputManager().ActivateContext("DeployMenuMapContext");
 		
@@ -298,41 +384,158 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 
 		if (m_ChatPanel)
 			m_ChatPanel.OnUpdateChat(tDelta);
-
+		
+		//~ Update if player can spawn
+		m_fCurrentCanSpawnUpdateTime += tDelta;
+		if (m_fCurrentCanSpawnUpdateTime >= CHECK_CAN_SPAWN_SPAWNPOINT_TIME)
+		{
+			m_fCurrentCanSpawnUpdateTime -= CHECK_CAN_SPAWN_SPAWNPOINT_TIME;
+			
+			//~ Only check if can spawn if spawn is requested
+			if (!m_bRespawnRequested && m_LoadoutRequestUIHandler.GetPlayerLoadout())
+				m_RespawnComponent.CanSpawn(new SCR_SpawnPointSpawnData(m_LoadoutRequestUIHandler.GetPlayerLoadout().GetLoadoutResource(), m_iSelectedSpawnPointId));
+		}
+		
+		if (m_fCurrentDeployTimeOut > 0)
+			m_fCurrentDeployTimeOut -= tDelta;
+		
+		//~ If can respawn
+		int remainingTime = -1;
+			
+		//~ Timer calculation and sound event
 		if (m_ActiveRespawnTimer)
 		{
-			int remainingTime = m_ActiveRespawnTimer.GetPlayerRemainingTime(m_iPlayerId);
+			remainingTime = m_ActiveRespawnTimer.GetPlayerRemainingTime(m_iPlayerId);
+			
 			if (remainingTime > 0)
 			{
 				if (remainingTime != m_iPreviousTime)
 				{
-					SCR_UISoundEntity.SetSignalValueStr("countdownValue", remainingTime);
-					SCR_UISoundEntity.SetSignalValueStr("maxCountdownValue", m_ActiveRespawnTimer.GetRespawnTime());					
-					SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RESPAWN_COUNTDOWN);
-					m_iPreviousTime = remainingTime;
-				}
-
-				string respawnTime = SCR_Global.GetTimeFormatting(
-					remainingTime,
-					ETimeFormatParam.DAYS | ETimeFormatParam.HOURS,
-					ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);				
-				m_RespawnButton.SetText(respawnTime);
-				m_RespawnButton.SetEnabled(false);
-			}
-			else
-			{
-				if (m_iPreviousTime == 1)
-				{
-					SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RESPAWN_COUNTDOWN_END);
+					if (m_bDisplayTime)
+					{
+						SCR_UISoundEntity.SetSignalValueStr("countdownValue", remainingTime);
+						SCR_UISoundEntity.SetSignalValueStr("maxCountdownValue", m_ActiveRespawnTimer.GetRespawnTime());					
+						SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RESPAWN_COUNTDOWN);
+					}
+					
 					m_iPreviousTime = remainingTime;
 				}
 				
-				m_RespawnButton.SetText();
-				UpdateRespawnButton();
+				if (m_bDisplayTime)
+				{
+					if (m_UIInfoSpawnRequestResult)
+						m_RespawnButton.SetText(m_bCanRespawnAtSpawnPoint, m_UIInfoSpawnRequestResult.GetNameWithTimer(), remainingTime);
+					else 
+						m_RespawnButton.SetText(m_bCanRespawnAtSpawnPoint, FALLBACK_DEPLOY_STRING, remainingTime);
+				}
+				else 
+				{
+					if (m_UIInfoSpawnRequestResult)
+						m_RespawnButton.SetText(m_bCanRespawnAtSpawnPoint, m_UIInfoSpawnRequestResult.GetName());
+					else 
+						m_RespawnButton.SetText(m_bCanRespawnAtSpawnPoint, FALLBACK_DEPLOY_STRING);
+				}
+			}
+			else
+			{
+				if (m_iPreviousTime > 0)
+				{
+					if (m_bDisplayTime)
+						SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RESPAWN_COUNTDOWN_END);
+					
+					m_iPreviousTime = remainingTime;
+				}
+			
+				if (m_UIInfoSpawnRequestResult)
+					m_RespawnButton.SetText(m_bCanRespawnAtSpawnPoint, m_UIInfoSpawnRequestResult.GetName());
+				else 
+					m_RespawnButton.SetText(m_bCanRespawnAtSpawnPoint, FALLBACK_DEPLOY_STRING);
+			}				
+		}
+		
+		UpdateRespawnButton();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ResetRespawnResultVars()
+	{
+		m_bDisplayTime = false;
+		m_bCanRespawnAtSpawnPoint = false;
+		m_fCurrentCanSpawnUpdateTime = CHECK_CAN_SPAWN_SPAWNPOINT_TIME; //~ Makes sure to send a request if spawnpoint can be spawned at
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//~ Response from server when player sends a request to spawn
+	protected void OnCanRespawnRequestResponse(SCR_SpawnRequestComponent requestComponent, SCR_ESpawnResult response, SCR_SpawnData data)
+	{
+		m_bCanRespawnAtSpawnPoint = (response == SCR_ESpawnResult.OK);
+		SCR_BaseSpawnPointRequestResultInfo spawnPointResultInfo = m_RespawnSystemComp.GetSpawnPointRequestResultInfo(requestComponent, response, data);
+		
+		if (!spawnPointResultInfo)
+		{
+			m_RespawnButton.SetText(m_bCanRespawnAtSpawnPoint, FALLBACK_DEPLOY_STRING);
+			UpdateRespawnButton();
+			
+			return;
+		}
+		
+		m_UIInfoSpawnRequestResult = spawnPointResultInfo.GetUIInfo();
+		m_bDisplayTime = spawnPointResultInfo.ShowRespawnTime();
+		
+		m_RespawnButton.SetSupplyCost(GetLoadoutCost(m_PlyLoadoutComp));
+		
+		m_bSuppliesEnabled = false;
+		
+		SCR_SpawnPoint spawnPoint = SCR_SpawnPoint.GetSpawnPointByRplId(m_SpawnPointRequestUIHandler.GetCurrentRplId());
+		
+		if (!spawnPoint)
+			return;
+		
+		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(spawnPoint);
+		
+		if (resourceComponent)
+			m_bSuppliesEnabled = true;
+		else
+		{
+			IEntity parentEntity = spawnPoint.GetParent();
+			
+			if (parentEntity)
+			{
+				resourceComponent = SCR_ResourceComponent.FindResourceComponent(parentEntity);
+				
+				if (resourceComponent)
+					m_bSuppliesEnabled = true;
 			}
 		}
+		
+		m_RespawnButton.SetSuppliesEnabled(m_bSuppliesEnabled);
+		
+		//~ Timer calculation and sound event
+		if (m_ActiveRespawnTimer)
+		{
+			int remainingTime = m_ActiveRespawnTimer.GetPlayerRemainingTime(m_iPlayerId);
+			
+			if (remainingTime > 0)
+			{
+				if (m_UIInfoSpawnRequestResult)
+					m_RespawnButton.SetText(m_bCanRespawnAtSpawnPoint, m_UIInfoSpawnRequestResult.GetNameWithTimer(), remainingTime);
+				else 
+					m_RespawnButton.SetText(m_bCanRespawnAtSpawnPoint, FALLBACK_DEPLOY_STRING, remainingTime);
+				
+				UpdateRespawnButton();
+				return;
+			}
+		}
+		
+		if (m_UIInfoSpawnRequestResult)
+			m_RespawnButton.SetText(m_bCanRespawnAtSpawnPoint, m_UIInfoSpawnRequestResult.GetName());
+		else 
+			m_RespawnButton.SetText(m_bCanRespawnAtSpawnPoint, FALLBACK_DEPLOY_STRING);
+		
+		UpdateRespawnButton();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Find all components in the layout that are needed in order for deploy menu to function correctly.
 	protected void FindRequestHandlers()
 	{
@@ -368,7 +571,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		m_SpawnRequestManager.GetOnRespawnResponseInvoker_O().Insert(OnRespawnResponse);
 		
 		m_SpawnPointRequestUIHandler.GetOnSpawnPointSelected().Insert(SetSpawnPoint);
-		m_GroupRequestUIHandler.GetOnPlayerGroupJoined().Insert(OnPlayerGroupJoined);
+		m_GroupRequestUIHandler.GetOnLocalPlayerGroupJoined().Insert(OnLocalPlayerGroupJoined);
 		m_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
 
 		m_GameMode.GetOnPreloadFinished().Insert(HideLoading);
@@ -399,8 +602,10 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	}
 
 	//! Callback when player joins a group
-	protected void OnPlayerGroupJoined(SCR_AIGroup group)
+	protected void OnLocalPlayerGroupJoined(SCR_AIGroup group)
 	{
+		if (m_SpawnPointRequestUIHandler)
+			m_SpawnPointRequestUIHandler.UpdateRelevantSpawnPoints();
 	}
 
 	//! Initializes the map with deploy menu config.
@@ -432,7 +637,8 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 
 	//! Sets the currently selected spawn point.
 	protected void SetSpawnPoint(RplId id, bool smoothPan = true)
-	{
+	{	
+		ResetRespawnResultVars();
 		m_iSelectedSpawnPointId = id;
 
 		SCR_SpawnPoint sp = SCR_SpawnPoint.GetSpawnPointByRplId(id);
@@ -451,6 +657,8 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 			else
 				m_ActiveRespawnTimer = m_PlayerRespawnTimer;
 		}
+		
+		UpdateRespawnButton();
 	}
 
 	//! Centers map to a specific spawn point.
@@ -482,6 +690,8 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	//! Sends a respawn request based on assigned loadout and selected spawn point.
 	protected void RequestRespawn()
 	{
+		UpdateRespawnButton();
+		
 		if (!m_RespawnButton.IsEnabled())
 			return;
 
@@ -500,6 +710,8 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 			return;
 		}
 
+		m_fCurrentDeployTimeOut = DEPLOY_TIME_OUT;
+		
 		SCR_SpawnPointSpawnData rspData = new SCR_SpawnPointSpawnData(resourcePrefab, m_iSelectedSpawnPointId);
 		m_SpawnRequestManager.RequestSpawn(rspData);
 	}
@@ -535,6 +747,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		{
 			m_LoadoutRequestUIHandler.RefreshLoadoutPreview();
 			m_RespawnButton.SetEnabled(true);
+			m_RespawnButton.SetSupplyCost(GetLoadoutCost(component));
 		}
 
 		m_wLoadingSpinner.SetVisible(false);
@@ -545,6 +758,9 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	//----------------------------------------------------------------------------------------------
 	protected void OnPlayerFactionSet(Faction assignedFaction)
 	{
+		if (!assignedFaction)
+			return;
+
 		if (m_LoadoutRequestUIHandler)
 			m_LoadoutRequestUIHandler.ShowAvailableLoadouts(assignedFaction);
 		
@@ -599,8 +815,21 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	//! Sets respawn button enabled based on certain conditions.
 	protected void UpdateRespawnButton()
 	{
-		m_RespawnButton.SetEnabled(!m_bRespawnRequested && m_RespawnSystemComp.IsRespawnEnabled() && m_PlyLoadoutComp.GetLoadout() != null);
+		int remainingTime = -1;
+		
+		if (m_ActiveRespawnTimer)
+			remainingTime = m_ActiveRespawnTimer.GetPlayerRemainingTime(m_iPlayerId);
+		
+		bool hasGroup = true;
+		if (m_GroupRequestUIHandler && m_GroupRequestUIHandler.IsEnabled())
+			hasGroup = m_GroupRequestUIHandler.GetPlayerGroup();
+		m_RespawnButton.SetEnabled(!m_bRespawnRequested && remainingTime <= 0 && m_fCurrentDeployTimeOut <= 0 && m_bCanRespawnAtSpawnPoint && m_PlyLoadoutComp.GetLoadout() != null && hasGroup);
 	}
+
+	protected void OpenGroupMenu()
+	{
+		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.GroupMenu);
+	}	
 
 	//------------------------------------------------------------------------------------------------
 	//! Opens deploy menu.
@@ -627,42 +856,110 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 
 //------------------------------------------------------------------------------------------------
 //! Component that handles the request respawn button.
-class SCR_DeployButton : SCR_ButtonBaseComponent
+class SCR_DeployButton : SCR_InputButtonComponent
 {
-	[Attribute("Text")]
+	[Attribute("TextHint")]
 	protected string m_sText;
+	
+	[Attribute("ShortcutInput")]
+	protected string m_sShortcutName;
+	
+	[Attribute("HorizontalLayout1")]
+	protected string m_sTextHolderName;
+	
 	protected TextWidget m_wText;
+	protected Widget m_wShortcut;
+	protected Widget m_wTextHolder;
 
 	[Attribute("Spinner")]
 	protected string m_sLoadingSpinner;
+	
 	protected Widget m_wLoadingSpinner;
+	protected Widget m_wSupplies;
+	protected RichTextWidget m_wSuppliesText;
 
 	protected SCR_LoadingSpinner m_LoadingSpinner;
 	
-	protected string m_sTextDefault = "<action name=\"DeployMenuSelect\"/>#AR-ButtonSelectDeploy";
-
+	protected int m_iSupplyCost;
+	protected bool m_bSuppliesEnabled;
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
 		
 		m_wText = TextWidget.Cast(w.FindAnyWidget(m_sText));
+		m_wShortcut = w.FindAnyWidget(m_sShortcutName);
+		m_wTextHolder = w.FindAnyWidget(m_sTextHolderName);
 		m_wLoadingSpinner = w.FindAnyWidget(m_sLoadingSpinner);
 		m_LoadingSpinner = SCR_LoadingSpinner.Cast(m_wLoadingSpinner.FindHandler(SCR_LoadingSpinner));
+		m_wSupplies = w.FindAnyWidget("w_Supplies");
+		
+		if (m_wSupplies)
+			m_wSuppliesText = RichTextWidget.Cast(m_wSupplies.FindAnyWidget("SuppliesText"));
 	}
-
-	//! Set text of the button.
-	void SetText(string text = string.Empty)
+	
+	//----------------------------------------------------------------------------------------------
+	void SetSuppliesEnabled(bool enabled)
 	{
-		if (text.IsEmpty())
-			text = m_sTextDefault;
-		else
-			text = string.Format("%1 %2", "#AR-DeployMenu_DeployIn", text);
-
-		if (m_wText)
-			m_wText.SetTextFormat(text);
+		m_bSuppliesEnabled = enabled;
 	}
+	
+	//----------------------------------------------------------------------------------------------
+	void SetSupplyCost(int cost)
+	{
+		m_iSupplyCost = cost;
+	}
+	
+	//----------------------------------------------------------------------------------------------
+	int GetSupplyCost()
+	{
+		return m_iSupplyCost;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set text of the button.
+	void SetText(bool deployEnabled, string text, float remainingTime = -1)
+	{
+		if (!m_wText)
+			return;
+		
+		string inputText;
+		
+		if (m_wShortcut)
+			m_wShortcut.SetVisible(deployEnabled && remainingTime <= 0);
+		
+		if (!text.IsEmpty())
+		{
+			if (remainingTime >= 0)
+			{
+				string respawnTime = SCR_FormatHelper.GetTimeFormatting(remainingTime, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);		
+				m_wText.SetTextFormat(text, respawnTime);
+				return;
+			}
 
+			m_wText.SetText(text);
+			if (m_wSupplies)
+				m_wSupplies.SetVisible(m_bSuppliesEnabled);
+			
+			if (m_wSuppliesText)
+				m_wSuppliesText.SetText(string.ToString(m_iSupplyCost));
+			
+			return;
+		}
+		
+		//~ Empty string given string
+		if (remainingTime >= 0)
+		{
+			string respawnTime = SCR_FormatHelper.GetTimeFormatting(remainingTime, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);		
+			m_wText.SetTextFormat("ERROR %1", respawnTime);
+			return;
+		}
+			
+		m_wText.SetText("ERROR");
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Update the loading spinner widget.
 	void UpdateSpinner(float timeSlice)
 	{
@@ -670,10 +967,11 @@ class SCR_DeployButton : SCR_ButtonBaseComponent
 			m_LoadingSpinner.Update(timeSlice);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Set loading spinner widget visible.
 	void ShowLoading(bool show)
 	{
-		m_wText.SetVisible(show);
+		m_wTextHolder.SetVisible(show);
 		m_wLoadingSpinner.SetVisible(!show);
 	}
 };

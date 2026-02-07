@@ -1,30 +1,30 @@
 /*
 Pooled scrollable list that can endless simulate scrolling with only small amount of widgets.
-Component should behave same way as standart scrolling, but should pool used widget and change their data.
+The component assumes two pages to be filled with entries, were Page 0 is by default on top of Page 1
+These pages are shuffled every time the scrolling is about to reach the top/bottom of a page, thus resulting in continuous scrolling. 
+Size widgets above and below the pages are used to fill space and simulate the presence of other entries.
+Used with layout {611B71C627F5C61C}UI/layouts/WidgetLibraryExtended/ListView/WLib_PooledList.layout
 */
 
 //------------------------------------------------------------------------------------------------
-class SCR_PooledListComponent : ScriptedWidgetComponent
+class SCR_PooledListComponent : SCR_ScriptedWidgetComponent
 {
 	// Entries
 	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Entry widget that list is filled with.")]
 	protected ResourceName m_sEntry;
 
-	[Attribute("4", UIWidgets.EditBox, desc: "Space between each entry")] 
-	protected int m_iEntriesBottomPadding;
-	
 	// Animation effects attributes 
 	[Attribute("1", UIWidgets.EditBox, desc: "Time for apearing animation")] 
 	protected float m_fAnimationAppearTime;
 	
-	[Attribute("10", UIWidgets.EditBox, desc: "How many entries should be created for single page")] 
+	[Attribute("20", UIWidgets.EditBox, desc: "How many entries should be created for single page")] 
 	protected int m_iPageEntriesCount;
 	
-	[Attribute("0", UIWidgets.EditBox, desc: "On which entry from border page should be changed")] 
+	[Attribute("15", UIWidgets.EditBox, desc: "On which entry from border page should be changed")] 
 	protected int m_iPageChangeOffset;
 	
 	// Count of all entries in list 
-	protected int m_iAllEntriesCount = 0;
+	protected int m_iAllEntriesCount;
 
 	// Constant sizing 
 	const float SIZE_UNMEASURED = -1;
@@ -34,8 +34,7 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 	const float ENTRY_OFFSET_UP = 0.1;
 	
 	// Constant content z orders 
-	const int ZORDER_LIST = 1;
-	const int ZORDER_OFFSET_TOP = 0;
+	const int ZORDER_OFFSET_TOP;
 	const int ZORDER_OFFSET_BOTTOM = 3;
 	
 	// Constant idget names 
@@ -54,43 +53,38 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
  	protected float m_fPagePxHeight = SIZE_UNMEASURED;
 	protected float m_fViewPxHeight = SIZE_UNMEASURED;
 	protected float m_fEntryPxHeight = SIZE_UNMEASURED;
-	protected float m_fEntryPaddingPxHeight = SIZE_UNMEASURED;
 	
 	// Content widgets 
-	Widget m_wRoot;
 	protected ScrollLayoutWidget m_wScroll;
 	
 	protected Widget m_wPagesWrap;
 	protected Widget m_wPage0;
 	protected Widget m_wPage1;
-	
+
 	protected Widget m_wPage0FirstEntry;
 	protected Widget m_wPage0LastEntry;
 	protected Widget m_wPage1FirstEntry;
 	protected Widget m_wPage1LastEntry;
 	
-	protected Widget m_wFocusRest;
-	protected ref array<Widget> m_aEntryWidgets = new ref array<Widget>;
+	protected Widget m_wLastFocused;
+
+	protected ref array<Widget> m_aEntryWidgets = {};
 	
 	protected SizeLayoutWidget m_wSizeOffsetTop;
 	protected SizeLayoutWidget m_wSizeOffsetBottom;
 	
 	// Pages switching 
-	protected bool m_bPagesInverted = false;
-	protected int m_iCurrentPage = 0;
-	
-	protected bool m_bIsListFocused = false;
-	
-	// Focused widgets 
-	protected int m_iFocusedEntryId = -1;
-	protected Widget m_wLastFocused = null;
-	protected bool m_bIsFocusVisible = false;
-	
+	protected bool m_bPagesInverted;
+	protected int m_iCurrentPage;
+
 	// Scroll vars 
-	protected float m_ScrollLastY = 0;
+	protected float m_ScrollLastY;
+	
+	// Focus
+	bool m_bIsListFocused;
 	
 	// Invokers 
-	ref ScriptInvoker<int> m_OnSetPage = new ScriptInvoker;
+	protected ref ScriptInvokerInt m_OnSetPage;
 	
 	//-------------------------------------
 	// ScriptedWidgetComponent override
@@ -102,22 +96,22 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		super.HandlerAttached(w);
 		
 		// Accessing handlers and widgets 
-		m_wRoot = w;
 		AccessingHandlers();	
 		
 		CreateEntriesWidgets();
 		
 		SetupOffsets(0);
 		
+		/*
 		// Setup actions 
 		GetGame().GetInputManager().AddActionListener("MenuUp", EActionTrigger.DOWN, OnActionUp);
-		GetGame().GetInputManager().AddActionListener("MenuDown", EActionTrigger.DOWN, OnActionDown);
+		GetGame().GetInputManager().AddActionListener("MenuDown", EActionTrigger.DOWN, OnActionDown);	
+		*/
 	}
 	
 	//-------------------------------------
 	// Input actions 
 	//-------------------------------------
-	
 	//------------------------------------------------------------------------------------------------
 	//! Call this when up action is activated 
 	protected void OnActionUp()
@@ -157,14 +151,6 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 			workspace.SetFocusedWidget(m_wPage1LastEntry);
 		else if (focus == m_wPage1FirstEntry)
 			workspace.SetFocusedWidget(m_wPage0LastEntry);
-		
-		// Set pages up navigation beahavior 
-		bool onFirstEntry = (m_iFocusedEntryId == 0);
-		
-		if (onFirstEntry)
-			m_wPagesWrap.SetNavigation(WidgetNavigationDirection.UP, WidgetNavigationRuleType.STOP);
-		else 
-			m_wPagesWrap.SetNavigation(WidgetNavigationDirection.UP, WidgetNavigationRuleType.ESCAPE);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -178,15 +164,6 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		
 		if (m_wLastFocused)
 			workspace.SetFocusedWidget(m_wLastFocused);
-		
-		// Set pages down navigation beahavior 
-		bool onLastEntry = (m_iFocusedEntryId == m_iAllEntriesCount - 1);
-		
-		if (onLastEntry)
-			m_wPagesWrap.SetNavigation(WidgetNavigationDirection.DOWN, WidgetNavigationRuleType.STOP);
-		else 
-			m_wPagesWrap.SetNavigation(WidgetNavigationDirection.DOWN, WidgetNavigationRuleType.ESCAPE);
-		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -216,19 +193,23 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 			return 0;
 		
 		// Ratio between entries in single page and entries out of view
-		float scrollPageRatio = m_iPageEntriesCount / EntriesOutOfView();
+		float scrollPageRatio = m_iPageEntriesCount / entriesOutOfView;
 		
 		// Check if page is changed
-		float pos = (scrollY / scrollPageRatio);
+		float pos = scrollY / scrollPageRatio;
+		
+		// Moving up
 		pos = pos - (m_iPageChangeOffset / m_iPageEntriesCount);
+		
+		//TODO: find out why moving down gets stuck
 		
 		int currentPage = Math.Floor(pos);
 		if (currentPage < 0)
 			return 0;
 		
-		return Math.Floor(pos);
+		return currentPage;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! How many entries are of view - how many entries can be scrolled 
 	protected float EntriesOutOfView()
@@ -239,10 +220,10 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		// What percent of whole list can bee seen 
 		float pageViewRatio = m_fViewPxHeight / m_fPagePxHeight; 
 		float outOfView = m_iAllEntriesCount - m_iPageEntriesCount * pageViewRatio;
-		
+
 		if (outOfView < 0)
 			return 0;
-		
+
 		return outOfView;
 	}
 
@@ -268,12 +249,11 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 	//! Update positions of pages and offsets 
 	void UpdateScroll()
 	{
- 		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		// Get scroll positions 
 		float scrollX, scrollY = 0;
 		m_wScroll.GetSliderPos(scrollX, scrollY);
-		
+
 		// Check if current focus is in list 
 		Widget focused = FocusedWidgetFromEntryList();
 		
@@ -282,8 +262,7 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		
 		// Is list foucused - is current focus on list fallback widget or list entry?
 		Widget workspaceFocused = workspace.GetFocusedWidget();
-		m_bIsListFocused = (workspaceFocused == m_wFocusRest || workspaceFocused == m_wLastFocused);
-		
+		m_bIsListFocused = (workspaceFocused == m_wLastFocused);
 		// Check scroll change 
 		if (m_ScrollLastY == scrollY)
 			return;
@@ -297,29 +276,6 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 			CheckEntrySize();
 			MoveToTop();
 		}
-		
-		// Show entry focus
-		if (m_iFocusedEntryId != -1 && m_fEntryPxHeight != 0)
-		{			
-			// Is entry currenlty within view 
-			m_bIsFocusVisible = IsFocusVisible(m_iFocusedEntryId);
-			
-			if (!m_bIsFocusVisible)
-			{
-				// Move focus to resting dummy widget if entry should not be visible
-				if (m_wFocusRest)
-				{
-					workspace.SetFocusedWidget(m_wFocusRest);
-				}
-			}
-			else
-			{
-				if (m_wLastFocused && focused != m_wLastFocused)
-				{
-					workspace.SetFocusedWidget(m_wLastFocused);
-				}
-			}
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -328,7 +284,7 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 	{
 		SetCurrentPageBase(page);
 		UpdateEntries();
-	}
+	}	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Base function for updating current page
@@ -372,29 +328,19 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		SetupOffsets(page);
 		
 		// Inverted order
-		if (invert)
-		{
-			m_wPage0.SetZOrder(ZORDER_LIST + 1);
-			m_wPage1.SetZOrder(ZORDER_LIST);
-			return; 
-		}
-		
-		// Switch pages order to simulate scrolling 
-		m_wPage0.SetZOrder(ZORDER_LIST);
-		m_wPage1.SetZOrder(ZORDER_LIST + 1);
+		m_wPage0.SetZOrder(invert);
+		m_wPage1.SetZOrder(!invert);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set sizes of top and bottom offsets 
 	protected void SetupOffsets(int page)
 	{
-		float entryWithOffset = m_fEntryPxHeight + m_iEntriesBottomPadding;
-		
 		int overflowEntryCount = m_iAllEntriesCount - m_iPageEntriesCount*2;
-		float offset = entryWithOffset * overflowEntryCount - m_fPagePxHeight * page;
+		float offset = m_fEntryPxHeight * overflowEntryCount - m_fPagePxHeight * page;
 		
 		// testing calculations 
-		float pageSizeBaseOnEntry = entryWithOffset * m_iPageEntriesCount;
+		float pageSizeBaseOnEntry = m_fEntryPxHeight * m_iPageEntriesCount;
 
 		m_wSizeOffsetTop.SetHeightOverride(m_fPagePxHeight * page);
 		m_wSizeOffsetBottom.SetHeightOverride(offset);
@@ -458,12 +404,10 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		// Base scroll layout 
 		m_wScroll = ScrollLayoutWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_SCROLL_LAYOUT));
 		
-		// Find pages 
+		// Find pages
 		m_wPagesWrap = m_wRoot.FindAnyWidget(WIDGET_PAGES);
 		m_wPage0 = m_wRoot.FindAnyWidget(WIDGET_PAGE0);
 		m_wPage1 = m_wRoot.FindAnyWidget(WIDGET_PAGE1);
-		
-		m_wFocusRest = m_wRoot.FindAnyWidget(WIDGET_FOCUS_REST);
 		
 		// Find size offsets 
 		m_wSizeOffsetTop = SizeLayoutWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_SIZE_OFFSET_TOP));
@@ -477,13 +421,13 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		if(!m_wRoot || m_sEntry.IsEmpty())
 			return; 
 		
-		CreateEntiesWidgetsInPage(m_wPage0, m_iPageEntriesCount, m_wPage0FirstEntry, m_wPage0LastEntry);
-		CreateEntiesWidgetsInPage(m_wPage1, m_iPageEntriesCount, m_wPage1FirstEntry, m_wPage1LastEntry);
+		CreateEntriesWidgetsInPage(m_wPage0, m_iPageEntriesCount, m_wPage0FirstEntry, m_wPage0LastEntry);
+		CreateEntriesWidgetsInPage(m_wPage1, m_iPageEntriesCount, m_wPage1FirstEntry, m_wPage1LastEntry);
 	}	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Create entries to selected page and assing first and last entries 
-	protected void CreateEntiesWidgetsInPage(Widget parent, int count, out Widget firstEntry, out Widget lastEntry)
+	protected void CreateEntriesWidgetsInPage(Widget parent, int count, out Widget firstEntry, out Widget lastEntry)
 	{
 		for (int i = 0; i < count; i++)
 		{
@@ -518,9 +462,6 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		// Save in widget list  
 		m_aEntryWidgets.Insert(widget);
 		
-		// Set padding 
-		VerticalLayoutSlot.SetPadding(widget, 0, 0, 0, m_iEntriesBottomPadding);
-		
 		return widget;
 	}
 
@@ -547,10 +488,6 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 	
 			// Height of view int px - how much can user see in px
 			m_wRoot.GetScreenSize(x, m_fViewPxHeight);
-			
-			// Get real entry bottom padding in px 
-			m_fEntryPaddingPxHeight = m_fPagePxHeight - m_fEntryPxHeight * m_iPageEntriesCount;
-	  		m_fEntryPaddingPxHeight /= m_iPageEntriesCount;
 			
 			// Check measures
 			if (m_fEntryPxHeight != 0)
@@ -620,38 +557,6 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Return true if is possible to see focused entry by id
- 	protected bool IsFocusVisible(int id)
-	{
-		// Zero division check 
-		if (m_iAllEntriesCount == 0 || m_fListPxHeight == 0)
-			return false;
-		
-		// Position of entry in px by given id 
-		float entryPosY = id * m_fEntryPxHeight;
-		
-		// Position in percentage
-		float entryPosPerc = entryPosY / m_fListPxHeight;
-		
-		// View in percentage 
-		float viewPerc = m_fViewPxHeight/m_fListPxHeight;
-		
-		// Top and bottom positions of current view in %
-		float top = m_ScrollLastY * (1 - viewPerc);
-		float bottom = top + viewPerc;
-		
-		// Entry in perc corection  
-		float entryHeightPerc = m_fEntryPxHeight/m_fListPxHeight;
-		bottom += entryHeightPerc;
-
-		// Check if entry is in current view 
-		if (top <= entryPosPerc && entryPosPerc <= bottom)
-			return true;
-		
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! Return if and which entry widget is actually focus 
 	protected Widget FocusedWidgetFromEntryList()
 	{
@@ -665,52 +570,21 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		return focused;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	protected void SetFocus(Widget widget)
-	{
-		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		Widget focused = workspace.GetFocusedWidget();
-		
-		// Is out of view 
-		if (!m_bIsFocusVisible)
-		{
-			// Move focus to resting dummy widget if entry should not be visible
-			if (m_wFocusRest)
-				workspace.SetFocusedWidget(m_wFocusRest);
-			
-			return;
-		}
-		
-		
-		if (widget && focused != widget)
-		{
-			workspace.SetFocusedWidget(widget);
-		}
-	}
-	
 	//-------------------------------------
 	// Get & Set
 	//-------------------------------------
-	
 	//------------------------------------------------------------------------------------------------
-	int GetPageEntriesCount() { return m_iPageEntriesCount; }
-	
-	//------------------------------------------------------------------------------------------------
-	array<Widget> GetEntryWidgets() { return m_aEntryWidgets; }
-	
-	//------------------------------------------------------------------------------------------------\
-	//! Return hcount of entries that can be scrolled 
-	int ScrollableEntriesCount() 
-	{ 
-		int dif = m_iAllEntriesCount - m_aEntryWidgets.Count();
-		
-		// No entries check 
-		if (dif < 0)
-			return 0;
-		
-		return dif;
+	int GetPageEntriesCount()
+	{
+		return m_iPageEntriesCount;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	array<Widget> GetEntryWidgets()
+	{ 
+		return m_aEntryWidgets;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// Setup entries defaults and total count 
 	void SetDataEntries(int entriesCount)
@@ -737,16 +611,31 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		
 		return null;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetIsListFocused(bool focused) 
+	{
+		m_bIsListFocused = focused; 
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetIsListFocused(bool focused) { m_bIsListFocused = focused; }
-	
-	//------------------------------------------------------------------------------------------------
-	bool IsListFocused() { return m_bIsListFocused; }
-	
+	bool IsListFocused() 
+	{ 
+		return m_bIsListFocused;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	Widget GetScrollWidget()
 	{
 		return m_wScroll;
 	}
-};
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerInt GetOnSetPage()
+	{
+		if (!m_OnSetPage)
+			m_OnSetPage = new ScriptInvokerInt();
+
+		return m_OnSetPage;
+	}
+}

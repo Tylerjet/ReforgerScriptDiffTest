@@ -45,6 +45,7 @@ class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 	private bool m_bIsDefaultAngle;
 	private bool m_bIsStartAtCurrentPos;
 	private bool m_bDisableInterruption;
+	private vector m_vInitPos;
 	private vector m_vTargetPos;
 	private vector m_vTargetRot;
 	private float m_fDistance;
@@ -105,16 +106,21 @@ class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 		{
 			if (m_sActionTeleportToCursor && GetInputManager().GetActionValue(m_sActionTeleportToCursor))
 			{
-				//--- Under cursor
+				//--- Teleport under cursor
 				vector pos;
 				if (!param.GetCursorWorldPos(pos)) return;
 				if (!TeleportCamera(pos)) return;
 			}
 			if (m_sActionTeleportToPlayer && GetInputManager().GetActionValue(m_sActionTeleportToPlayer))
 			{
-				//--- On player
+				//--- Teleport to player (or on initial camera position if player is not present)
+				vector pos = m_vInitPos;
 				IEntity player = SCR_PlayerController.GetLocalMainEntity();
-				if (!player || !TeleportCamera(player.GetOrigin(), false, true)) return;
+				if (player)
+					pos = player.GetOrigin();
+				
+				if (!TeleportCamera(pos, false, true))
+					return;
 			}
 		}
 		
@@ -193,6 +199,7 @@ class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 	}
 	override bool EOnCameraInit()
 	{
+		m_vInitPos = GetCameraEntity().GetOrigin();
 		return true;
 	}
 	override void EOnCameraParentChange(bool attached, IEntity parent)

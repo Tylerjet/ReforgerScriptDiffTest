@@ -1,4 +1,4 @@
-[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EVotingType, "m_Type")]
+[BaseContainerProps(configRoot:true), SCR_BaseContainerCustomTitleEnum(EVotingType, "m_Type")]
 class SCR_VotingEditorIn: SCR_VotingReferendum
 {
 	[Attribute(SCR_Enum.GetDefault(EEditorMode.EDIT), uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(EEditorMode))]

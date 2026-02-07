@@ -23,6 +23,7 @@ class SCR_ZoomManualCameraComponent : SCR_BaseManualCameraComponent
 	
 	protected float m_fTargetFOV;
 	protected bool m_bIsAnimating;
+	protected bool m_bIsInstant;
 	protected ref ScriptInvoker m_OnZoomChange = new ScriptInvoker();
 	
 	ScriptInvoker GetOnZoomChange()
@@ -30,6 +31,16 @@ class SCR_ZoomManualCameraComponent : SCR_BaseManualCameraComponent
 		return m_OnZoomChange;
 	}
 	
+	override void EOnCameraSave(SCR_ManualCameraComponentSave data)
+	{
+		if (m_fTargetFOV != 0)
+			data.m_aValues = {m_fTargetFOV};
+	}
+	override void EOnCameraLoad(SCR_ManualCameraComponentSave data)
+	{
+		m_fTargetFOV = data.m_aValues[0];
+		m_bIsInstant = true;
+	}
 	override void EOnCameraReset()
 	{
 		m_fTargetFOV = GetCameraEntity().GetDefaultFOV();
@@ -55,7 +66,14 @@ class SCR_ZoomManualCameraComponent : SCR_BaseManualCameraComponent
 			m_bIsAnimating= true;
 		}
 		
-		if (m_bIsAnimating)
+		if (m_bIsInstant)
+		{
+			m_bIsInstant = false;
+			param.fov = m_fTargetFOV;
+			param.isDirty = true;
+			m_OnZoomChange.Invoke(param.fov);
+		}
+		else if (m_bIsAnimating)
 		{
 			param.fov = Math.Lerp(param.fov, m_fTargetFOV, Math.Min(param.timeSlice / m_fInertiaStrength, 1));
 			param.isDirty = true;

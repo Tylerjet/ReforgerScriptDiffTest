@@ -88,7 +88,7 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		AnimateWidget.Color(m_wBackground, UIColors.BACKGROUND_HOVERED, m_fAnimationRate);
-		return false;
+		return super.OnMouseEnter(w, x, y);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -12,6 +12,8 @@ class SCR_StatsPanelWidgets
 
 	ImageWidget m_wIcon;
 
+	TextWidget m_wLabel;
+
 	TextWidget m_wTextPlaceholder;
 
 	TextWidget m_wText;
@@ -23,6 +25,8 @@ class SCR_StatsPanelWidgets
 		m_wIconGlow = ImageWidget.Cast(root.FindAnyWidget("m_wIconGlow"));
 
 		m_wIcon = ImageWidget.Cast(root.FindAnyWidget("m_wIcon"));
+
+		m_wLabel = TextWidget.Cast(root.FindAnyWidget("m_wLabel"));
 
 		m_wTextPlaceholder = TextWidget.Cast(root.FindAnyWidget("m_wTextPlaceholder"));
 

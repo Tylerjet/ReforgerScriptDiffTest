@@ -85,13 +85,14 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 																							{ EWeaponType.WT_HANDGUN },
 																							{ EWeaponType.WT_FRAGGRENADE },
 																							{ EWeaponType.WT_SMOKEGRENADE },
-																							{ EGadgetType.CONSUMABLE + GADGET_OFFSET + SCR_EConsumableType.BANDAGE }, // i guess config would be nice eventually
-																							{ EGadgetType.BINOCULARS + GADGET_OFFSET },
-																							{ EGadgetType.MAP + GADGET_OFFSET },
-																							{ EGadgetType.COMPASS + GADGET_OFFSET },
-																							{ EGadgetType.FLASHLIGHT + GADGET_OFFSET }
+																							{ EGadgetType.CONSUMABLE + GADGET_OFFSET + SCR_EConsumableType.BANDAGE },
+																							{ EGadgetType.CONSUMABLE + GADGET_OFFSET + SCR_EConsumableType.TOURNIQUET },
+																							{ EGadgetType.CONSUMABLE + GADGET_OFFSET + SCR_EConsumableType.MORPHINE, EGadgetType.CONSUMABLE + GADGET_OFFSET + SCR_EConsumableType.SALINE },
+																							{ EGadgetType.RADIO + GADGET_OFFSET }, // Preferably as GadgetRadio action, then it can be saline
+																							{ EGadgetType.BUILDING_TOOL + GADGET_OFFSET } // To be replaced with engineering tool
 																						};
 
+	protected ref array<typename> m_aBlockedSlots = {};
 	protected ref array<BaseInventoryStorageComponent> m_aStoragesInStorageList = {};		//here we remember the opened storages in the Inventory menu ( in the Storages list area )
 	protected SCR_CompartmentAccessComponent m_CompartmentAcessComp;
 	protected BaseInventoryStorageComponent m_WeaponStorage;
@@ -161,6 +162,11 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		}
 	}
 		
+	//------------------------------------------------------------------------------------------------
+	void GetBlockedSlots(out notnull array<typename> blockedSlots)
+	{
+		blockedSlots.Copy(m_aBlockedSlots);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	// ! get the item inventory component 
@@ -285,7 +291,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 
 	//------------------------------------------------------------------------------------------------
 	// !
-	void StoreItemToQuickSlot( notnull IEntity pItem, int iSlotIndex = -1, bool isForced = false )
+	int StoreItemToQuickSlot( notnull IEntity pItem, int iSlotIndex = -1, bool isForced = false )
 	{
 		int iItemType = GetItemType( pItem );
 		if ( iSlotIndex == -1 ) //we don't know what slot we put the item into. Check first if we remember the type of the item
@@ -323,8 +329,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			}
 		}
 				
-		if ( iSlotIndex == - 1 )	//any suitable slot not found, do not insert into quick slot
-			return;
+		if ( iSlotIndex == -1 )	//any suitable slot not found, do not insert into quick slot
+			return -1;
 		
 		if (!isForced)
 		{
@@ -332,12 +338,12 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			if (turretCompartment)
 			{
 				if (iSlotIndex < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT)
-					return;
+					return -1;
 				
 				array<IEntity> turretWeapons = {};
 				GetTurretWeaponsList(turretCompartment, turretWeapons);
 				if (turretWeapons.Contains(pItem))
-					return;
+					return -1;
 			}
 		}
 		
@@ -354,6 +360,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			
 			m_aQuickSlotsHistory[ iSlotIndex ] = iItemType; // remember it
 		}
+
+		return iSlotIndex;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -381,7 +389,16 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	{ 
 		return m_aQuickSlots; 
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	IEntity GetItemFromQuickSlot(int index)
+	{
+		if (!m_aQuickSlots.IsIndexValid(index))
+			return null;
+
+		return m_aQuickSlots[index];
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Get currently held item. If character holds gadget, gadget is returned, otherwise current weapon.
 	IEntity GetCurrentItem()
@@ -503,6 +520,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	{
 		super.OnAddedToSlot(item, slotID);
 		
+		UpdateBlockedSlots(item, slotID, true);
+		
 		EditArmoredAttributes(item, slotID);
 
 		#ifdef DEBUG_INVENTORY20
@@ -535,9 +554,48 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	{
 		super.OnRemovedFromSlot(item, slotID);
 			
+		UpdateBlockedSlots(item, slotID, false);
+		
 		EditArmoredAttributes(item, slotID, true);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateBlockedSlots(IEntity item, int slotID, bool added)
+	{
+		BaseLoadoutClothComponent loadoutComp = BaseLoadoutClothComponent.Cast(item.FindComponent(BaseLoadoutClothComponent));
+		
+		if (!loadoutComp)
+			return;
+		
+		array<typename> blockedSlots = {};
+		
+		loadoutComp.GetBlockedSlots(blockedSlots);
+		
+		if (blockedSlots.IsEmpty())
+			return;
+		
+		if (added)
+		{
+			foreach (typename blockedSlot: blockedSlots)
+			{
+				m_aBlockedSlots.Insert(blockedSlot);
+			}
+		}
+		else
+		{
+			foreach (typename blockedSlot: blockedSlots)
+			{
+				m_aBlockedSlots.RemoveItem(blockedSlot);
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsAreaBlocked(typename areaType)
+	{
+		return m_aBlockedSlots.Contains(areaType);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Take the data from the armor attribute, and store them in map on damagemanager
 	protected void EditArmoredAttributes(IEntity item, int slotID, bool remove = false)
@@ -560,8 +618,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	// !
 	void HandleOnItemAddedToInventory( IEntity item, BaseInventoryStorageComponent storageOwner )
 	{
-		StoreItemToQuickSlot( item );
-		SCR_WeaponSwitchingBaseUI.RefreshQuickSlots();
+		int targetQuickSlot = StoreItemToQuickSlot(item);
+		if (targetQuickSlot > -1 && SCR_WeaponSwitchingBaseUI.s_bOpened)
+			SCR_WeaponSwitchingBaseUI.RefreshQuickSlots(targetQuickSlot);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -569,25 +628,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	void HandleOnItemRemovedFromInventory( IEntity item, BaseInventoryStorageComponent storageOwner )
 	{
 		m_mSlotHistory.Set(item, m_aQuickSlots.Find(item));
-
-		int quickSlot = m_aQuickSlots.Find(item);
-		int itemType = GetItemType(item);
-
-		typename t = BaseWeaponComponent;
-		if (itemType > GADGET_OFFSET)
-			t = SCR_GadgetComponent;
-
-		SCR_ItemTypeSearchPredicate itemSearch = new SCR_ItemTypeSearchPredicate(t, itemType, item);
-		array<IEntity> items = {};
-
-		InventoryStorageManagerComponent invMan = InventoryStorageManagerComponent.Cast(GetOwner().FindComponent(InventoryStorageManagerComponent));
-		if (invMan)
-			invMan.FindItems(items, itemSearch);
-			
 		RemoveItemFromQuickSlot( item );
-
-		if (!items.IsEmpty())
-			StoreItemToQuickSlot(items[0], quickSlot);
 	}
 	
 	//------------------------------------------------------------------------------------------------	
@@ -972,9 +1013,44 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Called when consumable item is used by the player
-	protected void OnItemUsed(IEntity item)
+	// Called when item is used by the player
+	protected void OnItemUsed(IEntity item, bool successful, SCR_ConsumableEffectAnimationParameters animParams)
 	{
+		// If the item isn't consumable, return
+		if (!SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent)))
+			return;
+		
+		// restock used medical item back to its quick slot
+		int quickSlot = m_aQuickSlots.Find(item);
+		if (quickSlot == -1)
+			return;
+
+		RemoveItemFromQuickSlotAtIndex(quickSlot);
+		int itemType = GetItemType(item);
+
+		typename t = BaseWeaponComponent;
+		if (itemType > GADGET_OFFSET)
+			t = SCR_GadgetComponent;
+
+		SCR_ItemTypeSearchPredicate itemSearch = new SCR_ItemTypeSearchPredicate(t, itemType, item);
+		array<IEntity> items = {};
+
+		InventoryStorageManagerComponent invMan = InventoryStorageManagerComponent.Cast(GetOwner().FindComponent(InventoryStorageManagerComponent));
+		if (!invMan)
+			return;
+
+		invMan.FindItems(items, itemSearch);
+
+		if (!items.IsEmpty())
+		{
+			foreach (IEntity itm : items)
+			{
+				if (itm == item)
+					continue;
+				StoreItemToQuickSlot(itm, quickSlot);
+				break;
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

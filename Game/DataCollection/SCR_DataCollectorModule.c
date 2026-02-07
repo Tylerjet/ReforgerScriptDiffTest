@@ -12,8 +12,7 @@ class SCR_DataCollectorModule : Managed
 	//***************************//
 
 	//------------------------------------------------------------------------------------------------
-	void Update(float timeTick)
-	{}
+	void Update(float timeTick);
 
 	//***********************************************************//
 	/* OVERRIDDEN BY SOME MODULES BUT CALLING THEIR SUPER METHOD */
@@ -30,12 +29,10 @@ class SCR_DataCollectorModule : Managed
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void AddInvokers(IEntity player)
-	{}
+	protected void AddInvokers(IEntity player);
 
 	//------------------------------------------------------------------------------------------------
-	protected void RemoveInvokers(IEntity player)
-	{}
+	protected void RemoveInvokers(IEntity player);
 
 	//------------------------------------------------------------------------------------------------
 	void OnPlayerSpawned(int playerID, IEntity controlledEntity)
@@ -49,16 +46,19 @@ class SCR_DataCollectorModule : Managed
 	//***********************************************************//
 
 	//------------------------------------------------------------------------------------------------
-	void OnPlayerAuditSuccess(int playerID)
-	{}
+	void OnPlayerAuditSuccess(int playerID);
 	
 	//------------------------------------------------------------------------------------------------
-	void OnPlayerKilled(int playerID, IEntity player, IEntity killer)
-	{}
+	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer);
 	
 	//------------------------------------------------------------------------------------------------
-	void OnAIKilled(IEntity AI, IEntity killer)
-	{}
+	void OnAIKilled(IEntity AIEntity, IEntity killerEntity, notnull Instigator killer);
+	
+	//------------------------------------------------------------------------------------------------
+	void OnGameModeEnd();
+	
+	//------------------------------------------------------------------------------------------------
+	void InitModule();
 
 	//*****************//
 	/* NEVER OVERRIDDEN*/

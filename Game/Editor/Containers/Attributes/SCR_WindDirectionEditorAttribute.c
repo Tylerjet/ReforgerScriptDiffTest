@@ -10,7 +10,9 @@ class SCR_WindDirectionEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		if (!IsGameMode(item)) 
 			return null;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) 
 			return null;
 
@@ -27,7 +29,9 @@ class SCR_WindDirectionEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		if (!var) 
 			return;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) 
 			return;
 		
@@ -46,7 +50,8 @@ class SCR_WindDirectionEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 	
 	protected void CreatePresets()
 	{
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		if (!timeManager) 
 			return;
 		

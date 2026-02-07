@@ -42,7 +42,7 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 		if (!damageMgr || !damageMgr.IsDamagedOverTime(EDamageType.BLEEDING))
 			return false;
 		
-		return damageMgr.GetMostDOTHitzoneGroup(EDamageType.BLEEDING, true, true);
+		return damageMgr.GetCharMostDOTHitzoneGroup(EDamageType.BLEEDING, true, true);
 	}	
 	
 	//------------------------------------------------------------------------------------------------
@@ -94,12 +94,12 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 		}
 		else
 		{
-			group = damageMgr.GetMostDOTHitzoneGroup(EDamageType.BLEEDING, true, true);
+			group = damageMgr.GetCharMostDOTHitzoneGroup(EDamageType.BLEEDING, true, true);
 			if (!group)
 				return null;
 			
 			array<HitZone> groupHitZones = {};
-			damageMgr.GetGroupHitZones(group, groupHitZones);
+			damageMgr.GetHitZonesOfGroup(group, groupHitZones);
 			
 			SCR_CharacterHitZone charHitZone = SCR_CharacterHitZone.Cast(groupHitZones[0]);
 			if (!charHitZone)

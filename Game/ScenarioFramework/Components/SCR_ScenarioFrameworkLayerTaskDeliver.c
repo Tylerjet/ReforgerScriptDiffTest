@@ -45,6 +45,10 @@ class SCR_ScenarioFrameworkLayerTaskDeliver : SCR_ScenarioFrameworkLayerTask
 	override void SetupTask()
 	{
 		super.SetupTask();
+		
+		if (!m_Task || !m_DeliverPoint)
+			return;
+		
 		SCR_TaskDeliver.Cast(m_Task).SetDeliveryTrigger(SCR_BaseTriggerEntity.Cast(m_DeliverPoint));
 	}
 	

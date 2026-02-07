@@ -11,10 +11,10 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	//! Progress of recoil based camera shake
 	ref SCR_RecoilCameraShakeProgress m_pRecoilShake = new SCR_RecoilCameraShakeProgress();
 	
-	protected bool m_bCameraActivated = false;
-	
 	protected ref ScriptInvoker m_OnThirdPersonSwitch = new ScriptInvoker();
 	static protected float s_fOverlayCameraFOV;
+	
+	protected int m_iHipsBoneIndex = 0;
 	
 	//------------------------------------------------------------------------------------------------
 	void SCR_CharacterCameraHandlerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
@@ -23,34 +23,6 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_CHARACTER_DEBUG_VIEW, "", "Cycle Debug View", "Character", "0, 8, 0, 1");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_DRAW_CAMERA_COLLISION_SOLVER, "", "Draw Camera Collision Solver", "Character");
 		#endif
-	}
-	
-	override void EOnFrame(IEntity owner, float timeSlice)
-	{
-		m_fCameraDistanceFilter = Math.SmoothCD(m_fCameraDistanceFilter, m_fTargetDistance, m_fCameraDistanceFilterVel, 0.3, 1000, timeSlice);
-		
-		m_fCameraSlideFilter = Math.SmoothCD(m_fCameraSlideFilter, m_fTargetSlide, m_fCameraSlideFilterVelocity, m_fSlideTime, 1000, timeSlice);
-		float currDiff = Math.AbsFloat(m_fTargetSlide - m_fCameraSlideFilter);
-		if (currDiff <= sm_fDistanceEpsilon)
-			m_fCameraSlideFilter = m_fTargetSlide;
-		
-		super.EOnFrame(owner, timeSlice);
-	}
-	
-	override void EOnActivate(IEntity owner)
-	{
-		super.EOnActivate(owner);
-		
-		if (m_bCameraActivated)
-			SetEventMask(GetOwner(), EntityEvent.FRAME);
-	}
-	
-	override void EOnDeactivate(IEntity owner)
-	{
-		super.EOnDeactivate(owner);
-		
-		if (m_bCameraActivated)
-			ClearEventMask(GetOwner(), EntityEvent.FRAME);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -65,14 +37,12 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		m_CmdHandler = CharacterCommandHandlerComponent.Cast(m_OwnerCharacter.FindComponent(CharacterCommandHandlerComponent));
 			
 		m_iHeadBoneIndex = m_OwnerCharacter.GetAnimation().GetBoneIndex("Head");
+		m_iHipsBoneIndex = m_OwnerCharacter.GetAnimation().GetBoneIndex("Hips");
 	}
 	//------------------------------------------------------------------------------------------------
 	override void OnCameraActivate()
 	{
 		OnCameraDeactivate();
-		
-		m_bCameraActivated = true;
-		SetEventMask(GetOwner(), EntityEvent.FRAME);
 		
 		if (m_OwnerCharacter && m_AnimationComponent)
 		{
@@ -117,12 +87,8 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnCameraDeactivate()
 	{
-		m_bCameraActivated = false;
-		
 		if (m_OwnerCharacter)
 			OnAlphatestChange(0);
-		
-		ClearEventMask(GetOwner(), EntityEvent.FRAME);
 		
 		m_fFocusTargetValue = 0.0;
 		m_fFocusValue = 0.0;
@@ -161,7 +127,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				if (controller)
 				{
 					TurretControllerComponent turretController = TurretControllerComponent.Cast(controller);
-					if(turretController)
+					if(turretController && turretController.GetTurretComponent())
 					{
 						isInAds = turretController.IsWeaponADS();
 						return true;
@@ -246,6 +212,11 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				return CharacterCameraSet.CHARACTERCAMERA_3RD_VEHICLE;
 			}
 			
+			if (compartmentAccess && (compartmentAccess.IsGettingOut() || compartmentAccess.IsGettingIn()))
+			{
+				return CharacterCameraSet.CHARACTERCAMERA_3RD_ERC;
+			}
+
 			if( m_CharMovementState.m_CommandTypeId == ECharacterCommandIDs.CLIMB )
 				return CharacterCameraSet.CHARACTERCAMERA_3RD_CLIMB;
 			
@@ -324,11 +295,18 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	
 	protected float m_fADSProgress;
 	protected float m_fADSTime;
+	
 	override float GetCameraTransitionTime(int pFrom, int pTo)
 	{
 		float transTime = 0.4;
 		
-		if (pFrom == CharacterCameraSet.CHARACTERCAMERA_DEBUG || pTo == CharacterCameraSet.CHARACTERCAMERA_DEBUG)
+		if (pFrom == CharacterCameraSet.CHARACTERCAMERA_3RD_ERC && pTo == CharacterCameraSet.CHARACTERCAMERA_3RD_PRO
+		 || pFrom == CharacterCameraSet.CHARACTERCAMERA_3RD_PRO && pTo == CharacterCameraSet.CHARACTERCAMERA_3RD_ERC)
+			transTime = 1.4;
+		else if (pFrom == CharacterCameraSet.CHARACTERCAMERA_3RD_CRO && pTo == CharacterCameraSet.CHARACTERCAMERA_3RD_PRO
+			  || pFrom == CharacterCameraSet.CHARACTERCAMERA_3RD_PRO && pTo == CharacterCameraSet.CHARACTERCAMERA_3RD_CRO)
+			transTime = 0.8;
+		else if (pFrom == CharacterCameraSet.CHARACTERCAMERA_DEBUG || pTo == CharacterCameraSet.CHARACTERCAMERA_DEBUG)
 			transTime = 0.0;
 		else if (pTo == CharacterCameraSet.CHARACTERCAMERA_ADS || pTo == CharacterCameraSet.CHARACTERCAMERA_1ST_READY)
 		{
@@ -421,6 +399,13 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnBeforeCameraUpdate(float pDt, bool pIsKeyframe)
 	{
+		m_fCameraDistanceFilter = Math.SmoothCD(m_fCameraDistanceFilter, m_fTargetDistance, m_fCameraDistanceFilterVel, 0.3, 1000, pDt);
+		
+		m_fCameraSlideFilter = Math.SmoothCD(m_fCameraSlideFilter, m_fTargetSlide, m_fCameraSlideFilterVelocity, m_fSlideTime, 1000, pDt);
+		float currDiff = Math.AbsFloat(m_fTargetSlide - m_fCameraSlideFilter);
+		if (currDiff <= sm_fDistanceEpsilon)
+			m_fCameraSlideFilter = m_fTargetSlide;
+		
 		m_InputManager.ActivateContext("PlayerCameraContext");
 
 		bool isADSAllowed = m_CmdHandler && m_CmdHandler.IsWeaponADSAllowed(false);
@@ -597,6 +582,10 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		else
 			Math3D.MatrixIdentity4(resultWorldTransform);
 		
+		vector hipBoneWS[4];
+		m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_iHipsBoneIndex, hipBoneWS); 
+		Math3D.MatrixMultiply4(resultWorldTransform, hipBoneWS, hipBoneWS);
+
 		#ifdef ENABLE_DIAG // These things are only useful for showing the debug spheres.
 		vector camPos = pOutResult.m_CameraTM[3];
 		vector inputCameraPosWS = camPos.Multiply4(resultWorldTransform);
@@ -697,7 +686,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			param.LayerMask = TRACE_LAYER_CAMERA;
 			
 			// 1. Sideways collision (translating the camera to left/right from character).
-			vector sideTraceStart = Vector(resultWorldTransform[3][0], camTransformWS[3][1], resultWorldTransform[3][2]);
+			vector sideTraceStart = Vector(hipBoneWS[3][0], camTransformWS[3][1], hipBoneWS[3][2]);
 			vector sideTraceEnd = camTransformWS[3];
 			
 			vector sideTraceDiff = sideTraceEnd - sideTraceStart;

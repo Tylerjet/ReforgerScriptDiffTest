@@ -96,6 +96,15 @@ class SCR_EditorContentBrowserSaveStateData
 	}
 	
 	/*!
+	Check if provided label is on the list of saved labels
+	\return true if given label is on the list
+	*/
+	bool ContainsLabel(EEditableEntityLabel label)
+	{
+		return m_iSavedLabels.Contains(label);
+	}
+	
+	/*!
 	Set saved page index
 	\param pageIndex Page index to save
 	*/

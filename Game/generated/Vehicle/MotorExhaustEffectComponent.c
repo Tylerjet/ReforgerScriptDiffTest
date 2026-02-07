@@ -15,6 +15,7 @@ class MotorExhaustEffectComponentClass: BaseEffectComponentClass
 
 class MotorExhaustEffectComponent: BaseEffectComponent
 {
+	proto external IEntity GetOwner();
 	//! Remove every particle associed with this effect
 	proto external void TurnOff();
 	/*!
@@ -42,7 +43,7 @@ class MotorExhaustEffectComponent: BaseEffectComponent
 	\param owner Entity this component is attached to.
 	*/
 	event void OnInit(IEntity owner);
-	event void OnFrame(IEntity owner, float timeSlice);
+	event void OnDelete(IEntity owner);
 }
 
 /*!

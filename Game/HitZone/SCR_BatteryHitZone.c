@@ -1,4 +1,4 @@
-class SCR_BatteryHitZone: ScriptedHitZone
+class SCR_BatteryHitZone: SCR_VehicleHitZone
 {
 	//------------------------------------------------------------------------------------------------
 	//! Called when hit zone is initialized

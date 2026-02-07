@@ -23,7 +23,8 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 	const string ICON_MODS_MISSING = "download";
 	
 	// Localized strings 
-	const string STR_VERSION_MISMATCH = "#AR-ServerBrowser_JoinVersionFail";
+	const string STR_VERSION_MISMATCH = "#AR-ServerBrowser_JoinModVersionMissmatch";
+	const string STR_UNJOINABLE = "#AR-ServerBrowser_NoneServers";
 	const string STR_MODS_MISSING = "#AR-ServerBrowser_JoinModMissing";
 	const string STR_MODS_DONWLOADED = "#AR-Workshop_ButtonUpToDate";
 	
@@ -103,11 +104,17 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		
 		// Set room version
 		string strVersion = STR_DEFAULT_VERSION;
-		if (m_Room.GameVersion())
+		
+		if (!m_Room.Joinable())
+			strVersion = STR_UNJOINABLE + "!";
+
+		else if (m_Room.GameVersion())
+		{
 			strVersion = "v" + m_Room.GameVersion();
 		
-		if (m_Room.GameVersion() != GetGame().GetBuildVersion())
-			strVersion += " - " + STR_VERSION_MISMATCH + "!";
+			if (m_Room.GameVersion() != GetGame().GetBuildVersion())
+				strVersion += " - " + STR_VERSION_MISMATCH + "!";
+		}
 		
 		m_Widgets.m_AuthorNameText.SetText(strVersion);
 		
@@ -271,14 +278,18 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		m_Widgets.m_TypeText.SetText(room.Name());
 		
 		// Version match 
-		if (room.GameVersion() == GetGame().GetBuildVersion())
+		if (room.GameVersion() == GetGame().GetBuildVersion() && room.Joinable())
 		{
 			m_Widgets.m_AuthorNameText.SetColor(m_ColorScheme.m_Moderate);
 		}
 		else
 		{
 			m_Widgets.m_AuthorNameText.SetColor(m_ColorScheme.m_Critical);
-			string text = m_Widgets.m_AuthorNameText.GetText() + " - " + STR_VERSION_MISMATCH + "!";
+			
+			string text = m_Widgets.m_AuthorNameText.GetText();
+			if(room.Joinable())
+				text += " - " + STR_VERSION_MISMATCH + "!";
+			
 			m_Widgets.m_AuthorNameText.SetText(text);
 		}
 		

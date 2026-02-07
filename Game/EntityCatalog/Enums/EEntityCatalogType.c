@@ -17,4 +17,5 @@ enum EEntityCatalogType
 	
 	WEAPONS_TRIPOD 				= 80, ///< Static Weapons on Tripods
 	RESPAWN_LOADOUT 			= 90, ///< Used for player spawning
+	SUPPLY_CONTAINER_ITEM		= 100, ///< Inventory Items that hold supplies
 };

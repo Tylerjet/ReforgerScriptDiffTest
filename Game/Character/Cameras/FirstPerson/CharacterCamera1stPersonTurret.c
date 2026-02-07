@@ -104,7 +104,7 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 		CharacterControllerComponent charController = m_OwnerCharacter.GetCharacterController();
 		
 		//! apply to rotation matrix
-		if (charController.IsInFreeLook() || m_pTurretController.GetCanAimOnlyInADS())
+		if (charController.IsFreeLookEnabled() || m_pTurretController.GetCanAimOnlyInADS())
 		{
 			m_vLastCameraAngles[0] = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles()[0];
 			Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles + lookAngles, pOutResult.m_CameraTM);

@@ -59,6 +59,11 @@ class SCR_NameTagCollectorBase : Managed
 	{
 		m_Config = cfg;
 		m_Display = display;
-		m_TagManager = GetGame().GetTagManager();
+		
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			m_TagManager = null;
+		else
+			m_TagManager = world.GetTagManager();
 	}
 };

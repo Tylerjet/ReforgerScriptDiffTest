@@ -55,7 +55,7 @@ class SCR_EditablePreviewComponent : SCR_EditableEntityComponent
 	
 	override bool GetPos(out vector pos)
 	{
-		if (m_Owner.GetFlags() & EntityFlags.VISIBLE)
+		if (m_Owner && (m_Owner.GetFlags() & EntityFlags.VISIBLE))
 			return super.GetPos(pos);
 		else
 			return false;

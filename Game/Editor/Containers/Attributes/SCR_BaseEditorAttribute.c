@@ -111,6 +111,13 @@ class SCR_BaseEditorAttribute
 	{
 		return false;
 	}
+	/*!
+	\return True if the attribute value is serialized in session save file
+	*/
+	bool IsSerializable()
+	{
+		return true;
+	}
 	
 	/*!
 	Set a variable to this attribute.

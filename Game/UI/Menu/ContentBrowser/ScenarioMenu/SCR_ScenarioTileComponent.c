@@ -16,9 +16,9 @@ class SCR_ScenarioTileComponent : SCR_ButtonBaseComponent
 	protected Widget m_wPlayableButtom;
 	protected Widget m_wWhiteFrame;
 
-	protected SCR_NavigationButtonComponent m_PlayButtonComponent;
-	protected SCR_NavigationButtonComponent m_HostButtonComponent;
-	protected SCR_NavigationButtonComponent m_JoinButtonComponent;
+	protected SCR_InputButtonComponent m_PlayButtonComponent;
+	protected SCR_InputButtonComponent m_HostButtonComponent;
+	protected SCR_InputButtonComponent m_JoinButtonComponent;
 	
 	protected SCR_ButtonComponent m_LinkComp;
 	protected Widget m_wGamepadModNameButton;
@@ -52,15 +52,15 @@ class SCR_ScenarioTileComponent : SCR_ButtonBaseComponent
 		m_wWhiteFrame = m_wRoot.FindAnyWidget("WhiteFrameOverlay");
 		
 		
-		m_PlayButtonComponent = SCR_NavigationButtonComponent.GetNavigationButtonComponent("PlayButton", m_wRoot);
+		m_PlayButtonComponent = SCR_InputButtonComponent.GetInputButtonComponent("PlayButton", m_wRoot);
 		if (m_PlayButtonComponent)
 			m_PlayButtonComponent.m_OnActivated.Insert(OnPlay);
 		
-		m_HostButtonComponent = SCR_NavigationButtonComponent.GetNavigationButtonComponent("HostButton", m_wRoot);
+		m_HostButtonComponent = SCR_InputButtonComponent.GetInputButtonComponent("HostButton", m_wRoot);
 		if (m_HostButtonComponent)
 			m_HostButtonComponent.m_OnActivated.Insert(OnHost);
 		
-		m_JoinButtonComponent = SCR_NavigationButtonComponent.GetNavigationButtonComponent("JoinButton", m_wRoot);
+		m_JoinButtonComponent = SCR_InputButtonComponent.GetInputButtonComponent("JoinButton", m_wRoot);
 		if (m_JoinButtonComponent)
 			m_JoinButtonComponent.m_OnActivated.Insert(OnJoin);
 		

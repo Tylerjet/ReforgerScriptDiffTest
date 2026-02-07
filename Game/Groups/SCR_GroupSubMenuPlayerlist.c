@@ -10,16 +10,19 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 	protected LocalizedString m_sContinueButtonText;
 	
 	protected Widget m_wGridWidget;
-	protected SCR_NavigationButtonComponent m_AddGroupButton;
-	protected SCR_NavigationButtonComponent m_JoinGroupButton;
-	protected SCR_NavigationButtonComponent m_AcceptInviteButton;
-	protected SCR_NavigationButtonComponent m_GroupSettingsButton;
+	protected SCR_InputButtonComponent m_AddGroupButton;
+	protected SCR_InputButtonComponent m_JoinGroupButton;
+	protected SCR_InputButtonComponent m_AcceptInviteButton;
+	protected SCR_InputButtonComponent m_GroupSettingsButton;
+	protected SCR_InputButtonComponent m_ViewProfileButton;
 	protected SCR_GroupsManagerComponent m_GroupManager;
 	protected SCR_PlayerControllerGroupComponent m_PlayerGroupController;
 	
 	protected const string CREATE_GROUP = "#AR_DeployMenu_AddNewGroup";
 	protected const string JOIN_GROUP = "#AR-DeployMenu_JoinGroup";
 	protected const string ACCEPT_INVITE = "#AR-DeployMenu_AcceptInvite";
+	
+	protected int m_iLastSelectedPlayerId;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta)
@@ -37,10 +40,12 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 			return;
 		if (!m_ParentMenu)
 			return;
+	
 		CreateAddGroupButton();
 		CreateJoinGroupButton();
 		CreateAcceptInviteButton();
 		CreateGroupSettingsButton();
+		CreateViewProfileButton();
 		SetupNameChangeButton();
 		SetupPrivateChecker();
 	}
@@ -50,6 +55,8 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 	{
 		super.OnMenuShow(parentMenu);
 	
+		UpdateViewProfileButton(true);
+		
 		//todo:mku this is a temporary solution because of how playerlist is implemented right now
 		OverlayWidget header = OverlayWidget.Cast(m_ParentMenu.GetRootWidget().FindAnyWidget("SortHeader"));
 		if (header)
@@ -77,6 +84,8 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 		SCR_AIGroup.GetOnFlagSelected().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnCustomDescriptionChanged().Insert(UpdateGroupsMenu);
 		SCR_GroupTileButton.GetOnGroupTileClicked().Insert(UpdateGroupsMenu);
+		SCR_GroupTileButton.GetOnPlayerTileFocus().Insert(OnPlayerTileFocus);
+		SCR_GroupTileButton.GetOnPlayerTileFocusLost().Insert(OnPlayerTileFocusLost);
 		SetAcceptButtonStatus();
 	}	
 		
@@ -93,6 +102,15 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 		SCR_GroupSubMenu.InitGroups(m_wGridWidget, m_AddGroupButton, m_JoinGroupButton, m_GroupSettingsButton, m_ButtonLayout, m_ParentMenu);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuHide(SCR_SuperMenuBase parentMenu)
+	{
+		super.OnMenuHide(parentMenu);
+	
+		SCR_GroupTileButton.GetOnPlayerTileFocus().Remove(OnPlayerTileFocus);
+		SCR_GroupTileButton.GetOnPlayerTileFocusLost().Remove(OnPlayerTileFocusLost);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose(SCR_SuperMenuBase parentMenu)
 	{
@@ -122,6 +140,9 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 		HorizontalLayoutWidget footerLeft = HorizontalLayoutWidget.Cast(m_ParentMenu.GetRootWidget().FindAnyWidget("FooterLeft"));
 		if (footerLeft)
 			footerLeft.SetVisible(true);
+		
+		SCR_GroupTileButton.GetOnPlayerTileFocus().Remove(OnPlayerTileFocus);
+		SCR_GroupTileButton.GetOnPlayerTileFocusLost().Remove(OnPlayerTileFocusLost);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -142,7 +163,7 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 		m_PlayerGroupController.RequestJoinGroup(m_PlayerGroupController.GetSelectedGroupID());
 	}
 	
-		//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	void AcceptInvite()
 	{
 		m_PlayerGroupController.AcceptInvite();
@@ -205,6 +226,7 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 		SetAcceptButtonStatus();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void CreateGroupSettingsButton()
 	{
 		m_GroupSettingsButton = CreateNavigationButton("MenuSettingsGroup", "#AR-Player_Groups_Settings", true);
@@ -213,6 +235,55 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 		m_GroupSettingsButton.GetRootWidget().SetZOrder(0);
 		m_GroupSettingsButton.SetVisible(false);
 		m_GroupSettingsButton.m_OnActivated.Insert(OpenGroupSettingsDialog);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void CreateViewProfileButton()
+	{
+		m_ViewProfileButton = CreateNavigationButton("MenuViewProfile", "", true);
+		if (!m_ViewProfileButton)
+			return;
+		
+		// Dynamically add the component to update the button label dpending on platform. TODO: allow sub menus to create different layouts of buttons
+		SCR_ViewProfileButtonComponent handler = new SCR_ViewProfileButtonComponent();
+		if (!handler)
+			return;
+
+		m_ViewProfileButton.GetRootWidget().AddHandler(handler);
+		handler.Init();
+		
+		UpdateViewProfileButton(true);
+		
+		m_ViewProfileButton.GetRootWidget().SetZOrder(0);
+		m_ViewProfileButton.m_OnActivated.Insert(OnViewProfile);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateViewProfileButton(bool forceHidden = false)
+	{
+		if (!m_ViewProfileButton)
+			return;
+
+		m_ViewProfileButton.SetVisible(!forceHidden && GetGame().GetPlayerManager().IsUserProfileAvailable(m_iLastSelectedPlayerId), false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerTileFocus(int id)
+	{
+		m_iLastSelectedPlayerId = id;
+		UpdateViewProfileButton();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerTileFocusLost(int id)
+	{
+		UpdateViewProfileButton(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnViewProfile()
+	{
+		GetGame().GetPlayerManager().ShowUserProfile(m_iLastSelectedPlayerId);
 	}
 	
 	//------------------------------------------------------------------------------------------------

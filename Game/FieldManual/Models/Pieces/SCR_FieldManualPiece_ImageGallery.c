@@ -1,8 +1,8 @@
 [BaseContainerProps(), SCR_BaseContainerStaticTitleField(customTitle: "Images Gallery")]
 class SCR_FieldManualPiece_ImageGallery : SCR_FieldManualPiece
 {
-	[Attribute(defvalue: SCR_Enum.GetDefault(EFieldManual_ImageGalleryType.GALLERY_HORIZONTAL), uiwidget: UIWidgets.ComboBox, enums: SCR_Enum.GetList(EFieldManual_ImageGalleryType))]
-	protected EFieldManual_ImageGalleryType m_eType;
+	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EFieldManual_ImageGalleryType.GALLERY_HORIZONTAL), uiwidget: UIWidgets.ComboBox, enums: SCR_Enum.GetList(SCR_EFieldManual_ImageGalleryType))]
+	protected SCR_EFieldManual_ImageGalleryType m_eType;
 
 	[Attribute()]
 	protected string m_sText;
@@ -13,14 +13,7 @@ class SCR_FieldManualPiece_ImageGallery : SCR_FieldManualPiece
 	[Attribute(defvalue: "{68553AA626CD1A40}UI/layouts/Menus/FieldManual/Pieces/FieldManual_Piece_ImageGallery.layout", uiwidget: UIWidgets.EditBoxWithButton, params: "layout")]
 	protected ResourceName m_Layout;
 
-	//------------------------------------------------------------------------------------------------
-	void SCR_FieldManualPiece_ImageGallery()
-	{
-		if (!m_aImages) // can be config-provided
-		{
-			m_aImages = {};
-		}
-	}
+	protected SCR_FieldManual_ImageGalleryComponent m_ImageGalleryComponent;
 
 	//------------------------------------------------------------------------------------------------
 	override void CreateWidget(notnull Widget parent)
@@ -34,10 +27,28 @@ class SCR_FieldManualPiece_ImageGallery : SCR_FieldManualPiece
 			return;
 		}
 
-		SCR_FieldManual_ImageGalleryComponent imageGalleryComponent = SCR_FieldManual_ImageGalleryComponent.Cast(createdWidget.FindHandler(SCR_FieldManual_ImageGalleryComponent));
-		if (!imageGalleryComponent)
+		m_ImageGalleryComponent = SCR_FieldManual_ImageGalleryComponent.Cast(createdWidget.FindHandler(SCR_FieldManual_ImageGalleryComponent));
+		if (!m_ImageGalleryComponent)
 			return;
 
-		imageGalleryComponent.Init(m_eType, m_sText, m_aImages);
+		m_ImageGalleryComponent.Init(m_eType, m_sText, m_aImages);
+		if (GetGame().OnInputDeviceIsGamepadInvoker())
+			GetGame().OnInputDeviceIsGamepadInvoker().Insert(m_ImageGalleryComponent.Rebuild);
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	void SCR_FieldManualPiece_ImageGallery()
+	{
+		if (!m_aImages) // can be config-provided
+			m_aImages = {};
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// destructor
+	void ~SCR_FieldManualPiece_ImageGallery()
+	{
+		if (m_ImageGalleryComponent && GetGame().OnInputDeviceIsGamepadInvoker())
+			GetGame().OnInputDeviceIsGamepadInvoker().Remove(m_ImageGalleryComponent.Rebuild);
+	}
+}

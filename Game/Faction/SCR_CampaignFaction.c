@@ -4,9 +4,9 @@ class SCR_CampaignFaction : SCR_Faction
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, "Defenders group prefab", "et")]
 	private ResourceName m_DefendersGroupPrefab;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Default transport vehicle", "et")]
-	private ResourceName m_DefaultTransportPrefab;
+
+	[Attribute("", params: "et")]
+	protected ref array<ResourceName> m_aStartingVehicles;
 	
 	[Attribute("", UIWidgets.ResourceNamePicker, "", "et")]
 	private ResourceName m_MobileHQPrefab;
@@ -20,13 +20,10 @@ class SCR_CampaignFaction : SCR_Faction
 	[Attribute("", UIWidgets.ResourceNamePicker, "Supply stash composition", "et")]
 	private ResourceName m_BaseBuildingSupplyDepot;
 	
-	[Attribute()]
-	private ref array<ref SCR_CampaignBaseCallsign> m_aBaseCallsigns;
-	
 	protected SCR_CampaignMilitaryBaseComponent m_MainBase;
 	protected SCR_CampaignMilitaryBaseComponent m_PrimaryTarget;
 	
-	protected SCR_CampaignMobileAssemblyComponent m_MobileAssembly;
+	protected SCR_CampaignMobileAssemblyStandaloneComponent m_MobileAssembly;
 	
 	#ifndef AR_CAMPAIGN_TIMESTAMP
 	protected float m_fVictoryTimestamp;
@@ -40,7 +37,13 @@ class SCR_CampaignFaction : SCR_Faction
 	protected int m_iControlPointsHeld;
 	
 	//------------------------------------------------------------------------------------------------
-	void SendHQMessage(SCR_ERadioMsg msgType, int baseCallsign = SCR_CampaignMilitaryBaseComponent.INVALID_BASE_CALLSIGN, int calledID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX, bool public = true, int param = SCR_CampaignRadioMsg.INVALID_RADIO_MSG_PARAM)
+	void GetStartingVehiclePrefabs(out notnull array<ResourceName> prefabs)
+	{
+		prefabs.Copy(m_aStartingVehicles);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SendHQMessage(SCR_ERadioMsg msgType, int baseCallsign = SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN, int calledID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX, bool public = true, int param = SCR_CampaignRadioMsg.INVALID_RADIO_MSG_PARAM)
 	{
 		if (msgType == SCR_ERadioMsg.NONE)
 			return;
@@ -123,6 +126,14 @@ class SCR_CampaignFaction : SCR_Faction
 	void SetPrimaryTarget(SCR_CampaignMilitaryBaseComponent target)
 	{
 		m_PrimaryTarget = target;
+		
+		// Give tasks time to get created before refreshing the priorities
+		GetGame().GetCallqueue().CallLater(RefreshTaskPriorities, SCR_GameModeCampaign.DEFAULT_DELAY);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RefreshTaskPriorities()
+	{
 		SCR_BaseTaskManager taskManager = GetTaskManager();
 
 		if (!taskManager)
@@ -138,7 +149,7 @@ class SCR_CampaignFaction : SCR_Faction
 
 		foreach (SCR_BaseTask task : tasks)
 		{
-			SCR_CampaignBaseTask conflictTask = SCR_CampaignBaseTask.Cast(task);
+			SCR_CampaignTask conflictTask = SCR_CampaignTask.Cast(task);
 
 			if (!conflictTask)
 				continue;
@@ -147,7 +158,7 @@ class SCR_CampaignFaction : SCR_Faction
 
 			if (!base || base.GetFaction() == conflictTask.GetTargetFaction())
 				continue;
-
+			
 			conflictTask.SetIsPriority(m_PrimaryTarget == base);
 		}
 	}
@@ -159,7 +170,7 @@ class SCR_CampaignFaction : SCR_Faction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetMobileAssembly(SCR_CampaignMobileAssemblyComponent mobileAssembly)
+	void SetMobileAssembly(SCR_CampaignMobileAssemblyStandaloneComponent mobileAssembly)
 	{
 		m_MobileAssembly = mobileAssembly;
 	}
@@ -175,13 +186,7 @@ class SCR_CampaignFaction : SCR_Faction
 	{
 		return m_DefendersGroupPrefab;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	ResourceName GetDefaultTransportPrefab()
-	{
-		return m_DefaultTransportPrefab;
-	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetMobileHQPrefab()
 	{
@@ -218,7 +223,7 @@ class SCR_CampaignFaction : SCR_Faction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_CampaignMobileAssemblyComponent GetMobileAssembly()
+	SCR_CampaignMobileAssemblyStandaloneComponent GetMobileAssembly()
 	{
 		return m_MobileAssembly;
 	}
@@ -262,72 +267,4 @@ class SCR_CampaignFaction : SCR_Faction
 	{
 		return m_fPauseByBlockTimestamp;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	array<int> GetBaseCallsignIndexes()
-	{
-		array<int> indexes = {};
-		
-		foreach (SCR_CampaignBaseCallsign callsign : m_aBaseCallsigns)
-			indexes.Insert(callsign.GetSignalIndex());
-		
-		return indexes;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_CampaignBaseCallsign GetBaseCallsignByIndex(int index, int offset = 0)
-	{
-		index += offset;
-		
-		if (m_aBaseCallsigns.IsIndexValid(index))
-			return m_aBaseCallsigns[index];
-		
-		index -= m_aBaseCallsigns.Count();
-		
-		if (m_aBaseCallsigns.IsIndexValid(index))
-			return m_aBaseCallsigns[index];
-		
-		return null;
-	}
 };
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps(), SCR_BaseContainerCustomTitleResourceName("m_sCallsign", true)]
-class SCR_CampaignBaseCallsign
-{
-	[Attribute("", UIWidgets.EditBox)]
-	protected string m_sCallsign;
-	
-	[Attribute("", UIWidgets.EditBox)]
-	protected string m_sCallsignShort;
-	
-	[Attribute("", UIWidgets.EditBox)]
-	protected string m_sCallsignUpperCase;
-	
-	[Attribute("0", UIWidgets.EditBox)]
-	protected int m_iSignalIndex;
-	
-	//------------------------------------------------------------------------------------------------
-	string GetCallsign()
-	{
-		return m_sCallsign;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetCallsignShort()
-	{
-		return m_sCallsignShort;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetCallsignUpperCase()
-	{
-		return m_sCallsignUpperCase;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	int GetSignalIndex()
-	{
-		return m_iSignalIndex;
-	}
-}

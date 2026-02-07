@@ -1,3 +1,15 @@
+[BaseContainerProps(configRoot: true)]
+class SCR_NavigationBarConfig
+{
+	[Attribute()]
+	protected ref array<ref NavigationButtonEntry> m_aEntries;
+
+	array<ref NavigationButtonEntry> GetEntries()
+	{
+		return m_aEntries;
+	}
+};
+
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class NavigationButtonEntry
@@ -9,14 +21,14 @@ class NavigationButtonEntry
 	[Attribute(desc: "Name of the button - ID")]
 	string m_sButtonID;
 	
-	SCR_NavigationButtonComponent m_Component;
+	SCR_InputButtonComponent m_Component;
 };
 
 //------------------------------------------------------------------------------------------------
 //! UI Script
 //! Inventory navigation bar handler
 [BaseContainerProps()]
-class SCR_NavigationBarUI : ScriptedWidgetComponent
+class SCR_NavigationBarUI : SCR_ScriptedWidgetComponent
 {
 	//#define BUTTON_LAYOUT				"{19A9CC7487AAD442}UI/layouts/Common/Buttons/NavigationButton.layout"
 	
@@ -26,6 +38,9 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 	[Attribute(uiwidget: UIWidgets.Object, desc: "Action Buttons")]
 	ref array<ref NavigationButtonEntry> m_aEntries;
 	
+	[Attribute("{E09350C3FD7F0812}Configs/Inventory/InventoryNavigationBar.conf")]
+	ResourceName m_sConfig;
+	
 	ref ScriptInvoker m_OnAction = new ScriptInvoker;
 			
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------							
@@ -34,11 +49,11 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 	void Refresh();
 	
 	//------------------------------------------------------------------------------------------------
-	protected SCR_NavigationButtonComponent GetButton( string name )
+	protected SCR_InputButtonComponent GetButton( string name )
 	{
 		foreach ( NavigationButtonEntry entry : m_aEntries )
 		{
-			SCR_NavigationButtonComponent comp = entry.m_Component;
+			SCR_InputButtonComponent comp = entry.m_Component;
 			if (entry.m_sButtonID == name && comp)
 				return comp;
 		}
@@ -47,7 +62,7 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnNavigation(SCR_NavigationButtonComponent comp, string action)
+	protected void OnNavigation(SCR_InputButtonComponent comp, string action)
 	{
 		m_OnAction.Invoke(comp, action, null, -1);
 	}
@@ -55,7 +70,7 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void SetButtonEnabled( string sButtonName, bool bEnable = true, string sName = "" )
 	{
-		SCR_NavigationButtonComponent pActionButton = GetButton( sButtonName );
+		SCR_InputButtonComponent pActionButton = GetButton( sButtonName );
 		if( !pActionButton )
 			return;
 		pActionButton.SetEnabled( bEnable );
@@ -68,7 +83,7 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void SetButtonActionName( string sButtonName, string sName )
 	{
-		SCR_NavigationButtonComponent pActionButton = GetButton( sButtonName );
+		SCR_InputButtonComponent pActionButton = GetButton( sButtonName );
 		if( !pActionButton )
 			return;
 		pActionButton.SetLabel(sName);
@@ -79,7 +94,7 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 	{
 		foreach ( NavigationButtonEntry entry: m_aEntries )
 		{
-			SCR_NavigationButtonComponent comp = entry.m_Component;
+			SCR_InputButtonComponent comp = entry.m_Component;
 			if (!comp)
 				return;
 			
@@ -90,21 +105,40 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
 	
-	//------------------------------------------------------------------------------------------------
-	override void HandlerAttached( Widget w )
+	void FillFromConfig()
 	{
-		WorkspaceWidget workspace = GetGame().GetWorkspace(); 
+		if (m_sConfig.GetPath().IsEmpty())
+			return;
 		
-		foreach ( NavigationButtonEntry entry : m_aEntries )
+		Resource res = BaseContainerTools.LoadContainer(m_sConfig);
+		if (!res)
+			return;
+
+		BaseContainer container = res.GetResource().ToBaseContainer();
+		if (!container)
+			return;
+		
+		SCR_NavigationBarConfig config = SCR_NavigationBarConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
+		if (!config)
+			return;
+
+		m_aEntries.Clear();
+		m_aEntries = config.GetEntries();
+		InitNavButtons();
+	}
+	
+	protected void InitNavButtons()
+	{
+		foreach (NavigationButtonEntry entry : m_aEntries)
 		{
-			if ( entry.m_sAction == "Inventory_Selected" )
+			if (entry.m_sAction == "Inventory_Selected")
 				continue;
 			
-			Widget button = workspace.CreateWidgets(m_Layout, w);
+			Widget button = GetGame().GetWorkspace().CreateWidgets(m_Layout, GetRootWidget());
 			if (!button)
 				continue;
 			
-			SCR_NavigationButtonComponent comp = SCR_NavigationButtonComponent.Cast(button.FindHandler(SCR_NavigationButtonComponent));
+			SCR_InputButtonComponent comp = SCR_InputButtonComponent.Cast(button.FindHandler(SCR_InputButtonComponent));
 			if (!comp)
 				continue;
 			
@@ -113,6 +147,14 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 			comp.SetLabel(entry.m_sDisplayName);
 			comp.m_OnActivated.Insert(OnNavigation);
 			comp.SetClickedSound("");
-		}
+		}	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerAttached( Widget w )
+	{
+		super.HandlerAttached(w);
+
+		InitNavButtons();
 	}
 };

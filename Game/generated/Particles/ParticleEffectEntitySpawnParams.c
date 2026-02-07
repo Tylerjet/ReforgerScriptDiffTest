@@ -44,6 +44,11 @@ class ParticleEffectEntitySpawnParams
 	*IMPORTANT* Not used if a prefab is passed as effectPath.
 	*/
 	bool			DeleteWhenStopped = true;
+	/*!
+	Should the parent entity be used as a velocity source?
+	*IMPORTANT* Not used if a prefab is passed as effectPath.
+	*/
+	bool			UseParentAsVelocitySource = true;
 
 }
 

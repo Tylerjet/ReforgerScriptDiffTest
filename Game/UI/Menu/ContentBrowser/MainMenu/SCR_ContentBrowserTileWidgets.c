@@ -42,10 +42,8 @@ class SCR_ContentBrowserTileWidgets
 	TextWidget m_DependencyCountText;
 
 	ButtonWidget m_DependencyHover;
-	SCR_HoverDetectorComponent m_DependencyHoverComponent;
 
 	ButtonWidget m_DependentHover;
-	SCR_HoverDetectorComponent m_DependentHoverComponent;
 
 	FrameWidget m_NamesHorizontalAnimation;
 	SCR_HorizontalScrollAnimationComponent m_NamesHorizontalAnimationComponent;
@@ -101,10 +99,8 @@ class SCR_ContentBrowserTileWidgets
 		m_DependencyCountText = TextWidget.Cast(root.FindWidget("overlay.m_NormalMode.m_MainAreaSizeRatio.MainArea.Frame.m_DependencyCountText"));
 
 		m_DependencyHover = ButtonWidget.Cast(root.FindWidget("overlay.m_NormalMode.m_MainAreaSizeRatio.MainArea.Frame.DependencyIndicators.m_DependencyHover"));
-		m_DependencyHoverComponent = SCR_HoverDetectorComponent.Cast(m_DependencyHover.FindHandler(SCR_HoverDetectorComponent));
 
 		m_DependentHover = ButtonWidget.Cast(root.FindWidget("overlay.m_NormalMode.m_MainAreaSizeRatio.MainArea.Frame.DependencyIndicators.m_DependentHover"));
-		m_DependentHoverComponent = SCR_HoverDetectorComponent.Cast(m_DependentHover.FindHandler(SCR_HoverDetectorComponent));
 
 		m_NamesHorizontalAnimation = FrameWidget.Cast(root.FindWidget("overlay.m_NormalMode.BottomBar.Frame.NamesFadeoutTextFrame.m_NamesHorizontalAnimation"));
 		m_NamesHorizontalAnimationComponent = SCR_HorizontalScrollAnimationComponent.Cast(m_NamesHorizontalAnimation.FindHandler(SCR_HorizontalScrollAnimationComponent));

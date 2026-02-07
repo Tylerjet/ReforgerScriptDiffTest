@@ -8,7 +8,7 @@ class SCR_FieldManualPiece_Keybind : SCR_FieldManualPiece
 	string m_sDescription;
 
 	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EInputTypeCondition.ALL_INPUTS), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EInputTypeCondition))]
-	SCR_EInputTypeCondition m_InputDisplayCondition;
+	SCR_EInputTypeCondition m_eInputDisplayCondition;
 
 	[Attribute(defvalue: "{76A21E3BDBC15712}UI/layouts/Menus/FieldManual/Pieces/FieldManual_Piece_Keybind.layout", uiwidget: UIWidgets.EditBoxWithButton, params: "layout")]
 	ResourceName m_Layout;
@@ -41,4 +41,4 @@ class SCR_FieldManualPiece_Keybind : SCR_FieldManualPiece
 		if (separator)
 			separator.SetOpacity(0);
 	}
-};
+}

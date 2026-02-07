@@ -19,7 +19,8 @@ class SCR_NotificationWeatherChanged : SCR_NotificationPlayer
 		if (!GetPlayerName(playerID, playerName))
 			return string.Empty;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager)
 			return string.Empty;
 		

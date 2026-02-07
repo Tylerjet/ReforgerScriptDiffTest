@@ -54,7 +54,7 @@ class SCR_HealingUserAction : ScriptedUserAction
 		if (!userController || userController.IsUsingItem())
 			return false;
 		
-		// Check if character is in a vehicle as whether that disables this useraction
+		// Check if character is in a vehicle and if healing is allowed from seat, if so
 		if (userCharacter.IsInVehicle() && !HealingAllowedFromSeat(userCharacter))
 			return false;
 
@@ -96,11 +96,16 @@ class SCR_HealingUserAction : ScriptedUserAction
 		if (!consumableComponent)
 			return;
 		
+		consumableComponent.SetTargetCharacter(targetCharacter);
 		SCR_ConsumableEffectHealthItems consumableEffect = SCR_ConsumableEffectHealthItems.Cast(consumableComponent.GetConsumableEffect());
 		if (!consumableEffect)
 			return;
 			
-		TAnimGraphCommand desiredCmd = consumableEffect.GetApplyToOtherAnimCmnd(pOwnerEntity);
+		TAnimGraphCommand desiredCmd;
+		if (pOwnerEntity == pUserEntity)
+			desiredCmd = consumableEffect.GetApplyToSelfAnimCmnd(pOwnerEntity);
+		else
+			desiredCmd = consumableEffect.GetApplyToOtherAnimCmnd(pOwnerEntity);
 
 		SCR_CharacterControllerComponent targetController = SCR_CharacterControllerComponent.Cast(targetCharacter.GetCharacterController());
 		if (targetController && targetController.IsUnconscious())
@@ -109,10 +114,10 @@ class SCR_HealingUserAction : ScriptedUserAction
 		SCR_CharacterDamageManagerComponent targetDamageMan = SCR_CharacterDamageManagerComponent.Cast(targetCharacter.GetDamageManager());
 		if (!targetDamageMan)
 			return;
-
-		consumableComponent.SetTargetCharacter(pOwnerEntity);
-		consumableComponent.GetConsumableEffect().ActivateEffect(pOwnerEntity, pUserEntity, item, new SCR_ConsumableEffectAnimationParameters(desiredCmd, 1, 0.0, consumableEffect.GetApplyToOtherDuraction(), targetDamageMan.FindAssociatedBandagingBodyPart(m_eHitZoneGroup), 0.0, false));
-	}	
+		SCR_ConsumableEffectAnimationParameters animationParameters = new SCR_ConsumableEffectAnimationParameters(desiredCmd, 1, 0.0, 
+			consumableEffect.GetApplyToOtherDuraction(), targetDamageMan.FindAssociatedBandagingBodyPart(m_eHitZoneGroup), 0.0, false);
+		consumableEffect.ActivateEffect(pOwnerEntity, pUserEntity, item, animationParameters);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	bool HealingAllowedFromSeat(ChimeraCharacter char)

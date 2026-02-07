@@ -47,14 +47,14 @@ class SCR_CharUnconsciousnessEditorAttribute : SCR_BaseEditorAttribute
 			return;
 		
 		if (characterDamageManager.GetState() == EDamageState.DESTROYED)
-    		return;
+			return;
 		
 		if (!characterDamageManager.IsDamageHandlingEnabled())
 			return;
 		
 		//Neutralize character if unconsciousness is disabled and character is already unconscious
 		if (characterDamageManager.GetIsUnconscious() && !var.GetBool())
-			characterDamageManager.Kill();
+			characterDamageManager.Kill(Instigator.CreateInstigator(null));
 		
 		characterDamageManager.SetPermitUnconsciousness(var.GetBool(), true);
 	}

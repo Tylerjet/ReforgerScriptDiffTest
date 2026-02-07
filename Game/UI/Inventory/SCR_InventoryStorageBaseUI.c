@@ -5,14 +5,20 @@
 
 class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 {
+	static ref map<SCR_ArsenalInventorySlotUI, IEntity> ARSENAL_SLOT_STORAGES = new map<SCR_ArsenalInventorySlotUI, IEntity>();
+	
 	const float													STORAGE_NON_HIGHLIGHTED_OPACITY = 0.35;
-	const string 												STORAGE_TITLE_LAYOUT 	= "{EBBF9E10DB195DB0}UI/layouts/Menus/Inventory/InventoryTraverseTitlePanel.layout";
-	const string												SLOT_LAYOUT_1x1_EMPTY 	= "{B11F8BE49DFB62A1}UI/layouts/Menus/Inventory/Inventory20Slot_1x1_empty.layout";
+	const string												SUPPLY_TITLE_LAYOUT 		="{FCE2E160F8C0D4D4}UI/layouts/Menus/Inventory/SupplyInventoryTraverseTitlePanel.layout";
+	const string												GENERIC_CONTAINER_PREFAB	= "{9F0C54A3740F7FC9}Prefabs/Props/Military/SupplyBox/SupplyPortableContainers/SupplyPortableContainer_01/SupplyContainerGeneric.et";
+	const string 												STORAGE_TITLE_LAYOUT 		= "{EBBF9E10DB195DB0}UI/layouts/Menus/Inventory/InventoryTraverseTitlePanel.layout";
+	const string												SLOT_LAYOUT_1x1_EMPTY 		= "{B11F8BE49DFB62A1}UI/layouts/Menus/Inventory/Inventory20Slot_1x1_empty.layout";
 	protected ChimeraCharacter									m_Player;
 	protected SCR_InventoryStorageManagerComponent				m_InventoryManager;						//manager - handles all the adding / removing operations
 	protected SCR_CharacterInventoryStorageComponent			m_InventoryStorage;						//top-most character's inventory component
 	protected InputManager										m_pInputManager;
 	protected BaseInventoryStorageComponent						m_Storage;								//linked storage
+	protected SCR_ResourceComponent								m_ResourceComponent;
+	protected SCR_ResourceConsumer								m_ResourceConsumer;
 	protected SCR_InventoryMenuUI								m_MenuHandler;
 	protected ref array<SCR_InventorySlotUI>					m_aSlots				= {};
 	protected SCR_InventorySlotUI								m_pSelectedSlot			= null;
@@ -37,13 +43,15 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	protected int												m_iMaxRows, m_iMaxColumns, m_iPageSize;
 	//protected int												m_iPage					= 0;
 	protected int												m_iNrOfPages			= 0;
-	protected TextWidget 										m_wStorageName, m_wCapacityPercentageText, m_wWeightText;
-	protected Widget											m_wCapacityDisplay, m_wWeightDisplay;
+	protected TextWidget 										m_wStorageName, m_wCapacityPercentageText, m_wWeightText, m_wResourceText;
+	protected Widget											m_wCapacityDisplay, m_wWeightDisplay, m_wResourceDisplay;
 	protected int												m_iLastShownPage		= 0;
 	protected SCR_SpinBoxPagingComponent 						m_wPagingSpinboxComponent;
-	protected ref array<BaseInventoryStorageComponent> 			m_aTraverseStorage 		= new ref array<BaseInventoryStorageComponent>();
-	protected ref array<Widget>									m_aTraverseTitle 		= {};
+	protected ref array<BaseInventoryStorageComponent> 			m_aTraverseStorage 			= {};
+	protected ref array<Widget>									m_aTraverseTitle 			= {};
+	protected ref array<SCR_ResourceComponent>					m_aResourceCompsInStorage	= {};
 	protected ButtonWidget 										m_wButton, m_wLastCloseTraverseButton, m_wCloseStorageButton;
+	protected ref SCR_ResourceSystemSubscriptionHandleBase		m_ResourceSubscriptionHandleConsumer;
 	
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 	
@@ -113,6 +121,37 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		if (!uiInfo)
 			return;
 		m_wStorageName.SetText(uiInfo.GetName());
+
+		m_wResourceText = TextWidget.Cast(m_widget.FindAnyWidget("ResourceText"));
+		m_wResourceDisplay = Widget.Cast(m_widget.FindAnyWidget("ResourceDisplay"));
+		
+		if (!m_wResourceDisplay || !m_wResourceText)
+			return;
+		
+		if (m_Storage && m_Storage.GetOwner())
+			m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(m_Storage.GetOwner());
+		
+		if (m_ResourceComponent)
+			RefreshConsumer();
+		
+		if (!m_ResourceConsumer)
+			return;
+		
+		SCR_ResourcePlayerControllerInventoryComponent resourceInventoryPlayerComponent = SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
+		
+		if (!resourceInventoryPlayerComponent)
+			return;
+		
+		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(RefreshConsumer);
+		
+		RplId resourceInventoryPlayerComponentRplId = Replication.FindId(resourceInventoryPlayerComponent);
+		
+		if (!resourceInventoryPlayerComponentRplId.IsValid())
+			return;
+		
+		m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(m_ResourceConsumer, resourceInventoryPlayerComponentRplId);
+		
+		m_wResourceDisplay.SetVisible(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -242,7 +281,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	{
 		return true;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	void Traverse(BaseInventoryStorageComponent storage)
 	{
@@ -258,6 +297,10 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			IEntity entity = storage.GetOwner();
 			m_InventoryManager.PlayItemSound(entity, SCR_SoundEvent.SOUND_CONTAINER_OPEN);
 		}
+		
+		SCR_InventoryMenuUI inventoryMenu = GetInventoryMenuHandler();
+		if (inventoryMenu)
+			inventoryMenu.OpenLinkedStorages(storage, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -265,12 +308,17 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	{
 		DeleteSlots();
 		
-		//play CLOSE sound
 		BaseInventoryStorageComponent lastStorage = m_aTraverseStorage.Get(traverseStorageIndex);
 		if (lastStorage)
 		{
+			//play CLOSE sound
 			IEntity entity = lastStorage.GetOwner();
 			m_InventoryManager.PlayItemSound(entity, SCR_SoundEvent.SOUND_CONTAINER_CLOSE);
+			
+			//~ Close any linked storages
+			SCR_InventoryMenuUI inventoryMenu = GetInventoryMenuHandler();
+			if (inventoryMenu)
+				inventoryMenu.CloseLinkedStorages(lastStorage);
 		}
 		
 		auto storage = PopState( traverseStorageIndex );
@@ -296,6 +344,18 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		SortSlots();
 		ShowPage(0);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetTotalResources(notnull SCR_ResourceConsumer resourceContainer)
+	{
+		return resourceContainer.GetAggregatedResourceValue();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetMaxResources(notnull SCR_ResourceConsumer resourceContainer)
+	{
+		return resourceContainer.GetAggregatedMaxResourceValue();
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	void GetTraverseStorage( out notnull array<BaseInventoryStorageComponent> aTraverseStorage )
@@ -306,21 +366,33 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void Action_ChangePage( SCR_SpinBoxPagingComponent pSpinBox, int page )
 	{
+		int slotToFocus = -1;
+		
 		SortSlots();
-		ShowPage( m_wPagingSpinboxComponent.GetCurrentIndex() );
+		ShowPage(m_wPagingSpinboxComponent.GetCurrentIndex(), slotToFocus);
+		
+		GetGame().GetCallqueue().CallLater(m_MenuHandler.FocusOnSlotInStorage, 0, false, this, slotToFocus); // call later, otherwise ShowPage() would get triggered again right away
 	}
 		
 	//------------------------------------------------------------------------------------------------
 	void Action_PrevPage()
 	{
+		int slotToFocus = -1;
+		
 		SortSlots();
-		ShowPage( m_iLastShownPage - 1 );
+		ShowPage(m_iLastShownPage - 1, slotToFocus);
+		
+		GetGame().GetCallqueue().CallLater(m_MenuHandler.FocusOnSlotInStorage, 0, false, this, slotToFocus); // call later, otherwise ShowPage() would get triggered again right away
 	}
 	//------------------------------------------------------------------------------------------------
 	void Action_NextPage()
 	{
+		int slotToFocus = -1;
+		
 		SortSlots();
-		ShowPage( m_iLastShownPage + 1 );
+		ShowPage(m_iLastShownPage + 1, slotToFocus);
+		
+		GetGame().GetCallqueue().CallLater(m_MenuHandler.FocusOnSlotInStorage, 0, false, this, slotToFocus); // call later, otherwise ShowPage() would get triggered again right away
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -439,6 +511,9 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void RefreshSlot(int index);
+
+	//------------------------------------------------------------------------------------------------
 	// ! creates empty slot - just visual of the matrix layout
 	protected Widget CreateEmptySlotUI( int iRow, int iCol )
 	{
@@ -462,9 +537,26 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		{
 			return SCR_InventorySlotWeaponUI( pComponent, this, false );			//creates the slot
 		}
+		else if (SCR_ResourceComponent.FindResourceComponent(pComponent.GetOwner()))
+		{
+			return SCR_SupplyInventorySlotUI(pComponent, this, false);			//creates the slot
+		}
 		else if ( BaseInventoryStorageComponent.Cast( pComponent ) )
 		{
 			return SCR_InventorySlotStorageEmbeddedUI( pComponent, this, false );			//creates the slot
+		}
+		else if (pComponent.GetOwner().FindComponent(SCR_ArsenalInventoryStorageManagerComponent))
+		{
+			SCR_ArsenalInventorySlotUI slotUI = SCR_ArsenalInventorySlotUI(pComponent, this, false, -1, null);
+			BaseInventoryStorageComponent inventoryStorageComponent = GetCurrentNavigationStorage();
+
+			if (inventoryStorageComponent)
+			{
+				slotUI.SetArsenalResourceComponent(SCR_ResourceComponent.FindResourceComponent(inventoryStorageComponent.GetOwner()));
+				SCR_InventoryStorageBaseUI.ARSENAL_SLOT_STORAGES.Insert(slotUI, inventoryStorageComponent.GetOwner());
+			}
+			
+			return slotUI;
 		}
 		else
 		{
@@ -508,6 +600,9 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 				bool found = false;
 				for (int j = 0; j < rootItems.Count(); j++)
 				{
+					if (!rootItems[j])
+						continue;
+					
 					auto storage = BaseInventoryStorageComponent.Cast(
 						rootItems[j].FindComponent(BaseInventoryStorageComponent)
 					);
@@ -540,6 +635,54 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		}
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void RefreshConsumer()
+	{
+		m_ResourceConsumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.VEHICLE_UNLOAD, EResourceType.SUPPLIES);
+		
+		if (!m_ResourceConsumer)
+			m_ResourceConsumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, EResourceType.SUPPLIES);
+		
+		Refresh();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void RefreshResources()
+	{
+		if (!m_wResourceDisplay || !m_wResourceText)
+			return;
+		
+		if (m_ResourceComponent)
+		{
+			if (m_ResourceComponent && m_ResourceConsumer.GetResourceType() == EResourceType.SUPPLIES)
+			{
+				UpdateTotalResources(GetTotalResources(m_ResourceConsumer), GetMaxResources(m_ResourceConsumer));
+				
+				if (!m_wResourceDisplay.IsVisible())
+					m_wResourceDisplay.SetVisible(true);
+				
+				return;
+			}
+			
+			if (!m_aResourceCompsInStorage.IsEmpty())
+			{
+				float totalCurrentResourceCount, totalMaxResourceCount;
+				CalculateTotalResourcesInStorage(m_aResourceCompsInStorage, totalCurrentResourceCount, totalMaxResourceCount);
+				
+				UpdateTotalResources(totalCurrentResourceCount, totalMaxResourceCount);
+				
+				if (!m_wResourceDisplay.IsVisible())
+					m_wResourceDisplay.SetVisible(true);
+				
+				return;
+			}
+		}
+		
+		if (m_wResourceDisplay.IsVisible())
+			m_wResourceDisplay.SetVisible(false);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// !
 	void Refresh()
@@ -585,6 +728,45 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		
 		if ( m_pSelectedSlot )
 			m_pSelectedSlot.Refresh();
+
+		array<IEntity> itemsInStorage = {};
+		GetAllItems(itemsInStorage); // Needs a better solution. Very wasteful.
+		CheckIfAnyItemInStorageHasResources(itemsInStorage);
+		RefreshResources();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CalculateTotalResourcesInStorage(array<SCR_ResourceComponent> resources, inout float totalCurrentResourceCount, inout float totalMaxResourceCount)
+	{
+		foreach (SCR_ResourceComponent resource: resources)
+		{
+			SCR_ResourceConsumer resourceContainer = resource.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, EResourceType.SUPPLIES);
+
+			if (!resourceContainer)
+				continue;
+			
+			totalCurrentResourceCount	+= GetTotalResources(resourceContainer);
+			totalMaxResourceCount		+= GetMaxResources(resourceContainer);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateTotalResources(float totalResources, float maxResources, Color fontColor = Color.Gray25)
+	{
+		if (!m_wResourceText)
+			return;
+		
+		if (maxResources < 0)
+		{
+			m_wWeightDisplay.SetVisible(false);
+			m_wCapacityDisplay.SetVisible(false);
+			m_wResourceText.SetText(WidgetManager.Translate("#AR-Supplies_Arsenal_Availability", totalResources.ToString()));
+		}
+		else	
+			m_wResourceText.SetText(WidgetManager.Translate("#AR-Supplies_Arsenal_Availability", maxResources.ToString()));
+		
+		if (fontColor != m_wResourceText.GetColor())
+			m_wResourceText.SetColor(fontColor);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -602,9 +784,12 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			if ( !pComponent )
 				continue;
 			
+			SCR_ItemAttributeCollection attributes = SCR_ItemAttributeCollection.Cast(pComponent.GetAttributes());
+			bool stackable = (attributes && attributes.IsStackable());
+			
 			int m = FindItem( pComponent );	//does the item already exist in the same inventory container?
 			
-			if (  m != -1 )
+			if (  m != -1 && stackable )
 			{
 				m_aSlots[ m ].IncreaseStackNumber();		//if it exists, just increase the stacked number and don't create new slot
 				iCompensationOffset++;
@@ -645,7 +830,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		
 		m_aSlots[id].UpdateInventorySlot(comp, newStackCount);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	// !
 	protected void UpdateOwnedSlots(notnull array<BaseInventoryStorageComponent> pItemsInStorage)
@@ -669,6 +854,31 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			else
 				m_aSlots[i] = CreateSlotUI(pItemsInStorage[i]);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void FindAndSetResourceCount(Widget targetTitle, BaseInventoryStorageComponent targetStorage)
+	{
+		TextWidget resourceText = TextWidget.Cast(targetTitle.FindAnyWidget("ResourceText"));
+		if(!resourceText)
+			return;
+		
+		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(targetStorage.GetOwner());
+		if(!resourceComponent)
+			return;
+		
+		SCR_ResourceConsumer resourceConsumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, EResourceType.SUPPLIES);
+	
+		if (!resourceConsumer)
+			resourceConsumer = resourceComponent.GetConsumer(EResourceGeneratorID.VEHICLE_UNLOAD, EResourceType.SUPPLIES);
+		
+		if (!resourceConsumer)
+			resourceConsumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+		
+		if (!resourceConsumer)
+			return;
+		
+		resourceText.SetText(resourceConsumer.GetAggregatedResourceValue().ToString());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -827,24 +1037,23 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	// !
-	protected void ShowPage( int iPage )
+	protected void ShowPage( int iPage, out int slotToFocus = -1 )
 	{
-		
 		if( iPage >= m_iNrOfPages )
 			iPage = m_iNrOfPages - 1;
 		if( iPage < 0 )
 			iPage = 0;
 		
-		foreach ( SCR_InventorySlotUI pSlot: m_aSlots )
+		foreach ( int i, SCR_InventorySlotUI pSlot: m_aSlots )
 		{
 			if ( pSlot )
-				if( pSlot.GetPage() == iPage )
-					pSlot.SetSlotVisible( true );
-				else
-					pSlot.SetSlotVisible( false );
+			{
+				bool visible = (pSlot.GetPage() == iPage);
+				pSlot.SetSlotVisible(visible);
+				if (visible && slotToFocus == -1)
+					slotToFocus = i;
+			}
 		}
-
-		
 				
 		if( m_iNrOfPages > 1 )
 			ShowPagesCounter( true, iPage+1, m_iNrOfPages );
@@ -884,7 +1093,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		
 		int count = m_aTraverseStorage.Count();
 		
-		ref array<IEntity> pItemsInStorage = new ref array<IEntity>();
+		array<IEntity> pItemsInStorage = new array<IEntity>();
 		GetAllItems(pItemsInStorage, GetCurrentNavigationStorage());
 		UpdateOwnedSlots(pItemsInStorage);
 		
@@ -902,14 +1111,19 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		for (int i = 0; i < count; ++i)
 		{
 			currentStorage = m_aTraverseStorage[i];
-			title = GetGame().GetWorkspace().CreateWidgets(STORAGE_TITLE_LAYOUT, titleLayout);
+			
+			if (currentStorage.GetOwner().FindComponent(SCR_ArsenalInventoryStorageManagerComponent) || SCR_ResourceComponent.FindResourceComponent(currentStorage.GetOwner()))
+				title = GetGame().GetWorkspace().CreateWidgets(SUPPLY_TITLE_LAYOUT, titleLayout);
+			else
+				title = GetGame().GetWorkspace().CreateWidgets(STORAGE_TITLE_LAYOUT, titleLayout);
+			
 			if (!title)
 				return;
 			
 			m_aTraverseTitle.Insert( title );
 			
 			previewImage = RenderTargetWidget.Cast(title.FindAnyWidget("itemStorage"));
-			manager = GetGame().GetItemPreviewManager();
+			manager = GetInventoryMenuHandler().GetItemPreviewManager();
 			if (manager)
 			{
 				renderPreview = ItemPreviewWidget.Cast(previewImage);
@@ -920,7 +1134,9 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			
 			FindAndSetTitleName(title, currentStorage);
 			
-			closeContainerButton = SCR_InventoryNavigationButtonBack.Cast(SCR_InventoryNavigationButtonBack.GetNavigationButtonComponent("ButtonTraverseBack", title));
+			FindAndSetResourceCount(title, currentStorage);
+			
+			closeContainerButton = SCR_InventoryNavigationButtonBack.Cast(SCR_InventoryNavigationButtonBack.GetInputButtonComponent("ButtonTraverseBack", title));
 			if (!closeContainerButton)
 				return;
 				
@@ -965,25 +1181,49 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	// !
 	protected void GetAllItems( out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null )
-	{
-		if (ClothNodeStorageComponent.Cast(pStorage))
-		{
-			array<BaseInventoryStorageComponent> pStorages = {};
-			array<IEntity> pItems = {};
-			pStorage.GetOwnedStorages(pStorages, 1, false);
-			
-			foreach (BaseInventoryStorageComponent pStor : pStorages)
-			{
-				if (!pStor)
-					continue;
-				pStor.GetAll(pItems);
-				pItemsInStorage.Copy(pItems);
-			}
-			return;
-		}
-		
+	{		
 		if (pStorage)
 		{
+			IEntity ownerEntity = pStorage.GetOwner();
+			SCR_ArsenalInventoryStorageManagerComponent arsenalManagerComponent = SCR_ArsenalInventoryStorageManagerComponent.Cast(ownerEntity.FindComponent(SCR_ArsenalInventoryStorageManagerComponent));
+			
+			if (arsenalManagerComponent)
+			{
+				if (!pStorage)
+					return;
+			
+				SCR_ArsenalComponent arsenalComponent	= SCR_ArsenalComponent.Cast(ownerEntity.FindComponent(SCR_ArsenalComponent));
+				array<ResourceName> prefabsToSpawn		= new array<ResourceName>();
+				
+				if (!arsenalComponent)
+					return;
+				
+				arsenalComponent.GetAvailablePrefabs(prefabsToSpawn);
+				
+				foreach (ResourceName resourceName: prefabsToSpawn)
+				{
+					pItemsInStorage.Insert(GetGame().SpawnEntityPrefabLocal(Resource.Load(resourceName)));
+				}
+				
+				return;
+			}
+			
+			if (ClothNodeStorageComponent.Cast(pStorage))
+			{
+				array<BaseInventoryStorageComponent> pStorages = {};
+				array<IEntity> pItems = {};
+				pStorage.GetOwnedStorages(pStorages, 1, false);
+				
+				foreach (BaseInventoryStorageComponent pStor : pStorages)
+				{
+					if (!pStor)
+						continue;
+					pStor.GetAll(pItems);
+					pItemsInStorage.Copy(pItems);
+				}
+				return;
+			}
+		
 			pStorage.GetAll(pItemsInStorage);
 			return;
 		}
@@ -1071,7 +1311,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		if (!m_wWeightText)
 			return;
 
-		m_wWeightText.SetText(totalWeight.ToString() + " kg");
+		m_wWeightText.SetTextFormat("#AR-ValueUnit_Short_Kilograms", totalWeight);
 		
 		if (fontColor != m_wWeightText.GetColor())
 			m_wWeightText.SetColor(fontColor);
@@ -1100,6 +1340,52 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			m_wCapacityPercentageText.SetColor(fontColor);
 
 		m_wCapacityPercentageText.SetText(percentage.ToString() + "%");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool CheckIfAnyItemInStorageHasResources(array<IEntity> items)
+	{
+		SCR_ResourceComponent resComp;
+		
+		foreach(SCR_ResourceComponent oldResComp: m_aResourceCompsInStorage)
+		{
+			if (!oldResComp)
+				continue;
+			
+			SCR_ResourceConsumer oldResCont = oldResComp.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, EResourceType.SUPPLIES);
+		
+			if (!oldResCont)
+				continue;
+			
+			oldResComp.TEMP_GetOnInteractorReplicated().Remove(RefreshResources);	
+		}
+		
+		m_aResourceCompsInStorage.Clear();
+		
+		foreach (IEntity item: items)
+		{
+			if (!item)
+				continue;
+			
+			resComp = SCR_ResourceComponent.FindResourceComponent(item);
+			
+			if (!resComp)
+				continue;
+			
+			m_aResourceCompsInStorage.Insert(resComp);
+			
+			SCR_ResourceConsumer resCont = resComp.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, EResourceType.SUPPLIES);
+		
+			if (!resCont)
+				continue;
+			
+			resComp.TEMP_GetOnInteractorReplicated().Insert(RefreshResources);	
+		}
+		
+		if (m_aResourceCompsInStorage.IsEmpty())
+			return false;
+			
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1349,16 +1635,24 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	protected void SetPreviewItem()
 	{
 		m_wPreviewImage = RenderTargetWidget.Cast( m_widget.FindAnyWidget( "itemStorage" ) );
-		ItemPreviewManagerEntity manager = GetGame().GetItemPreviewManager();
-		if (manager)
-		{
-			ItemPreviewWidget renderPreview = ItemPreviewWidget.Cast( m_wPreviewImage );
-			IEntity previewEntity = null;
-			if (m_Storage)
-				previewEntity = m_Storage.GetOwner();
-			if (renderPreview)
-				manager.SetPreviewItem(renderPreview, previewEntity, null, true);
-		}
+		
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		if (!world)
+			return;
+		
+		ItemPreviewManagerEntity manager = world.GetItemPreviewManager();
+		if (!manager)
+			return;
+		
+		ItemPreviewWidget renderPreview = ItemPreviewWidget.Cast( m_wPreviewImage );
+		if (!renderPreview)
+			return;
+		
+		IEntity previewEntity = null;
+		if (m_Storage)
+			previewEntity = m_Storage.GetOwner();
+		
+		manager.SetPreviewItem(renderPreview, previewEntity, null, true);
 	}
 	
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
@@ -1404,6 +1698,15 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 
 		m_widget = w;
 		Init();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override event void HandlerDeattached(Widget w)
+	{
+		if (m_ResourceComponent)
+			m_ResourceComponent.TEMP_GetOnInteractorReplicated().Remove(RefreshConsumer);
+		
+		m_ResourceSubscriptionHandleConsumer = null;
 	}
 			
 	//------------------------------------------------------------------------------------------------

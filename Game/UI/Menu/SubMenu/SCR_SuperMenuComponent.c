@@ -8,7 +8,7 @@ class SCR_SuperMenuComponent : ScriptedWidgetComponent
 	protected const static string TAB_VIEW_NAME = "TabView";
 	protected const static string LEFT_FOOTER = "Footer";
 	protected const static string RIGHT_FOOTER = "FooterRight";
-	protected const static ResourceName DEFAULT_NAV_BUTTON = "{08CF3B69CB1ACBC4}UI/layouts/WidgetLibrary/WLib_NavigationButton.layout";
+	protected const static ResourceName DEFAULT_NAV_BUTTON = "{08CF3B69CB1ACBC4}UI/layouts/WidgetLibrary/Buttons/WLib_NavigationButton.layout";
 	
 	// Attributes 
 	[Attribute(TITLE, UIWidgets.EditBox, desc: "Name of title widget.")]
@@ -128,7 +128,7 @@ class SCR_SuperMenuComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	//! Add new navigation button, sub (SCR_SubMenuBase) menu should be owner and take care of display and hide
 	//! rightFooter - when true, the button will be added to the right footer.
-	SCR_NavigationButtonComponent AddNavigationButton(string action, string buttonText, bool rightFooter = false)
+	SCR_InputButtonComponent AddNavigationButton(string action, string buttonText, bool rightFooter = false)
 	{
 		// Fallback widget search
 		if (!m_wLeftFooter)
@@ -163,7 +163,7 @@ class SCR_SuperMenuComponent : ScriptedWidgetComponent
 		AlignableSlot.SetPadding(w, paddingLeft, 0.0, paddingRight, 0.0);
 		
 		
-		SCR_NavigationButtonComponent comp = SCR_NavigationButtonComponent.Cast(w.FindHandler(SCR_NavigationButtonComponent));
+		SCR_InputButtonComponent comp = SCR_InputButtonComponent.Cast(w.FindHandler(SCR_InputButtonComponent));
 		if (!comp)
 			return null;
 		
@@ -207,6 +207,7 @@ class SCR_SuperMenuComponent : ScriptedWidgetComponent
 
 	
 	//------------------------------------------------------------------------------------------------
+	//TODO: this never gets called
 	void OnTabHide(SCR_TabViewComponent comp, Widget w)
 	{
 		if (!w)
@@ -220,6 +221,7 @@ class SCR_SuperMenuComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//TODO: this gets called when switching tab (if the tab is set to be destroyed), but not when closing the dialog
 	void OnTabRemove(SCR_TabViewComponent comp, Widget w)
 	{
 		if (!w)

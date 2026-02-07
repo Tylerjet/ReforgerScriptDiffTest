@@ -6,7 +6,7 @@ class SCR_ServerConfigSaveDialog : SCR_ConfigurableDialogUi
 	protected const string WIDGET_NAV_CONFIRM = "confirm";
 	
 	protected SCR_EditBoxComponent m_FileName;
-	protected SCR_NavigationButtonComponent m_navConfirm;
+	protected SCR_InputButtonComponent m_navConfirm;
 	
 	//------------------------------------------------------------------------------------------------
 	override protected void Init(Widget root, SCR_ConfigurableDialogUiPreset preset, MenuBase proxyMenu)
@@ -19,8 +19,14 @@ class SCR_ServerConfigSaveDialog : SCR_ConfigurableDialogUi
 	override void HandlerAttached(Widget w)
 	{
 		m_FileName = SCR_EditBoxComponent.GetEditBoxComponent(WIDGET_FILE_NAME, w);
-		if (m_FileName)
-			m_FileName.m_OnChanged.Insert(OnFileNameChanged);
+		if (!m_FileName)
+			return;
+		
+		m_FileName.m_OnChanged.Insert(OnFileNameChanged);
+		
+		Widget focus = m_FileName.GetRootWidget();
+			if (focus)
+				GetGame().GetWorkspace().SetFocusedWidget(focus);
 	}
 	
 	//------------------------------------------------------------------------------------------------

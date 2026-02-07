@@ -299,29 +299,15 @@ class array<Class T>: Managed
 	/*!
 	Removes element from array. The empty position is replaced by
 	last element, so removal is quite fast but does not retain order.
+	\return true if item was removed
 	*/
-	void RemoveItem(T value)
-	{
-		int remove_index = Find(value);
-
-		if ( remove_index >= 0 )
-		{
-			Remove(remove_index);
-		}
-	}
+	proto bool RemoveItem(T value);
 
 	/*!
 	Removes element from array, but retain all elements ordered. It's slower than RemoveItem().
+	\return true if item was removed
 	*/
-	void RemoveItemOrdered(T value)
-	{
-		int remove_index = Find( value );
-
-		if ( remove_index >= 0 )
-		{
-			RemoveOrdered( remove_index );
-		}
-	}
+	proto bool RemoveItemOrdered(T value);
 
 	/*!
 	Print all elements in array.
@@ -454,16 +440,9 @@ class set<Class T>: Managed
 	
 	/*!
 	Removes element from set.
+	\return true if item was removed
 	*/
-	void RemoveItem(T value)
-	{
-		int remove_index = Find(value);
-
-		if ( remove_index >= 0 )
-		{
-			Remove(remove_index);
-		}
-	}
+	proto bool RemoveItem(T value);
 	
 	//! Returns whether provided element index of set is valid.
 	proto native bool IsIndexValid(int index);
@@ -545,14 +524,25 @@ class map<Class TKey,Class TValue>: Managed
 	\note Creating new elements is faster using Insert() function.
 	*/
 	proto void Set(TKey key, TValue value);
-	//! Removes element with given `key`.
-	proto void Remove(TKey key);
+	/*
+	Removes element with given `key`.
+	\return `true` if element was removed.
+	*/
+	proto bool Remove(TKey key);
+	/*!
+	Search for an element with the given key and remove it.
+	\param key The key of the element to find and remove.
+	\param[out] val Destination where result will be stored.
+	\return `true` if element was removed.
+	*/
+	proto bool Take(TKey key, out TValue value);
 	/*!
 	Removes i-th element with given key.
 	\note This operation is O(n) complexity. Use with care!
 	\param i The position of the element key in the map.
+	\return `true` if element was removed.
 	*/
-	proto void RemoveElement(int i);
+	proto bool RemoveElement(int i);
 	//! Returns whether map contains element with given key.
 	proto bool Contains(TKey key);
 	/*!

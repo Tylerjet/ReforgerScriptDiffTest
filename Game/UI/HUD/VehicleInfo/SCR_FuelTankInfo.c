@@ -1,3 +1,6 @@
+//#define SHOW_DMG_INDICATORS_WARNING
+//#define SHOW_DMG_INDICATORS_ERROR
+
 class SCR_FuelTankInfo : SCR_BaseVehicleInfo
 {
 	[Attribute(uiwidget: UIWidgets.Auto, desc: "Fuel Tank IDs\nLeave empty to collect total fuel")]
@@ -31,6 +34,14 @@ class SCR_FuelTankInfo : SCR_BaseVehicleInfo
 	//! Can be overridden to get state of actual system or linked to an event
 	override EVehicleInfoState GetState()
 	{
+		#ifdef SHOW_DMG_INDICATORS_ERROR
+		return EVehicleInfoState.ERROR;
+		#endif
+		
+		#ifdef SHOW_DMG_INDICATORS_WARNING
+		return EVehicleInfoState.WARNING;
+		#endif
+		
 		if (!m_pFuelManager)
 			return EVehicleInfoState.DISABLED;
 
@@ -58,14 +69,13 @@ class SCR_FuelTankInfo : SCR_BaseVehicleInfo
 			fuel /= maxFuel;
 
 		// ERROR: < reserve fuel
-		// WARNING: < low fuel
-		// ENABLED: leaking but over reserve
+		// WARNING: < low fuel or leaking
 		if (fuel <= m_fReserveFuelLevel * 0.01)
 			return EVehicleInfoState.ERROR;
 		else if (fuel <= m_fLowFuelLevel * 0.01)
 			return EVehicleInfoState.WARNING;
 		else if (IsBlinking())
-			return EVehicleInfoState.ENABLED;
+			return EVehicleInfoState.WARNING;
 
 		return EVehicleInfoState.DISABLED;
 	}

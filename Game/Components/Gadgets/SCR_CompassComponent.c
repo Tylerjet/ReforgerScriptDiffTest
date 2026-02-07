@@ -24,6 +24,9 @@ class SCR_CompassComponentClass: SCR_GadgetComponentClass
 	[Attribute("0 0.3 0", UIWidgets.Coords, desc: "camera position when displayed in map UI mode", category: "Compass")]
 	vector m_vMapCameraPos; 	
 	
+	[Attribute("{72691366C26BD901}Prefabs/Items/Equipment/Compass/Compass_SY183_Map.et", desc: "Compass prefab used for display within 2D map", category: "Compass")]
+	ResourceName m_sMapResource;
+	
 	// signals
 	bool m_bSignalInit = false;
 	int m_iSignalNeedle = -1;
@@ -97,6 +100,14 @@ class SCR_CompassComponent : SCR_GadgetComponent
 	protected ref SCR_CompassComponentClass m_PrefabData;
 	
 	//------------------------------------------------------------------------------------------------
+	//! Get 2D map prefab resource name
+	//! \return returns prefab ResourceName
+	ResourceName GetMapPrefabResource()
+	{					
+		return m_PrefabData.m_sMapResource;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Updates the needle angle around the Y axis, to pointing north
 	//! \param timeSlice is OnFrame timeslice
 	protected void UpdateNeedleDirection(float timeSlice)
@@ -164,6 +175,11 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		// Perturb the compass a bit:
 		m_fShakeAngle = m_PrefabData.m_fShakeMaximumAngle;
 		m_fNeedleVelocity = 5;
+			
+		// Initial set
+		vector angles = GetOwner().GetYawPitchRoll();
+		m_fNeedleAngle = -angles[0] + Math.RandomInt(-10, 10);
+		m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalNeedle, m_fNeedleAngle);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -337,7 +353,7 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		if (System.IsConsoleApp())
 			return;
 
-		SetEventMask(GetOwner(), EntityEvent.FRAME);
+		ConnectToGadgetsSystem();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -348,11 +364,11 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		if (System.IsConsoleApp())
 			return;
 		
-		ClearEventMask(GetOwner(), EntityEvent.FRAME);
+		DisconnectFromGadgetsSystem();
 	}
 						
 	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
+	override void Update(float timeSlice)
 	{						
 		UpdateNeedleDirection(timeSlice);
 		UpdateNeedleShake(timeSlice);

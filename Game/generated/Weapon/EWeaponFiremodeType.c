@@ -15,6 +15,7 @@ enum EWeaponFiremodeType
 	Semiauto,
 	Auto,
 	Burst,
+	Manual,
 }
 
 /*!

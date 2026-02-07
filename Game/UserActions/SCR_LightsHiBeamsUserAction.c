@@ -10,8 +10,13 @@ class SCR_LightsHiBeamsUserAction : LightUserAction
 		if (!lightManager)
 			return;
 	
-		bool lightsState = !lightManager.GetLightsState(ELightType.HiBeam);
+		bool lightsState;	
 		
+		lightsState = lightManager.GetLightsState(ELightType.HiBeam);
+
+		if (RplSession.Mode() != RplMode.Client)
+			lightsState = !lightsState;
+
 		lightManager.SetLightsState(ELightType.HiBeam, lightsState);
 		
 		// Sound		

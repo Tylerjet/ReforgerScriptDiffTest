@@ -258,10 +258,19 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
+		super.OnPostInit(owner);
+		
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_DESTRUCTION_ENABLE_DIAG, "", "Enable destruction diag", "Destruction");
 		
-		//FRAME event is needed for DIAG to be fired
-		SetEventMask(owner, EntityEvent.FRAME | EntityEvent.DIAG);
+		ConnectToDiagSystem(owner);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		DisconnectFromDiagSystem(owner);
+		
+		super.OnDelete(owner);
 	}
 #endif
 }

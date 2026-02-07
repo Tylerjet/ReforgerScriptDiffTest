@@ -18,6 +18,7 @@ enum EMessageType_Goal
 	ATTACK,
 	ATTACK_CLUSTER,
 	ATTACK_CLUSTER_DONE,
+	COVER_CLUSTER,
 	MOVE_IN_FORMATION,
 	ATTACK_STATIC,
 	ATTACK_STATIC_DONE,	
@@ -336,6 +337,14 @@ class SCR_AIMessage_AttackClusterDone : SCR_AIMessageGoal // MESSAGE_CLASS(Gener
 	}
 }
 
+class SCR_AIMessage_CoverCluster : SCR_AIMessageGoal
+{
+	void SCR_AIMessage_CoverCluster()
+	{
+		m_MessageType = EMessageType_Goal.COVER_CLUSTER;
+	}
+}
+
 class SCR_AIMessage_AttackStatic : SCR_AIMessage_Attack // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_AttackStatic)
 {
 	void SCR_AIMessage_AttackStatic() 
@@ -364,6 +373,7 @@ class SCR_AIMessage_Move : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMe
 {
 	IEntity m_FollowEntity; // VARIABLE(NodePort, FollowEntity)
 	vector m_MovePosition; // VARIABLE(NodePort, MovePosition)
+	EMovementType m_eMovementType; // VARIABLE(NodePropertyEnum, m_eMovementType)
 	bool m_bUseVehicles; // VARIABLE(NodePort, UseVehicles, NodeProperty, m_bUseVehicles)	
 	
 	void SCR_AIMessage_Move() 

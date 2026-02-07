@@ -275,6 +275,7 @@ class WorkbenchPlugin: Managed
 	void Run() {}
 	void RunCommandline() {}
 	void Configure() {}
+	void OnResourceContextMenu(notnull array<ResourceName> resources) {}
 
 	private void WorkbenchPlugin();
 	private void ~WorkbenchPlugin();
@@ -341,6 +342,7 @@ Attribute for Workbench plugin definition:
 - `shortcut` - shortcut in simple text form e.g. "ctrl+g"
 - `icon` - relative path to icon file (32x32 png)
 - `wbModules` - list of strings representing Workbench modules where this tool should be avalaible (e.g. {"ResourceManager", "ScriptEditor"}). Leave null or empty array for any module.
+- `resourceTypes` - list of resource types to offer this plugin in context menu (e.g. {"conf", "dds", "layout"})
 */
 class WorkbenchPluginAttribute
 {
@@ -352,8 +354,9 @@ class WorkbenchPluginAttribute
 	int m_AwesomeFontCode; //! https://fontawesome.com/cheatsheet/
 
 	ref array<string> m_WBModules;
+	ref array<string> m_ResourceTypes; 
 
-	void WorkbenchPluginAttribute(string name, string description = "", string shortcut = "", string icon = "", array<string> wbModules = null, string category = "", int awesomeFontCode = 0)
+	void WorkbenchPluginAttribute(string name, string description = "", string shortcut = "", string icon = "", array<string> wbModules = null, string category = "", int awesomeFontCode = 0, array<string> resourceTypes = null)
 	{
 		m_Name = name;
 		m_Icon = icon;
@@ -362,6 +365,7 @@ class WorkbenchPluginAttribute
 		m_WBModules = wbModules;
 		m_Category = category;
 		m_AwesomeFontCode = awesomeFontCode;
+		m_ResourceTypes = resourceTypes;
 	}
 }
 

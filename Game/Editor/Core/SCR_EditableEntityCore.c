@@ -17,6 +17,9 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	[Attribute("1000", desc: "Draw distance override for player characters.")]
 	protected float m_fPlayerDrawDistance;
 	
+	[Attribute(defvalue: "0.01", desc: "The distance modifier for players in vehicles which will be used to determine player filter's visibility.")]
+	protected float m_fPlayerVehicleDistanceModifier;
+
 	[Attribute(desc: "Budget settings for every entity type.")]
 	private ref array<ref SCR_EditableEntityCoreBudgetSetting> m_BudgetSettings;
 	
@@ -388,12 +391,121 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	{
 		SCR_EditableEntityCoreLabelSetting labelSetting = m_LabelSettingsMap.Get(entityLabel);
 		if (labelSetting)
-		{
 			uiInfo = labelSetting.GetInfo();
-		}
+
 		return uiInfo != null;
 	}
 	
+	/*!
+	Get UI info of passed entity label if the label is valid to display
+	\param EEditableEntityLabel enum value
+	\param currentMode Current editor mode
+	\param[out] SCR_UIInfo matching the passed label enum value
+	\return True if UI Info was found and is valid
+	*/
+	bool GetLabelUIInfoIfValid(EEditableEntityLabel entityLabel, EEditorMode currentMode, out SCR_UIInfo uiInfo)
+	{
+		SCR_EditableEntityCoreLabelSetting labelSetting = m_LabelSettingsMap.Get(entityLabel);
+		if (labelSetting)
+		{
+			if (labelSetting.IsValid(currentMode))
+				uiInfo = labelSetting.GetInfo();
+			else 
+				uiInfo = null;
+		}
+			
+		return uiInfo != null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get UI infos and Linked Confict servece point of passed entity label for BuildMode specific Labels
+	Will ignore any non-buildmode labels as well as any build mode labels that have neither UIInfo nor linked conflict service point
+	\param entityLabel label to get data from
+	\return A class with specific build mode label data. Which has such info as: Label, UiInfo and Linked conflict service point. Null if getting the data for the specific label fails
+	*/
+	SCR_EditableEntityCampaignBuildingModeLabelData GetBuildModeLabelData(EEditableEntityLabel entityLabel)
+	{
+		SCR_EditableEntityCampaignBuildingLabelSetting buildModeLabelSetting = SCR_EditableEntityCampaignBuildingLabelSetting.Cast(m_LabelSettingsMap.Get(entityLabel));
+		if (!buildModeLabelSetting)
+			return null;
+		
+		SCR_UIInfo uiInfo = buildModeLabelSetting.GetInfo();
+		SCR_EServicePointType linkedConflictServicePoint = buildModeLabelSetting.GetLinkedConflictServicePoint();
+		if (!uiInfo && linkedConflictServicePoint < 0)
+			return null;
+		
+		return new SCR_EditableEntityCampaignBuildingModeLabelData(entityLabel, uiInfo, linkedConflictServicePoint);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get UI infos and Linked Confict servece point of all passed entity labels for BuildMode specific Labels
+	Will ignore any non-buildmode labels as well as any build mode labels that have neither UIInfo nor linked conflict service point
+	\param entityLabels labels to get data from
+	\param[out] validBuildmodeLabelData array of specific build mode label data. Which has such info as: Label, UiInfo and Linked conflict service point
+	\return Count of valid build mode lables.
+	*/
+	int GetCampaignBuildingModeLabelsData(notnull array<EEditableEntityLabel> entityLabels, notnull out array<ref SCR_EditableEntityCampaignBuildingModeLabelData> validBuildmodeLabelData)
+	{
+		validBuildmodeLabelData.Clear();
+		
+		SCR_EditableEntityCampaignBuildingLabelSetting buildModeLabelSetting;
+		SCR_UIInfo uiInfo;
+		SCR_EServicePointType linkedConflictServicePoint;
+		
+		foreach (EEditableEntityLabel entityLabel : entityLabels)
+		{			
+			if (entityLabel == EEditableEntityLabel.TRAIT_SERVICE)
+				continue;
+			
+			buildModeLabelSetting = SCR_EditableEntityCampaignBuildingLabelSetting.Cast(m_LabelSettingsMap.Get(entityLabel));
+			if (!buildModeLabelSetting)
+				continue;
+			
+			uiInfo = buildModeLabelSetting.GetInfo();
+			linkedConflictServicePoint = buildModeLabelSetting.GetLinkedConflictServicePoint();
+			
+			if (!uiInfo && linkedConflictServicePoint < 0)
+				continue;
+			
+			validBuildmodeLabelData.Insert(new SCR_EditableEntityCampaignBuildingModeLabelData(entityLabel, uiInfo, linkedConflictServicePoint));
+		}
+		
+		return validBuildmodeLabelData.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get UI info of passed entity label for BuildMode labels. Will return null if no UIInfo assigned or if not a building mode specific label
+	\param entityLabel label to get data from
+	\return UiInfo
+	*/
+	SCR_UIInfo GetBuildModeLabelUIInfo(EEditableEntityLabel entityLabel)
+	{
+		SCR_EditableEntityCampaignBuildingLabelSetting buildModeLabelSetting = SCR_EditableEntityCampaignBuildingLabelSetting.Cast(m_LabelSettingsMap.Get(entityLabel));
+		if (!buildModeLabelSetting)
+			return null;
+		
+		return buildModeLabelSetting.GetInfo();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get linked conflict service point of passed entity label for BuildMode labels. Will ignore any non assigned values (-1 or less)
+	\param entityLabel label to get data from
+	\return Linked conflict service point
+	*/
+	SCR_EServicePointType GetBuildModeLabelLinkedConflictService(EEditableEntityLabel entityLabel)
+	{
+		SCR_EditableEntityCampaignBuildingLabelSetting buildModeLabelSetting = SCR_EditableEntityCampaignBuildingLabelSetting.Cast(m_LabelSettingsMap.Get(entityLabel));
+		if (!buildModeLabelSetting)
+			return -1;
+		
+		return buildModeLabelSetting.GetLinkedConflictServicePoint();
+	}
+		
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get specific label order. Returns -1 if label not found
 	\return int label order.
@@ -569,9 +681,13 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	Get draw distance override value for player characters.
 	\return Draw distance value
 	*/
-	float GetPlayerDrawDistanceSq()
+	float GetPlayerDrawDistanceSq(bool isInVehicle)
 	{
-		return m_fPlayerDrawDistance;
+		float modifiedDrawDistance = m_fPlayerDrawDistance;
+		if (isInVehicle)
+			modifiedDrawDistance *= m_fPlayerVehicleDistanceModifier;
+
+		return modifiedDrawDistance;
 	}
 	
 	/*!
@@ -620,11 +736,6 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		if (!entity)
 			return;
 
-		//:| Preventing players from being counted towards Budget Calculation as the server's player count limit is technically the budget for players.
-		SCR_EditableCharacterComponent character = SCR_EditableCharacterComponent.Cast(entity);
-		if (character && (character.GetIsPlayerPending() || character.GetPlayerID() != 0))
-			return;
-		
 		array<ref SCR_EntityBudgetValue> entityBudgetCosts = {};
 		if (entity.GetEntityBudgetCost(entityBudgetCosts, owner))
 		{

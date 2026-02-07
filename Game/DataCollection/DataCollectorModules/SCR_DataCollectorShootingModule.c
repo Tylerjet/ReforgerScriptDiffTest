@@ -148,83 +148,75 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 #endif
 
 	//------------------------------------------------------------------------------------------------
-	override void OnAIKilled(IEntity AI, IEntity killer)
+	override void OnAIKilled(IEntity AIEntity, IEntity killerEntity, notnull Instigator killer)
 	{
+		super.OnAIKilled(AIEntity, killerEntity, killer);
+		
 		//This method adds a kill no matter the mean by which the AI was killed.
-		//The name of the module is a little bit misleading
-
-		super.OnAIKilled(AI, killer);
-		if (!AI || !killer)
+		//The name of the module is a little bit misleading		
+		if (killer.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
 
-		int killerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(killer);
-
-		//An AI killed another. Skynet hasn't revealed against mankind just yet
-		if (killerId == 0)
+		SCR_ChimeraCharacter AIEntityChar = SCR_ChimeraCharacter.Cast(AIEntity);
+		if (!AIEntityChar)
 			return;
-
-		FactionAffiliationComponent victimAffiliationComponent = FactionAffiliationComponent.Cast(AI.FindComponent(FactionAffiliationComponent));
-		FactionAffiliationComponent killerffiliationComponent = FactionAffiliationComponent.Cast(killer.FindComponent(FactionAffiliationComponent));
-		if (!victimAffiliationComponent || !killerffiliationComponent)
+		
+		int killerId = killer.GetInstigatorPlayerID();
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
 			return;
-		Faction victimFaction = victimAffiliationComponent.GetAffiliatedFaction();
-		Faction killerFaction = killerffiliationComponent.GetAffiliatedFaction();
+		
+		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerId));
+		if (!factionKiller)
+			return;
+		
+		SCR_PlayerData killerData = GetGame().GetDataCollector().GetPlayerData(killerId);
 
-		//Add a kill. Find if friendly or unfriendly
-		if (killerFaction && victimFaction)
-		{
-			SCR_PlayerData killerData = GetGame().GetDataCollector().GetPlayerData(killerId);
-			if (killerFaction.IsFactionFriendly(victimFaction))
-				killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
-			else
-				killerData.AddStat(SCR_EDataStats.AI_KILLS);
-		}
+		//Add an AI kill. Find if friendly or unfriendly
+		if (factionKiller.IsFactionFriendly(AIEntityChar.GetFaction()))
+			killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
+		else
+			killerData.AddStat(SCR_EDataStats.AI_KILLS);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerKilled(int playerID, IEntity player, IEntity killer)
+	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		super.OnPlayerKilled(playerID, player, killer);
-		m_mTrackedPossibleShooters.Remove(playerID);
+		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
+		m_mTrackedPossibleShooters.Remove(playerId);
 
-		//Adding death.
-		if (playerID == 0)
-		{
-			Print("Error in DataCollectorShootingModule: OnPlayerKilled event was raised but the playerID is 0.", LogLevel.ERROR);
-			return;
-		}
-
-		SCR_PlayerData playerData = GetGame().GetDataCollector().GetPlayerData(playerID);
+		SCR_PlayerData playerData = GetGame().GetDataCollector().GetPlayerData(playerId);
 		playerData.AddStat(SCR_EDataStats.DEATHS);
-
-		if (!player || !killer)
+		
+		if (killer.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
-
-		int killerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(killer);
-		if (killerID == 0)
+		
+		SCR_ChimeraCharacter playerEntityChar = SCR_ChimeraCharacter.Cast(playerEntity);
+		if (!playerEntityChar)
 			return;
+		
+		int killerId = killer.GetInstigatorPlayerID();
 
 		// Suicide?
-		if (playerID == killerID)
+		if (playerId == killerId)
 			return;
 
-		SCR_PlayerData killerData = GetGame().GetDataCollector().GetPlayerData(killerID);
+		SCR_PlayerData killerData = GetGame().GetDataCollector().GetPlayerData(killerId);
 
-		FactionAffiliationComponent victimAffiliationComponent = FactionAffiliationComponent.Cast(player.FindComponent(FactionAffiliationComponent));
-		FactionAffiliationComponent killerffiliationComponent = FactionAffiliationComponent.Cast(killer.FindComponent(FactionAffiliationComponent));
-		if (!victimAffiliationComponent || !killerffiliationComponent)
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
 			return;
-		Faction victimFaction = victimAffiliationComponent.GetAffiliatedFaction();
-		Faction killerFaction = killerffiliationComponent.GetAffiliatedFaction();
+		
+		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerId));
+		if (!factionKiller)
+			return;
 
 		//Add a kill. Find if friendly or unfriendly
-		if (killerFaction && victimFaction)
-		{
-			if (killerFaction.IsFactionFriendly(victimFaction))
-				killerData.AddStat(SCR_EDataStats.FRIENDLY_KILLS);
-			else
-				killerData.AddStat(SCR_EDataStats.KILLS);
-		}
+		if (factionKiller.IsFactionFriendly(playerEntityChar.GetFaction()))
+			killerData.AddStat(SCR_EDataStats.FRIENDLY_KILLS);
+		else
+			killerData.AddStat(SCR_EDataStats.KILLS);
 	}
 
 	//------------------------------------------------------------------------------------------------

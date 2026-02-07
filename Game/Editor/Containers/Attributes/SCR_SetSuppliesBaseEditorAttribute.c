@@ -10,15 +10,20 @@ class SCR_SetSuppliesBaseEditorAttribute : SCR_BaseValueListEditorAttribute
 		if (!CanDisplay(editableEntity))
 			return null;
 		
-		SCR_CampaignSuppliesComponent supplyComponent = SCR_CampaignSuppliesComponent.GetSuppliesComponent(editableEntity.GetOwner());
+		/*SCR_CampaignSuppliesComponent supplyComponent = SCR_CampaignSuppliesComponent.GetSuppliesComponent(editableEntity.GetOwner());
 		if (!supplyComponent) 
+			return null;*/
+		
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_CampaignMilitaryBaseComponent));
+		
+		if (!base)
 			return null;
 		
-		if (supplyComponent.GetSuppliesMax() <= 0)
+		if (base.GetSuppliesMax() <= 0)
 			return null;
 		
 		//~ Send over current and max value as max value is used in UI to set slider max
-		return SCR_BaseEditorAttributeVar.CreateVector(Vector(supplyComponent.GetSupplies(), supplyComponent.GetSuppliesMax(), 0));
+		return SCR_BaseEditorAttributeVar.CreateVector(Vector(base.GetSupplies(), base.GetSuppliesMax(), 0));
 	}
 	
 	protected bool CanDisplay(SCR_EditableEntityComponent editableEntity)
@@ -36,11 +41,16 @@ class SCR_SetSuppliesBaseEditorAttribute : SCR_BaseValueListEditorAttribute
 		if (!editableEntity) 
 			return;
 		
-		SCR_CampaignSuppliesComponent supplyComponent = SCR_CampaignSuppliesComponent.GetSuppliesComponent(editableEntity.GetOwner());
+		/*SCR_CampaignSuppliesComponent supplyComponent = SCR_CampaignSuppliesComponent.GetSuppliesComponent(editableEntity.GetOwner());
 		if (!supplyComponent) 
+			return;*/
+		
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_CampaignMilitaryBaseComponent));
+		
+		if (!base)
 			return;
 		
 		vector currentAndMaxSupplies = var.GetVector();
-		supplyComponent.AddSupplies(currentAndMaxSupplies[0] - supplyComponent.GetSupplies());
+		base.SetSupplies(currentAndMaxSupplies[0]);
 	}
 };

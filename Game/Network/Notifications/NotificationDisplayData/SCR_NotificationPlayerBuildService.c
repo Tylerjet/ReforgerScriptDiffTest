@@ -8,20 +8,20 @@ class SCR_NotificationPlayerBuildService : SCR_NotificationDisplayData
 {
 	override string GetText(SCR_NotificationData data)
 	{
-		int playerID, entityID, providerID;
-		data.GetParams(playerID, entityID, providerID);
+		int playerID, entityID, callsignID;
+		data.GetParams(playerID, entityID, callsignID);
 		
 		string playerName, entityName;
 		data.GetNotificationTextEntries(playerName, entityName);
-		if (!GetPlayerName(playerID, playerName) || !GetEditableEntityName(entityID, entityName))
+		if (!GetPlayerName(playerID, playerName) || !GetEditableEntityName(entityID, entityName, false))
 			return string.Empty;
 
-		data.SetNotificationTextEntries(playerName, entityName, GetProviderCallsign(providerID));
+		data.SetNotificationTextEntries(playerName, entityName, GetProviderCallsign(callsignID));
 		return super.GetText(data);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	private string GetProviderCallsign(int providerID)
+	private string GetProviderCallsign(int callsignID)
 	{
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
@@ -32,7 +32,7 @@ class SCR_NotificationPlayerBuildService : SCR_NotificationDisplayData
 		if (!baseManager)
 			return string.Empty;
 		
-		SCR_CampaignMilitaryBaseComponent base = baseManager.FindBaseByCallsign(providerID);
+		SCR_CampaignMilitaryBaseComponent base = baseManager.FindBaseByCallsign(callsignID);
 		if (!base)
 			return string.Empty;
 		

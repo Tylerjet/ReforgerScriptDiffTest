@@ -50,7 +50,7 @@ class SCR_InventoryInspectionUI : ScriptedWidgetComponent
 				
 		CreatePreview();
 		
-		m_wButtonTraverseBack = SCR_InventoryNavigationButtonBack.Cast( SCR_InventoryNavigationButtonBack.GetNavigationButtonComponent( "ButtonTraverseBack", m_widget ) );
+		m_wButtonTraverseBack = SCR_InventoryNavigationButtonBack.Cast( SCR_InventoryNavigationButtonBack.GetInputButtonComponent( "ButtonTraverseBack", m_widget ) );
 		if ( m_wButtonTraverseBack )
 		{
 			m_wButtonTraverseBack.SetVisible( true );

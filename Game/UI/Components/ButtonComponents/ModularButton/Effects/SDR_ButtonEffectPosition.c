@@ -1,4 +1,4 @@
-[BaseContainerProps(), SCR_ButtonEffectTitleAttribute("Position", "m_sWidgetName")]
+[BaseContainerProps(configRoot : true), SCR_ButtonEffectTitleAttribute("Position", "m_sWidgetName")]
 class SCR_ButtonEffectPosition : SCR_ButtonEffectWidgetBase
 {
 	[Attribute(defvalue: "0.2", UIWidgets.EditBox, "Duration of animation")]

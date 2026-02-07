@@ -80,6 +80,8 @@ class GenericComponent
 	\param params See the TransformResetParams documentation.
 	*/
 	proto external private void OnTransformResetImplNative(TransformResetParams params);
+	proto external protected void ConnectToDiagSystem(IEntity owner);
+	proto external protected void DisconnectFromDiagSystem(IEntity owner);
 	/*!
 	Notifies the component that a transformation of the owner entity has been discontinuously changed.
 
@@ -131,6 +133,8 @@ class GenericComponent
 	event void _WB_OnKeyDown(IEntity owner, int keyCode);
 	//! Called after entity gets created in map during editing or when deleted entity gets restored after undo action. This event isn't called by loading map!!! If you need an event that is being called after every entity creation then use WB_OnInit instead it. You can use editor API here and do some additional edit actions which will be part of the same "create entity" action.
 	event void _WB_OnCreate(IEntity owner, IEntitySource src);
+	//! Parent entity has been changed ( it's available through src->GetParent() ). prevParentSrc is a pointer to a previous parent (if any)
+	event void _WB_OnParentChange(IEntity owner, IEntitySource src, IEntitySource prevParentSrc);
 	//! Entity is going to be deleted. You can use editor API here and do some additional edit actions which will be part of the same "entity delete" action.
 	event void _WB_OnDelete(IEntity owner, IEntitySource src);
 	//! Entity has been renamed. You can use editor API here and do some additional edit actions which will be part of the same "entity rename" action.

@@ -13,6 +13,9 @@ class SCR_EditableEntityVisibilityChildComponent : SCR_EditableEntityBaseChildCo
 {
 	override void EOnStateChanged(EEditableEntityState states, EEditableEntityState changedState, bool toSet)
 	{
+		if (m_Owner.IsDeleted())
+			return;
+		
 		if ((states & m_State) > 0)
 			m_Owner.SetFlags(EntityFlags.VISIBLE, true);
 		else

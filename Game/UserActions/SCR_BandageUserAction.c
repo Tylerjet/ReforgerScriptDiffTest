@@ -21,10 +21,13 @@ class SCR_BandageUserAction : SCR_HealingUserAction
 		if (consumableComponent)
 			consumableComponent.SetAlternativeModel(false);
 	}
-			
+
 	//------------------------------------------------------------------------------------------------
-	override bool CanBePerformedScript(IEntity user)
+	override bool CanBeShownScript(IEntity user)
 	{
+		if (!super.CanBeShownScript(user))
+			return false;
+		
 		// Target character
 		ChimeraCharacter targetCharacter = ChimeraCharacter.Cast(GetOwner());
 		if (!targetCharacter)

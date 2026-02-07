@@ -19,7 +19,7 @@ class SCR_SystemClockUIComponent : ScriptedWidgetComponent
 		System.GetHourMinuteSecond(hour, minute, sec);
 		
 		//Set text
-		m_ClockTimeText.SetText(SCR_Global.GetTimeFormattingHoursMinutes(hour, minute));
+		m_ClockTimeText.SetText(SCR_FormatHelper.GetTimeFormattingHoursMinutes(hour, minute));
 	}
 	
 

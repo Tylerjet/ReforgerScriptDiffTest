@@ -34,25 +34,54 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")]
 	protected bool		m_bOnce;
+	
+	[Attribute(desc: "Actions that will be activated when Trigger gets activated", category: "OnActivation")];
+	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActions;
+	
+	[Attribute(desc: "Should the dynamic Spawn/Despawn based on distance from observer cameras be enabled?", category: "Activation")];
+	protected bool							m_bDynamicDespawn;
+
+	[Attribute(defvalue: "750", desc: "How close at least one observer camera must be in order to trigger spawn", category: "Activation")];
+	protected int 							m_iDynamicDespawnRange;
 
 	protected SCR_BaseTriggerEntity											m_Trigger;
 	protected ref ScriptInvoker<SCR_ScenarioFrameworkArea, SCR_ScenarioFrameworkEActivationType>				m_OnTriggerActivated;
 	protected ref ScriptInvoker												m_OnAreaInit = new ScriptInvoker();
-	protected SCR_GameModeSFManager 										m_GameModeManager;
 	protected bool															m_bAreaSelected = false;
 	protected SCR_BaseTask 													m_Task;
 	protected string	 													m_sItemDeliveryPointName;
 	protected SCR_ScenarioFrameworkLayerTask								m_LayerTask;
 	protected SCR_ScenarioFrameworkSlotTask									m_TaskSubject; 				//storing this one in order to get the task title and description
 	
-	[Attribute(UIWidgets.Auto, category: "OnActivation")];
-	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActions;
-
 #ifdef WORKBENCH
 	[Attribute(defvalue: "0", desc: "Show the debug shapes in Workbench", category: "Debug")];
 	protected bool							m_bShowDebugShapesInWorkbench;
 #endif	
 
+	//------------------------------------------------------------------------------------------------
+	bool GetDynamicDespawnEnabled()
+	{
+		return m_bDynamicDespawn;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetDynamicDespawnEnabled(bool enabled)
+	{
+		m_bDynamicDespawn = enabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetDynamicDespawnRange()
+	{
+		return m_iDynamicDespawnRange;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetDynamicDespawnRange(int range)
+	{
+		m_iDynamicDespawnRange = range;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	SCR_BaseTask GetTask()
 	{
@@ -71,7 +100,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		m_TaskSubject = taskSubject;
 	}
 	//------------------------------------------------------------------------------------------------
-	SCR_ScenarioFrameworkLayerTask GetLayerTask()
+	override SCR_ScenarioFrameworkLayerTask GetLayerTask()
 	{
 		return m_LayerTask;
 	}
@@ -345,6 +374,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		if (aSlotsOut.IsEmpty())
 			return null;
 
+		Math.Randomize(-1);
 		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(aSlotsOut.GetRandomElement());
 		if (layer)
 			layer.Init(this);
@@ -361,6 +391,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 			return null;
 
 		//there might be more layers in the area conforming to the task type (i.e. 2x the Truck task)
+		Math.Randomize(-1);
 		m_LayerTask = SCR_ScenarioFrameworkLayerTask.Cast(aSlotsOut.GetRandomElement());
 		if (m_LayerTask)
 			m_LayerTask.Init(this, SCR_ScenarioFrameworkEActivationType.ON_TASKS_INIT);
@@ -476,7 +507,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void GetAllSlots(out array<SCR_ScenarioFrameworkLayerBase> aSlots)
+	void GetAllSlots(out array<SCR_ScenarioFrameworkLayerBase> aSlots)
 	{
 		SCR_ScenarioFrameworkLayerBase slotComponent;
 		IEntity child = GetOwner().GetChildren();
@@ -487,6 +518,22 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 			{
 				aSlots.Insert(slotComponent);
 			}
+			child = child.GetSibling();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void GetAllLayerTasks(out notnull array<SCR_ScenarioFrameworkLayerTask> aLayerTasks)
+	{
+		aLayerTasks = {};
+		SCR_ScenarioFrameworkLayerTask layerTask;
+		IEntity child = GetOwner().GetChildren();
+		while (child)
+		{
+			layerTask = SCR_ScenarioFrameworkLayerTask.Cast(child.FindComponent(SCR_ScenarioFrameworkLayerTask));
+			if (layerTask)
+				aLayerTasks.Insert(layerTask);
+			
 			child = child.GetSibling();
 		}
 	}
@@ -531,9 +578,31 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	{	
 		return m_OnAreaInit;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DynamicReinit()
+	{
+		Init();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DynamicDespawn()
+	{
+		if (m_bExcludeFromDynamicDespawn)
+			return;
+		
+		m_bInitiated = false;
+		m_bDynamicallyDespawned = true;
+		foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
+		{
+			child.DynamicDespawn();
+		}
+		
+		m_aChildren.Clear();
+	}
 
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT, bool bInit = true)
+	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
 		if (m_bInitiated)
 			return;
@@ -541,7 +610,9 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		if (m_eActivationType != SCR_ScenarioFrameworkEActivationType.ON_INIT)
 			PrintFormat("ScenarioFramework: Area %1 is set to %2 activation type, but area will always spawn on Init as default", GetOwner().GetName(), activation, LogLevel.WARNING);
 
-		SpawnTrigger();
+		if (!m_Trigger)
+			SpawnTrigger();
+		
 		// Area is always spawned on the start
 		super.Init(this, SCR_ScenarioFrameworkEActivationType.ON_INIT);
 		
@@ -552,17 +623,8 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 				triggerAction.Init(m_Trigger);
 			}
 		}
-		
-		m_OnAreaInit.Invoke();
 	}
-
-	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
-	{
-		if (m_Trigger)
-			super.EOnFrame(owner, timeSlice);
-	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
@@ -570,15 +632,42 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		if (!gameMode)
 			return;
 
-		m_GameModeManager = SCR_GameModeSFManager.Cast(gameMode.FindComponent(SCR_GameModeSFManager));
-		if (m_GameModeManager)
-			m_GameModeManager.RegisterArea(this);
+		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(gameMode.FindComponent(SCR_GameModeSFManager));
+		if (gameModeManager)
+			gameModeManager.RegisterArea(this);
 	}
 
 	override void OnPostInit(IEntity owner)
 	{
+		SetEventMask(owner, EntityEvent.INIT);
+		
 		super.OnPostInit(owner);
-		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void DrawDebugShape(bool draw)
+	{
+		Shape dbgShape = null;
+		if (!draw)
+			return;
+
+		dbgShape = Shape.CreateSphere(
+										m_iDebugShapeColor,
+										ShapeFlags.TRANSP | ShapeFlags.DOUBLESIDE | ShapeFlags.NOZWRITE | ShapeFlags.ONCE | ShapeFlags.NOOUTLINE,
+										GetOwner().GetOrigin(),
+										m_fDebugShapeRadius
+								);
+		
+		if (m_sTriggerResource.IsEmpty())
+			return;
+		
+		Shape triggerdbgShape = null;
+		triggerdbgShape = Shape.CreateSphere(
+										ARGB(100, 0x99, 0x10, 0xF2),
+										ShapeFlags.TRANSP | ShapeFlags.DOUBLESIDE | ShapeFlags.NOZWRITE | ShapeFlags.ONCE | ShapeFlags.NOOUTLINE,
+										GetOwner().GetOrigin(),
+										m_fAreaRadius
+								);
 	}
 	
 #ifdef WORKBENCH
@@ -596,12 +685,14 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		
 		return false;
 	}
-
+#endif	
+	
 	//------------------------------------------------------------------------------------------------
 	void SCR_ScenarioFrameworkArea(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
+		m_fDebugShapeRadius = m_iDynamicDespawnRange;
+#ifdef WORKBENCH	
 		m_iDebugShapeColor = ARGB(32, 0x99, 0xF3, 0x12);
-		m_fDebugShapeRadius = m_fAreaRadius;
+#endif		
 	}
-#endif	
 }

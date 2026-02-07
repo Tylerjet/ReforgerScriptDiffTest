@@ -298,6 +298,15 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		EEditableEntityLabel conditionalLabel;
 		SCR_EditorContentBrowserDisplayConfig contentBrowserConfig = m_ContentBrowserEditorComponent.GetContentBrowserDisplayConfig();
 		
+		EEditorMode editorMode = 0;
+		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
+		if (editorManager) 
+		{
+			SCR_EditorModeEntity modeEntity = editorManager.GetCurrentModeEntity();
+			if (modeEntity)
+				editorMode = modeEntity.GetModeType();
+		}
+		
 		string entityLabelString;
 		SCR_ButtonTextComponent selectableButton;
 		foreach (SCR_EditableEntityCoreLabelGroupSetting labelGroup : labelGroups)
@@ -362,6 +371,11 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 			foreach (SCR_EditableEntityCoreLabelSetting entityLabelSettings : groupLabels)
 			{		
 				if (!entityLabelSettings.GetFilterEnabled()) 
+					continue;
+				
+				//~ Not a valid label for current mode
+				SCR_EditableEntityCoreLabelSettingExtended extended = SCR_EditableEntityCoreLabelSettingExtended.Cast(entityLabelSettings);
+				if (extended && !extended.IsValid(editorMode))
 					continue;
 				
 				EEditableEntityLabel entityLabel = entityLabelSettings.GetLabelType();

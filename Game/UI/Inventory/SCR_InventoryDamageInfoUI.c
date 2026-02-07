@@ -196,9 +196,13 @@ class SCR_InventoryDamageInfoUI : ScriptedWidgetComponent
 			return;
 		
 		if (sName.IsEmpty())
+		{
 			m_wTextName.GetParent().SetVisible(false);
-		else
-			m_wTextName.SetText(sName);
+			return;
+		}
+		
+		m_wTextName.SetText(sName);
+		m_wTextName.GetParent().SetVisible(true);
 	}
 
 	//------------------------------------------------------------------------------------------------

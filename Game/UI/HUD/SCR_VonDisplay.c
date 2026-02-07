@@ -425,7 +425,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 
 	//------------------------------------------------------------------------------------------------
 	//! SCR_PlayerController Event
-	protected void OnDestroyed(IEntity killer)
+	protected void OnDestroyed(Instigator killer, IEntity killerEntity)
 	{
 		if (m_OutTransmission)
 			m_OutTransmission.HideTransmission();

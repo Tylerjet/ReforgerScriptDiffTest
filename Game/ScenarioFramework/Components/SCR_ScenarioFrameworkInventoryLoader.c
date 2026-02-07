@@ -35,7 +35,7 @@ class SCR_ScenarioFrameworkInventoryLoader : SCR_ScenarioFrameworkLayerBase
 	protected string					m_sIDMaster;
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT, bool bInit = true)
+	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
 		//m_bMutuallyExclusiveSpawn = false; // ignore this setting otherwise it won't work properly
 		if (m_eActivationType != activation)

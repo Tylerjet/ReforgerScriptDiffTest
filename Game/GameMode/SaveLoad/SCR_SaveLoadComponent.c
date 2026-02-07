@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Misc", description: "")]
+[ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "")]
 class SCR_SaveLoadComponentClass: SCR_BaseGameModeComponentClass
 {
 };
@@ -19,15 +19,13 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	[Attribute(uiwidget: UIWidgets.ResourceNamePicker, params: "conf class=SCR_MissionHeader", desc: "Mission header used for saving/loading in Workbench (where standard mission header is not loaded)")]
 	protected ResourceName m_DebugHeaderResourceName;
 	
-	protected float m_fTimer;
-	
 	protected static const int MINIMUM_AUTOSAVE_PERIOD = 60;
 	
 	/////////////////////////////////////////////////////////////////////////////
 	// Public
 	/////////////////////////////////////////////////////////////////////////////
 	/*!
-	\return Local instance of the possession manager
+	\return Local instance of this component
 	*/
 	static SCR_SaveLoadComponent GetInstance()
 	{
@@ -56,25 +54,28 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 		return m_DebugHeaderResourceName;
 	}
 	
+	//----------------------------------------------------------------------------------------
+	/*!
+	Check if the mission struct contains a sub-struct of specific type.
+	\param structType Type of queried struct
+	\return True if the sub-struct is present
+	*/
+	bool ContainsStruct(typename structType)
+	{
+		return m_Struct && m_Struct.ContainsStruct(structType);
+	}
+	
+	/////////////////////////////////////////////////////////////////////////////
+	// Protected
+	/////////////////////////////////////////////////////////////////////////////
+	protected void Autosave()
+	{	
+		GetGame().GetSaveManager().Save(ESaveType.AUTO);
+	}
+	
 	/////////////////////////////////////////////////////////////////////////////
 	// Overrides
 	/////////////////////////////////////////////////////////////////////////////
-	override void EOnFrame(IEntity owner, float timeSlice)
-	{		
-		// Autosave
-		if (m_iAutosavePeriod > 0)
-		{
-			m_fTimer += timeSlice;
-			
-			if (m_fTimer >= m_iAutosavePeriod)
-			{
-				m_fTimer = 0;
-				GetGame().GetSaveManager().Save(ESaveType.AUTO);
-			}
-		}
-	}
-	
-	//----------------------------------------------------------------------------------------
 	override void OnGameModeEnd(SCR_GameModeEndData data)
 	{
 		GetGame().GetSaveManager().RemoveCurrentMissionLatestSave();
@@ -83,20 +84,26 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	//----------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		if (Replication.IsServer() && !owner.GetWorld().IsEditMode())
+		if (owner.GetWorld().IsEditMode())
+			return;
+		
+		//--- Assign structs (must be on client as well, it's used to correctly read meta header from save files)
+		SCR_SaveManagerCore saveManager = GetGame().GetSaveManager();
+		saveManager.SetStruct(ESaveType.USER, m_Struct);
+		saveManager.SetStruct(ESaveType.AUTO, m_Struct);
+		saveManager.SetStruct(ESaveType.EDITOR, m_Struct);
+		
+		//--- Initialize autosave on server
+		if (Replication.IsServer())
 		{
-			SCR_SaveManagerCore saveManager = GetGame().GetSaveManager();
-			saveManager.SetStruct(ESaveType.USER, m_Struct);
-			saveManager.SetStruct(ESaveType.AUTO, m_Struct);
-			saveManager.SetStruct(ESaveType.EDITOR, m_Struct);
-			
-			SetEventMask(owner, EntityEvent.FRAME);
-			
 			if (m_iAutosavePeriod > 0 && m_iAutosavePeriod < MINIMUM_AUTOSAVE_PERIOD)
 			{
 				Print("SCR_SaveLoadComponent: Autosave period set too low (" + m_iAutosavePeriod + "), setting to " + MINIMUM_AUTOSAVE_PERIOD, LogLevel.WARNING);
 				m_iAutosavePeriod = MINIMUM_AUTOSAVE_PERIOD;
 			}
+			
+			//--- Use call queue, because frame event is not called when the game is paused
+			GetGame().GetCallqueue().CallLater(Autosave, m_iAutosavePeriod * 1000, true);
 		}
 	}
 };

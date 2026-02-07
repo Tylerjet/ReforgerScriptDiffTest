@@ -42,7 +42,7 @@ class SCR_IngameClockUIComponent : MenuRootSubComponent
 		{
 			int hour, minute, sec;
 			m_TimeAndWeatherManagerEntity.GetHoursMinutesSeconds(hour, minute, sec);
-			m_TimeText.SetTextFormat(SCR_Global.GetTimeFormattingHoursMinutes(hour, minute));
+			m_TimeText.SetTextFormat(SCR_FormatHelper.GetTimeFormattingHoursMinutes(hour, minute));
 		}
 		
 		if (m_TimeIcon)
@@ -107,7 +107,8 @@ class SCR_IngameClockUIComponent : MenuRootSubComponent
 			return;
 		}		
 
-		m_TimeAndWeatherManagerEntity = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		m_TimeAndWeatherManagerEntity = world.GetTimeAndWeatherManager();
 		if (!m_TimeAndWeatherManagerEntity)
 		{
 			Print("'SCR_IngameClockUIComponent' could not find the TimeAndWeatherManager", LogLevel.ERROR);

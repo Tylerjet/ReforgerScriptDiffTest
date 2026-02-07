@@ -23,7 +23,7 @@ class SCR_RenderedEditableEntityFilter : SCR_BaseEditableEntityFilter
 	
 	[Attribute(defvalue: "250", uiwidget: UIWidgets.Auto, desc: "Refresh all entities in one frame when the camera instantly moves further than this distance.")]
 	protected float m_fTeleportDistance;
-	
+
 	protected BaseWorld m_World;
 	protected vector m_vCameraPos;
 	protected float m_fCameraDisCoef = 1;
@@ -35,6 +35,11 @@ class SCR_RenderedEditableEntityFilter : SCR_BaseEditableEntityFilter
 	protected int m_iBatchCount;
 	protected float m_iBatchIndex;
 	protected bool m_bInstantRefresh;
+	
+	float GetCameraDisCoef()
+	{
+		return m_fCameraDisCoef;
+	}
 	
 	protected void CacheCameraPos()
 	{
@@ -91,7 +96,7 @@ class SCR_RenderedEditableEntityFilter : SCR_BaseEditableEntityFilter
 					Remove(entity, true);
 			}
 		}
-		
+
 		m_iBatchIndex++;
 	}
 	bool IsNear(SCR_EditableEntityComponent entity)
@@ -99,11 +104,12 @@ class SCR_RenderedEditableEntityFilter : SCR_BaseEditableEntityFilter
 		//--- When in a layer, always show direct layer children
 		if (m_LayersManager && m_LayersManager.GetCurrentLayer() && m_LayersManager.GetCurrentLayer() == entity.GetParentEntity())
 			return true;
-		
+
 		//--- Show only nearby entities
 		vector worldPos;
 		return entity.GetPos(worldPos) && vector.DistanceSq(worldPos, m_vCameraPos) < entity.GetMaxDrawDistanceSq() * m_fCameraDisCoef;
 	}
+
 	override void EOnEditorActivate()
 	{
 		m_aCacheEntities = new set<SCR_EditableEntityComponent>;

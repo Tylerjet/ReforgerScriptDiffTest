@@ -7,7 +7,7 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 	[Attribute("2", desc: "Item mode of arsenal, set this to what the behaviour is for the item. EG: FieldDressing = CONSUMABLE as it is used up or M16 with attachments = WEAPON_VARIENTS as it is not a default M16. Check other items in the faction config to see how it works.", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalItemMode))]
 	protected SCR_EArsenalItemMode m_eItemMode;
 	
-	[Attribute("10", desc: "Supply cost of item when using the resupply action and/or taking them from the arsenal inventory. Note in overwrite arsenal config this value is ignored and still taken from catalog", params: "1 inf 1")]
+	[Attribute("10", desc: "Supply cost of item when using the resupply action and/or taking them from the arsenal inventory. Note in overwrite arsenal config this value is ignored and still taken from catalog", params: "0 inf 1")]
 	protected int m_iSupplyCost;
 	
 	[Attribute(desc: "Display data for SCR_ArsenalDisplayComponent. If Arsenal item has display data of the correct type for the entity with SCR_ArsenalDisplayComponent than it can be displayed on said entity")]

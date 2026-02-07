@@ -29,6 +29,9 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 	protected float m_fDestroyedRoughnessIncrease;
 	[Attribute( defvalue: "1.0", uiwidget: UIWidgets.Auto, desc: "Drag of a destroyed wheel.", category: "Wheel Damage")]
 	protected float m_fDestroyedDrag;
+	
+	[Attribute(EVehicleHitZoneGroup.WHEELS.ToString(), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EVehicleHitZoneGroup))]
+	protected EVehicleHitZoneGroup m_eHitZoneGroup;
 		
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -37,6 +40,12 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 		
 		UpdateWheelState();
 		UpdateDamageSignal();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override EHitZoneGroup GetHitZoneGroup()
+	{
+		return m_eHitZoneGroup;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -122,6 +131,7 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 				return;
 			
 			// Update simulation
+			float previousRadius 		= simulation.WheelGetRadiusState(m_iWheelId);
 			float radius				= simulation.WheelGetRadius(m_iWheelId);
 			float longitudinalFriction	= simulation.WheelTyreGetLongitudinalFriction(m_iWheelId);
 			float lateralFriction		= simulation.WheelTyreGetLateralFriction(m_iWheelId);
@@ -154,7 +164,7 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 			simulation.WheelSetRollingDrag(m_iWheelId, drag);		
 			
 			// Need to wake physics up when wheel becomes destroyed
-			if (state == EWheelDamageState.PUNCTURED || state == EWheelDamageState.DESTROYED)
+			if (!float.AlmostEqual(radius, previousRadius))
 				WakeUpPhysics();	
 		}
 	}

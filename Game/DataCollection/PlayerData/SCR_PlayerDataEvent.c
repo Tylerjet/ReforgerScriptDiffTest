@@ -49,4 +49,6 @@ class SCR_PlayerDataEvent
 	int gt1_total_points;
 	int gt2_total_points;
 	int gt3_total_points;
+	int seconds_as_controller;
+	int seconds_as_keyboard;
 }

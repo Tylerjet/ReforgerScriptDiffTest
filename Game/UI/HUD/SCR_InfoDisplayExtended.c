@@ -37,13 +37,6 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	protected bool m_bInEditor;
 	protected bool m_bCanShow;							// Global GUI visibility flag, is not meant to be fiddled with outside this class
 	protected bool m_bShowInAllCameras = true;
-	
-	private ScriptInvoker<IEntity, IEntity> m_OnControlledEntityChanged;
-	private ScriptInvoker m_OnThirdPersonChange;
-	private ScriptInvoker m_OnPauseMenuOpen;
-	private ScriptInvoker m_OnPauseMenuClose;
-	private ScriptInvoker m_OnEditorOpen;
-	private ScriptInvoker m_OnEditorClose;
 		
 	//------------------------------------------------------------------------------------------------		
 	// DEBUG: Used to output debug prints only for specific class
@@ -51,7 +44,7 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	#ifdef DEBUG_INFO_DISPLAY_EXT
 	void _printClass(string str)
 	{
-		if (this.Type() != SCR_WeaponInfo && this.Type() != SCR_WeaponInfoVehicle)
+		if (this.Type() != SCR_DeathScreenEffect)
 			return;
 		
 		Print(str, LogLevel.DEBUG);
@@ -99,12 +92,18 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	// Called when GUI is temp. suspended due to visibility flags; e.g. GM entered and GUI marked as not to show in GM
 	protected void DisplayOnSuspended()
 	{
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		_printClass(string.Format("%1 [DisplayOnSuspended]", this));
+		#endif		
 	}
 	
 	// Called when the visibility flags no longer suspend the GUI; e.g. GM left and GUI marked as not to show in GM -> GUI can show again
 	// Doesn't mean the GUI is visible, it is just not hidded due to visibility flags; use m_bShown to check the visibility
 	protected void DisplayOnResumed()
 	{
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		_printClass(string.Format("%1 [DisplayOnResumed]", this));
+		#endif		
 	}		
 		
 	
@@ -175,19 +174,16 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 		// Init PauseMenu handling
 		if ((m_eShow & EShowGUI.IN_PAUSE_MENU) == 0)
 		{
-			m_OnPauseMenuOpen = PauseMenuUI.m_OnPauseMenuOpened;
-			m_OnPauseMenuOpen.Insert(OnPauseMenuOpen);
+			PauseMenuUI.m_OnPauseMenuOpened.Insert(OnPauseMenuOpen);
 			
-			m_OnPauseMenuClose = PauseMenuUI.m_OnPauseMenuClosed;
-			m_OnPauseMenuClose.Insert(OnPauseMenuClose);
+			PauseMenuUI.m_OnPauseMenuClosed.Insert(OnPauseMenuClose);
 		}
 
 		
 		// Init monitor of controlled entity and setup initial GUI visibility
 		if (m_bAttachedToPlayerController)
 		{
-			m_OnControlledEntityChanged = m_PlayerController.m_OnControlledEntityChanged;
-			m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
+			m_PlayerController.m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
 		}
 		OnControlledEntityChanged(null, m_PlayerController.GetControlledEntity());
 				
@@ -217,8 +213,8 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 		#endif
 		
 		// Update camera handler + init 1st/3rd person monitoring, if visibility is changing between 1st/3rd person cameras
-		if (m_OnThirdPersonChange)
-			m_OnThirdPersonChange.Remove(UpdateVisibility);		
+		if(m_CameraHandler)
+			m_CameraHandler.GetThirdPersonSwitchInvoker().Remove(UpdateVisibility);
 		
 		if (to)
 			m_CameraHandler = SCR_CharacterCameraHandlerComponent.Cast(to.FindComponent(SCR_CharacterCameraHandlerComponent));
@@ -227,8 +223,7 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	
 		if (m_CameraHandler && !m_bShowInAllCameras)
 		{			
-			m_OnThirdPersonChange = m_CameraHandler.GetThirdPersonSwitchInvoker();
-			m_OnThirdPersonChange.Insert(UpdateVisibility);
+			m_CameraHandler.GetThirdPersonSwitchInvoker().Insert(UpdateVisibility);
 		}	
 		
 		// Update event handlers "OnADSChanged" & "OnConsciousnessChanged"
@@ -330,16 +325,18 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 		_printClass(string.Format("%1 [OnEditorInit] editorManager: %2", this, editorManager));
 		#endif
 		
+		if (!editorManager)
+			return;
+		
 		m_EditorManager = editorManager;
+		m_bInEditor = editorManager.IsOpened();
 		
 		// Init Editor handling
 		if ((m_eShow & EShowGUI.IN_EDITOR) == 0)
 		{
-			m_OnEditorOpen = m_EditorManager.GetOnOpened();
-			m_OnEditorOpen.Insert(OnEditorOpen);
+			m_EditorManager.GetOnOpened().Insert(OnEditorOpen);
 			
-			m_OnEditorClose = m_EditorManager.GetOnClosed();
-			m_OnEditorClose.Insert(OnEditorClose);
+			m_EditorManager.GetOnClosed().Insert(OnEditorClose);
 		}			
 	}	
 	
@@ -368,7 +365,7 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	private void UpdateVisibility()
 	{
 		#ifdef DEBUG_INFO_DISPLAY_EXT
-		_printClass(string.Format("%1 [UpdateVisibility] editor: %2", this, SCR_EditorManagerEntity.GetInstance()));
+		_printClass(string.Format("%1 [UpdateVisibility] m_bInEditor: %2 | m_bInPauseMenu: %3 | m_bIsUnconscious: %4", this, m_bInEditor, m_bInPauseMenu, m_bIsUnconscious));
 		#endif
 
 		bool menuPassed = !m_bInPauseMenu || (m_bInPauseMenu && m_eShow & EShowGUI.IN_PAUSE_MENU);
@@ -429,24 +426,22 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	
 		if (!m_bIsEnabled)
 			return;
-
-		if (m_OnControlledEntityChanged)
-			m_OnControlledEntityChanged.Remove(OnControlledEntityChanged);		
 		
-		if (m_OnPauseMenuOpen)
-			m_OnPauseMenuOpen.Remove(OnPauseMenuOpen);
-
-		if (m_OnPauseMenuClose)
-			m_OnPauseMenuClose.Remove(OnPauseMenuClose);
-
-		if (m_OnEditorOpen)
-			m_OnEditorOpen.Remove(OnEditorOpen);
-
-		if (m_OnEditorClose)
-			m_OnEditorClose.Remove(OnEditorClose);		
+		if(m_PlayerController)
+			m_PlayerController.m_OnControlledEntityChanged.Remove(OnControlledEntityChanged);		
 		
-		if (m_OnThirdPersonChange)
-			m_OnThirdPersonChange.Remove(UpdateVisibility);	
+		PauseMenuUI.m_OnPauseMenuOpened.Remove(OnPauseMenuOpen);
+
+		PauseMenuUI.m_OnPauseMenuClosed.Remove(OnPauseMenuClose);
+
+		if(m_EditorManager)
+		{
+			m_EditorManager.GetOnOpened().Remove(OnEditorOpen);
+			m_EditorManager.GetOnClosed().Remove(OnEditorClose);		
+		}
+		
+		if(m_CameraHandler)
+			m_CameraHandler.GetThirdPersonSwitchInvoker().Remove(UpdateVisibility);	
 		
 		if (m_EventHandlerManager)
 		{

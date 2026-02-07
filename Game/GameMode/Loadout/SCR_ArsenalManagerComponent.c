@@ -35,6 +35,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	protected ref SCR_LoadoutSaveBlackListHolder m_LoadoutSaveBlackListHolder;
 	
 	protected bool m_bLocalPlayerLoadoutAvailable;
+	ref SCR_PlayerLoadoutData m_bLocalPlayerLoadoutData;
 	
 	//------------------------------------------------------------------------------------------------
 	static bool GetArsenalManager(out SCR_ArsenalManagerComponent arsenalManager)
@@ -159,7 +160,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		}
 			
 		SCR_EntityCatalog itemCatalog;
-		InventoryStorageManagerComponent arsenalInventory;
+		SCR_ArsenalInventoryStorageManagerComponent arsenalInventory;
 		
 		//~ Check either faction or arsenal inventory if item is in it
 		if (arsenalComponent.GetArsenalSaveType() == SCR_EArsenalSaveType.FACTION_ITEMS_ONLY || arsenalComponent.GetArsenalSaveType() == SCR_EArsenalSaveType.IN_ARSENAL_ITEMS_ONLY)
@@ -194,10 +195,10 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			}
 			else 
 			{
-				arsenalInventory = arsenalComponent.GetArsenalInventoryComponent();
+				arsenalInventory = SCR_ArsenalInventoryStorageManagerComponent.Cast(arsenalComponent.GetArsenalInventoryComponent());
 				if (!arsenalInventory)
 				{
-					Print("'SCR_ArsenalManagerComponent' is checking 'CanSaveArsenal()' and arsenal check type is 'IN_ARSENAL_ITEMS_ONLY' but arsenal has no Inventory, so saving is simply allowed", LogLevel.WARNING);
+					Print("'SCR_ArsenalManagerComponent' is checking 'CanSaveArsenal()' and arsenal check type is 'IN_ARSENAL_ITEMS_ONLY' but arsenal has no SCR_ArsenalInventoryStorageManagerComponent, so saving is simply allowed", LogLevel.WARNING);
 					return true;
 				}
 			}
@@ -254,7 +255,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			if (arsenalInventory)
 			{
 				//~ Not in inventory of arsenal so cannot save
-				if (arsenalInventory.GetDepositItemCountByResource(resourceName) <= 0)
+				if (!arsenalInventory.IsPrefabInArsenalStorage(resourceName))
 				{
 					if (sendNotificationOnFailed)
 					{
@@ -306,7 +307,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		
 		if (!characterEntity)
 		{
-			DoSetPlayerLoadout(playerId, string.Empty);
+			DoSetPlayerLoadout(playerId, string.Empty, characterEntity);
 			return;
 		}
 		
@@ -326,16 +327,59 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		if (!context.WriteValue(SCR_PlayerArsenalLoadout.ARSENALLOADOUT_FACTION_KEY, factionKey) || !context.WriteValue(SCR_PlayerArsenalLoadout.ARSENALLOADOUT_KEY, characterEntity))
 			return;
 		
-		DoSetPlayerLoadout(playerId, context.ExportToString());
+		DoSetPlayerLoadout(playerId, context.ExportToString(), characterEntity);
+	}
+	
+	protected SCR_PlayerLoadoutData GetPlayerLoadoutData(GameEntity characterEntity)
+	{
+		SCR_PlayerLoadoutData loadoutData();
+		
+		EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(characterEntity.FindComponent(EquipedLoadoutStorageComponent));
+		if (loadoutStorage)
+		{
+			int slotsCount = loadoutStorage.GetSlotsCount();
+			for (int i = 0; i < slotsCount; ++i)
+			{
+				InventoryStorageSlot slot = loadoutStorage.GetSlot(i);
+				if (!slot)
+					continue;
+				
+				IEntity attachedEntity = slot.GetAttachedEntity();
+				if (!attachedEntity)
+					continue;
+				
+				ResourceName prefabName;
+				BaseContainer prefab = attachedEntity.GetPrefabData().GetPrefab();
+				while (prefabName.IsEmpty() && prefab)
+				{
+					prefabName = prefab.GetName();
+					prefab = prefab.GetAncestor();
+				}
+				
+				if (prefabName.IsEmpty())
+					continue;
+				
+				loadoutData.Clothings.Insert(prefabName);
+			}
+		}
+		
+		return loadoutData;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void DoSetPlayerLoadout(int playerId, string loadoutString)
+	protected void DoSetPlayerLoadout(int playerId, string loadoutString, GameEntity characterEntity)
 	{
 		bool loadoutValid = !loadoutString.IsEmpty();
 		bool loadoutChanged = loadoutValid && loadoutString != m_aPlayerLoadouts.Get(playerId);
 		
 		m_aPlayerLoadouts.Set(playerId, loadoutString);
+		
+		if (loadoutValid && loadoutChanged)
+		{
+			SCR_PlayerLoadoutData loadoutData = GetPlayerLoadoutData(characterEntity);
+			DoSendPlayerLoadout(playerId, loadoutData);
+			Rpc(DoSendPlayerLoadout, playerId, loadoutData);
+		}
 		
 		DoSetPlayerHasLoadout(playerId, loadoutValid, loadoutChanged);
 		Rpc(DoSetPlayerHasLoadout, playerId, loadoutValid, loadoutChanged);
@@ -355,6 +399,16 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			m_bLocalPlayerLoadoutAvailable = loadoutValid;
 		}
 		m_OnPlayerLoadoutUpdated.Invoke(playerId, loadoutValid);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void DoSendPlayerLoadout(int playerId, SCR_PlayerLoadoutData loadoutData)
+	{
+		if (playerId == SCR_PlayerController.GetLocalPlayerId())
+		{
+			m_bLocalPlayerLoadoutData = loadoutData;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

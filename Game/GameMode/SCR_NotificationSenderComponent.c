@@ -31,7 +31,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	//States
 	protected bool m_bListeningToWeatherChanged;
 	
-	override void OnControllableDestroyed(IEntity entity, IEntity instigator)
+	override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
 	{
 		//~ hot fix for On Controllable Destroyed issues \/
 		if (Replication.IsClient())
@@ -43,20 +43,20 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		RplComponent entityRpl = RplComponent.Cast(entity.FindComponent(RplComponent));
 		RplComponent instigatorRpl;
 		
-		if (instigator)
-			instigatorRpl = RplComponent.Cast(instigator.FindComponent(RplComponent));
+		if (killerEntity)
+			instigatorRpl = RplComponent.Cast(killerEntity.FindComponent(RplComponent));
 		
-		RplId entityId = RplId.Invalid();
-		RplId instigatorId = RplId.Invalid();
+		RplId entityRplId = RplId.Invalid();
+		RplId instigatorRplId = RplId.Invalid();
 		
 		if (entityRpl)
-			entityId = entityRpl.Id();
+			entityRplId = entityRpl.Id();
 		
 		if (instigatorRpl)
-			instigatorId = instigatorRpl.Id();
+			instigatorRplId = instigatorRpl.Id();
 		
-		OnControllableDestroyedBroadCast(entityId, instigatorId);
-		Rpc(OnControllableDestroyedBroadCast, entityId,instigatorId);
+		OnControllableDestroyedBroadCast(entityRplId, instigatorRplId);
+		Rpc(OnControllableDestroyedBroadCast, entityRplId,instigatorRplId);
 		
 		//~ hot fix for On Controllable Destroyed issues /\
 	}
@@ -64,13 +64,13 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	
 	//~ Todo: This is a hot a hotfix for On Controllable Destroyed issues \/
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void OnControllableDestroyedBroadCast(RplId entityId, RplId instigatorId)
+	protected void OnControllableDestroyedBroadCast(RplId entityRplId, RplId instigatorRplId)
 	{
 		IEntity entity;
 		IEntity instigator;
 		
-		RplComponent entityRpl = RplComponent.Cast(Replication.FindItem(entityId));
-		RplComponent instigatorRpl = RplComponent.Cast(Replication.FindItem(instigatorId));
+		RplComponent entityRpl = RplComponent.Cast(Replication.FindItem(entityRplId));
+		RplComponent instigatorRpl = RplComponent.Cast(Replication.FindItem(instigatorRplId));
 		
 		if (entityRpl)
 			entity = entityRpl.GetEntity();
@@ -387,13 +387,28 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		//~ Is kicked/banned. Will also send ban notification if for some reason there is a timeout attached even if there is no specific kick message
 		if (isKickedOrBanned || timeout != 0)
 		{
+			SCR_DataCollectorComponent dataCollector = GetGame().GetDataCollector();
+			if (dataCollector)
+			{
+				SCR_PlayerData playerData = dataCollector.GetPlayerData(playerId);
+				
+				if (playerData)
+				{
+					float banTimeOut = playerData.GetTimeOut();
+				
+					//~ If playerData has ban timeout which is greater then timeout use that instead. This is because Heavy ban kicks the player and bans it via backend. So the timeout is set somewhere else
+					if (banTimeOut > 0 && banTimeOut > timeout)
+						timeout = banTimeOut;
+				}
+			}
+			
 			//~ Player kicked 
 			if (timeout == 0)
 				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_KICKED, playerId, cause, timeout);	
-			//~ Player banned
+			//~ Player perminent ban
 			else if (timeout < 0)
 				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED_NO_DURATION, playerId, cause, timeout);
-			//~ More then 0 so player has temp banned
+			//~ Player temp ban
 			else
 				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED, playerId, cause, timeout);
 		}		
@@ -447,7 +462,11 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	{
 		m_bListeningToWeatherChanged = false;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		if (!world) 
+			return;
+		
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) 
 			return;
 		

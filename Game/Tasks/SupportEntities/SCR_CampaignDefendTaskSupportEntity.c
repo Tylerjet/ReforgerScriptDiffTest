@@ -5,6 +5,11 @@ class SCR_CampaignDefendTaskSupportEntityClass: SCR_RequestedTaskSupportEntityCl
 };
 
 //------------------------------------------------------------------------------------------------
+void OnCharacterDeath(SCR_ChimeraCharacter character);
+typedef func OnCharacterDeath;
+typedef ScriptInvokerBase<OnCharacterDeath> OnCharacterDeathInvoker;
+
+//------------------------------------------------------------------------------------------------
 class SCR_CampaignDefendTaskSupportEntity : SCR_RequestedTaskSupportEntity
 {
 	[Attribute("300", desc: "From how far can an ally request reinforcements. (in m)")]
@@ -22,15 +27,15 @@ class SCR_CampaignDefendTaskSupportEntity : SCR_RequestedTaskSupportEntity
 	// This only holds living characters, no need to check whether they are alive!!
 	protected ref map<SCR_CampaignFaction, ref array<SCR_ChimeraCharacter>> m_mFactionSortedCharacters = new map<SCR_CampaignFaction, ref array<SCR_ChimeraCharacter>>();
 	
-	protected ref ScriptInvoker m_OnCharacterDeath;
+	protected ref OnCharacterDeathInvoker m_OnCharacterDeath;
 	
 	protected SCR_CampaignMilitaryBaseComponent m_ClosestBase;
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnCharacterDeath()
+	OnCharacterDeathInvoker GetOnCharacterDeath()
 	{
 		if (!m_OnCharacterDeath)
-			m_OnCharacterDeath = new ScriptInvoker();
+			m_OnCharacterDeath = new OnCharacterDeathInvoker();
 		
 		return m_OnCharacterDeath;
 	}
@@ -138,12 +143,11 @@ class SCR_CampaignDefendTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		if (!characterControllerComponent)
 			return;
 		
-		if (characterControllerComponent.m_OnPlayerDeathWithParam)
-			characterControllerComponent.m_OnPlayerDeathWithParam.Insert(OnCharacterDeath);
+		characterControllerComponent.GetOnPlayerDeathWithParam().Insert(OnCharacterDeath);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnCharacterDeath(SCR_CharacterControllerComponent characterControllerComponent, IEntity instigator)
+	void OnCharacterDeath(SCR_CharacterControllerComponent characterControllerComponent, IEntity killerEntity, Instigator killer)
 	{
 		SCR_ChimeraCharacter character = characterControllerComponent.GetCharacter();
 		if (!character)
@@ -286,8 +290,7 @@ class SCR_CampaignDefendTaskSupportEntity : SCR_RequestedTaskSupportEntity
 				if (!characterControllerComponent)
 					return;
 				
-				if (characterControllerComponent.m_OnPlayerDeathWithParam)
-					characterControllerComponent.m_OnPlayerDeathWithParam.Remove(OnCharacterDeath);
+				characterControllerComponent.GetOnPlayerDeathWithParam().Remove(OnCharacterDeath);
 			}
 		}
 	}

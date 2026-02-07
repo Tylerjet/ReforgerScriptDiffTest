@@ -25,10 +25,12 @@ class SCR_RespawnEnabledEditorAttribute : SCR_BaseEditorAttribute
 		{
 			manager.SetAttributeAsSubAttribute(SCR_RespawnTimeEditorAttribute);
 			manager.SetAttributeAsSubAttribute(SCR_SpawnAtPlayersEditorAttribute);
+			manager.SetAttributeAsSubAttribute(SCR_SpawnAtRadioVehicleAttribute);
 		}
 			
 		manager.SetAttributeEnabled(SCR_RespawnTimeEditorAttribute, var && var.GetBool());
 		manager.SetAttributeEnabled(SCR_SpawnAtPlayersEditorAttribute, var && var.GetBool());
+		manager.SetAttributeEnabled(SCR_SpawnAtRadioVehicleAttribute, var && var.GetBool());
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)

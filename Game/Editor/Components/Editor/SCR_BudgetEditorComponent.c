@@ -378,13 +378,11 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	*/
 	int GetCurrentBudgetValue(EEditableEntityBudget type)
 	{
-		int budgetValue = 0;
 		SCR_EditableEntityCoreBudgetSetting budgetSettings;
-		if (GetCurrentBudgetSettings(type, budgetSettings))
-		{
-			budgetValue = budgetSettings.GetCurrentBudget();
-		}
-		return budgetValue;
+		if (!GetCurrentBudgetSettings(type, budgetSettings))
+			return 0;
+
+		return budgetSettings.GetCurrentBudget() + budgetSettings.GetReservedBudget();
 	}
 	
 	/*!
@@ -579,6 +577,12 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	SCR_EditableEntityCoreBudgetSetting GetBudgetSetting(EEditableEntityBudget budgetType)
+	{
+		return m_BudgetSettingsMap.Get(budgetType);
+	}
+
 	protected EEditableEntityBudget GetFirstAvailableBudget()
 	{
 		if (!m_MaxBudgets || m_MaxBudgets.IsEmpty())
@@ -587,26 +591,46 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 			return m_MaxBudgets[0].GetBudgetType();;
 	}
 
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void DemandBudgetUpdateFromServer()
+	{
+		if (!m_RplComponent)
+			return;
+
+		if (m_RplComponent.Role() != RplRole.Proxy)
+			return;
+
+		Rpc(RpcServer_UpdateBudget);
+	}
+
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RpcServer_UpdateBudget()
 	{
 		array<ref SCR_EditableEntityCoreBudgetSetting> outBudgets = {};
 		m_EntityCore.GetBudgets(outBudgets);
 
 		foreach (SCR_EditableEntityCoreBudgetSetting budgetSetting : outBudgets)
 		{
-			Rpc(UpdateBudgetForOwner, budgetSetting.GetBudgetType(), budgetSetting.GetCurrentBudget());
+			Rpc(RpcOwner_UpdateBudget, budgetSetting.GetBudgetType(), budgetSetting.GetCurrentBudget());
 		}
 	}
 
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	void UpdateBudgetForOwner(EEditableEntityBudget budgetType, int currentBudget)
+	void RpcOwner_UpdateBudget(EEditableEntityBudget budgetType, int currentBudget)
 	{
 		SCR_EditableEntityCoreBudgetSetting budget;
 		if (!m_BudgetSettingsMap.Find(budgetType, budget))
 			return;
 
 		budget.SetCurrentBudget(currentBudget);
+
+		int maxBudget;
+		if (GetMaxBudgetValue(budgetType, maxBudget))
+		{
+			m_BudgetSettingsMap.Insert(budgetType, budget);
+			int currentBudgetValue = budget.GetCurrentBudget();
+			Event_OnBudgetUpdated.Invoke(budgetType, currentBudgetValue, currentBudgetValue, maxBudget);
+			Event_OnBudgetMaxUpdated.Invoke(budgetType, currentBudgetValue, maxBudget);
+		}
 	}
 	
 	protected bool IsBudgetCapEnabled()
@@ -659,7 +683,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		RefreshBudgetSettings();
 
 		if (m_RplComponent && m_RplComponent.Role() != RplRole.Authority)
-			Rpc(DemandBudgetUpdateFromServer);
+			Rpc(RpcServer_UpdateBudget);
 	}
 	
 	protected override void EOnEditorInit()

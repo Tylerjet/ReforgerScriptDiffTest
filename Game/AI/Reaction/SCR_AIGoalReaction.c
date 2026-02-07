@@ -90,6 +90,16 @@ class SCR_AIGoalReaction_AttackCluster : SCR_AIGoalReaction
 				utility.AddAction(investigateBehavior);
 			}
 		}
+		else
+		{
+			// Report 'Covering' if we are not supposed to investigate there
+			SCR_AICommsHandler commsHandler = utility.m_CommsHandler;
+			if (!commsHandler.CanBypass())
+			{
+				SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_COVERING, null, vector.Zero, 0, false, SCR_EAITalkRequestPreset.MEDIUM);
+				commsHandler.AddRequest(rq);
+			}
+		}
 	}
 }
 
@@ -103,6 +113,22 @@ class SCR_AIGoalReaction_AttackClusterDone : SCR_AIGoalReaction
 			return;
 		
 		utility.m_CombatComponent.ResetAssignedTargets();
+	}
+}
+
+[BaseContainerProps()]
+class SCR_AIGoalReaction_CoverCluster : SCR_AIGoalReaction
+{
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		// Now we don't have a behavior to cover those who are attacking/ivnestigating a cluster yet
+		// We just use it for voice line
+		SCR_AICommsHandler commsHandler = utility.m_CommsHandler;
+		if (!commsHandler.CanBypass())
+		{
+			SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_COVERING, null, vector.Zero, 0, false, SCR_EAITalkRequestPreset.MEDIUM);
+			commsHandler.AddRequest(rq);
+		}
 	}
 }
 
@@ -167,7 +193,7 @@ class SCR_AIGoalReaction_Move : SCR_AIGoalReaction
 			return;
 		
 		auto activity = new SCR_AIMoveActivity(utility, msg.m_RelatedWaypoint, msg.m_MovePosition,
-			msg.m_FollowEntity, msg.m_bUseVehicles, SCR_AIActionBase.PRIORITY_ACTIVITY_MOVE, priorityLevel: msg.m_fPriorityLevel);
+			msg.m_FollowEntity, msg.m_eMovementType, msg.m_bUseVehicles, SCR_AIActionBase.PRIORITY_ACTIVITY_MOVE, priorityLevel: msg.m_fPriorityLevel);
 		
 		utility.SetStateAllActionsOfType(SCR_AISeekAndDestroyActivity,EAIActionState.FAILED); // move fails seek and destroy
 		utility.AddAction(activity);
@@ -196,7 +222,7 @@ class SCR_AIGoalReaction_Follow : SCR_AIGoalReaction
 		
 		//SCR_AIBaseUtilityComponent utility, bool prioritize, bool isWaypointRelated, vector pos, float priority = PRIORITY_ACTIVITY_FOLLOW, IEntity ent = null, bool useVehicles = false, float distance = 1.0
 		auto activity = new SCR_AIFollowActivity(utility, msg.m_RelatedWaypoint, vector.Zero, msg.m_FollowEntity, 
-			false, SCR_AIActionBase.PRIORITY_ACTIVITY_FOLLOW, priorityLevel: msg.m_fPriorityLevel, distance: msg.m_fDistance);
+			msg.m_eMovementType, false, SCR_AIActionBase.PRIORITY_ACTIVITY_FOLLOW, priorityLevel: msg.m_fPriorityLevel, distance: msg.m_fDistance);
 		utility.SetStateAllActionsOfType(SCR_AISeekAndDestroyActivity, EAIActionState.FAILED); // move fails seek and destroy
 		utility.AddAction(activity);
 	}

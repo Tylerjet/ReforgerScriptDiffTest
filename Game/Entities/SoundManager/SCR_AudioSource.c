@@ -4,12 +4,18 @@ class SCR_AudioSource
 	AudioHandle m_AudioHandle = AudioHandle.Invalid;
 	//! Paren entity audio source is linked to
 	IEntity m_Owner;
+	//!  Transformation where sound was triggered
+	protected vector m_aMat[4];
 	//! Audio source configuration
 	ref SCR_AudioSourceConfiguration m_AudioSourceConfiguration;	
 	//! Signal names
-	ref array<string> m_aSignalName;
+	protected ref array<string> m_aSignalName;
 	//! Signal values
-	ref array<float> m_aSignalValue;
+	protected ref array<float> m_aSignalValue;
+	//! Interior callback
+	ref SCR_InteriorRequestCallback m_InteriorRequestCallback;
+	//! Sound is terminated
+	bool m_bTerminated = false;
 	
 	//! Local signal names
 	static const string INTERIOR_SIGNAL_NAME = "Interior";
@@ -18,6 +24,7 @@ class SCR_AudioSource
 	static const string PHASES_TO_DESTROYED_PHASE_SIGNAL_NAME = "PhasesToDestroyed";
 	static const string COLLISION_D_V_SIGNAL_NAME = "CollisionDV";
 	static const string DISTANCE_SINAL_NAME = "Distance";
+	static const string ROOM_SIZE_SIGNAL_NAME = "RoomSize";
 	
 	//------------------------------------------------------------------------------------------------	
 	/*!
@@ -41,7 +48,7 @@ class SCR_AudioSource
 	/*!
 	Sets all occlusion signals
 	*/
-	void SetOcclusionSignals()
+	void SetGlobalOcclusionSignals()
 	{	
 		GameSignalsManager gameSignalsManager = GetGame().GetSignalsManager();
 		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
@@ -49,8 +56,37 @@ class SCR_AudioSource
 		SetSignalValue(SCR_SoundManagerEntity.G_INTERIOR_SIGNAL_NAME, gameSignalsManager.GetSignalValue(soundManagerEntity.GetGInteriorSignalIdx()));
 		SetSignalValue(SCR_SoundManagerEntity.G_CURR_VEHICLE_COVERAGE_SIGNAL_NAME, gameSignalsManager.GetSignalValue(soundManagerEntity.GetGCurrVehicleCoverageSignalIdx()));
 		SetSignalValue(SCR_SoundManagerEntity.G_IS_THIRD_PERSON_CAM_SIGNAL_NAME, gameSignalsManager.GetSignalValue(soundManagerEntity.GetGIsThirdPersonCamSignalIdx()));
+		SetSignalValue(SCR_SoundManagerEntity.G_ROOM_SIZE, gameSignalsManager.GetSignalValue(soundManagerEntity.GetRoomSizeIdx()));
+	}
 	
-		// TODO: Set Interior signal	
+	//------------------------------------------------------------------------------------------------
+	bool Play()
+	{		
+		// Play event
+		m_AudioHandle = AudioSystem.PlayEvent(m_AudioSourceConfiguration.m_sSoundProject, m_AudioSourceConfiguration.m_sSoundEventName, m_aMat, m_aSignalName, m_aSignalValue);
+
+		// Check if AudioHandle is valid		
+		return m_AudioHandle != AudioHandle.Invalid;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetTransformation(vector mat[4])
+	{
+		m_aMat = mat;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UpdateTransformation()
+	{
+		m_Owner.GetTransform(m_aMat);
+		AudioSystem.SetSoundTransformation(m_AudioHandle, m_aMat);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void Ternimate()
+	{
+		AudioSystem.TerminateSound(m_AudioHandle);
+		m_bTerminated = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

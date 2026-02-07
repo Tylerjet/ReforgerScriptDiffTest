@@ -7,6 +7,7 @@ enum EVotingType
 	EDITOR_WITHDRAW, ///< As a GM, withdraw your rights, value is player ID
 	RESTART, ///< Restart the world, no value
 	WORLD, ///< Choose the next world, value TBD
-	LIGHTBAN, ///< Lightban voting raised by the WarCrimesModule if enabled in the world
-	HEAVYBAN, ///< Heavyban voting raised by the WarCrimesModule if enabled in the world
+	AUTO_LIGHTBAN, ///< Lightban voting raised by the WarCrimesModule if enabled in the world
+	AUTO_HEAVYBAN, ///< Heavyban voting raised by the WarCrimesModule if enabled in the world
+	AUTO_KICK, ///< Kick voting raised by the WarCrimesModule if enabled in the world
 };

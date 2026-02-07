@@ -70,7 +70,7 @@ class SCR_PauseSubMenu: SCR_SubMenuBase
 			comp.m_OnClicked.Insert(OnFeedback);
 
 		// Handle navigation buttons
-		SCR_NavigationButtonComponent navigation = CreateNavigationButton("MenuBack", "Back");
+		SCR_InputButtonComponent navigation = CreateNavigationButton("MenuBack", "Back");
 		if (navigation)
 			navigation.m_OnActivated.Insert(CloseParent);
 		
@@ -146,7 +146,7 @@ class SCR_PauseSubMenu: SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	private void OnFeedback()
 	{
-		m_ParentMenu.OpenFeedbackDialog();
+		FeedbackDialogUI.OpenFeedbackDialog();
 	}
 	
 	//------------------------------------------------------------------------------------------------

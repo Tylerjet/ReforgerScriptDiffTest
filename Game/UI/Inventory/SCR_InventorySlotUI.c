@@ -17,7 +17,7 @@ enum ESlotFunction
 	TYPE_GADGET,
 	TYPE_HEALTH,
 	TYPE_CONSUMABLE,
-	TYPE_STORAGE
+	TYPE_STORAGE,
 };
 
 //------------------------------------------------------------------------------------------------
@@ -48,7 +48,8 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	const int											MID_CLICK	= 2;
 	protected bool										m_bEnabled 	= true;
 	protected bool										m_bSelected = false;
-	protected Widget									m_wSelectedEffect, m_wMoveEffect, m_wDimmerEffect;
+	protected bool										m_bBlocked = false;
+	protected Widget									m_wSelectedEffect, m_wMoveEffect, m_wDimmerEffect, m_wBlockedEffect;
 	protected TextWidget								m_wTextQuickSlot = null;
 	protected TextWidget								m_wTextQuickSlotLarge = null;
 	protected int										m_iQuickSlotIndex;
@@ -65,6 +66,12 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	protected bool										m_bVisible;
 	protected ESlotFunction								m_eSlotFunction = ESlotFunction.TYPE_GENERIC;
 	
+	//~ FUEL
+	protected const string FUEL_WIDGET_HOLDER_NAME = "FuelCountHolder";
+	protected const string FUEL_WIDGET_FILL_NAME = "FuelFill";
+	protected ImageWidget m_wFuelCount;
+	protected SCR_FuelManagerComponent m_FuelManager;
+	
 	#ifdef DEBUG_INVENTORY20
 		protected TextWidget							m_wDbgClassText1;
 		protected TextWidget							m_wDbgClassText2;
@@ -73,11 +80,14 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------
-	void UpdateReferencedComponent( InventoryItemComponent pComponent )
+	void UpdateReferencedComponent( InventoryItemComponent pComponent, SCR_ItemAttributeCollection attributes = null )
 	{
 		if ( m_widget )
 			Destroy();
 		m_pItem = pComponent;
+		
+		if (attributes)
+			m_Attributes = attributes;
 		
 		if (m_pItem && m_pItem.GetAttributes())
 			m_Attributes = SCR_ItemAttributeCollection.Cast( m_pItem.GetAttributes() );			//set the slot attributes (size) based on the information stored in the item 
@@ -175,13 +185,44 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	//!
 	protected void SetAmmoCount()
 	{
-		if ( !m_pItem )
+		Widget ammoSizeCountHolder = GetWidget().FindAnyWidget("SizeAmmoCount");
+		
+		if (!m_pItem)
 			return;
+		
 		MagazineComponent pMagazineComponent = MagazineComponent.Cast( m_pItem.GetOwner().FindComponent( MagazineComponent ) );
-		if ( !pMagazineComponent )
+		if (!pMagazineComponent)
 			return;
+		
 		m_aAmmoCountActual = pMagazineComponent.GetAmmoCount();
 		m_aAmmoCountMax = pMagazineComponent.GetMaxAmmoCount();
+		
+		if (ammoSizeCountHolder)
+			ammoSizeCountHolder.SetVisible(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnFuelAmountChanged(float newFuelValue)
+	{
+		if (!m_wFuelCount || !m_FuelManager)
+			return;
+		
+		m_wFuelCount.SetMaskProgress(1 - (newFuelValue / m_FuelManager.GetTotalMaxFuel()));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void InitFuelAmount()
+	{
+		m_wFuelCount = ImageWidget.Cast(m_widget.FindAnyWidget(FUEL_WIDGET_FILL_NAME));
+		if (!m_wFuelCount)
+			return;
+		
+		m_FuelManager.GetOnFuelChanged().Insert(OnFuelAmountChanged);			
+		OnFuelAmountChanged(m_FuelManager.GetTotalFuel());
+		
+		Widget fuelCountHolder = m_widget.FindAnyWidget(FUEL_WIDGET_HOLDER_NAME);
+		if (fuelCountHolder)
+			fuelCountHolder.SetVisible(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -189,27 +230,34 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	bool IsSlotEnabled() { return m_bEnabled; }
 	//------------------------------------------------------------------------------------------------
+	bool IsSlotBlocked() { return m_bBlocked; }
+	//------------------------------------------------------------------------------------------------
 	bool IsSlotSelected() { return m_bSelected; }
 	//------------------------------------------------------------------------------------------------
 	//! should be the slot visible?
 	void SetSlotVisible( bool bVisible )
 	{
 		m_bVisible = bVisible;
-		m_widget.SetEnabled( bVisible );
-		m_widget.SetVisible( bVisible );
+		m_widget.SetEnabled(bVisible);
+		m_widget.SetVisible(bVisible);
 		
-		if( bVisible )
+		if(bVisible)
 		{
 			m_wPreviewImage = RenderTargetWidget.Cast( m_widget.FindAnyWidget( "item" ) );
-			ItemPreviewManagerEntity manager = GetGame().GetItemPreviewManager();
-			if (manager)
+			
+			ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+			if (world)
 			{
-				ItemPreviewWidget renderPreview = ItemPreviewWidget.Cast( m_wPreviewImage );
-				IEntity previewEntity = null;
-				if (m_pItem)
-					previewEntity = m_pItem.GetOwner();
-				if (renderPreview)
-					manager.SetPreviewItem(renderPreview, previewEntity, null, true);
+				ItemPreviewManagerEntity manager = world.GetItemPreviewManager();
+				if (manager)
+				{
+					ItemPreviewWidget renderPreview = ItemPreviewWidget.Cast( m_wPreviewImage );
+					IEntity previewEntity = null;
+					if (m_pItem)
+						previewEntity = m_pItem.GetOwner();
+					if (renderPreview)
+						manager.SetPreviewItem(renderPreview, previewEntity, null, true);
+				}
 			}
 			
 			//if the slot has storage, then show its volume bar
@@ -222,6 +270,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			m_wSelectedEffect = m_widget.FindAnyWidget( "SelectedFrame" );
 			m_wMoveEffect = m_widget.FindAnyWidget( "IconMove" );
 			m_wDimmerEffect = m_widget.FindAnyWidget( "Dimmer" );
+			m_wBlockedEffect = m_widget.FindAnyWidget("Blocker");
 			m_wButton = ButtonWidget.Cast( m_widget.FindAnyWidget( "ItemButton" ) );
 			m_wStackNumber = TextWidget.Cast( m_widget.FindAnyWidget( "stackNumber" ) );
 			m_wItemLockThrobber = OverlayWidget.Cast(m_widget.FindAnyWidget("itemLockThrobber"));
@@ -242,6 +291,9 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 				SetAmmoCount();
 				UpdateAmmoCount();
 			}
+			
+			if (m_FuelManager)
+				OnFuelAmountChanged(m_FuelManager.GetTotalFuel());
 			
 			m_wMagazineNumber = TextWidget.Cast( m_widget.FindAnyWidget( "magazineCount" ) );
 			m_wCurrentMagazineAmmoCount = ProgressBarWidget.Cast( m_widget.FindAnyWidget( "currentMagazineAmmoCount" ) );
@@ -293,6 +345,22 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 				m_wDbgClassText3 = null;
 			#endif
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! should be the slot be blocked?
+	void SetSlotBlocked(bool bBlocked)
+	{
+		m_bBlocked = bBlocked;
+		
+		if (!m_wBlockedEffect || !m_wDimmerEffect)
+			return;
+		
+		if (m_wBlockedEffect.IsVisible() == bBlocked)
+			return;
+		
+		m_wDimmerEffect.SetVisible(bBlocked);
+		m_wBlockedEffect.SetVisible(bBlocked);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -470,13 +538,21 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	private void SetItemDetails()
+	protected void SetItemDetails()
 	{
 		UIInfo itemDetails =  GetItemDetails();
-		if( !itemDetails )
+		if(!itemDetails)
 			return;
-		if( m_pStorageUI )
-			m_pStorageUI.ShowItemDetails( itemDetails.GetName(), itemDetails.GetDescription(), m_Attributes.GetWeight().ToString() );
+		
+		if(m_pStorageUI)
+		{
+			SCR_InventoryUIInfo inventoryItemDetails = SCR_InventoryUIInfo.Cast(itemDetails);
+			
+			if (inventoryItemDetails)
+				m_pStorageUI.ShowItemDetails(inventoryItemDetails.GetInventoryItemName(m_pItem), inventoryItemDetails.GetInventoryItemDescription(m_pItem), m_Attributes.GetWeight().ToString());
+			else 
+				m_pStorageUI.ShowItemDetails(itemDetails.GetName(), itemDetails.GetDescription(), m_Attributes.GetWeight().ToString());
+		}
 	}			
 	
 	//------------------------------------------------------------------------------------------------	
@@ -488,7 +564,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	
 	
 	//------------------------------------------------------------------------------------------------
-	private void SetImage( string resource, string imageName )
+	protected void SetImage( string resource, string imageName )
 	{
 		if ( resource == string.Empty || imageName == string.Empty || m_wIcon == null )
 			return;
@@ -540,26 +616,33 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	//! stores the type of the functionality of the item in the slot
 	void SetItemFunctionality()
 	{
-		if( !m_pItem )
+		if(!m_pItem)
 			return;
 		IEntity item = m_pItem.GetOwner();
 		if (!item)
 			return;
 		
-		if ( MagazineComponent.Cast( item.FindComponent( MagazineComponent ) ) )
+		m_FuelManager = SCR_FuelManagerComponent.Cast(item.FindComponent(FuelManagerComponent));
+		if (m_FuelManager && m_FuelManager.GetTotalMaxFuel() > 0)
+		{			
+			InitFuelAmount();
+			return;
+		} 
+		
+		if (MagazineComponent.Cast(item.FindComponent(MagazineComponent)))
 		{
 			m_eSlotFunction = ESlotFunction.TYPE_MAGAZINE;
 			SetAmmoCount();
 			return;
 		} 
 		
-		if ( WeaponComponent.Cast( item.FindComponent( WeaponComponent ) ) )
+		if (WeaponComponent.Cast(item.FindComponent(WeaponComponent)))
 		{
 			m_eSlotFunction = ESlotFunction.TYPE_WEAPON;
 			return;
 		}
 		
-		if ( SCR_GadgetComponent.Cast( item.FindComponent( SCR_GadgetComponent ) ) )
+		if (SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent)))
 		{
 			m_eSlotFunction = ESlotFunction.TYPE_GADGET;
 			return;
@@ -793,13 +876,13 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		m_widget.RemoveFromHierarchy();
 		if (m_wPreviewImage)
 		{
-			ItemPreviewManagerEntity manager = GetGame().GetItemPreviewManager();
+			ItemPreviewManagerEntity manager = m_pStorageUI.GetInventoryMenuHandler().GetItemPreviewManager();
 			if (manager)
-				{
-					ItemPreviewWidget renderPreview = ItemPreviewWidget.Cast( m_wPreviewImage );
-					if (renderPreview)
-						manager.SetPreviewItem(renderPreview, null);
-				}
+			{
+				ItemPreviewWidget renderPreview = ItemPreviewWidget.Cast( m_wPreviewImage );
+				if (renderPreview)
+					manager.SetPreviewItem(renderPreview, null);
+			}
 		}
 	}
 	
@@ -949,5 +1032,14 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_InventorySlotUI()
 	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+		
+		if (m_FuelManager && m_wFuelCount)
+			m_FuelManager.GetOnFuelChanged().Remove(OnFuelAmountChanged);
 	}
 };

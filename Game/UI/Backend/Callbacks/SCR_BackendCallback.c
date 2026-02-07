@@ -52,12 +52,12 @@ class SCR_BackendCallback : BackendCallback
 
 		return Event_OnSuccess;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	protected void InvokeEventOnFail(SCR_BackendCallback arg0, int arg1, int arg2, int arg3)
+	protected void InvokeEventOnFail(SCR_BackendCallback callback, int code, int restCode, int apiCode)
 	{
 		if (Event_OnFail)
-			Event_OnFail.Invoke(arg0, arg1, arg2, arg3);
+			Event_OnFail.Invoke(callback, code, restCode, apiCode);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -37,26 +37,45 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	protected ref array<ref SCR_ScenarioFrameworkTaskType> m_aTaskTypesAvailable;
 	
 	[Attribute( defvalue: "3", desc: "Maximal number of tasks that can be generated", category: "Tasks" )];
-	protected int 				m_iMaxNumberOfTasks;
+	protected int m_iMaxNumberOfTasks;
+	
+	[Attribute(UIWidgets.Auto, desc: "Actions that will be activated after tasks are initialized", category: "Tasks")];
+	protected ref array<ref SCR_ScenarioFrameworkActionBase> m_aAfterTasksInitActions;
 	
 	[Attribute(desc: "Name of the Area which will be only one to spawn", category: "Debug")];
-	protected string			m_sForcedArea;
-	[Attribute(desc: "Name of the task layer to be only one to create", category: "Debug")];
-	protected string			m_sForcedTaskLayer;
+	protected string m_sForcedArea;
 	
-	protected ref array<SCR_ScenarioFrameworkArea> m_aAreas = {};		//all areas will be registered into this array
+	[Attribute(desc: "Name of the task layer to be only one to create", category: "Debug")];
+	protected string m_sForcedTaskLayer;
+	
+	[Attribute(desc: "Should the dynamic Spawn/Despawn based on distance from observer cameras be enabled for the whole GameMode?", category: "Dynamic Spawn/Despawn")];
+	protected bool m_bDynamicDespawn;
+	
+	[Attribute(defvalue: "4", UIWidgets.Slider, params: "0 600 1", desc: "How frequently is dynamic spawn/despawn being checked in seconds", category: "Dynamic Spawn/Despawn")]
+	protected int m_iUpdateRate;
+	
+	protected bool m_bMatchOver;
+	protected int m_iCurrentlySpawnedLayerTasks;
+	
 	protected ref ScriptInvoker m_OnAllAreasInitiated;
 	protected ref ScriptInvoker m_OnTaskStateChanged;
-	protected SCR_BaseTask		m_ExtractionAreaTask;
-	protected SCR_BaseTask		m_LastFinishedTask;
-	protected SCR_ScenarioFrameworkLayerBase		m_LastFinishedTaskLayer;
-	protected bool				m_bInitialized = false;
-	protected bool 				m_bMatchOver;
-	protected int 				m_iNumberOfTasksSpawned;
-	protected int 				m_iNumberOfSelectedAreas;
-	protected ref array<string> 	m_aAreasTasksToSpawn = {};
-	protected ref array<string> 	m_aLayersTaskToSpawn = {};
+	
+	protected SCR_ScenarioFrameworkLayerBase m_LastFinishedTaskLayer;
+	protected SCR_BaseTask m_LastFinishedTask;
 	protected EGameOverTypes m_eGameOverType = EGameOverTypes.COMBATPATROL_DRAW;
+	
+	protected ref array<SCR_ScenarioFrameworkArea> m_aAreas = {};
+	protected ref array<SCR_ScenarioFrameworkArea> m_aSelectedAreas = {};
+	protected ref array<SCR_ScenarioFrameworkLayerTask> m_aLayerTasksToBeInitialized = {};
+	protected ref array<SCR_ScenarioFrameworkLayerTask> m_aLayerTasksForRandomization = {};
+	protected ref array<string> m_aAreasTasksToSpawn = {};
+	protected ref array<string> m_aLayersTaskToSpawn = {};
+	protected ref array<SCR_ESFTaskType> m_aESFTaskTypesAvailable = {};
+	protected ref array<SCR_ESFTaskType> m_aESFTaskTypeForRandomization = {};
+	
+	protected ref array<ref Tuple3<SCR_ScenarioFrameworkArea, vector, int>> m_aSpawnedAreas = {};
+	protected ref array<ref Tuple3<SCR_ScenarioFrameworkArea, vector, int>> m_aDespawnedAreas = {};
+	protected ref array<vector> m_aObservers = {};
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
@@ -119,30 +138,19 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnTaskFinished(SCR_BaseTask task)
+	array<SCR_ScenarioFrameworkArea> GetAreas()
 	{
-		//SCR_ScenarioFrameworkTask.Cast(task).ShowPopUpMessage("#AR-Tasks_StatusFinished-UC");
-		//GetOnTaskStateChanged().Invoke(task); 
+		return m_aAreas;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void OnTaskCreated(SCR_BaseTask task)
 	{
-		PopUpMessage(task.GetTitle(), "#AR-CampaignTasks_NewObjectivesAvailable-UC");
-		//GetOnTaskStateChanged().Invoke(task);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void OnTaskCancelled(SCR_BaseTask task)
-	{
-		//GetOnTaskStateChanged().Invoke(task);
-	}
-	
-	
-	//------------------------------------------------------------------------------------------------
-	void OnTaskFailed(SCR_BaseTask task)
-	{
-		//GetOnTaskStateChanged().Invoke(task);
+		Faction faction =  task.GetTargetFaction();
+		if (faction)
+			PopUpMessage(task.GetTitle(), "#AR-CampaignTasks_NewObjectivesAvailable-UC", faction.GetFactionKey());
+		else
+			PopUpMessage(task.GetTitle(), "#AR-CampaignTasks_NewObjectivesAvailable-UC");
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -151,6 +159,8 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		if (!task) 
 			return;
 
+		Faction faction =  task.GetTargetFaction();
+		
 		if (task.GetTaskState() == SCR_TaskState.FINISHED)
 		{
 			m_LastFinishedTaskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetTaskLayer(); 
@@ -159,15 +169,17 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		
 		if (mask & SCR_ETaskEventMask.TASK_PROPERTY_CHANGED && !(mask & SCR_ETaskEventMask.TASK_CREATED) && !(mask & SCR_ETaskEventMask.TASK_FINISHED) && !(mask & SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED))
 		{
-			PopUpMessage(task.GetTitle(), "#AR-Workshop_ButtonUpdate");
+			if (faction)
+				PopUpMessage(task.GetTitle(), "#AR-Workshop_ButtonUpdate", faction.GetFactionKey());
+			else
+				PopUpMessage(task.GetTitle(), "#AR-Workshop_ButtonUpdate");
 			
 			SCR_ScenarioFrameworkLayerTask taskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetTaskLayer();
 			SCR_ScenarioFrameworkSlotTask subject = taskLayer.GetTaskSubject();
 			if (subject)
-				subject.OnTaskStateChanged(SCR_TaskState.UPDATED)
+				subject.OnTaskStateChanged(SCR_TaskState.UPDATED);
 		}
-		
-		//SCR_ScenarioFrameworkTask.Cast(task).ShowPopUpMessage("#AR-Tasks_Objective" + " " + "#AR-Workshop_ButtonUpdate");		//TODO: localize properly
+
 		GetOnTaskStateChanged().Invoke(task, mask);
 	}
 	
@@ -467,7 +479,10 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		{
 			if (m_sForcedArea.IsEmpty())		//for debug purposes
 			{
-				area.Init();	
+				if (area.GetDynamicDespawnEnabled())
+					continue;
+				
+				area.Init();
 			}
 			else
 			{
@@ -475,12 +490,8 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 					area.Init(area);
 			}
 		}
-				
-		SCR_BaseTaskManager.s_OnTaskFinished.Insert(OnTaskFinished);		
-		//SCR_BaseTaskManager.s_OnTaskCreated.Insert(OnTaskCreated);
+		
 		SCR_ScenarioFrameworkLayerTask.s_OnTaskSetup.Insert(OnTaskCreated);	
-		SCR_BaseTaskManager.s_OnTaskCancelled.Insert(OnTaskCancelled);
-		SCR_BaseTaskManager.s_OnTaskFailed.Insert(OnTaskFailed);
 		SCR_BaseTaskManager.s_OnTaskUpdate.Insert(OnTaskUpdate);
 		
 		//if someone registered for the event, then call it
@@ -489,89 +500,14 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		
 		PostInit();
 		
-		m_bInitialized = true;
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void PostInit();
-	
-	//------------------------------------------------------------------------------------------------
-	//! From all the available Tasks and number of which is supposed to spawn, it shuffles the order for random generation purposes.
-	protected void ShuffleTasks()
+	protected void PostInit()
 	{
-		SCR_ESFTaskType eTaskType;
-		SCR_ScenarioFrameworkTaskType frameworkTaskType;
-		
-		for (int i = 0, count = m_aTaskTypesAvailable.Count(); i < count; i++)
-		{
-			m_aTaskTypesAvailable.SwapItems(m_aTaskTypesAvailable.GetRandomIndex(), m_aTaskTypesAvailable.GetRandomIndex());
-		}
-		
-		for (int i = 0; i < m_iMaxNumberOfTasks; i++)
-		{
-			m_iNumberOfSelectedAreas = 0;
-			foreach (SCR_ScenarioFrameworkArea area : m_aAreas)
-			{
-				if (area.GetIsAreaSelected())
-					m_iNumberOfSelectedAreas++;
-			}
-			
-			frameworkTaskType = m_aTaskTypesAvailable.Get(i);
-			eTaskType = frameworkTaskType.GetTaskType();	
-			if (eTaskType == SCR_ESFTaskType.NONE)
-				continue;
-			
-			SCR_ScenarioFrameworkArea area;
-			if (m_sForcedArea.IsEmpty())
-				area = SelectRandomAreaByTaskType(eTaskType);		
-			else
-				SpawnForcedArea(area);
-			
-			if (area)
-			{
-				SpawnAreaWithTask(area, eTaskType, frameworkTaskType);
-				i--;
-			}
-			
-			else
-			{
-				foreach (SCR_ScenarioFrameworkTaskType taskTypeAvailable : m_aTaskTypesAvailable)
-				{
-					eTaskType = taskTypeAvailable.GetTaskType();
-					if (eTaskType == SCR_ESFTaskType.NONE)
-						continue;
-					
-					if (m_sForcedArea.IsEmpty())
-					{
-						area = SelectRandomAreaByTaskType(eTaskType);
-						if (area)
-							break;	
-					}
-					else
-					{
-						SpawnForcedArea(area);
-					}
-				}
-				
-				if (area)
-				{
-					SpawnAreaWithTask(area, eTaskType, frameworkTaskType);
-					i--;
-				}
-			}
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SpawnAreaWithTask(SCR_ScenarioFrameworkArea area, SCR_ESFTaskType eTaskType, SCR_ScenarioFrameworkTaskType frameworkTaskType)
-	{
-		SCR_ScenarioFrameworkLayerTask layer = area.Create(eTaskType);
-		PrintFormat("ScenarioFramework: Creating area %1", area.GetOwner().GetName());
-		Print("ScenarioFramework: ---------------------------------------------------------------");
-		m_aTaskTypesAvailable.RemoveItem(frameworkTaskType);
-		m_iMaxNumberOfTasks--;
-		m_iNumberOfTasksSpawned++;
+		if (m_sForcedTaskLayer.IsEmpty())
+			GenerateTasks();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -585,70 +521,202 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// Spawns random Task based on available tasks and Areas that haven't spawned any
+	void SpawnRandomTask()
+	{
+		// In case of more max tasks to be spawned but with less task types, we need to refill it again
+		if (m_aESFTaskTypeForRandomization.IsEmpty())
+			m_aESFTaskTypeForRandomization.Copy(m_aESFTaskTypesAvailable);
+		
+		if (m_aLayerTasksForRandomization.IsEmpty())
+			return;
+		
+		Math.Randomize(-1);
+		SCR_ScenarioFrameworkLayerTask layerTask = m_aLayerTasksForRandomization.GetRandomElement();
+		if (!layerTask)
+			return;
+		
+		// This filters out task types that were already spawned
+		SCR_ESFTaskType taskType = layerTask.GetTaskType();
+		if (!m_aESFTaskTypeForRandomization.Contains(taskType))
+		{
+			for (int i = m_aLayerTasksForRandomization.Count() - 1; i >= 0; i--)
+			{
+			    if (m_aLayerTasksForRandomization[i].GetTaskType() == taskType)
+			        m_aLayerTasksForRandomization.Remove(i);
+			}
+			
+			if (m_aESFTaskTypesAvailable.Contains(taskType))
+				SpawnRandomTask();
+		}
+		m_aESFTaskTypeForRandomization.RemoveItem(taskType);
+		
+		//Spawning and setting necessary states
+		SCR_ScenarioFrameworkArea area = layerTask.GetParentArea();
+		m_aLayerTasksToBeInitialized.Insert(layerTask);
+		layerTask.SetParentLayer(layerTask.GetParentLayer());
+		layerTask.Init(area, SCR_ScenarioFrameworkEActivationType.ON_TASKS_INIT);
+		area.SetLayerTask(layerTask);
+		area.SetAreaSelected(true);
+		m_aSelectedAreas.Insert(area);
+		
+		// Removing all Layer Tasks that have the same Task Type
+		for (int i = m_aLayerTasksForRandomization.Count() - 1; i >= 0; i--)
+		{
+		    if (m_aLayerTasksForRandomization[i].GetTaskType() == taskType)
+		        m_aLayerTasksForRandomization.Remove(i);
+		}
+		
+		// Removing all Layer Tasks that are from the same Area of randomly selected Layer Task
+		for (int i = m_aLayerTasksForRandomization.Count() - 1; i >= 0; i--)
+		{
+		    if (m_aLayerTasksForRandomization[i].GetParentArea() == area)
+		        m_aLayerTasksForRandomization.Remove(i);
+		}
+		
+		Print(string.Format("ScenarioFramework: Creating area %1 with Layer Task %2", area.GetOwner().GetName(), layerTask.GetOwner().GetName()), LogLevel.NORMAL);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// Main function responsible for selecting available tasks and spawning the areas related to the tasks
 	void GenerateTasks()
 	{
 		if (m_aTaskTypesAvailable.IsEmpty())
 		{
-			Print("ScenarioFramework: Available tasks are empty, no new tasks will be generated.");
+			Print("ScenarioFramework: Available tasks are empty, no new tasks will be generated.", LogLevel.NORMAL);
 			return;
 		}
 		
-		int m_iMinNumberOfTasks = m_iMaxNumberOfTasks;
-		if (m_aTaskTypesAvailable.Count() < m_iMinNumberOfTasks)
-			Print("ScenarioFramework: Number of available tasks is lower than the minimum number of tasks!", LogLevel.WARNING);
-		
-		array<int> aAllTaskTypesAvailable = {};
 		if (m_aAreas.IsEmpty())
 		{
-			Print("ScenarioFramework: There are no Areas to generate tasks from");
-			return;
-		}
-		else
-		{
-			foreach (SCR_ScenarioFrameworkArea area : m_aAreas)
-			{
-				array<SCR_ESFTaskType> aTempTaskTypes = {};
-				area.GetAvailableTaskTypes(aTempTaskTypes);
-				aAllTaskTypesAvailable.InsertAll(aTempTaskTypes);
-			}
-		}
-		
-		int maxPossibleShuffles = aAllTaskTypesAvailable.Count();
-		if (maxPossibleShuffles == 0)
-		{
-			Print("ScenarioFramework: Available areas do not have any tasks to generate");
+			Print("ScenarioFramework: There are no Areas to generate tasks from", LogLevel.NORMAL);
 			return;
 		}
 		
-		if (m_iMaxNumberOfTasks > m_aTaskTypesAvailable.Count())
-			m_iMaxNumberOfTasks = m_aTaskTypesAvailable.Count();
+		Print("ScenarioFramework: ---------------------- Generating tasks -------------------", LogLevel.NORMAL);
 		
-		Print("ScenarioFramework: ---------------------- Generating tasks -------------------");
-		
-		if (m_aLayersTaskToSpawn.IsEmpty())
+		if (!m_aLayersTaskToSpawn.IsEmpty())
 		{
-			while (m_iNumberOfTasksSpawned < m_iMinNumberOfTasks && m_aAreas.Count() > 0 && maxPossibleShuffles > 0)
-			{
-				if (m_iNumberOfTasksSpawned >= m_iNumberOfSelectedAreas && m_iNumberOfSelectedAreas != 0)
-					break;
-				
-				ShuffleTasks();
-				maxPossibleShuffles--;
-			
-			}
-		}
-		else
-		{
-			int taskLayersCount = m_aLayersTaskToSpawn.Count();
-			for (int i = 0; i < taskLayersCount; i++)
+			for (int i = 0; i < m_aLayersTaskToSpawn.Count(); i++)
 			{
 				GenerateSingleTask(i);
 			}
+			
+			PrepareLayerTasksAfterInit();
+			Print("ScenarioFramework: ---------------------- Generation of tasks completed -------------------", LogLevel.NORMAL);
+			
+			return;
+		}
+		
+		//Fetching all Layer Tasks from Areas
+		array<SCR_ScenarioFrameworkLayerTask> layerTasksToRandomize = {};
+		foreach (SCR_ScenarioFrameworkArea area : m_aAreas)
+		{
+			if (!area)
+				continue;
+			
+			array<SCR_ScenarioFrameworkLayerTask> layerTasks = {};
+			area.GetAllLayerTasks(layerTasks);
+			layerTasksToRandomize.InsertAll(layerTasks);
+		}
+		
+		//Fetching available Task Types for generation based on type
+		foreach (SCR_ScenarioFrameworkTaskType taskTypeClass : m_aTaskTypesAvailable)
+		{
+			m_aESFTaskTypesAvailable.Insert(taskTypeClass.GetTaskType());
+		}
+		
+		//Removing Layer Tasks that don't have Task Type set in Available Task Types
+		for (int i = layerTasksToRandomize.Count() - 1; i >= 0; i--)
+		{
+			if (!m_aESFTaskTypesAvailable.Contains(layerTasksToRandomize[i].GetTaskType()))
+		        layerTasksToRandomize.Remove(i);
+		}
+		
+		//Removing Layer Tasks that don't have activation type set to ON_TASKS_INIT
+		for (int i = layerTasksToRandomize.Count() - 1; i >= 0; i--)
+		{
+		    if (layerTasksToRandomize[i].GetActivationType() != SCR_ScenarioFrameworkEActivationType.ON_TASKS_INIT)
+		        layerTasksToRandomize.Remove(i);
+		}
+		
+		//Creating a copy so we can work with these in loops
+		m_aESFTaskTypeForRandomization.Copy(m_aESFTaskTypesAvailable);
+		m_aLayerTasksForRandomization.Copy(layerTasksToRandomize);
+		
+		//Spawning desired number of tasks
+		for (int i = 0; i < m_iMaxNumberOfTasks; i++)
+		{
+			//Layers Tasks are shrinked down and after certain number of generations, we need to refill it
+			if (m_aLayerTasksForRandomization.IsEmpty())
+			{
+				m_aLayerTasksForRandomization.Copy(layerTasksToRandomize);
+			
+				foreach (SCR_ScenarioFrameworkArea selectedArea : m_aSelectedAreas)
+				{
+					for (int j = m_aLayerTasksForRandomization.Count() - 1; j >= 0; j--)
+					{
+					    if (m_aLayerTasksForRandomization[j].GetParentArea() == selectedArea)
+						{
+							m_aLayerTasksForRandomization.Remove(j);
+							continue;
+						}
+					}
+				}
+			}
+			
+			SpawnRandomTask();
 		}
 
-		Print("ScenarioFramework: ---------------------- Generation of tasks completed -------------------");
+		if (m_aLayerTasksToBeInitialized.Count() < m_iMaxNumberOfTasks)
+			Print(string.Format("ScenarioFramework: Available areas do not have any other tasks to generate. Only %1 out of %2 was generated", m_aLayerTasksToBeInitialized, m_iMaxNumberOfTasks), LogLevel.NORMAL);
+
+		PrepareLayerTasksAfterInit();
+		Print("ScenarioFramework: ---------------------- Generation of tasks completed -------------------", LogLevel.NORMAL);
+	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Prepares Layer Tasks that were selected by ON_TASK_INIT activation for invoking AfterTasksInitActions
+	protected void PrepareLayerTasksAfterInit()
+	{
+		foreach (SCR_ScenarioFrameworkLayerTask layerTask : m_aLayerTasksToBeInitialized)
+		{
+			if (!layerTask)
+				continue;
+			
+			layerTask.GetOnAllChildrenSpawned().Insert(CheckLayerTasksAfterInit);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Checks if all Layer Tasks that were selected by ON_TASK_INIT activation for invoking AfterTasksInitActions are finished with spawning
+	protected void CheckLayerTasksAfterInit()
+	{
+		m_iCurrentlySpawnedLayerTasks++;
+		if (m_iCurrentlySpawnedLayerTasks == m_aLayerTasksToBeInitialized.Count())
+			//Due to how Task System sometimes works, not everything is initialized right after the Layer Task so we need to wait a bit
+			GetGame().GetCallqueue().CallLater(AfterLayerTasksInit, 1000);
+	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Executes AfterTasksInitActions after all Layer Tasks are finished spawning
+	protected void AfterLayerTasksInit()
+	{
+		foreach (SCR_ScenarioFrameworkLayerTask layerTask : m_aLayerTasksToBeInitialized)
+		{
+			if (!layerTask)
+				continue;
+			
+			layerTask.GetOnAllChildrenSpawned().Remove(CheckLayerTasksAfterInit);
+			if (m_bDynamicDespawn && !layerTask.GetDynamicDespawnExcluded())
+				layerTask.DynamicDespawn();
+		}
+		
+		foreach(SCR_ScenarioFrameworkActionBase afterTasksInitActions : m_aAfterTasksInitActions)
+		{
+			afterTasksInitActions.Init(m_aAreas.GetRandomElement().GetOwner());
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -665,6 +733,8 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		if (!taskComponent)
 			return;
 		
+		m_aLayerTasksToBeInitialized.Insert(taskComponent);
+		
 		IEntity areaEntity = GetGame().GetWorld().FindEntityByName(targetArea);
 		if (!areaEntity)
 			areaEntity = layerEntity.GetParent();
@@ -680,10 +750,9 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		taskComponent.SetActivationType(SCR_ScenarioFrameworkEActivationType.ON_TASKS_INIT);
 		
 		area.Create(taskComponent);
-		PrintFormat("ScenarioFramework: Creating area %1", area.GetOwner().GetName());
-		Print("ScenarioFramework: ---------------------------------------------------------------");
+		Print(string.Format("ScenarioFramework: Creating area %1", area.GetOwner().GetName()), LogLevel.NORMAL);
+		Print("ScenarioFramework: ---------------------------------------------------------------", LogLevel.NORMAL);
 		m_iMaxNumberOfTasks--;
-		m_iNumberOfTasksSpawned++;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -697,6 +766,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		aAreasCopy.Copy(m_aAreas);
 		for (int i = 0, count = m_aAreas.Count(); i < count; i++)
 		{
+			Math.Randomize(-1);
 			selectedArea = aAreasCopy.GetRandomElement();
 			if (!selectedArea.GetIsAreaSelected() && selectedArea.GetIsTaskSuitableForArea(eTaskType))
 			{
@@ -731,14 +801,149 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		
 		return layer;
 	}
-		
-	//------------------------------------------------------------------------------------------------
-	override void EOnFixedFrame(IEntity owner, float timeSlice);
 	
+	//------------------------------------------------------------------------------------------------
+	//! Prepares dynamic spawn/despawn for specific area (Intended for runtime usage)
+	void PrepareAreaSpecificDynamicDespawn(SCR_ScenarioFrameworkArea area, bool staySpawned = false)
+	{
+		int despawnRange = area.GetDynamicDespawnRange();
+			
+		//If this method is called with staySpawned = false, area will be added to m_aDespawnedAreas and gets despawned
+		if (!staySpawned)
+		{
+			m_aDespawnedAreas.Insert(new Tuple3<SCR_ScenarioFrameworkArea, vector, int>(area, area.GetOwner().GetOrigin(), (despawnRange * despawnRange)));
+			area.DynamicDespawn();
+		}
+		else
+		{
+			m_aSpawnedAreas.Insert(new Tuple3<SCR_ScenarioFrameworkArea, vector, int>(area, area.GetOwner().GetOrigin(), (despawnRange * despawnRange)));
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Removes dynamic spawn/despawn for specific area (Intended for runtime usage)
+	void RemoveAreaSpecificDynamicDespawn(SCR_ScenarioFrameworkArea area, bool staySpawned = false)
+	{
+		int despawnRange = area.GetDynamicDespawnRange();
+			
+		//If this method is called with staySpawned = false, area will be despawned
+		if (!staySpawned)
+			area.DynamicDespawn();
+		
+		for (int i = m_aDespawnedAreas.Count() - 1; i >= 0; i--)
+		{
+			Tuple3<SCR_ScenarioFrameworkArea, vector, int> areaInfo = m_aDespawnedAreas[i];
+			if (area == areaInfo.param1)
+				m_aDespawnedAreas.Remove(i);
+		}
+		
+		for (int i = m_aSpawnedAreas.Count() - 1; i >= 0; i--)
+		{
+			Tuple3<SCR_ScenarioFrameworkArea, vector, int> areaInfo = m_aSpawnedAreas[i];
+			if (area == areaInfo.param1)
+				m_aSpawnedAreas.Remove(i);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Prepares dynamic spawn/despawn
+	protected void PrepareDynamicDespawn()
+	{
+		if (!m_bDynamicDespawn)
+			return;
+		
+		GetOnAllAreasInitiated().Remove(PrepareDynamicDespawn);
+		
+		foreach (SCR_ScenarioFrameworkArea area : m_aAreas)
+		{
+			if (!area.GetDynamicDespawnEnabled())
+				continue;
+			
+			int despawnRange = area.GetDynamicDespawnRange();
+			m_aDespawnedAreas.Insert(new Tuple3<SCR_ScenarioFrameworkArea, vector, int>(area, area.GetOwner().GetOrigin(), (despawnRange * despawnRange)));
+			
+			area.DynamicDespawn();
+		}
+		
+		GetGame().GetCallqueue().CallLater(CheckDistance, 1000 * m_iUpdateRate, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Refreshes array of camera observers and checks which areas should spawn/despawn
+	protected void CheckDistance()
+	{
+		m_aObservers.Clear();
+		array<int> playerIds = {};
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		IEntity player;
+		SCR_DamageManagerComponent damageManager;
+		playerManager.GetPlayers(playerIds);
+
+		foreach (int playerId : playerIds)
+		{
+			player = playerManager.GetPlayerControlledEntity(playerId);
+			if (!player)
+				continue;
+			
+			damageManager = SCR_DamageManagerComponent.GetDamageManager(player);
+			if (damageManager && damageManager.GetState() != EDamageState.DESTROYED)
+				m_aObservers.Insert(player.GetOrigin());
+		}
+		
+		DynamicSpawn();
+		DynamicDespawn();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Goes over despawned areas and checks whether or not said area should spawn
+	protected void DynamicSpawn()
+	{
+		for (int i = m_aDespawnedAreas.Count() - 1; i >= 0; i--)
+		{
+			Tuple3<SCR_ScenarioFrameworkArea, vector, int> areaInfo = m_aDespawnedAreas[i];
+			foreach (vector observerPos : m_aObservers)
+			{
+				if (vector.DistanceSqXZ(observerPos, areaInfo.param2) < areaInfo.param3)
+				{
+					areaInfo.param1.DynamicReinit();
+					m_aSpawnedAreas.Insert(areaInfo);
+					m_aDespawnedAreas.Remove(i);
+					break;
+				}
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Goes over spawned areas and checks whether or not said area should despawn
+	protected void DynamicDespawn()
+	{
+		for (int i = m_aSpawnedAreas.Count() - 1; i >= 0; i--)
+		{
+			Tuple3<SCR_ScenarioFrameworkArea, vector, int> areaInfo = m_aSpawnedAreas[i];
+			bool observerInRange;
+			foreach (vector observerPos : m_aObservers)
+			{
+				if (vector.DistanceSqXZ(observerPos, areaInfo.param2) < areaInfo.param3)
+				{
+					observerInRange = true;
+					break;
+				}
+			}
+
+			if (!observerInRange)
+			{
+				areaInfo.param1.DynamicDespawn();
+				m_aDespawnedAreas.Insert(areaInfo);
+				m_aSpawnedAreas.Remove(i);
+			}
+		}
+	}
+		
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
+		GetOnAllAreasInitiated().Insert(PrepareDynamicDespawn);
 		GetGame().GetCallqueue().CallLater(Init,1000,false); //TODO: make the init order properly (the init should start after all Areas are registered)
 	}
 	
@@ -749,19 +954,25 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void PopUpMessage(string sTitle, string sSubtitle)
+	void PopUpMessage(string sTitle, string sSubtitle, FactionKey factionKey = "")
 	{
-		if (IsMaster())
-			SCR_PopUpNotification.GetInstance().PopupMsg(sTitle, text2: sSubtitle);
+		Rpc(RpcDo_PopUpMessage, sTitle, sSubtitle, factionKey);
 		
-		Rpc(RpcDo_PopUpMessage, sTitle, sSubtitle);
+		if (factionKey != "")
+			if (SCR_FactionManager.SGetLocalPlayerFaction() != GetGame().GetFactionManager().GetFactionByKey(factionKey))
+				return;
 		
+		SCR_PopUpNotification.GetInstance().PopupMsg(sTitle, text2: sSubtitle);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RpcDo_PopUpMessage(string sTitle, string sSubtitle)
+	void RpcDo_PopUpMessage(string sTitle, string sSubtitle, FactionKey factionKey)
 	{
+		if (factionKey != "")
+			if (SCR_FactionManager.SGetLocalPlayerFaction() != GetGame().GetFactionManager().GetFactionByKey(factionKey))
+				return;
+		
 		SCR_PopUpNotification.GetInstance().PopupMsg(sTitle, text2: sSubtitle);
 	}
 }

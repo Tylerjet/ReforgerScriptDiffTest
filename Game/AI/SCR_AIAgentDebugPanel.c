@@ -22,14 +22,17 @@ class SCR_AIAgentDebugPanel : Managed
 	
 	bool Update(float timeSlice)
 	{
-		Class objForTitle;
+		IEntity objForTitle;
 		if (m_Agent)
 			objForTitle = m_Agent;
 		else if (m_Entity)
 			objForTitle = m_Entity;
 		if (m_sWindowTitle.IsEmpty())
-			m_sWindowTitle = string.Format("DbgPnl %1", objForTitle);
-		
+		{
+			string entityPtrStr = GetEntityShortName(objForTitle);
+			m_sWindowTitle = string.Format("DbgPnl %1", entityPtrStr);
+		}
+			
 		DbgUI.Begin(m_sWindowTitle);
 		
 		SCR_AIInfoBaseComponent baseInfoComp;
@@ -99,10 +102,10 @@ class SCR_AIAgentDebugPanel : Managed
 			
 			if (mailboxComp)
 			{
-				int nRxMessages;
-				int nRxDangers;
-				mailboxComp.DebugGetInboxSize(nRxMessages, nRxDangers);
-				DbgUI.Text(string.Format("Mailbox Rx Queue: %1, %2", nRxMessages, nRxDangers));
+				int nRxMessages = mailboxComp.GetMessageCount();
+				int nRxOrders = mailboxComp.GetOrderCount();
+				int nRxDangers = m_Agent.GetDangerEventsCount();
+				DbgUI.Text(string.Format("Mailbox Queue: Msg: %1, Order: %2, Dngr: %3", nRxMessages, nRxOrders, nRxDangers));
 			}
 			
 			// Utility component actions
@@ -398,7 +401,7 @@ class SCR_AIAgentDebugPanel : Managed
 					strRecognition);										// 8
 				DbgUI.Text(str);
 				
-				DbgUI.Text(string.Format("%1   %2 %3", targetId, targetEntity, strPrefabName));
+				DbgUI.Text(string.Format("%1   %2 %3", targetId, GetEntityShortName(targetEntity), strPrefabName));
 				
 				bool showRecognition = false;
 				DbgUI.Check(string.Format("%1 Recognition", targetId), showRecognition); 
@@ -427,6 +430,7 @@ class SCR_AIAgentDebugPanel : Managed
 		DbgUI.Text(string.Format("    Illumination: %1", p.GetIlluminationFactor()));
 		DbgUI.Text(string.Format("  Sound pwr: %1 dB", 10*Math.Log10(p.GetSoundPower()/1e-12)));
 		DbgUI.Text(string.Format("Est. visual size: %1", p.GetEstimatedVisualSize()));
+		DbgUI.Text(string.Format("Ambient LV: %1", p.GetAmbientLV()));
 	}
 	
 	//! Returns agent name based on faction and callsign
@@ -487,5 +491,14 @@ class SCR_AIAgentDebugPanel : Managed
 				strOut = strOut + string.Format("%1 ", typename.EnumToString(t, flag));
 		}
 		return strOut;
+	}
+	
+	static string GetEntityShortName(IEntity entity)
+	{
+		string entityRawName = string.Format("%1", entity);
+		int _a = entityRawName.IndexOf("<");
+		int _b = entityRawName.IndexOfFrom(_a, ">");
+		string entityPtrStr = entityRawName.Substring(_a+1, _b - _a - 1);
+		return entityPtrStr;
 	}
 };

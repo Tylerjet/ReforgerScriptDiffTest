@@ -284,13 +284,22 @@ class SCR_PossessingManagerComponent: SCR_BaseGameModeComponent
 		}
 		return RplId.Invalid();
 	}
-	
-	override bool HandlePlayerKilled(int playerId, IEntity player, IEntity killer)
+	override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
+	{
+		int pid = GetPlayerIdFromMainEntity(entity);
+		if (pid > 0)
+		{
+			SCR_RespawnComponent rc = SCR_RespawnComponent.Cast(GetGame().GetPlayerManager().GetPlayerRespawnComponent(pid));
+			if (rc)
+				rc.NotifyReadyForSpawn_S();
+		}
+	}
+	override bool HandlePlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		if (playerId > 0)
 		{
 			//--- Controlled entity
-			if (player != GetMainEntity(playerId))
+			if (playerEntity != GetMainEntity(playerId))
 			{
 				//--- Switch to main entity when the possessed one dies
 				SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerId));
@@ -318,7 +327,7 @@ class SCR_PossessingManagerComponent: SCR_BaseGameModeComponent
 		}
 		
 		// Main entity, handle kill as usual
-		return super.HandlePlayerKilled(playerId, player, killer);
+		return super.HandlePlayerKilled(playerId, playerEntity, killerEntity, killer);
 	}
 	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{

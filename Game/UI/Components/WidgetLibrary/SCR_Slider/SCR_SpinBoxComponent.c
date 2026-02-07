@@ -45,6 +45,9 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 
 	protected ref ScriptInvoker m_OnLeftArrowClick;
 	protected ref ScriptInvoker m_OnRightArrowClick;
+	
+	protected bool m_bHasActionListeners;
+	protected bool m_bAllowSwitchingWithoutFocus;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -159,12 +162,42 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void AddActionListeners()
+	{
+		if (m_bHasActionListeners)
+			return;
+		
+		GetGame().GetInputManager().AddActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
+		GetGame().GetInputManager().AddActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
+		
+		m_bHasActionListeners = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveActionListeners()
+	{
+		if (!m_bHasActionListeners)
+			return;
+		
+		GetGame().GetInputManager().RemoveActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
+		GetGame().GetInputManager().RemoveActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
+		
+		m_bHasActionListeners = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Determines if left/right page switch action listeners should be removed on focus lost
+	void SetKeepActionListeners(bool keep)
+	{
+		m_bAllowSwitchingWithoutFocus = keep;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		super.OnFocus(w, x, y);
 
-		GetGame().GetInputManager().AddActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
-		GetGame().GetInputManager().AddActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
+		AddActionListeners();
 
 		UpdateHintBar(m_iSelectedItem, -1);
 		return false;
@@ -175,13 +208,13 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 	{
 		super.OnFocusLost(w, x, y);
 
-		GetGame().GetInputManager().RemoveActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
-		GetGame().GetInputManager().RemoveActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
+		if (!m_bAllowSwitchingWithoutFocus)
+			RemoveActionListeners();
 
 		UpdateHintBar(m_iSelectedItem, -1);
 		return false;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override bool SetCurrentItem(int i, bool playSound = false, bool animate = false)
 	{
@@ -277,7 +310,7 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnMenuLeft()
 	{
-		if (GetGame().GetWorkspace().GetFocusedWidget() != m_wRoot)
+		if (GetGame().GetWorkspace().GetFocusedWidget() != m_wRoot && !m_bAllowSwitchingWithoutFocus)
 			return;
 
 		if (m_ButtonLeft && m_ButtonLeft.IsEnabled())
@@ -287,7 +320,7 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnMenuRight()
 	{
-		if (GetGame().GetWorkspace().GetFocusedWidget() != m_wRoot)
+		if (GetGame().GetWorkspace().GetFocusedWidget() != m_wRoot && !m_bAllowSwitchingWithoutFocus)
 			return;
 
 		if (m_ButtonRight && m_ButtonRight.IsEnabled())

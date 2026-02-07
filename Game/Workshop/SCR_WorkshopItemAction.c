@@ -326,7 +326,7 @@ class SCR_WorkshopItemAction
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Action must call this when it has failed
-	protected void Fail()
+	protected void Fail(int reason = -1)
 	{
 		if (!m_Wrapper || !m_bAttached)
 			return;
@@ -338,8 +338,8 @@ class SCR_WorkshopItemAction
 		if (m_State != STATE_FAILED)
 		{
 			m_State = STATE_FAILED;
-			OnFail();
-			m_OnFailed.Invoke(this);
+			OnFail(reason);
+			m_OnFailed.Invoke(this, reason);
 			InvokeOnChanged();
 			m_Wrapper.Internal_OnChanged();
 		}
@@ -382,7 +382,7 @@ class SCR_WorkshopItemAction
 	protected bool OnPause() { return false; }
 	protected bool OnResume() { return false; }
 	protected bool OnReactivate() { return false; }
-	protected void OnFail();
+	protected void OnFail(int reason = -1);
 	protected void OnComplete();
 	
 	//------------------------------------------------------------------------------------------------

@@ -15,7 +15,8 @@ class AnimalControllerComponentClass: BaseControllerComponentClass
 
 class AnimalControllerComponent: BaseControllerComponent
 {
-	proto external void Die(IEntity instigator = null);
+	//instigator can never be null
+	proto external void Die(notnull Instigator instigator);
 	proto external bool IsDead();
 }
 

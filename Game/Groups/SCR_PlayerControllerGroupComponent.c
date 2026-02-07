@@ -288,9 +288,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!group)
 			return;
 		
-		group.AddRequester(playerID);
-		group.GetOnJoinPrivateGroupRequest().Invoke();
-		
+		group.AddRequester(playerID);		
 		SCR_NotificationsComponent.SendToPlayer(group.GetLeaderID(), ENotification.GROUPS_REQUEST_JOIN_PRIVATE_GROUP, playerID);
 	}
 	
@@ -895,7 +893,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			return;		
 		if (!group.IsPlayerLeader(playerID))
 			return;
-		
+		 
 		AddAIToSlaveGroup(character, group);
 	}
 	
@@ -905,13 +903,20 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	void AddAIToSlaveGroup(notnull IEntity controlledEntity, SCR_AIGroup group)
 	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!group.GetSlave() || !groupManager)
+		if (!groupManager)
 			return;
 		
-		group.GetSlave().AddAgentFromControlledEntity(controlledEntity);
+		SCR_AIGroup slaveGroup = group.GetSlave();
+		if (!slaveGroup)
+			return;
+		
+		if (!slaveGroup.IsAIActivated())
+			slaveGroup.Activate();
+		
+		slaveGroup.AddAgentFromControlledEntity(controlledEntity);
 		
 		RplId groupCompID, characterCompID;
-		RplComponent rplComp = RplComponent.Cast(group.GetSlave().FindComponent(RplComponent));
+		RplComponent rplComp = RplComponent.Cast(slaveGroup.FindComponent(RplComponent));
 		if (!rplComp)
 			return;
 		
@@ -953,13 +958,21 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	void RemoveAiFromSlaveGroup(notnull IEntity controlledEntity, SCR_AIGroup group)
 	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!group.GetSlave() || !groupManager)
+		if (!groupManager)
 			return;
 		
-		group.GetSlave().RemoveAgentFromControlledEntity(controlledEntity);
+		SCR_AIGroup slaveGroup = group.GetSlave();
+		if (!slaveGroup)
+			return;
+		
+		//deactivate the group since we are removing last AI member
+		if (slaveGroup.GetAgentsCount() == 1)
+			slaveGroup.Deactivate();
+		
+		slaveGroup.RemoveAgentFromControlledEntity(controlledEntity);
 		
 		RplId groupCompID, characterCompID;
-		RplComponent rplComp = RplComponent.Cast(group.GetSlave().FindComponent(RplComponent));
+		RplComponent rplComp = RplComponent.Cast(slaveGroup.FindComponent(RplComponent));
 		groupCompID = rplComp.Id();
 		rplComp = RplComponent.Cast(controlledEntity.FindComponent(RplComponent)); 
 		if (!rplComp)
@@ -992,9 +1005,19 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 #ifdef ENABLE_DIAG
 		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_GROUPS, "Groups", "GameCode");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_GROUPS_ENABLE_DIAG, "", "Enable groups diag", "Groups");
-		SetEventMask(owner, EntityEvent.DIAG);		
+		ConnectToDiagSystem(owner);
 #endif
 		groupsManager.GetOnPlayableGroupRemoved().Insert(OnGroupDeleted);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+#ifdef ENABLE_DIAG
+		DisconnectFromDiagSystem(owner);
+#endif
+		
+		super.OnDelete(owner);
 	}
 	
 	//------------------------------------------------------------------------------------------------

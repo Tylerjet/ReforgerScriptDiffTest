@@ -23,6 +23,15 @@ class SCR_PlayerTeleportedFeedbackComponent: ScriptComponent
 	*/
 	void PlayerTeleported(IEntity character, bool isLongFade, SCR_EPlayerTeleportedReason teleportReason)
 	{
+		//~ Do not show teleport feedback if no character
+		if (!character)
+			return;
+		
+		//~ Do not show teleport feedback if dead
+		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.GetDamageManager(character);
+		if (damageManager && damageManager.GetState() == EDamageState.DESTROYED)
+			return;
+		
 		bool editorIsOpen = SCR_EditorManagerEntity.IsOpenedInstance();
 		
 		m_OnPlayerTeleported.Invoke(editorIsOpen, isLongFade, teleportReason);
@@ -48,4 +57,5 @@ enum SCR_EPlayerTeleportedReason
 	DEFAULT,
 	EDITOR,
 	BLOCKING_SPAWNER,
+	FAST_TRAVEL
 };

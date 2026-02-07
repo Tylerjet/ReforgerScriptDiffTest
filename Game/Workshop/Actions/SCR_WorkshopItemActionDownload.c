@@ -3,6 +3,9 @@
 void ScriptInvoker_ActionDownloadProgress(SCR_WorkshopItemActionDownload action, int progressSize);
 typedef func ScriptInvoker_ActionDownloadProgress;
 
+void ScriptInvoker_ActionDownloadFullStorage(SCR_WorkshopItemActionDownload action, float size);
+typedef func ScriptInvoker_ActionDownloadFullStorage;
+
 class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 {
 	protected ref Revision m_StartVersion;		// Version which was when the download was started
@@ -32,6 +35,7 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	protected bool m_bRunningAsync;	// Changes after reponse
 	
 	protected ref ScriptInvokerBase<ScriptInvoker_ActionDownloadProgress> m_OnDownloadProgress;
+	protected ref ScriptInvokerBase<ScriptInvoker_ActionDownloadFullStorage> m_OnFullStorageError;
 	
 	//-----------------------------------------------------------------------------------------------
 	ScriptInvokerBase<ScriptInvoker_ActionDownloadProgress> GetOnDownloadProgress()
@@ -40,6 +44,15 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 			m_OnDownloadProgress = new ScriptInvokerBase<ScriptInvoker_ActionDownloadProgress>();
 		
 		return m_OnDownloadProgress;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	ScriptInvokerBase<ScriptInvoker_ActionDownloadFullStorage> GetOnFullStorageError()
+	{
+		if (!m_OnFullStorageError)
+			m_OnFullStorageError = new ScriptInvokerBase<ScriptInvoker_ActionDownloadFullStorage>();
+		
+		return m_OnFullStorageError;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -125,7 +138,7 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	protected override bool OnCancel()
 	{
 		bool success = m_Wrapper.Internal_CancelDownload();
-		
+
 		return success && !IsFailed();
 	}
 	
@@ -229,12 +242,6 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 		m_bRunningAsync = true;
 		
 		InvokeOnChanged();
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected override void OnFail()
-	{
-		m_Wrapper.DeleteLocally();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -350,7 +357,31 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 		callback.m_OnError.Remove(Callback_OnError);
 		callback.m_OnTimeout.Remove(Callback_OnTimeout);
 		
-		Fail();
+		Fail(code);
+		
+		// Full storage issues 
+		if (code == EBackendError.EBERR_STORAGE_IS_FULL)
+		{
+			FullStorageFail();
+		}
+		//data are not available or validation failed
+		else if ((restCode >= 400 && restCode < 500) || (code == EBackendError.EBERR_VALIDATION_FAILED))	
+		{
+			m_Wrapper.DeleteDownloadProgress();
+		}
+		//else network error
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	void FullStorageFail()
+	{
+		if (m_OnFullStorageError)
+		{	
+			float size = m_Wrapper.GetItemTargetRevision().GetTotalSize();
+			
+			if (size > 0)
+				m_OnFullStorageError.Invoke(this, size);
+		}
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -363,9 +394,6 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	//! Try redownload failed addon
 	void RetryDownload()
 	{
-		if (m_Wrapper.GetOffline())
-			m_Wrapper.DeleteLocally();
-		
 		m_Wrapper.RetryDownload(m_TargetRevision);
 	}
 	
@@ -373,24 +401,6 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	void ForceFail()
 	{
 		Fail();
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	//! Return size required for current revision
-	float GetRequiredDownloadSize()
-	{
-		if (!m_Wrapper || !m_TargetRevision)
-			return -1;
-		
-		// Downloading from beginning - get whole size
-		if (!m_StartVersion)
-			return m_Wrapper.GetSizeBytes();
-		
-		// Get size of update
-		float size;
-		m_TargetRevision.GetPatchSize(size);
-		
-		return size;
 	}
 	
 	//-----------------------------------------------------------------------------------------------

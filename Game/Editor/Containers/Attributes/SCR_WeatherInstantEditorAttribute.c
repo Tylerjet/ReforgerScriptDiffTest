@@ -4,13 +4,21 @@ Weather Attribute for getting and setting varriables in Editor Attribute window
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_WeatherInstantEditorAttribute: SCR_BasePresetsEditorAttribute
 {	
+	[Attribute("MISSING NAME", desc: "Text shown if weather State has no weather name assigned")]
+	protected LocalizedString m_sUnknownWeatherName;
+	
+	[Attribute("{4B4B51FACB828BF9}UI/Textures/Tasks/TaskIcons/96/Icon_Task_Unknown.edds", desc: "Icon used when weather is unknown")]
+	protected ResourceName m_sUnknownWeatherIcon;
+	
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{		
 		//If opened in global attributes
 		if (!IsGameMode(item)) 
 			return null;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) 
 			return null;
 		
@@ -31,10 +39,19 @@ class SCR_WeatherInstantEditorAttribute: SCR_BasePresetsEditorAttribute
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
-		if (!var) 
+		if (!var || !item) 
 			return;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		if (!ent)
+			return;
+
+		ChimeraWorld world = ent.GetWorld();
+		
+		if (!world)
+			return;
+
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) 
 			return;
 		
@@ -74,7 +91,8 @@ class SCR_WeatherInstantEditorAttribute: SCR_BasePresetsEditorAttribute
 		}
 		else 
 		{
-			TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+			ChimeraWorld world = GetGame().GetWorld();
+			TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 			if (!weatherManager) 
 				return;
 		
@@ -95,20 +113,39 @@ class SCR_WeatherInstantEditorAttribute: SCR_BasePresetsEditorAttribute
 		SCR_EditorAttributeFloatStringValueHolder value;
 		
 		array<ref WeatherState> weatherStates = new array<ref WeatherState>;
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager)
 			return;
 		
 		weatherManager.GetWeatherStatesList(weatherStates);
 		
 		int count = weatherStates.Count();
+		string weatherName, weatherIconPath;
 		
 		//Create preset list
 		for (int i = 0; i < count; i++)
 		{
 			value = new SCR_EditorAttributeFloatStringValueHolder();
-			value.SetName(weatherStates[i].GetLocalizedName());
-			value.SetIcon(weatherStates[i].GetIconPath());
+			
+			weatherName = weatherStates[i].GetLocalizedName();
+			weatherIconPath = weatherStates[i].GetIconPath();
+			
+			if (SCR_StringHelper.IsEmptyOrWhiteSpace(weatherName))
+			{
+				weatherName = m_sUnknownWeatherName;
+				Print("WeatherState: '" +  weatherStates[i].GetStateID() + "' does not have weather localization name assigned!", LogLevel.ERROR);
+			}
+			
+			
+			if (SCR_StringHelper.IsEmptyOrWhiteSpace(weatherIconPath))
+			{
+				weatherIconPath = m_sUnknownWeatherIcon;
+				Print("WeatherState: '" +  weatherStates[i].GetStateID() + "' does not have weather icon assigned!", LogLevel.ERROR);
+			}
+				
+			value.SetName(weatherName);
+			value.SetIcon(weatherIconPath);
 			value.SetFloatValue(weatherStates[i].GetStateID());
 			
 			m_aValues.Insert(value);

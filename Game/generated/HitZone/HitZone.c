@@ -37,10 +37,6 @@ class HitZone: ScriptAndConfig
 	proto external void SetDamageOverTime(EDamageType dmgType, float dps);
 	//return damage per second of specified type
 	proto external float GetDamageOverTime(EDamageType dmgType);
-	//Returns true if the hitzone is being simulated (OnSimulate is being called)
-	proto external bool GetSimulationState();
-	//Sets simulation state (to call OnSimulate or not)
-	proto external void SetSimulationState(bool newState);
 	//Returns number of collider decriptors
 	proto external int GetNumColliderDescriptors();
 	//script method wrappers
@@ -50,7 +46,7 @@ class HitZone: ScriptAndConfig
 	//Sets the scaled health of this hitzone [0, 1]. Only works when called from server.
 	proto external void SetHealthScaled(float health);
 	//Sets the max health of this hitzone. Only works when called from server.
-	proto external void SetMaxHealth(float maxHealth);
+	proto external void SetMaxHealth(float maxHealth, ESetMaxHealthFlags flag = ESetMaxHealthFlags.NONE);
 	//Gets the current health of this hitzone. Avoid tying game logic to GetHealth, there is no guarantee of synchronization! Tie game logic to hitzone damage state.
 	proto external float GetHealth();
 	//Gets the current scaled health of this hitzone. Avoid tying game logic to this function, there is no guarantee of synchronization! Tie game logic to hitzone damage state.

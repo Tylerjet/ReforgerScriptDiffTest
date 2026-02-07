@@ -95,7 +95,7 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool RemoveTourniquetFromSlot(ECharacterHitZoneGroup eHitZoneGroup)
+	bool RemoveTourniquetFromSlot(ECharacterHitZoneGroup eHitZoneGroup, IEntity retrievingCharacter = null)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
 		if (!character)
@@ -109,7 +109,10 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 		if (!tourniquetStorageComp)
 			return false;
 
-		SCR_InventoryStorageManagerComponent storageMan = SCR_InventoryStorageManagerComponent.Cast(GetOwner().FindComponent(SCR_InventoryStorageManagerComponent));
+		if (!retrievingCharacter)
+			retrievingCharacter = GetOwner();
+	
+		SCR_InventoryStorageManagerComponent storageMan = SCR_InventoryStorageManagerComponent.Cast(retrievingCharacter.FindComponent(SCR_InventoryStorageManagerComponent));
 		if (!storageMan)
 			return false;
 				

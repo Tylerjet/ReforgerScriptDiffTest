@@ -93,10 +93,10 @@ class SCR_GameModeEditor : SCR_BaseGameMode
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Override functions	
-	override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		OnPlayerTerminated(playerId);
-		super.OnPlayerKilled(playerId, player, killer);
+		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
 	}
 	override void OnPlayerDeleted(int playerId, IEntity player)
 	{
@@ -117,7 +117,7 @@ class SCR_GameModeEditor : SCR_BaseGameMode
 		if (localEditorManager)
 			OnEditorManagerCreatedServer(localEditorManager);
 
-		StatsApi statsApi = GetGame().GetStatsApi();
+		GameStatsApi statsApi = GetGame().GetStatsApi();
 		if (statsApi)
 			statsApi.EditorStart();
 	}
@@ -125,7 +125,7 @@ class SCR_GameModeEditor : SCR_BaseGameMode
 	{
 		if (RplSession.Mode() != RplMode.Client)
 		{
-			StatsApi statsApi = GetGame().GetStatsApi();
+			GameStatsApi statsApi = GetGame().GetStatsApi();
 			if (statsApi)
 				statsApi.EditorClosed();
 		}

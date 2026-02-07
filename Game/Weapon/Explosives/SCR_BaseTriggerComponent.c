@@ -15,7 +15,7 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 	[Attribute("", desc: "Name of the fuze mesh that should unhide when mine is activated")]
 	protected string m_sFuzeMeshName;
 	
-	protected IEntity m_User;
+	//protected Instigator m_User;
 
 	//------------------------------------------------------------------------------------------------
 	bool IsActivated()
@@ -26,7 +26,8 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 	//------------------------------------------------------------------------------------------------
 	void SetUser(notnull IEntity user)
 	{
-		m_User = user;
+		GetInstigator().SetInstigator(user);
+		//m_User = user;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -38,9 +39,13 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 		if (!rplComponent || rplComponent.IsProxy())
 			return;
 		
-		GarbageManager garbageManager = GetGame().GetGarbageManager();
-		if (garbageManager)
-			garbageManager.Withdraw(owner); //withdraw from garbage manager to avoid unwanted deletion
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
+		if (world)
+		{
+			GarbageSystem garbageSystem = world.GetGarbageSystem();
+			if (garbageSystem)
+				garbageSystem.Withdraw(owner); //withdraw from garbage manager to avoid unwanted deletion
+		}
 		
 		SetLive();
 		m_bActivated = true;
@@ -75,7 +80,7 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 		if (!baseTriggerComponent)
 			return;
 		
-		baseTriggerComponent.OnUserTriggerOverrideInstigator(GetOwner(), m_User);
+		baseTriggerComponent.OnUserTriggerOverrideInstigator(GetOwner(), GetInstigator());
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -33,7 +33,12 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	{
 		m_pScrInputCtx.m_iLoiteringType = -1;
 	}
-
+	
+	override void OnPossess()
+	{
+		StopLoitering(true);
+	}
+	
 	override bool IsRootMotionControlled()
 	{
 		return m_pScrInputCtx.m_bLoiteringRootMotion;
@@ -48,8 +53,14 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 				bool isTag = m_pCharAnimComponent.IsPrimaryTag(m_pStaticTable.m_IsLoiteringTag);
 				m_bWasTag = isTag || m_bWasTag;
 				
-				InputManager iManager = GetGame().GetInputManager();
-				bool cancelLoiterInputs = iManager.GetActionValue("CharacterFire") || iManager.GetActionValue("CharacterSprint") || iManager.GetActionValue("CharacterRaiseWeapon") || iManager.GetActionValue("CharacterWeaponADS") || iManager.GetActionValue("CharacterReload");
+				bool cancelLoiterInputs = false;
+				
+				PlayerController playerController = GetGame().GetPlayerController();
+				if (playerController && playerController.GetControlledEntity() == m_pCharacter)
+				{
+					InputManager iManager = GetGame().GetInputManager();
+					cancelLoiterInputs = iManager.GetActionValue("CharacterFire") || iManager.GetActionValue("CharacterSprint") || iManager.GetActionValue("CharacterRaiseWeapon") || iManager.GetActionValue("CharacterWeaponADS") || iManager.GetActionValue("CharacterReload");
+				}
 				
 				if ((m_bWasTag && !isTag) || cancelLoiterInputs)
 				{
@@ -59,6 +70,8 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 			break;
 			case ELoiterCommandState.EXITING:
 			{
+				m_pCharAnimComponent.CallCommand(m_pStaticTable.m_CommandGesture, -1, 0.0); // -1 is soft exit.
+				// @TODO(ivanickyjak) We cannot use tags on server.
 				bool isTag = m_pCharAnimComponent.IsPrimaryTag(m_pStaticTable.m_IsLoiteringTag) || m_pCharAnimComponent.IsSecondaryTag(m_pStaticTable.m_IsLoiteringTag);
 				if (!isTag)
 				{
@@ -81,7 +94,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 			break;
 			case ELoiterCommandState.EXITING:
 			{
-				m_pCharAnimComponent.CallCommand(m_pStaticTable.m_CommandGesture, 0, 0.0);
+				m_pCharAnimComponent.CallCommand(m_pStaticTable.m_CommandGesture, -1, 0.0); // -1 is soft exit.
 			}
 			break;
 		}
@@ -92,9 +105,6 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	//terminateFast should be true when we are going into alerted or combat state.
 	void StopLoitering(bool terminateFast)
 	{
-		if (m_pCharAnimComponent.IsPrimaryTag(m_pStaticTable.m_IsLoiteringStartingTag))
-			return;
-
 		SwitchState(ELoiterCommandState.EXITING);
 	}
 

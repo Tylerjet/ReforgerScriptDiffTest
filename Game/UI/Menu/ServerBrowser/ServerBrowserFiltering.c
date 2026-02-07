@@ -16,13 +16,15 @@ class FilteredServerParams : RoomFilterBase
 	const string FILTER_OFFICIAL = "official";
 	const string FILTER_COMMUNITY = "community";
 	const string FILTER_CROSS_PLAY = "gameClientFilter";
+	const string FILTER_VERSION = "gameVersion";
 	
 	const string SORT_ASCENDENT = "ascendent";
 	const string SORT_NAME = "SessionName";
-	const string SOgRT_PING = "Ping";
+	const string SORT_PING = "Ping";
 	
 	// Categories 
 	const string CATEGORY_PLAYERS = "Players";
+	const string CATEGORY_VERSION = "Version";
 	
 	// Filter values 
 	const string VALUE_PLAYERS_MIN = "minPlayersPercent";
@@ -55,6 +57,10 @@ class FilteredServerParams : RoomFilterBase
 	protected bool m_bOfficialDisplay = false;
 	protected bool m_bFavoriteFilterOn = false;
 	protected bool m_bRecentlyPlayedOn = false;
+	
+	// Mutually exclusive filters
+	protected bool m_bModdedFilterSelected;
+	protected bool m_bCrossPlayFilterSelected;
 	
 	// Custom filter specific 
 	protected int m_iSelectedTab = 0;
@@ -91,9 +97,11 @@ class FilteredServerParams : RoomFilterBase
 		m_bModdedFilterSelected = false;
 		m_bCrossPlayFilterSelected = false;
 		
+		// Search bar
+		StoreString("text", text);
+		
 		// Handle players filters 
 		//int min, max, minCount, maxCount = -1;
-		
 		int min = -1;
 		int max = -1;
 		int minCount = -1;
@@ -111,7 +119,16 @@ class FilteredServerParams : RoomFilterBase
 		if (maxCount != -1)
 			StoreInteger(VALUE_PLAYERS_MAX_COUNT, maxCount);
 		
-		// Register filters 
+		// Game version
+		// Works togheter with "versionMatch"
+		SCR_FilterCategory version;
+		if (m_Filter)
+			version = m_Filter.FindFilterCategory(CATEGORY_VERSION);
+		
+		if (version && version.GetAnySelected())
+			StoreString(FILTER_VERSION, GetGame().GetBuildVersion());
+		
+		// Register filters
 		foreach (SCR_FilterEntryRoom filter : m_aFiltersUncategorized)
 		{		
 			if (!filter)
@@ -129,7 +146,7 @@ class FilteredServerParams : RoomFilterBase
 		}
 		
 		if (!m_bCrossPlayFilterSelected)
-			StoreString("gameClientFilter", "AnyCompatible");
+			StoreString(FILTER_CROSS_PLAY, "AnyCompatible");
 		
 		// Set search by mod id 
 		if (modIds.IsEmpty())
@@ -189,7 +206,6 @@ class FilteredServerParams : RoomFilterBase
 		
 		// Sort 
 		RegV("order");
-		RegV("text");
 		
 		// Room content 
 		RegV("modIds");
@@ -381,6 +397,7 @@ class FilteredServerParams : RoomFilterBase
 		}
 	}
 	
+	
 	//--------------------------------------------
 	// Get & set
 	//--------------------------------------------
@@ -478,7 +495,10 @@ class FilteredServerParams : RoomFilterBase
 	string GetSortOrder() { return order; }
 	
 	//------------------------------------------------------------------------------------------------
-	void SetSearch(string sInput) { text = sInput; }
+	void SetSearch(string sInput) 
+	{ 
+		text = sInput; 
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	string GetSearchText() { return text; }
@@ -513,9 +533,6 @@ class FilteredServerParams : RoomFilterBase
 		else 
 			UnregV("hostedScenarioModId");
 	}
-	
-	protected bool m_bModdedFilterSelected;
-	protected bool m_bCrossPlayFilterSelected;
 	
 	//------------------------------------------------------------------------------------------------
 	bool IsModdedFilterSelected()

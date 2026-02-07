@@ -1,7 +1,7 @@
 class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 {
-	[Attribute("{CD470B05867A77D5}UI/layouts/Menus/ServerBrowser/TooltipWidget.layout", params:"layout")]
-	protected ResourceName m_sTooltipLayout;
+	[Attribute()]
+	ref SCR_ScriptedWidgetTooltipPreset m_Preset;
 
 	[Attribute("{87037226B1A2064B}UI/layouts/WidgetLibrary/Buttons/WLib_NavigationButtonSuperSmall.layout", params:"layout")]
 	protected ResourceName m_sButtonsLayout;
@@ -18,70 +18,28 @@ class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 	[Attribute("12", desc: "Spacing between each button")]
 	protected int m_iButtonsPadding;
 
-	[Attribute("", desc: "Message to display")]
-	protected string m_sMessageText;
-
-	[Attribute("0", UIWidgets.ComboBox, "Horizontal Alignment when using mouse", "", ParamEnumArray.FromEnum(SCR_ETooltipAlignmentHorizontal))]
-	protected SCR_ETooltipAlignmentHorizontal m_eHorizontalAlignmentMouse;
-
-	[Attribute("3", UIWidgets.ComboBox, "Horizontal Alignment when using gamepad", "", ParamEnumArray.FromEnum(SCR_ETooltipAlignmentHorizontal))]
-	protected SCR_ETooltipAlignmentHorizontal m_eHorizontalAlignmentGamepad;
-
-	[Attribute("0", UIWidgets.ComboBox, "Vertical Alignment when using mouse", "", ParamEnumArray.FromEnum(SCR_ETooltipAlignmentVertical))]
-	protected SCR_ETooltipAlignmentVertical m_eVerticalAlignmentMouse;
-
-	[Attribute("2", UIWidgets.ComboBox, "Vertical Alignment when using gamepad", "", ParamEnumArray.FromEnum(SCR_ETooltipAlignmentVertical))]
-	protected SCR_ETooltipAlignmentVertical m_eVerticalAlignmentGamepad;
-
-	[Attribute("15 15 0", desc: "Tooltip offset from cursor position")]
-	protected vector m_vOffsetCursor;
-
-	[Attribute("0 -3 0", desc: "Tooltip offset from hover widget border")]
-	protected vector m_vOffsetBorder;
-
-	[Attribute("1", UIWidgets.CheckBox)]
-	protected bool m_bFollowMouse;
-
 	protected Widget m_wTooltip;
+	protected Widget m_wTooltipContent;
 	protected Widget m_wInputsLayout;
 	protected Widget m_wMessageLayout;
 	protected RichTextWidget m_wMessage;
 
 	protected ref array<ref SCR_BrowserTooltipButtonPresetData> m_aScriptButtons = {};
-	protected ref map<string, SCR_NavigationButtonComponent> m_aButtonComponents = new map<string, SCR_NavigationButtonComponent>();
+	protected ref map<string, SCR_InputButtonComponent> m_aButtonComponents = new map<string, SCR_InputButtonComponent>();
 
 
 	//------------------------------------------------------------------------------------------------
 	Widget CreateTooltip()
 	{
+		if(!m_Preset)
+			return null;
+		
 		SCR_ETooltipAlignmentHorizontal horizontalAlignment;
 		SCR_ETooltipAlignmentVertical verticalAlignment;
 		vector offset = vector.Zero;
 
-		if (GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.MOUSE)
-		{
-			horizontalAlignment = m_eHorizontalAlignmentMouse;
-			verticalAlignment = m_eVerticalAlignmentMouse;
-		}
-		else
-		{
-			horizontalAlignment = m_eHorizontalAlignmentGamepad;
-			verticalAlignment = m_eVerticalAlignmentGamepad;
-		}
-
-		//! Adjust offset
-		if (horizontalAlignment == SCR_ETooltipAlignmentHorizontal.CURSOR)
-			offset[0] = m_vOffsetCursor[0];
-		else
-			offset[0] = m_vOffsetBorder[0];
-
-		if (verticalAlignment == SCR_ETooltipAlignmentVertical.CURSOR)
-			offset[1] = m_vOffsetCursor[1];
-		else
-			offset[1] = m_vOffsetBorder[1];
-
 		//! --- TOOLTIP ---
-		m_wTooltip = SCR_TooltipManagerEntity.CreateTooltip(m_sTooltipLayout, m_wRoot, m_bFollowMouse, offset, horizontalAlignment, verticalAlignment);
+		m_wTooltip = SCR_TooltipManagerEntity.CreateTooltip(m_Preset, m_wRoot);
 
 		if (!m_wTooltip)
 			return null;
@@ -91,7 +49,7 @@ class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 		if (m_wMessageLayout)
 			m_wMessage = RichTextWidget.Cast(m_wMessageLayout.FindAnyWidget("Message"));
 
-		SetMessage(m_sMessageText);
+		SetMessage(m_Preset.m_sMessageText);
 
 		//! --- BUTTONS ---
 		m_wInputsLayout = m_wTooltip.FindAnyWidget("InputsLayout");
@@ -120,7 +78,7 @@ class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected SCR_NavigationButtonComponent CreateButton(SCR_BrowserTooltipButtonPresetData buttonPreset, Widget buttonContainer, int padding)
+	protected SCR_InputButtonComponent CreateButton(SCR_BrowserTooltipButtonPresetData buttonPreset, Widget buttonContainer, int padding)
 	{
 		if (!m_wTooltip || !buttonContainer)
 			return null;
@@ -134,7 +92,7 @@ class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 		AlignableSlot.SetPadding(w, padding, 0, 0, 0);
 
 		//! Setup
-		SCR_NavigationButtonComponent comp = SCR_NavigationButtonComponent.Cast(w.FindHandler(SCR_NavigationButtonComponent));
+		SCR_InputButtonComponent comp = SCR_InputButtonComponent.Cast(w.FindHandler(SCR_InputButtonComponent));
 		if (!comp)
 		{
 			GetGame().GetWorkspace().RemoveChild(w);
@@ -156,7 +114,7 @@ class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns a button with given tag
-	SCR_NavigationButtonComponent FindButton(string tag)
+	SCR_InputButtonComponent FindButton(string tag)
 	{
 		return m_aButtonComponents.Get(tag);
 	}
@@ -177,7 +135,7 @@ class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Adds a button to the existing Tooltip
-	SCR_NavigationButtonComponent AddButton(string tag, string label, string actionName, string actionNameMouse = string.Empty, bool showButton = true)
+	SCR_InputButtonComponent AddButton(string tag, string label, string actionName, string actionNameMouse = string.Empty, bool showButton = true)
 	{
 		//! Check if there's a tooltip already
 		if (!m_wTooltip)
@@ -191,7 +149,7 @@ class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 		if (!m_aButtonComponents.IsEmpty())
 			padding = m_iButtonsPadding;
 
-		SCR_NavigationButtonComponent newButton = CreateButton(buttonPreset, m_wInputsLayout, padding);
+		SCR_InputButtonComponent newButton = CreateButton(buttonPreset, m_wInputsLayout, padding);
 		return newButton;
 	}
 
@@ -201,8 +159,8 @@ class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 	{
 		if (!m_wTooltip)
 			return false;
-		
-		SCR_NavigationButtonComponent button = FindButton(tag);
+
+		SCR_InputButtonComponent button = FindButton(tag);
 
 		if (!button)
 			return false;
@@ -282,7 +240,7 @@ class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 			return;
 
 		string actionName = buttonData.UpdateDisplayedAction();
-		SCR_NavigationButtonComponent button = FindButton(tag);
+		SCR_InputButtonComponent button = FindButton(tag);
 		if (button)
 			button.SetAction(actionName);
 	}
@@ -297,7 +255,7 @@ class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	bool SetMessage(string message)
 	{
-		m_sMessageText = message;
+		m_Preset.m_sMessageText = message;
 
 		if (!m_wMessage)
 			return false;
@@ -327,7 +285,7 @@ class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	string GetMessage()
 	{
-		return m_sMessageText;
+		return m_Preset.m_sMessageText;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -341,7 +299,7 @@ class SCR_BrowserHoverTooltipComponent : SCR_ScriptedWidgetComponent
 	{
 		return SCR_TooltipManagerEntity.GetTooltip();
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 //! Configuration for a button. These buttons are purely visual hints, their actions are disabled
@@ -386,7 +344,7 @@ class SCR_BrowserTooltipButtonPresetData
 	{
 		//! As far as my knowledge goes, actions bound to both mouse and keyboard will always display both icons, so the action needs to be swapped manually.
 		//! The Enfusion team is already looking into the issue.
-		
+
 		EInputDeviceType inputDeviceType = GetGame().GetInputManager().GetLastUsedInputDevice();
 
 		if (inputDeviceType == EInputDeviceType.MOUSE && !m_sActionNameMouse.IsEmpty())
@@ -396,4 +354,4 @@ class SCR_BrowserTooltipButtonPresetData
 
 		return m_sActionToDisplay;
 	}
-};
+}

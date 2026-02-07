@@ -26,6 +26,8 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	
 	//~ Authority only, Forces spawned characters to be added to a specific vehicle position and will delete it if failed
 	protected ref array<ECompartmentType> m_aForceSpawnVehicleCompartments;
+	
+	protected SCR_PlacingEditorComponent m_PlacedEditorComponent;
 
 	/*
 	protected void OnEmpty()
@@ -437,6 +439,51 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnCreatedServer(notnull SCR_PlacingEditorComponent placedEditorComponent)
+	{
+		super.OnCreatedServer(placedEditorComponent);
+
+		m_PlacedEditorComponent = placedEditorComponent;
+		if (m_Group == null)
+			return;
+
+		int numberOfMembersToSpawn = m_Group.GetNumberOfMembersToSpawn();
+		if (numberOfMembersToSpawn < 1)
+			return;
+
+		m_Group.GetOnAllDelayedEntitySpawned().Insert(OnAllMembersSpawned);
+		m_PlacedEditorComponent.SetPlacingBlocked(true);
+
+		SCR_BudgetEditorComponent budgetComponent = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent));
+		if (!budgetComponent)
+			return;
+
+		SCR_EditableEntityCoreBudgetSetting aiBudget = budgetComponent.GetBudgetSetting(EEditableEntityBudget.AI);
+		if (aiBudget)
+			aiBudget.ReserveBudget(numberOfMembersToSpawn + 1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnAllMembersSpawned(SCR_AIGroup group)
+	{
+		if (!m_PlacedEditorComponent || !m_Group)
+			return;
+
+		m_Group.GetOnAllDelayedEntitySpawned().Remove(OnAllMembersSpawned);
+
+		m_PlacedEditorComponent.SetPlacingBlocked(false);
+
+		SCR_BudgetEditorComponent budgetComponent = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent));
+		if (!budgetComponent)
+			return;
+
+		SCR_EditableEntityCoreBudgetSetting aiBudget = budgetComponent.GetBudgetSetting(EEditableEntityBudget.AI);
+		if (aiBudget)
+			aiBudget.UnreserveBudget(m_Group.GetNumberOfMembersToSpawn() + 1);
+	}
+
 	override void OnChildEntityChanged(SCR_EditableEntityComponent child, bool isAdded)
 	{
 		if (!IsServer())

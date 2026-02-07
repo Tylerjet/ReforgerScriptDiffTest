@@ -36,6 +36,8 @@ class CompartmentAccessComponent: GameComponent
 	proto external bool GetInVehicle(IEntity targetEntity, BaseCompartmentSlot targetCompartment, int doorInfoIndex);
 	//! Make current entity move (teleport) into \param targetEntity's compartment specified by \param targetCompartment
 	proto external bool MoveInVehicle(IEntity targetEntity, BaseCompartmentSlot targetCompartment);
+	//! If true, last exiting of vehicle was by ejecting, so we should not reset vehicle inputs.
+	proto external bool WasLastGettingOutEjecting();
 	//! Returns true while getting in
 	proto external bool IsGettingIn();
 	//! Returns true while getting out
@@ -45,7 +47,7 @@ class CompartmentAccessComponent: GameComponent
 	//! Returns true if compartment can be gotten out of via the door with index \param doorIndex
 	proto external bool CanGetOutVehicleViaDoor(int doorIndex);
 	//! Get out of current entity via the door with index \param doorInfoIndex
-	proto external bool GetOutVehicle(int doorInfoIndex);
+	proto external bool GetOutVehicle(int doorInfoIndex, bool ejects);
 	//! Move out of (teleport from) current vehicle via the door with index \param doorInfoIndex
 	proto external bool MoveOutVehicle(int doorInfoIndex, vector targetTransform[4]);
 	//! Teleport out of the vehicle normally - when exiting is not possible.

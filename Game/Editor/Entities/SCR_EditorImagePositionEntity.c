@@ -50,6 +50,12 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	[Attribute(category: "Animation")]
 	protected int m_iPoseID;
 	
+	[Attribute(category: "Animation",  params: "1 7 1")]
+	protected int m_iArmIK;
+	
+	[Attribute(uiwidget:UIWidgets.ResourcePickerThumbnail, params: "anm", category: "Animation")]
+	protected ResourceName m_ArmIKResource;
+	
 	[Attribute("-1", uiwidget: UIWidgets.ComboBox, category: "Animation", enums: SCR_Enum.GetList(EWeaponType, ParamEnum("<Unchanged>", "-1")))]
 	protected EWeaponType m_ForceWeaponType;
 	
@@ -83,6 +89,8 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	protected ref array<IEntity> m_aOriginalNearbyEntities = {};
 	protected string m_sNewWeaponMesh;
 	protected string m_sCurrentWeaponMesh;
+	
+	protected CharacterAnimationComponent m_CharacterAnimation;
 	
 	float GetDelay()
 	{
@@ -136,7 +144,8 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		}
 		
 		//--- Set environment
-		TimeAndWeatherManagerEntity envManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetWorld();
+		TimeAndWeatherManagerEntity envManager = world.GetTimeAndWeatherManager();
 		if (envManager)
 		{
 			int h, m, s;
@@ -256,6 +265,10 @@ class SCR_EditorImagePositionEntity : GenericEntity
 							m_sCurrentWeaponMesh = currentWeapon.GetOwner().GetVObject().GetResourceName();
 					}
 				}
+				
+				// Set hands position 
+				CharacterControllerComponent characterController = character.GetCharacterController();
+				 m_CharacterAnimation = characterController.GetAnimationComponent();
 				
 				vector transform[4];
 				m_Entity.GetTransform(transform);
@@ -402,6 +415,9 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		PreviewAnimationComponent animComponent = PreviewAnimationComponent.Cast(entity.FindComponent(PreviewAnimationComponent));
 		animComponent.SetGraphResource(entity, m_PosesGraph, m_PosesInstance, m_sStartNode);
 		
+		//animComponent.SetIkState(true, true);
+		//animComponent.SetHandsIKPose(entity, m_PosesGraph);
+		
 		// Perform one frame step to apply animations immediately
 		animComponent.UpdateFrameStep(entity, 1.0 / 30.0);
 				
@@ -411,6 +427,14 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		{
 			// change pose
 			animComponent.SetIntVariable(poseVar, m_iPoseID);
+			
+			// Set hands IK 
+			int armIkVar = animComponent.BindIntVariable("ArmIK");
+			if (armIkVar != -1)
+			{
+				animComponent.SetIntVariable(armIkVar, m_iArmIK);
+				animComponent.SetHandsIKPose(entity, m_ArmIKResource);
+			}
 		
 			// Perform one frame step to submit graph variable change
 			animComponent.UpdateFrameStep(entity, 1.0 / 30.0);
@@ -444,6 +468,7 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	event void EOnImagePositonActivate(IEntity entity)
 	{
 	}
+	
 	override void EOnInit(IEntity owner)
 	{
 		if (SCR_Global.IsEditMode(this))

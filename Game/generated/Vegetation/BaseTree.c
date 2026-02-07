@@ -26,7 +26,7 @@ class BaseTree: StaticModelEntity
 	\param colliderID Collider ID if exists otherwise enf::BAD_INDEX.
 	\param speed Projectile velocity in m/s.
 	*/
-	event void OnDamage(float damage, EDamageType type, IEntity pHitEntity, inout vector outMat[3], IEntity damageSource, IEntity damageSourceParent, int colliderID, float speed);
+	event void OnDamage(float damage, EDamageType type, IEntity pHitEntity, inout vector outMat[3], IEntity damageSource, notnull Instigator instigator, int colliderID, float speed);
 }
 
 /*!

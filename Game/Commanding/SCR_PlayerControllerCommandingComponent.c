@@ -512,6 +512,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		entry.SetName(displayName);
 		entry.SetId(command.GetCommandName());
 		entry.SetIcon(groupCommand.GetIconImageset(), groupCommand.GetIconName());
+		entry.Enable(groupCommand.CanBePerformed());
 		
 		m_RadialMenu.AddEntry(entry);
 		

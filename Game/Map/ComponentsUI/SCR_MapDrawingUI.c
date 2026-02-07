@@ -305,6 +305,12 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 		if (m_bIsDrawModeActive && entry != m_ToolMenuEntry)
 			SetDrawMode(false);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnInputQuickBind(float value, EActionTrigger reason)
+	{
+		ToggleDrawMode();
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	override void OnMapOpen(MapConfiguration config)
@@ -361,6 +367,8 @@ class SCR_MapDrawingUI: SCR_MapUIBaseComponent
 			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, m_sToolMenuIconName, 13); // add to menu
 			m_ToolMenuEntry.m_OnClick.Insert(ToggleDrawMode);
 			m_ToolMenuEntry.SetEnabled(true);
+			
+			GetGame().GetInputManager().AddActionListener("MapToolPencil", EActionTrigger.DOWN, OnInputQuickBind);
 		}
 		
 		for (int i; i < m_iLineCount; i++)

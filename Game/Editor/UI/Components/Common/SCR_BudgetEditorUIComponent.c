@@ -16,7 +16,7 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 	
 	protected Widget m_Layout;
 	
-	private ref map<EEditableEntityBudget, Widget> m_BudgetWidgets = new map<EEditableEntityBudget, Widget>;
+	protected ref map<EEditableEntityBudget, Widget> m_BudgetWidgets = new map<EEditableEntityBudget, Widget>();
 	
 	protected void OnBudgetMaxUpdate(EEditableEntityBudget budgetType, int currentBudgetValue, int maxBudgetValue)
 	{
@@ -77,7 +77,7 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
-	private void SetBudgetData(Widget budgetWidget, int budgetValue, int maxBudgetValue, SCR_UIInfo info = null)
+	protected void SetBudgetData(Widget budgetWidget, int budgetValue, int maxBudgetValue, SCR_UIInfo info = null)
 	{
 		float budgetProgress;
 		if (maxBudgetValue > 0)
@@ -135,7 +135,7 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 			progressBar.SetProgress(0);
 	}
 	
-	private void SetBudgetPreviewData(Widget w, float previewBudgetValue, float budgetChange)
+	protected void SetBudgetPreviewData(Widget w, float previewBudgetValue, float budgetChange)
 	{		
 		TextWidget previewText = TextWidget.Cast(w.FindAnyWidget(WIDGET_BUDGETPREVIEW_TEXT));
 		
@@ -192,6 +192,17 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
+	protected void UnregisterEvents()
+	{
+		if (!m_BudgetManager)
+			return;
+		
+		m_BudgetManager.Event_OnBudgetUpdated.Remove(OnBudgetUpdate);
+		m_BudgetManager.Event_OnBudgetMaxUpdated.Remove(OnBudgetMaxUpdate);
+		m_BudgetManager.Event_OnBudgetPreviewUpdated.Remove(OnBudgetPreviewUpdate);
+		m_BudgetManager.Event_OnBudgetPreviewReset.Remove(ResetWidgetPreviewData);
+	}
+	
 	override void HandlerAttachedScripted(Widget w)
 	{
 		m_Layout = w;
@@ -227,12 +238,7 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 	{
 		m_BudgetWidgets.Clear();
 		
-		if (m_BudgetManager)
-		{
-			m_BudgetManager.Event_OnBudgetUpdated.Remove(OnBudgetUpdate);
-			m_BudgetManager.Event_OnBudgetPreviewUpdated.Remove(OnBudgetPreviewUpdate);
-			m_BudgetManager.Event_OnBudgetPreviewReset.Remove(ResetWidgetPreviewData);
-		}
+		UnregisterEvents();
 	}
 	
 };

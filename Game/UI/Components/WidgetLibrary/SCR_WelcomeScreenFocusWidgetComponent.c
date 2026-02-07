@@ -33,11 +33,15 @@ class SCR_WelcomeScreenFocusWidgetComponent : ScriptedWidgetComponent
 	//! Toggles interactions for said widget
 	void ToggleInteractions(bool enabled, Widget w)
 	{
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode || !w)
+			return;
+		
 		SCR_DeployMenuBaseScreenComponent deployMenuBase;
 		if ("SCR_WelcomeScreenComponent" == m_sDeployMenuClass)
-			deployMenuBase = SCR_WelcomeScreenComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_WelcomeScreenComponent));
+			deployMenuBase = SCR_WelcomeScreenComponent.Cast(gameMode.FindComponent(SCR_WelcomeScreenComponent));
 		else if ("SCR_DebriefingScreenComponent" == m_sDeployMenuClass)
-			deployMenuBase = SCR_DebriefingScreenComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_DebriefingScreenComponent));
+			deployMenuBase = SCR_DebriefingScreenComponent.Cast(gameMode.FindComponent(SCR_DebriefingScreenComponent));
 		
 		if (!deployMenuBase)
 			return;

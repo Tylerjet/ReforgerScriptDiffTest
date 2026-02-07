@@ -162,7 +162,7 @@ class SCR_EquipWeaponAction : SCR_BaseWeaponAction
 		CharacterControllerComponent controller = CharacterControllerComponent.Cast(user.FindComponent(CharacterControllerComponent));
 		if (m_pWeaponOnGroundComponent.CanBeEquipped(controller) == ECanBeEquippedResult.STANCE_TOO_LOW)
 		{
-			SetCannotPerformReason("#AR-KeybindSeparator_CharacterStance"); //@TODO (ivanickyjak) Use AR-Inventory_StanceTooLow when translated.
+			SetCannotPerformReason("#AR-Inventory_StanceTooLow");
 			return false;
 		}
 		

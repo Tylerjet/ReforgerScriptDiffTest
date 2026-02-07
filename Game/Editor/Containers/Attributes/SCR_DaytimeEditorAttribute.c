@@ -10,7 +10,9 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 		if (!IsGameMode(item)) 
 			return null;
 		
-		TimeAndWeatherManagerEntity timeManager =  GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		if (!timeManager) return null;
 	
 		return SCR_BaseEditorAttributeVar.CreateFloat(timeManager.GetTimeOfTheDay() * 3600);
@@ -27,9 +29,14 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
-		if (!var) return;
+		if (!var || !item) return;
 
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		GenericEntity ent = GenericEntity.Cast(item);
+		if (!ent)
+			return;
+
+		ChimeraWorld world = ent.GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		if (!timeManager)
 			return;
 		
@@ -64,7 +71,7 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 		
 		timeManager.SetTimeOfTheDay(daytime);
 		
-		string time = SCR_Global.GetTimeFormatting(var.GetFloat(), (ETimeFormatParam.DAYS | ETimeFormatParam.SECONDS));
+		string time = SCR_FormatHelper.GetTimeFormatting(var.GetFloat(), (ETimeFormatParam.DAYS | ETimeFormatParam.SECONDS));
 		
 		//Notification
 		if (item)
@@ -79,7 +86,8 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 		}
 		else 
 		{
-			TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+			ChimeraWorld world = GetGame().GetWorld();
+			TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 			if (!weatherManager) 
 				return;
 		

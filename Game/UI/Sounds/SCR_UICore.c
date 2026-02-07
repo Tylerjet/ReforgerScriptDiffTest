@@ -45,27 +45,4 @@ class SCR_UICore: SCR_GameCoreBase
 		if (s_Instance == this)
 			s_Instance = null;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	static void UpdateSplashScreen(bool firstUpdate = true)
-	{
-		if (!SplashScreenSequence.s_Sequence)
-			return;
-		
-		// Calculate actual delta time
-		BaseWorld world = GetGame().GetWorld();
-		if (!world)
-			return;
-		
-		float time = world.GetWorldTime();
-		if (firstUpdate)
-			SplashScreenSequence.m_fWorldTime = time;
-		
-		float delta = (time - SplashScreenSequence.m_fWorldTime) / 1000;
-		SplashScreenSequence.m_fWorldTime = time;
-		bool finished = SplashScreenSequence.s_Sequence.Update(delta);
-		
-		if (!finished)
-			GetGame().GetCallqueue().CallLater(UpdateSplashScreen, SplashScreenSequence.UPDATE_TIME, false, false);
-	}
 };

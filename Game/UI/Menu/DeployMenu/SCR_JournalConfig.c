@@ -111,7 +111,25 @@ class SCR_JournalEntry
 
 		return string.Empty;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	string GetCustomEntryName()
+	{
+		return m_sCustomEntryName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetEntryText(string text)
+	{
+		m_sEntryText = text;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetEntryText()
+	{
+		return m_sEntryText;
+	}
+	
 	Widget SetEntryLayoutTo(out notnull Widget target)
 	{
 		Widget w;

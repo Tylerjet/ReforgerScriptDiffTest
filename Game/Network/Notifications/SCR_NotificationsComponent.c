@@ -961,7 +961,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		
 		//Start updating notification times if not yet done
 		if (!m_bIsUpdatingNotificationData)
-			UpdateNotificationData(true, GetOwner());
+			UpdateNotificationData(true);
 	}
 	
 	/*!
@@ -1025,7 +1025,7 @@ class SCR_NotificationsComponent : ScriptComponent
 	}
 
 	//======================== START LISTENING TO UPDATE ========================\\
-	protected void UpdateNotificationData(bool updateNotificationData, IEntity owner)
+	protected void UpdateNotificationData(bool updateNotificationData)
 	{
 		if (updateNotificationData == m_bIsUpdatingNotificationData)
 			return;
@@ -1033,13 +1033,33 @@ class SCR_NotificationsComponent : ScriptComponent
 		m_bIsUpdatingNotificationData = updateNotificationData;
 		
 		if (m_bIsUpdatingNotificationData)
-			SetEventMask(owner, EntityEvent.FRAME);
+			ConnectToNotificationsSystem();
 		else 
-			ClearEventMask(owner, EntityEvent.FRAME);
+			DisconnectFromNotificationsSystem();
+	}
+	
+	protected void ConnectToNotificationsSystem()
+	{
+		World world = GetOwner().GetWorld();
+		NotificationsSystem notificationsSystem = NotificationsSystem.Cast(world.FindSystem(NotificationsSystem));
+		if (!notificationsSystem)
+			return;
+		
+		notificationsSystem.Register(this);
+	}
+	
+	protected void DisconnectFromNotificationsSystem()
+	{
+		World world = GetOwner().GetWorld();
+		NotificationsSystem notificationsSystem = NotificationsSystem.Cast(world.FindSystem(NotificationsSystem));
+		if (!notificationsSystem)
+			return;
+		
+		notificationsSystem.Unregister(this);
 	}
 	
 	//======================== UPDATE ========================\\
-	override void EOnFrame(IEntity owner, float timeSlice)
+	void Update(float timeSlice)
 	{
 		int count = m_aHistory.Count();
 
@@ -1058,7 +1078,7 @@ class SCR_NotificationsComponent : ScriptComponent
         }
 		
 		if (m_aHistory.IsEmpty())
-			UpdateNotificationData(false, owner);
+			UpdateNotificationData(false);
 	}
 	
 	//======================== ON INIT ========================\\
@@ -1069,7 +1089,7 @@ class SCR_NotificationsComponent : ScriptComponent
 			return;
 		
 		if (!m_aHistory.IsEmpty())
-			UpdateNotificationData(true, owner);
+			UpdateNotificationData(true);
 		
 		//~Hotfix to remember player names even when the player left
 		if (Replication.IsClient())
@@ -1090,6 +1110,8 @@ class SCR_NotificationsComponent : ScriptComponent
 	
 	override void OnDelete(IEntity owner)
 	{
+		DisconnectFromNotificationsSystem();
+		
 		//~Hotfix to remember player names even when the player left
 		if (Replication.IsClient())
 		{
@@ -1097,6 +1119,8 @@ class SCR_NotificationsComponent : ScriptComponent
 			if (gameMode)
 				gameMode.GetOnPlayerRegistered().Remove(AddPlayerNameToHistory);
 		}
+		
+		super.OnDelete(owner);
 	}
 };
 

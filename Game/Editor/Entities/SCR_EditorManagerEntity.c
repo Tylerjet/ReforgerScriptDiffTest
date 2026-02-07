@@ -204,7 +204,7 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		{
 			Event_OnOpenedServerCallback.Invoke();
 
-			StatsApi statsApi = GetGame().GetStatsApi();
+			GameStatsApi statsApi = GetGame().GetStatsApi();
 			if (statsApi)
 				statsApi.IncrementEditorCounter(GetPlayerID());
 		}
@@ -454,6 +454,15 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 				m_bIsLimited = false;
 				break;
 			}
+		}
+		
+		//--- Assign player role used by game code systems
+		if (Replication.IsServer() && GetGame().GetGameMode())
+		{
+			if (m_bIsLimited)
+				GetGame().GetPlayerManager().ClearPlayerRole(m_iPlayerID, EPlayerRole.GAME_MASTER);
+			else
+				GetGame().GetPlayerManager().GivePlayerRole(m_iPlayerID, EPlayerRole.GAME_MASTER);
 		}
 		
 		if (m_bIsLimited != limitedPrev)

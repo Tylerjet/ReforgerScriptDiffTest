@@ -32,36 +32,33 @@ class SCR_ArrayHelper
 			>> 'index = 0'
 		@endcode
 	*/
-	static int GetWeightedIndex(notnull array<float> weights, float value)
+	static int GetWeightedIndex(notnull array<float> weights, float value01)
 	{
 		if (weights.IsEmpty())
 			return -1;
 
+		if (value01 < 0 || value01 > 1)
+			value01 = Math.Mod(value01, 1);
+
 		float probabilitySum;
-		for (int i, cnt = weights.Count(); i < cnt; i++)
+		for (int i, count = weights.Count(); i < count; i++)
 		{
 			probabilitySum += weights[i];
 		}
 
-		if (value < 0)
-			value = 0;
-		else if (value > 1)
-			value = 1;
-
 		float add = 0;
-		probabilitySum *= value;
+		probabilitySum *= value01;
 
-		for (int i, cnt = weights.Count(); i < cnt; i++)
+		for (int i, count = weights.Count(); i < count; i++)
 		{
 			add += weights[i];
-
 			if (add > probabilitySum)
 				return i;
 		}
 
 		return 0;
 	}
-};
+}
 
 //! T being the array ITEM class, not the full array<item>
 //! In the case of references, simply use SCR_ArrayHelperT<OtherClass>, not SCR_ArrayHelperT<ref OtherClass>
@@ -324,4 +321,4 @@ class SCR_ArrayHelperT<Class T>
 		}
 	}
 // */
-};
+}

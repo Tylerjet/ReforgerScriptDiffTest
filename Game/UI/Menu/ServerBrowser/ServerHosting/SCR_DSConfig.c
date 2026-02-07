@@ -51,6 +51,7 @@ class SCR_DSConfig : DSConfig
 			gamePropertiesSCr.disableThirdPerson = SCR_JsonApiStructHandler.StringToBool(FindValue("disableThirdPerson"));
 			gamePropertiesSCr.VONDisableUI = SCR_JsonApiStructHandler.StringToBool(FindValue("VONDisableUI"));
 			gamePropertiesSCr.VONDisableDirectSpeechUI = SCR_JsonApiStructHandler.StringToBool(FindValue("VONDisableDirectSpeechUI"));
+			gamePropertiesSCr.VONCanTransmitCrossFaction = SCR_JsonApiStructHandler.StringToBool(FindValue("VONCanTransmitCrossFaction"));
 			gamePropertiesSCr.serverMaxViewDistance = StringToNumber(FindValue("serverMaxViewDistance"));
 			gamePropertiesSCr.networkViewDistance = StringToNumber(FindValue("networkViewDistance"));
 			gamePropertiesSCr.serverMinGrassDistance = StringToNumber(FindValue("serverMinGrassDistance"));
@@ -158,6 +159,7 @@ class SCR_DSGameProperties : DSGameProperties
 	bool disableThirdPerson = false;
 	bool VONDisableUI = false;
 	bool VONDisableDirectSpeechUI = false;
+	bool VONCanTransmitCrossFaction = false;
 	float serverMaxViewDistance = 0.0;
 	int networkViewDistance = 0;
 	int serverMinGrassDistance = 0;
@@ -181,6 +183,8 @@ class SCR_DSGameProperties : DSGameProperties
 		StoreBoolean("VONDisableUI", VONDisableUI);
 		UnregV("VONDisableDirectSpeechUI");
 		StoreBoolean("VONDisableDirectSpeechUI", VONDisableDirectSpeechUI);
+		UnregV("VONCanTransmitCrossFaction");
+		StoreBoolean("VONCanTransmitCrossFaction", VONCanTransmitCrossFaction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -189,5 +193,6 @@ class SCR_DSGameProperties : DSGameProperties
 		RegV("disableThirdPerson");
 		RegV("VONDisableUI");
 		RegV("VONDisableDirectSpeechUI");
+		RegV("VONCanTransmitCrossFaction");
 	}
 }

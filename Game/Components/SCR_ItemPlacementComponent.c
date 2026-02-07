@@ -70,7 +70,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		
 		SCR_CharacterControllerComponent characterController = GetCharacterController(from);
 		if (characterController)
-			characterController.m_OnPlayerDeathWithParam.Remove(OnCharacterDeath);
+			characterController.GetOnPlayerDeathWithParam().Remove(OnCharacterDeath);
 		
 		SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(from.FindComponent(SCR_CompartmentAccessComponent));
 		if (compartmentAccessComponent)
@@ -95,7 +95,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		
 		SCR_CharacterControllerComponent characterController = GetCharacterController(to);
 		if (characterController)
-			characterController.m_OnPlayerDeathWithParam.Insert(OnCharacterDeath);
+			characterController.GetOnPlayerDeathWithParam().Insert(OnCharacterDeath);
 		
 		SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(to.FindComponent(SCR_CompartmentAccessComponent));
 		if (compartmentAccessComponent)
@@ -170,7 +170,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		mat[1] = vector.Up;
 		mat[0] = Vector(mat[2][2], mat[2][1], -mat[2][0]);
 		ptWS.Set(null, "", mat);
-		if (characterController.TryUseItemOverrideParams(m_EquippedItem, false, itemActionId, 1, 0, 15.0, 1, 0.0, false, ptWS))
+		if (characterController.TryUseItemOverrideParams(m_EquippedItem, false, false, itemActionId, 1, 0, 15.0, 1, 0.0, false, ptWS))
 		{
 			characterController.m_OnItemUseEndedInvoker.Insert(OnPlacingEnded);
 			DisablePreview();
@@ -296,9 +296,9 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnCharacterDeath(SCR_CharacterControllerComponent characterController, IEntity character)
+	protected void OnCharacterDeath(SCR_CharacterControllerComponent characterController, IEntity killerEntity, notnull Instigator killer)
 	{
-		UnregisterEvents(character);
+		UnregisterEvents(killerEntity);
 		m_EquippedItem = null; // Reset this cached value
 		DisablePreview();
 	}

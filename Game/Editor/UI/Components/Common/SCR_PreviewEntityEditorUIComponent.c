@@ -39,6 +39,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	protected InputManager m_InputManagerBase;
 	protected SCR_PreviewEntityEditorComponent m_PreviewEntityManager;
 	protected SCR_CameraEditorComponent m_CameraManagerBase;
+	protected SCR_PlacingEditorComponent m_PlacingManager;
 	protected SCR_CursorEditorUIComponent m_CursorComponentBase;
 	protected SCR_HoverEditableEntityFilter m_HoverFilter;
 	protected BaseWorld m_World;
@@ -59,6 +60,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	protected EPreviewEntityEditorOperation m_Operation;
 	protected IEntity m_DirIndicator;
 	protected float m_fDirIndicatorScale;
+	protected ref TraceParam m_RotationTrace;
 	
 	protected void OnHoverChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
@@ -166,15 +168,15 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			m_vClickTransformBase[3] = worldPos;
 		}
 		
-		TraceParam trace;
+		m_RotationTrace = null;
 		if (m_PreviewEntityManager.GetVerticalMode() == EEditorTransformVertical.GEOMETRY)
 		{
-			trace = new TraceParam();
-			trace.ExcludeArray = m_PreviewEntityManager.GetExcludeArray();
+			m_RotationTrace = new TraceParam();
+			m_RotationTrace.ExcludeArray = m_PreviewEntityManager.GetExcludeArray();
 		}
 		
 		vector pos = m_vClickTransformBase[3];
-		m_vTerrainNormal = SCR_TerrainHelper.GetTerrainNormal(pos, m_World, !m_PreviewEntityManager.IsUnderwater(), trace);
+		m_vTerrainNormal = SCR_TerrainHelper.GetTerrainNormal(pos, m_World, !m_PreviewEntityManager.IsUnderwater(), m_RotationTrace);
 	}
 	protected void SetClickPos(vector clickPos)
 	{
@@ -253,23 +255,31 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			}
 			if (m_DirIndicator)
 			{
+				//--- Align the indicator to surface
+				vector angles = Math3D.MatrixToAngles(previewTransform);
+				angles[1] = 0; //--- Reset pitch
+				angles[2] = 0; //--- Reset roll
+				
 				vector orientedTransform[4];
-				Math3D.MatrixCopy(previewTransform, orientedTransform);
+				Math3D.AnglesToMatrix(angles, orientedTransform);
+				
 				orientedTransform[3] = m_vRotationPivot;
-				SCR_TerrainHelper.OrientToTerrain(orientedTransform);
+				SCR_TerrainHelper.OrientToTerrain(orientedTransform, trace: m_RotationTrace);
+				
 				m_DirIndicator.SetWorldTransform(orientedTransform);
 				m_DirIndicator.SetScale(m_fDirIndicatorScale);
 			}
 		}
 		else if (m_DirIndicator)
 		{
+			m_RotationTrace = null;
 			delete m_DirIndicator;
 		}
 	}
 	/*!
-	\return True if the preview should be shpown as disabled, false if it should be shown in normal state. To be overriden by inherited classes.
+	\return SCR_EPreviewState of the preview according to which the preview color is set. To be overriden by inherited classes.
 	*/
-	protected bool CanShowAsDisabled();
+	protected SCR_EPreviewState GetPreviewStateToShow();
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Transformation functions
@@ -588,7 +598,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	//--- Main Loop
 	protected void ProcessInput(float tDelta)
 	{
-		if (!m_InputManagerBase || !m_PreviewEntityManager || m_PreviewEntityManager.IsFixedPosition() || !m_PreviewEntityManager.GetPreviewEntity())
+		if (!m_InputManagerBase || !m_PlacingManager || !m_PreviewEntityManager || m_PreviewEntityManager.IsFixedPosition() || !m_PreviewEntityManager.GetPreviewEntity())
 			return;
 		
 		//--- Transforming
@@ -598,8 +608,11 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		m_PreviewEntityManager.GetPreviewTransform(previewTransform);
 		EEditorTransformVertical verticalMode = m_PreviewEntityManager.GetVerticalMode();
 		m_Operation = EPreviewEntityEditorOperation.MOVE_HORIZONTAL;
-		
-		m_PreviewEntityManager.ShowAsDisabled(CanShowAsDisabled());
+				
+		SCR_EPreviewState previewState = SCR_EPreviewState.PLACEABLE;
+		ENotification outNotification;
+		m_PlacingManager.CanCreateEntity(outNotification, previewState);
+		m_PreviewEntityManager.SetPreviewState(previewState);
 		
 		//--- There are numerous issues with editing along geometry, so it's disabled for now
 		if (verticalMode == EEditorTransformVertical.GEOMETRY && m_PreviewEntityManager.GetPreviewEntity().HasMultipleEditableEntities())
@@ -678,6 +691,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		m_PreviewEntityManager = SCR_PreviewEntityEditorComponent.Cast(SCR_PreviewEntityEditorComponent.GetInstance(SCR_PreviewEntityEditorComponent, true));
 		if (!m_PreviewEntityManager) return;
+		
+		m_PlacingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		
 		m_PreviewEntityManager.GetOnPreviewCreate().Insert(OnPreviewCreate);
 		m_PreviewEntityManager.GetOnPreviewDelete().Insert(OnPreviewDelete);

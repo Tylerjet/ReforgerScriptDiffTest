@@ -4,7 +4,9 @@ class SCR_SnapToTerrainContextAction : SCR_SelectedEntitiesContextAction
 	override bool CanBeShown(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
 	{
 		vector pos;
-		return selectedEntity.GetPos(pos) && selectedEntity.GetEntityType() != EEditableEntityType.CHARACTER;
+		return selectedEntity.GetPos(pos)
+			&& selectedEntity.GetEntityType() != EEditableEntityType.CHARACTER //--- ToDo: Don't compare to specific types
+			&& !selectedEntity.HasEntityFlag(EEditableEntityFlag.NON_INTERACTIVE); //--- No applicable for slots or location labels
 	}
 	
 	override bool CanBePerformed(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)

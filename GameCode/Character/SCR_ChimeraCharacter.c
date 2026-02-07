@@ -127,13 +127,16 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 		PilotCompartmentSlot pilotSlot = PilotCompartmentSlot.Cast(access.GetCompartment());
 		if (!pilotSlot)
 			return false;
-		
-		if (minSpeedSq <= 0)
-			return true;
 
-		IEntity vehicle = pilotSlot.GetOwner();
+		Vehicle vehicle = Vehicle.Cast(pilotSlot.GetOwner());
 		if (!vehicle)
 			return false;
+
+		if (vehicle.GetPilotCompartmentSlot() != pilotSlot)
+			return false;
+
+		if (minSpeedSq <= 0)
+			return true;
 
 		Physics physics = vehicle.GetPhysics();
 		if (!physics)

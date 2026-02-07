@@ -96,6 +96,9 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 		return time * 0.001; // ms to s
 		#else
 		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			return null;
+		
 		return world.GetServerTimestamp();
 		#endif
 	}
@@ -149,9 +152,9 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 	/*!
 		Start respawn timer for provided entity if a player controlled it.
 	*/
-	override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		super.OnPlayerKilled(playerId, player, killer);
+		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
 
 		// Invalid playerID
 		if (playerId <= 0)
@@ -170,7 +173,7 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 	}
 	override void OnPlayerDeleted(int playerId, IEntity player)
 	{
-		OnPlayerKilled(playerId, player, null);
+		OnPlayerKilled(playerId, player, null, Instigator.CreateInstigator(null));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -332,9 +335,17 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
-		SetEventMask(owner, EntityEvent.DIAG);
+		ConnectToDiagSystem(owner);
 
 		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		DisconnectFromDiagSystem(owner);
+		
+		super.OnDelete(owner);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -20,7 +20,7 @@ class SCR_FindInContentBrowserContextAction : SCR_BaseContextAction
 	
 	override bool CanBeShown(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
-		return hoveredEntity != null && selectedEntities.Contains(hoveredEntity);
+		return hoveredEntity != null && selectedEntities.Contains(hoveredEntity) && !SCR_EditableFactionComponent.Cast(hoveredEntity);
 	}
 	
 	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition,int flags, int param = -1)

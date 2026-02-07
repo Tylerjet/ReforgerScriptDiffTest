@@ -25,7 +25,7 @@ class SCR_MapMarkerEntryDynamicExample : SCR_MapMarkerEntryDynamic
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_BaseGameMode event
-	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity)
+	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{		
 		SCR_MapMarkerEntity markerEnt = m_MarkerMgr.GetDynamicMarkerByTarget(GetMarkerType(), playerEntity);
 		if (markerEnt)

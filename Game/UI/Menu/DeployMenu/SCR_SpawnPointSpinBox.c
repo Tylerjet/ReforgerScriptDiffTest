@@ -43,4 +43,17 @@ class SCR_SpawnPointSpinBox : SCR_SpinBoxComponent
 	{
 		return m_aSpawnPointIds.IsEmpty();
 	}
+
+	array<SCR_SpawnPoint> GetSpawnPointsInList()
+	{
+		array<SCR_SpawnPoint> result = {};
+		foreach (RplId id : m_aSpawnPointIds)
+		{
+			SCR_SpawnPoint sp = SCR_SpawnPoint.GetSpawnPointByRplId(id);
+			if (sp)
+				result.Insert(sp);
+		}
+
+		return result;
+	}
 };

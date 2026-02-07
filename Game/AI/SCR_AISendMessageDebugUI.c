@@ -101,7 +101,7 @@ class SCR_AISendMessageDebugUI : GenericEntity
 		AIAgent senderAgent = controlComp.GetAIAgent();
 		AICommunicationComponent mailbox = senderAgent.GetCommunicationComponent();
 		
-		SCR_AIMessageBase msg = SCR_AIMessageBase.Cast(mailbox.CreateMessage(aiWorld.GetInfoMessageOfType(msgType)));
+		SCR_AIMessageBase msg; // Disabled for now, it's not useful
 		
 		return msg;	
 	}

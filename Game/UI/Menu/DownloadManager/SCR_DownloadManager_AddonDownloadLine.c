@@ -45,13 +45,11 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 	}
 
 
-
 	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		GetGame().GetCallqueue().Remove(Update);
 	}
-
 
 
 	//------------------------------------------------------------------------------------------------
@@ -65,7 +63,6 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 	}
 
 
-
 	//------------------------------------------------------------------------------------------------
 	//! Initializes the line in non-interactive mode, shows basic data about a download which is already running
 	void InitForCancelDownloadAction(SCR_WorkshopItemActionDownload action)
@@ -76,7 +73,22 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		Update();
 		GetGame().GetCallqueue().CallLater(Update, 20, true);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Initializes the line in non-interactive mode, shows basic data about a download relating to joining servers
+	void InitForServerDownloadAction(SCR_WorkshopItemActionDownload action)
+	{
+		m_Action = action;
+		m_bHideButtons = true;
 
+		if (m_Widgets && m_Widgets.m_AddonSizeIcon)
+			m_Widgets.m_AddonSizeIcon.SetVisible(false);
+		
+		Update();
+		GetGame().GetCallqueue().CallLater(Update, 20, true);
+	}
+	
+	
 	//------------------------------------------------------------------------------------------------
 	//! Initializes the line in non-interactive mode, shows basic data about a download
 	void InitForServerBrowser(SCR_WorkshopItem item, Revision overrideTargetVersion = null, bool showVersionAndSize = true)
@@ -201,15 +213,11 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		return m_Action;
 	}
 
-
-
 	//------------------------------------------------------------------------------------------------
 	protected void Update()
 	{
 		UpdateAllWidgets();
 	}
-
-
 
 	//------------------------------------------------------------------------------------------------
 	//! Updates all widgets. Only relevant in the mode InitForDownloadAction

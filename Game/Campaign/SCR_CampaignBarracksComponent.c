@@ -41,7 +41,7 @@ class SCR_CampaignBarracksComponent: SCR_BarracksComponent
 		if (!m_SuppliesComponent)
 			return;
 		
-		if (m_SuppliesComponent.GetSupplies() < m_iUnitCost)
+		/*if (m_SuppliesComponent.GetSupplies() < m_iUnitCost)
 			return;
 		
 		if (!barrackGrp.GetIsDespawned())
@@ -50,7 +50,7 @@ class SCR_CampaignBarracksComponent: SCR_BarracksComponent
 		{
 			m_iDeadOnDespawn--;
 			m_SuppliesComponent.AddSupplies(-m_iUnitCost);
-		}
+		}*/
 		
 		super.SpawnUnit(unitResource, barrackGrp);
 	}
@@ -75,7 +75,7 @@ class SCR_CampaignBarracksComponent: SCR_BarracksComponent
 		if (!baseManager)	
 			return;
 		
-		ScriptInvokerBase<SCR_AIGroupPerceptionOnEnemyDetected> onEnemyDetected = comp.m_Perception.GetOnEnemyDetected();
+		ScriptInvokerBase<SCR_AIGroupPerceptionOnEnemyDetectedFiltered> onEnemyDetected = comp.m_Perception.GetOnEnemyDetectedFiltered();
 		
 		if (!onEnemyDetected)
 			return;
@@ -102,10 +102,10 @@ class SCR_CampaignBarracksComponent: SCR_BarracksComponent
 		
 		//Initializes handling of units. If there is not enough supplies, it will use invoker to check when there is change in them
 		m_bInitialized = true;
-		if (m_SuppliesComponent.GetSupplies() > m_iUnitCost)
+		/*if (m_SuppliesComponent.GetSupplies() > m_iUnitCost)
 			InitHandler();
 		else
-			m_SuppliesComponent.m_OnSuppliesChanged.Insert(InitHandler);
+			m_SuppliesComponent.m_OnSuppliesChanged.Insert(InitHandler);*/
 	}
 	
 	//------------------------------------------------------------------------------------------------

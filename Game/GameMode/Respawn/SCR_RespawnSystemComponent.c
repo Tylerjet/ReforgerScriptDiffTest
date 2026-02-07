@@ -13,6 +13,14 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	
 	[Attribute("1", uiwidget: UIWidgets.CheckBox, category: "Respawn System")]
 	protected bool m_bEnableRespawn;
+	
+	[Attribute("1.5", desc: "Delay (in seconds) for opening deploy menu after death.")]
+	protected float m_fDeployMenuOpenDelay;
+	
+	[Attribute("{A39BE59EB6F41125}Configs/Respawn/SpawnPointRequestResultInfoConfig.conf", desc: "Holds a config of all reasons why a specific spawnpoint can be disabled")]
+	protected ResourceName m_sSpawnPointRequestResultInfoHolder;
+	
+	protected ref SCR_SpawnPointRequestResultInfoConfig m_SpawnPointRequestResultInfoHolder;
 
 	// Instance of this component
 	private static SCR_RespawnSystemComponent s_Instance = null;
@@ -27,6 +35,14 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 
 	protected ref ScriptInvoker Event_OnRespawnEnabledChanged = new ref ScriptInvoker();
 
+	SCR_BaseSpawnPointRequestResultInfo GetSpawnPointRequestResultInfo(SCR_SpawnRequestComponent requestComponent, SCR_ESpawnResult response, SCR_SpawnData data)
+	{
+		if (!m_SpawnPointRequestResultInfoHolder)
+			return null;
+		
+		return m_SpawnPointRequestResultInfoHolder.GetFirstValidRequestResultInfo(requestComponent, response, data);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Returns an instance of RespawnSystemComponent
 	static SCR_RespawnSystemComponent GetInstance()
@@ -308,10 +324,11 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 			\param requestComponent The player request component (instigator).
 			\param handlerComponent The handler that passes the event to this manager.
 			\param data The data passed from the request
+			\param[out] result Reason why respawn is disabled. Note that if returns true the reason will always be OK
 
 			\return true If request is allowed, false otherwise.
 	*/
-	bool CanRequestSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data)
+	bool CanRequestSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, out SCR_ESpawnResult result = SCR_ESpawnResult.SPAWN_NOT_ALLOWED)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
 		PrintFormat("%1::CanRequestSpawn_S(playerId: %2, handler: %2, data: %3)", Type().ToString(),
@@ -321,9 +338,13 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 		#endif
 
 		if (!m_bEnableRespawn)
+		{
+			result = SCR_ESpawnResult.NOT_ALLOWED_SPAWNING_DISABLED;
 			return false;
+		}
+			
 
-		return m_pGameMode.CanPlayerSpawn_S(requestComponent, handlerComponent, data);
+		return m_pGameMode.CanPlayerSpawn_S(requestComponent, handlerComponent, data, result);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -403,9 +424,9 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnPlayerKilled_S(int playerId, IEntity player, IEntity killer)
+	void OnPlayerKilled_S(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		m_SpawnLogic.OnPlayerKilled_S(playerId, player, killer);
+		m_SpawnLogic.OnPlayerKilled_S(playerId, playerEntity, killerEntity, killer);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -415,8 +436,30 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	float GetDeployMenuOpenDelay_ms()
+	{
+		return m_fDeployMenuOpenDelay * 1000;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool CanOpenDeployMenu()
+	{
+		return m_SpawnLogic && m_SpawnLogic.Type() == SCR_MenuSpawnLogic;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_SpawnLogic GetSpawnLogic()
+	{
+		return m_SpawnLogic;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity owner)
 	{
+		m_SpawnPointRequestResultInfoHolder = SCR_ConfigHelperT<SCR_SpawnPointRequestResultInfoConfig>.GetConfigObject(m_sSpawnPointRequestResultInfoHolder);
+		if (!m_SpawnPointRequestResultInfoHolder)
+			Print("'SCR_RespawnSystemComponent' has no valid m_SpawnPointRequestResultInfoHolder! This means the disabled reason cannot be disabled spawn point!", LogLevel.ERROR);
+		
 		m_pGameMode = SCR_BaseGameMode.Cast(owner);
 		if (!m_pGameMode)
 			Print("SCR_RespawnSystemComponent has to be attached to a SCR_BaseGameMode (or inherited) entity!", LogLevel.ERROR);

@@ -151,7 +151,7 @@ class SCR_InfoDisplay : GroupInfoDisplay
 		if (speed > 0)
 		{
 			#ifdef DEBUG_ADAPTIVE_OPACITY
-			if (this.Type() == SCR_WeaponInfo)
+			if (this.Type() == SCR_GameVersion)
 				PrintFormat("%1 [Show] Opacity animation started: %2 -> %3", this, w.GetOpacity(), targetOpacity);
 			#endif
 
@@ -172,7 +172,7 @@ class SCR_InfoDisplay : GroupInfoDisplay
 		else
 		{
 			#ifdef DEBUG_ADAPTIVE_OPACITY
-			if (this.Type() == SCR_WeaponInfo)
+			if (this.Type() == SCR_GameVersion)
 				PrintFormat("%1 [Show] Opacity insta-changed: %2 -> %3", this, w.GetOpacity(), targetOpacity);
 			#endif
 
@@ -331,6 +331,11 @@ class SCR_InfoDisplay : GroupInfoDisplay
 	//------------------------------------------------------------------------------------------------
 	private void InitializeAdaptiveOpacity()
 	{
+		/*
+		if (this.Type() == SCR_GameVersion)
+			PrintFormat(">> %1 >> InitializeAdaptiveOpacity", this);
+		*/
+		
 		// Safecheck for multiple adaptive opacity (parent & child display)
 		if (m_bAdaptiveOpacity && m_pParentDisplay && m_pParentDisplay.m_bAdaptiveOpacity)
 		{
@@ -442,6 +447,11 @@ class SCR_InfoDisplay : GroupInfoDisplay
 	{
 		if (!m_bAdaptiveOpacity)
 			return;
+		
+		/*
+		if (this.Type() == SCR_GameVersion)
+			PrintFormat(">> %1 >> UpdateOpacity | opacity: %2 | sceneBrightness: %3 | sceneBrightnessRaw: %4", this, opacity, sceneBrightness, sceneBrightnessRaw);
+		*/
 
 		// Store the calculated adaptive opacity value, so it can be used by other methods, like Show()
 		m_fAdaptiveOpacity = opacity;
@@ -462,7 +472,7 @@ class SCR_InfoDisplay : GroupInfoDisplay
 				return;
 
 			#ifdef DEBUG_ADAPTIVE_OPACITY
-			if (this.Type() == SCR_WeaponInfo)
+			if (this.Type() == SCR_GameVersion)
 				PrintFormat("%1 [UpdateOpacity] Updated running opacity animation; target opacity %2 -> %3", this, targetOpacity, opacity);
 			#endif
 
@@ -471,7 +481,7 @@ class SCR_InfoDisplay : GroupInfoDisplay
 		else
 		{
 			#ifdef DEBUG_ADAPTIVE_OPACITY
-			if (this.Type() == SCR_WeaponInfo)
+			if (this.Type() == SCR_GameVersion)
 				PrintFormat("%1 [UpdateOpacity] %2 -> %3", this, m_wAdaptiveOpacity.GetOpacity(), opacity);
 			#endif
 

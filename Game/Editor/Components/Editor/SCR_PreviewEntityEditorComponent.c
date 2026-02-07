@@ -26,6 +26,9 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	[Attribute(category: "Preview", params: "emat", uiwidget: UIWidgets.ResourcePickerThumbnail)]
 	private ResourceName m_WaitingPreviewMaterial;
 	
+	[Attribute(category: "Preview", params: "emat", uiwidget: UIWidgets.ResourcePickerThumbnail)]
+	private ResourceName m_WarningPreviewMaterial;
+	
 	[Attribute(category: "Preview", defvalue: "0.02")]
 	private float m_fPreviewTranslationInertia;
 	
@@ -56,6 +59,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	private vector m_vTransform[4] = {vector.Right, vector.Up, vector.Forward, vector.Zero};
 	//private vector m_vTransformBackup[4];
 	private EEditorTransformVertical m_VerticalModeReal;
+	private SCR_EPreviewState m_LastPreviewState = SCR_EPreviewState.NONE;
 	private float m_fHeightTerrain;
 	private float m_fHeightSea;
 	private bool m_bIsHeightSet;
@@ -463,7 +467,51 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		
 		SCR_Global.SetMaterial(m_PreviewEntity, material);
 	}
+	
+	/*!
+	Set preview material based on the requested status.
+	\param state - desired state.
+	*/
+	void SetPreviewState(SCR_EPreviewState state)
+	{
+		if (m_LastPreviewState == state)
+			return;
+		
+		ResourceName material;
+		switch (state)
+		{
+			case SCR_EPreviewState.PLACEABLE:
+			{
+				material = m_PreviewMaterial;
+				m_LastPreviewState = SCR_EPreviewState.PLACEABLE;
+				break;
+			}
+			case SCR_EPreviewState.BLOCKED:
+			{
+				material = m_DisabledPreviewMaterial;
+				m_LastPreviewState = SCR_EPreviewState.BLOCKED;
+				break;
+			}
+			case SCR_EPreviewState.WARNING:
+			{
+				material = m_WarningPreviewMaterial;
+				m_LastPreviewState = SCR_EPreviewState.WARNING;
+				break;
+			}
+		}	
+		
+		SCR_Global.SetMaterial(m_PreviewEntity, material);
+	}
 
+	/*!
+	Set the last preview state out of this method. If it's needs restart.
+	\param SCR_EPreviewState state - intended state
+	*/
+	void SetLastPreviewState(SCR_EPreviewState state)
+	{
+		m_LastPreviewState = state;
+	}
+	
 	/*!
 	Attach preview entity to a target.
 	\param target Target
@@ -527,8 +575,10 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 			return true;
 		}
 		
+		bool isTargetDestroyed = target.IsDestroyed();
+		
 		EEditableEntityInteractionFlag defaultInteractionFlags;
-		if (!m_LayerManager || m_LayerManager.IsEditingLayersEnabled())
+		if (m_LayerManager && m_LayerManager.IsEditingLayersEnabled())
 			defaultInteractionFlags |= EEditableEntityInteractionFlag.LAYER_EDITING;
 
 		//--- Check interaction of all edited entities
@@ -548,7 +598,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 					EEditableEntityInteractionFlag interactionFlags = defaultInteractionFlags;
 					
 					editableChild = SCR_EditableEntityComponent.GetEditableEntity(child.GetSourceEntity());
-					if (!editableChild || !editableChild.IsDestroyed())
+					if (!isTargetDestroyed && (!editableChild || !editableChild.IsDestroyed()))
 						interactionFlags |= EEditableEntityInteractionFlag.ALIVE;
 					
 					if (isDelegate)
@@ -578,7 +628,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 					EEditableEntityInteractionFlag interactionFlags = defaultInteractionFlags;
 					
 					editableChild = SCR_EditableEntityComponent.GetEditableEntity(child.GetSourceEntity());
-					if (!editableChild || !editableChild.IsDestroyed())
+					if (!isTargetDestroyed && (!editableChild || !editableChild.IsDestroyed()))
 						interactionFlags |= EEditableEntityInteractionFlag.ALIVE;
 					
 					if (isDelegate)
@@ -845,9 +895,10 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	Create preview from prefab.
 	\param prefab IEntity prefab
 	\param offsets Offsets when multiple instances of the preview entity are to be spawned
+	\param initTransform Transformation matrix on which the preview entity will be created (optional)
 	\return Created preview entity
 	*/
-	SCR_BasePreviewEntity CreatePreview(ResourceName prefab, notnull array<vector> offsets)//, vector fixedTransform[4])
+	SCR_BasePreviewEntity CreatePreview(ResourceName prefab, notnull array<vector> offsets, vector initTransform[4] = {})
 	{		
 		DeletePreview();
 		
@@ -879,13 +930,17 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 					m_bIsFixedPosition = false;
 				}
 			}
-			else
+			else if (initTransform[3] == vector.Zero)
 			{
 				//--- Restore previous yaw (don't apply full rotation, would cause problems on uneven terrain; ToDo: Use rotation relativer to terrain?)
 				vector angles = Vector(Math3D.MatrixToAngles(m_vTransform)[0], 0, 0);
 				Math3D.AnglesToMatrix(angles, m_vTransform);
 				m_vTransform[3] = vector.Zero; //--- Reset position to prevent waypoint appearing in the air
 				spawnParams.Transform = m_vTransform;
+			}
+			else
+			{
+				spawnParams.Transform = initTransform;
 			}
 			
 			if (offsets.Count() > 1)
@@ -1078,4 +1133,12 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		if (GetGame())
 			GetGame().OnUserSettingsChangedInvoker().Remove(OnUserSettingsChanged);
 	}
+};
+
+enum SCR_EPreviewState
+{
+	NONE, 
+	PLACEABLE, ///< Default value, composition is pacable
+	BLOCKED, ///< Placing of the preview is blocked
+	WARNING ///< Composition is in not a good position, still placeable.
 };

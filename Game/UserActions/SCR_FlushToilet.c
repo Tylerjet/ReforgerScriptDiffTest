@@ -9,13 +9,18 @@ class SCR_FlushToilet : ScriptedUserAction
 	
 	private AudioHandle m_AudioHandle = AudioHandle.Invalid;
 	
+	protected static ref ScriptInvokerInt s_onToiletFlushed;
+	
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
-	{						
+	{
+		if (s_onToiletFlushed)
+			s_onToiletFlushed.Invoke(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity));
+		
 		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
 		if (!soundManagerEntity)
 			return;
-				
+		
 		if (!m_AudioSourceConfiguration || !m_AudioSourceConfiguration.IsValid())
 			return;
 		
@@ -29,6 +34,15 @@ class SCR_FlushToilet : ScriptedUserAction
 		soundManagerEntity.PlayAudioSource(audioSource, mat);
 	
 		m_AudioHandle = audioSource.m_AudioHandle;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerInt GetOnToiletFlushed()
+	{
+		if (!s_onToiletFlushed)
+			s_onToiletFlushed = new ScriptInvokerInt();
+		
+		return s_onToiletFlushed;
 	}
 	
 	//------------------------------------------------------------------------------------------------

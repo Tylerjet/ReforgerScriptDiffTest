@@ -7,6 +7,15 @@ class SCR_ButtonTextComponent : SCR_ButtonBaseComponent
 	[Attribute()]
 	protected LocalizedString m_sText;
 	
+	[Attribute("0", UIWidgets.CheckBox)]
+	bool m_bUseTextColorization;
+	
+	[Attribute(UIColors.GetColorAttribute(UIColors.NEUTRAL_INFORMATION), UIWidgets.ColorPicker)]
+	ref Color m_TextDefault;
+	
+	[Attribute(UIColors.GetColorAttribute(UIColors.CONTRAST_COLOR), UIWidgets.ColorPicker)]
+	ref Color m_TextToggled;
+	
 	protected TextWidget m_wText;
 	
 	//------------------------------------------------------------------------------------------------
@@ -16,6 +25,37 @@ class SCR_ButtonTextComponent : SCR_ButtonBaseComponent
 		m_wText = TextWidget.Cast(w.FindAnyWidget(m_sTextWidgetName));
 		if (m_wText)
 			m_wText.SetText(m_sText);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void SetToggled(bool toggled, bool animate = true, bool invokeChange = true)
+	{
+		if (!m_bCanBeToggled)
+			return;
+		
+		super.SetToggled(toggled, animate, invokeChange);
+		ColorizeText(animate);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ColorizeText(bool animate = true)
+	{
+		if (!m_bUseTextColorization || !m_wText)
+			return;
+		
+		Color color;
+		if (m_bIsToggled && m_bCanBeToggled)
+			color = m_TextToggled;
+		else
+			color = m_TextDefault;
+		
+		if (animate)
+			AnimateWidget.Color(m_wText, color, m_fAnimationRate);
+		else
+		{
+			AnimateWidget.StopAnimation(m_wText, WidgetAnimationColor);
+			m_wText.SetColor(color);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

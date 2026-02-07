@@ -63,6 +63,27 @@ class PlayerManager
 	Returns true if completed successfully.
 	*/
 	proto external bool ClearPlayerRole(int iPlayerId, EPlayerRole role);
+	/*!
+	Shows platform specific UI with the profile of specified player.
+	Will do nothing if the specified user is not using same platform.
+	\param[in] playerId Player which profile will be shown.
+	*/
+	proto external void ShowUserProfile(int iPlayerId);
+	/*!
+	\return true if profile of specified player could be shown.
+	*/
+	proto external bool IsUserProfileAvailable(int iPlayerId);
+	/*!
+	Invokes platform UI for selection of players to invite into game/party.
+	Fails if no multiplayer activiy is set.
+	Xbox: Puts console into constrained mode
+	*/
+	proto external bool ShowMultiplayerActivityInvite();
+	/*!
+	\return true if other players could be invited to the session using
+	ShowMultiplayerActivityInvite
+	*/
+	proto external bool IsMultiplayerActivityInviteAvailable();
 }
 
 /*!

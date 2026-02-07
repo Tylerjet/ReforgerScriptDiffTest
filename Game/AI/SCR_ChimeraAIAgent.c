@@ -6,10 +6,12 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 {
 	// Current waypoint of our group
 	AIWaypoint m_GroupWaypoint;
+	SCR_AIUtilityComponent m_UtilityComponent;
 	SCR_AIInfoComponent m_InfoComponent;
 	
 	protected EventHandlerManagerComponent	m_EventHandlerManagerComponent;
 	protected FactionAffiliationComponent m_FactionAffiliationComponent;
+	protected SCR_CharacterDamageManagerComponent m_DamageMgr;
 	
 	protected int m_iPendingPlayerId;
 	
@@ -29,6 +31,11 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 		
 		m_FactionAffiliationComponent = FactionAffiliationComponent.Cast(controlledEntity.FindComponent(FactionAffiliationComponent));
 		m_InfoComponent = SCR_AIInfoComponent.Cast(FindComponent(SCR_AIInfoComponent));
+		m_UtilityComponent = SCR_AIUtilityComponent.Cast(FindComponent(SCR_AIUtilityComponent));
+		
+		m_DamageMgr = SCR_CharacterDamageManagerComponent.Cast(controlledEntity.FindComponent(SCR_CharacterDamageManagerComponent));
+		if (m_DamageMgr)
+			m_DamageMgr.GetOnDamageStateChanged().Insert(OnDamageStateChanged);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -36,6 +43,9 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 	{
 		if (m_EventHandlerManagerComponent)
 			m_EventHandlerManagerComponent.RemoveScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
+		
+		if (m_DamageMgr)
+			m_DamageMgr.GetOnDamageStateChanged().Remove(OnDamageStateChanged);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -45,7 +55,7 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 		if (!aiWorld)
 			return;
 		
-		if (aiWorld.CanAICharacterBeAdded())
+		if (aiWorld.CanLimitedAIBeAdded())
 			return;
 		
 		IEntity controlledEntity = GetControlledEntity();
@@ -99,11 +109,43 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 			// first send message and then deactivate otherwise message won't be sent
 			SendWoundedMsg();
 			GetControlComponent().DeactivateAI();
+			
+			SCR_AICommsHandler commsHandler = m_UtilityComponent.m_CommsHandler;
+			if (commsHandler)
+				commsHandler.SetSuspended(true);
 		}
 		else
 		{
 			if (!EntityUtils.IsPlayer(GetControlledEntity()))
 				GetControlComponent().ActivateAI();
+			
+			AICommunicationComponent comms = GetCommunicationComponent();
+			if (comms)
+			{
+				// Clear orders, it doesn't matter if we have missed them
+				comms.ClearOrders();
+				
+				// Don't clear messages, we will process them to catch up with goals from group
+				// This is crucial to resume to group orders
+				
+				// Clear danger events, it doesn't matter if we have missed them
+				ClearDangerEvents(GetDangerEventsCount());
+			}
+			
+			SCR_AICommsHandler commsHandler = m_UtilityComponent.m_CommsHandler;
+			if (commsHandler)
+				commsHandler.SetSuspended(false);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnDamageStateChanged(EDamageState state)
+	{
+		if (state == EDamageState.DESTROYED)
+		{
+			SCR_AICommsHandler commsHandler = m_UtilityComponent.m_CommsHandler;
+			if (commsHandler)
+				commsHandler.Reset();
 		}
 	}
 	

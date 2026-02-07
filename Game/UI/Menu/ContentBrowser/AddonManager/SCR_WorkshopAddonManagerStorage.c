@@ -188,7 +188,6 @@ class SCR_WorkshopAddonManagerPresetStorage : ModuleGameSettings
 		else
 			m_aPresets.Insert(presetCopy);
 
-		
 		if (CanChangePresetName(id, name, prevName))		
 			SetUsedPreset(name);
 		
@@ -242,8 +241,10 @@ class SCR_WorkshopAddonManagerPresetStorage : ModuleGameSettings
 		m_aPresets.RemoveOrdered(id);
 		
 		SavePresetsToStorage();
+		
+		if (name == m_sUsedPreset)
+			ClearUsedPreset();
 	}
-	
 	
 	//---------------------------------------------------------------------------------------------------
 	bool PresetExists(string name)

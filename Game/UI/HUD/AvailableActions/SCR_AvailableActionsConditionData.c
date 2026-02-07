@@ -49,6 +49,8 @@ class SCR_AvailableActionsConditionData
 	protected bool m_bIsQuickSlotShown;
 	//! Is gadget selection mode active
 	protected bool m_bIsGadgetSelection;
+	//! Is weapon manipulation mode active
+	protected bool m_bIsWeaponManipulation;
 	//! Is character in focus mode
 	protected float m_fFocusMode;
 	//! How long is character bleeding
@@ -151,6 +153,7 @@ class SCR_AvailableActionsConditionData
 		m_bCanCharacterFireWeapon = false;
 		m_bIsCharacterUsingItem = false;
 		m_bIsGadgetSelection = false;
+		m_bIsWeaponManipulation = false;
 		m_fFocusMode = 0.0;
 		//m_iAdditionalMagazines = 0;
 		m_CurrentItemEntity = null;
@@ -417,6 +420,12 @@ class SCR_AvailableActionsConditionData
 	bool IsGadgetSelection()
 	{
 		return m_bIsGadgetSelection;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsWeaponManipulation()
+	{
+		return m_bIsWeaponManipulation;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -719,6 +728,7 @@ class SCR_AvailableActionsConditionData
 
 		// Fetch available gadgets
 		m_bIsGadgetSelection = GetGame().GetInputManager().GetActionTriggered("GadgetSelection");
+		m_bIsWeaponManipulation = GetGame().GetInputManager().GetActionTriggered("WeaponManipulation");
 
 		// VON status
 		if (m_VONController)

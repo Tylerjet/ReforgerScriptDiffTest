@@ -22,7 +22,8 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 		if (base.GetOwner() == GetOwner())
 			return;
 
-		OnBaseFactionChanged(base.GetFaction());
+		if (m_aBases.Count() == 1)
+			OnBaseFactionChanged(base.GetFaction());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -61,10 +62,29 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void EOnInit(IEntity owner)
+	{
+		super.EOnInit(owner);
+
+		// Check for play mode again in case init event was set from outside of this class
+		if (!GetGame().InPlayMode())
+			return;
+
+		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance();
+
+		if (baseManager)
+			baseManager.RegisterLogicComponent(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		if (GetGame().InPlayMode())
-			SCR_MilitaryBaseManager.GetInstance().RegisterLogicComponent(this);
+		super.OnPostInit(owner);
+
+		if (!GetGame().InPlayMode())
+			return;
+
+		SetEventMask(owner, EntityEvent.INIT);
 	}
 
 	//------------------------------------------------------------------------------------------------

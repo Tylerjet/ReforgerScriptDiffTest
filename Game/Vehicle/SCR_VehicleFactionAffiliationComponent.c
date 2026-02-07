@@ -54,7 +54,7 @@ class SCR_VehicleFactionAffiliationComponent: SCR_FactionAffiliationComponent
 			}
 		};
 		
-		if (vehicleFaction && characterFaction.IsFactionEnemy(vehicleFaction))
+		if (vehicleFaction && characterFaction && characterFaction.IsFactionEnemy(vehicleFaction) && !characterFaction.IsFactionEnemy(characterFaction))	
 		{
 			CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
 			compartmentAccess.EjectOutOfVehicle();

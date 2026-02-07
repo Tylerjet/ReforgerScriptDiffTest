@@ -30,7 +30,13 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	bool m_bShowBorderOnFocus;
 	
 	[Attribute("false")]
+	bool m_bShowBackgroundOnFocus;	
+	
+	[Attribute("false")]
 	bool m_bNoBorderAnimation;
+	
+	[Attribute("false")]
+	bool m_bNoBackgroundAnimation;
 	
 	[Attribute()]
 	bool m_bShowBorderOnHover;
@@ -59,8 +65,12 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 		super.HandlerAttached(w);
 		m_wBackground = w.FindAnyWidget("Background");
 		m_wBorder = w.FindAnyWidget("Border");
+		
 		if (m_wBorder && m_bUseColorization)
 			m_wBorder.SetOpacity(0);
+		
+		if (m_wBackground && m_bShowBackgroundOnFocus)
+			m_wBackground.SetOpacity(0);
 		
 		ColorizeBackground(false);
 		
@@ -155,6 +165,14 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 				AnimateWidget.Opacity(m_wBorder, 1, m_fAnimationRate, true);
 		}
 		
+		if (m_bShowBackgroundOnFocus && m_wBackground)
+		{
+			if (m_bNoBackgroundAnimation)
+				m_wBackground.SetOpacity(1);
+			else
+				AnimateWidget.Opacity(m_wBackground, 1, m_fAnimationRate, true);
+		}
+		
 		m_OnFocus.Invoke(m_wRoot);
 		
 		return false;
@@ -166,6 +184,14 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 		super.OnFocusLost(w, x, y);
 		
 		m_OnFocusLost.Invoke(w);
+		
+		if (m_bShowBackgroundOnFocus && m_wBackground)
+		{
+			if (m_bNoBackgroundAnimation)
+				m_wBackground.SetOpacity(0);
+			else
+				AnimateWidget.Opacity(m_wBackground, 0, m_fAnimationRate, true);	
+		}
 		
 		if (!m_bShowBorderOnFocus || !m_wBorder || (m_bShowBorderOnHover && WidgetManager.GetWidgetUnderCursor() == m_wRoot))
 			return false;

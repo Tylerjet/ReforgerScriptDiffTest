@@ -1,18 +1,22 @@
 /*!
 Handles activating action listeners when the menu is focused. Requires the menu to be handled by a child of MenuRootBase, and the actions to be in an active context
 */
+void ScriptInvokerActionMethod(string name, float multiplier);
+typedef func ScriptInvokerActionMethod;
+typedef ScriptInvokerBase<ScriptInvokerActionMethod> ScriptInvokerAction;
 
-class SCR_MenuActionsComponent : SCR_ScriptedWidgetComponent
+//------------------------------------------------------------------------------------------------
+class SCR_MenuActionsComponent : MenuRootSubComponent
 {
 	[Attribute(desc: "Actions to be shown in the Tooltip")]
 	protected ref array<ref SCR_MenuActionPreset> m_aActions;
 
-	[Attribute("400", desc: "Actions activation delay")]
+	[Attribute("400", desc: "Action listeners activation delay")]
 	protected int m_iDelay;
 
 	protected bool m_bHasActionListeners;
 
-	ref ScriptInvoker<string, float> m_OnAction = new ScriptInvoker();
+	protected ref ScriptInvokerAction m_OnAction;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -23,6 +27,17 @@ class SCR_MenuActionsComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void HandlerAttachedScripted(Widget w)
+	{
+		super.HandlerAttachedScripted(w);
+
+		AddActionListenersDelayed(m_iDelay);
+
+		GetMenu().GetOnMenuFocusGained().Insert(OnMenuFocusGained);
+		GetMenu().GetOnMenuFocusLost().Insert(OnMenuFocusLost);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -30,23 +45,39 @@ class SCR_MenuActionsComponent : SCR_ScriptedWidgetComponent
 		RemoveActionListeners();
 	}
 
-	
+
+	//------------------------------------------------------------------------------------------------
+	// Owner Menu Events
+	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	protected void OnMenuFocusGained()
+	{
+		AddActionListenersDelayed(m_iDelay);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnMenuFocusLost()
+	{
+		RemoveActionListeners();
+	}
+
+
 	//------------------------------------------------------------------------------------------------
 	// Events
 	//------------------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------
-	//! Bind in your menu
+	//! Bind this in your menu
 	protected void OnAction(float multiplier)
 	{
 		//! We might be in a hidden tab or menu, in which case we don't want the invoker to trigger
 		//! TODO: perhaps remove the action listeners when invisible, using OnUpdate()?
-		if(!m_wRoot.IsVisible())
+		if (!GetWidget().IsVisible())
 			return;
-		
+
 		InputManager inputManager = GetGame().GetInputManager();
 		foreach (SCR_MenuActionPreset action : m_aActions)
 		{
-			if (inputManager.GetActionTriggered(action.m_sActionName))
+			if (inputManager.GetActionTriggered(action.m_sActionName) && m_OnAction)
 				m_OnAction.Invoke(action.m_sActionName, multiplier);
 		}
 	}
@@ -131,15 +162,24 @@ class SCR_MenuActionsComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	ScriptInvokerAction GetOnAction()
+	{
+		if (!m_OnAction)
+			m_OnAction = new ScriptInvokerAction();
+
+		return m_OnAction;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	static SCR_MenuActionsComponent FindComponent(Widget w)
 	{
 		return SCR_MenuActionsComponent.Cast(w.FindHandler(SCR_MenuActionsComponent));
 	}
-};
+}
 
 //------------------------------------------------------------------------------------------------
 //! Configuration for an action
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sActionName")]
 class SCR_MenuActionPreset
 {
 	[Attribute()]
@@ -147,5 +187,5 @@ class SCR_MenuActionPreset
 
 	[Attribute("4", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EActionTrigger))]
 	EActionTrigger m_eActionTrigger;
-};
+}
 

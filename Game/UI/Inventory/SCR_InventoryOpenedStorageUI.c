@@ -23,29 +23,7 @@ class SCR_InventoryOpenedStorageUI : SCR_InventoryStorageBaseUI
 	
 	protected override void GetAllItems(out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null)
 	{
-		if (ClothNodeStorageComponent.Cast(pStorage))
-		{
-			array<BaseInventoryStorageComponent> pStorages = {};
-			array<IEntity> pItems = {};
-			pStorage.GetOwnedStorages(pStorages, 1, false);
-			foreach (BaseInventoryStorageComponent pStor : pStorages)
-			{
-				if (!pStor)
-					continue;
-				pStor.GetAll(pItems);
-				pItemsInStorage.Copy(pItems);
-			}
-			return;
-		}
-
-		if (pStorage)
-		{
-			pStorage.GetAll(pItemsInStorage);
-			return;
-		}
-
-		if (m_Storage)
-			m_Storage.GetAll(pItemsInStorage);
+		super.GetAllItems(pItemsInStorage, pStorage);
 	}
 
 	ButtonWidget ActivateCloseStorageButton()

@@ -43,7 +43,7 @@ class StanceIndicator : SCR_InfoDisplay
 			return;
 		
 
-		CharacterStance stance = CharacterStance.STANCE_ERECT;
+/*		CharacterStance stance = CharacterStance.STANCE_ERECT;
 		CharacterEntity character = CharacterEntity.Cast(owner);
 		if (character)
 		{
@@ -73,6 +73,6 @@ class StanceIndicator : SCR_InfoDisplay
 				if (m_wRoot.GetOpacity() < 1 || !m_wRoot.IsVisible())
 					AnimateWidget.Opacity(m_wRoot, 1, UIConstants.FADE_RATE_DEFAULT);
 			}
-		}
+		}*/
 	}
 };

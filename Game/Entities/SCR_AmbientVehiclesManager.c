@@ -1,5 +1,12 @@
 #include "scripts/Game/config.c"
+void OnAmbientVehicleSpawnedDelegate(SCR_AmbientVehicleSpawnPointComponent spawnpoint, Vehicle vehicle);
+
+typedef func OnAmbientVehicleSpawnedDelegate;
+
+typedef ScriptInvokerBase<OnAmbientVehicleSpawnedDelegate> OnAmbientVehicleSpawnedInvoker;
+
 //------------------------------------------------------------------------------------------------
+[EntityEditorProps(insertable: false)]
 class SCR_AmbientVehiclesManagerClass : GenericEntityClass
 {
 };
@@ -20,6 +27,8 @@ class SCR_AmbientVehiclesManager : GenericEntity
 	protected ref array<SCR_AmbientVehicleSpawnPointComponent> m_aSpawnpoints = {};
 	protected ref array<IEntity> m_aPlayers = {};
 
+	protected ref OnAmbientVehicleSpawnedInvoker m_OnVehicleSpawned;
+
 	protected int m_iLastAssignedIndex;
 	protected int m_iIndexToCheck;
 	protected int m_iSpawnDistanceSq;
@@ -37,6 +46,15 @@ class SCR_AmbientVehiclesManager : GenericEntity
 		return s_Instance;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	OnAmbientVehicleSpawnedInvoker GetOnVehicleSpawned()
+	{
+		if (!m_OnVehicleSpawned)
+			m_OnVehicleSpawned = new OnAmbientVehicleSpawnedInvoker();
+
+		return m_OnVehicleSpawned;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateCheckInterval()
 	{
@@ -160,7 +178,11 @@ class SCR_AmbientVehiclesManager : GenericEntity
 
 		if (!spawnedVeh && playersNear)
 		{
-			spawnpoint.SpawnVehicle();
+			Vehicle vehicle = spawnpoint.SpawnVehicle();
+
+			if (vehicle && m_OnVehicleSpawned)
+				m_OnVehicleSpawned.Invoke(spawnpoint, vehicle);
+
 			return;
 		}
 
@@ -235,7 +257,7 @@ class SCR_AmbientVehiclesManager : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
 		RefreshPlayerList();
 	}

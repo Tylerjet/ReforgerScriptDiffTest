@@ -19,6 +19,19 @@ class SCR_TaskKill : SCR_ScenarioFrameworkTask
 				
 		m_SupportEntity.FinishTask(this);				
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void RehookTaskSubject(IEntity object)
+	{
+		if (!object)
+			return;
+		
+		m_Asset = object;
+		
+		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(m_Asset.FindComponent(ScriptedDamageManagerComponent));
+		if (objectDmgManager)
+			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	override bool SetSupportEntity()

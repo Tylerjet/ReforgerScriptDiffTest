@@ -12,13 +12,13 @@ class GameOverScreenInput: ChimeraMenuBase
 
 		//~ Find Back button
 		m_BackButton = widgetRoot.FindAnyWidget("Back");
-		SCR_NavigationButtonComponent comp = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Back", widgetRoot);
+		SCR_InputButtonComponent comp = SCR_InputButtonComponent.GetInputButtonComponent("Back", widgetRoot);
 		if (comp)
 			comp.m_OnActivated.Insert(ReturnToMainMenu);
 		
 		//~ Find Chat button
 		m_ChatButton = widgetRoot.FindAnyWidget("ChatButton");
-		comp = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ChatButton", widgetRoot);
+		comp = SCR_InputButtonComponent.GetInputButtonComponent("ChatButton", widgetRoot);
 		if (comp)
 			comp.m_OnActivated.Insert(OnChatToggle);
 		
@@ -36,7 +36,6 @@ class GameOverScreenInput: ChimeraMenuBase
 			hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~(EHudLayers.HIGH | EHudLayers.ALWAYS_TOP));
 		
 		GetGame().GetInputManager().AddActionListener("ShowScoreboard", EActionTrigger.DOWN, ShowPlayerList);
-		GetGame().GetInputManager().AddActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
 	}
 	
 	override void OnMenuClose()
@@ -52,7 +51,6 @@ class GameOverScreenInput: ChimeraMenuBase
 				hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() | EHudLayers.HIGH | EHudLayers.ALWAYS_TOP);
 		}
 		GetGame().GetInputManager().RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, ShowPlayerList);
-		GetGame().GetInputManager().RemoveActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
 	}
 	
 	override void OnMenuUpdate(float tDelta)

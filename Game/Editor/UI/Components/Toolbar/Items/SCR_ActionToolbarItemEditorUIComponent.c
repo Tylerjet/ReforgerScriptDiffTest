@@ -43,6 +43,11 @@ class SCR_ActionToolbarItemEditorUIComponent: SCR_BaseToolbarItemEditorUICompone
 		
 		info.SetIconTo(m_IconWidget);
 		
+		//--- Recolor the icon according to action's UI info
+		SCR_ColorUIInfo colorInfo = SCR_ColorUIInfo.Cast(info);
+		if (colorInfo)
+			m_IconWidget.SetColor(colorInfo.GetColor());
+		
 		//--- Initialize toggling if available
 		m_ToggleWidget = ImageWidget.Cast(widget.FindAnyWidget(m_sToggleWidgetName));
 		if (m_ToggleWidget)

@@ -137,6 +137,8 @@ class CharacterCameraBase extends ScriptedCameraItem
 			m_fRollSmooth = prevCameraBase.m_fRollSmooth;
 			m_fRollSmoothVel = prevCameraBase.m_fRollSmoothVel;
 		}
+		
+		m_CharacterHeadAimingComponent.SetPitchLimitReductionMultiplier(1.0);
 	}
 							
 	void ForceFreelook(bool state)

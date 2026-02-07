@@ -22,20 +22,28 @@ class SCR_BaseAnalogGauge : SCR_InfoDisplayExtended
 	[Attribute("0", UIWidgets.Slider, "Gauge angular rotation (in degrees)", "0 360 5")]
 	protected float m_fWidgetRotation;
 	
-	[Attribute("0.8", UIWidgets.Slider, "Gauge global scale", "0.25 2 0.05")]
+	[Attribute("0.6", UIWidgets.Slider, "Gauge global scale", "0.25 2 0.05")]
 	protected float m_fWidgetScale;
 
 	
-	// Attributes: info text
+	// Attributes: info texts
 	[Attribute("", UIWidgets.EditBox, "Custom text (e.g. units or gauge name). Hidden if empty.")]
 	protected string  m_sInfoText;
 	
 	[Attribute("0.5", UIWidgets.Slider, "Units text anchor X-coordinate %-base of widget width.", "0 1 0.05")]
 	protected float m_fInfoPosX;	
 	
-	[Attribute("0.2", UIWidgets.Slider, "Units text anchor Y-coordinate %-base of widget height.", "0 1 0.05")]
+	[Attribute("0.15", UIWidgets.Slider, "Units text anchor Y-coordinate %-base of widget height.", "0 1 0.05")]
 	protected float m_fInfoPosY;	
 
+	[Attribute("", UIWidgets.EditBox, "Custom text (e.g. units or gauge name). Hidden if empty.")]
+	protected string  m_sInfo2Text;
+	
+	[Attribute("0.5", UIWidgets.Slider, "Units text anchor X-coordinate %-base of widget width.", "0 1 0.05")]
+	protected float m_fInfo2PosX;	
+	
+	[Attribute("0.85", UIWidgets.Slider, "Units text anchor Y-coordinate %-base of widget height.", "0 1 0.05")]
+	protected float m_fInfo2PosY;		
 	
 	// Attributes: labels
 	[Attribute("1", UIWidgets.SpinBox, "Label value multiplier.")]
@@ -60,7 +68,9 @@ class SCR_BaseAnalogGauge : SCR_InfoDisplayExtended
 	protected ref SCR_BaseAnalogGaugeData m_pGaugeData;
 	
 	protected TextWidget m_wInfo;
+	protected TextWidget m_wInfo2;
 	protected Widget m_wInfoAnchor;
+	protected Widget m_wInfo2Anchor;
 	
 	protected ImageWidget m_wRing;
 	protected ImageWidget m_wBackground;
@@ -130,10 +140,12 @@ class SCR_BaseAnalogGauge : SCR_InfoDisplayExtended
 		// Gauge info text
 		m_wInfo = TextWidget.Cast(m_wRoot.FindAnyWidget("InfoText"));
 		m_wInfoAnchor = m_wRoot.FindAnyWidget("InfoAnchor");
-		bSuccess = CreateGaugeInfoText(owner, m_wInfo, m_sInfoText, m_wInfoAnchor, m_fInfoPosX, m_fInfoPosY);
+		CreateGaugeInfoText(owner, m_wInfo, m_sInfoText, m_wInfoAnchor, m_fInfoPosX, m_fInfoPosY);
 
-		if (!bSuccess)
-			return;		
+		// Gauge info text2
+		m_wInfo2 = TextWidget.Cast(m_wRoot.FindAnyWidget("Info2Text"));
+		m_wInfo2Anchor = m_wRoot.FindAnyWidget("Info2Anchor");
+		CreateGaugeInfoText(owner, m_wInfo2, m_sInfo2Text, m_wInfo2Anchor, m_fInfo2PosX, m_fInfo2PosY);
 	}	
 	
 	// Creates gauge ring, markings and labels based on dozen of data feeded from gauge attributes	

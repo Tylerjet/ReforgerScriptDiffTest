@@ -38,7 +38,7 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 
 		m_Feedback = SCR_EditBoxComponent.GetEditBoxComponent(m_sFeedbackEditboxName, m_wRoot);
 
-		SCR_NavigationButtonComponent tos = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ToS",parentMenu.GetRootWidget());
+		SCR_InputButtonComponent tos = SCR_InputButtonComponent.GetInputButtonComponent("ToS",parentMenu.GetRootWidget());
 		if (tos)
 			tos.SetVisible(true);
 
@@ -122,7 +122,7 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 	override void OnMenuClose(SCR_SuperMenuBase parentMenu)
 	{
 		FeedbackDialogUI.ClearFeedback();
-		SCR_NavigationButtonComponent tos = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ToS",parentMenu.GetRootWidget());
+		SCR_InputButtonComponent tos = SCR_InputButtonComponent.GetInputButtonComponent("ToS",parentMenu.GetRootWidget());
 		if (tos)
 			tos.SetVisible(false);
 	}

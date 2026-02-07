@@ -1,15 +1,9 @@
-class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
-{
-	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_HOVER, UIWidgets.EditBox, "")]
-	protected string m_sSoundHovered;
-
-	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox, "")]
-	protected string m_sSoundClicked;
-	
-	[Attribute()]
+class SCR_AddonLinePresetComponent : SCR_WLibComponentBase
+{	
+	[Attribute(UIColors.GetColorAttribute(UIColors.CONTRAST_COLOR))]
 	protected ref Color m_cSelectedColor;
 	
-	[Attribute()]
+	[Attribute(UIColors.GetColorAttribute(UIColors.NEUTRAL_INFORMATION))]
 	protected ref Color m_cDefaultColor;
 	
 	protected const string STR_DEFAULT_NAME = "Preset ";
@@ -20,7 +14,7 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	protected bool m_bSelected = false;
 	
 	// Buttons 
-	protected SCR_ModularButtonComponent m_ButtonNameEdit;
+	protected SCR_ModularButtonComponent m_ButtonComponent;
 	
 	//------------------------------------------------------------------------------------------------
 	// Invokers 
@@ -202,14 +196,23 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 		ShowEditWidget(false);
 		ShowButtons(false);
 		
+		m_ButtonComponent = SCR_ModularButtonComponent.FindComponent(w);
+		
 		// Buttons and actions 
 		m_Widgets.m_EditNameButtonComponent.m_OnClicked.Insert(StartEditName);
 		m_Widgets.m_LoadButtonComponent.m_OnClicked.Insert(InvokeEventOnLoad);
 		m_Widgets.m_OverrideButtonComponent.m_OnClicked.Insert(InvokeEventOnOverride);
 		m_Widgets.m_DeleteButtonComponent.m_OnClicked.Insert(InvokeEventOnDelete);
 		
-		// Edit action 
-		GetGame().GetInputManager().AddActionListener("MenuBack", EActionTrigger.PRESSED, OnEditNameCancel);
+		SCR_MenuHelper.GetOnDialogClose().Insert(OnDialogClose);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+		
+		SCR_MenuHelper.GetOnDialogClose().Remove(OnDialogClose);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -224,38 +227,10 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool OnMouseEnter(Widget w, int x, int y)
-	{
-		super.OnMouseEnter(w, x, y);
-		ShowButtons(true);
-		PlaySound(m_sSoundHovered);
-		
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
-	{
-		super.OnMouseLeave(w, enterW, x, y);
-		ShowButtons(false);
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnClick(Widget w, int x, int y, int button)
-	{
-		// Accept only LMB as valid click
-		if (button != 0)
-			return false;
-
-		PlaySound(m_sSoundClicked);
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		super.OnFocus(w, x, y);
+		ShowButtons(true);
 		InvokeEventOnFocus();
 		return true;
 	}
@@ -265,7 +240,15 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	{
 		super.OnFocusLost(w, x, y);
 		InvokeEventOnFocusLost();
+		ShowButtons(false);
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Hide the inline buttons when another dialog (ie save or delete confirmation) is closed
+	protected void OnDialogClose(DialogUI dialog)
+	{
+		ShowButtons(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -286,6 +269,10 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 		}
 		
 		// Show edit
+		// This will prevent the edit box from immediately closing due to the button refocusing
+		if (m_ButtonComponent)
+			m_ButtonComponent.SetIsFocusOnMouseEnter(false);
+		
 		ShowEditWidget(true);
 		GetGame().GetWorkspace().SetFocusedWidget(m_Widgets.m_EditNameComponent.GetEditBoxWidget());
 		
@@ -293,7 +280,10 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 		m_Widgets.m_EditNameComponent.ActivateWriteMode();
 		
 		// Actions
-		m_Widgets.m_EditNameComponent.m_OnConfirm.Insert(OnEditNameConfirm);
+		// Edit action 
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.PRESSED, OnEditNameCancel);
+		
+		m_Widgets.m_EditNameComponent.m_OnConfirm.Insert(OnEditNameConfirm); //TODO: this does not get called on gamepad
 		m_Widgets.m_EditNameComponent.m_OnFocusChangedEditBox.Insert(OnEditNameCancel);
 		
 		InvokeEventOnNameEditStart();
@@ -302,10 +292,13 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void ShowEditWidget(bool edit)
 	{
-		m_Widgets.m_NameText.SetVisible(!edit);
-		m_Widgets.m_EditNameButton.SetVisible(!edit);
+		if (m_Widgets.m_NameText)
+			m_Widgets.m_NameText.SetVisible(!edit);
 		
-		m_Widgets.m_EditName.SetVisible(edit);
+		if (m_Widgets.m_EditName)
+			m_Widgets.m_EditName.SetVisible(edit);
+		
+		ShowButtons(!edit);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -319,14 +312,29 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnEditNameConfirm()
-	{
+	{	
+		EditNameFinishedStateReset();
+		
 		InvokeEventOnNameChanged(m_Widgets.m_EditNameComponent.GetValue());
 		RemoveEditActions();
+		
+		if (m_bSelected)
+			InvokeEventOnLoad();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnEditNameCancel()
-	{	
+	{
+		// If the focus change was a result of clicking the same line we're editing, then consider it a confirmation
+		// This is also necessary to register confirmation with gamepad
+		if (GetGame().GetWorkspace().GetFocusedWidget() == GetRootWidget())
+		{
+			OnEditNameConfirm();
+			return;
+		}
+		
+		EditNameFinishedStateReset();
+		
 		ShowEditWidget(false);
 		RemoveEditActions();
 		
@@ -334,11 +342,26 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void EditNameFinishedStateReset()
+	{
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.PRESSED, OnEditNameCancel);
+		
+		// Reactivate focus on mouse enter
+		if (m_ButtonComponent)
+			m_ButtonComponent.SetIsFocusOnMouseEnter(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void ShowButtons(bool show)
 	{
-		m_Widgets.m_OverrideButton.SetVisible(show);
-		m_Widgets.m_EditNameButton.SetVisible(show);
-		m_Widgets.m_DeleteButton.SetVisible(show);
+		if (m_Widgets.m_OverrideButton)
+			m_Widgets.m_OverrideButton.SetVisible(show);
+		
+		if (m_Widgets.m_EditNameButton)
+			m_Widgets.m_EditNameButton.SetVisible(show);
+		
+		if (m_Widgets.m_DeleteButton)
+			m_Widgets.m_DeleteButton.SetVisible(show);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -416,15 +439,11 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void PlaySound(string sound)
-	{
-		if (sound != string.Empty)
-			SCR_UISoundEntity.SoundEvent(sound);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	void SetSelected(bool selected)
 	{
+		if (m_ButtonComponent)
+			m_ButtonComponent.SetToggled(selected);
+		
 		if (m_bSelected == selected)
 			return;
 		

@@ -13,9 +13,6 @@ class ParticleEffectEntityClass: GenericEntityClass
 {
 }
 
-/*!
-*IMPORTANT* Due to how replication works for a replicated entity like ParticleEffectEntity. Currently, you need to spawn the ParticleEffectEntity both on the server and the client if the parent entity is replicated.
-*/
 class ParticleEffectEntity: GenericEntity
 {
 	/*!
@@ -36,6 +33,7 @@ class ParticleEffectEntity: GenericEntity
 	proto external void SetEffectPath(ResourceName effectPath);
 	//! Tells if we should be deleted when it is finished or when the emission is stopped.
 	proto external void SetDeleteWhenStopped(bool deleteWhenStopped);
+	proto external void SetUseParentAsVelocitySource(bool useParentAsVelocitySource);
 	//! Play the current particle. If paused, then it resumes it.
 	proto external void Play();
 	//! Stop the current particle.

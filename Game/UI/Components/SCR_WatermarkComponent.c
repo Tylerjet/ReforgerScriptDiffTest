@@ -1,17 +1,5 @@
 class SCR_WatermarkComponent: ScriptedWidgetComponent
 {
-	[Attribute("#AR-Watermark_Development")]
-	private string m_sWatermarkNameWorkbench;
-		
-	[Attribute("#AR-Watermark_EarlyAccess_Steam")]
-	private string m_sWatermarkNamePC;
-	
-	[Attribute("#AR-Watermark_EarlyAccess_Xbox")]
-	private string m_sWatermarkNameXbox;
-	
-	[Attribute("#AR-Watermark_Development")]
-	private string m_sWatermarkNamePlaystation;
-
 	[Attribute("WatermarkPlatformText")]
 	private string m_sWatermarkWidgetName;
 
@@ -52,18 +40,9 @@ class SCR_WatermarkComponent: ScriptedWidgetComponent
 		{
 			buildName = "#AR-Experimental_WelcomeLabel";
 		}
-		else
+		else if (platformID == 0)
 		{
-			array<string> buildNames = 
-			{
-				m_sWatermarkNameWorkbench, 
-				m_sWatermarkNameXbox, 
-				m_sWatermarkNamePlaystation, 
-				m_sWatermarkNamePC
-			};
-			
-			if (platformID < buildNames.Count())
-				buildName = buildNames[platformID];
+			buildName = "#AR-Watermark_Development";
 		}
 
 		wWatermark.SetText(buildName);	

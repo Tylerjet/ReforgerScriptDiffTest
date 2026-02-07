@@ -8,7 +8,7 @@ enum SCR_EArmorLevels
 	CUSTOM_01 = 10,		//!< Arbitrary protection values
 	CUSTOM_02 = 15,
 	CUSTOM_03 = 20,
-	CUSTOM_04 = 25,
+	CUSTOM_04 = 24,
 	TYPE_I = 25,		//!< Balanced to conform to NIJ standard protection values
 	TYPE_IIA = 30,
 	TYPE_II = 35,

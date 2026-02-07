@@ -8,22 +8,28 @@ class SCR_ResupplyContextAction : SCR_SelectedEntitiesContextAction
 	override bool CanBeShown(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
 	{
 		if (selectedEntity == null || selectedEntity.GetEntityType() != EEditableEntityType.CHARACTER)
-		{
 			return false;
-		}
-		
+
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformed(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
 	{
-		return IsRefillAvailable(selectedEntity);
+		ChimeraCharacter character = ChimeraCharacter.Cast(selectedEntity.GetOwner());
+		
+		if (!character)
+			return false;
+		
+		SCR_InventoryStorageManagerComponent inventoryManager = SCR_InventoryStorageManagerComponent.Cast(character.FindComponent(SCR_InventoryStorageManagerComponent));
+		if (!inventoryManager)
+			return false;
+		
+		return inventoryManager.IsResupplyMagazinesAvailable(m_MagazineQuantityInInventory);
 	}
 	
 	override void Perform(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition)
 	{
-		World world = GetGame().GetWorld();
-		
 		ChimeraCharacter character = ChimeraCharacter.Cast(selectedEntity.GetOwner());
 		if (!character)
 			return;
@@ -33,36 +39,5 @@ class SCR_ResupplyContextAction : SCR_SelectedEntitiesContextAction
 			return;
 		
 		inventoryManager.ResupplyMagazines(m_MagazineQuantityInInventory);
-	}
-	
-	protected bool IsRefillAvailable(SCR_EditableEntityComponent selectedEntity)
-	{
-		bool refillAvailable = false;
-		ChimeraCharacter character = ChimeraCharacter.Cast(selectedEntity.GetOwner());
-		
-		if (!character)
-			return false;
-		
-		BaseWeaponManagerComponent weaponsManager = BaseWeaponManagerComponent.Cast(character.FindComponent(BaseWeaponManagerComponent));
-		SCR_InventoryStorageManagerComponent inventoryManager = SCR_InventoryStorageManagerComponent.Cast(character.FindComponent(SCR_InventoryStorageManagerComponent));
-		
-		array<IEntity> weaponList = {};
-		weaponsManager.GetWeaponsList(weaponList);
-		
-		foreach (IEntity weapon : weaponList)
-		{
-			BaseWeaponComponent comp = BaseWeaponComponent.Cast(weapon.FindComponent(BaseWeaponComponent));
-			string weaponSlotType = comp.GetWeaponSlotType();
-			
-			// Only refill primary and secondary weapons
-			if (!(weaponSlotType == "primary" || weaponSlotType == "secondary")) continue;
-			
-			if (m_MagazineQuantityInInventory - inventoryManager.GetMagazineCountByWeapon(comp) > 0)
-			{
-				refillAvailable = true;
-				break;
-			}
-		}
-		return refillAvailable;
 	}
 };

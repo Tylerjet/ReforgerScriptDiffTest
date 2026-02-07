@@ -5,6 +5,7 @@
 // ###############
 // It is recommended to be VERY CAREFUL with breakpoints here
 // as GetCurrentFile, GetLinesCount, GetLineText, SETLineText etc may target this file
+// Once a breakpoint is hit (without FileIO), switch back to the edited file and press F5
 // ###############
 [WorkbenchPluginAttribute(
 	name: "Basic Code Formatter",
@@ -95,6 +96,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	protected ref array<string> m_aIfForForEachWhileArray;
 	protected ref array<string> m_aEndBracketSemicolonArray;
 	protected ref array<string> m_aNewArrayNewRefArray;
+	protected ref array<string> m_aScriptInvokerArray;
 
 	protected ref map<string, string> m_mVariableTypePrefixes;
 	protected ref map<string, string> m_mVariableTypePrefixesStart;
@@ -187,7 +189,8 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		string currentFile;
 		m_ScriptEditor.GetCurrentFile(currentFile);
 		SCR_BasicCodeFormatterPluginFileReport report = ProcessFile(currentFile, false);
-		PrintReport(report, m_bLogFixes, m_bReportFindings); // always print current file's report
+		if (report)
+			PrintReport(report, m_bLogFixes, m_bReportFindings); // always print current file's report
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -261,7 +264,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		SCR_BasicCodeFormatterPluginFileReport report;
 		foreach (string relativeFilePath : relativeFilePaths)
 		{
-			report = ProcessFile(relativeFilePath, useFileIO && relativeFilePath != currentFile); // do NOT use FileIO on the current file
+			report = ProcessFile(relativeFilePath, useFileIO && relativeFilePath != currentFile); // do NOT use FileIO on the current file - the Script Editor may lose edits track
 			result.Insert(report);
 		}
 		return result;
@@ -281,12 +284,16 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			return null;
 		}
 
+		bool isReadOnly = false;
+		bool demoMode = m_bDemoMode;
+
 		// checking the file is modifiable
 		string absoluteFilePath;
 		if (!Workbench.GetAbsolutePath(relativeFilePath, absoluteFilePath, true))
 		{
-			Print("Cannot find the absolute file path - file is read-only? " + relativeFilePath, LogLevel.WARNING);
-			return null;
+			Print("Cannot find the absolute file path, switching to readonly mode - is file read-only? " + relativeFilePath, LogLevel.WARNING);
+			demoMode = true;
+			isReadOnly = true;
 		}
 
 		SCR_BasicCodeFormatterPluginFileReport report = new SCR_BasicCodeFormatterPluginFileReport(relativeFilePath, relativeFilePath == __FILE__);
@@ -297,7 +304,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		bool isPreviousLineEmptyLine;
 		bool emptyLineGroupLogged;
 
-		if (m_bOnlyFormatModifiedLines)
+		if (m_bOnlyFormatModifiedLines && !isReadOnly)
 		{
 			report.m_iDiffTime = System.GetTickCount();
 			report.m_aDiffLines = GetFileModifiedLineNumbers(absoluteFilePath);
@@ -443,6 +450,9 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 					if (HasBadVariableNaming(indentation + findingsString))
 						report.m_aBadVariableNamingFound.Insert(lineNumberPlus1);
 
+					if (SCR_StringHelper.ContainsAny(findingsString, m_aScriptInvokerArray))
+						report.m_aBadScriptInvokerFound.Insert(lineNumberPlus1);
+
 					if (
 						findingsString.EndsWith(";") &&
 						(findingsString.StartsWith("Print(") && !findingsString.Contains("LogLevel.")) || findingsString.StartsWith("PrintFormat"))
@@ -459,7 +469,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 			report.m_iLinesEdited++;
 
-			if (m_bDemoMode)
+			if (demoMode)
 				continue;
 
 			if (useFileIO)
@@ -471,7 +481,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			Finish
 		*/
 
-		if (!m_bDemoMode && m_bAddFinalLineReturn && lines[linesCount - 1] != string.Empty)
+		if (!demoMode && m_bAddFinalLineReturn && lines[linesCount - 1] != string.Empty)
 		{
 			if (useFileIO)
 				lines.Insert(string.Empty);
@@ -491,7 +501,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 //		}
 
 		// write time!
-		if (!m_bDemoMode && useFileIO)
+		if (!demoMode && useFileIO)
 			WriteFileContent(relativeFilePath, lines);
 
 		report.m_iFormatTime = System.GetTickCount(startTick);
@@ -662,6 +672,9 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 			if (!report.m_aBadVariableNamingFound.IsEmpty())
 				PrintFinding("badly-named variables", report.m_aBadVariableNamingFound, "use proper prefixes: m_s for ResourceName/string, m_v for vectors, NO m_p, CASED_CONSTS, etc");
+
+			if (!report.m_aBadScriptInvokerFound.IsEmpty())
+				PrintFinding("raw ScriptInvoker", report.m_aBadScriptInvokerFound, "use typed ScriptInvokerBase<> - see SCR_ScriptInvokerHelper.c for examples");
 
 			if (!report.m_aWildPrintFound.IsEmpty())
 				PrintFinding("wild Print()", report.m_aWildPrintFound, "use Print (not PrintFormat) with LogLevel.XXX to show this is not a debug print");
@@ -961,7 +974,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 // */
 
 	//------------------------------------------------------------------------------------------------
-	//! Add the final line return to a file (to end with a line return instead of the usual "};"
+	//! Add the final line return to a file (to end with a line return instead of the usual closing bracket)
 	//! \return true if an empty line has been added, false otherwise
 	protected bool AddFinalLineReturnToCurrentFile()
 	{
@@ -1399,6 +1412,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		// line start
 		m_aGeneralFormatting_Start = {};
 		m_aGeneralFormatting_Start.Insert({ "if(",			"if (" });
+		m_aGeneralFormatting_Start.Insert({ "else if(",		"else if (" });
 		m_aGeneralFormatting_Start.Insert({ "for(",			"for (" });
 		m_aGeneralFormatting_Start.Insert({ "foreach(",		"foreach (" });
 		m_aGeneralFormatting_Start.Insert({ "while(",		"while (" });
@@ -1442,6 +1456,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		m_aForForEachWhileArray = { "for ", "foreach ", "while " };
 		m_aIfForForEachWhileArray = { "if ", "for ", "foreach ", "while " };
 		m_aNewArrayNewRefArray = { "new array<", "new ref array<" };
+		m_aScriptInvokerArray = { "ScriptInvoker()", "ScriptInvoker<", "ScriptInvoker\t", "ScriptInvoker " };
 		m_aEndBracketSemicolonArray = { BRACKET_CLOSE, ";" };
 
 		m_mVariableTypePrefixes = new map<string, string>();
@@ -1500,6 +1515,7 @@ class SCR_BasicCodeFormatterPluginFileReport
 	ref array<int> m_aUnscopedLoopFound = {};
 	ref array<int> m_aOneLinerFound = {};
 	ref array<int> m_aBadVariableNamingFound = {};
+	ref array<int> m_aBadScriptInvokerFound = {};
 	ref array<int> m_aWildPrintFound = {};
 	ref array<int> m_aNonPrefixedClassOrEnumFound = {};
 
@@ -1518,6 +1534,7 @@ class SCR_BasicCodeFormatterPluginFileReport
 			m_aUnscopedLoopFound.IsEmpty() &&
 			m_aOneLinerFound.IsEmpty() &&
 			m_aBadVariableNamingFound.IsEmpty() &&
+			m_aBadScriptInvokerFound.IsEmpty() &&
 			m_aWildPrintFound.IsEmpty() &&
 			m_aNonPrefixedClassOrEnumFound.IsEmpty();
 	}

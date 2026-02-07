@@ -57,7 +57,8 @@ class SCR_LightningComponent : ScriptComponent
 			&& m_aFlashesStartTime.Count() == m_aFlashesDuration.Count() 
 			&& m_aFlashesStartTime.Count() == m_aFlashesCooldownDuration.Count())
 		{
-			TimeAndWeatherManagerEntity tawme = GetGame().GetTimeAndWeatherManager();
+			ChimeraWorld world = GetOwner().GetWorld();
+			TimeAndWeatherManagerEntity tawme =world.GetTimeAndWeatherManager();
 			if(!tawme)
 				return;
 			
@@ -89,7 +90,11 @@ class SCR_LightningComponent : ScriptComponent
 		//SetEventMask(owner, EntityEvent.FRAME);
 		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
 		
-		TimeAndWeatherManagerEntity tawme = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
+		if(!world)
+			return;
+		
+		TimeAndWeatherManagerEntity tawme = world.GetTimeAndWeatherManager();
 		if(!tawme)
 			return;
 		

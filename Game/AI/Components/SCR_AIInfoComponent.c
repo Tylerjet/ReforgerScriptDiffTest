@@ -47,8 +47,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	protected EMovementType m_eMovementType;
 	protected bool m_bWeaponRaised;
 	protected int m_iAttackCount;
-	protected int m_unitID;	
-	ref SCR_AICommunicationState m_CommunicationState = new SCR_AICommunicationState();
+	protected int m_unitID;
 	
 	override protected void OnPostInit(IEntity owner)
 	{
@@ -80,12 +79,8 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		AICommunicationComponent mailbox = owner.GetCommunicationComponent();
 		if (mailbox)
 		{
-			SCR_AIMessage_AttackStaticDone msg1 = SCR_AIMessage_AttackStaticDone.Cast(mailbox.CreateMessage(aiworld.GetGoalMessageOfType(EMessageType_Goal.ATTACK_STATIC_DONE)));
-			if ( !msg1 )
-			{
-				Debug.Error("Unable to create valid message!");
-				return ;
-			}
+			SCR_AIMessage_AttackStaticDone msg1 = new SCR_AIMessage_AttackStaticDone();
+
 			msg1.SetText("Get out of turret");
 			msg1.SetReceiver(owner);
 			mailbox.RequestBroadcast(msg1,owner);
@@ -130,22 +125,12 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			m_DamageManager.GetOnDamageOverTimeRemoved().Insert(OnDamageOverTimeRemoved);
 			EvaluateWoundedState();
 		}
-		
-		m_CommunicationState.m_OnCommunicationStateChanged.Insert(OnCommunicationStateChanged)
-	}
-	
-	override protected void EOnFrame(IEntity owner, float timeSlice)
-	{
-		if (!m_CommunicationState.Update(timeSlice)) 
-			SetEventMask(GetOwner(), EntityEvent.INIT);		// turning off EOnFrame
 	}
 	
 	void ~SCR_AIInfoComponent()
 	{
 		if (m_EventHandlerManagerComponent)
 			m_EventHandlerManagerComponent.RemoveScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
-		if (m_CommunicationState)
-			m_CommunicationState.m_OnCommunicationStateChanged.Remove(OnCommunicationStateChanged);
 	}
 	
 	override protected void OnDelete(IEntity owner)
@@ -166,14 +151,6 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	bool IsOwnerAgent(AIAgent agent)
 	{
 		return GetOwner() == agent;
-	}
-
-//----------- Signal from CommunicationState class
-	//! We are ticking in info component only if the agent is speaking
-	void OnCommunicationStateChanged(EAICommunicationState newState)
-	{
-		if (newState == EAICommunicationState.SPEAKING)
-			SetEventMask(GetOwner(), EntityEvent.INIT | EntityEvent.FRAME); // turning on EOnFrame event
 	}
 	
 //----------- BIT operations on Roles

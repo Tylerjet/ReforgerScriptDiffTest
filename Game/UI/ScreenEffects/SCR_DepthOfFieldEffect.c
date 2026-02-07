@@ -85,13 +85,11 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 		{
 			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(),DEPTH_OF_FIELD_PRIORITY,PostProcessEffectType.DepthOfFieldBokeh, "");
 			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(),DEPTH_OF_FIELD_PRIORITY,PostProcessEffectType.DepthOfField, DOF_NORMAL_EMAT);
-			s_bEnableDOF = true;
 		}
 		else if (m_iDesiredDofType == DepthOfFieldTypes.BOKEH)
 		{
 			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(),DEPTH_OF_FIELD_PRIORITY,PostProcessEffectType.DepthOfField, "");
 			m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(),DEPTH_OF_FIELD_PRIORITY,PostProcessEffectType.DepthOfFieldBokeh, DOF_BOKEH_EMAT);
-			s_bEnableDOFBokeh = true;
 		}
 	}
 
@@ -106,6 +104,7 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	protected override void DisplayOnSuspended()
 	{
 		m_bDisplaySuspended = true;
+		ClearEffects();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -162,6 +161,9 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	void AddDOFBokehEffect(bool nearDofAllowed)
 	{
+		if (!m_pCharacterEntity)
+			return;
+		
 		if (m_wDeath.GetOpacity() > 0.1 && !m_bDisplaySuspended)
 			s_fFocalLength = s_fFocalLengthNear + (FOCALLENGTH_MAX * (m_wDeath.GetOpacity() - DOF_START_OPACITY) / (DOF_FADEIN_OPACITY_TARGET - DOF_START_OPACITY));
 		else
@@ -182,6 +184,9 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	void AddDOFEffect(float timeslice, bool nearDofAllowed)
 	{
+		if (!m_pCharacterEntity)
+			return;
+		
 		s_fFocalDistance = FOCALDISTANCE_INTENSITY;
 
 		// if s_bNearDofEffect is allowed, simpleDOF always must be enabled. If not, it must be disabled when inactive (i.e. focalchange > max)
@@ -200,13 +205,8 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 		else
 			s_bEnableDOF = false;
 
-		bool destroyed = false;
-		if (m_pCharacterEntity)
-		{
-			SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(m_pCharacterEntity.GetDamageManager());
-			destroyed = damageMan && damageMan.GetState() == EDamageState.DESTROYED;
-		}
-		if (destroyed && !m_bDisplaySuspended)
+		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(m_pCharacterEntity.GetDamageManager());
+		if (damageMan && damageMan.GetState() == EDamageState.DESTROYED && !m_bDisplaySuspended)
 			s_fFocalChange = 100 - 100 * (m_wDeath.GetOpacity() - DOF_START_OPACITY) / (DOF_FADEIN_OPACITY_TARGET - DOF_START_OPACITY);
 		else
 			s_fFocalChange = SIMPLEDOF_FOCALCHANGE_MAX;

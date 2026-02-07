@@ -24,6 +24,10 @@ sealed class GameProject
 	static proto string GetAddonTitle(string GUID);
 	//! Return true if addon with given GUID is part of vanilla addons
 	static proto bool IsVanillaAddon(string GUID);
+	//! Return game project module config by class name
+	static proto BaseContainer GetModuleConfig(string moduleClassName);
+	//! Return game project for current configuration
+	static proto BaseContainer GetGameProjectSettings();
 }
 
 /*!

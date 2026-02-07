@@ -129,6 +129,9 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 	protected string m_sSubtitleText;
 	
 	[Attribute()]
+	protected string m_sSubtitleLostText;
+	
+	[Attribute()]
 	protected string m_sDescriptionText;
 
 	[Attribute(defvalue: "{10A7983E48474CB2}UI/layouts/Menus/DeployMenu/DebriefingScreenSummaryTile.layout")]
@@ -162,6 +165,7 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 	protected void FillSummaryWidget()
 	{
 		string characterRank = "";
+		string subtitle = GetSubtitleLostText();
 		IEntity player = GetGame().GetPlayerController().GetControlledEntity();
 		if (player)
 		{
@@ -170,9 +174,41 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 				characterRank = rankComponent.GetCharacterRankName(player);
 		}
 		
+		SCR_BaseGameMode gamemode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gamemode)
+			return;
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return;
+			
+		Faction faction = Faction.Cast(factionManager.GetLocalPlayerFaction());
+		if (!faction)
+			return;
+		
+		SCR_GameModeEndData endData = gamemode.GetEndGameData();
+		if (endData)
+		{
+			array<int> winnerIds = {};
+			array<int> winnerFactionIds = {};
+			endData.GetWinnerIds(winnerIds);
+			endData.GetFactionWinnerIds(winnerFactionIds);
+			if (!winnerFactionIds.IsEmpty())
+			{
+				if (winnerFactionIds.Contains(factionManager.GetFactionIndex(faction)))
+					subtitle = GetSubtitleText();
+			}
+			else if (!winnerIds.IsEmpty())
+			{
+				int playerID = GetGame().GetPlayerController().GetPlayerId();
+				if (winnerIds.Contains(playerID))
+					subtitle = GetSubtitleText();
+			}
+		}
+		
 		RichTextWidget subtitleText = RichTextWidget.Cast(m_wSummaryWidget.FindAnyWidget("SubtitleText"));
 		if (subtitleText)
-			subtitleText.SetTextFormat(GetSubtitleText(), string.Format(WidgetManager.Translate("%1 <color rgba=\"226,168,80,255\">%2</color>", characterRank, GetGame().GetPlayerManager().GetPlayerName(GetGame().GetPlayerController().GetPlayerId()))), "");
+			subtitleText.SetTextFormat(subtitle, string.Format(WidgetManager.Translate("%1 <color rgba=\"226,168,80,255\">%2</color>", characterRank, GetGame().GetPlayerManager().GetPlayerName(GetGame().GetPlayerController().GetPlayerId()))), "");
 
 		RichTextWidget descriptionText = RichTextWidget.Cast(m_wSummaryWidget.FindAnyWidget("DescriptionText"));
 		if (!descriptionText)
@@ -182,10 +218,6 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 		
 		if (SCR_StringHelper.IsEmptyOrWhiteSpace(GetDescriptionText())) 
 		{
-			SCR_BaseGameMode gamemode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-			if (!gamemode)
-				return;
-			
 			SCR_GameOverScreenManagerComponent gameOverScreenMgr = SCR_GameOverScreenManagerComponent.Cast(gamemode.FindComponent(SCR_GameOverScreenManagerComponent));
 			if (!gameOverScreenMgr)
 				return;
@@ -197,14 +229,6 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 			SCR_BaseGameOverScreenInfo gameOverScreenInfo;
 			gameOverConfig.GetGameOverScreenInfo(gameOverScreenMgr.GetCurrentGameOverType(), gameOverScreenInfo);
 			if (!gameOverScreenInfo)
-				return;
-			
-			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-			if (!factionManager)
-				return;
-			
-			Faction faction = Faction.Cast(factionManager.GetLocalPlayerFaction());
-			if (!faction)
 				return;
 			
 			if (!SCR_StringHelper.IsEmptyOrWhiteSpace(gameOverScreenInfo.GetDebriefing(faction, null))) 
@@ -252,6 +276,16 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 	string GetSubtitleText()
 	{
 		return m_sSubtitleText;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get subtitle lost
+	\return subtitle lost
+	*/
+	string GetSubtitleLostText()
+	{
+		return m_sSubtitleLostText;
 	}
 	
 	//------------------------------------------------------------------------------------------------

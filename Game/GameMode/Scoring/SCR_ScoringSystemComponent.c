@@ -146,52 +146,42 @@ class SCR_ScoringSystemComponent : SCR_BaseScoringSystemComponent
 	/*!
 		Handle and dispatch scoring logic for this event.
 	*/
-	protected override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	protected override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
 	{
-		super.OnPlayerKilled(playerId, player, killer);
+		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
 		
 		// Add death no matter what
-		super.AddDeath(playerId);
+		AddDeath(playerId);
 		
-		// Handling suicide first will allow us to disregard any additional logic
-		if (player == killer || !killer)
+		if (killer.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
+			return;
+		
+		int killerId = killer.GetInstigatorPlayerID();
+		
+		// Suicide?
+		if (playerId == killerId)
 		{
-			super.AddSuicide(playerId);
+			AddSuicide(playerId);
 			return;
 		}
+		
+		SCR_ChimeraCharacter playerEntityChar = SCR_ChimeraCharacter.Cast(playerEntity);
+		if (!playerEntityChar)
+			return;
 		
 		// We have to resolve who and what faction they belong to
-		int killerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(killer);
-		if (killerId <= 0)
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
 			return;
 		
-		FactionAffiliationComponent playerAffiliation = FactionAffiliationComponent.Cast(player.FindComponent(FactionAffiliationComponent));
-		FactionAffiliationComponent killerAffiliation = FactionAffiliationComponent.Cast(killer.FindComponent(FactionAffiliationComponent));
-		if (!playerAffiliation || !killerAffiliation)
-		{
-			// Killer will receive kill since player cannot be really identified
-			super.AddKill(killerId);
+		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerId));
+		if (!factionKiller)
 			return;
-		}
 		
-		Faction playerFaction = playerAffiliation.GetAffiliatedFaction();
-		Faction killerFaction = killerAffiliation.GetAffiliatedFaction();
-		if (!playerFaction || !killerFaction)
-		{
-			// This behaviour is undefined, but we will follow the
-			// general rule above.
-			super.AddKill(killerId);
-			return;
-		}
-		
-		if (playerFaction.IsFactionFriendly(killerFaction))
-		{
-			super.AddTeamKill(killerId);
-			return;
-		}
-		
-		
-		super.AddKill(killerId);
+		if (factionKiller.IsFactionFriendly(playerEntityChar.GetFaction()))
+			AddTeamKill(killerId);
+		else
+			AddKill(killerId);
 	}
 	
 	//------------------------------------------------------------------------------------------------

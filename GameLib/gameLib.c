@@ -52,7 +52,10 @@ enum EPhysicsLayerPresets
 	VehicleComplex,
 	VehicleSimple,
 	CharacterFireGeoRagdoll,
-	InteractionFireGeo
+	InteractionFireGeo,
+	Liquids,
+	MineTrigger,
+	MineTriggerFire
 }
 
 /**
@@ -86,8 +89,8 @@ enum EPhysicsLayerDefs
 	NavmeshVehicle,
 	VehicleSimple,
 	VehicleComplex,
-	Perception,
-	Buoyancy,
+	Unused,
+	Mine,
 	Weapon
 }
 

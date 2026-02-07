@@ -41,6 +41,7 @@ class BaseWeaponComponent: GameComponent
 	proto external bool SetSights(int sightsIndex);
 	proto external bool SwitchNextSights();
 	proto external bool SwitchPrevSights();
+	proto external bool CanSwitchSights();
 	proto external IEntity GetOwner();
 	proto external float GetInitialProjectileSpeed();
 	/*!

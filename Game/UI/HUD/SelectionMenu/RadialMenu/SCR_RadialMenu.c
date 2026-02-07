@@ -105,9 +105,6 @@ class SCR_RadialMenu : SCR_SelectionMenu
 	protected override event void OnOpen()
 	{
 		super.OnOpen(owner);
-
-		// Center cursor
-		GetGame().GetInputManager().SetCursorPosition(m_vMenuCenterPos[0], m_vMenuCenterPos[1]);
 		
 		// Setup controls
 		m_Inputs.Init();
@@ -139,6 +136,9 @@ class SCR_RadialMenu : SCR_SelectionMenu
 	//------------------------------------------------------------------------------------------------
 	override void Update(float timeSlice)
 	{
+		if (System.IsConsoleApp())
+			return;
+		
 		// Context
 		if (m_bActivateContext && !m_bPreventSelectionContext)
 			GetGame().GetInputManager().ActivateContext(m_Inputs.m_sContext);
@@ -704,13 +704,12 @@ Configurable radial menu inputs extending controls specifically for radial inter
 [BaseContainerProps(configRoot: true)]
 class SCR_RadialMenuInputs : SCR_SelectionMenuInputs
 {
+	protected const string RADIAL_LEFT_CONTEXT = "RadialMenuLeftContext";
+	protected const string RADIAL_RIGHT_CONTEXT = "RadialMenuRightContext";
 	protected const string DEFAULT_RADIAL_LEFT_X = "RadialX";
 	protected const string DEFAULT_RADIAL_LEFT_Y = "RadialY";
 	protected const string DEFAULT_RADIAL_RIGHT_X = "RadialX2";
 	protected const string DEFAULT_RADIAL_RIGHT_Y = "RadialY2";
-	
-	protected string m_sRadialX = DEFAULT_RADIAL_RIGHT_X;
-	protected string m_sRadialY = DEFAULT_RADIAL_RIGHT_Y;
 	
 	[Attribute("100", desc: "How far from center needs to be to select entry. Use when controller m_bDeselectInCenter = true")]
 	float m_fMouseSelectionTreshold;
@@ -740,25 +739,25 @@ class SCR_RadialMenuInputs : SCR_SelectionMenuInputs
 	//------------------------------------------------------------------------------------------------
 	void GetRadialXYInput(out float x, out float y)
 	{
-		x = GetGame().GetInputManager().GetActionValue(m_sRadialX);
-		y = GetGame().GetInputManager().GetActionValue(m_sRadialY);
+		InputManager inputManager = GetGame().GetInputManager();
+		if (m_bUseRightStick)
+		{
+			inputManager.ActivateContext(RADIAL_RIGHT_CONTEXT);
+			x = inputManager.GetActionValue(DEFAULT_RADIAL_RIGHT_X);
+			y = inputManager.GetActionValue(DEFAULT_RADIAL_RIGHT_Y);
+		}
+		else
+		{
+			inputManager.ActivateContext(RADIAL_LEFT_CONTEXT);
+			x = inputManager.GetActionValue(DEFAULT_RADIAL_LEFT_X);
+			y = inputManager.GetActionValue(DEFAULT_RADIAL_LEFT_Y);
+		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetUseRightStick(bool use)
 	{
 		m_bUseRightStick = use;
-		
-		if (m_bUseRightStick)
-		{
-			m_sRadialX = DEFAULT_RADIAL_RIGHT_X;
-			m_sRadialY = DEFAULT_RADIAL_RIGHT_Y;
-		}
-		else
-		{
-			m_sRadialX = DEFAULT_RADIAL_LEFT_X;
-			m_sRadialY = DEFAULT_RADIAL_LEFT_Y;
-		}
 	}
 };
 
@@ -782,6 +781,9 @@ class SCR_RadialMenuControllerInputs : SCR_SelectionMenuControllerInputs
 	
 	[Attribute("0", UIWidgets.Slider, desc: "Display the crosshair in the center of the layout")]
 	bool m_bShowCrosshair;
+	
+	[Attribute("1", UIWidgets.Slider, desc: "Display inner circle backround if true")]
+	bool m_bShowInnerBackground;
 	
 	[Attribute("0", UIWidgets.Slider, desc: "Allows to use entries with quick 1-10 input")]
 	bool m_bUseQuickActions;

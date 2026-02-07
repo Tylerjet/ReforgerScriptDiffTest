@@ -18,18 +18,18 @@ class SCR_ContentBrowser_AddonsSubMenuBaseWidgets
 	HorizontalLayoutWidget m_PagingButtons;
 
 	ButtonWidget m_PrevPageButton;
-	SCR_NavigationButtonComponent m_PrevPageButtonComponent;
+	SCR_InputButtonComponent m_PrevPageButtonComponent;
 
 	ButtonWidget m_PrevPageButton_NoScroll;
-	SCR_NavigationButtonComponent m_PrevPageButton_NoScrollComponent;
+	SCR_InputButtonComponent m_PrevPageButton_NoScrollComponent;
 
 	TextWidget m_PageIndicatorText;
 
 	ButtonWidget m_NextPageButton;
-	SCR_NavigationButtonComponent m_NextPageButtonComponent;
+	SCR_InputButtonComponent m_NextPageButtonComponent;
 
 	ButtonWidget m_NextPageButton_NoScroll;
-	SCR_NavigationButtonComponent m_NextPageButton_NoScrollComponent;
+	SCR_InputButtonComponent m_NextPageButton_NoScrollComponent;
 
 	OverlayWidget m_MainPanelMessage;
 	SCR_SimpleMessageComponent m_MainPanelMessageComponent;
@@ -61,18 +61,18 @@ class SCR_ContentBrowser_AddonsSubMenuBaseWidgets
 		m_PagingButtons = HorizontalLayoutWidget.Cast(root.FindWidget("Size.PanelsHorizontal.m_LeftPanelArea.m_LeftPanel.VerticalLayout0.Content.GridAndPagingButtons.m_PagingButtons"));
 
 		m_PrevPageButton = ButtonWidget.Cast(root.FindWidget("Size.PanelsHorizontal.m_LeftPanelArea.m_LeftPanel.VerticalLayout0.Content.GridAndPagingButtons.m_PagingButtons.PrevButton"));
-		m_PrevPageButtonComponent = SCR_NavigationButtonComponent.Cast(m_PrevPageButton.FindHandler(SCR_NavigationButtonComponent));
+		m_PrevPageButtonComponent = SCR_InputButtonComponent.Cast(m_PrevPageButton.FindHandler(SCR_InputButtonComponent));
 
 		m_PrevPageButton_NoScroll = ButtonWidget.Cast(root.FindWidget("Size.PanelsHorizontal.m_LeftPanelArea.m_LeftPanel.VerticalLayout0.Content.GridAndPagingButtons.m_PagingButtons.PrevButton_NoScroll"));
-		m_PrevPageButton_NoScrollComponent = SCR_NavigationButtonComponent.Cast(m_PrevPageButton_NoScroll.FindHandler(SCR_NavigationButtonComponent));
+		m_PrevPageButton_NoScrollComponent = SCR_InputButtonComponent.Cast(m_PrevPageButton_NoScroll.FindHandler(SCR_InputButtonComponent));
 
 		m_PageIndicatorText = TextWidget.Cast(root.FindWidget("Size.PanelsHorizontal.m_LeftPanelArea.m_LeftPanel.VerticalLayout0.Content.GridAndPagingButtons.m_PagingButtons.Pages"));
 
 		m_NextPageButton = ButtonWidget.Cast(root.FindWidget("Size.PanelsHorizontal.m_LeftPanelArea.m_LeftPanel.VerticalLayout0.Content.GridAndPagingButtons.m_PagingButtons.NextButton"));
-		m_NextPageButtonComponent = SCR_NavigationButtonComponent.Cast(m_NextPageButton.FindHandler(SCR_NavigationButtonComponent));
+		m_NextPageButtonComponent = SCR_InputButtonComponent.Cast(m_NextPageButton.FindHandler(SCR_InputButtonComponent));
 
 		m_NextPageButton_NoScroll = ButtonWidget.Cast(root.FindWidget("Size.PanelsHorizontal.m_LeftPanelArea.m_LeftPanel.VerticalLayout0.Content.GridAndPagingButtons.m_PagingButtons.NextButton_NoScroll"));
-		m_NextPageButton_NoScrollComponent = SCR_NavigationButtonComponent.Cast(m_NextPageButton_NoScroll.FindHandler(SCR_NavigationButtonComponent));
+		m_NextPageButton_NoScrollComponent = SCR_InputButtonComponent.Cast(m_NextPageButton_NoScroll.FindHandler(SCR_InputButtonComponent));
 
 		m_MainPanelMessage = OverlayWidget.Cast(root.FindWidget("Size.PanelsHorizontal.m_LeftPanelArea.m_LeftPanel.VerticalLayout0.Content.m_MainPanelMessage"));
 		m_MainPanelMessageComponent = SCR_SimpleMessageComponent.Cast(m_MainPanelMessage.FindHandler(SCR_SimpleMessageComponent));

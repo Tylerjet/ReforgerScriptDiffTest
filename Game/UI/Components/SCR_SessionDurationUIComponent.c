@@ -15,15 +15,15 @@ class SCR_SessionDurationUIComponent : MenuRootSubComponent
 	protected void SetSessionDurationTime()
 	{		
 		if (m_GameMode)
-			m_wSessionDurationText.SetTextFormat(m_sSessionDurationFormatting, SCR_Global.GetTimeFormatting(m_GameMode.GetElapsedTime(), ETimeFormatParam.DAYS));
+			m_wSessionDurationText.SetTextFormat(m_sSessionDurationFormatting, SCR_FormatHelper.GetTimeFormatting(m_GameMode.GetElapsedTime(), ETimeFormatParam.DAYS));
 		else //~ Fallback if no gamemode
 		#ifndef AR_SESSION_DURATION_TIMESTAMP
-			m_wSessionDurationText.SetTextFormat(m_sSessionDurationFormatting, SCR_Global.GetTimeFormatting(Replication.Time() * 0.001, ETimeFormatParam.DAYS));
+			m_wSessionDurationText.SetTextFormat(m_sSessionDurationFormatting, SCR_FormatHelper.GetTimeFormatting(Replication.Time() * 0.001, ETimeFormatParam.DAYS));
 		#else
 		{
 			ChimeraWorld world = GetGame().GetWorld();
 			float elapsedMs = world.GetServerTimestamp().DiffMilliseconds(null);
-			m_wSessionDurationText.SetTextFormat(m_sSessionDurationFormatting, SCR_Global.GetTimeFormatting(elapsedMs * 0.001, ETimeFormatParam.DAYS));
+			m_wSessionDurationText.SetTextFormat(m_sSessionDurationFormatting, SCR_FormatHelper.GetTimeFormatting(elapsedMs * 0.001, ETimeFormatParam.DAYS));
 		}
 		#endif
 	}

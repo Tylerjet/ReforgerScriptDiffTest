@@ -5,7 +5,7 @@ class SCR_DownloadManager_OpenDownloadManagerComponent : ScriptedWidgetComponent
 {
 	override void HandlerAttached(Widget w)
 	{
-		SCR_NavigationButtonComponent n = SCR_NavigationButtonComponent.Cast(w.FindHandler(SCR_NavigationButtonComponent));
+		SCR_InputButtonComponent n = SCR_InputButtonComponent.Cast(w.FindHandler(SCR_InputButtonComponent));
 		n.m_OnActivated.Insert(SCR_DownloadManager_Dialog.Create);
 	}
 };

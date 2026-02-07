@@ -13,16 +13,16 @@ class SCR_AddonsPresetDialogWidgets
 	SCR_ListBoxComponent m_ScrollPresetsComponent;
 
 	ButtonWidget m_NavRename;
-	SCR_NavigationButtonComponent m_NavRenameComponent;
+	SCR_InputButtonComponent m_NavRenameComponent;
 
 	ButtonWidget m_NavDelete;
-	SCR_NavigationButtonComponent m_NavDeleteComponent;
+	SCR_InputButtonComponent m_NavDeleteComponent;
 
 	ButtonWidget m_NavOverride;
-	SCR_NavigationButtonComponent m_NavOverrideComponent;
+	SCR_InputButtonComponent m_NavOverrideComponent;
 
 	ButtonWidget m_NavLoad;
-	SCR_NavigationButtonComponent m_NavLoadComponent;
+	SCR_InputButtonComponent m_NavLoadComponent;
 
 	bool Init(Widget root)
 	{
@@ -33,16 +33,16 @@ class SCR_AddonsPresetDialogWidgets
 		m_ScrollPresetsComponent = SCR_ListBoxComponent.Cast(m_ScrollPresets.FindHandler(SCR_ListBoxComponent));
 
 		m_NavRename = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Footer.m_NavRename"));
-		m_NavRenameComponent = SCR_NavigationButtonComponent.Cast(m_NavRename.FindHandler(SCR_NavigationButtonComponent));
+		m_NavRenameComponent = SCR_InputButtonComponent.Cast(m_NavRename.FindHandler(SCR_InputButtonComponent));
 
 		m_NavDelete = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Footer.m_NavDelete"));
-		m_NavDeleteComponent = SCR_NavigationButtonComponent.Cast(m_NavDelete.FindHandler(SCR_NavigationButtonComponent));
+		m_NavDeleteComponent = SCR_InputButtonComponent.Cast(m_NavDelete.FindHandler(SCR_InputButtonComponent));
 
 		m_NavOverride = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Footer.m_NavOverride"));
-		m_NavOverrideComponent = SCR_NavigationButtonComponent.Cast(m_NavOverride.FindHandler(SCR_NavigationButtonComponent));
+		m_NavOverrideComponent = SCR_InputButtonComponent.Cast(m_NavOverride.FindHandler(SCR_InputButtonComponent));
 
 		m_NavLoad = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Footer.m_NavLoad"));
-		m_NavLoadComponent = SCR_NavigationButtonComponent.Cast(m_NavLoad.FindHandler(SCR_NavigationButtonComponent));
+		m_NavLoadComponent = SCR_InputButtonComponent.Cast(m_NavLoad.FindHandler(SCR_InputButtonComponent));
 
 		return true;
 	}

@@ -26,17 +26,8 @@ class ChimeraGame: Game
 	proto external CameraManager GetCameraManager();
 	//! Returns the game mode
 	proto external BaseGameMode GetGameMode();
-	//! Returns the radio manager entity
-	proto external RadioManagerEntity GetRadioManager();
 	//! Returns the map manager entity
 	proto external MapEntity GetMapManager();
-	//! Returns the item preview manager entity
-	proto external ItemPreviewManagerEntity GetItemPreviewManager();
-	//! Returns the time and weather manager entity
-	proto external TimeAndWeatherManagerEntity GetTimeAndWeatherManager();
-	proto external TagManager GetTagManager();
-	// Returns garbage manager instance or null if none.
-	proto external GarbageManager GetGarbageManager();
 	//! Sets view distance in meters (far clipping plane of cameras)
 	proto external void SetViewDistance(float viewDistance);
 	//! Returns view distance in meters (far clipping plane of cameras)
@@ -53,14 +44,20 @@ class ChimeraGame: Game
 	proto external int GetMaximumGrassDistance();
 	//! Returns absolute minimum grass distance
 	proto external int GetMinimumGrassDistance();
+	//! Returns the maximum view distance set by server (never relevant to client) set via ServerConfig
+	proto external float GetViewDistanceServerLimit();
 	//! Returns true if the VON UI is disabled by the server
 	proto external bool IsVONUIDisabledByServer();
 	//! Returns true if the VON direct speech UI is disabled by the server
 	proto external bool IsVONDirectSpeechUIDisabledByServer();
+	//! Returns true if the VONCanTransmitCrossFaction is enabled by the server
+	proto external bool GetVONCanTransmitCrossFaction();
 	//! Returns currently active mission or null if none
 	proto external MissionHeader GetMissionHeader();
 	//! Returns the AI World
 	proto external AIWorld GetAIWorld();
+	//! Returns analytics Api
+	proto external GameStatsApi GetStatsApi();
 	/*!
 	Enable or disable the logging of FPS.
 	\param msec gap in milliseconds at which time the log/calculate FPS is calculated. <= 0 to disable it.

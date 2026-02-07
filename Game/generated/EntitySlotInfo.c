@@ -7,6 +7,20 @@ Do not modify, this script is generated
 //! Adds ability to attach an object to a slot
 class EntitySlotInfo: PointInfo
 {
+	private ref ScriptInvokerEntity AttachedEntityInvoker;
+	private ref ScriptInvokerEntity DetachedEntityInvoker;
+	ScriptInvokerEntity GetAttachedEntityInvoker()
+	{
+		if (!AttachedEntityInvoker)
+			AttachedEntityInvoker = new ScriptInvokerEntity();
+		return AttachedEntityInvoker;
+	}
+	ScriptInvokerEntity GetDetachedEntityInvoker()
+	{
+		if (!DetachedEntityInvoker)
+			DetachedEntityInvoker = new ScriptInvokerEntity();
+		return DetachedEntityInvoker;
+	}
 	//@TODO(Leo): find out why it is needed and refactor to cpp, everything is accessible here
 	//! Checks whether provided entity has parent and if so, tries to find a slot which it would belong to
 	//! \param entity The slotted entity to get parent slot info for									  
@@ -132,7 +146,7 @@ class EntitySlotInfo: PointInfo
 	// callbacks
 
 	//! Runs every time an entity is attached to the slot.
-	event void OnAttachedEntity(IEntity entity);
+	event void OnAttachedEntity(IEntity entity) { if (AttachedEntityInvoker) AttachedEntityInvoker.Invoke(entity); };
 	//! Runs every time an entity is detached from the slot.
-	event void OnDetachedEntity(IEntity entity);
+	event void OnDetachedEntity(IEntity entity) { if (DetachedEntityInvoker) DetachedEntityInvoker.Invoke(entity); };
 }

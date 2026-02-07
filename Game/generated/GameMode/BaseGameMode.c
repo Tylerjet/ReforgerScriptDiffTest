@@ -83,18 +83,20 @@ class BaseGameMode: GenericEntity
 
 	\param playerId PlayerId of victim player.
 	\param player Entity of victim player (if any).
+	\param killerEntity entity of the instigator. If killerEntity is null, you can use instigator.GetInstigatorEntity() if appropiate.
 	\param killer Entity of killer instigator (if any).
 
 	\return True to handle kill automatically (raise 'OnPlayerKilled'), false to not handle automatically (don't raise).
 	*/
-	event protected bool HandlePlayerKilled(int playerId, IEntity player, IEntity killer) { return true; };
+	event protected bool HandlePlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer) { return true; };
 	/*!
 	Called after a player gets killed (but only after 'SCR_HandlePlayerKilled' returns true).
 	\param playerId PlayerId of victim player.
 	\param player Entity of victim player if any.
+	\param killerEntity entity of the instigator. If killerEntity is null, you can use instigator.GetInstigatorEntity() if appropiate.
 	\param killer Entity of killer instigator if any.
 	*/
-	event protected void OnPlayerKilled(int playerId, IEntity player, IEntity killer);
+	event protected void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer);
 	/*!
 	When a controllable entity is spawned, this event is raised.
 	Controllable entity is such that has BaseControllerComponent and can be
@@ -107,9 +109,10 @@ class BaseGameMode: GenericEntity
 	Controllable entity is such that has BaseControllerComponent and can be
 	possessed either by a player, an AI or stay unpossessed.
 	\param entity Destroyed entity that raised this event
-	\param instigator Instigator entity that destroyed our victim
+	\param killerEntity entity of the instigator. If killerEntity is null, you can use instigator.GetInstigatorEntity() if appropiate.
+	\param instigator Instigator that destroyed our victim
 	*/
-	event protected void OnControllableDestroyed(IEntity entity, IEntity instigator) {};
+	event protected void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator instigator) {};
 	/*
 	Prior to a controllable entity being DELETED, this event is raised.
 	Controllable entity is such that has BaseControllerComponent and can be

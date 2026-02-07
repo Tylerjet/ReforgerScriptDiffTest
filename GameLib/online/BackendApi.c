@@ -252,31 +252,23 @@ class DSSessionCallback : Managed
 	void OnSaveFailed( string fileName )
 	{
 	}
-
 	/**
 	\brief Save Success event handling
 	*/
-	void OnSaveSuccess( string filename )
+	void OnSaveSuccess( string fileName )
 	{
 	}
 
 	/**
-	\brief Save Success event handling
-	\param iPlayerId - Player ID which was affected by ban event
-	\param triggered - If ban event was triggered
-	\param currentValue - Actual value of ban records
-	\param triggerValue - Ammount of ban records triggering ban
+	\brief Delete Fail event handling
 	*/
-	void OnBanEventResult( int iPlayerId, bool triggered, int currentValue, int triggerValue )
+	void OnDeleteFailed( string fileName )
 	{
 	}
-
 	/**
-	\brief Save Success event handling
-	\param iPlayerId - Player ID which was affected by ban event
-	\param sStatus - result of ban creation
+	\brief Delete Success event handling
 	*/
-	void OnBanCreateResult( int iPlayerId, string sStatus )
+	void OnDeleteSuccess( string fileName )
 	{
 	}
 
@@ -452,11 +444,6 @@ class DSSession
 	\brief ID of Scenario hosted on server
 	*/
 	proto native string ScenarioID();
-	
-	/**
-	\brief Set RCON processing structure
-	*/
-	proto native void SetRCONCommander(RCONCommander commander);
 }
 
 
@@ -540,7 +527,7 @@ class SaveTestCallback : DSSessionCallback
 		savePoint.OnLoad(); // print recieved message
 	}
 	
-	override void OnSaveSuccess( string filename )
+	override void OnSaveSuccess( string fileName )
 	{
 		Print("Success");
 	}
@@ -728,14 +715,6 @@ class BackendApi
 	*/
 	proto native float GetCommResponseTime();
 	/**
-	\brief Get current Http error-ratio in range <0 .. 1.0> for last few seconds, where 0.0 == all good or no comm, 1.0 == everything failed
-	*/
-	proto native float GetCommTelemetryCurrent();
-	/**
-	\brief Get current Http error-ratio in range <0 .. 1.0> for last minute, where 0.0 == all good or no comm, 1.0 == everything failed
-	*/
-	proto native float GetCommTelemetryOverall();
-	/**
 	\brief Get time in seconds since last successful request (limit is 1hr - does not count more)
 	*/
 	proto native float GetCommTimeLastSuccess();
@@ -834,11 +813,19 @@ class BackendApi
 		//Print( "[Backend] Failed to Proceed: " + step );
 	}
 
+	[Obsolete("Use GetPlayerIdentityId() instead.")]
+	string GetPlayerUID( int iPlayerId ) { return GetPlayerIdentityId(iPlayerId); }
+
 	/**
-	\brief Get player UID (Bohemia player UID)
-	\param iPlayerId Is Player Id used on player identity
+	\brief Get Player Identity ID by Player ID
+	\param iPlayerId Is id of player in session
 	*/
-	proto native string GetPlayerUID( int iPlayerId );
+	proto native string GetPlayerIdentityId(int iPlayerId);
+
+	/**
+	\brief Get Local Identity ID on client
+	*/
+	proto native string GetLocalIdentityId();
 
 	/**
 	\brief Return true if local platform data are to be used for authentication/ persistency of client (meaningless on server)
@@ -869,32 +856,6 @@ class BackendApi
 	\param iPlayerId Is Player Id used on player identity
 	*/
 	proto native void PlayerData( JsonApiStruct dataObject, int iPlayerId );
-
-	/**
-	\brief Record ban event for specific player Server-Side
-	\note For detailed explanation please consult documentation (wiki)
-	\param sKey Is type of violation
-	\param sReason Is Reason of ban event record
-	\param iPenalty Is penalty value - if reason and type combination with server configuration allows penalty
-	\param iPlayerId Is Player Id used on player identity
-	*/
-	proto native void PlayerBanEvent( string sKey, string sReason, int iPenalty, int iPlayerId );
-
-	/**
-	\brief Record ban event for specific player Server-Side
-	\note For detailed explanation please consult documentation (wiki)
-	\param sReason Is Reason of ban
-	\param iBanDuration Is Ban Duration value - how long will ban exist in seconds
-	\param iPlayerId Is Player Id used on player identity
-	*/
-	proto native void PlayerBanCreate( string sReason, int iBanDuration, int iPlayerId );
-
-	/**
-	\brief Provide list of active bans for local player
-	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
-	\param dataObject Is destination where response returns Json data which will be present after OnSuccess() is invoked in callback
-	*/
-	proto native void PlayerBanList(BackendCallback cb, ActiveBansObject dataObject);
 
 	/**
 	\brief Expand settings data upon defined structure, this is Server-Side only!
@@ -946,15 +907,29 @@ class BackendApi
 	/**
 	\brief Get target backend environment
 	*/
-	proto native string GetBackendEnv();
+	proto native owned string GetBackendEnv();
 	
 	
+	proto native bool GetRunningDSConfig(DSConfig config);
 	proto native bool LoadDSConfig(DSConfig config, string fileName);
 	proto native bool SaveDSConfig(DSConfig config, string fileName);
 	proto native void SetDefaultIpPort(DSConfig config);
 	proto native int GetAvailableConfigs(out notnull array<string> configs);
 	proto native int GetAvailableConfigPaths(out notnull array<string> configs);
 	proto native ServerConfigApi GetServerConfigApi();
+
+	//! Get Ban Service API
+	proto native BanServiceApi GetBanServiceApi();
+	
+	[Obsolete()]
+	void PlayerBanEvent( string sKey, string sReason, int iPenalty, int iPlayerId ) { Print("PlayerBanEvent() is obsolete", LogLevel.WARNING); }
+	[Obsolete("Use proper alternative in BanServiceApi")]
+	void PlayerBanCreate( string sReason, int iBanDuration, int iPlayerId ) { Print("PlayerBanCreate() is obsolete", LogLevel.WARNING); }
+	[Obsolete("Use proper alternative in BanServiceApi")]
+	void PlayerBansRemove( BackendCallback cb, notnull array<string> identityIds) { Print("PlayerBansRemove() is obsolete", LogLevel.WARNING); }
+	[Obsolete("Use proper alternative in BanServiceApi")]
+	void PlayerBanList(BackendCallback cb, ActiveBansObject dataObject) { Print("PlayerBanList() is obsolete", LogLevel.WARNING); }
+	
 	
 	/**
 	\brief Check if player is in list of admins defined in server config

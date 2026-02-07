@@ -11,9 +11,12 @@ class SCR_GameModeHealthSettings : ScriptComponent
 	
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Whether unconsciousness is allowed", category: "Game Mode")]
 	protected bool m_bPermitUnconsciousness;
+
+	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Whether using VON during unconsciousness is allowed", category: "Game Mode")]
+	protected bool m_bPermitUnconsciousVON;
 	
 	[Attribute(defvalue: "0.75", uiwidget: UIWidgets.Slider, desc: "How much will the character be slowed down when having tourniquetted leg", params: "0 1 0.001", precision: 3, category: "Game Mode")]
-	protected float m_fTourquettedLegMovementSlowdown;
+	protected float m_fTourniquettedLegMovementSlowdown;
 	
 	[Attribute(defvalue: "0.1", uiwidget: UIWidgets.Slider, desc: "Affects how much the bleeding is reduced", params: "0 1 0.001", precision: 3, category: "Game Mode")]
 	private float m_fTourniquetStrengthMultiplier;
@@ -100,6 +103,26 @@ class SCR_GameModeHealthSettings : ScriptComponent
 	void SetUnconsciousnessPermitted(bool permitted)
 	{
 		m_bPermitUnconsciousness = permitted;
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get rate of the attribute.
+	\return permitted - (true/false) True means that using VON while unconsciousness is enabled.
+	*/
+	bool IsUnconsciousVONPermitted()
+	{
+		return m_bPermitUnconsciousVON;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Set rate of the attribute.
+	\param permitted - (true/false) True means that VON is enabled while unconscious.
+	*/
+	void SetUnconsciousVONPermitted(bool permitted)
+	{
+		m_bPermitUnconsciousVON = permitted;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -107,9 +130,9 @@ class SCR_GameModeHealthSettings : ScriptComponent
 	Get rate of the attribute.
 	\return rate - (0.0-1.00) Higher numbers result in higher slowdown
 	*/
-	float GetTourquettedLegMovementSlowdown()
+	float GetTourniquettedLegMovementSlowdown()
 	{
-		return m_fTourquettedLegMovementSlowdown;
+		return m_fTourniquettedLegMovementSlowdown;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -117,9 +140,9 @@ class SCR_GameModeHealthSettings : ScriptComponent
 	Set rate of the attribute.
 	\param rate - (0.0-1.00) Higher numbers result in higher slowdown
 	*/
-	void SetTourquettedLegMovementSlowdown(float rate)
+	void SetTourniquettedLegMovementSlowdown(float rate)
 	{
-		m_fTourquettedLegMovementSlowdown = rate;
+		m_fTourniquettedLegMovementSlowdown = rate;
 	}
 	
 	//------------------------------------------------------------------------------------------------

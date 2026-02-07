@@ -1,15 +1,15 @@
 [EntityEditorProps(category: "GameScripted/Power", description: "This is the power pole entity.", color: "0 255 0 255", visible: false, dynamicBox: true)]
-class SCR_PowerPoleClass: GenericEntityClass
+class SCR_PowerPoleClass: PowerPoleEntityClass
 {
 };
 
 //------------------------------------------------------------------------------------------------
-class SCR_PowerPole : GenericEntity
+class SCR_PowerPole : PowerPoleEntity
 {
-	[Attribute(desc: "Slots of this power pole for connecting with other power poles.")]
+	[Attribute(desc: "Slots for connecting with other power poles", category: "Power Cable Slots")]
 	protected ref array<ref SCR_PowerPoleSlotBase> m_aSlots;
 
-	[Attribute(desc: "Draw debug shapes?")]
+	[Attribute(desc: "Draw debug shapes?", category: "Debug")]
 	protected bool m_bDrawDebugShapes;
 
 	protected ref array<ref Shape> m_aDebugShapes = {};

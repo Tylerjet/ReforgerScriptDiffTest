@@ -95,6 +95,3 @@ class SCR_LockContextComponent : AIComponent
 		m_aKeys = null;
 	}
 };
-
-
-

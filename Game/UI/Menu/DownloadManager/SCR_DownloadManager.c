@@ -14,6 +14,9 @@ class SCR_DownloadManagerClass: GenericEntityClass
 void ScriptInvoker_DownloadManagerAction(SCR_WorkshopItemActionDownload action);
 typedef func ScriptInvoker_DownloadManagerAction;
 
+void ScriptInvoker_DownloadManagerActionError(SCR_WorkshopItemActionDownload action, int reason);
+typedef func ScriptInvoker_DownloadManagerActionError;
+
 class SCR_DownloadManager : GenericEntity
 {
 	protected const int DOWNLOAD_STUCK_DELAY = 60; // Max time in which download needs to progress in seconds
@@ -45,9 +48,11 @@ class SCR_DownloadManager : GenericEntity
 	
 	protected ref ScriptInvoker<> Event_OnDownloadFail;
 	ref ScriptInvokerBase<ScriptInvoker_DownloadManagerAction> m_OnDownloadComplete = new ScriptInvokerBase<ScriptInvoker_DownloadManagerAction>();
-	ref ScriptInvokerBase<ScriptInvoker_DownloadManagerAction> m_OnDownloadFailed = new ScriptInvokerBase<ScriptInvoker_DownloadManagerAction>();
+	ref ScriptInvokerBase<ScriptInvoker_DownloadManagerActionError> m_OnDownloadFailed = new ScriptInvokerBase<ScriptInvoker_DownloadManagerActionError>();
+	protected ref ScriptInvokerBase<ScriptInvoker_ActionDownloadFullStorage> m_OnFullStorageError;
 	ref ScriptInvokerBase<ScriptInvoker_DownloadManagerAction> m_OnDownloadCanceled = new ScriptInvokerBase<ScriptInvoker_DownloadManagerAction>();
-	ref ScriptInvoker m_OnDownloadQueueCompleted = new ScriptInvoker();
+	protected ref ScriptInvokerVoid m_OnDownloadQueueCompleted
+	protected ref ScriptInvokerVoid m_OnAllDownloadsStopped;
 	
 	//------------------------------------------------------------------------------------------------
 	void InvokeEventOnDownloadFail()
@@ -65,6 +70,32 @@ class SCR_DownloadManager : GenericEntity
 		return Event_OnDownloadFail;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerBase<ScriptInvoker_ActionDownloadFullStorage> GetOnFullStorageError()
+	{
+		if (!m_OnFullStorageError)
+			m_OnFullStorageError = new ScriptInvokerBase<ScriptInvoker_ActionDownloadFullStorage>();
+		
+		return m_OnFullStorageError;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnDownloadQueueCompleted()
+	{
+		if (!m_OnDownloadQueueCompleted)
+			m_OnDownloadQueueCompleted = new ScriptInvokerVoid();
+		
+		return m_OnDownloadQueueCompleted;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnAllDownloadsStopped()
+	{
+		if (!m_OnAllDownloadsStopped)
+			m_OnAllDownloadsStopped = new ScriptInvokerVoid();
+		
+		return m_OnAllDownloadsStopped;
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	// 				P U B L I C   A P I 
@@ -206,6 +237,45 @@ class SCR_DownloadManager : GenericEntity
 		}
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	// Given an array of required items, returns all those queued items that are outside of it, including mismatching versions
+	array<ref SCR_WorkshopItemActionDownload> GetUnrelatedDownloads(array<ref SCR_WorkshopItem> requiredItems)
+	{
+		array<ref SCR_WorkshopItemActionDownload> unrelatedDownloads = {};
+	
+		foreach (SCR_WorkshopItemActionDownload action : m_aDownloadQueue)
+		{
+			if (!IsDownloadingActionRequired(action, requiredItems))
+				unrelatedDownloads.Insert(action);
+		}
+		
+		return unrelatedDownloads;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	// Given an array of required items, returns true if the input action's item is part of it and is the correct version
+	bool IsDownloadingActionRequired(SCR_WorkshopItemActionDownload action, array<ref SCR_WorkshopItem> requiredItems)
+	{
+		SCR_WorkshopItem item = action.GetWorkshopItem();
+		if (!item)
+			return true;
+		
+		bool required;
+		bool sameId;
+		bool sameVersion;		
+		
+		foreach (SCR_WorkshopItem requiredItem : requiredItems)
+		{	
+			sameId = requiredItem.GetId() == item.GetId();
+			sameVersion = requiredItem.GetDependency().GetVersion() == action.GetTargetRevision().GetVersion();
+			required = sameId && sameVersion;
+
+			if (required)
+				return true;
+		}
+		
+		return false;	
+	}
 	
 	// --- Helper functions for generic download functionality ---
 	
@@ -510,17 +580,10 @@ class SCR_DownloadManager : GenericEntity
 		for (int i = m_aDownloadQueue.Count() - 1; i >= 0; i--)
 		{
 			SCR_WorkshopItemActionDownload action = m_aDownloadQueue[i];
-			
+
 			if (action.IsCanceled() || action.IsFailed())
-			{
-				m_aDownloadQueue.Remove(i);
-				
-				// Remove canceled and failed from size count 
-				m_fDownloadQueueSize -= action.GetSizeBytes();
-				m_fDownloadedSize -= action.GetDownloadSize();
-			}
-			
-			if (action.IsPaused())
+				ClearUnfinishedAction(action);
+			else if (action.IsPaused()) 
 				pausedCount++;
 		}
 		
@@ -539,7 +602,8 @@ class SCR_DownloadManager : GenericEntity
 			m_fDownloadedSize = 0;
 			m_bDownloadsPaused = false;
 
-			m_OnDownloadQueueCompleted.Invoke();
+			if (m_OnDownloadQueueCompleted)
+				m_OnDownloadQueueCompleted.Invoke();
 			
 			m_fNoDownloadProgressTimer = 0;
 		}
@@ -602,6 +666,7 @@ class SCR_DownloadManager : GenericEntity
 		action.GetOnDownloadProgress().Insert(OnDownloadProgress);
 		action.m_OnCompleted.Insert(Callback_OnDownloadCompleted);
 		action.m_OnFailed.Insert(Callback_OnFailed);
+		action.GetOnFullStorageError().Insert(Callback_OnFullStorageError);
 		action.m_OnCanceled.Insert(Callback_OnCanceled);
 		
 		m_fNoDownloadProgressTimer = 0;
@@ -638,15 +703,31 @@ class SCR_DownloadManager : GenericEntity
 		m_OnDownloadComplete.Invoke(action);
 	}
 	
+	protected const int ERROR_FULL_STORAGE = 19;
+	
 	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnFailed(SCR_WorkshopItemActionDownload action)
+	//! Call on downloading fail to show download manager dialog with problematic
+	protected void Callback_OnFailed(SCR_WorkshopItemActionDownload action, int reason)
 	{	
 		m_aFailedDownloads.Insert(action);
 		
 		if (!SCR_DownloadManager_Dialog.IsOpened())
 			SCR_DownloadManager_Dialog.Create();
 		
-		m_OnDownloadFailed.Invoke(action);
+		// Prevent error on full storage error
+		if (reason == ERROR_FULL_STORAGE)
+			return;
+		
+		// Generic error 
+		m_OnDownloadFailed.Invoke(action, reason);
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	//! Call on full addons storage reached to display storage limit reached error 
+	protected void Callback_OnFullStorageError(SCR_WorkshopItemActionDownload action, float size)
+	{	
+		if (m_OnFullStorageError)
+			m_OnFullStorageError.Invoke(action, size);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -701,6 +782,19 @@ class SCR_DownloadManager : GenericEntity
 	{
 		sequence.GetOnReady().Remove(OnDownloadAddonsReady);
 		//sequence.
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void ClearUnfinishedAction(SCR_WorkshopItemActionDownload action)
+	{
+		m_aDownloadQueue.RemoveItem(action);
+					
+		// Remove canceled and failed from size count 
+		m_fDownloadQueueSize -= action.GetSizeBytes();
+		m_fDownloadedSize -= action.GetDownloadSize();
+		
+		if (m_OnAllDownloadsStopped && m_aDownloadQueue.IsEmpty())
+			m_OnAllDownloadsStopped.Invoke();
 	}
 	
 	//-----------------------------------------------------------------------------------------------

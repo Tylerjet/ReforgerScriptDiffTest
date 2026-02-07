@@ -177,18 +177,20 @@ class SCR_RequestedTask : SCR_BaseTask
 		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
 		
 		if (comp)
-			comp.AwardXP(assignee.GetControlledEntity(), m_AssigneeXPReward);
+			comp.AwardXP(SCR_BaseTaskExecutor.GetTaskExecutorID(assignee), m_AssigneeXPReward);
 		
 		super.Finish(showMsg);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnRequesterKilled()
+	void RequesterDied()
 	{
-		if (!GetTaskManager() || GetTaskManager().IsProxy())
+		SCR_BaseTaskManager taskManager = GetTaskManager();
+		
+		if (!taskManager || taskManager.IsProxy())
 			return;
 		
-		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(taskManager.FindSupportEntity(SCR_BaseTaskSupportEntity));
 		if (!supportEntity)
 			return;
 		
@@ -220,7 +222,6 @@ class SCR_RequestedTask : SCR_BaseTask
 	void SetRequesterID(int requesterID)
 	{
 		m_iRequesterID = requesterID;
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.FRAME);
 	}
 	
@@ -282,7 +283,7 @@ class SCR_RequestedTask : SCR_BaseTask
 		if (!characterControllerComponent)
 			return;
 		
-		characterControllerComponent.m_OnPlayerDeath.Insert(OnRequesterKilled);
+		characterControllerComponent.GetOnPlayerDeath().Insert(RequesterDied);
 		
 		SCR_BaseTaskExecutor localTaskExecutor = SCR_BaseTaskExecutor.GetLocalExecutor();
 		if (localTaskExecutor == requester)
@@ -322,8 +323,6 @@ class SCR_RequestedTask : SCR_BaseTask
 	override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
-		
-		SetFlags(EntityFlags.ACTIVE, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -332,7 +331,6 @@ class SCR_RequestedTask : SCR_BaseTask
 		if (SCR_Global.IsEditMode(this))
 			return;
 		
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.FRAME);
 	}
 

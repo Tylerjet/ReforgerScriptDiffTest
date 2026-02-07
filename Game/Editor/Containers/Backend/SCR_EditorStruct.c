@@ -10,6 +10,15 @@ class SCR_EditorStruct : SCR_JsonApiStruct
 	[Attribute(desc: "Array of attributes evaluated during saving. Can include global as well as entity attributes.")]
 	protected ref SCR_EditorAttributeList m_AttributeList;
 	
+	[Attribute("1", desc: "Enable to save the list of playable factions and their attributes.")]
+	protected bool m_bSaveFactions;
+	
+	[Attribute("1", desc: "Enable to save scenario attributes like weather or time of day.")]
+	protected bool m_bSaveMissionAttributes;
+	
+	[Attribute(uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(EEditableEntityFlag), desc: "When defined, only entities with *all* of these flags will be saved.\nLeave empty to save all interactive entities.")]
+	protected EEditableEntityFlag m_eRequiredEntityFlags;
+	
 	//protected string m_sBuildVersion;
 	protected ref SCR_EditorMetaStruct m_Meta = new SCR_EditorMetaStruct();
 	protected ref array<ref SCR_EditableFactionStruct> m_aFactions = {};
@@ -22,10 +31,16 @@ class SCR_EditorStruct : SCR_JsonApiStruct
 	override void Log()
 	{
 		Print("--- SCR_EditorStruct ------------------------");
+		
 		m_Meta.Log();
-		SCR_EditableFactionStruct.LogFactions(m_aFactions, m_AttributeList);
 		SCR_EditableEntityStruct.LogEntities(m_aEntities, m_AttributeList);
-		SCR_EditorAttributeStruct.LogAttributes(m_aAttributes, m_AttributeList);
+		
+		if (m_bSaveFactions)
+			SCR_EditableFactionStruct.LogFactions(m_aFactions, m_AttributeList);
+		
+		if (m_bSaveMissionAttributes)
+			SCR_EditorAttributeStruct.LogAttributes(m_aAttributes, m_AttributeList);
+		
 		Print("---------------------------------------------");
 	}
 	/*!
@@ -33,12 +48,14 @@ class SCR_EditorStruct : SCR_JsonApiStruct
 	*/
 	override bool Serialize()
 	{
-		//m_sBuildVersion = GetGame().GetBuildVersion();
-		
 		m_Meta.Serialize();
-		SCR_EditableFactionStruct.SerializeFactions(m_aFactions, m_AttributeList);
-		SCR_EditableEntityStruct.SerializeEntities(m_aEntities, m_AttributeList);
-		SCR_EditorAttributeStruct.SerializeAttributes(m_aAttributes, m_AttributeList, GetGame().GetGameMode());
+		SCR_EditableEntityStruct.SerializeEntities(m_aEntities, m_AttributeList, m_eRequiredEntityFlags);
+		
+		if (m_bSaveFactions)
+			SCR_EditableFactionStruct.SerializeFactions(m_aFactions, m_AttributeList);
+		
+		if (m_bSaveMissionAttributes)
+			SCR_EditorAttributeStruct.SerializeAttributes(m_aAttributes, m_AttributeList, GetGame().GetGameMode());
 		
 		Print("SUCCESS: SCR_EditorStruct.SaveEditor()", LogLevel.VERBOSE);
 		return true;
@@ -48,21 +65,31 @@ class SCR_EditorStruct : SCR_JsonApiStruct
 	*/
 	override bool Deserialize()
 	{
-		/*
-		if (m_sBuildVersion != GetGame().GetBuildVersion())
-		{
-			Print(string.Format("Cannot load editor save due to incompatible versions! Saved is %1, but the current is %2", m_sBuildVersion, GetGame().GetBuildVersion()), LogLevel.ERROR);
-			return false;
-		}
-		*/
-		
 		m_Meta.Deserialize();
-		SCR_EditableFactionStruct.DeserializeFactions(m_aFactions, m_AttributeList);
 		SCR_EditableEntityStruct.DeserializeEntities(m_aEntities, m_AttributeList);
-		SCR_EditorAttributeStruct.DeserializeAttributes(m_aAttributes, m_AttributeList, GetGame().GetGameMode());
+		
+		if (m_bSaveFactions)
+			SCR_EditableFactionStruct.DeserializeFactions(m_aFactions, m_AttributeList);
+		
+		if (m_bSaveMissionAttributes)
+			SCR_EditorAttributeStruct.DeserializeAttributes(m_aAttributes, m_AttributeList, GetGame().GetGameMode());
 		
 		Print("SUCCESS: SCR_EditorStruct.LoadEditor()", LogLevel.VERBOSE);
 		return true;
+	}
+	/*!
+	Clear cached data.
+	*/
+	override void ClearCache()
+	{
+		m_Meta.ClearCache();
+		m_aEntities.Clear();
+		
+		if (m_bSaveFactions)
+			m_aFactions.Clear();
+		
+		if (m_bSaveMissionAttributes)
+			m_aAttributes.Clear();
 	}
 	/*!
 	Delete all entities saved in the struct. Used only for development!
@@ -73,10 +100,13 @@ class SCR_EditorStruct : SCR_JsonApiStruct
 	}
 	void SCR_EditorStruct()
 	{
-		//RegV("m_sBuildVersion");
 		RegV("m_Meta");
-		RegV("m_aFactions");
 		RegV("m_aEntities");
-		RegV("m_aAttributes");
+		
+		if (m_bSaveFactions)
+			RegV("m_aFactions");
+		
+		if (m_bSaveMissionAttributes)
+			RegV("m_aAttributes");
 	}
 };

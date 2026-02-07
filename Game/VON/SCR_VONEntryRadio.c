@@ -131,6 +131,8 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		int currentFreq = m_RadioTransceiver.GetFrequency();
 		
 		array<SCR_AIGroup> groups = groupManager.GetPlayableGroupsByFaction(playerFaction);
+		if (!groups || groups.IsEmpty())
+			return;
 
 		int newFreq;
 		

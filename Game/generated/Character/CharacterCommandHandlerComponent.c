@@ -22,11 +22,17 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external void AlignNewTurns();
 	proto external bool IsVehicleSwitchingSeats();
 	proto external bool IsWeaponADSAllowed(bool allowSprint);
+	proto external bool IsSprintingAllowed();
 	proto external bool IsItemInspectionAllowed();
 	proto external bool IsWeaponInspectionAllowed();
 	proto external bool IsWeaponDeploymentAllowed();
 	proto external bool IsProneStanceTransition();
-	proto external vector GetRelativeWaterLevel();
+	proto external bool IsUsingItem();
+	proto external bool IsItemActionLoopTag();
+	// Cancel use immediately (no out animation), hide gadget.
+	proto external void CancelItemUse();
+	// Finish use (play out animation), keep gadget if possible.
+	proto external void FinishItemUse();
 	proto external bool WasMovement();
 	proto external bool WasRotation();
 	proto external CharacterCommandFall		StartCommand_Fall(float pYVelocity);
@@ -35,9 +41,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external CharacterCommandMove		StartCommand_Move();
 	proto external CharacterCommandClimb	StartCommand_Climb(CharacterCommandClimbResult pClimbResult, int pType);
 	proto external CharacterCommandVehicle	StartCommand_Vehicle(BaseCompartmentSlot pCompartment);
-	proto external CharacterCommandDeath	StartCommand_Death(float direction);
 	proto external CharacterCommandSwim		StartCommand_Swim();
-	proto external CharacterCommandUnconscious	StartCommand_Unconscious();
 	proto external CharacterCommandDamageFullBody StartCommand_DamageFullBody(float direction, int pType);
 	proto external CharacterCommandSlide	StartCommand_Slide();
 	//----------------------------------------------------------------------------
@@ -49,7 +53,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external CharacterCommandClimb	GetCommandClimb();
 	proto external CharacterCommandVehicle	GetCommandVehicle();
 	proto external CharacterCommandLadder	GetCommandLadder();
-	proto external CharacterCommandDeath	GetCommandDeath();
+	proto external CharacterCommandDeath	GetCommandModifier_Death();
 	proto external CharacterCommandUnconscious	GetCommandModifier_Unconscious();
 	proto external CharacterCommandMelee	GetCommandModifier_Melee();
 	proto external CharacterCommandSwim		GetCommandSwim();

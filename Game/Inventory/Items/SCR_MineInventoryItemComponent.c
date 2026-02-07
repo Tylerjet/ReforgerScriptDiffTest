@@ -7,6 +7,9 @@ class SCR_MineInventoryItemComponentClass : SCR_PlaceableInventoryItemComponentC
 //------------------------------------------------------------------------------------------------
 class SCR_MineInventoryItemComponent : SCR_PlaceableInventoryItemComponent
 {
+	
+	protected static ref ScriptInvokerInt s_onMinePlaced;
+	
 	//------------------------------------------------------------------------------------------------
 	override void PlacementDone(notnull IEntity user)
 	{
@@ -17,6 +20,9 @@ class SCR_MineInventoryItemComponent : SCR_PlaceableInventoryItemComponent
 			return;
 		
 		pressureTrigger.SetUser(user);
+		
+		if (s_onMinePlaced)
+			s_onMinePlaced.Invoke(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -27,5 +33,14 @@ class SCR_MineInventoryItemComponent : SCR_PlaceableInventoryItemComponent
 			return false;
 		
 		return triggerComponent.IsActivated();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerInt GetOnMinePlaced()
+	{
+		if (!s_onMinePlaced)
+			s_onMinePlaced = new ScriptInvokerInt();
+		
+		return s_onMinePlaced;
 	}
 };

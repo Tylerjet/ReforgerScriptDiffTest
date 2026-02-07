@@ -142,8 +142,6 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 			}
 		
 		}
-		
-		m_DropdownWidget.OpenDropdown(selected);
 	}
 	
 	protected void SetSiblingMode(int relIndex)
@@ -225,7 +223,6 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 		
 		m_DropdownWidget.GetOnChanged().Insert(OnModeSelected);
 		m_DropdownWidget.GetOnOpened().Insert(OnDropdownOpen);
-		m_DropdownWidget.GetOnClosed().Insert(OnDropdownClosed);
 		
 		array<SCR_EditorModeEntity> modeEntities = new array<SCR_EditorModeEntity>;
 		int modesCount = m_EditorManager.GetModeEntities(modeEntities);

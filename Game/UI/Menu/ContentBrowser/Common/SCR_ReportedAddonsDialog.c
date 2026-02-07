@@ -31,7 +31,7 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	// Widgets 
 	protected TextWidget m_wTxtType;
 	protected TextWidget m_wTxtMessage;
-	protected SCR_NavigationButtonComponent m_NavCancelReport;
+	protected SCR_InputButtonComponent m_NavCancelReport;
 	protected Widget m_wList;
 	
 	protected SCR_LoadingOverlayDialog m_LoadingOvelay;
@@ -68,7 +68,7 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 		
 		FocusTopLine();
 		
-		SCR_NavigationButtonComponent button = FindButton(BUTTON_CANCEL_REPORT);
+		SCR_InputButtonComponent button = FindButton(BUTTON_CANCEL_REPORT);
 		if (button)
 		{
 			button.m_OnActivated.Clear();

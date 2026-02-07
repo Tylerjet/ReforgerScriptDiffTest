@@ -29,6 +29,7 @@ class BaseWeaponManagerComponent: GameComponent
 	proto external WeaponSlotComponent GetCurrentSlot();
 	proto external GrenadeSlotComponent GetCurrentGrenadeSlot();
 	proto external SightsComponent GetCurrentSights();
+	proto external int GetCurrentSightsIndex();
 	/*!
 	Select the weapon passed by the parameter. Returns true if the weapon has been selected.
 	*IMPORTANT* This is not synchronized in multiplayer, it will only replicate during streams-in correctly. You will need to implement your RPC to send this command to every client.

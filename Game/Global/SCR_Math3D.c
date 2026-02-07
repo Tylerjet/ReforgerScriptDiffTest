@@ -1,8 +1,4 @@
-//------------------------------------------------------------------------------------------------
-//! SCR_Math3D Class
-//!
 //! Contains various scripted 3D math functions
-//------------------------------------------------------------------------------------------------
 class SCR_Math3D
 {
 	//------------------------------------------------------------------------------------------------
@@ -35,19 +31,22 @@ class SCR_Math3D
 		float magnitude = diff.Length();
 		if (magnitude <= maxDistanceDelta || magnitude == 0)
 			return target;
+
 		return start + diff / magnitude * maxDistanceDelta;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Ensures the angles are in range <-180; 180>
+	//! \code
+	//! Print(SCR_Math3D.FixEulerVector180({ 270, 45, 900 }), LogLevel.NORMAL); // { -90, 45, 180 }
+	//! \code
+	//! \return angles in range -180..+180
 	static vector FixEulerVector180(vector angles)
 	{
-		for (int a = 0; a < 3; a++)
+		for (int i = 0; i < 3; i++)
 		{
-			while (angles[a] < -180)
-				angles[a] = angles[a] + 360;
-			while (angles[a] > 180)
-				angles[a] = angles[a] - 360;
+			if (angles[i] < -180 || angles[i] > 180)
+				angles[i] = Math.Repeat(180 + angles[i], 360) - 180;
 		}
 
 		return angles;
@@ -164,7 +163,7 @@ class SCR_Math3D
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Check if two matrices are equal.
+	Check if two matrices are equal
 	\param matrixA
 	\param matrixB
 	\return True when the matrices are equal
@@ -179,7 +178,7 @@ class SCR_Math3D
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Check if matrix is empty.
+	Check if matrix is empty
 	\param matrix
 	\return True when all matrix vectors are zero
 	*/
@@ -193,7 +192,7 @@ class SCR_Math3D
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Check if matrix is identity matrix.
+	Check if matrix is identity matrix (right, up, forward, zero vectors)
 	\param matrix
 	\return True when identity matrix
 	*/
@@ -207,7 +206,10 @@ class SCR_Math3D
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Return smaller value from each vector.
+	Return the smallest from each vector value
+	\code
+	Print(SCR_Math3D.Max({ 0, 2, 10 }, { -5, 5, 8 }, LogLevel.NORMAL); // { -5, 2, 8 }
+	\code
 	\param vector A
 	\param vector B
 	\return Vector
@@ -223,7 +225,10 @@ class SCR_Math3D
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Return larger value from each vector.
+	Return the largest from each vector value
+	\code
+	Print(SCR_Math3D.Max({ 0, 2, 10 }, { -5, 5, 8 }, LogLevel.NORMAL); // { 0, 5, 10 }
+	\code
 	\param vector A
 	\param vector B
 	\return Vector
@@ -238,54 +243,141 @@ class SCR_Math3D
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Scale direction elements of transformation matrix (position will remain unchanged).
-	\param[out] transform Affected matrix
-	\param scale Scaling coefficient
-	*/
-	[Obsolete("Use Math3D.MatrixScale")]
-	static void ScaleMatrix(out vector transform[3], float scale)
+	//! Gets the shortest 3D distance between a point and a spline
+	//! \param points array of all points forming the spline, minimum 1 point
+	//! \param point point that is being checked
+	//! \return distance from spline, -1 if no points are provided
+	static float GetDistanceFromSpline(notnull array<vector> points, vector point)
 	{
-		if (scale == 1)
-			return;
+		int count = points.Count();
+		if (count < 1)
+			return -1;
 
-		transform[0] = transform[0] * scale;
-		transform[1] = transform[1] * scale;
-		transform[2] = transform[2] * scale;
-	}
+		if (count == 1)
+			return vector.Distance(point, points[0]);
 
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Normalize direction elements of transformation matrix (position will remain unchanged).
-	\param[out] transform Affected matrix
-	*/
-	[Obsolete("Use Math3D.MatrixNormalize")]
-	static void NormalizeMatrix(out vector transform[3])
-	{
-		transform[0] = transform[0].Normalized();
-		transform[1] = transform[1].Normalized();
-		transform[2] = transform[2].Normalized();
-	}
+		float tempDistanceSq;
+		vector segmentStart = points[0];
+		float minDistanceSq = vector.DistanceSq(point, segmentStart);
 
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Gets lowest distance from the point to a specified spline
-	\param points Array of all points forming the spline
-	\param splineEntity Entity of the spline
-	\param otherPoint Point that is being checked
-	\return float Distance from spline
-	*/
-	static float GetDistanceFromSpline(notnull array<vector> points, notnull ShapeEntity splineEntity, vector otherPoint)
-	{
-		float minDistance = float.MAX;
-		float distance;
-		for (int i = points.Count() - 2; i >= 0; i--)
+		foreach (int i, vector segmentEnd : points)
 		{
-			distance = Math3D.PointLineSegmentDistance(otherPoint, splineEntity.CoordToParent(points[i]), splineEntity.CoordToParent(points[i+1]));
-			if (distance < minDistance)
-				minDistance = distance;
+			if (i == 0)
+				continue;
+
+			tempDistanceSq = Math3D.PointLineSegmentDistanceSqr(point, segmentStart, segmentEnd);
+			if (tempDistanceSq < minDistanceSq)
+				minDistanceSq = tempDistanceSq;
+
+			segmentStart = segmentEnd;
 		}
-		return minDistance;
+
+		return Math.Sqrt(minDistanceSq);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Gets the shortest 2D distance between a point and a spline
+	//! \param points array of all points forming the spline, minimum 1 point
+	//! \param point point that is being checked
+	//! \return distance from spline, -1 if no points are provided
+	static float GetDistanceFromSplineXZ(notnull array<vector> points, vector point)
+	{
+		int count = points.Count();
+		if (count < 1)
+			return -1;
+
+		if (count == 1)
+			return vector.DistanceXZ(point, points[0]);
+
+		float tempDistanceSq;
+		vector segmentStart = points[0];
+		float minDistanceSq = vector.DistanceSqXZ(point, segmentStart);
+		segmentStart[1] = 0;	// 2D conversion
+		point[1] = 0;			// 2D conversion
+
+		foreach (int i, vector segmentEnd : points)
+		{
+			if (i == 0)
+				continue;
+
+			segmentEnd[1] = 0;
+
+			tempDistanceSq = Math3D.PointLineSegmentDistanceSqr(point, segmentStart, segmentEnd);
+			if (tempDistanceSq < minDistanceSq)
+				minDistanceSq = tempDistanceSq;
+
+			segmentStart = segmentEnd;
+		}
+
+		return Math.Sqrt(minDistanceSq);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if point is within provided 3D distance from the shape - faster than getting distance then comparing
+	//! \param points the spline's points
+	//! \param point the position to check
+	//! \param distance the checked distance (should be positive)
+	//! \return true if provided pos is <= distance from diff outline, false otherwise
+	static bool IsPointWithinSplineDistance(notnull array<vector> points, vector point, float distance)
+	{
+		int count = points.Count();
+		if (count < 1)
+			return -1;
+
+		if (count == 1)
+			return vector.Distance(point, points[0]) <= distance;
+
+		distance *= distance; // variable reuse
+		vector segmentStart = points[0];
+
+		foreach (int i, vector segmentEnd : points)
+		{
+			if (i == 0)
+				continue;
+
+			if (Math3D.PointLineSegmentDistanceSqr(point, segmentStart, segmentEnd) < distance)
+				return true;
+
+			segmentStart = segmentEnd;
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check if point is within provided 2D distance from the shape - faster than getting distance then comparing
+	//! \param points the spline's points
+	//! \param point the position to check
+	//! \param distance the checked distance (should be positive)
+	//! \return true if provided pos is <= distance from diff outline, false otherwise
+	static bool IsPointWithinSplineDistanceXZ(notnull array<vector> points, vector point, float distance)
+	{
+		int count = points.Count();
+		if (count < 1)
+			return -1;
+
+		if (count == 1)
+			return vector.DistanceXZ(point, points[0]) <= distance;
+
+		distance *= distance; // variable reuse
+		vector segmentStart = points[0];
+		segmentStart[1] = 0;	// 2D conversion
+		point[1] = 0;			// 2D conversion
+
+		foreach (int i, vector segmentEnd : points)
+		{
+			if (i == 0)
+				continue;
+
+			segmentEnd[1] = 0;	// 2D conversion
+
+			if (Math3D.PointLineSegmentDistanceSqr(point, segmentStart, segmentEnd) < distance)
+				return true;
+
+			segmentStart = segmentEnd;
+		}
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -372,10 +464,9 @@ class SCR_Math3D
 	*/
 	static vector ClampMagnitude(vector v, float magnitude)
 	{
-		float sqrLength = v.LengthSq();
-		if (sqrLength > magnitude * magnitude)
+		if (v.LengthSq() > magnitude * magnitude)
 			return v.Normalized() * magnitude;
 
 		return v;
 	}
-};
+}

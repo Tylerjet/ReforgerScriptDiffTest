@@ -8,6 +8,7 @@ class SCR_ScenarioFrameworkTriggerCountdownDisplay : SCR_InfoDisplayExtended
 	protected float m_fTempTimeSlice;
 	protected float m_fActivationCountdownTimer;
 	protected float m_fTempWaitTime;
+	protected float m_fMinimumPlayersNeededPercentage;
 
 	protected string m_sPlayerActivationNotificationTitle;
 	protected Widget m_wInfoOverlay;
@@ -82,7 +83,7 @@ class SCR_ScenarioFrameworkTriggerCountdownDisplay : SCR_InfoDisplayExtended
 
 	//------------------------------------------------------------------------------------------------
 	//! Handles if HUD should be enabled or disabled
-	void RetrieveTriggerInfo(float activationCountdownTimer, float tempWaitTime, int playersCountByFactionInside, int playersCountByFaction, string playerActivationNotificationTitle, bool triggerConditionsStatus)
+	void RetrieveTriggerInfo(float activationCountdownTimer, float tempWaitTime, int playersCountByFactionInside, int playersCountByFaction, string playerActivationNotificationTitle, bool triggerConditionsStatus, float minimumPlayersNeededPercentage)
 	{
 		m_bTriggerConditionsStatus = triggerConditionsStatus;
 		m_iPlayersCountByFactionInside = playersCountByFactionInside;
@@ -90,6 +91,7 @@ class SCR_ScenarioFrameworkTriggerCountdownDisplay : SCR_InfoDisplayExtended
 		m_fActivationCountdownTimer = activationCountdownTimer;
 		m_fTempWaitTime = tempWaitTime;
 		m_sPlayerActivationNotificationTitle = playerActivationNotificationTitle;
+		m_fMinimumPlayersNeededPercentage = minimumPlayersNeededPercentage;
 
 		HandleHUD();
 	}
@@ -110,8 +112,8 @@ class SCR_ScenarioFrameworkTriggerCountdownDisplay : SCR_InfoDisplayExtended
 	protected void UpdateHUD()
 	{
 		m_fTempTimeSlice = 0;
-		string title = string.Format(m_sPlayerActivationNotificationTitle, m_iPlayersCountByFactionInside, m_iPlayersCountByFaction);
-		string formattedTitle = string.Format(WidgetManager.Translate("<color rgba=\"226,168,80,255\">%1</color>", title));
+		string title = string.Format(WidgetManager.Translate(m_sPlayerActivationNotificationTitle), m_iPlayersCountByFactionInside, Math.Ceil(m_iPlayersCountByFaction * m_fMinimumPlayersNeededPercentage));
+		string formattedTitle = string.Format("<color rgba=\"226,168,80,255\">%1</color>", title);
 
 		if (!m_bTriggerConditionsStatus)
 		{
@@ -126,10 +128,16 @@ class SCR_ScenarioFrameworkTriggerCountdownDisplay : SCR_InfoDisplayExtended
 			return;
 		}
 
-		string shownTime = SCR_Global.GetTimeFormatting(m_fTempWaitTime, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);
+		string shownTime = SCR_FormatHelper.GetTimeFormatting(m_fTempWaitTime, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);
 		m_wCountdown.SetText(shownTime);
 
 		m_wFlavour.SetText(formattedTitle);
 		ShowHUD(true);
+		
+		if (m_fTempWaitTime <= 0)
+		{
+			ShowHUD(false);
+			m_bIsEnabled = false;
+		}
 	}
 };

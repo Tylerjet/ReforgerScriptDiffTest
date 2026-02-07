@@ -15,6 +15,8 @@ Emitter param enumeration for GetParam and SetParam methods.
 enum EmitterParam
 {
 	//! Vector3
+	SHAPE_SIZE,
+	//! Vector3
 	CONEANGLE,
 	//! Vector3
 	EMITOFFSET,
@@ -28,6 +30,8 @@ enum EmitterParam
 	AVELOCITY,
 	//! Float
 	SIZE,
+	//! Float
+	SIZE_RND,
 	//! Float
 	STRETCH,
 	//! Bool

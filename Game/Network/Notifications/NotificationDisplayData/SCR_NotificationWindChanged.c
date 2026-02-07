@@ -20,10 +20,9 @@ class SCR_NotificationWindChanged : SCR_NotificationPlayer
 		if (!GetPlayerName(playerID, playerName))
 			return string.Empty;
 		
-		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		SCR_WindDirectionInfo windDirectionInfo;
-		
-		
 		if (weatherManager && weatherManager.GetWindDirectionInfoFromIndex(windDirectionIndex, windDirectionInfo))
 			windDirection = windDirectionInfo.GetUIInfo().GetName();
 		

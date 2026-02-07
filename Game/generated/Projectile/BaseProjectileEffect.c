@@ -35,12 +35,11 @@ class BaseProjectileEffect: ScriptAndConfig
 	\param pHitEntity Damaged entity
 	\param outMat Hit position/direction/normal
 	\param damageSource Projectile
-	\param damageSourceGunner Damage source instigator
-	\param damageSourceParent Damage source parent entity (soldier / vehicle)
+	\param Instigator Instigator of the damage
 	\param colliderName Collider name if exist otherwise empty
 	\param speed Projectile velocity in m/s
 	*/
-	event void OnEffect(IEntity pHitEntity, inout vector outMat[3], IEntity damageSource, IEntity damageSourceGunner, IEntity damageSourceParent, string colliderName, float speed);
+	event void OnEffect(IEntity pHitEntity, inout vector outMat[3], IEntity damageSource, notnull Instigator instigator, string colliderName, float speed);
 	/*!
 	Called during EOnFrame.
 	\param owner Entity this component is attached to.

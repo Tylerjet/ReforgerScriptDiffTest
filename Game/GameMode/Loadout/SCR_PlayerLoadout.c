@@ -8,9 +8,6 @@ class SCR_PlayerLoadout : SCR_BasePlayerLoadout
 	[Attribute("", UIWidgets.ResourceNamePicker, params: "et")]
 	ResourceName m_sLoadoutResource;
 	
-	[Attribute("", UIWidgets.ResourceNamePicker, params: "et")]
-	ResourceName m_sPreviewLoadout;	
-	
 	[Attribute("", UIWidgets.ResourceNamePicker, params: "edds")]
 	ResourceName m_sLoadoutImage;
 	
@@ -32,13 +29,4 @@ class SCR_PlayerLoadout : SCR_BasePlayerLoadout
 	{
 		return m_sLoadoutName;
 	}
-
-	//------------------------------------------------------------------------------------------------	
-	override ResourceName GetLoadoutPreviewResource()
-	{
-		if (m_sPreviewLoadout.IsEmpty())
-			return GetLoadoutResource();
-		
-		return m_sPreviewLoadout;
-	}	
 };

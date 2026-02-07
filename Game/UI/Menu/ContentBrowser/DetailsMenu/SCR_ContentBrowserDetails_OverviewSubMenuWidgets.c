@@ -17,6 +17,18 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 
 	SizeLayoutWidget m_ImagesHeightSize;
 
+	ButtonWidget ImageWithBackground0;
+	SCR_ModularButtonComponent ImageWithBackground0Component0;
+	SCR_BackendImageComponent ImageWithBackground0Component1;
+
+	ButtonWidget ImageWithBackground1;
+	SCR_ModularButtonComponent ImageWithBackground1Component0;
+	SCR_BackendImageComponent ImageWithBackground1Component1;
+
+	ButtonWidget ImageWithBackground2;
+	SCR_ModularButtonComponent ImageWithBackground2Component0;
+	SCR_BackendImageComponent ImageWithBackground2Component1;
+
 	ButtonWidget m_NextButton;
 	SCR_ModularButtonComponent m_NextButtonComponent;
 
@@ -37,9 +49,9 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 	ButtonWidget m_SolveIssuesButton;
 	SCR_ModularButtonComponent m_SolveIssuesButtonComponent;
 
-	ButtonWidget m_FavoriteButton;
-	SCR_ModularButtonComponent m_FavoriteButtonComponent;
-	
+	ButtonWidget m_ContinueDownloadButton;
+	SCR_ModularButtonComponent m_ContinueDownloadButtonComponent;
+
 	ButtonWidget m_VoteUpButton;
 	SCR_ModularButtonComponent m_VoteUpButtonComponent;
 
@@ -49,7 +61,8 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 	ButtonWidget m_ReportButton;
 	SCR_ModularButtonComponent m_ReportButtonComponent;
 
-	TextWidget m_DescriptionText;
+	ButtonWidget m_FavoriteButton;
+	SCR_ModularButtonComponent m_FavoriteButtonComponent;
 
 	ButtonWidget m_VersionComboBox;
 	SCR_ComboBoxComponent m_VersionComboBoxComponent;
@@ -63,6 +76,8 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 	ImageWidget m_RatingIcon;
 
 	TextWidget m_RatingText;
+
+	TextWidget m_DescriptionText;
 
 	VerticalLayoutWidget m_ScenarioSection;
 
@@ -87,6 +102,18 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 
 		m_ImagesHeightSize = SizeLayoutWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_Gallery.m_ImagesHeightSize"));
 
+		ImageWithBackground0 = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_Gallery.m_ImagesHeightSize.Overlay.Images.ImageWithBackground0"));
+		ImageWithBackground0Component0 = SCR_ModularButtonComponent.Cast(ImageWithBackground0.FindHandler(SCR_ModularButtonComponent));
+		ImageWithBackground0Component1 = SCR_BackendImageComponent.Cast(ImageWithBackground0.FindHandler(SCR_BackendImageComponent));
+
+		ImageWithBackground1 = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_Gallery.m_ImagesHeightSize.Overlay.Images.ImageWithBackground1"));
+		ImageWithBackground1Component0 = SCR_ModularButtonComponent.Cast(ImageWithBackground1.FindHandler(SCR_ModularButtonComponent));
+		ImageWithBackground1Component1 = SCR_BackendImageComponent.Cast(ImageWithBackground1.FindHandler(SCR_BackendImageComponent));
+
+		ImageWithBackground2 = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_Gallery.m_ImagesHeightSize.Overlay.Images.ImageWithBackground2"));
+		ImageWithBackground2Component0 = SCR_ModularButtonComponent.Cast(ImageWithBackground2.FindHandler(SCR_ModularButtonComponent));
+		ImageWithBackground2Component1 = SCR_BackendImageComponent.Cast(ImageWithBackground2.FindHandler(SCR_BackendImageComponent));
+
 		m_NextButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_Gallery.m_ImagesHeightSize.Overlay.ArrowsOverlay.m_NextButton"));
 		m_NextButtonComponent = SCR_ModularButtonComponent.Cast(m_NextButton.FindHandler(SCR_ModularButtonComponent));
 
@@ -107,9 +134,9 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 		m_SolveIssuesButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_SolveIssuesButton"));
 		m_SolveIssuesButtonComponent = SCR_ModularButtonComponent.Cast(m_SolveIssuesButton.FindHandler(SCR_ModularButtonComponent));
 
-		m_FavoriteButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_FavoriteButton"));
-		m_FavoriteButtonComponent = SCR_ModularButtonComponent.Cast(m_FavoriteButton.FindHandler(SCR_ModularButtonComponent));
-		
+		m_ContinueDownloadButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_ContinueDownloadButton"));
+		m_ContinueDownloadButtonComponent = SCR_ModularButtonComponent.Cast(m_ContinueDownloadButton.FindHandler(SCR_ModularButtonComponent));
+
 		m_VoteUpButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_VoteUpButton"));
 		m_VoteUpButtonComponent = SCR_ModularButtonComponent.Cast(m_VoteUpButton.FindHandler(SCR_ModularButtonComponent));
 
@@ -119,7 +146,8 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 		m_ReportButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_ReportButton"));
 		m_ReportButtonComponent = SCR_ModularButtonComponent.Cast(m_ReportButton.FindHandler(SCR_ModularButtonComponent));
 
-		m_DescriptionText = TextWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.m_DescriptionText"));
+		m_FavoriteButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_FavoriteButton"));
+		m_FavoriteButtonComponent = SCR_ModularButtonComponent.Cast(m_FavoriteButton.FindHandler(SCR_ModularButtonComponent));
 
 		m_VersionComboBox = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.m_VersionComboBox"));
 		m_VersionComboBoxComponent = SCR_ComboBoxComponent.Cast(m_VersionComboBox.FindHandler(SCR_ComboBoxComponent));
@@ -134,6 +162,8 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 
 		m_RatingText = TextWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.AuthorNameAndRating.m_RatingOverlay.m_RatingText"));
 
+		m_DescriptionText = TextWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.m_DescriptionText"));
+
 		m_ScenarioSection = VerticalLayoutWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_ScenarioSection"));
 
 		m_ScenariosList = VerticalLayoutWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_ScenarioSection.m_ScenariosList"));
@@ -146,4 +176,4 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 
 		return true;
 	}
-};
+}

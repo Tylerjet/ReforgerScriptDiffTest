@@ -20,7 +20,8 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 		
 		m_aAreasStructs.Clear();
 		
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		ChimeraWorld world = GetGame().GetWorld();
+		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		
 		if (timeManager)
 		{

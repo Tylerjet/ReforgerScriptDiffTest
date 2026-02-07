@@ -51,10 +51,15 @@ class SCR_PlaceEntityContextAction: SCR_DoubleClickAction
 		else
 			Math3D.MatrixIdentity3(transform);
 		
+		placingManager.SetPlacingFlag(m_PlacingFlag, true);
+		
 		if (SCR_ContentBrowserEditorComponent.OpenBrowserLabelConfigInstance(m_ContentBrowserConfig))
 		{
-			placingManager.SetPlacingFlag(m_PlacingFlag, true);
 			placingManager.SetInstantPlacing(SCR_EditorPreviewParams.CreateParams(transform));
+		}
+		else
+		{
+			placingManager.SetPlacingFlag(m_PlacingFlag, false);
 		}
 	}
 	override bool IsServer()

@@ -8,18 +8,15 @@ class SCR_ContentBrowser_ScenarioLineWidgets
 
 	SizeLayoutWidget m_FavouriteButtonOverlay;
 
-	ButtonWidget m_FavouriteButton;
-	SCR_ModularButtonComponent m_FavouriteButtonComponent;
-
 	TextWidget m_NameText;
 
+	SizeLayoutWidget m_LastPlayedTextSize;
+	
 	TextWidget m_LastPlayedText;
 
 	HorizontalLayoutWidget m_PlayerCount;
 
 	ImageWidget m_SinglePlayerImage;
-
-	SizeLayoutWidget m_PlayerCountSeparator;
 
 	ImageWidget m_MultiPlayerImage;
 
@@ -35,26 +32,41 @@ class SCR_ContentBrowser_ScenarioLineWidgets
 
 	TextWidget m_SourceNameTextOfficial;
 
+	// Mouse interact buttons
+	ButtonWidget m_Play;
+	ButtonWidget m_Continue;
+	ButtonWidget m_Restart;
+	ButtonWidget m_Host;
+	ButtonWidget m_FindServers;
+	ButtonWidget m_FavouriteButton;
+	
+	SCR_ModularButtonComponent m_FavouriteButtonComponent;
+	SCR_ModularButtonComponent m_PlayComponent;
+	SCR_ModularButtonComponent m_ContinueComponent;
+	SCR_ModularButtonComponent m_RestartComponent;
+	SCR_ModularButtonComponent m_HostComponent;
+	SCR_ModularButtonComponent m_FindServersComponent;
+	
 	bool Init(Widget root)
 	{
 		m_FavouriteButtonOverlay = SizeLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_FavouriteButtonOverlay"));
-
+		
 		m_FavouriteButton = ButtonWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_FavouriteButtonOverlay.m_FavouriteButton"));
 		m_FavouriteButtonComponent = SCR_ModularButtonComponent.Cast(m_FavouriteButton.FindHandler(SCR_ModularButtonComponent));
 
 		m_NameText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.NameSize.NameOverlay.m_NameText"));
 
-		m_LastPlayedText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.LastPlayedSize.LastPlayedOverlay.m_LastPlayedText"));
+		m_LastPlayedTextSize = SizeLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_LastPlayedTextSize"));
+		
+		m_LastPlayedText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_LastPlayedTextSize.LastPlayedOverlay.m_LastPlayedText"));
 
 		m_PlayerCount = HorizontalLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.PlayerCountSize.m_PlayerCount"));
 
 		m_SinglePlayerImage = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.PlayerCountSize.m_PlayerCount.m_SinglePlayerImage"));
 
-		m_PlayerCountSeparator = SizeLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.PlayerCountSize.m_PlayerCount.m_PlayerCountSeparator"));
-
 		m_MultiPlayerImage = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.PlayerCountSize.m_PlayerCount.m_MultiPlayerImage"));
 
-		m_PlayerCountText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.PlayerCountSize.m_PlayerCount.m_PlayerCountText"));
+		m_PlayerCountText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.PlayerCountSize.m_PlayerCount.PlayerCountTextArea.m_PlayerCountText"));
 
 		m_Source = HorizontalLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.SourceSize.m_Source"));
 
@@ -65,6 +77,28 @@ class SCR_ContentBrowser_ScenarioLineWidgets
 		m_SourceNameTextCommunity = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.SourceSize.m_Source.SourceNameTextOverlay.m_SourceNameTextCommunity"));
 
 		m_SourceNameTextOfficial = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.SourceSize.m_Source.SourceNameTextOverlay.m_SourceNameTextOfficial"));
+
+		// Mouse interact buttons
+		m_Play = ButtonWidget.Cast(root.FindAnyWidget("m_Play"));
+		m_Continue = ButtonWidget.Cast(root.FindAnyWidget("m_Continue"));
+		m_Restart = ButtonWidget.Cast(root.FindAnyWidget("m_Restart"));
+		m_Host = ButtonWidget.Cast(root.FindAnyWidget("m_Host"));
+		m_FindServers = ButtonWidget.Cast(root.FindAnyWidget("m_FindServers"));
+
+		if(m_Play)
+			m_PlayComponent = SCR_ModularButtonComponent.Cast(m_Play.FindHandler(SCR_ModularButtonComponent));
+		
+		if(m_Continue)
+			m_ContinueComponent = SCR_ModularButtonComponent.Cast(m_Continue.FindHandler(SCR_ModularButtonComponent));
+		
+		if(m_Restart)
+			m_RestartComponent = SCR_ModularButtonComponent.Cast(m_Restart.FindHandler(SCR_ModularButtonComponent));
+		
+		if(m_Host)
+			m_HostComponent = SCR_ModularButtonComponent.Cast(m_Host.FindHandler(SCR_ModularButtonComponent));
+		
+		if(m_FindServers)
+			m_FindServersComponent = SCR_ModularButtonComponent.Cast(m_FindServers.FindHandler(SCR_ModularButtonComponent));
 
 		return true;
 	}

@@ -45,7 +45,10 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external void SetWeaponRaised(bool val);
 	//! Set the current weapon ADS state.
 	proto external void SetWeaponADS(bool val);
-	proto external void SetFreeLook(bool val);
+	proto external void SetFreeLook(bool input, bool mouse, bool controller);
+	proto external bool GetFreeLookInput();
+	proto external bool GetFreeLookMouse();
+	proto external bool GetFreeLookController();
 	//! Force character to stay in freelook
 	proto external void SetForcedFreeLook(bool enabled);
 	proto external bool IsFreeLookForced();
@@ -188,7 +191,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! Request weapon reload. If true, request was sucessful
 	proto external bool ReloadWeapon();
 	// mag or projectile
-	proto external bool ReloadWeaponWith(IEntity ammunitionEntity);
+	proto external bool ReloadWeaponWith(IEntity ammunitionEntity, bool bForceDetach = false);
 	//------------------------------------------------------------------------
 	proto external void SetUnconscious(bool enabled);
 	proto external bool IsUnconscious();
@@ -237,7 +240,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	Try to use equipped item.
 	\return Returns true if the equipped item has been used.
 	*/
-	proto external bool TryUseItem(IEntity item, bool allowMovementDuringAction = false);
+	proto external bool TryUseItem(IEntity item, bool allowMovementDuringAction = false, bool keepInHandAfterSuccessfulAction = false);
 	/*!
 	Try to use equipped item with custom command and variables.
 	\param item - the item which we want to use. Must be either the current gadget, or the current weapon.
@@ -249,7 +252,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	\param alignmentPoint - point of the item to which the ItemUsePrediction predictioned bone of the character will keep being aligned during the animation.
 	\return Returns true if the equipped item has been used.
 	*/
-	proto external bool TryUseItemOverrideParams(IEntity item, bool allowMovementDuringAction, int cmdId, int cmdIntArg, float cmdFloatArg, float animLength, int intParam, float floatParam, bool boolParam, PointInfo alignmentPoint);
+	proto external bool TryUseItemOverrideParams(IEntity item, bool allowMovementDuringAction, bool keepInHandAfterSuccessfulAction, int cmdId, int cmdIntArg, float cmdFloatArg, float animLength, int intParam, float floatParam, bool boolParam, PointInfo alignmentPoint);
 	//! Returns true if the character can use an item.
 	proto external bool CanUseItem();
 	//! Starts character gesture with specified duration in milliseconds (if duration <= 0, it will be played until StopCharacterGesture is called)
@@ -309,6 +312,10 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//------------------------------------------------------------------------
 	proto external bool GetMaxZoomInADS();
 	//------------------------------------------------------------------------
+	proto external void SetMouseControlAircraft(bool enable);
+	//------------------------------------------------------------------------
+	proto external bool GetMouseControlAircraft();
+	//------------------------------------------------------------------------
 	proto external bool GetDisableWeaponControls();
 	//------------------------------------------------------------------------
 	proto external void SetDisableWeaponControls(bool other);
@@ -339,8 +346,6 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool GetMeleeAttackInput();
 	//! Returns true if freelook is enforced by game logic.
 	proto external bool IsFreeLookEnforced();
-	//! Returns true if freelook is enabled by game logic or user, or if it is indirectly forced by disabled view controls.
-	proto external bool IsInFreeLook();
 	/*! Returns whether a position is in the character's view
 	\param pos World Position to check is within view
 	\param angMax Maximum(exclusive) angular offset in Degrees to consider the position within view
@@ -365,6 +370,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	// callbacks
 
 	event void OnInspectionModeChanged(bool newState);
+	event void UpdateDrowning(float timeSlice, vector waterLevel);
 	/*!
 	Called during EOnInit.
 	\param owner Entity this component is attached to.
@@ -388,8 +394,8 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	event bool CanGetOutVehicleScript() { return true; };
 	//! Override to handle whether character can eject from vehicle via JumpOut input action
 	event bool CanJumpOutVehicleScript() { return true; };
-	//! Handling of death
-	event protected void OnDeath(IEntity instigator);
+	//! Handling of death. If instigatorEntity is null, you can use instigator.GetInstigatorEntity() if appropiate.
+	event protected void OnDeath(IEntity instigatorEntity, notnull Instigator instigator);
 	//! Will be called when gadget taken/removed from hand
 	event protected void OnGadgetStateChanged(IEntity gadget, bool isInHand, bool isOnGround);
 	//! Will be called when gadget fully transitioned to or canceled focus mode

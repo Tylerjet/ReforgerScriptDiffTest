@@ -7,7 +7,10 @@ class SCR_EndGameToolbarAction : SCR_EditorToolbarAction
 	}
 	
 	override bool CanBeShown(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
-	{		
+	{
+		if (!Replication.IsRunning())
+			return false;
+		
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
 		if (!editorManager)
 			return false;
@@ -25,6 +28,9 @@ class SCR_EndGameToolbarAction : SCR_EditorToolbarAction
 	}
 	override bool CanBePerformed(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
+		if (!Replication.IsRunning())
+			return false;
+		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode.GetState() != SCR_EGameModeState.GAME)
 			return false;

@@ -6,8 +6,29 @@ Instead of adding SetXXX() functions here, consider using specialized inherited 
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_UIDescription: SCR_UIName
 {
-	[Attribute(uiwidget: UIWidgets.LocaleEditBox)]
+	[Attribute(uiwidget: UIWidgets.EditBoxMultiline)]
 	protected LocalizedString Description;
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get the unformatted description from SCR_HintUIInfo instance.
+	\return LocalizedString description set in SCR_HintUIInfo instance.
+	*/
+	LocalizedString GetUnformattedDescription()
+	{
+		return Description;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Change the description from SCR_HintUIInfo instance.
+	Call SCR_HintManagerComponent.Refresh() to update shown hint to display changed text.
+	\param LocalizedString text to which discription should be updated to.
+	*/
+	void SetDescription(LocalizedString description)
+	{
+		Description = description;
+	}
 	
 	/*!
 	Get description.

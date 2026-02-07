@@ -6,7 +6,7 @@
 [BaseContainerProps()]
 class SCR_DestructionBaseHandler
 {
-	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Model to swap to on destruction", params: "xob")]
+	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Model to swap to on destruction", params: "xob et")]
 	protected ResourceName m_sWreckModel;
 	[Attribute("1", UIWidgets.Slider, desc: "Delay for the wreck model switch upon destruction (ms)", params: "1 10000 1")]
 	protected int m_iWreckDelay;
@@ -64,7 +64,7 @@ class SCR_DestructionBaseHandler
 			return;
 
 		ResourceName object = SCR_Global.GetPrefabAttributeResource(m_pOwner, "MeshObject", "Object");
-		SetModelResource(object);
+		SetModel(object);
 
 		// Some objects have no valid destruction physics
 		if (!m_bDisablePhysicsAfterDestroyed)
@@ -144,7 +144,7 @@ class SCR_DestructionBaseHandler
 		}
 
 		if (m_bAllowHideWreck || !m_sWreckModel.IsEmpty())
-			SetModelResource(m_sWreckModel, m_bAllowHideWreck);
+			SetModel(m_sWreckModel, m_bAllowHideWreck);
 
 		if (m_bDetachAfterDestroyed)
 			DetachFromParent(true);
@@ -206,42 +206,37 @@ class SCR_DestructionBaseHandler
 
 	//------------------------------------------------------------------------------------------------
 	/*! Sets the model of the object
-	\param resourceName Path to model
-	\param allowHide Allow setting empty model
+	\param modelName Path to model
+	\param allowEmpty Allow setting empty model
 	*/
-	protected void SetModelResource(ResourceName resourceName, bool allowEmpty = false)
-	{
-		VObject model;
-		if (!resourceName.IsEmpty())
-		{
-			Resource resource = Resource.Load(resourceName);
-			if (resource.IsValid())
-				model = resource.GetResource().ToVObject();
-		}
-
-		if (model || allowEmpty)
-			SetModel(model);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*! Sets the model of the object
-	\param model Loaded model data
-	*/
-	protected void SetModel(VObject model)
+	protected void SetModel(ResourceName modelName, bool allowEmpty = false)
 	{
 		if (!m_pOwner || m_pOwner.IsDeleted())
+			return;
+		
+		if (modelName.IsEmpty())
 			return;
 
 		Vehicle vehicle = Vehicle.Cast(m_pOwner);
 		if (vehicle)
-			vehicle.SetWreckModel(model);
+		{
+			vehicle.SetWreckModel(modelName);
+			SCR_BaseEffectManagerComponent effectComp = SCR_BaseEffectManagerComponent.Cast(vehicle.FindComponent(SCR_BaseEffectManagerComponent));
+			if (effectComp)
+				effectComp.Deactivate(vehicle);
+		}
 		else
-			m_pOwner.SetObject(model, string.Empty);
+		{
+			Resource resource = Resource.Load(modelName);
+			VObject model;
+			if (resource && resource.IsValid())
+				model = resource.GetResource().ToVObject();
+			
+			if (model || allowEmpty)
+				m_pOwner.SetObject(model, string.Empty);
+		}
 
 		m_pOwner.Update();
-
-		if (!model)
-			return;
 
 		// If there is no model, ignore the rest
 		Physics physics = m_pOwner.GetPhysics();

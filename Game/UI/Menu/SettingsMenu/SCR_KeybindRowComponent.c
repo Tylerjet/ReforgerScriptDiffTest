@@ -2,7 +2,7 @@
 /*!
 	Class generated via ScriptWizard.
 */
-class SCR_KeybindRowComponent : ScriptedWidgetComponent
+class SCR_KeybindRowComponent : SCR_ScriptedWidgetComponent
 {
 	protected static Widget s_RootWidget;
 	protected static SCR_KeybindSetting s_KeybindMenuComponent;
@@ -19,9 +19,10 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 	protected string m_sActionName;
 	protected string m_sActionDisplayName;
 	protected string m_sActionPreset;
+	protected SCR_EActionPrefixType m_eActionPrefixType;
 
 	//------------------------------------------------------------------------------------------------
-	void Create(Widget parentWidget, string actionDisplayName, string actionName, SCR_KeybindSetting menuComponent, string preset, Widget rootWidget, InputBinding binding)
+	void Create(Widget parentWidget, string actionDisplayName, string actionName, SCR_KeybindSetting menuComponent, string preset, Widget rootWidget, InputBinding binding, SCR_EActionPrefixType actionType)
 	{
 		//set up globals
 		s_RootWidget = rootWidget;
@@ -31,6 +32,7 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		m_sActionDisplayName = actionDisplayName;
 		m_ParentWidget = parentWidget;
 		s_Binding = binding;
+		m_eActionPrefixType = actionType;
 		
 		m_SettingsKeybindModule = SCR_SettingsManagerKeybindModule.Cast(GetGame().GetSettingsManager().GetModule(ESettingManagerModuleType.SETTINGS_MANAGER_KEYBINDING));
 		if (!m_SettingsKeybindModule)
@@ -74,7 +76,7 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		s_Binding.StartCapture(m_sActionName, EInputDeviceType.KEYBOARD, finalPreset, false);
 
 		KeybindMenu menu = KeybindMenu.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.KeybindChangeDialog , DialogPriority.CRITICAL, 0, true));
-		menu.SetMessage(m_sActionDisplayName);
+		menu.SetActionRowName(m_sActionDisplayName);
 		menu.SetKeybind(s_Binding, s_KeybindMenuComponent);
 	}
 
@@ -185,5 +187,10 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 	string GetActionPreset()
 	{
 		return m_sActionPreset;
+	}
+	
+	SCR_EActionPrefixType GetActionPrefixType()
+	{
+		return m_eActionPrefixType;
 	}
 };

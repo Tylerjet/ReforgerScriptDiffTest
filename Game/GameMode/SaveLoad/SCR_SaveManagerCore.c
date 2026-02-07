@@ -1,24 +1,36 @@
+void ScriptInvoker_SaveManagerCoreMethod(ESaveType type, string fileName);
+typedef func ScriptInvoker_SaveManagerCoreMethod;
+typedef ScriptInvokerBase<ScriptInvoker_SaveManagerCoreMethod> ScriptInvoker_SaveManagerCore;
+
 /*!
 Manager of external session save files.
 */
 [BaseContainerProps(configRoot: true)]
 class SCR_SaveManagerCore: SCR_GameCoreBase
 {
-	protected const string GAME_SESSION_STORAGE_NAME = "SCR_SaveFileManager_FileNameToLoad";
+	protected const string GAME_SESSION_STORAGE_FILE_NAME_TO_LOAD = "SCR_SaveFileManager_FileNameToLoad";
+	protected const string GAME_SESSION_STORAGE_USED_CLI = "SCR_SaveFileManager_UsedCLI";
+	protected const string CLI_PARAM = "loadSessionSave";
 	
 	[Attribute()]
 	protected ref array<ref SCR_DSSessionCallback> m_aCallbacks;
 	
+	[Attribute()]
+	protected ref SCR_LatestSaveDSSessionCallback m_LatestSaveCallback;
+	
+	protected ref SCR_DSSessionCallbackSessionStorage m_SessionStorageCallback;
+	
 	protected string m_sMissionSaveFileName;
-#ifdef WORKBENCH
 	protected ref SCR_MissionHeader m_WorkbenchMissionHeader;
-#endif
 	
-	protected BaseContainer m_LatestSaveContainer;
-	protected ref SCR_LatestSaveSettings m_LatestSaveSettings;
+	protected ref ScriptInvoker_SaveManagerCore m_OnSaved = new ScriptInvoker_SaveManagerCore();
+	protected ref ScriptInvoker_SaveManagerCore m_OnLoaded = new ScriptInvoker_SaveManagerCore();
+	protected ref ScriptInvoker_SaveManagerCore m_OnDeleted = new ScriptInvoker_SaveManagerCore();
+	protected ref ScriptInvokerString m_OnLatestSave = new ScriptInvokerString();
 	
+	protected bool m_bLoadedOnInit;
 	protected bool m_bDebugDelete;
-	protected ref SCR_ServerSaveSessionCallback m_UploadCallback;
+	protected ref SCR_ServerSaveRequestCallback m_UploadCallback;
 	protected ref SCR_SaveManager_BackendCallback m_DownloadCallback;
 	protected ref SCR_SaveManager_PageParams m_DownloadPageParams;
 	
@@ -43,6 +55,25 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 		}
 		
 		return callback.SaveSession(m_sMissionSaveFileName, customName);
+	}
+	
+	//----------------------------------------------------------------------------------------
+	/*!
+	Create the current save of given type.
+	\param type Save type
+	\return True if save request was initiated
+	*/
+	bool OverrideCurrentSave(ESaveType type)
+	{
+		SCR_DSSessionCallback callback = FindCallback(type);
+		if (!callback)
+		{
+			Print(string.Format("SCR_SaveManagerCore: Cannot override current save, no rules found for save type %1! Check configuration of SCR_SaveLoadComponent on game mode.", typename.EnumToString(ESaveType, type)), LogLevel.WARNING);
+			return false;
+		}
+		
+		string customName = callback.GetCurrentCustomName();
+		return customName && callback.SaveSession(m_sMissionSaveFileName, customName);
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -78,17 +109,83 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	
 	//----------------------------------------------------------------------------------------
 	/*!
-	Restart the current world and load select save file.
+	Restart the current world and load save file of given type.
+	\param type Save type
+	\param customName Custom addition to file name (optional; applicable only to some save types)
+	\return True if load request was initiated
+	*/
+	bool RestartAndLoad(ESaveType type, string customName = string.Empty)
+	{
+		SCR_DSSessionCallback callback = FindCallback(type);
+		if (!callback)
+		{
+			Print(string.Format("SCR_SaveManagerCore: Cannot restart and load, no rules found for save type %1! Check configuration of SCR_SaveLoadComponent on game mode.", typename.EnumToString(ESaveType, type)), LogLevel.WARNING);
+			return false;
+		}
+		
+		string fileName = callback.GetFileName(m_sMissionSaveFileName, customName);
+		return RestartAndLoad(fileName);
+	}
+	
+	//----------------------------------------------------------------------------------------
+	/*!
+	Restart the current world and load given save file.
 	\param Save file name
 	\return True if load request was initiated
 	*/
 	bool RestartAndLoad(string fileName)
 	{
-		if (!SetFileNameToLoad(fileName))
+		if (Replication.IsClient())
+		{
+			UploadToWorkshop(fileName);
+			return true;
+		}
+		else
+		{
+			//--- Server / SP
+			if (!SetFileNameToLoad(fileName))
+				return false;
+			
+			GameStateTransitions.RequestScenarioRestart();
+			return true;
+		}
+	}
+	
+	//----------------------------------------------------------------------------------------
+	/*!
+	Delete a save file.
+	\param fileName Mission save file name
+	\param customName Custom addition to file name (optional; applicable only to some save types)
+	\return True if the file was deleted
+	*/
+	bool Delete(ESaveType type, string customName = string.Empty)
+	{
+		SCR_DSSessionCallback callback = FindCallback(type);
+		if (!callback)
+		{
+			Print(string.Format("SCR_SaveManagerCore: Cannot delete, no rules found for save type %1! Check configuration of SCR_SaveLoadComponent on game mode.", typename.EnumToString(ESaveType, type)), LogLevel.WARNING);
 			return false;
+		}
 		
-		GameStateTransitions.RequestServerReload();
-		return true;
+		return callback.Delete(m_sMissionSaveFileName, customName);
+	}
+	
+	//----------------------------------------------------------------------------------------
+	/*!
+	Delete a save file.
+	\param fileName Full save file name
+	\return True if the file was deleted
+	*/
+	bool Delete(string fileName)
+	{
+		SCR_DSSessionCallback callback = FindCallback(fileName);
+		if (!callback)
+		{
+			Print(string.Format("SCR_SaveManagerCore: Cannot delete save file '%1', no rules found for it!", fileName), LogLevel.WARNING);
+			return false;
+		}
+		
+		return callback.Delete(fileName);
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -112,11 +209,22 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	
 	//----------------------------------------------------------------------------------------
 	/*!
+	Check if file exists.
+	\param fileName Full save file name
+	\return True if the file exists
+	*/
+	bool FileExists(string fileName)
+	{
+		return GetGame().GetBackendApi().GetStorage().CheckFileID(fileName);
+	}
+	
+	//----------------------------------------------------------------------------------------
+	/*!
 	\return True if save files can be saved online.
 	*/
 	bool CanSaveToCloud()
 	{
-		return RplSession.Mode() == RplMode.Dedicated;
+		return RplSession.Mode() == RplMode.Dedicated && GetGame().GetBackendApi().GetStorage().GetOnlineWritePrivilege();
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -168,6 +276,13 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	{
 		for (int i = GetGame().GetBackendApi().GetStorage().AvailableSaves(outLocalSaves) - 1; i >= 0; i--)
 		{
+			//--- Filter out downloaded files
+			if (IsDownloaded(outLocalSaves[i]))
+			{
+				outLocalSaves.Remove(i);
+				continue;
+			}
+			
 			SCR_DSSessionCallback callback = FindCallback(outLocalSaves[i]);
 			if (!callback || !(saveTypes & callback.GetSaveType()) || (missionFileName && callback.GetMissionFileName(outLocalSaves[i]) != missionFileName))
 				outLocalSaves.Remove(i);
@@ -175,6 +290,13 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 		return outLocalSaves.Count();
 	}
 	///@}
+	
+	protected bool IsDownloaded(string fileName)
+	{
+		string ext;
+		FilePath.StripExtension(fileName, ext);
+		return ext.Contains("_"); //--- Downloaded files have GUID added at the end, e.g., "MissionName-CustomName.save_5D82C234B9132BBC"
+	}
 	
 	//////////////////////////////////////////////////////////////////////////////////////////
 	///@name Save Types
@@ -255,6 +377,21 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 		else
 			return string.Empty;
 	}
+	
+	//----------------------------------------------------------------------------------------
+	/*!
+	Get UI info representing save of type defined by the file name.
+	\param fileName Save file name
+	\return UI info
+	*/
+	SCR_UIInfo GetSaveTypeInfo(string fileName)
+	{
+		SCR_DSSessionCallback callback = FindCallback(fileName);
+		if (callback)
+			return callback.GetInfo();
+		else
+			return null;
+	}
 	///@}
 	
 	//----------------------------------------------------------------------------------------
@@ -290,7 +427,7 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 		
 		Print("UploadToWorkshop: " + fileName);
 		
-		m_UploadCallback = new SCR_ServerSaveSessionCallback(fileName, callback.GetStruct());
+		m_UploadCallback = new SCR_ServerSaveRequestCallback(fileName);//, callback.GetStruct());
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -311,15 +448,11 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 		m_DownloadPageParams = null;
 		
 		Print("GetPageCount() = " + GetGame().GetBackendApi().GetWorldSaveApi().GetPageCount());
-		Print("GetPageItemCount() = " + GetGame().GetBackendApi().GetWorldSaveApi().GetPageItemCount());
-		Print("GetTotalItemCount() = " + GetGame().GetBackendApi().GetWorldSaveApi().GetTotalItemCount());
-		
 		array<WorldSaveItem> items = {};
 		int count = GetGame().GetBackendApi().GetWorldSaveApi().GetPageItems(items);
-		Print(count);
 		foreach (int i, WorldSaveItem item: items)
 		{
-			PrintFormat("%1: %2: %3", i, item.Id(), item.Name());
+			PrintFormat("%1: Id=%2, Name='%3', Description='%4'", i, item.Id(), item.Name(), item.Description());
 			
 			if (m_bDebugDelete)
 				item.DeleteOnline(null);
@@ -360,7 +493,7 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 		if (!GetGame().GetBackendApi().GetStorage().CheckFileID(fileName))
 			return false;
 		
-		GameSessionStorage.s_Data.Insert(GAME_SESSION_STORAGE_NAME, fileName);
+		GameSessionStorage.s_Data.Insert(GAME_SESSION_STORAGE_FILE_NAME_TO_LOAD, fileName);
 		Print(string.Format("'%1' set as a save file name to load after world start.", fileName), LogLevel.VERBOSE);
 		return true;
 	}
@@ -372,8 +505,11 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	*/
 	void ResetFileNameToLoad()
 	{
-		GameSessionStorage.s_Data.Remove(GAME_SESSION_STORAGE_NAME);
-		Print("Save file name to load after world start removed.", LogLevel.VERBOSE);
+		if (GameSessionStorage.s_Data.Contains(GAME_SESSION_STORAGE_FILE_NAME_TO_LOAD))
+		{
+			GameSessionStorage.s_Data.Remove(GAME_SESSION_STORAGE_FILE_NAME_TO_LOAD);
+			Print("Save file name to load after world start removed.", LogLevel.VERBOSE);
+		}
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -384,7 +520,7 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	*/
 	bool FindFileNameToLoad(out string fileNameToLoad)
 	{
-		return GameSessionStorage.s_Data.Find(GAME_SESSION_STORAGE_NAME, fileNameToLoad);
+		return GameSessionStorage.s_Data.Find(GAME_SESSION_STORAGE_FILE_NAME_TO_LOAD, fileNameToLoad);
 	}
 	///@}
 	
@@ -430,8 +566,7 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	*/
 	void SetLatestSave(string missionFileName, string saveFileName)
 	{
-		m_LatestSaveSettings.SetFileName(missionFileName, saveFileName);
-		WriteLatestSaves();
+		m_LatestSaveCallback.SetFileName(missionFileName, saveFileName);
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -442,8 +577,7 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	*/
 	void RemoveLatestSave(string missionFileName)
 	{
-		m_LatestSaveSettings.RemoveFileName(missionFileName);
-		WriteLatestSaves();
+		m_LatestSaveCallback.RemoveFileName(missionFileName);
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -454,7 +588,7 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	*/
 	bool FindLatestSave(string missionFileName, out string outSaveFileName)
 	{
-		return m_LatestSaveSettings.FindFileName(missionFileName, outSaveFileName);
+		return m_LatestSaveCallback.FindFileName(missionFileName, outSaveFileName);
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -491,52 +625,103 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	}
 	///@}
 	
+	//////////////////////////////////////////////////////////////////////////////////////////
+	///@name Invokers
+	///@{
+	//////////////////////////////////////////////////////////////////////////////////////////
+	
 	//----------------------------------------------------------------------------------------
-	protected void ReadLatestSaves()
+	/*!
+	\return Invoker called when the game is successfully saved.
+	*/
+	ScriptInvoker_SaveManagerCore GetOnSaved()
 	{
-		m_LatestSaveContainer = GetGame().GetGameUserSettings().GetModule("SCR_LatestSaveSettings");
-		m_LatestSaveSettings = new SCR_LatestSaveSettings();
-		BaseContainerTools.WriteToInstance(m_LatestSaveSettings, m_LatestSaveContainer);
+		return m_OnSaved;
 	}
 	
 	//----------------------------------------------------------------------------------------
-	protected void WriteLatestSaves()
+	/*!
+	\return Invoker called when the game is successfully loaded.
+	*/
+	ScriptInvoker_SaveManagerCore GetOnLoaded()
 	{
-		BaseContainerTools.ReadFromInstance(m_LatestSaveSettings, m_LatestSaveContainer);
-		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
+		return m_OnLoaded;
 	}
+	
+	//----------------------------------------------------------------------------------------
+	/*!
+	\return Invoker called when a save file is deleted.
+	*/
+	ScriptInvoker_SaveManagerCore GetOnDeleted()
+	{
+		return m_OnDeleted;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	/*!
+	\return Invoker called when a record about the latest save is stored.
+	*/
+	ScriptInvokerString GetOnLatestSave()
+	{
+		return m_OnLatestSave;
+	}
+	
+	///@}
 	
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Init
 	//////////////////////////////////////////////////////////////////////////////////////////
-	protected void Init()
-	{		
-		//--- Initialize latest saves
-		ReadLatestSaves();
-		
+	/*!
+	\return Load a save file upon mission start.
+	*/
+	void LoadOnInit()
+	{
 		//--- Stop if mission save file is not defined (e.g., when mission header is missing) or when on client
-		if (!m_sMissionSaveFileName || !Replication.IsServer())
+		if (m_bLoadedOnInit || !m_sMissionSaveFileName || !Replication.IsServer())
 			return;
+		
+		//--- Mark as initialized, so nothing will happen in case somebody is crazy/brave/naive enough to call LoadOnInit() again
+		m_bLoadedOnInit = true;
 		
 		//--- Find save file to be loaded on start
 		string fileNameToLoad;
 		if (System.IsConsoleApp())
 		{
-			//--- DEDICATED SERVER - Check file name defined in CLI param
-			if (!System.GetCLIParam("loadSaveFile", fileNameToLoad))
- 				return;
+			//--- DEDICATED SERVER
 			
-			//--- If the param is present without the file name specified, use the latest save
-			if (fileNameToLoad.IsEmpty() && !FindLatestSave(m_sMissionSaveFileName, fileNameToLoad))
-				return;
-			
-			//if (System.IsCLIParam("disableLoadingLatestSave") || !FindLatestSave(m_sMissionSaveFileName, fileNameToLoad))
-			//	return;
+			//--- Check if some file was marked for load, e.g, using client's editor interface. If not, continue with evaluating CLI param.
+			if (!FindFileNameToLoad(fileNameToLoad))
+			{
+				//--- Terminate when the file marked by the CLI param was loaded before (happens e.g., after calling the #restart command)
+				if (GameSessionStorage.s_Data.Contains(GAME_SESSION_STORAGE_USED_CLI))
+					return;
+				
+				//--- Terminate when the CLI param is not used
+				if (!System.GetCLIParam(CLI_PARAM, fileNameToLoad))
+				{
+					Print(string.Format("SCR_SaveManagerCore: -%1 CLI param not used, no save file is loaded.", CLI_PARAM), LogLevel.VERBOSE);
+					return;
+				}
+				
+				//--- Terminate when the CLI param is marked to load the latest save, but there is none defined
+				if (fileNameToLoad.IsEmpty() && !FindLatestSave(m_sMissionSaveFileName, fileNameToLoad))
+				{
+					Print(string.Format("SCR_SaveManagerCore: -%1 CLI param set to load the latest save, but none was defined for the mission '%2'!", CLI_PARAM, m_sMissionSaveFileName), LogLevel.WARNING);
+					return;
+				}
+				
+				GameSessionStorage.s_Data.Insert(GAME_SESSION_STORAGE_USED_CLI, fileNameToLoad);
+			}
 		}
 		else
 		{
-			//--- STANDARD GAME - Check if requested save file exists
+			//--- STANDARD GAME
+			
+			//--- Show a warning when the CLI param is used incorrectly (otherwise harmless)
+			if (System.IsCLIParam(CLI_PARAM))
+				Print(string.Format("SCR_SaveManagerCore: -%1 CLI is intended for dedicated server only!", CLI_PARAM), LogLevel.WARNING);
+			
+			//--- Terminate if requested save file does not exist
 			if (!FindFileNameToLoad(fileNameToLoad))
 				return;
 		}
@@ -544,6 +729,19 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 		//--- Load the file and unmark it, so restarting from pause menu won't load it again
 		Load(fileNameToLoad);
 		ResetFileNameToLoad();
+	}
+	
+	//----------------------------------------------------------------------------------------
+	protected void InitDebugMissionHeader(out SCR_MissionHeader missionHeader)
+	{
+		//--- Mission header not found, create a debug one (play mode in World Editor never has a mission header, even when one for the world exists)
+		if (!missionHeader && SCR_SaveLoadComponent.GetInstance())
+		{
+			m_WorkbenchMissionHeader = new SCR_MissionHeader();
+			m_WorkbenchMissionHeader.m_sSaveFileName = FilePath.StripPath(FilePath.StripExtension(GetGame().GetWorldFile()));
+			m_WorkbenchMissionHeader.m_bIsSavingEnabled = true;
+			missionHeader = m_WorkbenchMissionHeader;
+		}
 	}
 	
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -621,31 +819,50 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	}
 	
 	//----------------------------------------------------------------------------------------
-	override void OnWorldPostProcess(World world)
+	override void OnGameStart()
 	{
+		//--- Saving is not configured for the current world
+		if (!SCR_SaveLoadComponent.GetInstance())
+		{
+			// Load save immidiatelly - works only when getting back to main menu, not when starting game
+			OnGameStorageInitialize();
+			
+			if (m_LatestSaveCallback.IsLoaded())
+				return;
+			
+			// Wait for init - happens on game start
+			m_SessionStorageCallback = new SCR_DSSessionCallbackSessionStorage();
+			m_SessionStorageCallback.GetOnInitialize().Insert(OnGameStorageInitialize);
+			GetGame().GetBackendApi().SetSessionCallback(m_SessionStorageCallback);
+			
+			return;
+		}
+			
+		//--- Init mission header (use debug one in special conditions)
 		SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
 		
 #ifdef WORKBENCH
-		//--- Mission header not found, create a debug one (play mode in World Editor never has a mission header, even when one for the world exists)
-		if (!missionHeader && SCR_SaveLoadComponent.GetInstance())
-		{
-			m_WorkbenchMissionHeader = new SCR_MissionHeader();
-			m_WorkbenchMissionHeader.m_sSaveFileName = FilePath.StripPath(FilePath.StripExtension(GetGame().GetWorldFile()));
-			m_WorkbenchMissionHeader.m_bIsSavingEnabled = true;
-			missionHeader = m_WorkbenchMissionHeader;
-		}	
+		InitDebugMissionHeader(missionHeader);	
 #endif
+		
+#ifdef SAVE_MANAGER_DEBUG_HEADER
+		InitDebugMissionHeader(missionHeader);	
+#endif
+		
 		//--- Set mission save file name, but only if saving is enabled
 		if (missionHeader && missionHeader.m_bIsSavingEnabled)
 			m_sMissionSaveFileName = missionHeader.GetSaveFileName();
 		
+		//--- Initialize callbacks
+		foreach (SCR_DSSessionCallback callback: m_aCallbacks)
+		{
+			callback.OnGameStart(m_sMissionSaveFileName);
+		}
+		
 		//--- Initialize save manager and load marked save file
-		Init();
-	}
-	
-	//----------------------------------------------------------------------------------------
-	override void OnGameStart()
-	{
+		m_LatestSaveCallback.ReadFromFile();
+		
+		//--- Diag menu init
 		if (GetGame().IsDev() && Replication.IsServer() && !System.IsConsoleApp())
 		{
 			typename enumType = ESaveType;
@@ -666,12 +883,31 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	}
 	
 	//----------------------------------------------------------------------------------------
+	protected void OnGameStorageInitialize()
+	{
+		if (SCR_MainMenuEntity.GetInstance())
+			m_LatestSaveCallback.ReadFromFile();
+		
+		if (m_SessionStorageCallback)
+			m_SessionStorageCallback.GetOnInitialize().Remove(OnGameStorageInitialize);
+	}
+	
+	//----------------------------------------------------------------------------------------
 	override void OnGameEnd()
 	{
+		foreach (SCR_DSSessionCallback callback: m_aCallbacks)
+		{
+			callback.OnGameEnd(m_sMissionSaveFileName);
+		}
+		
+		m_bLoadedOnInit = false;
 		m_sMissionSaveFileName = string.Empty;
-#ifdef WORKBENCH
 		m_WorkbenchMissionHeader = null;
-#endif
+		
+		//--- Clear invokers are the world end
+		m_OnSaved.Clear();
+		m_OnLoaded.Clear();
+		m_OnDeleted.Clear();
 		
 		if (GetGame().IsDev() && Replication.IsServer() && !System.IsConsoleApp())
 		{
@@ -712,5 +948,27 @@ class SCR_SaveManager_PageParams: PageParams
 	override void OnPack()
 	{
 		StoreBoolean("owned", true);
+	}
+};
+
+//----------------------------------------------------------------------------------------
+class SCR_DSSessionCallbackSessionStorage: DSSessionCallback
+{
+	protected ref ScriptInvokerVoid m_OnInitialize;
+	
+	//----------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnInitialize()
+	{
+		if (!m_OnInitialize)
+			m_OnInitialize = new ScriptInvokerVoid();
+		
+		return m_OnInitialize;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	override void OnInitialize()
+	{
+		super.OnInitialize();
+		m_OnInitialize.Invoke();
 	}
 };
