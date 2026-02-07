@@ -9,10 +9,27 @@ class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActions;
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	{
+		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aTriggerActions)
+		{
+			activationAction.m_iNumberOfActivations = 0;
+		}
+		
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
 		if (m_bIsTerminated)
+		{
+			if (m_ParentLayer)
+				m_ParentLayer.CheckAllChildrenSpawned(this);
+			
 			return;
+		}
 		
 		if (!m_ParentLayer)
 		{

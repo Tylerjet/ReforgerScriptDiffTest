@@ -79,13 +79,13 @@ class GarbageSystem: GameSystem
 	}
 	@endcode
 	*/
-	event protected float OnInsertRequested(IEntity entity, float lifetime);
+	event protected float OnInsertRequested(IEntity entity, float lifetime) {return lifetime;};
 	/*
 	React to or skip the deletion of a tracked entity of which the lifetime has run out.
 	\param ent Entity instance to check logic for.
 	\return Return true to proceed with deletion, false to skip it (tracking for the item will end regardless).
 	*/
-	event protected bool OnBeforeDelete(IEntity entity);
+	event protected bool OnBeforeDelete(IEntity entity) {return true;};
 }
 
 /*!

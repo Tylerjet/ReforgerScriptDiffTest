@@ -2,7 +2,7 @@ class WorldSaveManifest
 {
 	ref array<string> m_aFileNames;	//list of files to upload
 	ref array<ref JsonApiStruct> m_aFiles;	//list of files to upload - WIP
-	ref array<string> m_aDependencyNames;
+	ref array<string> m_aDependencyIds;
 	bool m_bUnlisted = false;
 	string m_sName;				
 	string m_sSummary;

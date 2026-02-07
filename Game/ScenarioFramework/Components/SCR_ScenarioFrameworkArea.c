@@ -24,36 +24,34 @@ class SCR_ScenarioFrameworkTaskType
 class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 {
 	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, "Trigger for area", category: "Trigger")]
-	protected ResourceName 					m_sTriggerResource;
+	ResourceName m_sTriggerResource;
 
 	[Attribute(defvalue: "5.0", UIWidgets.Slider, params: "1.0 1000.0 0.5", desc: "Radius of the trigger area", category: "Trigger")]
-	protected float							m_fAreaRadius;
+	float m_fAreaRadius;
 	
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")]
-	protected bool		m_bOnce;
+	bool m_bOnce;
 	
 	[Attribute(desc: "Actions that will be activated when Trigger gets activated", category: "OnActivation")]
-	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActions;
+	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActions;
 	
 	[Attribute(desc: "Should the dynamic Spawn/Despawn based on distance from observer cameras be enabled?", category: "Activation")]
-	protected bool							m_bDynamicDespawn;
+	bool m_bDynamicDespawn;
 
 	[Attribute(defvalue: "750", desc: "How close at least one observer camera must be in order to trigger spawn", category: "Activation")]
-	protected int 							m_iDynamicDespawnRange;
+	int m_iDynamicDespawnRange;
 
-	protected SCR_BaseTriggerEntity											m_Trigger;
-	protected ref ScriptInvoker<SCR_ScenarioFrameworkArea, SCR_ScenarioFrameworkEActivationType>				m_OnTriggerActivated;
-	protected ref ScriptInvoker												m_OnAreaInit = new ScriptInvoker();
-	protected bool															m_bAreaSelected = false;
-	protected SCR_BaseTask 													m_Task;
-	protected string	 													m_sItemDeliveryPointName;
-	protected SCR_ScenarioFrameworkLayerTask								m_LayerTask;
-	protected SCR_ScenarioFrameworkSlotTask									m_SlotTask; 				//storing this one in order to get the task title and description
-	
-#ifdef WORKBENCH
+	SCR_BaseTriggerEntity m_Trigger;
+	ref ScriptInvoker<SCR_ScenarioFrameworkArea, SCR_ScenarioFrameworkEActivationType>	m_OnTriggerActivated;
+	ref ScriptInvoker m_OnAreaInit = new ScriptInvoker();
+	bool m_bAreaSelected;
+	SCR_BaseTask m_Task;
+	string m_sItemDeliveryPointName;
+	SCR_ScenarioFrameworkLayerTask m_LayerTask;
+	SCR_ScenarioFrameworkSlotTask m_SlotTask; 				//storing this one in order to get the task title and description
+
 	[Attribute(defvalue: "0", desc: "Show the debug shapes in Workbench", category: "Debug")]
-	protected bool							m_bShowDebugShapesInWorkbench;
-#endif	
+	protected bool m_bShowDebugShapesInWorkbench;
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -137,7 +135,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	{
 		return m_sItemDeliveryPointName;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] sDeliveryPointName
@@ -156,229 +154,6 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	void StoreTaskToArea(SCR_BaseTask task)
 	{
 		m_Task = task;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[out] areaStruct
-	void StoreState(out SCR_ScenarioFrameworkAreaStruct areaStruct)
-	{
-		//Checks if area is named. If it is not, we cannot use it for serialization
-		if (GetName().IsEmpty())
-		{
-			delete areaStruct;
-			return;
-		}
-		
-		areaStruct.IncreaseStructVarCount();
-		areaStruct.SetName(GetName());
-		
-		StoreSelectedArea(areaStruct);
-		StoreDeliveryPoint(areaStruct);
-		
-		StoreTerminationStatus(areaStruct);
-		StoreRepeatedSpawn(areaStruct);
-		StoreLayerTask(areaStruct);
-		
-		bool handledLayers;
-		StoreChildren(areaStruct, handledLayers);
-		bool handledLogics;
-		StoreLogic(areaStruct, handledLogics);
-		
-		CleanEmptyStoredLayers(areaStruct, handledLayers);
-		CleanEmptyStoredLogic(areaStruct, handledLogics);
-		CleanAreaStructs(areaStruct);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Handles area selection
-	protected void StoreSelectedArea(SCR_ScenarioFrameworkAreaStruct areaStruct)
-	{
-		if (m_bAreaSelected)
-		{
-			areaStruct.IncreaseStructVarCount();
-			areaStruct.SetAreaSelected(1);
-		}
-		else
-		{
-			areaStruct.UnregV("m_bAreaSelected");
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Delivery point handling
-	protected void StoreDeliveryPoint(SCR_ScenarioFrameworkAreaStruct areaStruct)
-	{
-		if (!m_sItemDeliveryPointName.IsEmpty())
-		{
-			areaStruct.IncreaseStructVarCount();
-			areaStruct.SetDeliveryPointNameForItem(GetDeliveryPointName());
-		}
-		else 
-		{
-			areaStruct.UnregV("m_sItemDeliveryPointName");
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Marks if this was terminated - either by death or deletion
-	protected void StoreTerminationStatus(SCR_ScenarioFrameworkAreaStruct areaStruct)
-	{
-		if (GetIsTerminated())
-		{
-			areaStruct.IncreaseStructVarCount();
-			areaStruct.SetIsTerminated(true);
-		}
-		else
-		{
-			areaStruct.UnregV("m_bIsTerminated");
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Repeated spawn handling
-	protected void StoreRepeatedSpawn(SCR_ScenarioFrameworkAreaStruct areaStruct)
-	{
-		if (GetEnableRepeatedSpawn())
-		{
-			areaStruct.IncreaseStructVarCount();
-			areaStruct.SetEnableRepeatedSpawn(GetEnableRepeatedSpawn());
-			if (GetRepeatedSpawnNumber() != -1)
-			{
-				areaStruct.IncreaseStructVarCount();
-				areaStruct.SetRepeatedSpawnNumber(GetRepeatedSpawnNumber());
-			}
-			else
-			{
-				areaStruct.UnregV("m_iRepeatedSpawnNumber");
-			}
-		}
-		else
-		{
-			areaStruct.UnregV("m_bEnableRepeatedSpawn");
-			areaStruct.UnregV("m_iRepeatedSpawnNumber");
-		}	
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Layer Task handling
-	protected void StoreLayerTask(SCR_ScenarioFrameworkAreaStruct areaStruct)
-	{
-		if (m_LayerTask)
-		{
-			areaStruct.SetLayerTaskName(GetLayerTaskName());
-			areaStruct.IncreaseStructVarCount();
-		}
-		else	
-		{
-			areaStruct.UnregV("m_sLayerTaskName");
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Children handling
-	protected void StoreChildren(SCR_ScenarioFrameworkAreaStruct areaStruct, bool handledLayers)
-	{
-		if (m_aChildren.IsEmpty())
-		{
-			areaStruct.UnregV("m_aLayersStructs");
-		}
-		else
-		{
-			if (GetSpawnChildrenType() != SCR_EScenarioFrameworkSpawnChildrenType.ALL)
-			{
-				array<SCR_ScenarioFrameworkLayerBase> m_aRandomlySpawnedChildrenLayerBases = GetRandomlySpawnedChildren();
-				foreach (SCR_ScenarioFrameworkLayerBase child : m_aRandomlySpawnedChildrenLayerBases)
-				{
-					areaStruct.InsertRandomlySpawnedChildren(child.GetName());
-				}
-				areaStruct.IncreaseStructVarCount();
-			}
-			else
-				areaStruct.UnregV("m_aRandomlySpawnedChildren");
-			
-			areaStruct.IncreaseStructVarCount();
-			handledLayers = true;
-			foreach (SCR_ScenarioFrameworkLayerBase layer : m_aChildren)
-			{
-				areaStruct.StoreLayerState(layer);
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Logics handling
-	protected void StoreLogic(SCR_ScenarioFrameworkAreaStruct areaStruct, bool handledLogics)
-	{
-		if (m_aLogic.IsEmpty())
-		{
-			areaStruct.UnregV("m_aLogicStructs");
-		}
-		else
-		{
-			areaStruct.IncreaseStructVarCount();
-			handledLogics = true;
-			foreach (SCR_ScenarioFrameworkLogic logic : m_aLogic)
-			{
-				areaStruct.StoreLogicState(logic);
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! //Cleaning empty layers
-	protected void CleanEmptyStoredLayers(SCR_ScenarioFrameworkAreaStruct areaStruct, bool handledLayers)
-	{
-		if (areaStruct.GetLayerStructs())
-		{
-			if (areaStruct.GetLayerStructs().IsEmpty())
-			{
-				areaStruct.UnregV("m_aLayersStructs");
-				if (handledLayers)
-					areaStruct.DecreaseStructVarCount();
-			}
-		}
-		else
-		{
-			if (handledLayers)
-				areaStruct.DecreaseStructVarCount();
-			
-			areaStruct.UnregV("m_aLayersStructs");
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! //Cleaning empty layers
-	protected void CleanEmptyStoredLogic(SCR_ScenarioFrameworkAreaStruct areaStruct, bool handledLogics)
-	{
-		if (areaStruct.GetLogicStructs())
-		{
-			if (areaStruct.GetLogicStructs().IsEmpty())
-			{
-				areaStruct.UnregV("m_aLogicStructs");
-				if (handledLogics)
-					areaStruct.DecreaseStructVarCount();
-			}
-		}
-		else
-		{
-			if (handledLogics)
-				areaStruct.DecreaseStructVarCount();
-			
-			areaStruct.UnregV("m_aLogicStructs");
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! //Cleaning empty structs that are unnecessary to be saved and removing other variables that are there due to inheritance
-	protected void CleanAreaStructs(SCR_ScenarioFrameworkAreaStruct areaStruct)
-	{
-		areaStruct.ClearEmptyLayerStructs(areaStruct.GetLayerStructs());
-		areaStruct.ClearEmptyLogicStructs(areaStruct.GetLogicStructs());
-
-		areaStruct.UnregV("m_aAIPrefabsForRemoval");
-		areaStruct.UnregV("m_sRandomlySpawnedObject");
-		areaStruct.UnregV("m_iLayerTaskState");
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -615,6 +390,18 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	ScriptInvoker GetOnAreaInit()
 	{	
 		return m_OnAreaInit;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	{
+		m_Trigger = null;
+		m_sItemDeliveryPointName = "";
+		m_LayerTask = null;
+		m_SlotTask = null;
+		
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
 	}
 	
 	//------------------------------------------------------------------------------------------------

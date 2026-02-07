@@ -44,6 +44,15 @@ class SCR_ScenarioFrameworkLayerTaskDeliver : SCR_ScenarioFrameworkLayerTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	{
+		m_DeliverPoint = null;
+		
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void SetupTask()
 	{
 		super.SetupTask();

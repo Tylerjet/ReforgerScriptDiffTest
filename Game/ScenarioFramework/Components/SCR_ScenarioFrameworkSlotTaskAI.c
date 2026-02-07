@@ -67,6 +67,20 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 	{
 		return m_aAIPrefabsForRemoval;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	{
+		m_aWaypoints.Clear();
+		m_AIGroup = null;
+		m_aAIPrefabsForRemoval.Clear();
+		m_aSlotWaypoints.Clear();
+		m_iCurrentlySpawnedWaypoints = 0;
+		m_bWaypointsInitialized = false;
+		
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -109,7 +123,12 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
 		if (m_bIsTerminated)
+		{
+			if (m_ParentLayer)
+				m_ParentLayer.CheckAllChildrenSpawned(this);
+			
 			return;
+		}
 		
 		m_iCurrentlySpawnedWaypoints = 0;
 		m_bWaypointsInitialized = false;

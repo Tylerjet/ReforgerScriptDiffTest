@@ -9,7 +9,12 @@ class SCR_ScenarioFrameworkSlotExtraction : SCR_ScenarioFrameworkSlotTask
 	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
         if (m_eActivationType != activation)
+		{
+			if (m_ParentLayer)
+				m_ParentLayer.CheckAllChildrenSpawned(this);
+			
 			return;
+		}
 		
 		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
 		{
@@ -22,13 +27,11 @@ class SCR_ScenarioFrameworkSlotExtraction : SCR_ScenarioFrameworkSlotTask
 		}
 			
 		super.Init(area, activation);
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (!factionManager)
+		
+		SCR_CharacterTriggerEntity trigger = SCR_CharacterTriggerEntity.Cast(m_Entity);
+		if (!trigger)
 			return;
 
-		if (!SCR_PlayersPresentTriggerEntity.Cast(m_Entity))
-			return;
-
-		SCR_PlayersPresentTriggerEntity.Cast(m_Entity).SetOwnerFaction(factionManager.GetFactionByKey(m_sFactionKey));
+		trigger.SetOwnerFaction(m_sFactionKey);
 	}
 }

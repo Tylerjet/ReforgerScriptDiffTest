@@ -7,6 +7,7 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	protected int m_iSeconds = -1;
 	protected bool m_bMatchOver;
 	protected string m_sWeatherState;
+	protected EGameOverTypes m_eGameOverType = EGameOverTypes.COMBATPATROL_DRAW;
 	protected ref array<ref SCR_ScenarioFrameworkAreaStruct> m_aAreasStructs = {};
 	
 	//------------------------------------------------------------------------------------------------
@@ -32,7 +33,8 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 				m_sWeatherState = transitionManager.GetCurrentState().GetStateName();
 		}
 		
-		manager.StoreAreaStates(m_aAreasStructs);
+		m_eGameOverType = manager.m_eGameOverType;
+		StoreAreaStates(manager, m_aAreasStructs);
 		ClearEmptyAreaStructs(m_aAreasStructs);
 		
 		return true;
@@ -61,13 +63,211 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 			GetGame().GetCallqueue().CallLater(timeHandler.SetupDaytimeAndWeather, 500, false, m_iHours, m_iMinutes, m_iSeconds, m_sWeatherState, true);
 		}
 		
-		manager.LoadAreaStates(m_aAreasStructs);
+		manager.m_eGameOverType = m_eGameOverType;
+		LoadAreaStates(manager, m_aAreasStructs);
 		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void ClearEmptyAreaStructs(array<ref SCR_ScenarioFrameworkAreaStruct> areaStructsToClear)
+	//!
+	//! \param[out] outEntries
+	void StoreAreaStates(notnull SCR_GameModeSFManager manager, out notnull array<ref SCR_ScenarioFrameworkAreaStruct> outEntries)
+	{
+		if (!manager.m_aAreas)
+			return;
+		
+		SCR_ScenarioFrameworkAreaStruct struct;
+		for (int i = manager.m_aAreas.Count() - 1; i >= 0; i--)
+		{
+			struct = new SCR_ScenarioFrameworkAreaStruct();
+			struct.StoreState(manager.m_aAreas[i], struct);
+			outEntries.Insert(struct);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] loadedAreaStruct
+	void LoadAreaStates(notnull SCR_GameModeSFManager manager, notnull array<ref SCR_ScenarioFrameworkAreaStruct> loadedAreaStruct)
+	{
+		IEntity entity;
+		SCR_ScenarioFrameworkArea area;
+		foreach (SCR_ScenarioFrameworkAreaStruct areaStruct : loadedAreaStruct)
+		{
+			entity = GetGame().GetWorld().FindEntityByName(areaStruct.GetName());
+			if (!entity)
+				continue;
+
+			area = SCR_ScenarioFrameworkArea.Cast(entity.FindComponent(SCR_ScenarioFrameworkArea));
+			if (!area)
+				continue;
+			
+			LoadAreaStructs(manager, area, areaStruct);
+			LoadNestedAreaStructs(areaStruct);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void LoadAreaStructs(notnull SCR_GameModeSFManager manager, notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		if (areaStruct.GetAreaSelected())
+		{
+			manager.m_aAreasTasksToSpawn.Insert(areaStruct.GetName());
+			manager.m_aLayersTaskToSpawn.Insert(areaStruct.GetLayerTaskname());
+		}
+		
+		if (areaStruct.GetDeliveryPointNameForItem())
+			area.StoreDeliveryPoint(areaStruct.GetDeliveryPointNameForItem());
+			
+		if (areaStruct.GetRandomlySpawnedChildren())
+			area.SetRandomlySpawnedChildren(areaStruct.GetRandomlySpawnedChildren());
+			
+		LoadRepeatedSpawnAreaStructs(area, areaStruct);
+		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void LoadRepeatedSpawnAreaStructs(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		if (areaStruct.GetEnableRepeatedSpawn())
+		{
+			area.SetEnableRepeatedSpawn(areaStruct.GetEnableRepeatedSpawn());
+			if (areaStruct.GetRepeatedSpawnNumber())
+				area.SetRepeatedSpawnNumber(areaStruct.GetRepeatedSpawnNumber());
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void LoadNestedAreaStructs(notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		if (areaStruct.GetLayerStructs())
+			LoadLayer(areaStruct.GetLayerStructs());
+			
+		if (areaStruct.GetLogicStructs())
+			LoadLogic(areaStruct.GetLogicStructs());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void LoadLayer(notnull array<ref SCR_ScenarioFrameworkLayerStruct> loadedLayerStruct)
+	{
+		IEntity entity;
+		SCR_ScenarioFrameworkLayerBase layer;
+		BaseWorld world = GetGame().GetWorld();
+		foreach (SCR_ScenarioFrameworkLayerStruct layerStruct : loadedLayerStruct)
+		{
+			entity = world.FindEntityByName(layerStruct.GetName());
+			if (!entity)
+				continue;
+			
+			layer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+			if (!layer)
+				continue;
+			
+			LoadLayerStructs(layer, layerStruct);
+			LoadNestedLayerStructs(layerStruct);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void LoadLayerStructs(notnull SCR_ScenarioFrameworkLayerBase layer, notnull  SCR_ScenarioFrameworkLayerStruct layerStruct)
+	{
+		if (layerStruct.GetActivationType() != -1)
+			layer.SetActivationType(layerStruct.GetActivationType());
+		
+		if (layerStruct.GetIsTerminated())
+		{
+			layer.SetIsTerminated(layerStruct.GetIsTerminated());
+			return;
+		}
+			
+		LoadRepeatedSpawnLayerStructs(layer, layerStruct);
+		LoadLayerStructSlots(layer, layerStruct);
+			
+		//Layer task handling
+		SCR_ScenarioFrameworkLayerTask layerTask = SCR_ScenarioFrameworkLayerTask.Cast(layer);
+		if (layerTask)
+			layerTask.SetLayerTaskState(layerStruct.GetLayerTaskState());
+			
+		if (layerStruct.GetRandomlySpawnedChildren())
+			layer.SetRandomlySpawnedChildren(layerStruct.GetRandomlySpawnedChildren());
+			
+		LoadNestedLayerStructs(layerStruct);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void LoadRepeatedSpawnLayerStructs(notnull SCR_ScenarioFrameworkLayerBase layer, notnull  SCR_ScenarioFrameworkLayerStruct layerStruct)
+	{
+		if (!layerStruct.GetEnableRepeatedSpawn())
+			return;
+		
+		layer.SetEnableRepeatedSpawn(true);
+		layer.SetRepeatedSpawnNumber(layerStruct.GetRepeatedSpawnNumber());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void LoadLayerStructSlots(notnull SCR_ScenarioFrameworkLayerBase layer, notnull  SCR_ScenarioFrameworkLayerStruct layerStruct)
+	{
+		SCR_ScenarioFrameworkSlotBase slot;
+		SCR_ScenarioFrameworkSlotAI slotAI;
+		slot = SCR_ScenarioFrameworkSlotBase.Cast(layer.FindComponent(SCR_ScenarioFrameworkSlotBase));
+		if (slot)
+		{
+			slotAI = SCR_ScenarioFrameworkSlotAI.Cast(slot.FindComponent(SCR_ScenarioFrameworkSlotAI));
+			if (slotAI)
+			{
+				if (layerStruct.GetAIPrefabsForRemoval())
+					slotAI.SetAIPrefabsForRemoval(layerStruct.GetAIPrefabsForRemoval());
+			}
+				
+			if (layerStruct.GetRandomlySpawnedObject())
+				slot.SetRandomlySpawnedObject(layerStruct.GetRandomlySpawnedObject());
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void LoadNestedLayerStructs(notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
+	{
+		if (layerStruct.GetLayerStructs())
+			LoadLayer(layerStruct.GetLayerStructs());
+			
+		if (layerStruct.GetLogicStructs())
+			LoadLogic(layerStruct.GetLogicStructs());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void LoadLogic(notnull array<ref SCR_ScenarioFrameworkLogicStruct> entries)
+	{
+		IEntity entity;
+		BaseWorld world = GetGame().GetWorld();
+		SCR_ScenarioFrameworkLogic logic;
+		SCR_ScenarioFrameworkLogicCounter logicCounter;
+		foreach (SCR_ScenarioFrameworkLogicStruct logicInfo : entries)
+		{
+			entity = world.FindEntityByName(logicInfo.GetName());
+			if (!entity)
+				continue;
+			
+			logic = SCR_ScenarioFrameworkLogic.Cast(entity);
+			if (!logic)
+				continue;
+			
+			if (logicInfo.GetIsTerminated())
+			{
+				logic.SetIsTerminated(logicInfo.GetIsTerminated());
+				continue;
+			}
+			
+			logicCounter = SCR_ScenarioFrameworkLogicCounter.Cast(entity);
+			if (!logicCounter)
+				continue;
+			
+			logicCounter.SetCounterValue(logicInfo.GetCounterValue());
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ClearEmptyAreaStructs(notnull array<ref SCR_ScenarioFrameworkAreaStruct> areaStructsToClear)
 	{
 		array<ref SCR_ScenarioFrameworkAreaStruct> areasStructsCopy = {};
 		foreach (SCR_ScenarioFrameworkAreaStruct areaStructToCopy : areaStructsToClear)
@@ -77,7 +277,7 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 		
 		foreach (SCR_ScenarioFrameworkAreaStruct areaStruct : areasStructsCopy)
 		{
-			if (areaStruct.GetStructVarCount() <= 1)
+			if (areaStruct.GetStructVarCount() < 1)
 			{
 				areaStructsToClear.RemoveItem(areaStruct);
 			}
@@ -92,6 +292,7 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 		RegV("m_iSeconds");
 		RegV("m_bMatchOver");
 		RegV("m_sWeatherState");
+		RegV("m_eGameOverType");
 		RegV("m_aAreasStructs");
 	}
 };
@@ -102,6 +303,244 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	protected bool m_bAreaSelected;
 	protected string m_sItemDeliveryPointName;
 	protected string m_sLayerTaskName;
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[out] areaStruct
+	void StoreState(notnull SCR_ScenarioFrameworkArea area, out notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		//Checks if area is named. If it is not, we cannot use it for serialization
+		if (area.GetName().IsEmpty())
+		{
+			delete areaStruct;
+			return;
+		}
+		
+		areaStruct.SetName(area.GetName());
+		
+		StoreSelectedArea(area, areaStruct);
+		StoreDeliveryPoint(area, areaStruct);
+		
+		StoreActivationTypeStatus(area, areaStruct);
+		StoreTerminationStatus(area, areaStruct);
+		StoreRepeatedSpawn(area, areaStruct);
+		StoreLayerTask(area, areaStruct);
+		
+		StoreChildren(area, areaStruct);
+		StoreLogic(area, areaStruct);
+		
+		CleanEmptyStoredLayers(areaStruct);
+		CleanEmptyStoredLogic(areaStruct);
+		CleanAreaStructs(areaStruct);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Handles area selection
+	protected void StoreSelectedArea(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		if (area.m_bAreaSelected)
+		{
+			areaStruct.IncreaseStructVarCount();
+			areaStruct.SetAreaSelected(1);
+		}
+		else
+		{
+			areaStruct.UnregV("m_bAreaSelected");
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Delivery point handling
+	protected void StoreDeliveryPoint(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		if (!area.m_sItemDeliveryPointName.IsEmpty())
+		{
+			areaStruct.IncreaseStructVarCount();
+			areaStruct.SetDeliveryPointNameForItem(area.GetDeliveryPointName());
+		}
+		else 
+		{
+			areaStruct.UnregV("m_sItemDeliveryPointName");
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Stores the Activation type
+	void StoreActivationTypeStatus(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		if (area.GetActivationType() != area.GetActivationType())
+		{
+			areaStruct.SetActivationType(area.GetActivationType());
+			areaStruct.IncreaseStructVarCount();
+		}
+		else
+		{
+			areaStruct.UnregV("m_eActivationType");
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Marks if this was terminated - either by death or deletion
+	protected void StoreTerminationStatus(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		if (area.GetIsTerminated())
+		{
+			areaStruct.IncreaseStructVarCount();
+			areaStruct.SetIsTerminated(true);
+		}
+		else
+		{
+			areaStruct.UnregV("m_bIsTerminated");
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Repeated spawn handling
+	protected void StoreRepeatedSpawn(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		if (area.GetEnableRepeatedSpawn())
+		{
+			areaStruct.IncreaseStructVarCount();
+			areaStruct.SetEnableRepeatedSpawn(area.GetEnableRepeatedSpawn());
+			if (area.GetRepeatedSpawnNumber() != -1)
+			{
+				areaStruct.IncreaseStructVarCount();
+				areaStruct.SetRepeatedSpawnNumber(area.GetRepeatedSpawnNumber());
+			}
+			else
+			{
+				areaStruct.UnregV("m_iRepeatedSpawnNumber");
+			}
+		}
+		else
+		{
+			areaStruct.UnregV("m_bEnableRepeatedSpawn");
+			areaStruct.UnregV("m_iRepeatedSpawnNumber");
+		}	
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Layer Task handling
+	protected void StoreLayerTask(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		if (area.m_LayerTask)
+		{
+			areaStruct.SetLayerTaskName(area.GetLayerTaskName());
+			areaStruct.IncreaseStructVarCount();
+		}
+		else	
+		{
+			areaStruct.UnregV("m_sLayerTaskName");
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Children handling
+	protected void StoreChildren(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		array<SCR_ScenarioFrameworkLayerBase> children = {};
+		area.GetChildren(children);
+		
+		if (children.IsEmpty())
+		{
+			areaStruct.UnregV("m_aLayersStructs");
+			return;
+		}
+
+		if (area.GetSpawnChildrenType() != SCR_EScenarioFrameworkSpawnChildrenType.ALL)
+		{
+			array<SCR_ScenarioFrameworkLayerBase> m_aRandomlySpawnedChildrenLayerBases = area.GetRandomlySpawnedChildren();
+			foreach (SCR_ScenarioFrameworkLayerBase child : m_aRandomlySpawnedChildrenLayerBases)
+			{
+				areaStruct.InsertRandomlySpawnedChildren(child.GetName());
+			}
+			if (!m_aRandomlySpawnedChildrenLayerBases.IsEmpty())
+				areaStruct.IncreaseStructVarCount();
+		}
+		else
+		{
+			areaStruct.UnregV("m_aRandomlySpawnedChildren");
+		}
+			
+		foreach (SCR_ScenarioFrameworkLayerBase layer : children)
+		{
+			areaStruct.StoreLayerState(layer);
+		}
+			
+		foreach (SCR_ScenarioFrameworkLayerStruct childLayerStruct : m_aLayersStructs)
+		{
+			if (childLayerStruct.GetStructVarCount() >= 1)
+			{
+				areaStruct.IncreaseStructVarCount();
+				return;
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Logics handling
+	protected void StoreLogic(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		array<SCR_ScenarioFrameworkLogic> logics = {};
+		area.GetLogics(logics);
+		
+		if (logics.IsEmpty())
+		{
+			areaStruct.UnregV("m_aLogicStructs");
+		}
+		else
+		{
+			foreach (SCR_ScenarioFrameworkLogic logic : logics)
+			{
+				areaStruct.StoreLogicState(logic);
+			}
+			
+			if (!m_aLogic.IsEmpty())
+				areaStruct.IncreaseStructVarCount();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! //Cleaning empty layers
+	protected void CleanEmptyStoredLayers(notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		if (areaStruct.GetLayerStructs())
+		{
+			if (areaStruct.GetLayerStructs().IsEmpty())
+				areaStruct.UnregV("m_aLayersStructs");
+		}
+		else
+		{
+			areaStruct.UnregV("m_aLayersStructs");
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! //Cleaning empty layers
+	protected void CleanEmptyStoredLogic(notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		if (areaStruct.GetLogicStructs())
+		{
+			if (areaStruct.GetLogicStructs().IsEmpty())
+				areaStruct.UnregV("m_aLogicStructs");
+		}
+		else
+		{
+			areaStruct.UnregV("m_aLogicStructs");
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! //Cleaning empty structs that are unnecessary to be saved and removing other variables that are there due to inheritance
+	protected void CleanAreaStructs(notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	{
+		areaStruct.ClearEmptyLayerStructs(areaStruct.GetLayerStructs());
+		areaStruct.ClearEmptyLogicStructs(areaStruct.GetLogicStructs());
+
+		areaStruct.UnregV("m_aAIPrefabsForRemoval");
+		areaStruct.UnregV("m_sRandomlySpawnedObject");
+		areaStruct.UnregV("m_iLayerTaskState");
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	bool GetAreaSelected()
@@ -142,16 +581,9 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	//------------------------------------------------------------------------------------------------
 	void SCR_ScenarioFrameworkAreaStruct()
 	{
-		RegV("m_iRepeatedSpawnNumber");
-		RegV("m_bEnableRepeatedSpawn");
 		RegV("m_bAreaSelected");
-		RegV("m_sName");	
 		RegV("m_sLayerTaskName");
-		RegV("m_aLayersStructs");
-		RegV("m_aLogicStructs");
-		RegV("m_bIsTerminated");
 		RegV("m_sItemDeliveryPointName");
-		RegV("m_aRandomlySpawnedChildren");	
 	}
 };
 
@@ -167,13 +599,14 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	protected ref array<ResourceName>							m_aAIPrefabsForRemoval = {};
 	protected ref array<string>									m_aRandomlySpawnedChildren = {};
 	protected int 												m_iLayerTaskState;
+	protected SCR_ScenarioFrameworkEActivationType				m_eActivationType = -1; // We put default value as -1 here because 0 has other implications down the line
 	protected bool 												m_bIsTerminated; //Marks if this was terminated - either by death or deletion
 	protected int 												m_iRepeatedSpawnNumber;
 	protected bool 												m_bEnableRepeatedSpawn;
 	protected int												m_iStructVarCount;
 	
 	//------------------------------------------------------------------------------------------------
-	void StoreLayerState(SCR_ScenarioFrameworkLayerBase layer)
+	void StoreLayerState(notnull SCR_ScenarioFrameworkLayerBase layer)
 	{
 		SCR_ScenarioFrameworkLayerStruct layerStruct = new SCR_ScenarioFrameworkLayerStruct();
 		
@@ -184,33 +617,46 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 			return;
 		}
 		
-		layerStruct.IncreaseStructVarCount();
 		layerStruct.SetName(layer.GetName());
 		
+		StoreActivationTypeStatus(layer, layerStruct);
 		StoreTerminationStatus(layer, layerStruct);
 		StoreRepeatedSpawn(layer, layerStruct);
 		StoreLayerTask(layer, layerStruct);
 		
-		bool handledLayers;
-		StoreChildren(layer, layerStruct, handledLayers);
-		bool handledLogics;
-		StoreLogic(layer, layerStruct, handledLogics);
+		StoreChildren(layer, layerStruct);
+		StoreLogic(layer, layerStruct);
 		
 		StoreSlotAndRandomObject(layer, layerStruct);
 		
-		CleanEmptyStoredLayers(layer, layerStruct, handledLayers);
-		CleanEmptyStoredLogic(layer, layerStruct, handledLogics);
+		CleanEmptyStoredLayers(layer, layerStruct);
+		CleanEmptyStoredLogic(layer, layerStruct);
 		
 		//Final insertion
-		if (layerStruct && layerStruct.GetStructVarCount() > 1)
+		if (layerStruct && layerStruct.GetStructVarCount() > 0)
 			m_aLayersStructs.Insert(layerStruct);
 		
 		CleanEmptyStructs();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Marks if this was terminated - either by death or deletion
+	void StoreActivationTypeStatus(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
+	{
+		if (layer.GetActivationType() != layer.GetActivationType())
+		{
+			layerStruct.SetActivationType(layer.GetActivationType());
+			layerStruct.IncreaseStructVarCount();
+		}
+		else
+		{
+			layerStruct.UnregV("m_eActivationType");
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Marks if this was terminated - either by death or deletion
-	void StoreTerminationStatus(SCR_ScenarioFrameworkLayerBase layer, SCR_ScenarioFrameworkLayerStruct layerStruct)
+	void StoreTerminationStatus(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		if (layer.GetIsTerminated())
 		{
@@ -225,7 +671,7 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 
 	//------------------------------------------------------------------------------------------------
 	//! Repeated spawn handling
-	void StoreRepeatedSpawn(SCR_ScenarioFrameworkLayerBase layer, SCR_ScenarioFrameworkLayerStruct layerStruct)
+	void StoreRepeatedSpawn(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		if (layer.GetEnableRepeatedSpawn())
 		{
@@ -250,7 +696,7 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 
 	//------------------------------------------------------------------------------------------------
 	//! Layer Task handling
-	void StoreLayerTask(SCR_ScenarioFrameworkLayerBase layer, SCR_ScenarioFrameworkLayerStruct layerStruct)
+	void StoreLayerTask(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		SCR_ScenarioFrameworkLayerTask layerTask = SCR_ScenarioFrameworkLayerTask.Cast(layer);
 		if (layerTask && layerTask.GetLayerTaskState() != 0)
@@ -266,59 +712,70 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 
 	//------------------------------------------------------------------------------------------------
 	//! Children handling
-	void StoreChildren(SCR_ScenarioFrameworkLayerBase layer, SCR_ScenarioFrameworkLayerStruct layerStruct, bool handledLayers)
+	void StoreChildren(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
-		m_aChildren = layer.GetChildrenEntities();
+		layer.GetChildren(m_aChildren);
 		if (m_aChildren.IsEmpty())
 		{
 			layerStruct.UnregV("m_aLayersStructs");
+			return;
+		}
+		
+		if (layer.GetSpawnChildrenType() != SCR_EScenarioFrameworkSpawnChildrenType.ALL)
+		{
+			array <SCR_ScenarioFrameworkLayerBase> m_aRandomlySpawnedChildrenLayerBases = layer.GetRandomlySpawnedChildren();
+			foreach (SCR_ScenarioFrameworkLayerBase child : m_aRandomlySpawnedChildrenLayerBases)
+			{
+				layerStruct.InsertRandomlySpawnedChildren(child.GetName());
+			}
+				
+			if (!m_aRandomlySpawnedChildrenLayerBases.IsEmpty())
+				layerStruct.IncreaseStructVarCount();
 		}
 		else
-		{
-			if (layer.GetSpawnChildrenType() != SCR_EScenarioFrameworkSpawnChildrenType.ALL)
-			{
-				array <SCR_ScenarioFrameworkLayerBase> m_aRandomlySpawnedChildrenLayerBases = layer.GetRandomlySpawnedChildren();
-				foreach (SCR_ScenarioFrameworkLayerBase child : m_aRandomlySpawnedChildrenLayerBases)
-				{
-					layerStruct.InsertRandomlySpawnedChildren(child.GetName());
-				}
-				layerStruct.IncreaseStructVarCount();
-			}
-			else
-				layerStruct.UnregV("m_aRandomlySpawnedChildren");
+			layerStruct.UnregV("m_aRandomlySpawnedChildren");
 			
-			layerStruct.IncreaseStructVarCount();
-			handledLayers = true;
-			foreach (SCR_ScenarioFrameworkLayerBase layerToCycle : m_aChildren)
+		foreach (SCR_ScenarioFrameworkLayerBase layerToCycle : m_aChildren)
+		{
+			layerStruct.StoreLayerState(layerToCycle);
+		}
+			
+		foreach (SCR_ScenarioFrameworkLayerStruct childLayerStruct : m_aLayersStructs)
+		{
+			// We need to check if just one child layer struct has something saved
+			if (childLayerStruct.GetStructVarCount() >= 1)
 			{
-				layerStruct.StoreLayerState(layerToCycle);
+				// Then we can increase this layer struct and return it
+				layerStruct.IncreaseStructVarCount();
+				return;
 			}
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Logics handling
-	void StoreLogic(SCR_ScenarioFrameworkLayerBase layer, SCR_ScenarioFrameworkLayerStruct layerStruct, bool handledLogics)
+	void StoreLogic(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
-		m_aLogic = layer.GetSpawnedLogics();
+		layer.GetLogics(m_aLogic);
 		if (m_aLogic.IsEmpty())
 		{
 			layerStruct.UnregV("m_aLogicStructs");
 		}
 		else
 		{
-			layerStruct.IncreaseStructVarCount();
-			handledLogics = true;
 			foreach (SCR_ScenarioFrameworkLogic logic : m_aLogic)
 			{
 				layerStruct.StoreLogicState(logic);
 			}
+			
+			if (!m_aLogic.IsEmpty())
+				layerStruct.IncreaseStructVarCount();
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Logics handling
-	void StoreSlotAndRandomObject(SCR_ScenarioFrameworkLayerBase layer, SCR_ScenarioFrameworkLayerStruct layerStruct)
+	void StoreSlotAndRandomObject(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		SCR_ScenarioFrameworkSlotBase slot = SCR_ScenarioFrameworkSlotBase.Cast(layer);
 		if (slot)
@@ -353,47 +810,30 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 
 	//------------------------------------------------------------------------------------------------
 	//! //Cleaning empty layers
-	void CleanEmptyStoredLayers(SCR_ScenarioFrameworkLayerBase layer, SCR_ScenarioFrameworkLayerStruct layerStruct, bool handledLayers)
+	void CleanEmptyStoredLayers(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
-		if (!layerStruct.GetLayerStructs() || layerStruct.GetLayerStructs().IsEmpty() || layerStruct.GetStructVarCount() <= 1)
-			layerStruct.UnregV("m_aLayersStructs");
-
 		if (layerStruct.GetLayerStructs())
 		{
 			if (layerStruct.GetLayerStructs().IsEmpty())
-			{
 				layerStruct.UnregV("m_aLayersStructs");
-				if (handledLayers)
-					layerStruct.DecreaseStructVarCount();
-			}
 		}
 		else
 		{
-			if (handledLayers)
-				layerStruct.DecreaseStructVarCount();
-			
 			layerStruct.UnregV("m_aLayersStructs");
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! //Cleaning empty Logic
-	void CleanEmptyStoredLogic(SCR_ScenarioFrameworkLayerBase layer, SCR_ScenarioFrameworkLayerStruct layerStruct, bool handledLogics)
+	void CleanEmptyStoredLogic(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		if (layerStruct.GetLogicStructs())
 		{
 			if (layerStruct.GetLogicStructs().IsEmpty())
-			{
 				layerStruct.UnregV("m_aLogicStructs");
-				if (handledLogics)
-					layerStruct.DecreaseStructVarCount();
-			}
 		}
 		else
 		{
-			if (handledLogics)
-				layerStruct.DecreaseStructVarCount();
-			
 			layerStruct.UnregV("m_aLogicStructs");
 		}
 	}
@@ -410,7 +850,7 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void StoreLogicState(SCR_ScenarioFrameworkLogic logic)
+	void StoreLogicState(notnull SCR_ScenarioFrameworkLogic logic)
 	{
 		SCR_ScenarioFrameworkLogicStruct logicStruct = new SCR_ScenarioFrameworkLogicStruct();
 		
@@ -425,7 +865,6 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 			}
 			else
 			{
-				DecreaseStructVarCount();
 				delete logicStruct;
 				return;
 			}
@@ -440,13 +879,12 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 			}
 		}
 		
-		DecreaseStructVarCount();
 		delete logicStruct;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Handling logic counter value
-	void StoreLogicCounterValue(SCR_ScenarioFrameworkLogicCounter logicCounter, SCR_ScenarioFrameworkLogicStruct logicStruct)
+	void StoreLogicCounterValue(notnull SCR_ScenarioFrameworkLogicCounter logicCounter, notnull SCR_ScenarioFrameworkLogicStruct logicStruct)
 	{
 		if (logicCounter.GetCounterValue() == 0)
 		{
@@ -461,7 +899,7 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 
 	//------------------------------------------------------------------------------------------------
 	//! Marks if this was terminated - either by death or deletion
-	void StoreLogicCounterTermination(SCR_ScenarioFrameworkLogicCounter logicCounter, SCR_ScenarioFrameworkLogicStruct logicStruct)
+	void StoreLogicCounterTermination(notnull SCR_ScenarioFrameworkLogicCounter logicCounter, notnull SCR_ScenarioFrameworkLogicStruct logicStruct)
 	{
 		if (logicCounter.GetIsTerminated())
 		{
@@ -475,7 +913,7 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void ClearEmptyLayerStructs(array<ref SCR_ScenarioFrameworkLayerStruct> layerStructsToClear)
+	void ClearEmptyLayerStructs(notnull array<ref SCR_ScenarioFrameworkLayerStruct> layerStructsToClear)
 	{
 		array<ref SCR_ScenarioFrameworkLayerStruct> layersStructsCopy = {};
 		foreach (SCR_ScenarioFrameworkLayerStruct layerStructToCopy : layerStructsToClear)
@@ -485,7 +923,7 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 		
 		foreach (SCR_ScenarioFrameworkLayerStruct layerStruct : layersStructsCopy)
 		{
-			if (layerStruct.GetStructVarCount() <= 1)
+			if (layerStruct.GetStructVarCount() < 1)
 				layerStructsToClear.RemoveItem(layerStruct);
 			else
 				ClearEmptyLayerStructs(layerStruct.GetLayerStructs());
@@ -493,7 +931,7 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void ClearEmptyLogicStructs(array<ref SCR_ScenarioFrameworkLogicStruct> logicStructsToClear)
+	void ClearEmptyLogicStructs(notnull array<ref SCR_ScenarioFrameworkLogicStruct> logicStructsToClear)
 	{
 		array<ref SCR_ScenarioFrameworkLogicStruct> logicsStructsCopy = {};
 		foreach (SCR_ScenarioFrameworkLogicStruct logicStructToCopy : logicStructsToClear)
@@ -542,6 +980,12 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	int GetStructVarCount()
 	{
 		return m_iStructVarCount;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_ScenarioFrameworkEActivationType GetActivationType()
+	{
+		return m_eActivationType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -595,6 +1039,12 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetActivationType(SCR_ScenarioFrameworkEActivationType type)
+	{
+		m_eActivationType = type;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetIsTerminated(bool state)
 	{
 		m_bIsTerminated = state;
@@ -641,6 +1091,7 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	{
 		RegV("m_sName");
 		RegV("m_sRandomlySpawnedObject");
+		RegV("m_eActivationType");
 		RegV("m_bIsTerminated");
 		RegV("m_aLayersStructs");	
 		RegV("m_aLogicStructs");

@@ -58,7 +58,12 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 		super.Init(area, activation);
 		
 		if (!m_TaskLayer)
+		{
+			if (m_ParentLayer)
+				m_ParentLayer.CheckAllChildrenSpawned(this);
+			
 			return;
+		}
 		
 		SCR_BaseTriggerEntity trigger = SCR_BaseTriggerEntity.Cast(m_Entity);
 		if (!trigger)

@@ -16,6 +16,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	protected bool m_bUseRankLimitedAccess;
 	protected bool m_bTemporarilyBlockedAccess;
 	protected bool m_bAccessCanBeBlocked;
+	protected bool m_bRankLimitationCanBeUsed;
 
 	protected const int PROVIDER_SPEED_TO_REMOVE_BUILDING_SQ = 1;
 	protected const int TEMPORARY_BLOCKED_ACCESS_RESET_TIME = 1000;
@@ -33,6 +34,10 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		
 		if (m_ProviderComponent && m_ProviderComponent.ObstrucViewWhenEnemyInRange())
 			m_bAccessCanBeBlocked = true;
+		
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (gameMode)
+			m_bRankLimitationCanBeUsed = SCR_XPHandlerComponent.Cast(gameMode.FindComponent(SCR_XPHandlerComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -56,7 +61,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		if (!m_ProviderComponent || m_bTemporarilyBlockedAccess)
 			return false;
 		
-		if (m_ProviderComponent.GetAccessRank() > GetUserRank(user))
+		if (m_bRankLimitationCanBeUsed && m_ProviderComponent.GetAccessRank() > GetUserRank(user))
 		{
 			FactionAffiliationComponent factionAffiliationComp = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
 			if (!factionAffiliationComp)

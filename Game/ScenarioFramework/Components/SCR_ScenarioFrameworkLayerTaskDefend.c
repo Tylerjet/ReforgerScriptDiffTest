@@ -264,6 +264,26 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	{
+		m_CharacterTriggerEntity = null;
+		m_fTempCountdown = m_fDefendTime;
+		m_fTempTimeSlice = 0;
+		m_bTaskEvaluated = false;
+		m_bEvaluationSet = false;
+		m_wRoot = null;
+		m_wInfoOverlay = null;
+		m_wCountdownOverlay = null;
+		m_wCountdown = null;
+		m_wFlavour = null;
+		
+		m_aAttackerLayer.Clear();
+		
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 	}

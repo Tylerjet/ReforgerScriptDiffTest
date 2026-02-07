@@ -811,7 +811,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	//! \return
 	bool CanMoveItem(IEntity item)
 	{
-		if (!item || !IsAnimationReady() || IsInventoryLocked())
+		if (!item || item.IsDeleted() || !IsAnimationReady() || IsInventoryLocked())
 			return false;
 		
 		return true;

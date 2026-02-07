@@ -32,6 +32,16 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	{
+		RemoveMapMarker();
+		m_MapMarker = null;
+		
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
@@ -68,6 +78,7 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 			return;
 		
 		markerMgr.RemoveStaticMarker(marker);
+		m_MapMarker = null;
 	}
 	
 	//------------------------------------------------------------------------------------------------

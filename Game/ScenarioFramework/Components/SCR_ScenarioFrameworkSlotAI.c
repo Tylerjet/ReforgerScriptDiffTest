@@ -50,7 +50,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 
 	ref array<SCR_ScenarioFrameworkSlotWaypoint> m_aSlotWaypoints = {};
 	int m_iCurrentlySpawnedWaypoints;
-	
+
 	// Temporary solution as we don't know if invoker or a different method will initialize waypoints
 	bool m_bWaypointsInitialized;
 
@@ -66,6 +66,20 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	array<ResourceName> GetAIPrefabsForRemoval()
 	{
 		return m_aAIPrefabsForRemoval;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	{
+		m_aWaypoints.Clear();
+		m_AIGroup = null;
+		m_aAIPrefabsForRemoval.Clear();
+		m_aSlotWaypoints.Clear();
+		m_iCurrentlySpawnedWaypoints = 0;
+		m_bWaypointsInitialized = false;
+		
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -109,8 +123,13 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
 		if (m_bIsTerminated)
+		{
+			if (m_ParentLayer)
+				m_ParentLayer.CheckAllChildrenSpawned(this);
+			
 			return;
-		
+		}
+
 		m_iCurrentlySpawnedWaypoints = 0;
 		m_bWaypointsInitialized = false;
 
@@ -118,6 +137,8 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		{
 			if (m_ParentLayer)
 				m_ParentLayer.CheckAllChildrenSpawned(this);
+			
+			return;
 		}
 
 		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
@@ -174,7 +195,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 
 		if (m_ParentLayer)
 			m_ParentLayer.CheckAllChildrenSpawned(this);
-		
+
 		if (!m_bWaypointsInitialized)
 			SetWaypointToAI(this);
 	}
@@ -427,9 +448,9 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 
 		if (!m_AIGroup)
 			return;
-		
+
 		m_aWaypoints.RemoveItemOrdered(null);
-		
+
 		foreach (AIWaypoint waypoint : m_aWaypoints)
 		{
 			m_AIGroup.AddWaypoint(waypoint);
@@ -469,7 +490,17 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	void DecreaseAIGroupMemberCount(SCR_AIGroup group, AIAgent agent)
 	{
 		if (group.GetAgentsCount() == 0)
-			SetIsTerminated(true);
+		{
+			if (m_bEnableRepeatedSpawn)
+			{
+				if (m_iRepeatedSpawnNumber != -1 && m_iRepeatedSpawnNumber <= 0)
+					SetIsTerminated(true);
+			}
+			else
+			{
+				SetIsTerminated(true);
+			}
+		}
 
 		IEntity agentEntity = agent.GetControlledEntity();
 		if (!agentEntity)
@@ -519,7 +550,6 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		return true;
 	}
 
-#ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	//! \param[in] src
@@ -529,7 +559,6 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	{
 		m_iDebugShapeColor = ARGB(100, 0x00, 0x10, 0xFF);
 	}
-#endif
 }
 
 //------------------------------------------------------------------------------------------------

@@ -166,6 +166,7 @@ class SCR_ScenarioFrameworkActionBase
 			}
 
 			layer.Init(null, eActivationType);
+			layer.SetActivationType(SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
 		}
 	}
 }
@@ -1298,6 +1299,10 @@ class SCR_ScenarioFrameworkActionSpawnClosestObjectFromList : SCR_ScenarioFramew
 				Print(string.Format("ScenarioFramework Action: Object %1 doesn't exist", sObjectName), LogLevel.ERROR);
 				continue;
 			}
+			
+			selectedLayer = SCR_ScenarioFrameworkLayerBase.Cast(entityInList.FindComponent(SCR_ScenarioFrameworkLayerBase));
+			if (!selectedLayer)
+				continue;
 
 			float fActualDistance = Math.AbsFloat(vector.Distance(entity.GetOrigin(), entityInList.GetOrigin()));
 
@@ -1315,12 +1320,8 @@ class SCR_ScenarioFrameworkActionSpawnClosestObjectFromList : SCR_ScenarioFramew
 
 		if (selectedLayer)
 		{
-			selectedLayer.GetParentArea().SetAreaSelected(true);
-			SCR_ScenarioFrameworkLayerTask layerTask = SCR_ScenarioFrameworkLayerTask.Cast(selectedLayer);
-			if (layerTask)
-				selectedLayer.GetParentArea().SetLayerTask(layerTask);
-
 			selectedLayer.Init(null, SCR_ScenarioFrameworkEActivationType.ON_TRIGGER_ACTIVATION);
+			selectedLayer.SetActivationType(SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
 		}
 		else
 		{
@@ -1416,6 +1417,7 @@ class SCR_ScenarioFrameworkActionSpawnObjectBasedOnDistance : SCR_ScenarioFramew
 			Math.Randomize(-1);
 			child = aChildren.GetRandomElement();
 			child.Init(null, SCR_ScenarioFrameworkEActivationType.ON_TRIGGER_ACTIVATION);
+			child.SetActivationType(SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
 			aChildren.RemoveItem(child);
 		}
 	}
@@ -1554,6 +1556,7 @@ class SCR_ScenarioFrameworkActionSpawnObjectBasedOnDistance : SCR_ScenarioFramew
 						selectedLayer.GetParentArea().SetLayerTask(layerTask);
 
 					selectedLayer.Init(area, SCR_ScenarioFrameworkEActivationType.ON_TRIGGER_ACTIVATION);
+					selectedLayer.SetActivationType(SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
 				}
 				else
 				{
@@ -2780,6 +2783,39 @@ class SCR_ScenarioFrameworkActionChangeLayerActivationType : SCR_ScenarioFramewo
 }
 
 [BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkActionRestoreLayerToDefault : SCR_ScenarioFrameworkActionBase
+{
+	[Attribute(desc: "Layer to be restored to default (Optional if action is attached on layer that is supposed to be restored to default)")]
+	ref SCR_ScenarioFrameworkGet m_Getter;
+	
+	[Attribute(defvalue: "true", desc: "If checked, it will also restore child layers to default state as well.")]
+	bool m_bIncludeChildren;
+	
+	[Attribute(desc: "If checked, it will reinit the layer after the restoration")]
+	bool m_bReinitAfterRestoration;
+
+	//------------------------------------------------------------------------------------------------
+	override void OnActivate(IEntity object)
+	{
+		if (!CanActivate())
+			return;
+
+		IEntity entity;
+		if (!ValidateInputEntity(object, m_Getter, entity))
+			return;
+
+		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+		if (!layer)
+		{
+			Print(string.Format("ScenarioFramework Action: Entity is not Layer Base for Action %1.", this), LogLevel.ERROR);
+			return;
+		}
+
+		layer.RestoreToDefault(m_bIncludeChildren, m_bReinitAfterRestoration);
+	}
+}
+
+[BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkActionPrepareAreaFromDynamicDespawn : SCR_ScenarioFrameworkActionBase
 {
 	[Attribute(desc: "Closest to what - use getter")]
@@ -3070,6 +3106,12 @@ class SCR_ScenarioFrameworkActionChangeTaskState : SCR_ScenarioFrameworkActionBa
 			supportEntity.CancelTask(task.GetTaskID());
 		else
 			task.SetState(m_eTaskState);
+		
+		SCR_ScenarioFrameworkLayerTask layerTask = task.GetLayerTask();
+		if (!layerTask)
+			return;
+		
+		layerTask.SetLayerTaskState(m_eTaskState);
 	}
 }
 

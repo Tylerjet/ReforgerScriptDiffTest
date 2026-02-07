@@ -73,6 +73,10 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	protected bool m_bIsRegistered;
 	protected bool 							m_bDynamicallyDespawned;
 	protected bool							m_bIsTerminated; //Marks if this was terminated - either by death or deletion
+	
+	//Default values we need to store
+	int m_iRepeatedSpawnNumberDefault = m_iRepeatedSpawnNumber;
+	SCR_ScenarioFrameworkEActivationType m_eActivationTypeDefault = m_eActivationType;
 
 	static const int SPAWN_DELAY = 200;
 
@@ -350,39 +354,41 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	protected void GetChildren()
+	//! Goes through the hierarchy and returns all the child entities of LayerBase type
+	//! \param[out] children
+	void GetChildren(out array<SCR_ScenarioFrameworkLayerBase> children)
 	{
-		array<SCR_ScenarioFrameworkLayerBase> children = {};
+		children = {};
+		array<SCR_ScenarioFrameworkLayerBase> childrenReversed = {};
 		SCR_ScenarioFrameworkLayerBase slotComponent;
 		IEntity child = GetOwner().GetChildren();
 		while (child)
 		{
 			slotComponent = SCR_ScenarioFrameworkLayerBase.Cast(child.FindComponent(SCR_ScenarioFrameworkLayerBase));
 			if (slotComponent)
-				children.Insert(slotComponent);
+				childrenReversed.Insert(slotComponent);
 			
 			child = child.GetSibling();
 		}
 		
-		for (int i = children.Count() - 1; i >= 0; i--)
-			{
-			if (!m_aChildren.Contains(children[i]))
-				m_aChildren.Insert(children[i]);
-			}
+		for (int i = childrenReversed.Count() - 1; i >= 0; i--)
+		{
+			if (!children.Contains(childrenReversed[i]))
+				children.Insert(childrenReversed[i]);
 		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//!
-	protected void GetLogics()
+	void GetLogics(out array<SCR_ScenarioFrameworkLogic> logics)
 	{
 		IEntity child = GetOwner().GetChildren();
 		SCR_ScenarioFrameworkLogic logic;
 		while (child)
 		{
 			logic = SCR_ScenarioFrameworkLogic.Cast(child);
-			if (logic && !m_aLogic.Contains(logic))
-				m_aLogic.Insert(logic);
+			if (logic && !logics.Contains(logic))
+				logics.Insert(logic);
 
 			child = child.GetSibling();
 		}
@@ -624,11 +630,49 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void ActivateLogic()
 	{
-		GetLogics();
+		GetLogics(m_aLogic);
 		foreach (SCR_ScenarioFrameworkLogic logic : m_aLogic)
 		{
 			logic.Init();
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	{
+		m_Entity = null;
+		m_iRepeatedSpawnNumber = m_iRepeatedSpawnNumberDefault;
+		m_eActivationType = m_eActivationTypeDefault;
+		m_bInitiated = false;
+		m_bIsRegistered = false;
+		m_bDynamicallyDespawned = false;
+		m_bIsTerminated = false;
+		
+		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
+		{
+			activationAction.m_iNumberOfActivations = 0;
+		}
+		
+		if (includeChildren)
+		{
+			foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
+			{
+				child.RestoreToDefault(includeChildren, false);
+			}
+		}
+
+		m_aChildren.Clear();
+
+		foreach (IEntity entity : m_aSpawnedEntities)
+		{
+			SCR_EntityHelper.DeleteEntityAndChildren(entity);
+		}
+		
+		m_aSpawnedEntities.Clear();
+		
+		if (reinitAfterRestoration)
+			Init(m_Area);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -726,7 +770,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		
 		GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawned);
 
-		GetChildren();
+		GetChildren(m_aChildren);
 		SpawnChildren(previouslyRandomized);
 	}
 
