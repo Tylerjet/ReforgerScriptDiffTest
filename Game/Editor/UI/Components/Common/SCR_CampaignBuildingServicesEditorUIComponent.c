@@ -151,6 +151,9 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 
 		foreach (SCR_ServicePointComponent service : services)
 		{
+			if (service.GetLabel() == EEditableEntityLabel.NONE)
+				continue;
+
 			m_aServices.Insert(new Tuple2<EEditableEntityLabel, SCR_ServicePointComponent>(service.GetLabel(), service));
 			service.GetOnServiceStateChanged().Insert(RefreshServiceUI);
 		}	

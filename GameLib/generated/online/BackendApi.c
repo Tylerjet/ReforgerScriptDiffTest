@@ -81,6 +81,14 @@ sealed class BackendApi
 	*/
 	proto external NewsFeedItem GetNotifyItem( int iIndex );
 	/*!
+	\brief Return count of Popups
+	*/
+	proto external int GetPopupCount();
+	/*!
+	\brief Return specific Popup
+	*/
+	proto external PopupFeedItem GetPopupItem( int iIndex );
+	/*!
 	\brief Return specific Link by it's name
 	*/
 	proto external string GetLinkItem( string linkName );

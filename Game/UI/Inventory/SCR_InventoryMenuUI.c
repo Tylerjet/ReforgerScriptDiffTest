@@ -4153,8 +4153,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (m_bDraggingEnabled)
 			draggedSlot = m_DraggedSlot;
 
-		IEntity draggedEntity = draggedSlot.GetInventoryItemComponent().GetOwner();
+		InventoryItemComponent iic = draggedSlot.GetInventoryItemComponent();
+		if (!iic)
+			return false;
 
+		IEntity draggedEntity = iic.GetOwner();
 		if (!draggedEntity)
 			return false;
 		
@@ -5039,7 +5042,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		pContainer.ShowContainerBorder( false );
 		m_pActiveHoveredStorageUI = null;
 		pContainer.SetPagingActive(false);
-		m_pNavigationBar.SetAllButtonEnabled(false);
+		NavigationBarUpdate();
 	}
 	
 	//------------------------------------------------------------------------------------------------
