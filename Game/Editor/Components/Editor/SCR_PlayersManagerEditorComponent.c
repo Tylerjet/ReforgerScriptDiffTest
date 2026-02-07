@@ -211,7 +211,8 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 		if (!groupComponent)
 			return;
 		
-		groupComponent.CreateAndJoinGroup(entityFaction);
+		if (groupComponent.GetGroupID() == -1)
+			groupComponent.CreateAndJoinGroup(entityFaction);
 	}
 	
 	protected void UpdatePlayerFaction(SCR_EditableEntityComponent editableEntity, IEntity controlledEntity)

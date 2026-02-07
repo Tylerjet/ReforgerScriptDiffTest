@@ -23,6 +23,9 @@ class SCR_SettingsSubMenuBase: SCR_SubMenuBase
 	{
 		super.OnTabShow();
 
+		// Reset the focused Widget, to prevent that a Widget from a previous tab is still focused and controlled.
+		GetGame().GetWorkspace().SetFocusedWidget(null);
+		
 		if (m_wScroll)
 			m_wScroll.SetSliderPos(0, 0);
 	}

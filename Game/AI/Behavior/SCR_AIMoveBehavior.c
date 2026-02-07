@@ -40,12 +40,8 @@ class SCR_AIFollowInFormationBehavior : SCR_AIMoveBehaviorBase
 	void SCR_AIFollowInFormationBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priority = PRIORITY_ACTIVITY_FOLLOW, float priorityLevel = PRIORITY_LEVEL_PLAYER)
 	{
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/KeepInFormation.bt";
-		if (priorityLevel > 0)
-		{
-			m_bAllowLook = false;
-			m_bResetLook = true;
-		}
-
+		m_bAllowLook = true;
+		m_bResetLook = true;
 		float m_fTimestamp = GetGame().GetWorld().GetWorldTime(); // world time when constructor of behavior is called
 		m_fTimestampEnd = m_fTimestamp + DURATION_MS;
 	}
