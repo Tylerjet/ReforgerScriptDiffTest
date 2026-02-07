@@ -12,7 +12,7 @@ Exports data of the current map based on selected type.
 [WorkbenchToolAttribute("Export Map data", "Export data of various types from the current world", "", awesomeFontCode: 0xf0ac)]
 class WorldMapExportTool: WorldEditorTool
 {
-	[Attribute(defvalue: "", uiwidget: UIWidgets.FileNamePicker, desc: "Folder where the file will be saved", params: "unregFolders", enums: NULL, category: "Export file")]
+	[Attribute(defvalue: "", desc: "Folder where the file will be saved", params: "unregFolders", enums: NULL, category: "Export file")]
 	ResourceName destinationPath;
 	string exportPath;
 	
@@ -105,25 +105,65 @@ class WorldMapExportTool: WorldEditorTool
 			if(!saveAreas) saveFlags = saveFlags | ExcludeSaveFlags.ExcludeSaveAreas;
 			if(!saveWaterBodies) saveFlags = saveFlags | ExcludeSaveFlags.ExcludeSaveWaterBodies;
 			if(!saveHills) saveFlags = saveFlags | ExcludeSaveFlags.ExcludeSaveHills;
-			if(!MapDataExporter.ExportData(EMapDataType.Geometry2D, exportPath, worldPath, hillMinimumHeight, generateFlags, saveFlags))
+
+			DataExportErrorType result = MapDataExporter.ExportData(EMapDataType.Geometry2D, exportPath, worldPath, hillMinimumHeight, generateFlags, saveFlags);
+			if(result != DataExportErrorType.DataExportErrorNone)
 			{
-				Print("Could not export 2D map data.", LogLevel.ERROR);
+				string reason = "";
+				switch(result)
+				{
+					case DataExportErrorType.DataExportErrorNoGame: reason = "Game not found"; break;
+					case DataExportErrorType.DataExportErrorNoDataType: reason = "Data type not found"; break;
+					case DataExportErrorType.DataExportErrorNoMapEntity: reason = "Map Entity not found"; break;
+					case DataExportErrorType.DataExportErrorNoWorld: reason = "World not found"; break;
+					case DataExportErrorType.DataExportErrorNoWorldPath: reason = "World path empty"; break;
+					case DataExportErrorType.DataExportErrorNoOutputFile: reason = "Could not open output file"; break;
+					default: reason = "Unkown, code=" + result; break;
+				}
+				Print(string.Format("Could not export 2D map data. (%1)", reason), LogLevel.ERROR);
 				return false;
 			}
 		}
 		else if (type == EMapDataExportType.Soundmap)
 		{
-			if(!MapDataExporter.ExportData(EMapDataType.Soundmap, exportPath, worldPath))
+			DataExportErrorType result = MapDataExporter.ExportData(EMapDataType.Soundmap, exportPath, worldPath);
+			if(result != DataExportErrorType.DataExportErrorNone)
 			{
-				Print("Could not export Soundmap data.", LogLevel.ERROR);
+				string reason = "";
+				switch(result)
+				{
+					case DataExportErrorType.DataExportErrorNoGame: reason = "Game not found"; break;
+					case DataExportErrorType.DataExportErrorNoDataType: reason = "Data type not found"; break;
+					case DataExportErrorType.DataExportErrorNoWorld: reason = "World not found"; break;
+					case DataExportErrorType.DataExportErrorNoCompatibleWorld: reason = "World is not compatible"; break;
+					case DataExportErrorType.DataExportErrorNoSoundWorld: reason = "Sound World not found"; break;
+					case DataExportErrorType.DataExportErrorNoWorldPath: reason = "World path empty"; break;
+					case DataExportErrorType.DataExportErrorNotSavingToFile: reason = "Not saving to file, Default Map created"; break;
+					case DataExportErrorType.DataExportErrorInvalidSoundmap: reason = "Invalid Soundmap"; break;
+					default: reason = "Unkown, code=" + result; break;
+				}
+				Print(string.Format("Could not export Soundmap data. (%1)", reason), LogLevel.ERROR);
 				return false;
 			}
 		}
 		else if (type == EMapDataExportType.Rasterization)
 		{
-			if(!MapDataExporter.ExportRasterization(exportPath, worldPath, landColor, oceanColor, scaleLand, scaleOcean, heightScale, depthScale, depthLerpMeters, shadeIntensity, heightIntensity))
+			DataExportErrorType result = MapDataExporter.ExportRasterization(exportPath, worldPath, landColor, oceanColor, scaleLand, scaleOcean, heightScale, depthScale, depthLerpMeters, shadeIntensity, heightIntensity);
+			if(result != DataExportErrorType.DataExportErrorNone)
 			{
-				Print("Could not export map rasterization.", LogLevel.ERROR);
+				string reason = "";
+				switch(result)
+				{
+					case DataExportErrorType.DataExportErrorNoGame: reason = "Game not found"; break;
+					case DataExportErrorType.DataExportErrorNoLandOrOcean: reason = "No Land or Ocean color found"; break;
+					case DataExportErrorType.DataExportErrorNoMapEntity: reason = "Map Entity not found"; break;
+					case DataExportErrorType.DataExportErrorNoWorld: reason = "World not found"; break;
+					case DataExportErrorType.DataExportErrorNoWorldPath: reason = "World path empty"; break;
+					case DataExportErrorType.DataExportErrorNoTerrain: reason = "Terrain not found"; break;
+					case DataExportErrorType.DataExportErrorNoOutputFile: reason = "Could not open output file"; break;
+					default: reason = "Unkown, code=" + result; break;
+				}
+				Print(string.Format("Could not export map rasterization. (%1)", reason), LogLevel.ERROR);
 				return false;
 			}
 		}
@@ -191,17 +231,43 @@ class WorldDataExport: WorkbenchPlugin
 			success = true;
 			if (exportMap)
 			{
-				if(!MapDataExporter.ExportData(EMapDataType.Geometry2D, dir, worldPath, 50, ExcludeGenerateFlags.ExcludeGenerateNone, ExcludeSaveFlags.ExcludeSaveNone))
+				DataExportErrorType result = MapDataExporter.ExportData(EMapDataType.Geometry2D, dir, worldPath, 50, ExcludeGenerateFlags.ExcludeGenerateNone, ExcludeSaveFlags.ExcludeSaveNone);
+				if(result != DataExportErrorType.DataExportErrorNone)
 				{
-					Print("WorldDataExport: 2DMap export failed!", LogLevel.ERROR);
+					string reason = "";
+					switch(result)
+					{
+						case DataExportErrorType.DataExportErrorNoGame: reason = "Game not found"; break;
+						case DataExportErrorType.DataExportErrorNoDataType: reason = "Data type not found"; break;
+						case DataExportErrorType.DataExportErrorNoMapEntity: reason = "Map Entity not found"; break;
+						case DataExportErrorType.DataExportErrorNoWorld: reason = "World not found"; break;
+						case DataExportErrorType.DataExportErrorNoWorldPath: reason = "World path empty"; break;
+						case DataExportErrorType.DataExportErrorNoOutputFile: reason = "Could not open output file"; break;
+						default: reason = "Unkown, code=" + result; break;
+					}
+					Print(string.Format("Could not export 2D map data. (%1)", reason), LogLevel.ERROR);
 					success = false;
 				}
 			}
 			if (exportSound)
 			{
-				if(!MapDataExporter.ExportData(EMapDataType.Soundmap, dir, worldPath))
+				DataExportErrorType result = MapDataExporter.ExportData(EMapDataType.Soundmap, dir, worldPath);
+				if(result != DataExportErrorType.DataExportErrorNone)
 				{
-					Print("WorldDataExport: SoundMap export failed!", LogLevel.ERROR);
+					string reason = "";
+					switch(result)
+					{
+						case DataExportErrorType.DataExportErrorNoGame: reason = "Game not found"; break;
+						case DataExportErrorType.DataExportErrorNoDataType: reason = "Data type not found"; break;
+						case DataExportErrorType.DataExportErrorNoWorld: reason = "World not found"; break;
+						case DataExportErrorType.DataExportErrorNoCompatibleWorld: reason = "World is not compatible"; break;
+						case DataExportErrorType.DataExportErrorNoSoundWorld: reason = "Sound World not found"; break;
+						case DataExportErrorType.DataExportErrorNoWorldPath: reason = "World path empty"; break;
+						case DataExportErrorType.DataExportErrorNotSavingToFile: reason = "Not saving to file, Default Map created"; break;
+						case DataExportErrorType.DataExportErrorInvalidSoundmap: reason = "Invalid Soundmap"; break;
+						default: reason = "Unkown, code=" + result; break;
+					}
+					Print(string.Format("Could not export Soundmap data. (%1)", reason), LogLevel.ERROR);
 					success = false;
 				}
 			}
@@ -218,9 +284,22 @@ class WorldDataExport: WorkbenchPlugin
 				float shadeIntensity = 1.33;
 				float heightIntensity = 1.5;
 
-				if(!MapDataExporter.ExportRasterization(dir, worldPath, landColor, oceanColor, scaleLand, scaleOcean, heightScale, depthScale, depthLerpMeters, shadeIntensity, heightIntensity))
+				DataExportErrorType result = MapDataExporter.ExportRasterization(dir, worldPath, landColor, oceanColor, scaleLand, scaleOcean, heightScale, depthScale, depthLerpMeters, shadeIntensity, heightIntensity);
+				if(result != DataExportErrorType.DataExportErrorNone)
 				{
-					Print("WorldDataExport: Rasterization export failed!", LogLevel.ERROR);
+					string reason = "";
+					switch(result)
+					{
+						case DataExportErrorType.DataExportErrorNoGame: reason = "Game not found"; break;
+						case DataExportErrorType.DataExportErrorNoLandOrOcean: reason = "No Land or Ocean color found"; break;
+						case DataExportErrorType.DataExportErrorNoMapEntity: reason = "Map Entity not found"; break;
+						case DataExportErrorType.DataExportErrorNoWorld: reason = "World not found"; break;
+						case DataExportErrorType.DataExportErrorNoWorldPath: reason = "World path empty"; break;
+						case DataExportErrorType.DataExportErrorNoTerrain: reason = "Terrain not found"; break;
+						case DataExportErrorType.DataExportErrorNoOutputFile: reason = "Could not open output file"; break;
+						default: reason = "Unkown, code=" + result; break;
+					}
+					Print(string.Format("Could not export map rasterization. (%1)", reason), LogLevel.ERROR);
 					success = false;
 				}
 			}

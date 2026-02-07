@@ -92,8 +92,8 @@ class SCR_WLibProgressBarComponent : ScriptedWidgetComponent
 			if (m_bConstantAnimationSpeed)
 				speed = speed * (1 / Math.AbsFloat(currentProgress - progress));
 			
-			WidgetAnimator.PlayAnimation(m_wBar, WidgetAnimationType.LayoutFill, progress, speed);
-			WidgetAnimator.PlayAnimation(m_wSpacer, WidgetAnimationType.LayoutFill, 1 - progress, speed);
+			AnimateWidget.LayoutFill(m_wBar, progress, speed);
+			AnimateWidget.LayoutFill(m_wSpacer, 1 - progress, speed);
 		}
 		else
 		{
@@ -105,9 +105,8 @@ class SCR_WLibProgressBarComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void StopProgressAnimation()
 	{
-		WidgetAnimator.StopAnimation(m_wBar);
-		WidgetAnimator.StopAnimation(m_wSpacer);
-
+		AnimateWidget.StopAnimation(m_wBar, WidgetAnimationLayoutFill);
+		AnimateWidget.StopAnimation(m_wSpacer, WidgetAnimationLayoutFill);
 		float progress = HorizontalLayoutSlot.GetFillWeight(m_wBar);
 		float value = progress * m_fMax - m_fMin;
 		SetValue(value, false);

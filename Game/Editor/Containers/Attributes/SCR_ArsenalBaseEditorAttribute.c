@@ -36,10 +36,14 @@ class SCR_ArsenalBaseEditorAttribute : SCR_LoadoutBaseEditorAttribute
 		if (!arsenalComponent)
 			return;
 		
+		//~ Make sure Values are created if it didn't yet exist
+		if (m_aValues.IsEmpty())
+			CreatePresets();
+		
 		//Get the current and add/remove flags as all arsenal attributes edit the same enum and would otherwise override itself
 		SCR_EArsenalItemType arsenalFlags = arsenalComponent.GetSupportedArsenalItemTypes();
 		int newArsenalflags = var.GetInt();
-		
+
 		foreach(SCR_EditorAttributeFloatStringValueHolder value: m_aValues)
 		{
 			//Check if flag is true or not
@@ -48,7 +52,7 @@ class SCR_ArsenalBaseEditorAttribute : SCR_LoadoutBaseEditorAttribute
 			else 
 				arsenalFlags &= ~(int)value.GetFloatValue();
 		}
-		
+
 		//Update the arsenal
 		arsenalComponent.SetSupportedArsenalItemTypes(arsenalFlags);
 	}

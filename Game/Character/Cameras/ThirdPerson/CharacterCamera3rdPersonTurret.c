@@ -129,9 +129,13 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 		// position
 		vector cameraPositionLS = turretMat[3].InvMultiply4(turretMat) + Vector(0, m_vCameraCenter[1], 0);
 		
-		// Offset by character height, height is not the same when entities are rotated, this is why we revert position without any rotation. Then we can do the height diff.
-		float charHeight = charMat[3].InvMultiply3(charMat)[1] - turretMat[3].InvMultiply3(turretMat)[1];
-		cameraPositionLS[1] = cameraPositionLS[1] - charHeight;
+		CompartmentAccessComponent cac = m_OwnerCharacter.GetCompartmentAccessComponent();
+		if (!(cac && (cac.IsGettingOut() || cac.IsGettingIn())))
+		{
+			// Offset by character height, height is not the same when entities are rotated, this is why we revert position without any rotation. Then we can do the height diff.
+			float charHeight = charMat[3].InvMultiply3(charMat)[1] - turretMat[3].InvMultiply3(turretMat)[1];
+			cameraPositionLS[1] = cameraPositionLS[1] - charHeight;
+		}
 		
 		// This is our pivot point
 		pOutResult.m_CameraTM[3] = cameraPositionLS;

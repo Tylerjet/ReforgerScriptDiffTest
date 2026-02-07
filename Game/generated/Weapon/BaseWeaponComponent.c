@@ -30,8 +30,26 @@ class BaseWeaponComponent: GameComponent
 	proto external void SightADSDeactivated();
 	proto external bool IsSightADSActive();
 	proto external BaseSightsComponent GetSights();
+	proto external BaseSightsComponent GetAttachedSights();
+	proto external int GetAttachments(out notnull array<AttachmentSlotComponent> outArray);
+	proto external BaseSightsComponent GetSightsAt(int sightsIndex);
+	proto external bool HasSightsAt(int sightsIndex);
+	proto external bool CanSetSights(int sightsIndex);
+	proto external bool CanSwitchToSights(int sightsIndex);
+	proto external int FindAvailableSights();
+	proto external bool SetSights(int sightsIndex);
+	proto external bool SwitchNextSights();
+	proto external bool SwitchPrevSights();
 	proto external IEntity GetOwner();
 	proto external float GetInitialProjectileSpeed();
+	/*!
+	Returns true if weapon has a bipod available.
+	*/
+	proto external bool HasBipod();
+	/*!
+	Returns true if weapon has bipod deployed.
+	*/
+	proto external bool GetBipod();
 };
 
 /** @}*/

@@ -36,7 +36,7 @@ class SCR_BaseTriggerEntity: ScriptedGameTriggerEntity
 	
 	override protected event void OnActivate(IEntity ent)
 	{
-		m_OnActivate.Invoke();
+		m_OnActivate.Invoke(ent);
 	}
 	override protected event void OnDeactivate(IEntity ent)
 	{

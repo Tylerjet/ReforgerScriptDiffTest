@@ -45,7 +45,11 @@ enum ENotification
 	EDITOR_PING_PLAYER = 403, ///< Player pings - (Param1 = PlayerID, Param2 = -1, Param3 positionX, Param4 positionY, Param4 positionZ)
 	EDITOR_PING_PLAYER_TARGET_ENTITY = 404, ///< Player pings at target entity - (Param1 = PlayerID, Param2 = EditableEntityID)
 	EDITOR_PING_PLAYER_TARGET_PLAYER = 405, ///< Player pings at target player - (Param1 = PlayerID, Param2 = TargetPlayerID)
-	EDITOR_PING_NO_GM_TO_PING = 406, ///< No GM to ping to notification
+	EDITOR_PING_NO_GM_TO_PING = 406, ///< No GM to ping to notification	
+	EDITOR_GM_ONLY_PING = 407, ///< GM only ping - (Param1 = GameMasterID, Param2 = -1, Param3 positionX, Param4 positionY, Param4 positionZ)
+	EDITOR_GM_ONLY_PING_TARGET_ENTITY = 408, ///< GM only ping at target entity - (Param1 = GameMasterID, Param2 = EditableEntityID)
+	EDITOR_GM_ONLY_PING_TARGET_PLAYER = 409, ///< GM only ping at target player - (Param1 = GameMasterID, Param2 = TargetPlayerID)
+	EDITOR_GM_ONLY_PING_LIMITED_RIGHTS = 410, ///< Tries to ping GM only ping but has limited editor rights
 	
 	//EDITOR NOTIFICATIONS
 	EDITOR_CANNOT_OPEN = 500, ///< Opening the editor is disabled or no modes are available
@@ -70,7 +74,8 @@ enum ENotification
 	EDITOR_TASK_DELETED = 519, ///< Objective was Deleted by GM (Param1 = Task Replication ID, FactionIndex)
 	EDITOR_TASK_CANCELED = 520, ///< Objective was Canceled (Param1 = Task Replication ID, FactionIndex)
 	EDITOR_GM_TELEPORTED_PLAYER = 521, ///< When the player gets teleported a notification will be send to that player (Param1 = GM teleported the player, player that was teleported (for GM to go to position))
-
+	EDITOR_PLACING_BUDGET_MAX_FOR_VEHICLE_OCCUPANTS = 522,///< Max budget reached when trying to place occupants in vehicle
+	
 	//AI
 	//EDITOR_AI_GROUP_ELIMINATED = 600, ///< An AI group was eliminated - (Param1 = EditableEntityID)
 	
@@ -93,11 +98,17 @@ enum ENotification
 	EDITOR_ATTRIBUTES_ENABLE_RESPAWN_ON_PLAYER = 719, //Called when GM enableds spawning on Radio operators (Param1 = GM)
 	EDITOR_ATTRIBUTES_DISABLE_RESPAWN_ON_PLAYER = 720, //Called when GM disales spawning on Radio operators (Param1 = GM)
 	EDITOR_ATTRIBUTES_FACTION_CHANGED_NO_GM = 721, //Called when GM places a spawnpoint but the faction was not enabled
-	EDITOR_ATTRIBUTES_SHOW_KILLFEED = 722, ///< GM show respawn - (Param1 = GameMasterID)
-	EDITOR_ATTRIBUTES_HIDE_KILLFEED = 723, ///< GM hide respawn - (Param1 = GameMasterID)
 	EDITOR_ATTRIBUTES_ENABLED_AMBIENT_MUSIC = 724, ///< When the GM enables server wide ambient music (Param1 = GM that enables it)
 	EDITOR_ATTRIBUTES_DISABLED_AMBIENT_MUSIC = 725, ///< When the GM disables server wide ambient music (Param1 = GM that disables it)	EDITOR_GM_ENABLED_AMBIENT_MUSIC = 522, ///< When the GM enables server wide ambient music (Param1 = GM that enables it)
-	
+	//NOT IN GAME \/
+	EDITOR_ATTRIBUTES_SERVER_NAME_CHANGED = 716, ///< GM change the server name
+	EDITOR_ATTRIBUTES_SERVER_PASSWORD_CHANGED = 717, ///< GM change the server password
+	EDITOR_ATTRIBUTES_SERVER_PLAYER_COUNT_CHANGED = 718, ///< GM change the server max player count - (Param1 = newPlayerCount)
+	EDITOR_ATTRIBUTES_UNMUTE_MUSIC = 726, ///< When the GM enables server wide music (Param1 = GM that enables it) (Not in game)
+	EDITOR_ATTRIBUTES_MUTE_MUSIC = 727, ///< When the GM disables server wide music (Param1 = GM that disables it) (Not in game)
+	//NOT IN GAME /\
+	EDITOR_CHANGED_KILLFEED_TYPE = 728, ///< Changed the killfeed type (Param1 = GM who changed setting, Param2 = The new KillfeedType, Param3 = bool isReciveType)
+	EDITOR_CHANGED_KILLFEED_RECEIVE_TYPE = 729, ///< Changed killfeed receive type Param1 = GM who changed setting, Param2 = The new KillfeedReceiveType, Param3 = bool isReciveType))
 	
 	//GM
 	EDITOR_PLAYER_BECAME_GM = 800, ///<Player become GM - (Param1 = PlayerID)
@@ -125,17 +136,12 @@ enum ENotification
 	VOTING_KICK_SUCCEED = 1007, ///< Voting succeeded to kick player (Param1 = player id)
 	VOTING_KICK_FAIL = 1008, ///< Voting failed to kick player (Param1 = player id)
 	
-	
 	//GROUPS 
 	GROUPS_PLAYER_JOINED = 1101, ///< Player joined the group
 	GROUPS_PLAYER_LEFT = 1102, ///< Player has left the group
+	GROUPS_PLAYER_PROMOTED_LEADER = 1103, ///< Player has been promoted to group leader
 	
-	//NOT IN GAME
-	EDITOR_ATTRIBUTES_UNMUTE_MUSIC = 726, ///< When the GM enables server wide music (Param1 = GM that enables it) (Not in game)
-	EDITOR_ATTRIBUTES_MUTE_MUSIC = 727, ///< When the GM disables server wide music (Param1 = GM that disables it) (Not in game)
-	EDITOR_ATTRIBUTES_SERVER_NAME_CHANGED = 716, ///< GM change the server name
-	EDITOR_ATTRIBUTES_SERVER_PASSWORD_CHANGED = 717, ///< GM change the server password
-	EDITOR_ATTRIBUTES_SERVER_PLAYER_COUNT_CHANGED = 718, ///< GM change the server max player count - (Param1 = newPlayerCount)
-	
+	//OTHERS
+	ACTION_ON_COOLDOWN = 1200, ///< Action is on cooldown and cannot be executed
 };
 

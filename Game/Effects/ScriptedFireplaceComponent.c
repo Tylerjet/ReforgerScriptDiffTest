@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Effects", description: "Scripted fireplace component", color: "0 0 255 255", icon: HYBRID_COMPONENT_ICON)]
+[ComponentEditorProps(category: "GameScripted/Effects", description: "Scripted fireplace component", icon: HYBRID_COMPONENT_ICON)]
 class SCR_ScriptedFireplaceComponentClass: ScriptEffectComponentClass
 {
 };

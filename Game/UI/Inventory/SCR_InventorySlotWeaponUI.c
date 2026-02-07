@@ -43,7 +43,7 @@ class SCR_InventorySlotWeaponUI : SCR_InventorySlotUI
 		SoundComponent soundComponent = SoundComponent.Cast(itemEntity.FindComponent(SoundComponent));
 		if (soundComponent)
 		{
-			soundComponent.SoundEvent("SOUND_DROP");
+			soundComponent.SoundEvent(SCR_SoundEvent.SOUND_DROP);
 		}
 				
 		return true;

@@ -16,6 +16,14 @@ class SCR_AssetBrowserContextAction : SCR_BaseContextAction
 		
 		SCR_ContentBrowserEditorComponent contentBrowserManager = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent, true));
 		if (contentBrowserManager)
-			contentBrowserManager.OpenBrowser(hoveredEntity);
+		{
+			//~ Get content browser config to hide labels and set specific labels active
+			SCR_EditableLinkedContentBrowserUIInfo uiSlotInfo = SCR_EditableLinkedContentBrowserUIInfo.Cast(hoveredEntity.GetInfo());
+			
+			if (uiSlotInfo)
+				contentBrowserManager.OpenBrowserExtended(hoveredEntity, uiSlotInfo.GetContentBrowserDisplayConfig());
+			else
+				contentBrowserManager.OpenBrowserExtended(hoveredEntity);
+		}
 	}
 };

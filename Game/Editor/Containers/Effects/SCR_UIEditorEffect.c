@@ -43,7 +43,7 @@ class SCR_UIEditorEffect: SCR_BaseEditorEffect
 		}
 		
 		//--- ToDo: Remove
-		WidgetAnimator.PlayAnimation(m_Widget, WidgetAnimationType.Opacity, 0, 0.5);
+		AnimateWidget.Opacity(m_Widget, 0, 0.5);
 		
 		return true;
 	}

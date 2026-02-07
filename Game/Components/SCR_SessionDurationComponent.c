@@ -60,7 +60,9 @@ class SCR_SessionDurationComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{	
-		if (RplSession.Mode() != RplMode.Client) 
+		SCR_BaseGameMode gameMode =  SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		
+		if (gameMode && gameMode.IsMaster()) 
 		{
 			m_World = GetGame().GetWorld();
 			
@@ -72,7 +74,8 @@ class SCR_SessionDurationComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_SessionDurationComponent()
 	{
-		GetGame().GetCallqueue().Remove(UpdateSessionDurationAmount);
+		if (m_World)
+			GetGame().GetCallqueue().Remove(UpdateSessionDurationAmount);
 	}
 
 };

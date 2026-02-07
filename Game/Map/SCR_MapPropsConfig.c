@@ -14,6 +14,38 @@ class SCR_MapPropsConfig
 [BaseContainerProps()]
 class SCR_BuildingPropsConfig : SCR_MapPropsConfig
 {
+	[Attribute("", UIWidgets.Object, "Building types", "")]
+	ref array<ref SCR_BuildingTypeProps> m_aBuildingTypes;
+
+	//------------------------------------------------------------------------------------------------
+	override void SetDefaults(MapLayer layer)
+	{
+		MapBuildingProps buildingProps = layer.GetBuildingProps();
+
+		if (m_aBuildingTypes.IsEmpty())
+			return;
+
+		foreach (SCR_BuildingTypeProps buildingType : m_aBuildingTypes)
+		{
+			buildingProps.SetOutlineWidth(buildingType.m_iType, buildingType.m_fOutlineWidth);
+			buildingProps.SetLineColor(buildingType.m_iType, buildingType.m_FillColor);
+			buildingProps.SetOutlineColor(buildingType.m_iType, buildingType.m_OutlineColor);
+			buildingProps.SetLineType(buildingType.m_iType, buildingType.m_iOutlineStyle);
+
+			if (layer.Index() <= buildingType.m_iViewLayerVisibility)	
+				buildingProps.SetVisibility(buildingType.m_iType, true); 		// buildings are not visible by default
+		}
+	}
+};
+
+//------------------------------------------------------------------------------------------------
+//! Configuration of visibility in layers per descriptor type
+[BaseContainerProps(), SCR_BuildingViewTitle()]
+class SCR_BuildingTypeProps
+{
+	[Attribute("0", UIWidgets.ComboBox, "Building type", "", ParamEnumArray.FromEnum(EMapBuildingType))]
+	int m_iType;
+
 	[Attribute("4", UIWidgets.EditBox, desc: "Layer ID, determines up to which layer is this descriptor type visible")]
 	int m_iViewLayerVisibility;
 	
@@ -28,19 +60,20 @@ class SCR_BuildingPropsConfig : SCR_MapPropsConfig
 	
 	[Attribute("0.5 0.5 0.5 1", UIWidgets.ColorPicker, desc: "Fill color")]
 	ref Color m_FillColor; 
-	
+};
+
+//------------------------------------------------------------------------------------------------
+//! Custom names for defined buildings to make config setup easier
+class SCR_BuildingViewTitle: BaseContainerCustomTitle
+{
 	//------------------------------------------------------------------------------------------------
-	override void SetDefaults(MapLayer layer)
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
-		// Building outlines configuration
-		MapBuildingProps buildProps = layer.GetBuildingProps();
-		buildProps.SetOutlineWidth(m_fOutlineWidth);
-		buildProps.SetLineColor(m_FillColor);
-		buildProps.SetOutlineColor(m_OutlineColor);
-		buildProps.SetLineType(m_iOutlineStyle);
-		
-		if (layer.Index() > m_iViewLayerVisibility)	
-			buildProps.SetVisible(false); 
+		int type;
+		source.Get("m_iType", type);
+		title = typename.EnumToString(EMapBuildingType, type);
+
+		return true;
 	}
 };
 
@@ -57,10 +90,10 @@ class SCR_GridPropsConfig : SCR_MapPropsConfig
 	[Attribute("0 0 0 1", UIWidgets.ColorPicker, desc: "Line color")]
 	ref Color m_LineColor;
 	
-	[Attribute("{E2CBA6F76AAA42AF}UI/Fonts/Roboto/Roboto_Regular.fnt", UIWidgets.ResourceNamePicker, desc: "Font", params: "fnt")]
+	[Attribute("{3E7733BAC8C831F6}UI/Fonts/RobotoCondensed/RobotoCondensed_Regular.fnt", UIWidgets.ResourceNamePicker, desc: "Font", params: "fnt")]
 	ResourceName m_TextFont;
 	
-	[Attribute("16", UIWidgets.EditBox, desc: "Font size")]
+	[Attribute("20", UIWidgets.EditBox, desc: "Font size")]
 	int m_iTextSize;
 	
 	[Attribute("0", UIWidgets.CheckBox, desc: "Use bold text")]

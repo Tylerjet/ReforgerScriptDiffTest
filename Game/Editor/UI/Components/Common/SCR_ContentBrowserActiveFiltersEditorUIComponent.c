@@ -34,6 +34,7 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 	{
 		if (active)
 		{
+			//~ Check if not yet in active filters
 			if (!m_aActiveFilters.Contains(label))
 				InsertOrderedFilter(label);
 			else 
@@ -61,7 +62,7 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		EEditableEntityLabelGroup groupLabel;
 		m_ContentBrowserComponent.GetLabelGroupType(label, groupLabel);
 		int newLabelGroupOrder = m_mGroupLabelOrder[groupLabel];
-		int newLabelOrder = m_ContentBrowserComponent.GetLabelOrder(label);
+		int newLabelOrder = m_ContentBrowserComponent.GetLabelOrderInGroup(label);
 		int checkGroupOrder;
 		int checkLabelOrder;
 		int count = m_aActiveFilters.Count();
@@ -77,7 +78,7 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 			//Part of same group check if label order is higher or equal
 			if (newLabelGroupOrder == checkGroupOrder)
 			{
-				checkLabelOrder = m_ContentBrowserComponent.GetLabelOrder(m_aActiveFilters[i]);
+				checkLabelOrder = m_ContentBrowserComponent.GetLabelOrderInGroup(m_aActiveFilters[i]);
 				
 				//If label has the same order check which index is first
 				if (checkLabelOrder == newLabelOrder)
@@ -131,7 +132,7 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 	
 	protected void OnFiltersReset()
 	{
-		m_aActiveFilters.Clear();
+		m_ContentBrowserComponent.GetActiveLabels(m_aActiveFilters);
 		CreateFilters();
 	}
 	
@@ -152,7 +153,7 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		
 		int count = m_aActiveFilters.Count();
 		
-		//No active filters
+		//~ No active filters
 		if (count <= 0)
 		{
 			GetGame().GetWorkspace().CreateWidgets(m_NoActiveFiltersPrefab, m_FiltersHolder);
@@ -171,9 +172,19 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		SCR_ContentBrowserActiveFilterEditorUIComponent activeFilterComponent;
 		SCR_UIInfo uiInfo;
 		SCR_ButtonBaseComponent button;
+		int ignoredFilters = 0;
+		SCR_EditorContentBrowserDisplayConfig contentBrowserConfig = m_ContentBrowserComponent.GetContentBrowserDisplayConfig();
 		
 		for(int i = 0; i < count; i++)
 		{
+			//~ Ignore if label cannot be shown in active filters
+			if (contentBrowserConfig && !contentBrowserConfig.CanShowLabelInActiveFilters(m_aActiveFilters[i]))
+			{
+				//~ Make sure the system knows the filter is ignored
+				ignoredFilters++;
+				continue;
+			}
+			
 			filterWidget = GetGame().GetWorkspace().CreateWidgets(m_sActiveFilterPrefab, m_FiltersHolder);
 			activeFilterComponent = SCR_ContentBrowserActiveFilterEditorUIComponent.Cast(filterWidget.FindHandler(SCR_ContentBrowserActiveFilterEditorUIComponent));
 			button = SCR_ButtonBaseComponent.Cast(filterWidget.FindHandler(SCR_ButtonBaseComponent));
@@ -189,8 +200,15 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 			button.m_OnClicked.Insert(OnActiveFilterPressed);
 		}
 		
+		//~ No active filters visible
+		if ((count - ignoredFilters) <= 0)
+		{
+			GetGame().GetWorkspace().CreateWidgets(m_NoActiveFiltersPrefab, m_FiltersHolder);
+			return;
+		}
 		
-		if (overflow > 0)
+		//~ Set overflow indicator
+		if ((overflow - ignoredFilters) > 0)
 		{
 			filterWidget = GetGame().GetWorkspace().CreateWidgets(m_sMoreActiveFiltersPrefab, m_FiltersHolder);
 			TextWidget text = TextWidget.Cast(filterWidget.FindAnyWidget("Count"));
@@ -245,10 +263,9 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		foreach(SCR_EditableEntityCoreLabelGroupSetting groupSetting: labelGroups)
 			m_mGroupLabelOrder.Insert(groupSetting.GetLabelGroupType(), groupSetting.GetOrder());
 		
-		m_ContentBrowserComponent.GetActiveLabels(m_aActiveFilters);
 		m_ContentBrowserComponent.GetOnLabelChanged().Insert(OnFilterLabelChanged);
-		m_ContentBrowserComponent.GetOnActiveLabelsReset().Insert(OnFiltersReset);
-
+		m_ContentBrowserComponent.GetOnBrowserStateCleared().Insert(OnFiltersReset);
+		
 		CreateFilters();	
 	}
 	
@@ -262,7 +279,7 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		if (m_ContentBrowserComponent)
 		{
 			m_ContentBrowserComponent.GetOnLabelChanged().Remove(OnFilterLabelChanged);
-			m_ContentBrowserComponent.GetOnActiveLabelsReset().Remove(OnFiltersReset);
+			m_ContentBrowserComponent.GetOnBrowserStateCleared().Remove(OnFiltersReset);
 		}
 	}
 };

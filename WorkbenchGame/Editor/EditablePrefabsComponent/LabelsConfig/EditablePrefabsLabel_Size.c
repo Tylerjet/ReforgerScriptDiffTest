@@ -91,7 +91,7 @@ class EditablePrefabsLabel_Size : EditablePrefabsLabel_Base
 	protected bool ContainsSlotSizeLabel(notnull array<EEditableEntityLabel> authoredLabels, EEditableEntityLabel optSizeLabelCheck = EEditableEntityLabel.NONE)
 	{		
 		// AuthoredLabels contains any SlotSize label
-		if (authoredLabels.Contains(EEditableEntityLabel.SLOTSIZE_SMALL) || authoredLabels.Contains(EEditableEntityLabel.SLOTSIZE_MEDIUM) || authoredLabels.Contains(EEditableEntityLabel.SLOTSIZE_LARGE))
+		if (authoredLabels.Contains(EEditableEntityLabel.SLOT_FLAT_SMALL) || authoredLabels.Contains(EEditableEntityLabel.SLOT_FLAT_MEDIUM) || authoredLabels.Contains(EEditableEntityLabel.SLOT_FLAT_LARGE) || authoredLabels.Contains(EEditableEntityLabel.SLOT_ROAD_SMALL) || authoredLabels.Contains(EEditableEntityLabel.SLOT_ROAD_MEDIUM) || authoredLabels.Contains(EEditableEntityLabel.SLOT_ROAD_LARGE))
 		{
 			return true;
 		}

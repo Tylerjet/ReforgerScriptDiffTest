@@ -20,6 +20,7 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 	protected bool m_bQuickDeployAvailable;
 	protected bool m_bButtonsUnlocked = true;
 	protected bool m_bDeployRequestSent = false;
+	protected bool m_bConfirmButtonEnabled = true;
 	protected static bool m_bSpawnPointsAvailable;
 	protected static bool s_bPlayableFactionsAvailable;
 
@@ -27,7 +28,7 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 	protected SCR_TimedSpawnPointComponent m_SpawnPointTimer;
 	protected int m_iLastTime;
 
-	[Attribute("{1F0A6C9C19E131C6}UI/Textures/Icons/icons_wrapperUI.imageset")]
+	[Attribute("{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset")]
 	protected ResourceName m_sIcons;
 
 	[Attribute("#AR-Button_Confirm-UC")]
@@ -152,7 +153,7 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 				bool enable = true;
 				if (m_bIsLastAvailableTab)
 					enable = m_bSpawnPointsAvailable;
-				m_ConfirmButton.SetEnabled(respawnEnabled && focusedTile && enable);
+				m_ConfirmButton.SetEnabled(respawnEnabled && focusedTile && enable && m_bConfirmButtonEnabled);
 			}
 			if (!respawnEnabled)
 				return;
@@ -174,7 +175,7 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 				{
 					SCR_UISoundEntity.SetSignalValueStr("countdownValue", time);
 					SCR_UISoundEntity.SetSignalValueStr("maxCountdownValue", m_Timer.GetRespawnTime());
-					SCR_UISoundEntity.SoundEvent("SOUND_RESPAWN_COUNTDOWN");
+					SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RESPAWN_COUNTDOWN);
 					if (SCR_SelectSpawnPointSubMenu.GetInstance()) // todo(koudelkaluk): temp
 					{
 						string timeFormatted = SCR_Global.GetTimeFormattingMinutesSeconds(0, time);
@@ -187,7 +188,7 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 			{
 				if (m_iLastTime == 1)
 				{
-					SCR_UISoundEntity.SoundEvent("SOUND_RESPAWN_COUNTDOWN_END");
+					SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RESPAWN_COUNTDOWN_END);
 					m_iLastTime = time;
 					SetQuickDeployAvailable();
 				}
@@ -201,17 +202,27 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 				m_ConfirmButton.SetLabel(m_sConfirmButtonText);
 				if (m_QuickDeployButton)
 					m_QuickDeployButton.SetLabel(m_sQuickDeploy);
-				if (m_ConfirmButton && m_ConfirmButton.IsToggled())
+
+				if (m_ConfirmButton)
 				{
-					bool assignResult = ConfirmSelection();
-					if (m_bIsLastAvailableTab && assignResult)
+					bool toggled = m_ConfirmButton.IsToggled();
+					SCR_RespawnSuperMenu.Cast(m_ParentMenu).SetLoadingVisible(toggled);
+					if (toggled && m_bIsLastAvailableTab && ConfirmSelection())
+					{
 						HandleOnDeploy();
+					}
 				}
-				if ((quickDeployEnabled && s_bPlayableFactionsAvailable) && (m_QuickDeployButton && m_QuickDeployButton.IsToggled()))
+
+				if (m_QuickDeployButton)
 				{
-					QuickDeploy();
-					m_QuickDeployButton.SetToggled(false);
+					bool toggled = m_QuickDeployButton.IsToggled();
+					SCR_RespawnSuperMenu.Cast(m_ParentMenu).SetLoadingVisible(toggled);
+					if (quickDeployEnabled && s_bPlayableFactionsAvailable && toggled)
+					{
+						QuickDeploy();
+					}
 				}
+
 #ifdef ENABLE_DIAG
 				// OOF.
 				if (SCR_RespawnHandlerComponent.IsCLISpawnEnabled())
@@ -228,92 +239,16 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 
 
 	//------------------------------------------------------------------------------------------------
-	protected bool QuickDeploy()
+	protected void QuickDeploy()
 	{
-		if (!m_RespawnSystemComponent)
-			return false;
+		if (m_bDeployRequestSent)
+			return;
+		SCR_RespawnComponent rc = SCR_RespawnComponent.Cast(GetGame().GetPlayerManager().GetPlayerRespawnComponent(m_iPlayerId));
+		if (rc)
+			rc.RequestQuickRespawn();
 
-		// select a faction
-		Faction faction = m_RespawnSystemComponent.GetPlayerFaction(m_iPlayerId);
-		if (!faction)
-		{
-			array<Faction> factions = {};
-			array<Faction> playableFactions = {};
-			int factionCnt = m_FactionManager.GetFactionsList(factions);
-
-			for (int id = 0; id < factionCnt; ++id)
-			{
-				SCR_Faction f = SCR_Faction.Cast(factions[id]);
-				if (!f || !f.IsPlayable())
-					continue;
-
-				bool hasSpawnPoints = !SCR_SpawnPoint.GetSpawnPointsForFaction(f.GetFactionKey()).IsEmpty();
-				if (hasSpawnPoints)
-					playableFactions.Insert(f);
-			}
-
-			faction = playableFactions.GetRandomElement();
-			for (int i = 0; i < playableFactions.Count(); ++i)
-			{
-				Faction f = playableFactions[i];
-				if (GetPlayerCount(f) < GetPlayerCount(faction))
-					faction = f;
-			}
-
-			if (!faction)
-				return false;
-
-			RequestFaction(faction);
-		}
-		
-		// select a group
-		// Currently doesn't do anything, player is in group automagically
-		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
-		if (groupsManager && playerGroupController && !groupsManager.IsPlayerInAnyGroup(m_iPlayerId))
-		{
-			SCR_AIGroup group = groupsManager.GetFirstNotFullForFaction(faction);
-			if (!group)
-				playerGroupController.RequestCreateGroup(); //requestCreateGroup automatically puts player to the newly created group
-			else
-				playerGroupController.RequestJoinGroup(group.GetGroupID());
-		}
-		
-		// select a loadout
-		SCR_BasePlayerLoadout loadout = m_RespawnSystemComponent.GetPlayerLoadout(m_iPlayerId);
-		if (!loadout)
-		{
-			SCR_LoadoutManager lm = GetGame().GetLoadoutManager();
-			if (!lm)
-			{
-				Print("Missing loadout manager!", LogLevel.ERROR);
-			}
-			else
-			{
-				array<ref SCR_BasePlayerLoadout> loadouts = {};
-				lm.GetPlayerLoadoutsByFaction(faction, loadouts);
-				loadout = loadouts.GetRandomElement();
-				if (!loadout)
-					return false;
-			}
-		}
-
-		RequestLoadout(loadout);
-
-		// select a spawn point
-		SCR_SpawnPoint spawnPoint = m_RespawnSystemComponent.GetPlayerSpawnPoint(m_iPlayerId);
-		if (!spawnPoint)
-		{
-			array<SCR_SpawnPoint> availableSpawnPoints = SCR_SpawnPoint.GetSpawnPointsForFaction(faction.GetFactionKey());
-			spawnPoint = availableSpawnPoints.GetRandomElement();
-			if (!spawnPoint)
-				return false;
-		}
-
-		RequestSpawnPoint(spawnPoint);
-		HandleOnDeploy();
-
-		return true;
+		SCR_GroupsManagerComponent.GetInstance().SetConfirmedByPlayer(true);
+		m_bDeployRequestSent = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -358,7 +293,7 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void HandleOnConfirm()
 	{
-		if (GetPlayerRemainingRespawnTime(m_iPlayerId) > 0)
+		if (m_bIsLastAvailableTab && GetPlayerRemainingRespawnTime(m_iPlayerId) > 0)
 			return;
 		bool assignResult = ConfirmSelection();
 		m_bDeployRequestSent = false;
@@ -369,21 +304,12 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 	{
 		if (m_bDeployRequestSent)
 			return;
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		PlayerController pc = GetGame().GetPlayerController();
-		if (pc)
-		{
-			if (pc.CanRequestRespawn())
-			{
-				pc.RequestRespawn();
-				m_bDeployRequestSent = true;
-				CloseParent();
-			}
-		}
-		else
-		{
-			Print("Requesting deploy with no player controller!", LogLevel.ERROR);
-		}
+
+		SCR_RespawnComponent rc = SCR_RespawnComponent.Cast(GetGame().GetPlayerManager().GetPlayerRespawnComponent(m_iPlayerId));
+		if (rc)
+			rc.RequestRespawn();
+
+		m_bDeployRequestSent = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -440,22 +366,20 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected int GetPlayerCount(Faction faction)
+	bool GetConfirmButtonEnabled()
 	{
-		array<int> players = {};
-		int playerCount = 0;
-
-		PlayerManager pm = GetGame().GetPlayerManager();
-		pm.GetPlayers(players);
-
-		foreach (int playerId : players)
-		{
-			Faction playerFaction = m_RespawnSystemComponent.GetPlayerFaction(playerId);
-			if (playerFaction == faction)
-				playerCount++;
-		}
-
-		return playerCount;
+		return m_bConfirmButtonEnabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetConfirmButtonEnabled(bool enabled)
+	{
+		m_bConfirmButtonEnabled = enabled;
+	}
+	
+	SCR_NavigationButtonComponent GetConfirmButton()
+	{
+		return m_ConfirmButton;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -44,6 +44,11 @@ class PlayerController: GenericController
 	proto external bool IsChatAllowed();
 	//! Returns voice communication privilege
 	proto external bool IsVonAllowed();
+	//! Returns True if the user has given role assigned
+	proto external bool HasRole(EPlayerRole role);
+	proto external void SetCharacterCameraRenederActive(bool active);
+	proto external int GetPlayerId();
+	proto external int GetRplIdentity();
 	/*!
 	Block specified player from any communication
 	for the time of one gameplay session.
@@ -57,20 +62,13 @@ class PlayerController: GenericController
 	*/
 	proto external void SetPlayerMutedState(int playerId, bool blocked);
 	/*!
-	Determine if the specified player is able to communicate with this PC in any means
-	with this particular player controller.
+	Determine if the specified player is able to communicate with this PC in any means.
 	*/
 	proto external PermissionState GetPlayerBlockedState(int playerId);
 	/*!
-	Determine if the specified player is able to communicate with this PC using voice
-	with this particular player controller.
+	Determine if the specified player is able to communicate with this PC using voice.
 	*/
 	proto external PermissionState GetPlayerMutedState(int playerId);
-	//! Returns True if the user has given role assigned
-	proto external bool HasRole(EPlayerRole role);
-	proto external void SetCharacterCameraRenederActive(bool active);
-	proto external int GetPlayerId();
-	proto external int GetRplIdentity();
 	
 	// callbacks
 	

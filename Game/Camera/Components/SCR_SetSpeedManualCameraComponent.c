@@ -25,16 +25,12 @@ class SCR_SetSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 	private float m_fWidgetAlpha;*/	
 		
 
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		m_bIsUsingGamepad = !SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice); 
-		if (!SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-		{
-			m_bIsUsingGamepad = (newDevice == EInputDeviceType.GAMEPAD || newDevice == EInputDeviceType.JOYSTICK);
-			
-			if (!m_bIsUsingGamepad)
-				m_bIsBoosted = false;
-		}
+		m_bIsUsingGamepad = isGamepad;
+		
+		if (!m_bIsUsingGamepad)
+			m_bIsBoosted = false;
 	}
 	
 	protected void ManualCameraSpeedToggle()
@@ -98,7 +94,7 @@ class SCR_SetSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 	}
 	override bool EOnCameraInit()
 	{
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		GetInputManager().AddActionListener("ManualCameraSpeedToggle", EActionTrigger.DOWN, ManualCameraSpeedToggle);
 		
@@ -107,7 +103,7 @@ class SCR_SetSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 	}
 	override void EOnCameraExit()
 	{
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		
 		GetInputManager().RemoveActionListener("ManualCameraSpeedToggle", EActionTrigger.DOWN, ManualCameraSpeedToggle);
 		

@@ -4,7 +4,7 @@ Do not modify, this script is generated
 ===========================================
 */
 
-class WeatherTransition
+class WeatherTransition: ScriptAndConfig
 {
 	proto external string GetDestinationName();
 	proto external float GetProbability();

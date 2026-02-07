@@ -49,35 +49,20 @@ enum DataVarType
 	OBJECT,
 	//! Resource name
 	RESOURCE_NAME,
-	//! Resource name
 	SCALAR_ARRAY,
-	//! Resource name
 	VECTOR2_ARRAY,
-	//! Resource name
 	VECTOR3_ARRAY,
-	//! Resource name
 	VECTOR4_ARRAY,
-	//! Resource name
 	MATRIX_ARRAY,
-	//! Resource name
 	MATRIX34_ARRAY,
-	//! Resource name
 	COLOR_ARRAY,
-	//! Resource name
 	INTEGER_ARRAY,
-	//! Resource name
 	TEXTURE_ARRAY,
-	//! Resource name
 	BOOLEAN_ARRAY,
-	//! Resource name
 	STRING_ARRAY,
-	//! Resource name
 	POINTER_ARRAY,
-	//! Resource name
 	FLAGS_ARRAY,
-	//! Resource name
 	OBJECT_ARRAY,
-	//! Resource name
 	RESOURCE_NAME_ARRAY
 };
 

@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Handles respawn timers for players.", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Handles respawn timers for players.")]
 class SCR_WaveRespawnTimerComponentClass: SCR_RespawnTimerComponentClass
 {
 };

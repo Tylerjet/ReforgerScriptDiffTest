@@ -40,10 +40,6 @@ class SCR_CampaignFactionManager : SCR_MilitaryFactionManager
 {
 	protected static SCR_CampaignFactionManager s_Instance;
 	
-	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Vehicle asset list", "conf")]
-	protected ResourceName m_VehicleAssetList;
-	protected ref array<ref SCR_CampaignVehicleAssetInfo> m_aVehicleAssetList;	
-	
 	[Attribute("", UIWidgets.ResourceNamePicker, "Slot Flat Small", "et")]
 	private ResourceName m_SlotFlatSmall;
 	
@@ -241,82 +237,10 @@ class SCR_CampaignFactionManager : SCR_MilitaryFactionManager
 		
 		return foundID;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Returns the asset list for the match (list of all vehicles available for players to request)
-	//! \param assetList Array to fill with data
-	void GetVehicleAssetList(out notnull array<ref SCR_CampaignVehicleAssetInfo> assetList)
-	{
-		assetList = m_aVehicleAssetList
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Returns the total number of vehicles in the asset list
-	int GetVehicleAssetListCount()
-	{
-		return m_aVehicleAssetList.Count();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Get the vehicle name to be shown in UI 
-	//! \param assetID Unique asset ID (its index in asset list)
-	string GetVehicleAssetDisplayName(int assetID)
-	{
-		return m_aVehicleAssetList[assetID].GetDisplayName();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetVehicleAssetDisplayNameUpperCase(int assetID)
-	{
-		return m_aVehicleAssetList[assetID].GetDisplayNameUpperCase();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Get the vehicle default faction 
-	//! \param assetID Unique asset ID (its index in asset list)
-	string GetVehicleAssetFactionKey(int assetID)
-	{
-		return m_aVehicleAssetList[assetID].GetFactionKey();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Get the lowest rank that can request the given asset
-	//! \param assetID Unique asset ID (its index in asset list)
-	ECharacterRank GetVehicleAssetMinimumRank(int assetID)
-	{
-		if (assetID < 0 || assetID >= m_aVehicleAssetList.Count())
-			return -1;
-		
-		return m_aVehicleAssetList[assetID].GetMinimumRankID();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Get the vehicle prefab used to spawn the vehicle
-	//! \param assetID Unique asset ID (its index in asset list)
-	ResourceName GetVehicleAssetPrefab(int assetID)
-	{
-		return m_aVehicleAssetList[assetID].GetPrefab();
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	void SCR_CampaignFactionManager(IEntitySource src, IEntity parent)
 	{
 		if (SCR_GameModeCampaignMP.NotPlaying())
 			return;
-		
-		//Parse & register vehicle asset list
-		m_aVehicleAssetList = new array<ref SCR_CampaignVehicleAssetInfo>;
-		Resource container = BaseContainerTools.LoadContainer(m_VehicleAssetList);
-		if (container && container.IsValid())
-		{
-			SCR_CampaignVehicleAssetList list = SCR_CampaignVehicleAssetList.Cast(BaseContainerTools.CreateInstanceFromContainer(container.GetResource().ToBaseContainer()));
-			list.GetVehicleAssetList(m_aVehicleAssetList);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_CampaignFactionManager()
-	{
-		m_aVehicleAssetList = null;
 	}
 };

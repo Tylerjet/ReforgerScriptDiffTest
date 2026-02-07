@@ -1,10 +1,16 @@
 class SCR_PlayerTeleportFeedbackUIComponent: ScriptedWidgetComponent
 {
+	[Attribute("0.5", desc: "Long fade delay when moved in and out of vehicles. In seconds.")]
+	protected float m_fLongFadeDelay;
+	
+	[Attribute("TeleportingText", desc: "Teleport Text widget name")]
+	protected string m_sTeleportTextName;
 	
 	protected SCR_FadeUIComponent m_FadeUIComponent;
+	protected SCR_FadeUIComponent m_TeleportTextFadeUIComponent;
 	protected Widget m_wRoot;
 	
-	protected void OnPlayerTeleported(bool editorIsOpen)
+	protected void OnPlayerTeleported(bool editorIsOpen, bool longFade)
 	{
 		if (editorIsOpen)
 			return;
@@ -12,7 +18,22 @@ class SCR_PlayerTeleportFeedbackUIComponent: ScriptedWidgetComponent
 		m_FadeUIComponent.CancelFade(false);
 		m_wRoot.SetOpacity(1);
 		m_wRoot.SetVisible(true);
-		m_FadeUIComponent.FadeOut(false);
+		
+		if (!longFade)
+		{
+			m_FadeUIComponent.FadeOut(false);
+			
+			if (m_TeleportTextFadeUIComponent)
+				m_TeleportTextFadeUIComponent.GetFadeWidget().SetVisible(false);
+		}
+		else 
+		{
+			m_FadeUIComponent.DelayedFadeOut(m_fLongFadeDelay * 1000, false);
+			
+			if (m_TeleportTextFadeUIComponent)
+				m_TeleportTextFadeUIComponent.FadeIn(true);
+		}
+			
 	}
 	
 	override void HandlerAttached(Widget w)
@@ -36,6 +57,13 @@ class SCR_PlayerTeleportFeedbackUIComponent: ScriptedWidgetComponent
 			Print("'SCR_PlayerTeleportFeedbackUIComponent' could not find 'SCR_PlayerTeleportedFeedbackComponent', make sure it is added to the player controller", LogLevel.ERROR);
 			return;
 		}
+		
+		Widget teleportTextWidget = w.FindAnyWidget(m_sTeleportTextName);
+		if (teleportTextWidget)
+		{
+			m_TeleportTextFadeUIComponent = SCR_FadeUIComponent.Cast(teleportTextWidget.FindHandler(SCR_FadeUIComponent));
+		}
+		
 			
 		playerTeleportedComponent.GetOnPlayerTeleportedByEditor().Insert(OnPlayerTeleported);
 	}

@@ -19,7 +19,7 @@ class CameraManager: GenericEntity
 	proto external CameraBase CurrentCamera();
 	/*!
 	Set the current camera, it should be alreday registered in this Camera Manager.
-	\param pCam Camera which will be the new camera used.
+	\param cam Camera which will be the new camera used.
 	*/
 	proto external bool SetCamera(CameraBase pCam);
 	//! Set the next camera in the list as current camera.

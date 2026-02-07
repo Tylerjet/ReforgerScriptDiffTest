@@ -1,61 +1,24 @@
 // Script File//------------------------------------------------------------------------------------------------
 class SCR_AIIsTargetVisible : DecoratorScripted
 {
+	static const string BASE_TARGET_PORT = "BaseTargetIn";
+	static const string LAST_POSITION_PORT = "LastPositionOut";
+	
 	[Attribute("1", UIWidgets.EditBox, "How long in past target becomes invisibile", "")]
 	float m_lastSeenMax;
-	
-	private PerceptionComponent m_PerceptionComponent;
-	
-	//-----------------------------------------------------------------------------------------------------
-	protected override void OnInit(AIAgent owner)
-	{
-		IEntity ent = owner.GetControlledEntity();
-		if (ent)
-			m_PerceptionComponent = PerceptionComponent.Cast(ent.FindComponent(PerceptionComponent));
-	}
 	
 	//-----------------------------------------------------------------------------------------------------
 	protected override bool TestFunction(AIAgent owner)
 	{
-		IEntity m_target;
-		GetVariableIn("TargetEntityIn",m_target);
-		ClearVariable("LastPositionOut");
+		BaseTarget target;
+		GetVariableIn(BASE_TARGET_PORT,target);
+		ClearVariable(LAST_POSITION_PORT);
 		
-		if (!m_target || !m_PerceptionComponent)
+		if (!target)
 			return false;
-		BaseTarget targetInPerception;
+		SetVariableOut(LAST_POSITION_PORT,target.GetLastSeenPosition());
+		return target.GetTimeSinceSeen() < m_lastSeenMax;
 		
-		targetInPerception = m_PerceptionComponent.GetTargetPerceptionObject(m_target,ETargetCategory.ENEMY);
-		if (targetInPerception)
-		{
-			SetVariableOut("LastPositionOut",targetInPerception.GetLastSeenPosition());	
-			return IsCurrentTime(targetInPerception.GetTimeSinceSeen());;
-		};
-		targetInPerception = m_PerceptionComponent.GetTargetPerceptionObject(m_target,ETargetCategory.UNKNOWN);
-		if (targetInPerception)
-		{
-			SetVariableOut("LastPositionOut",targetInPerception.GetLastDetectedPosition());	
-			return IsCurrentTime(targetInPerception.GetTimeSinceDetected());
-		};
-		targetInPerception = m_PerceptionComponent.GetTargetPerceptionObject(m_target,ETargetCategory.DETECTED);
-		if (targetInPerception)
-		{
-			SetVariableOut("LastPositionOut",targetInPerception.GetLastDetectedPosition());	
-			return IsCurrentTime(targetInPerception.GetTimeSinceDetected());
-		}
-		targetInPerception = m_PerceptionComponent.GetTargetPerceptionObject(m_target,ETargetCategory.FACTIONLESS);
-		if (targetInPerception)
-		{
-			SetVariableOut("LastPositionOut",targetInPerception.GetLastSeenPosition());	
-			return IsCurrentTime(targetInPerception.GetTimeSinceSeen());
-		}
-		return false;
-	}
-	
-	//-----------------------------------------------------------------------------------------------------
-	private bool IsCurrentTime (float oldInSeconds)
-	{
-		return (oldInSeconds < m_lastSeenMax);
 	}
 	
 	//-----------------------------------------------------------------------------------------------------
@@ -67,12 +30,12 @@ class SCR_AIIsTargetVisible : DecoratorScripted
 	//-----------------------------------------------------------------------------------------------------
 	protected override string GetOnHoverDescription()
 	{
-		return "SCR_AIIsTargetValid: Checks perception visibility of input target entity";
+		return "IsTargetVisible: checks timeout of visibility of provided base target. Returns true if it is below lastSeenMax parameter.";
 	}
 	
 	//-----------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
-		"TargetEntityIn"
+		BASE_TARGET_PORT
 	};
 	protected override TStringArray GetVariablesIn()
 	{
@@ -81,7 +44,7 @@ class SCR_AIIsTargetVisible : DecoratorScripted
 	
 	//-----------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {
-		"LastPositionOut"
+		LAST_POSITION_PORT
 	};
 	protected override TStringArray GetVariablesOut()
 	{

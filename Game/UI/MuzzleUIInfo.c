@@ -2,6 +2,24 @@
 //! Serves as a container of data to be displayed on player UI
 class MuzzleUIInfo : UIInfo
 {
+	// Show caliber indicator in weapon UI
+	[Attribute("false", UIWidgets.CheckBox, "Show caliber indicator in weapon UI.")]
+	protected bool m_bShowCaliber;	
+
+	bool ShowCaliber()
+	{
+		return m_bShowCaliber;
+	}	
+	
+	//! Firemode texture - full auto
+	[Attribute("", "auto", "Caliber identification, e.g. 7.62×39mm")]
+	protected string m_sCaliber;		
+
+	string GetCaliber()
+	{
+		return m_sCaliber;
+	}		
+		
 	// Magazine icon behaviour in weapon UI
 	[Attribute("true", UIWidgets.CheckBox, "Show firemode indicator.")]
 	protected bool m_bShowFiremode;	
@@ -11,19 +29,9 @@ class MuzzleUIInfo : UIInfo
 		return m_bShowFiremode;
 	}		
 
-	/*
-	{793CF85523BFB09F}UI/Textures/WeaponInfo/icons_weaponInfo-050.imageset
-	{1394D968ED53BF7A}UI/Textures/WeaponInfo/icons_weaponInfo-050-glow.imageset
-	
-	{4A44FEA03A779FED}UI/Textures/WeaponInfo/icons_weaponInfo-075.imageset
-	{DF3045B20D6C6C5F}UI/Textures/WeaponInfo/icons_weaponInfo-075-glow.imageset
-	
-	{93B6FB242078875D}UI/Textures/WeaponInfo/icons_weaponInfo-100.imageset	
-	{9369077A21E066EB}UI/Textures/WeaponInfo/icons_weaponInfo-100-glow.imageset
-	*/		
 			
 	//! Firemode imageset with foreground icons
-	[Attribute("{793CF85523BFB09F}UI/Textures/WeaponInfo/icons_weaponInfo-050.imageset", UIWidgets.ResourceNamePicker, "Imageset with most of weapon info textures", "imageset")]
+	[Attribute("{3BB05C675B05A74B}UI/Textures/WeaponInfo/icons_weaponInfo.imageset", UIWidgets.ResourceNamePicker, "Imageset with most of weapon info textures", "imageset")]
 	protected ResourceName m_sFiremodeIconImageset;
 
 	ResourceName GetFiremodeIconImageset()
@@ -32,7 +40,7 @@ class MuzzleUIInfo : UIInfo
 	}	
 	
 	//! Firemode imageset with glow icons
-	[Attribute("{1394D968ED53BF7A}UI/Textures/WeaponInfo/icons_weaponInfo-050-glow.imageset", UIWidgets.ResourceNamePicker, "Imageset with most of weapon info textures", "imageset")]
+	[Attribute("{4E003F94B2A00561}UI/Textures/WeaponInfo/icons_weaponInfo-glow.imageset", UIWidgets.ResourceNamePicker, "Imageset with most of weapon info textures", "imageset")]
 	protected ResourceName m_sFiremodeGlowImageset;	
 
 	ResourceName GetFiremodeGlowImageset()

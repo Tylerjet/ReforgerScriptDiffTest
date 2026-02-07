@@ -13,17 +13,16 @@ class SCR_CameraDataEditorComponent : SCR_BaseEditorComponent
 	{
 		if (camera)
 		{
-			m_aSavedData = {};
+			if (!m_aSavedData)
+				m_aSavedData = {};
+			
 			camera.SaveComponents(m_aSavedData);
 		}
 	}
 	void LoadComponents(SCR_ManualCamera camera)
 	{
 		if (m_aSavedData)
-		{
 			camera.LoadComponents(m_aSavedData);
-			m_aSavedData = null;
-		}
 	}
 	bool IsSave()
 	{

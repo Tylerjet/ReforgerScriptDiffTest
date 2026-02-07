@@ -21,6 +21,8 @@ class SCR_TerrainHelper
 			surfaceY = Math.Max(surfaceY, 0);
 		return surfaceY;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get height above terrain of given position.
 	\param[out] pos World position
@@ -199,4 +201,4 @@ class SCR_TerrainHelper
 
 		return true;
 	}
-}
+};

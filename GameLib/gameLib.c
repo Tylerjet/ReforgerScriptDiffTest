@@ -257,7 +257,7 @@ class StringTableItem
 //------------------------------------------------------------------------------------------------
 class ScriptStringTableItem: StringTableItem
 {
-	
+	static string GetTargetPrefix();
 };
 
 //------------------------------------------------------------------------------------------------
@@ -284,7 +284,7 @@ void ChangeMySettings()
 	
 	// notify system about change
 	GetGame().UserSettingsChanged(); // -> here is also OnSpeedChanged() called
-	GetGame().SaveUserSettings();
+	GetGame().SaveUserSettings(); // this is also call automatically during game exit, call it manually only on very important cases (like leaving settings menu)
 }
 
 // register to receive notification about changes

@@ -12,6 +12,6 @@ class SCR_HasMultipleMuzzles : SCR_AvailableActionCondition
 			return false;
 		
 		int count = weapon.GetMuzzlesList(muzzles);
-		return count > 1;
+		return GetReturnResult(count > 1);
 	}
 };

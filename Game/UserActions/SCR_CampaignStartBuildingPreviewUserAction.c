@@ -8,10 +8,7 @@ class SCR_CampaignStartBuildingPreviewUserAction : ScriptedUserAction
 	
 	// array of slots
 	private ref array<SCR_SiteSlotEntity> m_aSlotEntities = new array<SCR_SiteSlotEntity>();	
-		
-	// Sound event 
-	private const string SOUND_STARTBUILDING = "SOUND_STARTBUILDING";
-	
+			
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent) 
 	{		
@@ -22,11 +19,10 @@ class SCR_CampaignStartBuildingPreviewUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	protected bool ProcessTracedEntity(IEntity ent)
 	{
-		SCR_CampaignDeliveryPoint depot = SCR_CampaignDeliveryPoint.Cast(ent);
+		m_Base = SCR_CampaignBase.Cast(ent);
 		
-		if (depot && depot.GetServiceType() == ECampaignServicePointType.SUPPLY_DEPOT && depot.GetParentBase())
+		if (m_Base)
 		{
-			m_Base = depot.GetParentBase();
 			IEntity player = SCR_PlayerController.GetLocalControlledEntity();
 			m_BuildingComponent = SCR_CampaignBuildingComponent.Cast(player.FindComponent(SCR_CampaignBuildingComponent));
 			
@@ -81,7 +77,7 @@ class SCR_CampaignStartBuildingPreviewUserAction : ScriptedUserAction
 		} 
 		
 		m_BuildingComponent.SetBuilding(true);
-		SCR_UISoundEntity.SoundEvent(SOUND_STARTBUILDING);
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_STARTBUILDING);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -90,12 +86,6 @@ class SCR_CampaignStartBuildingPreviewUserAction : ScriptedUserAction
 		// For vehicles - it's always visible
 		if (m_SuppliesComponent)
 			return true;
-				
-		if (m_Base && m_Base.GetType() != CampaignBaseType.SMALL)
-		{
-			SetCannotPerformReason(m_Base.GetBaseNameUpperCase());
-			return false;
-		}
 		
 		if (!m_BuildingComponent.GetSlots().IsEmpty())
 			return true;
@@ -144,12 +134,6 @@ class SCR_CampaignStartBuildingPreviewUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool GetActionNameScript(out string outName)
 	{
-		if (m_Base && m_Base.GetType() != CampaignBaseType.SMALL)
-		{
-			outName = ("#AR-Campaign_Action_CannotBuild-UC");
-			return true;
-		}
-		
 		ActionNameParams[0] = string.ToString(AvailableResources());
 		outName = ("#AR-Campaign_Action_ShowBuildPreview-UC");
 		return true;

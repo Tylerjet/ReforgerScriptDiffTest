@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/AIComponent", description: "Scripted component for synchronization", color: "0 0 255 255", icon: HYBRID_COMPONENT_ICON)]
+[ComponentEditorProps(category: "GameScripted/AIComponent", description: "Scripted component for synchronization", icon: HYBRID_COMPONENT_ICON)]
 class SCR_LockContextComponentClass: AIComponentClass
 {	
 };

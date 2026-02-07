@@ -13,6 +13,9 @@ enum EStringTableLabels
 	VEHICLES,
 	DIALOGUE,
 	
+	//Releasables
+	PATCH_0_9_6 = 96, ///< Features intended for 0.9.6 patch
+	
 	EDITOR = 200, ///< In-game editor
 	EDITOR_MODE_EDIT = 201, ///< Edit mode
 	EDITOR_MODE_STRATEGY = 202, ///< Strategy mode
@@ -80,4 +83,10 @@ enum EStringTableLabels
 	DIALOGUE_CONFLICT = 2101,
 	
 	END_SCREEN = 2200,
+	
+	// Main menu 
+	MAIN_MENU = 2300,
+	SERVER_BROWSER = 2301,
+	WORKSHOP = 2302,
+	SERVER_HOSTING = 2303,
 };

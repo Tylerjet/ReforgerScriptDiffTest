@@ -22,6 +22,7 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 	private SCR_PreviewEntityEditorComponent m_PreviewManager;
 	private SCR_CommandActionsEditorUIComponent m_CommandManager;
 	private SCR_MapEntity m_MapEntity;
+	private IEntity m_TraceEntity;
 	//private vector m_vCursorPosRef;
 	private vector m_vCursorPos;
 	private vector m_vCursorPosWorld;
@@ -175,6 +176,10 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		m_vCursorPosWorldNormalized = worldPos;
 		return true;
 	}
+	IEntity GetTraceEntity()
+	{
+		return m_TraceEntity;
+	}
 	protected void SetCursorType(EEditorCursor type)
 	{
 		SCR_CursorEditor cursor;
@@ -260,16 +265,16 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 				SetCursorType(EEditorCursor.PLACE);
 				break;
 
-			case (editorState == EEditorState.SELECTING && m_HoverManager && m_HoverManager.GetInteractiveEntityUnderCursor()):
-				SetCursorType(EEditorCursor.FOCUS);
-				break;
-
 			case (m_CommandManager && m_CommandManager.GetCommandState() & EEditorCommandActionFlags.WAYPOINT && !isMapOpen):
 				SetCursorType(EEditorCursor.WAYPOINT);
 				break;
 
 			case (m_CommandManager && m_CommandManager.GetCommandState() & EEditorCommandActionFlags.OBJECTIVE && !isMapOpen):
 				SetCursorType(EEditorCursor.OBJECTIVE);
+				break;
+
+			case (editorState == EEditorState.SELECTING && m_HoverManager && m_HoverManager.GetInteractiveEntityUnderCursor()):
+				SetCursorType(EEditorCursor.FOCUS);
 				break;
 
 			default:
@@ -297,6 +302,8 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		trace.Flags = TraceFlags.ENTS | TraceFlags.WORLD | TraceFlags.OCEAN;
 		float coefTrace = GetGame().GetWorld().TraceMove(trace, null);//TraceFilter);
 		
+		m_TraceEntity = trace.TraceEnt;
+		
 		//--- Ignore when there is nothing or just terrain under cursor, or when cursor is not on mouse area
 		if (!trace.TraceEnt || trace.TraceEnt.Type() == GenericTerrainEntity || !m_MouseArea.IsMouseOn())
 			return null;
@@ -311,13 +318,10 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		}		
 		return null;
 	}
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
 		// use InputManager! instead of ShowCursor
-		//ShowCursor(GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+		//ShowCursor(!isGamepad);
 	}
 	protected void OnMenuUpdate(float tDelta)
 	{
@@ -328,8 +332,9 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		{
 			m_InputManager.ActivateContext("EditorMouseAreaContext");
 			
+			SCR_EditableEntityComponent entityUnderCursor = TraceEntity(GetCursorPos());
 			if (m_HoverManager && !m_HoverManager.GetEntityUnderCursorCandidate())
-				m_HoverManager.SetEntityUnderCursor(TraceEntity(GetCursorPos()));
+				m_HoverManager.SetEntityUnderCursor(entityUnderCursor);
 		}
 
 		if (!m_CurrentCursor) return;
@@ -360,7 +365,7 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		}
 		*/
 		
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		SCR_MapEntity.GetOnMapOpen().Insert(UpdateCursor);
 		SCR_MapEntity.GetOnMapClose().Insert(UpdateCursor);
@@ -444,8 +449,8 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 			m_InputManager.RemoveActionListener("ManualCameraRotatePitch", EActionTrigger.UP, UpdateCursor);
 		}
 		*/
-		if (GetGame().OnInputDeviceUserChangedInvoker())
-			GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+		if (GetGame().OnInputDeviceIsGamepadInvoker())
+			GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		
 		SCR_MapEntity.GetOnMapOpen().Remove(UpdateCursor);
 		SCR_MapEntity.GetOnMapClose().Remove(UpdateCursor);

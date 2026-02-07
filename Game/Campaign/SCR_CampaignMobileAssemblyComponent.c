@@ -37,19 +37,13 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	protected int m_iFaction = SCR_CampaignBase.INVALID_FACTION_INDEX;
 	[RplProp()]
 	protected float m_fRespawnAvailableSince = float.MAX;
+	[RplProp()]
+	protected int m_iBasesCoveredByMHQOnly;
 	
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		//getting spawn point entity from prefab
-		IEntity child = owner.GetChildren();
-		while(child)
-		{
-			if (child.Type() == SCR_SpawnPoint)
-				m_SpawnPoint = SCR_SpawnPoint.Cast(child);
-				
-			child = child.GetSibling();
-		}	
+		GetGame().GetCallqueue().CallLater(AssignSpawnpoint, 1000, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -61,7 +55,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 		
 		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 		GetGame().GetCallqueue().CallLater(UpdateRadioCoverage, 1000, true);
-		GetGame().GetCallqueue().CallLater(UpdateRespawnCooldown, 250, true);
+		GetGame().GetCallqueue().CallLater(UpdateRespawnCooldown, 250, true, null);
 		
 		if (IsProxy())
 		{
@@ -86,6 +80,23 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 		super.OnDelete(owner);
 		SCR_GameModeCampaignMP.s_OnFactionAssignedLocalPlayer.Remove(OnParentFactionIDSet);
 		SCR_GameModeCampaignMP.s_OnFactionAssignedLocalPlayer.Remove(OnDeployChanged);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void AssignSpawnpoint()
+	{
+		//getting spawn point entity from prefab
+		IEntity child = GetOwner().GetChildren();
+		while(child)
+		{
+			if (child.Type() == SCR_SpawnPoint)
+			{
+				m_SpawnPoint = SCR_SpawnPoint.Cast(child);
+				GetGame().GetCallqueue().Remove(AssignSpawnpoint);
+			}
+				
+			child = child.GetSibling();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -121,12 +132,12 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 		props.SetLineColor(c);
 	}
 	
+	//------------------------------------------------------------------------------------------------	
 	void AddMapLink(notnull MapLink link)
 	{
 		m_aMapLinks.Insert(link);
 	
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------	
 	protected bool IsProxy()
@@ -223,18 +234,20 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 		{
 			m_aBasesInRange = campaign.GetBasesInRangeOfMobileHQ(GetOwner());
 			
-			if (campaign && GetOwner())
+			if (campaign && GetOwner() && GetTaskManager())
 			{
-				SCR_CampaignTaskManager tManager = SCR_CampaignTaskManager.GetCampaignTaskManagerInstance();
-				
-				if (tManager)
-					tManager.GenerateCaptureTasks(GetOwner());
+				SCR_CampaignTaskSupportEntity supportClass = SCR_CampaignTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignTaskSupportEntity));
+				if (supportClass)
+					supportClass.GenerateCaptureTasks(GetOwner());
 			}
 				
 			campaign.SetDeployedMobileAssemblyID(m_ParentFaction.GetFactionKey(), Replication.FindId(this));
 		}
 		else
+		{
 			campaign.SetDeployedMobileAssemblyID(m_ParentFaction.GetFactionKey(), RplId.Invalid());
+			m_iBasesCoveredByMHQOnly = 0;
+		}
 		
 		return true;
 	}
@@ -375,6 +388,18 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetCountOfExclusivelyLinkedBases(int cnt)
+	{
+		m_iBasesCoveredByMHQOnly = cnt;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetCountOfExclusivelyLinkedBases()
+	{
+		return m_iBasesCoveredByMHQOnly;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void UpdateRadioCoverage()
 	{
 		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
@@ -477,7 +502,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 					int m;
 					int s;
 					string sStr;
-					SCR_Global.ConvertSecondsToDaysHoursMinutesSeconds(respawnCooldown, d, h, m, s);
+					SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds(respawnCooldown, d, h, m, s);
 					sStr = s.ToString();
 					
 					if (s < 10)

@@ -19,21 +19,7 @@ class SCR_AIActionTask : AITaskScripted
 	static const string REINIT_PORT = "Reinit";
 	static const string RADIUS_PORT = "Radius";
 	
-	protected SCR_AIActionBase m_Action;
 	protected SCR_AIBaseUtilityComponent m_UtilityComp;
-
-	//------------------------------------------------------------------------------------------------
-	bool IsActionValid()
-	{
-		if (!m_UtilityComp)
-			return false;
-		
-		m_Action = m_UtilityComp.m_ExecutedAction;
-		if (!m_Action)
-			return false;
-		
-		return true;
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnEnter(AIAgent owner)
@@ -45,4 +31,13 @@ class SCR_AIActionTask : AITaskScripted
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Returns current action from the utility component
+	protected SCR_AIActionBase GetExecutedAction()
+	{
+		if (!m_UtilityComp)
+			return null;
+		
+		return m_UtilityComp.m_ExecutedAction;
+	}
 };

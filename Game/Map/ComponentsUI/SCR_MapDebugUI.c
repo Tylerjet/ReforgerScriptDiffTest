@@ -130,10 +130,44 @@ class SCR_MapDebugUI : SCR_MapUIBaseComponent
 	//! Zooms to current pixel per unit ratio == 1
 	protected void ZoomToPPU1()
 	{
-		MapWidget mapWidget = MapWidget.Cast( m_RootWidget.FindAnyWidget(SCR_MapConstants.MAP_WIDGET_NAME) );
-		vector size = mapWidget.GetSizeInUnits();	
+		m_MapEntity.ZoomSmooth(1);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Zooms to the beginning of higher layer
+	protected void ZoomLayerUp()
+	{
+		int index = m_MapEntity.GetLayerIndex();
+		MapLayer layer = m_MapEntity.GetLayer(index);
+		if (layer)
+		{
+			if (layer.GetCeiling() <= m_MapEntity.GetMinZoom())	// max layer
+				return;
+						
+			m_MapEntity.ZoomSmooth(layer.GetCeiling() - 0.1);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Zooms to the ceiling of lower layer
+	protected void ZoomLayerDown()
+	{		
+		int index = m_MapEntity.GetLayerIndex();
+		if (index == 0)		// min layer
+			return;
 		
-		m_MapEntity.ZoomSmooth( size[0] / (size[0] * mapWidget.PixelPerUnit()) );
+		MapLayer layer = m_MapEntity.GetLayer(index-1);
+		if (layer)
+			m_MapEntity.ZoomSmooth(layer.GetCeiling());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Toggle map light
+	protected void ToggleLight()
+	{
+		SCR_MapLightUI lightUI = SCR_MapLightUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapLightUI));
+		if (lightUI)
+			lightUI.ToggleActive();
 	}
 			
 	//------------------------------------------------------------------------------------------------
@@ -152,7 +186,7 @@ class SCR_MapDebugUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Update()
+	override void Update(float timeSlice)
 	{		
 		if (m_bIsUnitVisible)
 			UpdateUnits();
@@ -180,8 +214,11 @@ class SCR_MapDebugUI : SCR_MapUIBaseComponent
 			{
 				ctxMenu.ContextRegisterDynamic("Map variables dbg", true).m_OnClick.Insert(m_MapEntity.ShowScriptDebug);
 				ctxMenu.ContextRegisterDynamic("Zoom to 1px == 1m", true).m_OnClick.Insert(ZoomToPPU1);
+				ctxMenu.ContextRegisterDynamic("Zoom up a layer", true).m_OnClick.Insert(ZoomLayerUp);
+				ctxMenu.ContextRegisterDynamic("Zoom down a layer", true).m_OnClick.Insert(ZoomLayerDown);
 				ctxMenu.ContextRegisterDynamic("Pan to player", true).m_OnClick.Insert(PanToPlayer);
 				ctxMenu.ContextRegisterDynamic("Show units", true).m_OnClick.Insert(ShowUnits);
+				ctxMenu.ContextRegisterDynamic("Toggle Light", true).m_OnClick.Insert(ToggleLight);
 			}
 		}
 	}

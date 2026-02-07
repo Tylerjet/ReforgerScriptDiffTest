@@ -24,6 +24,9 @@ class SCR_OnlineServiceBackendCallbacks : BackendCallback
 	ref ScriptInvoker m_OnImage = new ref ScriptInvoker();
 	ref ScriptInvoker m_OnDependencies = new ref ScriptInvoker();
 	
+	ref ScriptInvoker m_OnError = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnTimeout = new ref ScriptInvoker();
+	
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_OnlineServiceBackendCallbacks()
 	{
@@ -79,11 +82,13 @@ class SCR_OnlineServiceBackendCallbacks : BackendCallback
 	override void OnError( EBackendError code, int restCode, int apiCode )
 	{
 		Print("[BackendCallback] OnError: "+ g_Game.GetBackendApi().GetErrorCode(code) + " RestCode: " + restCode + " ApiCode: "+apiCode);
+		m_OnError.Invoke(code);
 	}
 	
 	override void OnTimeout()
 	{
 		Print("[BackendCallback] OnTimeout");
+		m_OnTimeout.Invoke();
 	}
 };
 

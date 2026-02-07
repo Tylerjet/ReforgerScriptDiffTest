@@ -27,6 +27,7 @@ class SCR_PlayerListEntry
 	ImageWidget m_wPlatformIcon;
 	Widget m_wTaskIcon;
 	Widget m_wFactionImage;
+	Widget m_wVotingNotification;
 };
 
 //------------------------------------------------------------------------------------------------
@@ -80,9 +81,10 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	
 	protected string m_sGameMasterIndicatorName = "GameMasterIndicator";
 	protected ref array<EVotingType> m_aVotingTypes = {};
-	protected SCR_ChatPanel m_ChatPanel;
 	
 	protected static ref ScriptInvoker s_OnPlayerListMenu = new ScriptInvoker();
+	
+	protected ref Color m_PlayerNameSelfColor = new Color(0.898, 0.541, 0.184, 1);
 	
 	/*!
 	Get event called when player list opens or closes.
@@ -541,17 +543,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected bool CanOpenVoteList(SCR_PlayerListEntry entry)
-	{
-		if (!entry || !m_VotingManager)
-			return false;
-		
-		array<EVotingType> votingTypes = {};
-		int count = m_VotingManager.GetAvailableVotingsAboutPlayer(entry.m_iID, votingTypes);
-		return count > 0;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	void FocusFirstItem()
 	{
 		Widget firstEntry;
@@ -576,22 +567,37 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void SetupVoteComboBox(SCR_ComboBoxComponent combo)
 	{
-		SCR_VotingManagerComponent votingManager = SCR_VotingManagerComponent.GetInstance();
-		if (!votingManager)
+		if (!m_VotingManager || !m_VoterComponent)
 			return;
 		
 		combo.ClearAll();
 		
 		int playerID = GetVotingPlayerID(combo);
 		SCR_VotingUIInfo info;
-		for (int i, count = votingManager.GetAvailableVotingsAboutPlayer(playerID, m_aVotingTypes); i < count; i++)
+		for (int i, count = m_VotingManager.GetAvailableVotingsAboutPlayer(playerID, m_aVotingTypes); i < count; i++)
 		{
-			info = votingManager.GetVotingInfo(m_aVotingTypes[i]);
+			EVotingType votingType = m_aVotingTypes[i];
+			info = m_VotingManager.GetVotingInfo(votingType);
 			
-			if (votingManager.IsVoting(m_aVotingTypes[i], playerID))
-				combo.AddItem(info.GetName());
-			else
+			if (!m_VotingManager.IsVoting(votingType, playerID))
+			{
+				//--- Voting not in progress, start it
 				combo.AddItem(info.GetStartVotingName());
+			}
+			else
+			{
+				//--- Voting in progress
+				if (m_VoterComponent.DidVote(votingType, playerID))
+				{
+					//--- Did cast a vote, withdraw it
+					combo.AddItem(info.GetCancelVotingName());
+				}
+				else
+				{
+					//--- Did not cast a vote, do it now
+					combo.AddItem(info.GetName());
+				}
+			}
 		}
 		if (m_playerGroupController.CanInvitePlayer(playerID))
 			combo.AddItem(INVITE_PLAYER_VOTE);
@@ -614,7 +620,10 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			EVotingType votingType = m_aVotingTypes[index];
 			int playerID = GetVotingPlayerID(combo);
 			
-			m_VoterComponent.Vote(votingType, playerID);
+			if (m_VoterComponent.DidVote(votingType, playerID))
+				m_VoterComponent.RemoveVote(votingType, playerID);
+			else
+				m_VoterComponent.Vote(votingType, playerID);
 		}
 		combo.SetCurrentItem(-1, false, false);
 	}
@@ -649,22 +658,23 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		SCR_PlayerListEntry entry = new SCR_PlayerListEntry();
 		entry.m_iID = id;
 		entry.m_wRow = w;
-
-		entry.m_VotingCombo = SCR_ComboBoxComponent.GetComboBoxComponent("VotingCombo",w);
-		if (entry.m_VotingCombo)
+		
+		//--- Initialize voting combo box
+		entry.m_VotingCombo = SCR_ComboBoxComponent.GetComboBoxComponent("VotingCombo", w);
+		if (m_VotingManager)
 		{
-			if (m_VotingManager)
-			{
-				entry.m_VotingCombo.m_OnOpened.Insert(SetupVoteComboBox);
-				entry.m_VotingCombo.m_OnChanged.Insert(OnComboBoxConfirm);
-				entry.m_VotingCombo.SetEnabled(CanOpenVoteList(entry));
-			}
-			else
-			{
-				entry.m_VotingCombo.SetEnabled(false, false);
-			}
+			entry.m_VotingCombo.m_OnOpened.Insert(SetupVoteComboBox);
+			entry.m_VotingCombo.m_OnChanged.Insert(OnComboBoxConfirm);
+			entry.m_VotingCombo.SetEnabled(CanOpenVoteList(entry));
+				
+			entry.m_wVotingNotification = entry.m_wRow.FindAnyWidget("VotingNotification");
+			entry.m_wVotingNotification.SetVisible(IsVotedAbout(entry));
 		}
-			
+		else
+		{
+			entry.m_VotingCombo.SetVisible(false);
+		}
+		
 		SCR_ButtonBaseComponent handler = SCR_ButtonBaseComponent.Cast(w.FindHandler(SCR_ButtonBaseComponent));
 		if (handler)
 			handler.m_OnFocus.Insert(OnEntryFocused);
@@ -698,7 +708,11 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		}
 		entry.m_wName = TextWidget.Cast(w.FindAnyWidget("PlayerName"));
 		if (entry.m_wName)
+		{
 			entry.m_wName.SetText(GetGame().GetPlayerManager().GetPlayerName(id));
+			if (entry.m_iID == GetGame().GetPlayerController().GetPlayerId())
+				entry.m_wName.SetColor(m_PlayerNameSelfColor);
+		}
 
 		if (editorDelegateManager)
 		{
@@ -949,26 +963,42 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnVotingChanged(EVotingType type, int value, int playerID)
 	{
-		foreach (SCR_PlayerListEntry entry : m_aEntries)
-		{
-			entry.m_VotingCombo.SetEnabled(CanOpenVoteList(entry));
-		}
-		
-		if (m_SelectedEntry)
-			m_Vote.SetEnabled(CanOpenVoteList(m_SelectedEntry));
+		UpdateVoting();
 	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected void GetOnVotingStart(EVotingType type, int value)
+	{
+		UpdateVoting();
+	}
+	protected void UpdateVoting()
 	{
 		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			entry.m_VotingCombo.SetEnabled(CanOpenVoteList(entry));
+			entry.m_wVotingNotification.SetVisible(IsVotedAbout(entry));
 		}
 		
 		if (m_SelectedEntry)
 			m_Vote.SetEnabled(CanOpenVoteList(m_SelectedEntry));
 	}
+	protected bool IsVotedAbout(SCR_PlayerListEntry entry)
+	{
+		if (!entry || !m_VotingManager)
+			return false;
+		
+		array<EVotingType> votingTypes = {};
+		int count = m_VotingManager.GetVotingsAboutPlayer(entry.m_iID, votingTypes);
+		return count > 0;
+	}
+	protected bool CanOpenVoteList(SCR_PlayerListEntry entry)
+	{
+		if (!entry || !m_VotingManager)
+			return false;
+		
+		array<EVotingType> votingTypes = {};
+		int count = m_VotingManager.GetAvailableVotingsAboutPlayer(entry.m_iID, votingTypes);
+		return count > 0;
+	}
+	//------------------------------------------------------------------------------------------------
 	
 	
 	private void OnPlayerAdded(int playerId)
@@ -993,32 +1023,13 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_ChatPanel GetChatPanel()
-	{
-		return m_ChatPanel;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ToggleChat()
-	{
-		SCR_ChatPanel chatPanel = GetChatPanel();
-		SCR_ChatPanelManager chatPanelManager = SCR_ChatPanelManager.GetInstance();
-		if (chatPanel && chatPanelManager)
-			chatPanelManager.ToggleChatPanel(chatPanel);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen() 
 	{
 		super.OnMenuOpen();
 		m_wRoot = GetRootWidget();
 		
-		InputManager inputManager = GetGame().GetInputManager();
-		if (inputManager)
-			inputManager.AddActionListener("MenuChat", EActionTrigger.DOWN, ToggleChat);
-		
-		if (!m_ChatPanel)
-			m_ChatPanel = SCR_ChatPanel.Cast(m_wRoot.FindAnyWidget("ChatPanel").FindHandler(SCR_ChatPanel));
+		//if (!m_ChatPanel)
+		//	m_ChatPanel = SCR_ChatPanel.Cast(m_wRoot.FindAnyWidget("ChatPanel").FindHandler(SCR_ChatPanel));
 		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_HUDManagerComponent));
 		hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~EHudLayers.HIGH);
 		
@@ -1178,10 +1189,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		{
 			DeleteDisconnectedEntries();
 			m_fTimeSkip = 0.0;
-		}			
-		
-		if (m_ChatPanel)
-			m_ChatPanel.OnUpdateChat(tDelta);
+		}
 		
 		GetGame().GetInputManager().ActivateContext("PlayerMenuContext");
 	}
@@ -1215,10 +1223,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	override void OnMenuClose() 
 	{
 		super.OnMenuClose();
-		
-		InputManager inputManager = GetGame().GetInputManager();
-		if (inputManager)
-			inputManager.RemoveActionListener("MenuChat", EActionTrigger.DOWN, ToggleChat);
 
 		PlayerController controller = GetGame().GetPlayerController();
 		if (!controller)

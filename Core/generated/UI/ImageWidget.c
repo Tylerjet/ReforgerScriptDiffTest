@@ -37,6 +37,13 @@ sealed class ImageWidget: Widget
 	*/
 	proto external bool LoadMaskTexture(ResourceName resource);
 	/*!
+	Loads image form image set as mask used for alpha masking.
+	\param resource ResourceName of image file
+	\param imageName Name of an image in the image set
+	\return True when image is loaded, false otherwise
+	*/
+	proto external bool LoadMaskFromSet(ResourceName resource, string imageName);
+	/*!
 	When WF_CUSTOMUV is set, we can supply our own UV coords instead of computed ones.
 	\param uv
 	Pointer to array of at least 8 floats (4 corners * 2 floats for u/v)

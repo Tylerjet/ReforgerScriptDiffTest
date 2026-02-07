@@ -32,6 +32,8 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 	const protected int REVERSE_GEAR = 0;
 	
 	protected bool m_bIsLeaking;
+	protected int m_iBuoyancySignalIdx;
+	protected SignalsManagerComponent m_pSignalsManagerComponent;
 	protected VehicleWheeledSimulation m_pSimulation;
 	
 	protected float m_fBuoyancyInitial;
@@ -146,10 +148,13 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnFixedFrame(IEntity owner, float timeSlice)
 	{
+		float buoyancySignalValue;
+		
 		if (GetCenterOfMassInWater())
 		{
 			// Buoyancy gain loss
 			m_fBuoyancy = Math.Clamp(m_fBuoyancy - m_fBuoyancyLossCurrent * timeSlice, -1, m_fBuoyancyInitial);
+			buoyancySignalValue = m_fBuoyancy + 1;
 			
 			// All the air has leaked
 			if (m_fBuoyancy <= -1)
@@ -157,12 +162,14 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 				m_fBuoyancy = -1;
 				ClearEventMask(owner, EntityEvent.FIXEDFRAME);
 				m_bIsLeaking = false;
+				buoyancySignalValue = 0;
 			}
 		}
 		else if (m_fBuoyancyGain > 0)
 		{
 			// Buoyancy gain
 			m_fBuoyancy = Math.Clamp(m_fBuoyancy + m_fBuoyancyGain * timeSlice, -1, m_fBuoyancyInitial);
+			buoyancySignalValue = m_fBuoyancy - m_fBuoyancyInitial;
 			
 			// Buoyancy back to normal and owner did not have on frame initially, so disable frame event
 			if (m_fBuoyancy >= m_fBuoyancyInitial)
@@ -170,8 +177,15 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 				m_fBuoyancy = m_fBuoyancyInitial;
 				ClearEventMask(owner, EntityEvent.FIXEDFRAME);
 				m_bIsLeaking = false;
+				buoyancySignalValue = 0;
 			}
 		}
+		
+		// Buoyancy signal
+		// If > 0, than sinking
+		// If < 0, than leaking	
+		if (m_pSignalsManagerComponent)
+			m_pSignalsManagerComponent.SetSignalValue(m_iBuoyancySignalIdx, buoyancySignalValue);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -196,6 +210,11 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 		m_pSimulation = VehicleWheeledSimulation.Cast(owner.FindComponent(VehicleWheeledSimulation));
 		if (m_pSimulation && !m_pSimulation.IsValid())
 			m_pSimulation = null;
+		
+		m_pSignalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
+		
+		if (m_pSignalsManagerComponent)
+			m_iBuoyancySignalIdx = m_pSignalsManagerComponent.AddOrFindMPSignal("Buoyancy", 0.1, 1);
 	}
 	
 	//------------------------------------------------------------------------------------------------

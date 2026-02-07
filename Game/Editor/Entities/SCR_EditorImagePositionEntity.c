@@ -203,7 +203,7 @@ class SCR_EditorImagePositionEntity : GenericEntity
 						failed = true;
 					}
 				}
-				SCR_Global.DeleteEntityAndChildren(group);
+				SCR_EntityHelper.DeleteEntityAndChildren(group);
 				
 				if (failed)
 					return false;
@@ -379,7 +379,7 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		}
 		
 		
-		SCR_Global.DeleteEntityAndChildren(character);
+		SCR_EntityHelper.DeleteEntityAndChildren(character);
 		character = clone;
 		character.SetTransform(transform);
 	}

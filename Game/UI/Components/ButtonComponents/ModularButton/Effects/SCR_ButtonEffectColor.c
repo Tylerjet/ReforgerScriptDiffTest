@@ -102,19 +102,20 @@ class SCR_ButtonEffectColor : SCR_ButtonEffectWidgetBase
 	// Called when effect is disabled. Here you should stop all running effects.
 	override void OnDisabled()
 	{
-		WidgetAnimator.StopAnimation(m_wTarget, WidgetAnimationType.Color);
+		AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationColor);
 	}
-	
 	
 	protected void Apply(Color color, bool instant)
 	{
 		if (color && m_wTarget)
 		{
 			if (!instant && m_fAnimationTime != 0)
-				WidgetAnimator.PlayAnimation(m_wTarget, WidgetAnimationType.Color, color, 1/m_fAnimationTime);
+			{
+				AnimateWidget.Color(m_wTarget, color, 1 / m_fAnimationTime);
+			}
 			else
 			{
-				WidgetAnimator.StopAnimation(m_wTarget, WidgetAnimationType.Color);
+				AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationColor);
 				m_wTarget.SetColor(color);
 			}
 		}

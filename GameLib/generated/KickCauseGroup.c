@@ -6,9 +6,6 @@ Do not modify, this script is generated
 
 enum KickCauseGroup
 {
-	NONE,
-	//! Kick reason comes from enf::RplError.
-	REPLICATION,
 	//! Kick reason comes from BattlEyeInitError.
 	BATTLEYE_INIT,
 	//! Player has been kicked because of BattlEye and reason is unknown.

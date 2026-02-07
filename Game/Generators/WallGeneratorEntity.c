@@ -201,7 +201,7 @@ class WallGroup
 	//-----------------------------------------------------------------------
 	WallPair GetRandomWall()
 	{
-		int index = SCR_Global.GetWeighedElement(m_aWeights, Math.RandomFloat01());
+		int index = SCR_ArrayHelper.GetWeightedIndex(m_aWeights, Math.RandomFloat01());
 		return m_aWallPairs.Get(index);
 	}
 };

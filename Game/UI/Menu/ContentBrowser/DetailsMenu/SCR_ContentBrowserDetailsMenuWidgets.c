@@ -19,8 +19,26 @@ class SCR_ContentBrowserDetailsMenuWidgets
 
 	TextWidget m_QueueSizeText;
 
-	ButtonWidget m_Button;
-	SCR_ModularButtonComponent m_ButtonComponent;
+	ButtonWidget m_DownloadButton;
+	SCR_ModularButtonComponent m_DownloadButtonComponent;
+
+	ButtonWidget m_UpdateButton;
+	SCR_ButtonImageComponent m_UpdateButtonComponent;
+
+	TextWidget m_OutdatedAddonsCountText;
+
+	ButtonWidget m_PresetsButton;
+	SCR_ButtonImageComponent m_PresetsButtonComponent;
+
+	FrameWidget m_ModsCountFrame;
+
+	TextWidget m_ModsCountText;
+
+	SizeLayoutWidget m_SizePresetName;
+
+	TextWidget m_TxtPresetName;
+
+	HorizontalLayoutWidget m_AddonIconsLayout;
 
 	bool Init(Widget root)
 	{
@@ -31,15 +49,33 @@ class SCR_ContentBrowserDetailsMenuWidgets
 
 		m_Menu = OverlayWidget.Cast(root.FindWidget("m_Menu"));
 
-		m_ProgressCircle = ImageWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.DownloadManagerProgressIndicator0.CircleSize.CircleImages.m_ProgressCircle"));
+		m_ProgressCircle = ImageWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.AddonBar0.VerticalLayout0.Overlay0.HorizontalLayout.DownloadManagerProgressIndicator0.CircleSize.CircleImages.m_ProgressCircle"));
 
-		m_DownloadDoneImage = ImageWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.DownloadManagerProgressIndicator0.CircleSize.QueueSize.m_DownloadDoneImage"));
+		m_DownloadDoneImage = ImageWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.AddonBar0.VerticalLayout0.Overlay0.HorizontalLayout.DownloadManagerProgressIndicator0.CircleSize.QueueSize.m_DownloadDoneImage"));
 
-		m_QueueSizeText = TextWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.DownloadManagerProgressIndicator0.CircleSize.QueueSize.m_QueueSizeText"));
+		m_QueueSizeText = TextWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.AddonBar0.VerticalLayout0.Overlay0.HorizontalLayout.DownloadManagerProgressIndicator0.CircleSize.QueueSize.m_QueueSizeText"));
 
-		m_Button = ButtonWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.DownloadManagerProgressIndicator0.m_Button"));
-		m_ButtonComponent = SCR_ModularButtonComponent.Cast(m_Button.FindHandler(SCR_ModularButtonComponent));
+		m_DownloadButton = ButtonWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.AddonBar0.VerticalLayout0.Overlay0.HorizontalLayout.DownloadManagerProgressIndicator0.m_DownloadButton"));
+		m_DownloadButtonComponent = SCR_ModularButtonComponent.Cast(m_DownloadButton.FindHandler(SCR_ModularButtonComponent));
+
+		m_UpdateButton = ButtonWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.AddonBar0.VerticalLayout0.Overlay0.HorizontalLayout.m_UpdateButton"));
+		m_UpdateButtonComponent = SCR_ButtonImageComponent.Cast(m_UpdateButton.FindHandler(SCR_ButtonImageComponent));
+
+		m_OutdatedAddonsCountText = TextWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.AddonBar0.VerticalLayout0.Overlay0.HorizontalLayout.m_UpdateButton.SizeLayout.Overlay.Frame0.LoadedModsFrame.m_OutdatedAddonsCountText"));
+
+		m_PresetsButton = ButtonWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.AddonBar0.VerticalLayout0.Overlay0.HorizontalLayout.m_PresetsButton"));
+		m_PresetsButtonComponent = SCR_ButtonImageComponent.Cast(m_PresetsButton.FindHandler(SCR_ButtonImageComponent));
+
+		m_ModsCountFrame = FrameWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.AddonBar0.VerticalLayout0.Overlay0.HorizontalLayout.m_PresetsButton.SizeLayout.Frame0.m_ModsCountFrame"));
+
+		m_ModsCountText = TextWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.AddonBar0.VerticalLayout0.Overlay0.HorizontalLayout.m_PresetsButton.SizeLayout.Frame0.m_ModsCountFrame.m_ModsCountText"));
+
+		m_SizePresetName = SizeLayoutWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.AddonBar0.VerticalLayout0.Overlay0.HorizontalLayout.m_PresetsButton.SizeLayout.Frame0.Overlay.HorizontalLayout0.m_SizePresetName"));
+
+		m_TxtPresetName = TextWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.AddonBar0.VerticalLayout0.Overlay0.HorizontalLayout.m_PresetsButton.SizeLayout.Frame0.Overlay.HorizontalLayout0.m_SizePresetName.m_TxtPresetName"));
+
+		m_AddonIconsLayout = HorizontalLayoutWidget.Cast(root.FindWidget("m_Menu.SizeBase.VerticalLayout0.Header.Overlay.AddonBar0.m_AddonIconsLayout"));
 
 		return true;
 	}
-};
+}

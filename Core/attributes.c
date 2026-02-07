@@ -45,7 +45,6 @@ class UIWidgets
 	*/
 	static const string	Hidden = ""; 
 	
-	
 	/*!
 	Property is hidden when None is used
 	*/
@@ -70,7 +69,9 @@ class UIWidgets
 	static const string	ResourcePickerThumbnail = "resourcePickerThumbnail";
 	
 	/*!
-	Registered resource picker. m_strParams contains file extensions separated by whitespace
+	File name picker. m_strParams contains file extensions separated by whitespace. For folders there are reserved virtual extensions "folders".
+	Returned path is exact path (in format "$filesystemName:path"). For absolute path use FileNameFormat=absolute e.g. "emat FileNameFormat=absolute"
+	Only for editor stuff. All game paths must use ResourceName + ResourcePicker
 	Type must be enf::DVT_STRING
 	*/
 	static const string	FileNamePicker = "fileNamePicker";
@@ -96,11 +97,6 @@ class UIWidgets
 	*/
 	static const string	Font = "font";
 	/*!
-	File picker. m_strParams may contain extensions separated by space.
-	Type must be enf::DVT_STRING
-	*/
-	static const string	FileEditBox = "fileeditbox";
-	/*!
 	SpinBox. m_strParams may contain min and max value separated by space
 	Type must be enf::DVT_INTEGER or enf::DVT_SCALAR
 	*/
@@ -122,7 +118,7 @@ class UIWidgets
 	*/
 	static const string	LocaleEditBox = "localeeditbox";
 	/*!
-	Editbox. m_strParams has usage fur numeric values, where there may be min and max value separated by space
+	Editbox. m_strParams has usage for numeric values, where there may be min and max value separated by space
 	Type must be enf::DVT_STRING, or enf::DVT_INTEGER or enf::DVT_SCALAR
 	*/
 	static const string	EditBox = "editbox";
@@ -221,12 +217,17 @@ enum NamingConvention
 class Attribute
 {
 	string m_DefValue;
-	string m_UiWidget; ///< use values from UIWidgets
-	string m_Params; ///< defined as "MIN_VALUE MAX_VALUE STEP" eg. "1 100 0.5" or "ext1;ext2" depends on property type
+	string m_UiWidget; //!< use values from UIWidgets
+	/*!
+	Properties for UI in editor, depends on property type and used UI Widget.
+	- for numeric types use format:"MIN_VALUE MAX_VALUE STEP" eg. "1 100 0.5", for min/max values can be used also inf / -inf as infinite
+	- for file dialog use format "ext1;ext2"
+	*/
+	string m_Params; 
 	string m_Desc;
 	string m_Category;
 	int m_Precision;
-	ref ParamEnumArray m_Enums; ///< Only ints and floats are currently supported. Array can be defined this way: { ParamEnum("Choice 1", "1"), ParamEnum("Choicen 2", "2") }
+	ref ParamEnumArray m_Enums; //!< Only ints and floats are currently supported. Array can be defined this way: { ParamEnum("Choice 1", "1"), ParamEnum("Choicen 2", "2") }
 	
 	void Attribute(string defvalue = "", string uiwidget = "auto"/*use UIWidgets*/, string desc = "", string params = "", ParamEnumArray enums = NULL, string category = "", int precision = 3)
 	{
@@ -240,23 +241,22 @@ class Attribute
 	}
 }
 
-const string HYBRID_COMPONENT_ICON = ":/Workbench/WorldEditor/Entity/componentHybrid.png";	///< Default icon for all components written in script that don't inherit ScriptComponent
+const string HYBRID_COMPONENT_ICON = ":/Workbench/WorldEditor/Entity/componentHybrid.png";	//!< Default icon for all components written in script that don't inherit ScriptComponent
 
 class CommonEditorProps
 {
-	string m_Category; ///< folder structure eg. StaticEntities/Walls
-	string m_Description; ///< class purpose description
-	string m_Color;
-	string m_Icon;
-	bool m_Visible;
-	bool m_Insertable;
-	bool m_ConfigRoot; ///< Whether the class can be used as a root object of a config file (.conf)
+	string m_Category; //<! Typically a "folder/item" path for placing the type into a tree-view, eg. "StaticEntities/Walls"
+	string m_Description; //<! Typically some description of type usage
+
+	string m_Icon; //<! Typically a path to icon file for better visualization in a tree-view
+	bool m_Visible; //<! Is the entity visualizer visible when not selected
+	bool m_Insertable; //<! Is the type available for insertion from a tree-view
+	bool m_ConfigRoot; //<! Whether the type can be used as a root object of a config file (.conf)
 	
 	void CommonEditorProps(string category = "", string description = "", string color = "255 0 0 255", bool visible = true, bool insertable = true, bool configRoot = false, string icon = "")
 	{
 		m_Category = category;
 		m_Description = description;
-		m_Color = color;
 		m_Visible = visible;
 		m_Insertable = insertable;
 		m_ConfigRoot = configRoot;
@@ -270,17 +270,19 @@ class ComponentEditorProps: CommonEditorProps
 
 class EntityEditorProps: CommonEditorProps
 {
-	vector m_SizeMin; ///< min vector of a bounding box
-	vector m_SizeMax; ///< max vector of a bounding box
-	string m_Style; ///< can be "box", "sphere", "cylinder", "pyramid", "diamond" or custom style name
-	string m_Color2;
-	bool m_DynamicBox;
+	vector m_SizeMin; //!< Minimum dimensions of an entity visualizer shape
+	vector m_SizeMax; //!< Maximum dimensions of an entity visualizer shape
+	string m_Style; //!< Can be: "none", "box", "sphere", "cylinder", "capsule", "pyramid", "diamond". Anything else is custom. Empty is none.
+	string m_Color; //<! Color of an entity visualizer shape outline
+	string m_Color2; //<! Color of an entity visualizer shape
+	bool m_DynamicBox; //<! Is the entity visualizer using custom dimensions (provided by _WB_GetBoundBox)
 	
 	void EntityEditorProps(string category = "", string description = "", string color = "255 0 0 255", bool visible = true, bool insertable = true, bool configRoot = false, string icon = "", string style = "box", vector sizeMin = "-0.25 -0.25 -0.25", vector sizeMax = "0.25 0.25 0.25", string color2 = "0 0 0 0", bool dynamicBox = false)
 	{
 		m_Style = style;
 		m_SizeMin = sizeMin;
 		m_SizeMax = sizeMax;
+		m_Color = color;
 		m_Color2 = color2;
 		m_DynamicBox = dynamicBox;
 	}

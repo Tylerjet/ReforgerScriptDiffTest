@@ -4,7 +4,7 @@ Do not modify, this script is generated
 ===========================================
 */
 
-class WeatherRainPattern
+class WeatherRainPattern: ScriptAndConfig
 {
 	proto external float GetMinIntensity();
 	proto external float GetMaxIntensity();

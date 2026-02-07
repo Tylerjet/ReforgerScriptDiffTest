@@ -72,6 +72,11 @@ class SCR_MenuEditorComponent : SCR_BaseEditorComponent
 		return Event_OnVisibilityChange;
 	}
 	
+	protected void OnModeChange()
+	{
+		SetVisible(true, true);
+	}
+	
 	//--- EOnAfterEditorOpen() is used instead of EOnEditorOpen() to make sure GUI follows all other components
 	override protected void EOnEditorPostActivate()
 	{
@@ -89,6 +94,17 @@ class SCR_MenuEditorComponent : SCR_BaseEditorComponent
 			GetGame().GetMenuManager().CloseMenu(baseMenu);
 			Print("Editor menu is not type EditorMenuBase!", LogLevel.ERROR);
 		}
+		
+		//--- Reveal GUI when switching modes
+		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.Cast(GetOwner());
+		if (editorManager)
+			editorManager.GetOnModeChange().Insert(OnModeChange);
+	}
+	override protected void EOnEditorDeactivate()
+	{
+		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.Cast(GetOwner());
+		if (editorManager)
+			editorManager.GetOnModeChange().Remove(OnModeChange);
 	}
 	override protected void EOnEditorClose()
 	{

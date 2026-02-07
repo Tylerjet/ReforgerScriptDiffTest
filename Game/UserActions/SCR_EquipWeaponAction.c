@@ -46,7 +46,7 @@ class SCR_EquipWeaponAction : SCR_BaseWeaponAction
 		if (manager.TryInsertItemInStorage(pOwnerEntity, weaponStorage, m_iTargetSlotID, m_pEquipCB))
 		{
 			// Play sound
-			manager.PlayItemSound(pOwnerEntity, "SOUND_EQUIP");
+			manager.PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
 		}
 		
 		m_iTargetSlotID = -1;
@@ -233,7 +233,7 @@ class SCR_EquipWeaponHolsterAction : SCR_BaseWeaponAction
 		}
 		m_iTargetSlotID = -1;
 		// Play sound
-		manager.PlayItemSound(pOwnerEntity, "SOUND_EQUIP");
+		manager.PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
 	}
 	
 	//------------------------------------------------------------------------------------------------

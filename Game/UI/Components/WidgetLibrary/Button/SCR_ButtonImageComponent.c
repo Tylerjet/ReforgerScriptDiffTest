@@ -9,12 +9,35 @@ class SCR_ButtonImageComponent : SCR_ButtonBaseComponent
 	
 	ImageWidget m_wImage;
 	
+	ref ScriptInvoker<Widget> m_OnMouseEnter = new ref ScriptInvoker();
+	ref ScriptInvoker<Widget> m_OnMouseLeave = new ref ScriptInvoker();
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
 		m_wImage = ImageWidget.Cast(w.FindAnyWidget("Image"));
 		SetImage(m_sTexture, m_sImageName);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnMouseEnter(Widget w, int x, int y)
+	{
+		super.OnMouseEnter(w, x, y);
+		
+		m_OnMouseEnter.Invoke(w);
+				
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
+	{
+		super.OnMouseLeave(w, enterW, x, y);
+		
+		m_OnMouseLeave.Invoke(w);
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------

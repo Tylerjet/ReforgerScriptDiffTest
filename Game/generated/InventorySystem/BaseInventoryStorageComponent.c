@@ -45,15 +45,15 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	/*!
 	Return slot for specified id
 	\param slotID Slot ID.
-	\return Returns the slot otherwise null.
+	\return Returns the slot.
 	*/
 	proto external sealed InventoryStorageSlot GetSlot(int slotID);
 	/*!
-	Get item at slot index.
-	\param index Slot index
-	\return Returns the item otherwise null.
+	Get item at slot ID.
+	\param slotID Slot ID
+	\return Returns the item.
 	*/
-	proto external sealed IEntity Get(int index);
+	proto external sealed IEntity Get(int slotID);
 	// Returns all stored items in this storage
 	proto external sealed int GetAll(out notnull array<IEntity> outItems);
 	// Returns storage priority
@@ -77,7 +77,9 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	*/
 	proto external bool GetOwnedStorages(out notnull array<BaseInventoryStorageComponent> outStorages, int depth, bool includeHierarchy);
 	//! performs volume and item dimension validation.
-	proto external bool PerformVolumeValidation(IEntity item);
+	proto external bool PerformVolumeValidation(IEntity item, bool includeDimensionValidation = true);
+	//! performs dimension validation.
+	proto external bool PerformDimensionValidation(IEntity item);
 	// convinience method, returns volume calculated from dimension limits
 	proto external float GetMaxVolumeCapacity();
 	// return dimension limits for storage

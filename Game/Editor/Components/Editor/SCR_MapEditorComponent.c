@@ -11,10 +11,10 @@ class SCR_MapEditorComponent : SCR_BaseEditorComponent
 	[Attribute("{19C76194B21EC3E1}Configs/Map/MapEditor.conf")]
 	protected ResourceName m_MapConfigEditorPrefab;
 	
-	[Attribute("SOUND_HUD_MAP_OPEN", UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.SOUND_HUD_MAP_OPEN, UIWidgets.EditBox)]
 	protected string m_sOpeningEditorMapSfx;
 	
-	[Attribute("SOUND_HUD_MAP_CLOSE", UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.SOUND_HUD_MAP_CLOSE, UIWidgets.EditBox)]
 	protected string m_sClosingEditorMapSfx;
 	
 	protected SCR_MapEntity m_MapEntity;
@@ -52,6 +52,18 @@ class SCR_MapEditorComponent : SCR_BaseEditorComponent
 		if (!m_MapHandler)
 		{
 			return;
+		}
+		
+		//--- In limited editor, map can be opened only if map gadget is in player's inventory
+		if (show && GetManager().IsLimited())
+		{
+			IEntity playerEntity = SCR_PlayerController.GetLocalControlledEntity();
+			if (!playerEntity)
+				return; //--- Limited editor works only if player has an entity, so this should never happen.
+			
+			SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.Cast(playerEntity.FindComponent(SCR_GadgetManagerComponent));
+			if (gadgetManager && !gadgetManager.GetGadgetByType(EGadgetType.MAP))
+				return;
 		}
 		
 		if (show)

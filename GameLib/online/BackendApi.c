@@ -22,6 +22,7 @@
 		EBERR_CHARACTER_GET,		// character data receieved
 		EBERR_CHARACTER_UPDATE,		// character update done
 		EBERR_FILE_NOT_FOUND,		// save point doesn't exist
+		EBERR_UNSUPPORTED_REQUEST,	// non-supported request call performed
 	};
 	
 
@@ -114,6 +115,21 @@
 		EDSESSION_PAUSED,					// session is paused (this is state where server was hibernated)
 		EDSESSION_RESTARTING,				// session is being restarted
 	};
+
+enum EWorkshopItemType
+{
+	EWTYPE_UNKNOWN,
+	EWTYPE_ADDON,
+	EWTYPE_WORLD_SAVE
+}
+
+class WorldSaveManifest
+{
+	ref array<string> m_aFiles;	//list of files to upload
+	string m_sName;				
+	string m_sSummary;
+	string m_sPreview;			//name of the file with preview image - its full path has to be among other files in m_aFiles
+}
 
 // -------------------------------------------------------------------------
 // Dedicated Server Box data record
@@ -245,6 +261,10 @@ class DSSessionCallback : Managed
 // Save & Load handler
 class SessionStorage
 {
+	/**
+	\brief Return true if storage is initialized - ready to load/ store data
+	*/
+	proto native bool Initialized();
 	/**
 	\brief Request periodical processing save of session content
 	\param fileName - name of file handle
@@ -500,14 +520,6 @@ class NewsFeedItem
 	\brief Date & Time
 	*/
 	proto native string Date();
-	/**
-	\brief Platform(s)
-	*/
-	proto native string Platform();
-	/**
-	\brief Region - if limitations applied
-	*/
-	proto native string Region();
 
 };
 
@@ -820,6 +832,13 @@ class BackendApi
 	\brief Get target backend environment
 	*/
 	proto native string GetBackendEnv();
+	
+	
+	proto native bool LoadDSConfig(DSConfig config, string fileName);
+	proto native bool SaveDSConfig(DSConfig config, string fileName);
+	proto native void SetDefaultIpPort(DSConfig config);
+	
+	proto native void UploadWorldSave(WorldSaveManifest manifest, BackendCallback callback);
 };
 
 // -------------------------------------------------------------------------

@@ -11,7 +11,7 @@
 	class MyData
 	{
 		int m_id;
-		autoptr map<string, float> m_values;
+		map<string, float> m_values;
 	
 		[NonSerialized()]
 		string m_dbg; // I don't want to serialize this variable
@@ -21,7 +21,7 @@
 	{
 		int statArray[4] = {6,9,2,3};
 		array<int> dynArray = {8,5,6,4};
-		autoptr MyData data = new MyData();
+		MyData data = new MyData();
 	
 		data.m_id = 965;
 		data.m_values = map<string, float>;

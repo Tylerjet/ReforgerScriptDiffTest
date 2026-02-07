@@ -21,6 +21,7 @@ class SimpleSoundComponent: BaseSoundComponent
 	proto external void SetScriptedMethodsCall(bool state);
 	//! TRUE when flag for script callbacks is set.
 	proto external bool IsScriptedMethodsCallEnabled();
+	proto external IEntity GetOwner();
 	
 	// callbacks
 	

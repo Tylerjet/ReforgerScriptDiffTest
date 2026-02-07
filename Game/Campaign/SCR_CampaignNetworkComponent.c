@@ -158,7 +158,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		int XP = campaign.GetXPRewardAmount(rewardID);
 		float skillXPMultiplier = 1;
 		EProfileSkillID skillID = campaign.GetXPRewardSkill(rewardID);
-		auto profileManager = campaign.FindComponent(SCR_PlayerProfileManagerComponent);
+		//auto profileManager = campaign.FindComponent(SCR_PlayerProfileManagerComponent); Replaced by SCR_PlayerData
 		
 		// 20% XP bonus when the player volunteered for the task
 		if (volunteer)
@@ -169,7 +169,8 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		int XPToAddBySkill = 0;
 		bool profileUsed = false;
 		int skillLevel = 0;
-		
+		/***** Replaced by SCR_PlayerData
+		//****
 		// Handle skill XP
 		if (profileManager && XP > 0)
 		{
@@ -184,7 +185,8 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 				profile.AddSkillXP(skillID, XP * multiplier);
 			}
 		}
-			
+		//****
+		*****/
 		m_iPlayerXP += (XPToAdd + XPToAddBySkill);
 		Replication.BumpMe();
 		UpdatePlayerRank();
@@ -204,6 +206,17 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	float GetLastRequestTimestamp()
 	{
 		return m_fLastAssetRequestTimestamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Getter for request cooldown
+	void SetLastRequestTimestamp(float timestamp)
+	{
+		if (IsProxy())
+			return;
+		
+		m_fLastAssetRequestTimestamp = timestamp;
+		Replication.BumpMe();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -266,13 +279,6 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Send server request to temporary reduce spawn tickets in given base, because a service was disabled (it's mandatory parts were destroyed)
-	void ReduceRespawnTickets(notnull SCR_CampaignBase base, notnull SCR_SiteSlotEntity slotEnt, ECampaignCompositionType compositionType)
-	{
-		Rpc(RpcAsk_ReduceRespawnTickets, Replication.FindId(base), Replication.FindId(slotEnt), compositionType);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! Send server request to load supplies at a base
 	//! \param truckID Unique ID identifying the supply truck
 	//! \param player Player trying to unload supplies
@@ -290,6 +296,22 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		int playerID = m_PlayerController.GetPlayerId();
 		Rpc(RpcAsk_LoadSupplies, suppliesID, playerID, baseID, amount);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void LoadSuppliesStandalone(RplId suppliesID, IEntity player, SCR_CampaignSuppliesComponent depot, int amount = 0)
+	{
+		if (!player || !depot)
+			return;
+		
+		RplId depotID = Replication.FindId(depot);
+		
+		if (!m_PlayerController)
+			return;
+		
+		int playerID = m_PlayerController.GetPlayerId();
+		Rpc(RpcAsk_LoadSuppliesStandalone, suppliesID, playerID, depotID, amount);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void StartLoading(RplId suppliesID, int supplies, bool IsUnloading = false)
 	{
@@ -386,7 +408,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 			return;
 		
 		GetGame().GetCallqueue().Remove(FindRadioDelayed);
-		IEntity player = SCR_Global.GetPlayer();
+		IEntity player = SCR_PlayerController.GetLocalControlledEntity();
 		
 		if (!player)
 			return;
@@ -664,12 +686,6 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 			
 		// Final phase of composition
 		GetGame().GetCallqueue().CallLater(buildingQueue.BuildPhase, completeBuildingTime, false, slotEnt, resName, true, pc.GetPlayerId());
-		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		if (!campaign)
-			return;
-		
-		campaign.OnStructureBuilt(slotEnt, this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -725,7 +741,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 			m_mCurrentBuilding.Remove(slotEnt);
 		}
 		
-		SCR_Global.DeleteEntityAndChildren(slotEnt.GetOccupant());
+		SCR_EntityHelper.DeleteEntityAndChildren(slotEnt.GetOccupant());
 		campaign.RefreshBuildingPreview(slotID);
 	}
 	
@@ -751,7 +767,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		base.AddSupplies(refundValue);
 		base.HandleMapInfo();	//Update map info for host
-		SCR_Global.DeleteEntityAndChildren(slotEnt.GetOccupant());
+		SCR_EntityHelper.DeleteEntityAndChildren(slotEnt.GetOccupant());
 		campaign.RefreshBuildingPreview(slotID);
 	}
 	
@@ -780,7 +796,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!campaign)
 			return;
 			
-		IEntity composition = IEntity.Cast(SCR_Global.GetMainParent(destructibleComp.GetOwner()));
+		IEntity composition = IEntity.Cast(SCR_EntityHelper.GetMainParent(destructibleComp.GetOwner()));
 		if (!composition)
 			return;
 		
@@ -806,24 +822,6 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		base.HandleMapInfo();
 	}
 #endif
-	//------------------------------------------------------------------------------------------------
-	//! Reduce respawn tickets in given base
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_ReduceRespawnTickets(RplId baseID, RplId slotID, ECampaignCompositionType compositionType)
-	{		
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(Replication.FindItem(baseID));
-		if (!base)
-			return;
-		
-		SCR_SiteSlotEntity slotEnt = SCR_SiteSlotEntity.Cast(Replication.FindItem(slotID));
-		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		if (!campaign)
-			return;
-		
-		// Notify campaign about event
-		campaign.OnStructureChanged(base, slotEnt, base.GetBaseService(compositionType), false);
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	void AddSuppliesFromContextMenu(notnull SCR_CampaignBase base, int suppliesCnt)
@@ -970,20 +968,26 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		if (!playerFaction || playerFaction != base.GetOwningFaction())
 			return;
-				
-		SCR_CampaignDeliveryPoint depotDeliveryPoint = base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
-		if (!depotDeliveryPoint)
-			return;
 		
-		SCR_CampaignSuppliesComponent baseSuppliesComponent = SCR_CampaignSuppliesComponent.Cast(depotDeliveryPoint.FindComponent(SCR_CampaignSuppliesComponent));
+		SCR_CampaignSuppliesComponent baseSuppliesComponent = SCR_CampaignSuppliesComponent.Cast(base.FindComponent(SCR_CampaignSuppliesComponent));
 		if (!baseSuppliesComponent)
 			return;
 		
 		float distSq = Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2);
 		vector vehPos = box.GetOrigin();
 		
-		if (vector.DistanceSq(vehPos, depotDeliveryPoint.GetOrigin()) > distSq || vector.DistanceSq(vehPos, player.GetOrigin()) > 100)
+		if (vector.DistanceSq(vehPos, player.GetOrigin()) > 100)
 			return;
+		
+		if (vector.DistanceSq(vehPos, base.GetOrigin()) > distSq)
+		{
+			SCR_CampaignServiceComponent service = base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
+			if (!service)
+				return;
+			
+			if (vector.DistanceSq(vehPos, service.GetOwner().GetOrigin()) > distSq)
+				return;
+		}
 		
 		// Validity check passed, perform action
 		int finalAmount = Math.Min(suppliesComponent.GetSuppliesMax() - suppliesComponent.GetSupplies(), amount);
@@ -993,6 +997,50 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		Rpc(RpcDo_PlayerFeedbackValueBase, ECampaignClientNotificationID.SUPPLIES_LOADED, (float)finalAmount, base.GetBaseID());
 		suppliesComponent.DeleteSupplyLoadingPlayer(playerID);
 		
+		SendToVehicleOccupants(ENotification.SUPPLY_TRUCK_LOADING_PLAYER_FINISHED, suppliesComponent.GetOwner(), playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RpcAsk_LoadSuppliesStandalone(RplId suppliesID, int playerID, RplId depotID, int amount)
+	{
+		SCR_CampaignSuppliesComponent suppliesComponent = SCR_CampaignSuppliesComponent.Cast(Replication.FindItem(suppliesID));
+
+		if (!suppliesComponent)
+			return;
+		
+		SCR_CampaignSuppliesComponent depot = SCR_CampaignSuppliesComponent.Cast(Replication.FindItem(depotID));
+		
+		if (!depot)
+			return;
+		
+		IEntity player = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
+		
+		if (!player)
+			return;
+		
+		IEntity box = suppliesComponent.GetOwner();
+		
+		if (!box)
+			return;
+		
+		if (amount > depot.GetSupplies())
+			return;
+		
+		if (suppliesComponent.GetSupplies() == suppliesComponent.GetSuppliesMax())
+			return;
+		
+		float distSq = Math.Pow(depot.GetOperationalRadius(), 2);
+		vector vehPos = box.GetOrigin();
+		
+		if (vector.DistanceSq(vehPos, depot.GetOwner().GetOrigin()) > distSq || vector.DistanceSq(vehPos, player.GetOrigin()) > 100)
+			return;
+		
+		// Validity check passed, perform action
+		int finalAmount = Math.Min(suppliesComponent.GetSuppliesMax() - suppliesComponent.GetSupplies(), amount);
+		suppliesComponent.AddSupplies(finalAmount);
+		Rpc(RpcDo_PlayerFeedbackValueBase, ECampaignClientNotificationID.SUPPLIES_LOADED, (float)finalAmount, -1);
+		suppliesComponent.DeleteSupplyLoadingPlayer(playerID);
 		SendToVehicleOccupants(ENotification.SUPPLY_TRUCK_LOADING_PLAYER_FINISHED, suppliesComponent.GetOwner(), playerID);
 	}
 	
@@ -1033,30 +1081,31 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!playerFaction || playerFaction != owningFaction)
 			return;
 		
-		SCR_SiteSlotEntity depotSlot = base.GetAssignedSlot(ECampaignCompositionType.SUPPLIES);
-		if (!depotSlot)
-			return;
-		
-		SCR_CampaignDeliveryPoint depotDeliveryPoint = base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
-		if (!depotDeliveryPoint)
-			return;
-		
-		SCR_CampaignSuppliesComponent baseSuppliesComponent = SCR_CampaignSuppliesComponent.Cast(depotDeliveryPoint.FindComponent(SCR_CampaignSuppliesComponent));
+		SCR_CampaignSuppliesComponent baseSuppliesComponent = SCR_CampaignSuppliesComponent.Cast(base.FindComponent(SCR_CampaignSuppliesComponent));
 		if (!baseSuppliesComponent)
 			return;
 
 		float distSq = Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2);
 		vector vehPos = box.GetOrigin();
 		
-		if (vector.DistanceSq(vehPos, depotSlot.GetOrigin()) > distSq || vector.DistanceSq(vehPos, player.GetOrigin()) > 100)
+		if (vector.DistanceSq(vehPos, player.GetOrigin()) > 100)
 			return;
+		
+		if (vector.DistanceSq(vehPos, base.GetOrigin()) > distSq)
+		{
+			SCR_CampaignServiceComponent service = base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
+			if (!service)
+				return;
+			
+			if (vector.DistanceSq(vehPos, service.GetOwner().GetOrigin()) > distSq)
+				return;
+		}
 		
 		// Validity check passed, perform action
 		int suppliesCur = base.GetSupplies();
 		int suppliesMax = base.GetSuppliesMax();
 		int suppliesCnt = Math.Min(amount, suppliesMax - suppliesCur);
-		float rewardMultiplier = suppliesCnt / suppliesComponent.GetSuppliesMax();		
-		ECampaignCompositionType compTypeOld = SCR_CampaignDeliveryPoint.CalculateSupplyDepotCompositionType(suppliesMax, suppliesCur);
+		float rewardMultiplier = suppliesCnt / suppliesComponent.GetSuppliesMax();
 		suppliesComponent.AddSupplies(-suppliesCnt);
 		base.AddSupplies(suppliesCnt);
 		suppliesComponent.SetLastUnloadedAt(base);
@@ -1219,236 +1268,6 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Send server request to spawn a vehicle at given depot
-	//! \param deliveryPointID Delivery point entity ID
-	//! \param assetID Unique asset ID (its index in asset list)
-	//! \param playerID Requester entity ID
-	void SpawnVehicle(IEntity deliveryPoint, int assetID)
-	{	
-		RplId deliveryPointID = Replication.FindId(deliveryPoint);
-		
-		if (!m_PlayerController)
-			return;
-		
-		int playerID = m_PlayerController.GetPlayerId();
-		Rpc(RpcAsk_SpawnVehicle, deliveryPointID, assetID, playerID);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Spawn a vehicle at given depot
-	//! \param deliveryPointID Delivery point entity ID
-	//! \param assetID Unique asset ID (its index in asset list)
-	//! \param playerID Requester entity ID
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_SpawnVehicle(RplId deliveryPointID, int assetID, int playerID)
-	{
-		SCR_CampaignDeliveryPoint building = SCR_CampaignDeliveryPoint.Cast(Replication.FindItem(deliveryPointID));
-		
-		if (!building)
-			return;
-		
-		IEntity player = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
-		
-		if (!player)
-			return;
-		
-		// Repeat the check for player's ability to actually request the vehicle on server to be sure
-		if (building.CanRequest(playerID, assetID) != 1)
-			return;
-		
-		// No more given vehicles in stock
-		if (building.GetStockSize(assetID) == 0)
-		{
-			Rpc(RpcDo_PlayerFeedback, ECampaignClientNotificationID.OUT_OF_STOCK);
-			return;
-		};
-		
-		// Check all depot spawnpoints, find an empty one
-		IEntity child = building.GetChildren();
-		BaseGameTriggerEntity trg = null;
-		
-		while (child && !trg)
-		{
-			if (child.Type() == BaseGameTriggerEntity)
-			{
-				auto compAI = child.FindComponent(SCR_CampaignAIVehicleSpawnComponent);
-				
-				if (!compAI)	// Ignore triggers that spawn vehicles for AI
-				{
-					BaseGameTriggerEntity thisTrg = BaseGameTriggerEntity.Cast(child);
-					thisTrg.QueryEntitiesInside();
-					array<IEntity> inside = new array<IEntity>();
-					int cntInside = thisTrg.GetEntitiesInside(inside);
-					
-					// Delete wrecks blocking the spawnpoints
-					if (cntInside != 0)
-					{
-						GarbageManager garbageMan = GetGame().GetGarbageManager();
-						
-						foreach (IEntity ent : inside)
-						{
-							if (!ent)
-								continue;
-							
-							DamageManagerComponent comp = DamageManagerComponent.Cast(ent.FindComponent(DamageManagerComponent));
-							
-							if (!comp || !comp.IsDestroyed())
-								continue;
-							
-							if (garbageMan && garbageMan.IsInserted(ent))
-								garbageMan.Withdraw(ent);
-							
-							SCR_EntityHelper.DeleteEntityAndChildren(ent);
-						}
-						
-						cntInside = thisTrg.GetEntitiesInside(inside);
-					};
-					
-					if (cntInside == 0)
-						trg = thisTrg;
-				}
-			}
-			
-			child = child.GetSibling();
-		};
-		
-		// No more empty spawnpoints
-		if (!trg)
-		{
-			Rpc(RpcDo_PlayerFeedback, ECampaignClientNotificationID.NO_SPACE);
-			return;
-		};
-		
-		// Spawn the vehicle
-		EntitySpawnParams params = EntitySpawnParams();
-		params.TransformMode = ETransformMode.WORLD;
-		trg.GetWorldTransform(params.Transform);
-		Resource res = Resource.Load(SCR_CampaignFactionManager.GetInstance().GetVehicleAssetPrefab(assetID));
-		Vehicle veh = Vehicle.Cast(GetGame().SpawnEntityPrefab(res, null, params));
-		
-		if (!veh)
-			return;
-		
-		building.DepleteAsset(assetID);
-		Physics physicsComponent = veh.GetPhysics();
-		
-		if (!physicsComponent)
-			return;
-		
-		veh.GetPhysics().SetVelocity("0 -0.1 0"); // Make the vehicle copy the terrain properly
-		BaseRadioComponent radioComponent = BaseRadioComponent.Cast(veh.FindComponent(BaseRadioComponent));
-		SCR_VehicleSpawnProtectionComponent protectionComponent = SCR_VehicleSpawnProtectionComponent.Cast(veh.FindComponent(SCR_VehicleSpawnProtectionComponent));
-		SCR_ECampaignHints hintID = SCR_ECampaignHints.NONE;
-		
-		// If radio truck was requested, set its radio frequency etc.
-		if (radioComponent)
-		{
-			SCR_CampaignFaction f = SCR_CampaignFaction.Cast(building.GetParentBase().GetOwningFaction());
-		
-			if (f)
-			{
-				radioComponent.TogglePower(false);
-				radioComponent.SetFrequency(f.GetFactionRadioFrequency());
-				radioComponent.SetEncryptionKey(f.GetFactionRadioEncryptionKey());
-			}
-		}
-		
-		SlotManagerComponent slotManager = SlotManagerComponent.Cast(veh.FindComponent(SlotManagerComponent));
-		
-		if (slotManager)
-		{
-			array<EntitySlotInfo> slots = new array<EntitySlotInfo>;
-			slotManager.GetSlotInfos(slots);
-			
-			foreach (EntitySlotInfo slot: slots)
-			{
-				if (!slot)
-					continue;
-				
-				IEntity truckBed = slot.GetAttachedEntity();
-				
-				if (!truckBed)
-					continue;
-				
-				SCR_CampaignSuppliesComponent suppliesComponent = SCR_CampaignSuppliesComponent.Cast(truckBed.FindComponent(SCR_CampaignSuppliesComponent));
-				SCR_CampaignMobileAssemblyComponent mobileAssemblyComponent = SCR_CampaignMobileAssemblyComponent.Cast(truckBed.FindComponent(SCR_CampaignMobileAssemblyComponent));
-				
-				// If supply truck was requested, show hint and handle garbage collector
-				if (suppliesComponent)
-				{
-					hintID = SCR_ECampaignHints.SUPPLY_RUNS;
-					EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(veh.FindComponent(EventHandlerManagerComponent));
-					SCR_CampaignGarbageManager gManager = SCR_CampaignGarbageManager.Cast(GetGame().GetGarbageManager());
-					
-					if (eventHandlerManager && gManager)
-						eventHandlerManager.RegisterScriptHandler("OnCompartmentLeft", veh, OnSupplyTruckLeft);
-				}
-				
-				// If mobile assembly was requested, set its parent faction
-				if (mobileAssemblyComponent)
-				{
-					SCR_CampaignFactionManager fManager = SCR_CampaignFactionManager.GetInstance();
-					
-					if (fManager)
-						mobileAssemblyComponent.SetParentFactionID(fManager.GetFactionIndex(building.GetParentBase().GetOwningFaction()));
-					
-					hintID = SCR_ECampaignHints.MOBILE_ASSEMBLY;
-				}
-			}
-		}
-		
-		if (protectionComponent)
-		{
-			protectionComponent.SetVehicleOwner(playerID);
-			protectionComponent.SetProtectionTime(SCR_GameModeCampaignMP.GetInstance().GetVehicleProtectionTime());
-		}
-		
-		// Vehicle spawned, inform requester
-		m_fLastAssetRequestTimestamp = Replication.Time();
-		Rpc(RpcDo_PlayerFeedbackAsset, ECampaignClientNotificationID.VEHICLE_SPAWNED, assetID, hintID);
-		Replication.BumpMe();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Bump supply truck lifetime in garbage manager if it's parked near a base
-	protected void OnSupplyTruckLeft(IEntity vehicle, BaseCompartmentManagerComponent mgr, IEntity occupant, int managerId, int slotID)
-	{
-		SCR_CampaignGarbageManager gManager = SCR_CampaignGarbageManager.Cast(GetGame().GetGarbageManager());
-		
-		if (!gManager)
-			return;
-		
-		if (!gManager.IsInserted(vehicle))
-			return;
-		
-		array<SCR_CampaignBase> bases = SCR_CampaignBaseManager.GetBases();
-		int baseDistanceSq = Math.Pow(SCR_CampaignGarbageManager.MAX_BASE_DISTANCE, 2);
-		vector vehPos = vehicle.GetOrigin();
-		bool baseNearby;
-		
-		foreach (SCR_CampaignBase base: bases)
-		{
-			if (!base)
-				continue;
-			
-			baseNearby = vector.DistanceSqXZ(vehPos, base.GetOrigin()) <= baseDistanceSq;
-			
-			if (baseNearby)
-				break;
-		}
-		
-		if (!baseNearby)
-			return;
-		
-		float curLifetime = gManager.GetLifetime(vehicle);
-		
-		if (curLifetime >= SCR_CampaignGarbageManager.PARKED_SUPPLY_TRUCK_LIFETIME)
-			return;
-		
-		gManager.Bump(vehicle, SCR_CampaignGarbageManager.PARKED_SUPPLY_TRUCK_LIFETIME - curLifetime);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! Show notification about request result to the requester
 	//! \param msgID Message ID (see ECampaignClientNotificationID)
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
@@ -1456,16 +1275,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	{
 		RpcDo_PlayerFeedbackImpl(msgID);
 	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Show notification about request result to the requester
-	//! \param msgID Message ID (see ECampaignClientNotificationID)
-	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void RpcDo_PlayerFeedbackAsset(int msgID, int assetID, int hintID)
-	{
-		RpcDo_PlayerFeedbackImpl(msgID, 0, assetID, -1, -1, hintID);
-	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Show notification about request result to the requester
 	//! \param msgID Message ID (see ECampaignClientNotificationID)
@@ -1487,7 +1297,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//! Show notification about request result to the requester
 	//! \param msgID Message ID (see ECampaignClientNotificationID)
-	protected void RpcDo_PlayerFeedbackImpl(int msgID, float value = 0, int assetID = -1, int baseID = -1, int sourceBaseID = -1, SCR_ECampaignHints hintID = SCR_ECampaignHints.NONE)
+	protected void RpcDo_PlayerFeedbackImpl(int msgID, float value = 0, int assetID = -1, int baseID = -1, int sourceBaseID = -1)
 	{
 		LocalizedString msg;
 		LocalizedString msg2;
@@ -1502,18 +1312,8 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!campaign)
 			return;
 		
-		campaign.ShowHint(hintID);
-		
 		switch (msgID)
-		{
-			case ECampaignClientNotificationID.VEHICLE_SPAWNED:
-			{
-				msg = "#AR-Campaign_VehicleReady-UC";
-				msg2 = SCR_CampaignFactionManager.GetInstance().GetVehicleAssetDisplayName(assetID);
-				break;
-			}; 		
-			case ECampaignClientNotificationID.NO_SPACE: {msg = "#AR-Campaign_DeliveryPointObstructed-UC"; break;};
-			case ECampaignClientNotificationID.OUT_OF_STOCK: {msg = "#AR-Campaign_OutOfStock-UC"; break;};
+		{	
 			case ECampaignClientNotificationID.SUPPLIES_LOADED:
 			{
 				msg = "#AR-Campaign_SuppliesLoaded-UC";
@@ -1528,7 +1328,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 					msg2param2 = base.GetSupplies().ToString();
 				}
 				
-				SCR_UISoundEntity.SoundEvent("SOUND_LOADSUPPLIES");
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_LOADSUPPLIES);
 				break;
 			};
 			case ECampaignClientNotificationID.SUPPLIES_UNLOADED:
@@ -1548,7 +1348,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 				if (!campaign.IsTutorial())
 					SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_Building_Text", "#AR-Campaign_Hint_Building_Title", 20, fieldManualEntry: EFieldManualEntryId.CONFLICT_BUILDING);
 				
-				SCR_UISoundEntity.SoundEvent("SOUND_UNLOADSUPPLIES");
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_UNLOADSUPPLIES);
 				break;
 			};
 			case ECampaignClientNotificationID.RESPAWN:
@@ -1600,6 +1400,24 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		SCR_PopUpNotification.GetInstance().PopupMsg(msg, duration, 0.5, msg2, param1: msg1param1, text2param1: msg2param1, text2param2: msg2param2);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	void SendVehicleSpawnHint(int hintID)
+	{
+		Rpc(RpcDo_VehicleSpawnHint, hintID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void RpcDo_VehicleSpawnHint(int hintID)
+	{
+		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		
+		if (!campaign)
+			return;
+		
+		campaign.ShowHint(hintID);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void RpcDo_OnPlayerXPChanged(int currentXP, int XPToAdd, bool volunteer, CampaignXPRewards rewardID, bool profileUsed, int skillLevel)
@@ -1782,7 +1600,7 @@ class SCR_CompositionBuildingQueue
 		if (slotEnt.IsOccupied())
 		{
 			IEntity ocup = slotEnt.GetOccupant();
-			SCR_Global.DeleteEntityAndChildren(ocup);
+			SCR_EntityHelper.DeleteEntityAndChildren(ocup);
 			slotEnt.SetOccupant(null);
 		}
 			
@@ -1802,6 +1620,12 @@ class SCR_CompositionBuildingQueue
 				return;
 		
 			campaignNetworkComponent.GetBuildingQueue().Remove(slotEnt);
+			
+			SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+			if (!campaign)
+				return;
+			
+			campaign.OnStructureBuilt(slotEnt, campaignNetworkComponent);
 		}
 	}
 

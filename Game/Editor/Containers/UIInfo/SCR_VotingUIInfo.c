@@ -1,8 +1,11 @@
 [BaseContainerProps(), BaseContainerCustomTitleField("Name")]
 class SCR_VotingUIInfo: SCR_UIInfo
 {
-	[Attribute(desc: "When voting is not in progress start vote. If voting is in progress UiInfo.Name is used instead")]
+	[Attribute(desc: "Text used when starting a vote about something.")]
 	protected LocalizedString m_sStartVotingName;
+	
+	[Attribute(desc: "Text used when canceling your vote about something.")]
+	protected LocalizedString m_sCancelVotingName;
 	
 	[Attribute()]
 	protected LocalizedString m_sStickyNotificationText;
@@ -16,10 +19,23 @@ class SCR_VotingUIInfo: SCR_UIInfo
 	[Attribute("0", desc: "The Fail notification id to which the voting type is linked. Leave UNKNOWN to not have a notification", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ENotification))]
 	protected ENotification m_iFailedNotificationId;
 	
+	/*!
+	\return Name used when starting a new vote.
+	*/
 	string GetStartVotingName()
 	{
 		if (m_sStartVotingName)
 			return m_sStartVotingName;
+		else
+			return GetName();
+	}
+	/*!
+	\return Name used when withdrawing a vote.
+	*/
+	string GetCancelVotingName()
+	{
+		if (m_sCancelVotingName)
+			return m_sCancelVotingName;
 		else
 			return GetName();
 	}

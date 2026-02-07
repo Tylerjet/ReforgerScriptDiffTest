@@ -62,10 +62,5 @@ class SCR_AIAttackActivity : SCR_AIActivityBase
 	{
 		return this.ToString() + " attacking " + m_Target.ValueToString();
 	}
-	
-	override IEntity GetActionParameter_Entity()
-	{
-		return m_Target.m_Value;
-	}
 };
 

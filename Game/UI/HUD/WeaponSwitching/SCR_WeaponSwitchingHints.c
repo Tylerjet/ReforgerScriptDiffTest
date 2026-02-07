@@ -18,7 +18,7 @@ class SCR_WeaponSwitchingHints: ScriptedWidgetComponent
 		m_wSafety = w.FindAnyWidget("Safety");
 		m_wRaiseWeapon = w.FindAnyWidget("RaiseWeapon");
 
-		ChimeraCharacter character = ChimeraCharacter.Cast(SCR_Global().GetPlayer());
+		ChimeraCharacter character = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
 		if (!character)
 			return;
 

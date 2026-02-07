@@ -12,6 +12,10 @@ class SCR_WeaponInfoWidgets
 
 	RichTextWidget m_OpticsText;
 
+	HorizontalLayoutWidget m_Zeroing;
+
+	RichTextWidget m_ZeroingText;
+
 	HorizontalLayoutWidget m_AmmoType;
 
 	RichTextWidget m_AmmoTypeText;
@@ -34,10 +38,6 @@ class SCR_WeaponInfoWidgets
 
 	OverlayWidget m_AmmoType_Tracer;
 
-	HorizontalLayoutWidget m_Zeroing;
-
-	RichTextWidget m_ZeroingText;
-
 	HorizontalLayoutWidget m_Main;
 
 	OverlayWidget m_Firemode;
@@ -56,9 +56,19 @@ class SCR_WeaponInfoWidgets
 
 	ImageWidget m_MagazineProgress;
 
+	ImageWidget m_ReloadBackground;
+
+	ImageWidget m_ReloadOutline;
+
 	SizeLayoutWidget m_MagCount;
 
 	RichTextWidget m_MagCountText;
+
+	HorizontalLayoutWidget m_WeaponNameAndCaliber;
+
+	RichTextWidget m_Caliber;
+
+	RichTextWidget m_WeaponName;
 
 	bool Init(Widget root)
 	{
@@ -67,6 +77,10 @@ class SCR_WeaponInfoWidgets
 		m_Optics = HorizontalLayoutWidget.Cast(root.FindAnyWidget("m_Optics"));
 
 		m_OpticsText = RichTextWidget.Cast(root.FindAnyWidget("m_OpticsText"));
+
+		m_Zeroing = HorizontalLayoutWidget.Cast(root.FindAnyWidget("m_Zeroing"));
+
+		m_ZeroingText = RichTextWidget.Cast(root.FindAnyWidget("m_ZeroingText"));
 
 		m_AmmoType = HorizontalLayoutWidget.Cast(root.FindAnyWidget("m_AmmoType"));
 
@@ -90,10 +104,6 @@ class SCR_WeaponInfoWidgets
 
 		m_AmmoType_Tracer = OverlayWidget.Cast(root.FindAnyWidget("m_AmmoType_Tracer"));
 
-		m_Zeroing = HorizontalLayoutWidget.Cast(root.FindAnyWidget("m_Zeroing"));
-
-		m_ZeroingText = RichTextWidget.Cast(root.FindAnyWidget("m_ZeroingText"));
-
 		m_Main = HorizontalLayoutWidget.Cast(root.FindAnyWidget("m_Main"));
 
 		m_Firemode = OverlayWidget.Cast(root.FindAnyWidget("m_Firemode"));
@@ -112,9 +122,19 @@ class SCR_WeaponInfoWidgets
 
 		m_MagazineProgress = ImageWidget.Cast(root.FindAnyWidget("m_MagazineProgress"));
 
+		m_ReloadBackground = ImageWidget.Cast(root.FindAnyWidget("m_ReloadBackground"));
+
+		m_ReloadOutline = ImageWidget.Cast(root.FindAnyWidget("m_ReloadOutline"));
+
 		m_MagCount = SizeLayoutWidget.Cast(root.FindAnyWidget("m_MagCount"));
 
 		m_MagCountText = RichTextWidget.Cast(root.FindAnyWidget("m_MagCountText"));
+
+		m_WeaponNameAndCaliber = HorizontalLayoutWidget.Cast(root.FindAnyWidget("m_WeaponNameAndCaliber"));
+
+		m_Caliber = RichTextWidget.Cast(root.FindAnyWidget("m_Caliber"));
+
+		m_WeaponName = RichTextWidget.Cast(root.FindAnyWidget("m_WeaponName"));
 
 		return true;
 	}

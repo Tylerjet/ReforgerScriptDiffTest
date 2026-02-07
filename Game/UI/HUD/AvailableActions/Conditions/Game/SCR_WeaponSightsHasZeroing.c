@@ -15,9 +15,6 @@ class SCR_WeaponSightHasZeroingCondition : SCR_AvailableActionCondition
 			return false;
 		
 		float zeroing = currentweapon.GetCurrentSightsZeroing();
-		if(zeroing <= 0)
-			return false;
-		
-		return GetReturnResult(true);
+		return GetReturnResult(zeroing > 0);
 	}
 };

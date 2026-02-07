@@ -150,7 +150,10 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 			entry.m_Flags |= EPreviewEntityFlag.ORIENT_CHILDREN;
 		
 		if (!SCR_Enum.HasFlag(flags, EPreviewEntityFlag.IGNORE_TERRAIN))
-			SaveTerrainTransform(entry.m_Entity, entry);
+		{
+			bool isUnderwater = SCR_Enum.HasFlag(flags, EPreviewEntityFlag.UNDERWATER);
+			SaveTerrainTransform(entry.m_Entity, entry, isUnderwater);
+		}
 		
 		if (entry.m_Shape != EPreviewEntityShape.PREFAB)
 		{

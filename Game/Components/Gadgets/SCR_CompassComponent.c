@@ -185,19 +185,7 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		
 		UpdateCompassState();
 	}
-					
-	//------------------------------------------------------------------------------------------------
-	//! Get compass prefab name 
-	//! \return returns compass prefab ResourceName
-	ResourceName GetCompassPrefab()
-	{		
-		EntityPrefabData prefabData = GetOwner().GetPrefabData();		
-		if (!prefabData)
-			return string.Empty;
-			
-		return prefabData.GetPrefabName();
-	}
-	
+						
 	//------------------------------------------------------------------------------------------------
 	//! Get compass in map UI camera position configuration
 	vector GetMapCamPosition()
@@ -298,15 +286,7 @@ class SCR_CompassComponent : SCR_GadgetComponent
 			UpdateCompassState();
 		}
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void ActivateAction()
-	{
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast( m_CharacterOwner.FindComponent(SCR_CharacterControllerComponent) );	
-		if (controller)		
-			controller.SetGadgetRaisedModeWanted(!m_bFocused); 
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	override EGadgetType GetType()
 	{
@@ -315,6 +295,12 @@ class SCR_CompassComponent : SCR_GadgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeRaised()
+	{
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool IsUsingADSControls()
 	{
 		return true;
 	}

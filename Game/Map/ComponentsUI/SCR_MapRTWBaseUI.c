@@ -1,6 +1,21 @@
 //------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
+class ToolSize
+{
+	[Attribute("", UIWidgets.EditBox, desc: "X size")]
+	int m_iSizeX;
+	
+	[Attribute("", UIWidgets.EditBox, desc: "Y size")]
+	int m_iSizeY;
+}
+
+//------------------------------------------------------------------------------------------------
+//! Base map UI component for map tools wihch using RenderTargetWidget for display 
 class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 {
+	[Attribute("", UIWidgets.Object, desc: "Array of x*y sizes in unscaled pix")]
+	protected ref array<ref ToolSize> m_aSizesArray;
+	
 	const string BASE_WORLD_TYPE = "Preview";
 	
 	// configuration
@@ -16,8 +31,11 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	protected bool m_bIsVisible;				// visibility flag
 	protected bool m_bWantedVisible;			// holds wanted visiblity state after close
 	protected bool m_bIsDragged = false;		// widget is being dragged
+	protected int m_iCurrentSizeIndex;			// current id of m_SizesArray
+	protected int m_iSizesCount;				// count of m_SizesArray
 	protected float m_fPosX, m_fPosY;			// widget position
 	
+	protected EGadgetType m_eGadgetType; 
 	protected GenericEntity m_RTEntity;
 	protected ref SharedItemRef m_RTWorld;
 	protected SCR_MapToolEntry m_ToolMenuEntry;	// tool menu entry
@@ -48,7 +66,33 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	//! Get prefab resource for display
 	//! \return prefab resource
 	protected string GetPrefabResource()
-	{}
+	{
+		ResourceName prefabName = string.Empty;
+		
+		IEntity item = FindRelatedGadget();
+		if (item)
+		{
+			SCR_GadgetComponent itemComp = SCR_GadgetComponent.Cast( item.FindComponent(SCR_GadgetComponent) );
+			if (itemComp)
+				prefabName = itemComp.GetPrefabResource();
+		}
+		
+		return prefabName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Find related gadget in inventory
+	//! \return gadget or null if not found in inventory
+	IEntity FindRelatedGadget()
+	{
+		IEntity gadget;
+		
+		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(SCR_PlayerController.GetLocalControlledEntity());
+		if (gadgetManager)
+			gadget = gadgetManager.GetGadgetByType(m_eGadgetType);
+			
+		return gadget;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Visibility toggle
@@ -77,18 +121,31 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 				return;
 						
 			m_bIsVisible = true;
-			m_wFrame.SetVisible(true);
-			m_wRenderTarget.SetVisible(true);
+			m_wFrame.SetEnabled(true);
+			ScriptCallQueue queue = GetGame().GetCallqueue();
+			if (queue)
+				queue.CallLater(SetFrameVisible, 0, 0);	// delayed by frame so the positioning can be initialized  
+
 			FrameSlot.SetPos(m_wFrame, m_fPosX, m_fPosY);
-			
 		}
 		else 
 		{
 			m_bIsVisible = false;
-			m_wRenderTarget.SetVisible(false);
+			m_wFrame.SetEnabled(false);
+			m_wFrame.SetVisible(false);
 				
 			delete m_RTEntity; // proc anims dont work without this not being refreshed atm
 		}
+		
+		if (m_ToolMenuEntry)
+			m_ToolMenuEntry.SetActive(visible);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! TODO Frame is now set through script here instead of directly in callqueue to avoid leak
+	void SetFrameVisible()
+	{
+		m_wFrame.SetVisible(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -150,12 +207,15 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 				InitPositionVectors();
 				
 				m_RTEntity.SetOrigin(m_vPrefabPos);
+				m_RTEntity.SetFixedLOD(0);
 				
 				BaseWorld previewWorld = m_RTWorld.GetRef();
 				if (!previewWorld)
 					return false;
 				
 				previewWorld.SetCamera(0, m_vCameraPos, m_vCameraAngle);
+				
+				SetSize();
 			}
 		}
 
@@ -163,13 +223,39 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Drag compass event
+	//! Set size of RTW widget, cyclying through an array of prepared sizes 
+	//! \param nextSize determines whether current size is kept or swapped to the next one in size array
+	protected void SetSize(bool nextSize = false)
+	{
+		if (nextSize)
+		{
+			if (m_iCurrentSizeIndex < m_iSizesCount - 1)
+				m_iCurrentSizeIndex++;
+			else 
+				m_iCurrentSizeIndex = 0; 
+		}
+		
+		FrameSlot.SetSize(m_wFrame, m_aSizesArray[m_iCurrentSizeIndex].m_iSizeX, m_aSizesArray[m_iCurrentSizeIndex].m_iSizeY);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Drag event
 	protected void OnDragWidget(Widget widget)
 	{
 		if (widget == m_wFrame)
 			m_bIsDragged = true;
 		else 
 			m_bIsDragged = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_MapToolInteractionUI event
+	protected void OnActivateTool(Widget widget)
+	{
+		if (widget != m_wFrame)
+			return;
+		
+		SetSize(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -183,16 +269,32 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 		
 		// refresh widgets
 		m_wFrame = m_RootWidget.FindAnyWidget(WIDGET_NAME);
-		m_wRenderTarget = RenderTargetWidget.Cast(m_RootWidget.FindAnyWidget(RT_WIDGET_NAME));
-				
-		// if dragging available, add callback
-		if ( SCR_MapDragComponent.Cast(m_MapEntity.GetMapUIComponent(SCR_MapDragComponent)) )
-			SCR_MapDragComponent.GetOnDragWidgetInvoker().Insert(OnDragWidget);
+		m_wRenderTarget = RenderTargetWidget.Cast(m_RootWidget.FindAnyWidget(RT_WIDGET_NAME));		
+		m_iSizesCount = m_aSizesArray.Count();
+		
+		if ( SCR_MapToolInteractionUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolInteractionUI)) )	// if dragging available, add callback
+		{
+			SCR_MapToolInteractionUI.GetOnDragWidgetInvoker().Insert(OnDragWidget);
+			SCR_MapToolInteractionUI.GetOnActivateToolInvoker().Insert(OnActivateTool);
+		}
+		
+		SetVisible(m_bWantedVisible);	// restore last visible state
+		
+		if (m_ToolMenuEntry)
+		{
+			if (FindRelatedGadget())
+				m_ToolMenuEntry.SetEnabled(true);
+			else 
+				m_ToolMenuEntry.SetEnabled(false);
+		}
 	}
 		
 	//------------------------------------------------------------------------------------------------
 	override void OnMapClose(MapConfiguration config)
-	{				
+	{						
+		m_bWantedVisible = m_bIsVisible;	// visibility state
+		SetVisible(false);
+		
 		delete m_RTEntity;
 		
 		super.OnMapClose(config);
@@ -208,7 +310,5 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	void ~SCR_MapRTWBaseUI()
 	{
 		m_RTWorld = null;
-		m_bIsDragged = false;
 	}
-
 };

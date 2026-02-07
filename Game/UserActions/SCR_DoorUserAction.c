@@ -25,8 +25,8 @@ class SCR_DoorUserAction : DoorUserAction
 				controlValue = 0.0;
 			
 			//Print(controlValue);
-			doorComponent.SetControlValue(controlValue);
 			doorComponent.SetActionInstigator(pUserEntity);
+			doorComponent.SetControlValue(controlValue);
 		}
 		
 		super.PerformAction(pOwnerEntity, pUserEntity);

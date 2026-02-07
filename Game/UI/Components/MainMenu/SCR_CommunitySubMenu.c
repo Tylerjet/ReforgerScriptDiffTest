@@ -3,7 +3,7 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 {
 	[Attribute("{6FFF0601A48C7FEE}UI/layouts/Menus/MainMenu/CommunityNotificationButton.layout", UIWidgets.ResourceNamePicker, "", "layout")]
 	protected ResourceName m_sNotificationsLayout;
-	
+
 	[Attribute("Send")]
 	protected string m_sSendButtonName;
 	[Attribute("Feedback")]
@@ -16,7 +16,7 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 	protected string m_sTypeComboBoxName;
 	[Attribute("Category")]
 	protected string m_sCategoryComboBoxName;
-	
+
 	protected SCR_ButtonBaseComponent m_Send;
 	protected SCR_EditBoxComponent m_Feedback;
 	protected SCR_ComboBoxComponent m_FeedbackType;
@@ -26,25 +26,25 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
 	{
 		super.OnMenuOpen(parentMenu);
-		
+
 		SetupNotifications();
-		
+
 		m_Send = SCR_ButtonBaseComponent.GetButtonBase(m_sSendButtonName, m_wRoot);
 		if (m_Send)
 		{
 			m_Send.m_OnClicked.Insert(OnSendFeedback);
 			m_Send.SetEnabled(false, false);
 		}
-		
+
 		m_Feedback = SCR_EditBoxComponent.GetEditBoxComponent(m_sFeedbackEditboxName, m_wRoot);
-		
+
 		SCR_NavigationButtonComponent tos = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ToS",parentMenu.GetRootWidget());
 		if (tos)
 			tos.SetVisible(true);
-		
+
 		SetupCategories();
 	}
-	
+
 	// Setup type and category combos according to FeedbackDialogUI constants
 	//------------------------------------------------------------------------------------------------
 	protected void SetupCategories()
@@ -53,32 +53,32 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 		m_FeedbackType = SCR_ComboBoxComponent.GetComboBoxComponent(m_sTypeComboBoxName, m_wRoot);
 		if (!m_FeedbackCategory || !m_FeedbackType)
 			return;
-		
+
 		m_FeedbackCategory.ClearAll();
 		m_FeedbackType.ClearAll();
-		
+
 
 		foreach (string s : FeedbackDialogUI.CATEGORY_NAMES)
 		{
 			m_FeedbackCategory.AddItem(s);
 		}
-		
+
 		foreach (string s : FeedbackDialogUI.TYPE_NAMES)
 		{
 			m_FeedbackType.AddItem(s);
 		}
-		
+
 		m_FeedbackType.SetCurrentItem(0);
 		m_FeedbackCategory.SetCurrentItem(0);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetupNotifications()
 	{
 		Widget notifications = m_wRoot.FindAnyWidget(m_sNotificationName);
 		if (!notifications)
 			return;
-		
+
 		array<ref SCR_NewsEntry> entries = {};
 		MainMenuUI.GetNotificationEntries(entries);
 		foreach (SCR_NewsEntry entry : entries)
@@ -86,34 +86,34 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 			Widget w = GetGame().GetWorkspace().CreateWidgets(m_sNotificationsLayout, notifications);
 			if (!w)
 				continue;
-			
+
 			SCR_NewsTileComponent tile = SCR_NewsTileComponent.Cast(w.FindHandler(SCR_NewsTileComponent));
 			if (!tile)
 				continue;
-			
+
 			tile.ShowTile(entry);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta)
 	{
 		if (m_Send)
 			m_Send.SetEnabled(m_Feedback.GetValue() != string.Empty && FeedbackDialogUI.CanSendFeedback());
 	}
-	
+
 	// Copy code from feedback dialog
 	//------------------------------------------------------------------------------------------------
 	void OnSendFeedback()
 	{
 		if (!m_Feedback || !m_FeedbackType || !m_FeedbackCategory)
 			return;
-		
+
 		string content = content + m_Feedback.GetValue();
-		
+
 		// Clear feedback window
 		m_Feedback.SetValue(string.Empty);
-		
+
 		// Send feedback
 		FeedbackDialogUI.SendFeedback(content, m_FeedbackType.GetCurrentIndex(), m_FeedbackCategory.GetCurrentIndex());
 	}
@@ -126,4 +126,4 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 		if (tos)
 			tos.SetVisible(false);
 	}
-}
+};

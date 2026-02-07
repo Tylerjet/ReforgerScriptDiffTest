@@ -9,24 +9,27 @@ Do not modify, this script is generated
 * @{
 */
 
+/*!
+Cone twist joint simulation
+*/
 sealed class PhysicsConeTwistJoint: PhysicsJoint
 {
-	proto external void SetAngularOnly(bool angularOnly);
 	/*!
-	setLimit(), a few notes:
-	_softness:
-	0->1, recommend ~0.8->1.
-	describes % of limits where movement is free.
-	beyond this softness %, the limit is gradually enforced until the "hard" (1.0) limit is reached.
-	_biasFactor:
-	0->1?, recommend 0.3 +/-0.3 or so.
-	strength with which constraint resists zeroth order (angular, not angular velocity) limit violation.
-	__relaxationFactor:
-	0->1, recommend to stay near 1.
-	the lower the value, the less the constraint will fight velocities which violate the angular limits.
+	Sets span values of limits. Span represents range from -limit to limit.
+	\param limitIndex Index of the limit (3 - twist, 4 - swing2, 5 - swing1)
+	\param limitValue Value of the limit
 	*/
 	proto external void SetLimit(int limitIndex, float limitValue);
-	proto external void SetLimits(float _swingSpan1, float _swingSpan2, float _twistSpan, float _softness, float _biasFactor, float _relaxationFactor);
+	/*!
+	Sets various joint parameters. Span value represents range from -limit to limit.
+	\param swingSpan1 Value of the swing1 limit (along z-axis)
+	\param swingSpan2 Value of the swing2 limit (along y-axis)
+	\param twistSpan Value of the twist limit (along x-axis)
+	\param softness Softness of the joint. See \ref jointParameters "details"
+	\param biasFactor Bias factor of the joint. See \ref jointParameters "details"
+	\param relaxationFactor Relaxation factor of the joint. See \ref jointParameters "details"
+	*/
+	proto external void SetLimits(float swingSpan1, float swingSpan2, float twistSpan, float softness, float biasFactor, float relaxationFactor);
 };
 
 /** @}*/

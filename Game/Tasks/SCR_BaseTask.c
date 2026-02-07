@@ -158,8 +158,6 @@ class SCR_BaseTask : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void OnMapOpen(MapConfiguration config)
 	{
-		/*m_MapDescriptor.Item().SetVisible(m_TargetFaction == SCR_RespawnSystemComponent.GetLocalPlayerFaction());
-		m_MapDescriptor.Item().SetDisplayName(GetMapDescriptorText());*/
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -232,6 +230,16 @@ class SCR_BaseTask : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	bool AssignTaskToAI(AIAgent agent)
+	{
+		// Find entities in hierarchy - AIWaypoint type
+		// On agent add all waypoints
+		// Order matters! Check if it's deterministic
+		// Return false if no agent, no waypoint
+		// Return true at the end
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	string GetIconName()
 	{
 		return GetTaskMapIconName() + GetIconSuffix();
@@ -274,21 +282,17 @@ class SCR_BaseTask : GenericEntity
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	Widget GenerateTaskDescriptionUI(notnull SCR_UITaskManagerComponent uiTaskManagerComponent, array<Widget> widgets)
-	{
-		Widget rootWidget = uiTaskManagerComponent.GetRootWidget();
-		if (!rootWidget)
-			return null;
-		
+	Widget GenerateTaskDescriptionUI(notnull Widget rootWidget, array<Widget> widgets)
+	{		
 		Widget parentWidget = GetParentWidget(rootWidget);
 		if (!parentWidget)
 			return null;
-		
+				
 		WorkspaceWidget workspaceWidget = rootWidget.GetWorkspace();
 		if (!workspaceWidget)
 			return null;
 		
-		SCR_BaseTaskSupportClass supportClass = GetTaskManager().GetSupportedTaskByTaskType(Type());
+		SCR_BaseTaskSupportEntity supportClass = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
 		if (!supportClass)
 			return null;
 		
@@ -424,19 +428,21 @@ class SCR_BaseTask : GenericEntity
 	//! Checks all the assignees for timeout, if their time is up, they get unassigned
 	void CheckAssigneeTimeout()
 	{
-		if (!m_bIndividualTask || !m_aAssignees || !IsAssigned())
+		if (!m_bIndividualTask || !m_aAssignees || !IsAssigned() || !GetTaskManager())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
 			return;
 		
 		if (GetAssigneeTimeLeft() <= 0)
 		{
-			SCR_BaseTaskManager taskManager = GetTaskManager();
-			
 			foreach (SCR_BaseTaskExecutor assignee : m_aAssignees)
 			{
 				if (!assignee)
 					continue;
 				
-				taskManager.UnassignTask(this, assignee, SCR_EUnassignReason.ASSIGNEE_TIMEOUT);
+				supportEntity.UnassignTask(this, assignee, SCR_EUnassignReason.ASSIGNEE_TIMEOUT);
 			}
 		}
 	}
@@ -493,8 +499,6 @@ class SCR_BaseTask : GenericEntity
 		else
 			executor = SCR_BaseTaskExecutor.GetTaskExecutorByID(playerID);
 		
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		
 		if (m_bAssignable && !m_bIndividualTask)
 			return true;
 
@@ -506,13 +510,13 @@ class SCR_BaseTask : GenericEntity
 				return false;
 			}
 			
-			if (m_TimedOutAssignee == executor && m_fAssigneeTimeoutTimestamp > taskManager.GetTimestamp())
+			if (m_TimedOutAssignee == executor && m_fAssigneeTimeoutTimestamp > GetTaskManager().GetTimestamp())
 			{
 				reason = SCR_ECannotAssignReasons.ASSIGNEE_TIMEOUT;
 				return false;
 			}
 
-			if (taskManager.GetAssigneeAbandoned(executor))
+			if (GetTaskManager().GetAssigneeAbandoned(executor))
 			{
 				reason = SCR_ECannotAssignReasons.TASK_ABANDONED;
 				return false;
@@ -572,10 +576,26 @@ class SCR_BaseTask : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetTitle(string title)
+	{
+		m_sName = title;
+		if (GetTaskManager())
+			GetTaskManager().OnTaskUpdate(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Return the title of this task.
 	string GetTitle()
 	{
 		return m_sName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetDescription(string description)
+	{
+		m_sDescription = description;
+		if (GetTaskManager())
+			GetTaskManager().OnTaskUpdate(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -794,7 +814,7 @@ class SCR_BaseTask : GenericEntity
 	{
 		if (show)
 		{
-			WidgetAnimator.StopAnimation(m_wHUDIcon, WidgetAnimationType.Opacity);
+			AnimateWidget.StopAnimation(m_wHUDIcon, WidgetAnimationOpacity);
 			m_wHUDIcon.SetOpacity(1);
 		}
 		else
@@ -802,11 +822,11 @@ class SCR_BaseTask : GenericEntity
 			if (fade)
 			{
 				SCR_UITaskManagerComponent.GetInstance().KeepHUDIconUpdated(1000, this);
-				WidgetAnimator.PlayAnimation(m_wHUDIcon, WidgetAnimationType.Opacity, 0, 1);
+				AnimateWidget.Opacity(m_wHUDIcon, 0, 1);
 			}
 			else
 			{
-				WidgetAnimator.StopAnimation(m_wHUDIcon, WidgetAnimationType.Opacity);
+				AnimateWidget.StopAnimation(m_wHUDIcon, WidgetAnimationOpacity);
 				m_wHUDIcon.SetOpacity(0);
 			}
 		}
@@ -818,7 +838,7 @@ class SCR_BaseTask : GenericEntity
 		vector pos = GetGame().GetWorkspace().ProjWorldToScreen(GetOrigin(), GetWorld());
 		if (pos[2] > 0)
 		{
-			if (!WidgetAnimator.IsAnimating(m_wHUDIcon))
+			if (!AnimateWidget.IsAnimating(m_wHUDIcon))
 				m_wHUDIcon.SetOpacity(1);
 			FrameSlot.SetPos(m_wHUDIcon, pos[0], pos[1]);
 		}
@@ -949,6 +969,8 @@ class SCR_BaseTask : GenericEntity
 		writer.WriteInt(m_iTaskID);
 		writer.WriteBool(m_bIndividualTask);
 		writer.WriteFloat(GetLastAssigneeAddedTimestamp());
+		writer.WriteString(GetTitle());
+		writer.WriteString(GetDescription());
 		
 		int assigneesCount = m_aAssignees.Count();
 		writer.Write(assigneesCount, 7);
@@ -963,8 +985,69 @@ class SCR_BaseTask : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void Deserialize(ScriptBitReader reader)
+	{
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (!factionManager)
+			return;
+		
+		// Reading factionIndex
+		int factionIndex = 0;
+		reader.Read(factionIndex, 4);
+		
+		SetTargetFaction(factionManager.GetFactionByIndex(factionIndex));
+
+		// Reading m_iTaskID
+		reader.ReadInt(m_iTaskID);
+
+		// Reading m_bIndividualTask
+		reader.ReadBool(m_bIndividualTask);
+
+		// Reading m_fLastAssigneeAddedTimestamp
+		reader.ReadFloat(m_fLastAssigneeAddedTimestamp);
+		
+		string text;
+		// Reading title
+		reader.ReadString(text);
+		SetTitle(text);
+		
+		// Reading description
+		reader.ReadString(text);
+		SetDescription(text);
+		
+		// Reading target m_aAssignees.Count()
+		int assigneesCount;
+		reader.Read(assigneesCount, 7);
+		
+		int assigneeID;
+		for (int i = 0; i < assigneesCount; i++)
+		{
+			// Reading assignee ID
+			reader.ReadInt(assigneeID);
+			SCR_BaseTaskExecutor assignee = SCR_BaseTaskExecutor.GetTaskExecutorByID(assigneeID);
+			m_aAssignees.Insert(assignee);
+		}
+		
+		// Reading position
+		vector origin;
+		reader.ReadVector(origin);
+		SetOrigin(origin);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
+		if (SCR_Global.IsEditMode(this) || !GetGame().GetGameMode())
+			return;
+		
+		if (!GetTaskManager().IsProxy())
+		{
+			m_iTaskID = s_iCurrentTaskID;
+			s_iCurrentTaskID++;
+		}
+		
+		SCR_BaseTaskManager.s_OnTaskCreated.Invoke(this);
+		
 		ClearFlags(EntityFlags.ACTIVE, false);
 		
 		m_MapDescriptor = SCR_MapDescriptorComponent.Cast(FindComponent(SCR_MapDescriptorComponent));
@@ -994,17 +1077,6 @@ class SCR_BaseTask : GenericEntity
 		m_wHUDIcon.SetOpacity(0);
 		SetHUDIcon();
 		//End of HUD Icon setup
-		
-		if (SCR_Global.IsEditMode(this) || !GetGame().GetGameMode())
-			return;
-		
-		if (!GetTaskManager().IsProxy())
-		{
-			m_iTaskID = s_iCurrentTaskID;
-			s_iCurrentTaskID++;
-		}
-		
-		SCR_BaseTaskManager.s_OnTaskCreated.Invoke(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------

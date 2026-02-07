@@ -9,6 +9,9 @@ Do not modify, this script is generated
 * @{
 */
 
+/*!
+Fixed joint simulation
+*/
 sealed class PhysicsFixedJoint: PhysicsJoint
 {
 };

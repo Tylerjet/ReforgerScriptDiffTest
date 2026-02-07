@@ -34,6 +34,10 @@ class SCR_EditableEntityUIInfo: SCR_UIInfo
 	{
 		return 0;
 	}
+	FactionKey GetFactionKey()
+	{
+		return m_sFaction;
+	}
 	Faction GetFaction()
 	{
 		FactionManager factionManager = GetGame().GetFactionManager();

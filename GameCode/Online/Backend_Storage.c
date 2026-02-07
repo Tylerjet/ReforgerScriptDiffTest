@@ -56,7 +56,10 @@ class Backend_Test_Storage
 			Print( aItems[i].Name() );
 			
 			// print results
-			Print( "  AuthorName:" + aItems[i].Author().Name() );
+			if (aItems[i].Author())
+				Print( "  AuthorName:" + aItems[i].Author().Name() );
+			else
+				Print( "  AuthorName: none (unpublished mod)" );
 		}
 		
 		

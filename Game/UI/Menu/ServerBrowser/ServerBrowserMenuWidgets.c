@@ -13,16 +13,12 @@ class ServerBrowserMenuWidgets
 	const string WIDGET_SORT_SESSION_NAME = "sortName";
 	const string WIDGET_SEARCH = "m_FilterSearch";
 	const string WIDGET_SCROLL_LAYOUT = "ScrollLayout0";
-	const string WIDGET_SCROLL_BAR = "Scrollbar";
-	//const string WIDGET_DETAILS_PANEL = "DetailsPanel";
 	const string WIDGET_SERVER_SCENARIO_DETAILS_PANEL = "ServerScenarioDetailsPanel";
 	const string WIDGET_CONTROLLER_ACTIONS = "hControllerActions";
 	const string WIDGET_SERVERS_FEEDBACK = "txtServersFeedback";
 	const string WIDGET_LOADING_SERVERS = "LoadingServers";
 	const string WIDGET_TEXT_VERSION = "VersionText";  
-	//const string WIDGET_VERTICAL_SERVER_LIST = "vServerList";
-	const string WIDGET_VERTICAL_SERVER_LISTVIEW = "vServerListView";
-	const string WIDGET_SCROLLABLE_LIST = "vServerListView1";
+	const string WIDGET_SCROLLABLE_LIST = "vServerListView";
 	
 	// Buttons 
 	const string WIDGET_BUTTON_JOIN = "BtnQuickJoin";

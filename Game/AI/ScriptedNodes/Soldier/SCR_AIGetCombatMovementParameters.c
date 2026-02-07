@@ -64,4 +64,4 @@ class SCR_AIGetCombatMovementParameters : AITaskScripted
 		SetVariableOut(PORT_MOVEMENT_TYPE, moveType);
 		return ENodeResult.SUCCESS;
 	}
-}
+};

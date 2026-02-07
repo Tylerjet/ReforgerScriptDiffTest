@@ -70,11 +70,17 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 	[Attribute("", UIWidgets.ResourceNamePicker, "Armory composition in building. NO SLOT variant.", "et")]
 	private ResourceName m_BaseBuildingArmoryNoSlot;
 	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Repair depot composition", "et")]
-	private ResourceName m_BaseBuildingRepair;
+	[Attribute("", UIWidgets.ResourceNamePicker, "Light Vehicle Depot composition", "et")]
+	private ResourceName m_sBaseBuildingLightVehicleDepot;
 	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Repair depot composition in building. NO SLOT variant.", "et")]
-	private ResourceName m_BaseBuildingRepairNoSlot;
+	[Attribute("", UIWidgets.ResourceNamePicker, "Light Vehicle Depot composition in building. NO SLOT variant.", "et")]
+	private ResourceName m_sBaseBuildingLightVehicleDepotNoSlot;
+	
+	[Attribute("", UIWidgets.ResourceNamePicker, "Heavy Vehicle Depot composition", "et")]
+	private ResourceName m_sBaseBuildingHeavyVehicleDepot;
+	
+	[Attribute("", UIWidgets.ResourceNamePicker, "Heavy Vehicle Depot composition in building. NO SLOT variant.", "et")]
+	private ResourceName m_sBaseBuildingHeavyVehicleDepotNoSlot;
 	
 	[Attribute("", UIWidgets.ResourceNamePicker, "Military hospital composition", "et")]
 	private ResourceName m_BaseBuildingHospital;
@@ -112,6 +118,8 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 	protected ref array<ref ResourceName> m_aAvailableSlotResources = new array<ref ResourceName>();
 	protected SCR_CampaignBase m_MainBase = null;
 	protected ref array<int> m_aAvailableCallsigns = new array<int>();
+	protected float m_fVictoryTimestamp;
+	protected float m_fPauseByBlockTimestamp;
 	
 	//------------------------------------------------------------------------------------------------
 	void SendHQMessage(SCR_ERadioMsg msgType, int baseCallsign = SCR_CampaignBase.INVALID_BASE_INDEX, int calledID = SCR_CampaignBase.INVALID_PLAYER_INDEX, bool public = true, int param = SCR_CampaignRadioMsg.INVALID_RADIO_MSG_PARAM)
@@ -265,6 +273,7 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 		switch (type)
 		{
 			case ECampaignCompositionType.HQ: {return m_BaseBuildingHQ;};
+			case ECampaignCompositionType.SUPPLIES: {return m_BaseBuildingStash0;};
 			case ECampaignCompositionType.SUPPLIES_EMPTY: {return m_BaseBuildingStash0;};
 			case ECampaignCompositionType.SUPPLIES_LOW: {return m_BaseBuildingStash1;};
 			case ECampaignCompositionType.SUPPLIES_HIGH: {return m_BaseBuildingStash2;};
@@ -274,7 +283,8 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 			case ECampaignCompositionType.FUEL_LOW: {return m_BaseBuildingFuel1;};
 			case ECampaignCompositionType.FUEL_HIGH: {return m_BaseBuildingFuel2;};
 			case ECampaignCompositionType.FUEL_FULL: {return m_BaseBuildingFuel3;};
-			case ECampaignCompositionType.REPAIR: {return m_BaseBuildingRepair;};
+			case ECampaignCompositionType.LIGHT_VEHICLE_DEPOT: {return m_sBaseBuildingLightVehicleDepot;};
+			case ECampaignCompositionType.HEAVY_VEHICLE_DEPOT: {return m_sBaseBuildingHeavyVehicleDepot;};
 			case ECampaignCompositionType.ARMORY: {return m_BaseBuildingArmory;};
 			case ECampaignCompositionType.HOSPITAL: {return m_BaseBuildingHospital;};
 			case ECampaignCompositionType.BARRACKS: {return m_BaseBuildingBarracks;};
@@ -299,8 +309,9 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 			case ECampaignCompositionType.FUEL_HIGH: {return m_BaseBuildingFuel0NoSlot;};			
 			case ECampaignCompositionType.FUEL_FULL: {return m_BaseBuildingFuel0NoSlot;};
 			case ECampaignCompositionType.FUEL: {return m_BaseBuildingFuel0NoSlot;};
-			case ECampaignCompositionType.FUEL_EMPTY: {return m_BaseBuildingRepairNoSlot;};
-			case ECampaignCompositionType.REPAIR: {return m_BaseBuildingRepairNoSlot;};
+			case ECampaignCompositionType.FUEL_EMPTY: {return m_BaseBuildingFuel0NoSlot;};
+			case ECampaignCompositionType.LIGHT_VEHICLE_DEPOT: {return m_sBaseBuildingLightVehicleDepotNoSlot;};
+			case ECampaignCompositionType.HEAVY_VEHICLE_DEPOT: {return m_sBaseBuildingHeavyVehicleDepotNoSlot;};
 			case ECampaignCompositionType.ARMORY: {return m_BaseBuildingArmoryNoSlot;};
 			case ECampaignCompositionType.BARRACKS: {return m_BaseBuildingBarracksNoSlot;};
 			case ECampaignCompositionType.RADIO_ANTENNA: {return m_BaseBuildingRadioAntennaNoSlot;};
@@ -404,10 +415,35 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 	{
 		return m_FactionSignMaterial;
 	}
+	
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetFactionSignMLOD()
 	{
 		return m_FactionSignMaterialMLOD;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetVictoryTimestamp(float timestamp)
+	{
+		m_fVictoryTimestamp = timestamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetVictoryTimestamp()
+	{
+		return m_fVictoryTimestamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetPauseByBlockTimestamp(float timestamp)
+	{
+		m_fPauseByBlockTimestamp = timestamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetPauseByBlockTimestamp()
+	{
+		return m_fPauseByBlockTimestamp;
 	}
 };
 

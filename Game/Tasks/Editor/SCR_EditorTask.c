@@ -81,7 +81,7 @@ class SCR_EditorTask : SCR_BaseTask
 	Get UI info of custom text for this task.
 	\return UI info
 	*/
-	SCR_UIInfo GetInfo()
+	SCR_UIDescription GetInfo()
 	{
 		SCR_TextsTaskManagerComponent textsComponent = SCR_TextsTaskManagerComponent.GetInstance();
 		if (textsComponent)
@@ -91,7 +91,7 @@ class SCR_EditorTask : SCR_BaseTask
 	}
 	override string GetTitle()
 	{
-		SCR_UIInfo info = GetInfo();
+		SCR_UIName info = GetInfo();
 		if (info)
 			return info.GetName();
 		else
@@ -99,7 +99,7 @@ class SCR_EditorTask : SCR_BaseTask
 	}
 	override void SetTitleWidgetText(notnull TextWidget textWidget, string taskText)
 	{
-		SCR_UIInfo info = GetInfo();
+		SCR_UIName info = GetInfo();
 		if (info)
 			textWidget.SetTextFormat(info.GetName(), m_sLocationName);
 		else
@@ -107,7 +107,7 @@ class SCR_EditorTask : SCR_BaseTask
 	}
 	override void SetDescriptionWidgetText(notnull TextWidget textWidget, string taskText)
 	{
-		SCR_UIInfo info = GetInfo();
+		SCR_UIDescription info = GetInfo();
 		if (info)
 			textWidget.SetTextFormat(info.GetDescription(), m_sLocationName);
 		else
@@ -125,7 +125,7 @@ class SCR_EditorTask : SCR_BaseTask
 		if (IsAssignedToLocalPlayer() || playerFaction == GetTargetFaction() || (alwaysInEditor && !SCR_EditorManagerEntity.IsLimitedInstance()))
 		{
 			//--- SCR_PopUpNotification.GetInstance() is never null, as it creates the instance if it doesn't exist yet
-			SCR_PopUpNotification.GetInstance().PopupMsg(prefix + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: m_sLocationName, sound: UISounds.TASK_SUCCEED);
+			SCR_PopUpNotification.GetInstance().PopupMsg(prefix + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: m_sLocationName, sound: SCR_SoundEvent.TASK_SUCCEED);
 		}
 	}
 	override protected void ShowPopUpNotification(string subtitle)
@@ -220,5 +220,19 @@ class SCR_EditorTask : SCR_BaseTask
 			PopUpNotification(TASK_CANCELLED_TEXT, true);
 		
 		ShowTaskNotification(ENotification.EDITOR_TASK_CANCELED);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override bool RplLoad(ScriptBitReader reader)
+	{
+		Deserialize(reader);
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override bool RplSave(ScriptBitWriter writer)
+	{
+		Serialize(writer);
+		return true;
 	}
 };

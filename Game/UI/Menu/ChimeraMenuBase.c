@@ -16,6 +16,7 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	ServerBrowserMenu,
 	ServerBrowserDetailsUI,
 	ServerBrowserJoinDialog,
+	ServerHostingDialog,
 	SimpleDialog,
 	ProfileDialog,
 	ErrorDialog,
@@ -26,9 +27,9 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	EditorModesDialog,
 	EditorActionListDialog,
 	EditorEntityListDialog,
-	EditorGroupListDialog,
 	EditorPlayerListDialog,
 	EditorFactionListDialog,
+	EditorPlacingMenuDialog,
 	EditorAttributesDialog,
 	EditorBrowserDialog,
 	BindingMenu,
@@ -44,6 +45,7 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	ContentBrowser,
 	PauseSuperMenu,
 	ContentBrowserDetailsMenu,
+	AddonsToolsMenu,
 	RespawnSuperMenu,
 	SettingsSuperMenu,
 	PlayerListMenu,
@@ -68,6 +70,10 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	TutorialDialog,
 	CreditsMenu,
 	WelcomeDialog,
+	AddonPresetDialog,
+	AddonExportDialog,
+	GroupSettingsDialog,
+	CareerProfileMenu
 };
 
 //------------------------------------------------------------------------------------------------

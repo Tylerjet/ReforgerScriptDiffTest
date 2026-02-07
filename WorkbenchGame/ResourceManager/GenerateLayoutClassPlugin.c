@@ -371,12 +371,9 @@ class GenerateLayoutClassPlugin : WorkbenchPlugin
 
 		outArray.Insert(ws);
 
-		WidgetSource child = ws.GetChildren();
-
-		while (child)
+		for (int e = 0, count = ws.GetNumChildren(); e < count; e++)
 		{
-			BuildWidgetArray(child, fullPathToThis, outArray, outArrayPaths);
-			child = child.GetSibling();
+			BuildWidgetArray(ws.GetChild(e), fullPathToThis, outArray, outArrayPaths);
 		}
 	}
 

@@ -29,11 +29,18 @@ class SCR_PingEffectsEditorUIComponent: ScriptedWidgetComponent
 		if (!pulseWidget || !pingBorder)
 			return;
 		
-		WidgetAnimator.PlayAnimation(new WidgetAnimationOpacity(pingBorder, m_fPingBorderAnimationSpeed, 0));
-		WidgetAnimator.PlayAnimation(new WidgetAnimationFrameSize(pingBorder, m_fPingBorderAnimationSpeed, 150, 150));
+		float sizeBorder[2] = {150, 150};
+		float sizePulse[2] = {70, 70};
+		AnimateWidget.Opacity(pingBorder, 0, m_fPingBorderAnimationSpeed);
+		AnimateWidget.Size(pingBorder, sizeBorder, m_fPingBorderAnimationSpeed);
 		
-		WidgetAnimator.PlayAnimation(new WidgetAnimationOpacity(pulseWidget, m_fPulsateAnimationSpeed, 0, true));
-		WidgetAnimator.PlayAnimation(new WidgetAnimationFrameSize(pulseWidget, m_fPulsateAnimationSpeed, 90, 90, true));
+		WidgetAnimationBase animationOpacity = AnimateWidget.Opacity(pulseWidget, 0, m_fPulsateAnimationSpeed);
+		if (animationOpacity)
+			animationOpacity.SetRepeat(true);
+		
+		WidgetAnimationBase animationSize = AnimateWidget.Size(pulseWidget, sizePulse, m_fPulsateAnimationSpeed);
+		if (animationSize)
+			animationSize.SetRepeat(true);
 		
 		GetGame().GetCallqueue().CallLater(FadeOut, m_iFadeOutDelaySeconds * 1000);
 	}
@@ -42,8 +49,7 @@ class SCR_PingEffectsEditorUIComponent: ScriptedWidgetComponent
 	protected void FadeOut()
 	{
 		m_bWaitingForFade = false;
-		WidgetAnimator.PlayAnimation(new WidgetAnimationOpacity(m_Root, 1, 0));
-	
+		AnimateWidget.Opacity(m_Root, 0, 1);
 	}
 	
 	override void HandlerDeattached(Widget w)

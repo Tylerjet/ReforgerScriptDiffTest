@@ -10,7 +10,11 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 	protected SCR_MapCampaignUI m_Parent;
 	protected TextWidget m_wSpawnPointName;
 	protected Widget m_wImageOverlay;
-
+	protected OverlayWidget m_wSymbolOverlay;
+	protected SCR_MilitarySymbolUIComponent m_MilitarySymbolComponent;
+	protected ButtonWidget m_wButton;
+	protected SizeLayoutWidget m_wSizeLayout;
+	
 	//------------------------------------------------------------------------------
 	override void SetParent(SCR_MapCampaignUI parent)
 	{
@@ -42,12 +46,68 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 	//------------------------------------------------------------------------------
 	void UpdateIcon()
 	{
-		// todo: temp
-		string img = string.Format("%1_%2", m_sFactionKey, m_sSpawnPoint);
-		string selectionImg = string.Format("%1_%2", img, m_sSelection);
-		m_wImage.SetColor(GetColorForFaction(m_sFactionKey));
-		SetImage(img);
-		m_wSelectImg.LoadImageFromSet(0, m_sImageSet, selectionImg);
+		SCR_MilitarySymbol symbol = new SCR_MilitarySymbol;
+		
+		SCR_GroupIdentityCore core = SCR_GroupIdentityCore.Cast(SCR_GroupIdentityCore.GetInstance(SCR_GroupIdentityCore));
+		if (!core)
+			return;
+		
+		SCR_Faction faction = SCR_Faction.Cast(GetGame().GetFactionManager().GetFactionByKey(m_sFactionKey));
+		if (faction)
+		{
+			SCR_MilitarySymbolRuleSet ruleSet = core.GetSymbolRuleSet();
+			ruleSet.UpdateSymbol(symbol, faction);
+		}
+		else
+		{
+			symbol.SetIdentity(EMilitarySymbolIdentity.UNKNOWN);
+		}
+		
+		//Selection visuals 
+		string selection;
+		string highlight;
+		switch (symbol.GetIdentity())
+		{
+			case EMilitarySymbolIdentity.INDFOR:
+			{
+				selection = "Neutral_Select";
+				highlight = "Neutral_Focus";
+				break;
+			}
+			case EMilitarySymbolIdentity.OPFOR:
+			{
+				selection = "Hostile_Select";
+				highlight = "Hostile_Focus";
+				break;
+			}
+			case EMilitarySymbolIdentity.BLUFOR:
+			{
+				selection = "Friend_Select";
+				highlight = "Friend_Focus";
+				break;
+			}
+			case EMilitarySymbolIdentity.UNKNOWN:
+			{
+				selection = "Unknown_Select";
+				highlight = "Unknown_Focus";
+				break;
+			}
+		}
+		m_bVisible = true;
+		
+		m_wHighlightImg.LoadImageFromSet(0, m_sImageSetARO, highlight);
+		m_wSelectImg.LoadImageFromSet(0, m_sImageSetARO, selection);
+		
+		if (SCR_PlayerSpawnPoint.Cast(m_SpawnPoint))
+			symbol.SetIcons(EMilitarySymbolIcon.RELAY);
+		else
+			symbol.SetIcons(EMilitarySymbolIcon.RESPAWN);
+		
+		m_wSymbolOverlay.SetColor(GetColorForFaction(m_sFactionKey));
+		if (m_wGradient)
+			m_wGradient.SetColor(GetColorForFaction(m_sFactionKey));
+				
+		m_MilitarySymbolComponent.Update(symbol);
 	}
 
 	//------------------------------------------------------------------------------
@@ -55,10 +115,20 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 	{
 		super.HandlerAttached(w);
 
-		m_wImageOverlay = w.FindAnyWidget("Overlay");
+		m_wImageOverlay = w.FindAnyWidget("IconOverlay");
+		m_wSizeLayout = SizeLayoutWidget.Cast(w.FindAnyWidget("SizeLayout"));
 		m_wSpawnPointName = TextWidget.Cast(w.FindAnyWidget("Name"));
 		SCR_SelectSpawnPointSubMenu.Event_OnSpawnPointChanged.Insert(OnSelected);
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Insert(Remove);
+		m_wSymbolOverlay = OverlayWidget.Cast(m_wImageOverlay.FindWidget("Symbol"));
+		if (!m_wSymbolOverlay)
+			return;
+		
+		m_MilitarySymbolComponent = SCR_MilitarySymbolUIComponent.Cast(m_wSymbolOverlay.FindHandler(SCR_MilitarySymbolUIComponent));
+		
+		m_wButton = ButtonWidget.Cast(w.FindAnyWidget("Button"));
+		if (m_wButton)
+			m_wButton.SetEnabled(false);
 	}
 
 	//------------------------------------------------------------------------------
@@ -89,16 +159,35 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 		if (!sp)
 			return;
 		if (sp == m_SpawnPoint)
+		{
 			AnimExpand();
+			m_wRoot.SetZOrder(1);
+			m_wSelectImg.SetVisible(true);
+			if (m_wGradient)
+				m_wGradient.SetVisible(true);
+		}
 		else
+		{
 			AnimCollapse();
+			m_wRoot.SetZOrder(0);
+			m_wSelectImg.SetVisible(false);
+			if (m_wGradient)
+				m_wGradient.SetVisible(false);
+		}
 	}
 
 	//------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
+		if (m_wSizeLayout && w == m_wSizeLayout && m_wButton)
+			m_wButton.SetEnabled(true);
+		
 		GetGame().GetWorkspace().SetFocusedWidget(w);
+		super.OnMouseEnter(w, x, y);
 		m_wRoot.SetZOrder(1);
+		m_wHighlightImg.SetVisible(true);
+		if (m_wGradient)
+			m_wGradient.SetVisible(true);
 		if (!m_bIsSelected)
 		{
 			AnimExpand();
@@ -109,24 +198,19 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 	//------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
+		super.OnMouseLeave(w, enterW, x, y);
 		m_wRoot.SetZOrder(0);
+		m_wHighlightImg.SetVisible(false);
+		if (!m_bIsSelected && m_wGradient)
+			m_wGradient.SetVisible(false);
 		if (!m_bIsSelected)
 		{
 			AnimCollapse();
 		}
+		
+		if (RenderTargetWidget.Cast(enterW) && m_wButton.IsEnabled())
+			m_wButton.SetEnabled(false);
+		
 		return false;
-	}
-
-	//------------------------------------------------------------------------------
-	override void AnimExpand()
-	{
-		int expand = -10;
-		AlignableSlot.SetPadding(m_wImageOverlay, expand, expand, expand, expand);
-	}
-
-	//------------------------------------------------------------------------------
-	override void AnimCollapse()
-	{
-		AlignableSlot.SetPadding(m_wImageOverlay, 0, 0, 0, 0);
 	}
 };

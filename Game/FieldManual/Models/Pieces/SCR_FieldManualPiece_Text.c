@@ -8,7 +8,7 @@ class SCR_FieldManualPiece_Text : SCR_FieldManualPiece
 	ResourceName m_Layout;
 
 	//------------------------------------------------------------------------------------------------
-	void SCR_FieldManualPieceText()
+	void SCR_FieldManualPiece_Text()
 	{
 		if (m_Layout.Trim().IsEmpty())
 		{

@@ -309,7 +309,7 @@ Other entities are exported as a single points.
 [WorkbenchToolAttribute("Export Geographic data", "Export vector data as Geographical data", "5", awesomeFontCode: 0xf56e)]
 class ExportGeoJSONTool: WorldEditorTool
 {
-	[Attribute("$profile:export", UIWidgets.FileEditBox, "Where to save exported file. Do not use file suffix, it will be created automatically.")]
+	[Attribute("$profile:export", UIWidgets.FileNamePicker, "Where to save exported file. Do not use file suffix, it will be created automatically.")]
 	string exportPath;
 	
 	[Attribute("0", UIWidgets.ComboBox, "Export type", "", ParamEnumArray.FromEnum(EGeoExportType) )]

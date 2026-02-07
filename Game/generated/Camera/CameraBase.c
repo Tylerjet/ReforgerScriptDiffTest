@@ -62,7 +62,7 @@ class CameraBase: GenericEntity
 	proto external void SetNearPlane(float nearPlane);
 	/*!
 	Set the current far plane value.
-	\param nearPlane The new far plane value in meters.
+	\param farPlane The new far plane value in meters.
 	*/
 	proto external void SetFarPlane(float farPlane);
 	/*!

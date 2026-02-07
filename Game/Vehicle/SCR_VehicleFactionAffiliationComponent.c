@@ -1,13 +1,10 @@
-class SCR_VehicleFactionAffiliationComponentClass: VehicleFactionAffiliationComponentClass
+class SCR_VehicleFactionAffiliationComponentClass: SCR_FactionAffiliationComponentClass
 {
 	
 };
 
-class SCR_VehicleFactionAffiliationComponent: VehicleFactionAffiliationComponent
+class SCR_VehicleFactionAffiliationComponent: SCR_FactionAffiliationComponent
 {
-	//! Local invokers for a specific vehicle
-	private ref ScriptInvoker m_OnFactionUpdate;
-	
 	private int m_iOccupantCount;
 	
 	//--------------------------------------------------------------------------------------------------------------------------
@@ -20,13 +17,6 @@ class SCR_VehicleFactionAffiliationComponent: VehicleFactionAffiliationComponent
 	bool IsVehicleOccupied()
 	{
 		return m_iOccupantCount > 0;
-	}
-	
-	//--------------------------------------------------------------------------------------------------------------------------
-	override protected void OnFactionChanged()
-	{
-		if (m_OnFactionUpdate)
-			m_OnFactionUpdate.Invoke();
 	}
 	
 	//--------------------------------------------------------------------------------------------------------------------------
@@ -46,7 +36,7 @@ class SCR_VehicleFactionAffiliationComponent: VehicleFactionAffiliationComponent
 		{
 			SetAffiliatedFaction(characterFaction);
 		};
-		m_iOccupantCount ++;
+		m_iOccupantCount++;
 	}	
 		
 		
@@ -55,25 +45,10 @@ class SCR_VehicleFactionAffiliationComponent: VehicleFactionAffiliationComponent
 	{
 		if (move) // moving only between compartments
 			return;
-		m_iOccupantCount --;
+		m_iOccupantCount--;
 		if (!IsVehicleOccupied())
 		{
 			ClearAffiliatedFaction();
 		}
-	}
-	
-	// may return to DefaultAffiliatedFaction in some cases - override this
-	//--------------------------------------------------------------------------------------------------------------------------
-	void ClearAffiliatedFaction()
-	{
-		SetAffiliatedFaction(null); 
-	}
-	
-	//--------------------------------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnFactionUpdate(bool createNew = true)
-	{
-		if (!m_OnFactionUpdate && createNew)
-			m_OnFactionUpdate = new ScriptInvoker();
-		return m_OnFactionUpdate;
 	}
 };

@@ -1,32 +1,41 @@
-[WorkbenchPluginAttribute(name: "Start Dedicated Server", shortcut: "Ctrl+Shift+D", wbModules: {"WorldEditor"}, awesomeFontCode: 0xf233)]
+[WorkbenchPluginAttribute(name: "Dedicated Server Tool", shortcut: "Ctrl+Shift+D", wbModules: {"WorldEditor"}, awesomeFontCode: 0xf233)]
 class DedicatedServerPlugin: WorldEditorPlugin
 {
-	[Attribute(desc: "Enable to start play mode and automatically connect to dedicated server.")]
+	[Attribute(desc: "Enable to start play mode and automatically connect to dedicated server.", category: "Server")]
 	protected bool m_bPlayAndConnect;
 	
-	[Attribute(desc: "Server configuration. Dedicated server cannot be launched without this!")]
+	[Attribute(desc: "Server configuration. Dedicated server cannot be launched without this!", category: "Server")]
 	protected ref DedicatedServerPluginCLI m_Config;
 	
-	[Attribute("ArmaReforgerServer_Internal.exe", desc: "Executable file used to start the server.")]
+	[Attribute("ArmaReforgerServer.exe", UIWidgets.FileNamePicker, desc: "Executable file used to start the server.", params: "exe FileNameFormat=absolute", category: "Server")]
 	protected string m_sExecutable;
 	
-	[Attribute("", desc: "Profile used on the server.")]
+	[Attribute("", desc: "Profile used on the server.", category: "Server")]
 	protected string m_sProfile;
 	
-	[Attribute("0", desc: "Suppresses all sorts of errors (like asserts), so the game continues without stalling and disconnecting clients.")]
+	[Attribute("0", desc: "Suppresses all sorts of errors (like asserts), so the game continues without stalling and disconnecting clients.", category: "Server")]
 	protected bool m_bNoThrow;
 	
-	[Attribute("0", desc: "Logs connection information to output.")]
+	[Attribute("0", desc: "Logs connection information to output.", category: "Server")]
 	protected bool m_bLogRPL;
 	
-	[Attribute("", desc: "Basic backend logging. Can have one of following values:\n  \"Http\" - turn on logging of Http Response & Requests\n  <filename> - save data to profile\.backend folder")]
+	[Attribute("", desc: "Basic backend logging. Can have one of following values:\n  \"Http\" - turn on logging of Http Response & Requests\n  <filename> - save data to profile\.backend folder", category: "Server")]
 	protected string m_sLogBackend;
 	
-	[Attribute("30", desc: "Maximum FPS on the server. When 0, no limit will be set.")]
+	[Attribute("30", desc: "Maximum FPS on the server. When 0, no limit will be set.", category: "Server")]
 	protected int m_iMaxFPS;
 	
-	[Attribute(desc: "Additional command line params.")]
+	[Attribute(desc: "Additional command line params.", category: "Server")]
 	protected string m_sParams;
+	
+	[Attribute(desc: "Run peers defined by the PeerTool.", category: "Peers")]
+	protected bool m_bRunPeers;
+	
+	[Attribute("ArmaReforger.exe", UIWidgets.FileNamePicker, desc: "Peer exe path", params: "exe FileNameFormat=absolute", category: "Peers")]
+	string m_PeerExecutable;
+
+	[Attribute(desc: "Peers configuration.", category: "Peers")]
+	ref array<ref PeerConfig> m_PeersConfig;
 	
 	protected ProcessHandle m_ServerHandle = null;
 	
@@ -67,7 +76,8 @@ class DedicatedServerPlugin: WorldEditorPlugin
 		WorldEditorAPI api = worldEditor.GetApi();
 		
 		//--- Generate run command
-		string process = string.Format("%1 -gproj=\"%2\"", m_sExecutable, Workbench.GetCurrentGameProjectFile());
+		string gproj = Workbench.GetCurrentGameProjectFile();
+		string process = string.Format("%1 -gproj=\"%2\"", m_sExecutable, gproj);
 		
 		string configParam;
 		if (m_Config && m_Config.GetCLI(configParam, api))
@@ -111,6 +121,57 @@ class DedicatedServerPlugin: WorldEditorPlugin
 		PrintFormat("Starting dedicated server: %1", process);
 		
 		//--- Connect to the server
+		if (m_bRunPeers)
+		{
+			int profileIndex = 0;
+			
+			foreach(PeerConfig conf : m_PeersConfig)
+			{
+				if (!conf.Enabled)
+					continue;
+				
+				profileIndex++; // start indexing peers from 1
+				string sCmd = m_PeerExecutable + " -gproj \"" + gproj + "\" ";
+							
+				if (!addonsDir.IsEmpty())
+					sCmd += "-addonsDir " + addonsDir + " ";				
+				if (!addonIDs.IsEmpty())
+					sCmd += "-addons " + addonIDs + " ";
+				if(conf.Windowed)
+					sCmd += "-window ";
+				if(conf.X != -1)
+					sCmd += "-posX " + conf.X + " ";
+				if(conf.Y != -1)
+					sCmd += "-posY " + conf.Y + " ";
+				if(conf.Width != -1)
+					sCmd += "-screenWidth " + conf.Width + " ";
+				if(conf.Height != -1)
+					sCmd += "-screenHeight " + conf.Height + " ";
+				if(conf.MaxFPS > 0)
+					sCmd += "-maxFPS " + conf.MaxFPS + " ";
+				if(conf.ForceUpdate)
+					sCmd += "-forceupdate ";
+				if(conf.NoFocus)
+					sCmd += "-nofocus ";
+				if(conf.RplAutoJoin)
+					sCmd += "-client ";
+				if(conf.RplAutoReconnect)
+					sCmd += "-rpl-reconnect ";
+				if(conf.RplDisableTimeout)
+					sCmd += "-rpl-timeout-disable ";
+				if(conf.Profile)
+					sCmd += "-profile " + conf.Profile + profileIndex.ToString() + " ";
+				if (conf.Params)
+					sCmd += conf.Params + " ";
+
+				Print("Running command: " + sCmd);
+				conf.Handle = Workbench.RunProcess(sCmd);
+				if (!conf.Handle)
+					Print("Peer #" + profileIndex + " couldn't run. Check if your PeerExecutable or other settings are correct", LogLevel.ERROR);
+			}
+		}		
+			
+		// Also make the WB join the server as a peer
 		if (m_bPlayAndConnect)
 			worldEditor.SwitchToGameMode();
 	}
@@ -119,11 +180,21 @@ class DedicatedServerPlugin: WorldEditorPlugin
 		if (!m_bPlayAndConnect || !m_ServerHandle)
 			return;
 		
-		GameStateTransitions.RequestServerConnectTransition(new ClientSessionParams("127.0.0.1"));
+		GameStateTransitions.RequestServerConnectTransition("127.0.0.1");
 	}
 	override void OnGameModeEnded()
 	{
-		//--- Close the server when returning from play mode
+		// Close any connected peers
+		foreach(PeerConfig conf : m_PeersConfig)
+		{			
+			if (!conf.Handle) // what if the game mode wasn't the PeerTool?
+				continue;
+			
+			Workbench.KillProcess(conf.Handle);
+			conf.Handle = null;
+		}
+
+		// Close the server when returning from play mode
 		if (m_ServerHandle)
 			Workbench.KillProcess(m_ServerHandle);
 	}
@@ -145,6 +216,7 @@ class DedicatedServerPluginCLI
 {
 	bool GetCLI(out string outParam, WorldEditorAPI api);
 };
+
 [BaseContainerProps()]
 class DedicatedServerPluginCLI_Server: DedicatedServerPluginCLI
 {
@@ -153,6 +225,9 @@ class DedicatedServerPluginCLI_Server: DedicatedServerPluginCLI
 	
 	[Attribute(desc: "Mission configuration, can enable settings like metabolism / vehicles, set loading screen image, etc.", uiwidget: UIWidgets.ResourceNamePicker, params: "conf class=ServerConfig")]
 	protected ResourceName m_MissionHeader;
+	
+	[Attribute(desc: "Optional password for logging-in as administrator (in game, type '#login <password>' in chat)")]
+	protected string m_sAdminPassword;
 	
 	override bool GetCLI(out string outParam, WorldEditorAPI api)
 	{
@@ -165,21 +240,13 @@ class DedicatedServerPluginCLI_Server: DedicatedServerPluginCLI
 		else
 			outParam = string.Format("-server %1", worldPath.GetPath());
 		
+		if (m_sAdminPassword)
+			outParam += string.Format(" -adminPassword %1", m_sAdminPassword);
+		
 		return !worldPath.IsEmpty();
 	}
 };
-[BaseContainerProps()]
-class DedicatedServerPluginCLI_DServer: DedicatedServerPluginCLI
-{
-	[Attribute(desc: "Server configuration file.", uiwidget: UIWidgets.ResourceNamePicker, params: "conf class=ServerConfig")]
-	protected ResourceName m_DServer;
-	
-	override bool GetCLI(out string outParam, WorldEditorAPI api)
-	{
-		outParam = string.Format("-dserver %1", m_DServer.GetPath());
-		return !m_DServer.IsEmpty();
-	}
-};
+
 [BaseContainerProps()]
 class DedicatedServerPluginCLI_Config: DedicatedServerPluginCLI
 {

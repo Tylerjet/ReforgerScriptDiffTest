@@ -4,14 +4,14 @@ class SCR_ChatComponentClass: BaseChatComponentClass
 
 class SCR_ChatComponent : BaseChatComponent
 {
-	bool GetChannelState(BaseChatChannel channel)
+	bool GetChannelState(BaseChatChannel channelId)
 	{
 		ScriptedChatEntity ent = ScriptedChatEntity.Cast(GetGame().GetChat());
 		
 		if (!ent)
 			return false;
 		
-		return GetChannelState(ent.GetChannelId(channel));
+		return GetChannelState(ent.GetChannelId(channelId));
 	}
 	
 	
@@ -19,14 +19,14 @@ class SCR_ChatComponent : BaseChatComponent
 	private int m_iRadioProtocolChannel;
 
 	//-----------------------------------------------------------------------------
-	override void OnNewMessage(string msg, int channel, int senderId)
+	override void OnNewMessage(string msg, int channelId, int senderId)
 	{
 		SCR_ChatPanelManager mgr = SCR_ChatPanelManager.GetInstance();
 		
 		if (!mgr)
 			return;
 		
-		mgr.OnNewMessageGeneral(msg, channel, senderId);
+		mgr.OnNewMessageGeneral(msg, channelId, senderId);
 	}
 
 	//-----------------------------------------------------------------------------

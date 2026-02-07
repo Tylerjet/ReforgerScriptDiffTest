@@ -9,6 +9,9 @@ Do not modify, this script is generated
 * @{
 */
 
+/*!
+Surface properties relevant for physics simulation
+*/
 sealed class PhysicsMaterial: pointer
 {
 };

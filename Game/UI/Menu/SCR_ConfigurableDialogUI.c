@@ -7,7 +7,7 @@
 class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 {
 	// Attributes
-	[Attribute((1/WidgetAnimator.FADE_RATE_FAST).ToString(), UIWidgets.Auto, "Duration of fade in and fade out animations")]
+	[Attribute((1/UIConstants.FADE_RATE_FAST).ToString(), UIWidgets.Auto, "Duration of fade in and fade out animations")]
 	protected float m_fFadeInTime;
 	
 	[Attribute("{08CF3B69CB1ACBC4}UI/layouts/WidgetLibrary/Buttons/WLib_NavigationButton.layout", UIWidgets.ResourceNamePicker, "Layout of the navigation button", params: "layout")]
@@ -73,40 +73,6 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			return null;
 		}
 		
-		// Open the proxy dialog
-		/*SCR_ConfigurableDialogUiProxy proxyComp = SCR_ConfigurableDialogUiProxy.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ConfigurableDialog));
-		
-		// Create the actual layout inside proxy
-		Widget internalWidget = GetGame().GetWorkspace().CreateWidgets(preset.m_sLayout, proxyComp.GetRootWidget());
-		if (!internalWidget)
-		{
-			Print(string.Format("[SCR_ConfigurableDialogUi] internalWidget wans't created from: %1", presetsResourceName), LogLevel.ERROR);
-			return null;
-		}
-		
-		SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.Cast(internalWidget.FindHandler(SCR_ConfigurableDialogUi));
-		
-		// Create a new dialog object, or apply the provided one, if the dialog obj was not found in the layout.
-		if (!dialog)
-		{
-			if (customDialogObj)
-				dialog = customDialogObj;
-			else
-				dialog = new SCR_ConfigurableDialogUi();
-			dialog.InitAttributedVariables();
-			internalWidget.AddHandler(dialog);
-		}
-		
-		dialog.Init(internalWidget, preset, proxyComp);
-		proxyComp.Init(dialog);
-		
-		// Set action context
-		if (!preset.m_sActionContext.IsEmpty())
-			proxyComp.SetActionContext(preset.m_sActionContext);
-		
-		// Call dialog's events manually
-		dialog.OnMenuOpen(preset);*/
-		
 		SCR_ConfigurableDialogUi dialog = CreateByPreset(preset, customDialogObj);
 		
 		return dialog;
@@ -157,7 +123,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	// Closes the dialogue with a fade-out animation
 	void Close()
 	{
-		WidgetAnimator.PlayAnimation(GetRootWidget(), WidgetAnimationType.Opacity, 0, 1/m_fFadeInTime);
+		AnimateWidget.Opacity(GetRootWidget(), 0, 1 / m_fFadeInTime);
 		GetGame().GetCallqueue().CallLater(Internal_Close, m_fFadeInTime * 1000.0);
 	}
 	
@@ -286,13 +252,56 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	
 	
 	
-	
+	//----------------------------------------------------------------------------------------
+	//! Returns a button with given tag
+	void CreateButton(SCR_ConfigurableDialogUiButtonPreset buttonPreset)
+	{
+		HorizontalLayoutWidget wLayout;
+		const float buttonPadding = 8.0;
+		float paddingLeft, paddingRight;
+		switch (buttonPreset.m_eAlign)
+		{
+			case EConfigurableDialogUiButtonAlign.LEFT:
+				wLayout = HorizontalLayoutWidget.Cast(GetRootWidget().FindAnyWidget(m_sWidgetNameButtonsLeft));
+				paddingRight = buttonPadding;
+				break;
+			
+			case EConfigurableDialogUiButtonAlign.RIGHT:
+				wLayout = HorizontalLayoutWidget.Cast(GetRootWidget().FindAnyWidget(m_sWidgetNameButtonsRight));
+				paddingLeft = buttonPadding;
+				break;
+			
+			default:
+				wLayout = HorizontalLayoutWidget.Cast(GetRootWidget().FindAnyWidget(m_sWidgetNameButtonsCenter)); break;
+		}
+		
+		Widget wButton = GetGame().GetWorkspace().CreateWidgets(m_sNavigationButtonLayout, wLayout);
+		
+		SCR_NavigationButtonComponent comp = SCR_NavigationButtonComponent.Cast(wButton.FindHandler(SCR_NavigationButtonComponent));
+			
+		if (!comp)
+			return;
+		
+		comp.SetLabel(buttonPreset.m_sLabel);
+		comp.SetAction(buttonPreset.m_sActionName);
+		
+		comp.SetHoverSound(buttonPreset.m_sSoundHovered);
+		comp.SetClickedSound(buttonPreset.m_sSoundClicked);
+		
+		m_aButtonComponents.Insert(buttonPreset.m_sTag, comp);
+	}
 	
 	//----------------------------------------------------------------------------------------
 	//! Returns a button with given tag
 	SCR_NavigationButtonComponent FindButton(string tag)
 	{
 		return m_aButtonComponents.Get(tag);
+	}
+	
+	//----------------------------------------------------------------------------------------
+	void ClearButtons()
+	{
+		m_aButtonComponents.Clear();
 	}
 	
 	
@@ -331,7 +340,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		
 		foreach (SCR_ConfigurableDialogUiButtonPreset buttonPreset : preset.m_aButtons)
 		{
-			HorizontalLayoutWidget wLayout;
+			/*HorizontalLayoutWidget wLayout;
 			const float buttonPadding = 8.0;
 			float paddingLeft, paddingRight;
 			switch (buttonPreset.m_eAlign)
@@ -368,7 +377,9 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			comp.SetHoverSound(buttonPreset.m_sSoundHovered);
 			comp.SetClickedSound(buttonPreset.m_sSoundClicked);
 			
-			m_aButtonComponents.Insert(buttonPreset.m_sTag, comp);
+			m_aButtonComponents.Insert(buttonPreset.m_sTag, comp);*/
+			
+			CreateButton(buttonPreset);
 		}
 		
 		// Bind actions to default buttons (if they were created)
@@ -400,7 +411,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		
 		// Play animation
 		w.SetOpacity(0);
-		WidgetAnimator.PlayAnimation(w, WidgetAnimationType.Opacity, 1, 1/m_fFadeInTime);
+		AnimateWidget.Opacity(w, 1, 1 / m_fFadeInTime);
 	}
 	
 	
@@ -419,6 +430,9 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	//----------------------------------------------------------------------------------------
 	protected void Internal_Close()
 	{
+		if (!m_ProxyMenu)
+			return;
+		
 		m_ProxyMenu.Close();
 		m_OnClose.Invoke(this);
 	}
@@ -441,7 +455,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			m_sWidgetNameButtonsCenter = "ButtonsCenter";
 		
 		if (m_fFadeInTime == 0)
-			m_fFadeInTime = 1/WidgetAnimator.FADE_RATE_FAST;
+			m_fFadeInTime = 1/UIConstants.FADE_RATE_FAST;
 	}
 };
 
@@ -517,10 +531,10 @@ class SCR_ConfigurableDialogUiButtonPreset
 	[Attribute("0", UIWidgets.ComboBox, "Alignment of the button", "", ParamEnumArray.FromEnum(EConfigurableDialogUiButtonAlign))]
 	EConfigurableDialogUiButtonAlign m_eAlign;
 	
-	[Attribute(UISounds.MOUSE_OVER, UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_HOVER, UIWidgets.EditBox, "")]
 	string m_sSoundHovered;
 
-	[Attribute(UISounds.CLICK, UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox, "")]
 	string m_sSoundClicked;
 };
 
@@ -540,7 +554,7 @@ class SCR_ConfigurableDialogUiPreset
 	[Attribute("0", UIWidgets.ComboBox, "Visual style. Affects color of elements.", "", ParamEnumArray.FromEnum(EDialogType))]
 	EDialogType m_eVisualStyle;
 	
-	[Attribute("{1F0A6C9C19E131C6}UI/Textures/Icons/icons_wrapperUI.imageset", UIWidgets.ResourcePickerThumbnail, "Texture or imageset for title icon", "edds imageset")]
+	[Attribute("{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset", UIWidgets.ResourcePickerThumbnail, "Texture or imageset for title icon", "edds imageset")]
 	ResourceName m_sTitleIconTexture;
 	
 	[Attribute("misc", UIWidgets.Auto)]

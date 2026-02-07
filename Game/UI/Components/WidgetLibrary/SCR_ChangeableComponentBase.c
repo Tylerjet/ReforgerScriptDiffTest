@@ -59,8 +59,9 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		super.OnFocus(w, x, y);
-		WidgetAnimator.PlayAnimation(m_wBorder, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Opacity, UIColors.BACKGROUND_HOVERED, m_fAnimationRate);
+		
+		AnimateWidget.Opacity(m_wBorder, 1, m_fAnimationRate);
+		AnimateWidget.Color(m_wBackground, UIColors.BACKGROUND_HOVERED, m_fAnimationRate);
 		return false;
 	}
 	
@@ -69,11 +70,10 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	{
 		super.OnFocusLost(w, x, y);
 
-		WidgetAnimator.PlayAnimation(m_wBorder, WidgetAnimationType.Opacity, 0, m_fAnimationRate);
-		
+		AnimateWidget.Opacity(m_wBorder, 0, m_fAnimationRate);
 		Widget mouseOver = WidgetManager.GetWidgetUnderCursor();
 		if (w != mouseOver && !IsChildWidget(w, mouseOver))
-			WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Opacity, UIColors.BACKGROUND_DEFAULT, m_fAnimationRate);
+			AnimateWidget.Color(m_wBackground, UIColors.BACKGROUND_DEFAULT, m_fAnimationRate);
 		
 		return false;
 	}
@@ -81,7 +81,7 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Opacity, UIColors.BACKGROUND_HOVERED, m_fAnimationRate);
+		AnimateWidget.Color(m_wBackground, UIColors.BACKGROUND_HOVERED, m_fAnimationRate);
 		return false;
 	}
 	
@@ -92,7 +92,7 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 		if (GetGame().GetWorkspace().GetFocusedWidget() == w || IsChildWidget(w, enterW))
 			return false;
 		
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Opacity, UIColors.BACKGROUND_DEFAULT, m_fAnimationRate);
+		AnimateWidget.Color(m_wBackground, UIColors.BACKGROUND_DEFAULT, m_fAnimationRate);
 		return false;
 	}
 	

@@ -1,26 +1,28 @@
 //------------------------------------------------------------------------------------------------
 class SCR_MapUITask : SCR_MapUIElement
 {
+	protected bool m_bIsEnabled;	// task is hovered over & and is clickable
 	protected SCR_BaseTask m_Task;
 	protected TextWidget m_wTaskTitle;
 	protected Widget m_wAssignees;
 	protected Widget m_wMapTask;
-			
+	Widget m_wHorizLayout;
+
 	//------------------------------------------------------------------------------
 	SCR_MapUITask InitTask(notnull SCR_BaseTask task)
 	{
 		SCR_MapDescriptorComponent descr = SCR_MapDescriptorComponent.Cast(task.FindComponent(SCR_MapDescriptorComponent));
 		if (descr)
 			m_MapItem = descr.Item();
-		
+
 		MapDescriptorProps props = m_MapItem.GetProps();
 		props.SetIconVisible(false);
 		props.SetTextVisible(false);
 		props.Activate(true);
-		
+
 		if (!m_wMapTask)
 			return null;
-		
+
 		SCR_MapUITask handler = SCR_MapUITask.Cast(m_wMapTask.FindHandler(SCR_MapUITask));
 		if (!handler)
 			return null;
@@ -36,19 +38,19 @@ class SCR_MapUITask : SCR_MapUIElement
 	{
 		m_Task = task;
 		SetImage(task.GetTaskMapIconName() + task.GetIconSuffix());
-		
+
 		if (m_wTaskTitle)
 			m_Task.SetTitleWidgetText(m_wTaskTitle, m_Task.GetTaskListTaskTitle());
-		
+
 		SetMapMarkerAssigneeCount();
 	}
-	
+
 	//------------------------------------------------------------------------------
 	SCR_BaseTask GetTask()
 	{
 		return m_Task;
 	}
-	
+
 	//------------------------------------------------------------------------------
 	Widget GetMapWidget()
 	{
@@ -59,22 +61,28 @@ class SCR_MapUITask : SCR_MapUIElement
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		super.OnMouseEnter(w, x, y);
-		
+
 		SCR_UITaskManagerComponent utm = SCR_UITaskManagerComponent.GetInstance();
 		if (utm)
 			utm.EnableTaskContext(true);
 
+		if (m_wMapTask)
+			m_wMapTask.SetZOrder(2);
+
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
 		super.OnMouseLeave(w, enterW, x, y);
-	
+
 		SCR_UITaskManagerComponent utm = SCR_UITaskManagerComponent.GetInstance();
 		if (utm)
 			utm.EnableTaskContext(false);
+
+		if (m_wMapTask)
+			m_wMapTask.SetZOrder(0);
 
 		return false;
 	}
@@ -83,13 +91,14 @@ class SCR_MapUITask : SCR_MapUIElement
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
-		
+
 		m_eIconType = EIconType.TASK;
 		m_wTaskTitle = TextWidget.Cast(w.FindAnyWidget("Title"));
 		m_wImage = ImageWidget.Cast(w.FindAnyWidget("TaskIcon"));
 		m_wAssignees = Widget.Cast(w.FindAnyWidget("Assignee"));
+		m_wHorizLayout = w.FindAnyWidget("HorizLayout");
 		m_wMapTask = w;
-		
+
 		if (GetTaskManager())
 		{
 			SCR_BaseTaskManager.s_OnTaskAssigned.Insert(GetAssignedPlayers);
@@ -143,7 +152,7 @@ class SCR_MapUITask : SCR_MapUIElement
 			return;
 
 		task.UpdateMapTaskIcon();
-				
+
 		array<SCR_BaseTaskExecutor> assignees = {};
 		m_Task.GetAssignees(assignees);
 		if (assignees.IsEmpty())
@@ -152,13 +161,13 @@ class SCR_MapUITask : SCR_MapUIElement
 			m_wAssignees.SetOpacity(0);
 			return;
 		}
-		
+
 		m_wAssignees.SetEnabled(true);
 		m_wAssignees.SetOpacity(1);
-		
+
 		SetMapMarkerAssigneeCount();
 	}
-	
+
 	//------------------------------------------------------------------------------
 	void SetMapMarkerAssigneeCount()
 	{
@@ -166,7 +175,7 @@ class SCR_MapUITask : SCR_MapUIElement
 		if (assigneesCount)
 			assigneesCount.SetText(m_Task.GetAssigneeCount().ToString());
 	}
-	
+
 	//------------------------------------------------------------------------------
 	void UpdateFocusedTask()
 	{
@@ -185,7 +194,7 @@ class SCR_MapUITask : SCR_MapUIElement
 			if (handler)
 				handler.GetOnMapIconClick().Insert(AssignTask);
 		}
-		
+
 		ButtonWidget selectButton = ButtonWidget.Cast(m_wMapTask.FindAnyWidget("TaskIconButton"));
 		if (selectButton)
 		{
@@ -194,7 +203,7 @@ class SCR_MapUITask : SCR_MapUIElement
 				handler.GetOnMapIconClick().Insert(UpdateFocusedTask);
 		}
 	}
-}
+};
 
 //------------------------------------------------------------------------------
 class SCR_TaskIconNavigationButton : SCR_NavigationButtonComponent
@@ -225,4 +234,4 @@ class SCR_TaskIconNavigationButton : SCR_NavigationButtonComponent
 
 		return false;
 	}
-}
+};

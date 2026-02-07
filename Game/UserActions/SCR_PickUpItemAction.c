@@ -6,11 +6,6 @@ class SCR_PickUpItemAction : SCR_InventoryAction
 	//------------------------------------------------------------------------------------------------
 	override protected void PerformActionInternal(SCR_InventoryStorageManagerComponent manager, IEntity pOwnerEntity, IEntity pUserEntity)
 	{
-		// Play sound
-		vector transformation[4];
-		pOwnerEntity.GetTransform(transformation);
-		
-		manager.PlayItemSound(pOwnerEntity, "SOUND_PICK_UP");
 		manager.InsertItem( pOwnerEntity );
 	}
 	

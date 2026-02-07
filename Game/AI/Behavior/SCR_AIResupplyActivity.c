@@ -14,7 +14,7 @@ class SCR_AIResupplyActivity : SCR_AIActivityBase
 		m_MagazineWell.Init(this, magazineWell);
 		
         m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityResupply.bt";
-		m_eType = EAIActionType.RESUPPLY;
+		m_eType = EAIActionType.ACTIVITY_RESUPPLY;
 		m_fPriority = priority;		
     }
 	

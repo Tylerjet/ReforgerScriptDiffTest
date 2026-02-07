@@ -11,9 +11,7 @@ class SCR_CampaignDisassembleCompositionUserAction : ScriptedUserAction
 	
 	protected IEntity m_SuppliesProvider;
 	protected ref array<ref SCR_CampaignSlotComposition> m_aSlotData = new array<ref SCR_CampaignSlotComposition>();
-	
-	private const string SOUND_DISASSEMBLY = "SOUND_DISASSEMBLY";
-	
+		
 	//------------------------------------------------------------------------------------------------
 	private void InitializeActionOwner()
 	{
@@ -104,7 +102,7 @@ class SCR_CampaignDisassembleCompositionUserAction : ScriptedUserAction
 			campaignNetworkComponent.DisassembleComposition(m_SlotEnt.GetID(), m_Base, CalculateRefundValue());
 
 		m_SlotEnt.SetOccupant(null);
-		SCR_UISoundEntity.SoundEvent(SOUND_DISASSEMBLY);
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_DISASSEMBLY);
 		
 		// Check if the slot is used for services.
 		

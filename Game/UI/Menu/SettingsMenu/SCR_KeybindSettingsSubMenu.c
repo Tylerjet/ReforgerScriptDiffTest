@@ -30,12 +30,14 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		if (!m_wActionsLayout)
 			return;
 
+		
 		s_Binding = GetGame().GetInputManager().CreateUserBinding();
-		SCR_NavigationButtonComponent reset = CreateNavigationButton("MenuRefresh", "#AR-Settings_Keybind_ResetEveryKeybind", true);
+		
+		SCR_NavigationButtonComponent reset = CreateNavigationButton("MenuResetAllKeybind", "#AR-Settings_Keybind_ResetEveryKeybind", true);
 		reset.m_OnActivated.Insert(ResetKeybindsToDefault);
 		
-		CreateUnbindSingleButton();
 		CreateSingleKeybindResetButton();
+		CreateUnbindSingleButton();
 
 		//read the categories and actions from KEY_BINDING_CONFIG
 		Resource holder = BaseContainerTools.LoadContainer(KEY_BINDING_CONFIG);

@@ -42,7 +42,7 @@ class ServerDetailsMenuUI: ChimeraMenuBase
 	const string ENTRY_NAME = "txtName";
 	const string ENTRY_STATE = "imgState";
 	
-	const string IMAGE_SET_ICONS = "{1F0A6C9C19E131C6}UI/Textures/Icons/icons_wrapperUI.imageset";
+	const string IMAGE_SET_ICONS = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
 	//const string LAYOUT_MOD_ENTRY = "{EB6E87758B1E2FFC}UI/layouts/Menus/ServerBrowser/ServerModEntry.layout"; 
 	const string LAYOUT_MOD_ENTRY = "{D077825E029C5889}UI/layouts/Menus/ServerBrowser/ContentEntry.layout";
 	

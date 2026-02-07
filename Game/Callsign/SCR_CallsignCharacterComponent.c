@@ -451,7 +451,7 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		writer.WriteInt(m_iSquadCallsign);
 		writer.WriteInt(m_iCharacterCallsign);
 		writer.WriteInt(m_iRoleCallsign);
-		writer.WriteInt(m_bAloneInGroup);
+		writer.WriteBool(m_bAloneInGroup);
 		writer.WriteInt(m_iFactioniD);
 		
         return true;
@@ -459,14 +459,15 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
      
     override bool RplLoad(ScriptBitReader reader)
     {
-		int company, platoon, squad, character, role, aloneInGroup, factionID;
+		int company, platoon, squad, character, role, factionID;
+		bool aloneInGroup;
 		
         reader.ReadInt(company);
         reader.ReadInt(platoon);
 		reader.ReadInt(squad);
         reader.ReadInt(character);
 		reader.ReadInt(role);
-		reader.ReadInt(aloneInGroup);
+		reader.ReadBool(aloneInGroup);
 		reader.ReadInt(factionID);
 		
 		AssignCallsignBroadcast(company, platoon, squad, character, role, aloneInGroup);

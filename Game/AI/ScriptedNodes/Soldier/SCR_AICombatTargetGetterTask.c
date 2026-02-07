@@ -68,13 +68,13 @@ class SCR_AIGetCurrentEnemy: SCR_AICombatTargetGetterTask
 	//-------------------------------------------------------------------------------------------
 	protected static override string GetOnHoverDescription()
 	{
-		return "Returns current enemy from SCR_AICombatComponent.GetCurrentEnemy()";
+		return "Returns current enemy from SCR_AICombatComponent.GetCurrentTarget()";
 	}
 	
 	//-------------------------------------------------------------------------------------------
 	override protected BaseTarget GetEnemy(SCR_AICombatComponent combatComp)
 	{
-		return combatComp.GetCurrentEnemy();
+		return combatComp.GetCurrentTarget();
 	}
 	
 	//-------------------------------------------------------------------------------------------

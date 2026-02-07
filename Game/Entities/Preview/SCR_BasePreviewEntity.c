@@ -238,7 +238,7 @@ class SCR_BasePreviewEntity: GenericEntity
 					Math3D.MatrixMultiply4(transform, m_vLocalTransform, transform);
 					
 					//--- Get surface basis
-					if (!SCR_Global.GetTerrainBasis(transform[3], surfaceBasis, GetWorld(), !isUnderwater))
+					if (!SCR_TerrainHelper.GetTerrainBasis(transform[3], surfaceBasis, GetWorld(), !isUnderwater))
 						return;
 					
 					vector angles = Math3D.MatrixToAngles(transform);

@@ -60,8 +60,7 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 		if (setOpacityZero)
 			m_wFadeWidget.SetOpacity(0);
 		
-		m_wFadeWidget.SetVisible(true);
-		WidgetAnimator.PlayAnimation(new WidgetAnimationOpacity(m_wFadeWidget, m_fFadeInAnimationSpeed, m_fFadeInOpacitytarget));
+		AnimateWidget.Opacity(m_wFadeWidget, m_fFadeInOpacitytarget, m_fFadeInAnimationSpeed, true);
 		
 		if (!m_sOnFadeInSfx.IsEmpty())
 			SCR_UISoundEntity.SoundEvent(m_sOnFadeInSfx, m_bFadeInSfxHasPriority);
@@ -105,9 +104,8 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 		if (m_bIsFading && !m_bIsFadingIn)
 			return;
 		
-		m_wFadeWidget.SetVisible(true);
-		WidgetAnimator.StopAllAnimations(m_wFadeWidget);
-		WidgetAnimator.PlayAnimation(new WidgetAnimationOpacity(m_wFadeWidget, m_fFadeOutAnimationSpeed, 0));
+		AnimateWidget.StopAllAnimations(m_wFadeWidget);
+		AnimateWidget.Opacity(m_wFadeWidget, 0, m_fFadeOutAnimationSpeed, true);
 		
 		if (!m_sOnFadeOutSfx.IsEmpty())
 			SCR_UISoundEntity.SoundEvent(m_sOnFadeOutSfx, m_bFadeOutSfxHasPriority);
@@ -158,7 +156,7 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 		else if (!m_bIsFadingIn)
 			m_wFadeWidget.SetOpacity(0);
 		
-		WidgetAnimator.StopAllAnimations(m_wFadeWidget);
+		AnimateWidget.StopAllAnimations(m_wFadeWidget);
 	}
 	
 	/*!
@@ -237,7 +235,7 @@ class SCR_FadeUIComponent: ScriptedWidgetComponent
 	
 	protected void FadeDoneCheck()
 	{
-		if (WidgetAnimator.IsAnimating(m_wFadeWidget))
+		if (AnimateWidget.IsAnimating(m_wFadeWidget))
 			return;
 		
 		if (m_bIsFadingIn && m_wFadeWidget.GetOpacity() != m_fFadeInOpacitytarget)

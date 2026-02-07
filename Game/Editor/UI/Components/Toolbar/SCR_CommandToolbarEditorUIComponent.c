@@ -135,12 +135,9 @@ class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 	{
 		return false;
 	}
-	override void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	override void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
-		if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
+		if (!isGamepad)
 		{
 			m_Filter.GetOnChanged().Insert(OnFilterChange);
 			Refresh();
@@ -151,7 +148,7 @@ class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 			DeleteAllItems();
 		}
 		
-		super.OnInputDeviceUserChanged(oldDevice, newDevice);
+		super.OnInputDeviceIsGamepad(isGamepad);
 	}
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
@@ -190,7 +187,7 @@ class SCR_CommandToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		//inputManager.AddActionListener("EditorQuickCommand11", EActionTrigger.DOWN, OnEditorQuickCommand11);
 		//inputManager.AddActionListener("EditorQuickCommand12", EActionTrigger.DOWN, OnEditorQuickCommand12);
 		
-		OnInputDeviceUserChanged(-1, -1);
+		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 		
 		super.HandlerAttachedScripted(w);
 	}

@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Sound", description: "THIS IS THE SCRIPT DESCRIPTION.", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Sound", description: "THIS IS THE SCRIPT DESCRIPTION.")]
 class SCR_HelicopterSoundComponentClass: VehicleSoundComponentClass
 {
 };
@@ -38,7 +38,7 @@ class SCR_HelicopterSoundComponent : VehicleSoundComponent
 				Terminate(m_EngineStopHandle);
 			}
 				
-			m_EngineStartHandle = SoundEvent("SOUND_ENGINE_START");
+			m_EngineStartHandle = SoundEvent(SCR_SoundEvent.SOUND_ENGINE_START);
 		}
 							
 		if (engineRPMSignalVal < m_fEngineRPMSignalValLast)
@@ -50,7 +50,7 @@ class SCR_HelicopterSoundComponent : VehicleSoundComponent
 		
 			if (IsFinishedPlaying(m_EngineStopHandle))
 			{
-				m_EngineStopHandle = SoundEvent("SOUND_ENGINE_STOP");
+				m_EngineStopHandle = SoundEvent(SCR_SoundEvent.SOUND_ENGINE_STOP);
 			}		
 		}		
 	}
@@ -96,7 +96,7 @@ class SCR_HelicopterSoundComponent : VehicleSoundComponent
 					Terminate(m_RotorHi);
 				}
 
-				m_RotorHi = SoundEvent("SOUND_ROTOR_HI");
+				m_RotorHi = SoundEvent(SCR_SoundEvent.SOUND_ROTOR_HI);
 			}
 			
 			m_fRotorAngleYPrimaryLast = fRotorAngleYPrimary;

@@ -88,7 +88,7 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RPC_RequestTransport(int requesterID, vector positionFrom, vector positionTo)
 	{
-		if (SCR_BaseTaskManager.HasRequestedTask(requesterID))
+		if (GetTaskManager() && GetTaskManager().HasRequestedTask(requesterID))
 			return;
 		
 		SCR_CampaignNetworkComponent networkComponent = SCR_CampaignNetworkComponent.Cast(m_PlayerController.FindComponent(SCR_CampaignNetworkComponent));
@@ -121,7 +121,7 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RPC_RequestRefuel(int requesterID, vector position)
 	{
-		if (SCR_BaseTaskManager.HasRequestedTask(requesterID))
+		if (GetTaskManager() && GetTaskManager().HasRequestedTask(requesterID))
 			return;
 		
 		SCR_CampaignNetworkComponent networkComponent = SCR_CampaignNetworkComponent.Cast(m_PlayerController.FindComponent(SCR_CampaignNetworkComponent));
@@ -165,7 +165,7 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RPC_RequestEvacuation(int requesterID, vector position)
 	{
-		if (SCR_BaseTaskManager.HasRequestedTask(requesterID))
+		if (GetTaskManager() && GetTaskManager().HasRequestedTask(requesterID))
 			return;
 		
 		SCR_CampaignNetworkComponent networkComponent = SCR_CampaignNetworkComponent.Cast(m_PlayerController.FindComponent(SCR_CampaignNetworkComponent));

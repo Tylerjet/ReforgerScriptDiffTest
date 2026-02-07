@@ -40,7 +40,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 	[Attribute("32", UIWidgets.EditBox, "Select tab width. Use -1 to use fill mode")]
 	float m_fTabWidthTextHidden;
 	
-	[Attribute(UISounds.TAB_SWITCH, UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.TAB_SWITCH, UIWidgets.EditBox)]
 	protected string m_sSwitchSound;
 	
 	[Attribute("0", desc: "If true it will hide the text of the tab and only show it when the tab is selected. Tabs should have images otherwise it might look weird")]
@@ -157,7 +157,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		}
 		
 		comp.m_OnClicked.Insert(OnSelection);
-		comp.SetText(content.m_sTabButtonContent);
+		comp.SetTextWithParam(content.m_sTabButtonContent, content.m_sTabButtonContentParam1, content.m_sTabButtonContentParam2);
 		content.m_ButtonComponent = comp;
 		
 		ImageWidget image = ImageWidget.Cast(button.FindAnyWidget("TabImage"));
@@ -195,7 +195,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		OverlaySlot.SetHorizontalAlign(size, LayoutHorizontalAlign.Right);
 		OverlaySlot.SetPadding(size, 0, -height * 0.5, 4, 0); // Set some reasonable offset for the icon
 		
-		content.m_wIcon = ImageWidget.Cast(GetGame().GetWorkspace().CreateWidgets(content.m_IconLayout, size));
+		content.m_wIcon = GetGame().GetWorkspace().CreateWidgets(content.m_IconLayout, size);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -278,6 +278,14 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		return m_aElements[entry].m_wIcon;
 	}
 	
+	SCR_TabViewContent GetEntryContent(int index)
+	{
+		if (index < 0 || index >= m_aElements.Count())
+			return null;
+		
+		return m_aElements[index];
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void SelectIndex(bool select, int i)
 	{
@@ -337,8 +345,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 			ShowTabText(i, true, m_fTabWidth);
 			ShowTabText(m_iSelectedTab, false, m_fTabWidthTextHidden);
 		}
-			
-
+		
 		// Do not switch into invalid or disabled element
 		if (i < 0 || i >= m_aElements.Count() || !m_aElements[i].m_bEnabled)
 			return;
@@ -353,8 +360,6 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 
 		if (callAction)
 			m_OnChanged.Invoke(this, m_wRoot, m_iSelectedTab);
-		
-
 		
 		UpdatePagingButtons();
 	}
@@ -372,12 +377,14 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void AddTab(ResourceName layout, string content, bool enabled = true, ResourceName tabImage = string.Empty, ResourceName iconLayout = string.Empty, float width = 32, float height = 32)
+	void AddTab(ResourceName layout, string content, bool enabled = true, ResourceName tabImage = string.Empty, ResourceName iconLayout = string.Empty, float width = 32, float height = 32, string contentParam1 = string.Empty, string contentParam2 = string.Empty)
 	{
 		SCR_TabViewContent tabContent = new SCR_TabViewContent;
 		tabContent.m_ElementLayout = layout;
 		tabContent.m_bEnabled = enabled;
 		tabContent.m_sTabButtonContent = content;
+		tabContent.m_sTabButtonContentParam1 = contentParam1;
+		tabContent.m_sTabButtonContentParam2 = contentParam2;
 		
 		if (iconLayout != string.Empty)
 		{
@@ -485,7 +492,47 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 			for(int i = 0; i < m_aElements.Count(); i++)
 				ShowTabText(i, show, buttonWidth);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetTabText(int index, string text, string textParam1 = string.Empty, string textParam2 = string.Empty)
+	{
+		if (index < 0 || index >= m_aElements.Count())
+			return;
 		
+		m_aElements[index].m_sTabButtonContent = text;
+		m_aElements[index].m_sTabButtonContentParam1 = textParam1;
+		m_aElements[index].m_sTabButtonContentParam2 = textParam2;
+		
+		m_aElements[index].m_ButtonComponent.GetTextWidget().SetTextFormat(text, textParam1, textParam2);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetTabImage(int index, ResourceName tabImage)
+	{
+		if (index < 0 || index >= m_aElements.Count())
+			return;
+		
+		m_aElements[index].m_TabImage = tabImage;
+		m_aElements[index].m_bShowImage = true;
+		
+		ImageWidget image = ImageWidget.Cast(m_aElements[index].m_ButtonComponent.GetRootWidget().FindAnyWidget("TabImage"));
+		if (image)
+		{
+			image.LoadImageTexture(0, tabImage);
+			image.SetVisible(true);
+		}
+	}
+	
+		//------------------------------------------------------------------------------------------------
+	void ShowImage(int index, bool show)
+	{
+		if (index < 0 || index >= m_aElements.Count())
+			return;
+
+		ImageWidget image = ImageWidget.Cast(m_aElements[index].m_ButtonComponent.GetRootWidget().FindAnyWidget("TabImage"));
+		if (image)
+			image.SetVisible(show);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -597,6 +644,20 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void EnableAllTabs(bool enable,  bool ignoreCurrentActive = true, bool animate = true)
+	{
+		int count = m_aElements.Count();
+		
+		for(int i = 0; i < count; i++)
+        {
+			if (ignoreCurrentActive && m_iSelectedTab == i)
+				continue;
+			
+            EnableTab(i, enable, animate);
+        }
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetTabVisible(int tabIndex, bool visible, bool animate = true)
 	{
 		if (tabIndex < 0 || tabIndex >= m_aElements.Count())
@@ -679,6 +740,19 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 	{
 		return m_aElements[m_iSelectedTab];
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetEntryIconSize(int index, float width = -1, float height = -1)
+	{
+		if (index < 0 || index >= m_aElements.Count())
+			return;
+		
+		if (width > 0)
+			m_aElements[index].m_fIconWidth = width;
+		
+		if (height > 0)
+			m_aElements[index].m_fIconHeight = height;
+	}
 };
 
 //------------------------------------------------------------------------------------------------
@@ -690,6 +764,12 @@ class SCR_TabViewContent
 	
 	[Attribute("Button", UIWidgets.EditBox, "Content of the button: It can contain either name or image resource")]
 	string m_sTabButtonContent;
+	
+	[Attribute(desc: "Param if m_sTabButtonContent is name rather then image resource")]
+	LocalizedString m_sTabButtonContentParam1;
+	
+	[Attribute(desc: "Param if m_sTabButtonContent is name rather then image resource")]
+	LocalizedString m_sTabButtonContentParam2;
 	
 	[Attribute("true", UIWidgets.CheckBox, "Is tab enabled?")]
 	bool m_bEnabled;
@@ -716,5 +796,5 @@ class SCR_TabViewContent
 	[Attribute("32")]
 	float m_fIconHeight;
 	
-	ImageWidget m_wIcon;
+	Widget m_wIcon;
 };

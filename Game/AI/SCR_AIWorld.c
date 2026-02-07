@@ -84,7 +84,7 @@ class SCR_AIWorld : AIWorld
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_DEBUG,"","Print debug from BTs","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_GROUP_INFO,"","Print init of groups","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_SHOT_STATISTICS,"","Print stats for aiming","AIScript");
-			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_ACTIVITY,"","Print new activity","AIScript");			
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_ACTIVITY,"","Print new activity","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_DEBUG_SHAPES,"","Show debug shapes from BTs","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_FRIENDLY_IN_AIM,"","Show fiendly in aim","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_TARGET_LASTSEEN,"","Show target last seen","AIScript");
@@ -96,7 +96,11 @@ class SCR_AIWorld : AIWorld
 			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_AI_PRINT_DEBUG,true);
 			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_AI_PRINT_GROUP_INFO,true);
 			
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_TARGET_AIMPOINT,"", "Show target aimpoint", "Aiming");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_TARGET_PROJECTED_SIZE,"", "Show target projected size", "Aiming");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_OPEN_DEBUG_PANEL, "", "Open Debug Panel", "AIScript");
+			
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_GRENADE_TRACE, "", "Show Grenade Trace", "AIScript");
 #endif
 
 			s_bDiagRegistered = true;

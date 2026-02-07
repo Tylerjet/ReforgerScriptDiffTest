@@ -147,7 +147,7 @@ class CareerMenuUI: ChimeraMenuBase
 			m_BackendData = new CareerBackendData;
 			BackendApi backendApi = GetGame().GetBackendApi();
 			if (backendApi)
-				backendApi.Request(EBackendRequest.EBREQ_GAME_CharacterGet, m_Callback, m_BackendData);
+				backendApi.PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterGet, m_Callback, m_BackendData, 0);
 		}
 	}
 

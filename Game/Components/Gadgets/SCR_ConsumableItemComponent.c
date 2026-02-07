@@ -30,12 +30,12 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	//! Apply consumable effect
 	//! \param target is the target entity
-	void ApplyItemEffect(IEntity target)
+	void ApplyItemEffect(IEntity target, SCR_ConsumableEffectAnimationParameters animParams)
 	{
 		if (!m_ConsumableEffect)
 			return;
 		
-		m_ConsumableEffect.ApplyEffect(target);
+		m_ConsumableEffect.ApplyEffect(target, animParams);
 		
 		InventoryStorageManagerComponent invManager = InventoryStorageManagerComponent.Cast(m_CharacterOwner.FindComponent(InventoryStorageManagerComponent));
 		if (invManager)
@@ -47,9 +47,9 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! OnItemUseComplete event from SCR_CharacterControllerComponent
-	protected void OnApplyToSelf()
+	protected void OnApplyToSelf(IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
 	{
-		ApplyItemEffect(m_CharacterOwner);
+		ApplyItemEffect(m_CharacterOwner, animParams);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -131,8 +131,25 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		if (!m_ConsumableEffect || !m_ConsumableEffect.CanApplyEffect(m_CharacterOwner))
 			return;
 		
+		SCR_ConsumableEffectAnimationParameters animParams = m_ConsumableEffect.GetAnimationParameters(m_CharacterOwner);
+		
 		if (m_CharController)
-			m_CharController.TryUseEquippedItem();
+		{
+			bool activatedAction = false;
+			if (animParams)
+				activatedAction = m_CharController.TryUseEquippedItemOverrideParams(animParams.m_itemUseCommandId, animParams.m_animDuration, animParams.m_intParam, animParams.m_floatParam, animParams.m_boolParam);
+			else
+				activatedAction = m_CharController.TryUseEquippedItem();
+			
+			if (animParams
+				&& SCR_ConsumableBandage.Cast(m_ConsumableEffect)
+				&& (animParams.m_intParam == EBandagingAnimationBodyParts.LeftLeg || animParams.m_intParam == EBandagingAnimationBodyParts.RightLeg)
+				&& activatedAction
+				&& m_CharController.GetStance() == ECharacterStance.STAND)
+			{
+				m_CharController.SetStanceChange(ECharacterStanceChange.STANCECHANGE_TOCROUCH);
+			}
+		}	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -140,13 +157,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	{
 		return EGadgetType.CONSUMABLE;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	override bool IsSingleHanded()
-	{
-		return false;
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeToggled()
 	{

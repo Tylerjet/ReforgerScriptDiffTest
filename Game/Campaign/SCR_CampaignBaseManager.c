@@ -19,6 +19,8 @@ class SCR_CampaignBaseManager : GenericEntity
 	protected static float s_fTickTime;
 	
 	protected static const float ITERATION_TIME = 1;
+	protected static const int MAX_HQ_SELECTION_ITERATIONS = 10;
+	protected static const float CP_AVG_DISTANCE_TOLERANCE = 0.25;
 	
 	protected float m_fCurrentTickTime = 0;
 	protected int m_iCurrentBaseIndex = 0;
@@ -27,10 +29,15 @@ class SCR_CampaignBaseManager : GenericEntity
 	protected ref map<CampaignBaseType, ref array<SCR_CampaignBase>> m_mPrefilteredBases = new ref map<CampaignBaseType, ref array<SCR_CampaignBase>>();
 	protected bool m_bBasesInitialized = false;
 	
+	protected ref array<SCR_CampaignBase> m_aControlPoints = {};
+	
 	protected ref SCR_CampaignStruct m_CampaignInfo;
 	protected bool m_bShowLinks = true;
 	protected MapItem m_MobileMapItemBlufor;
 	protected MapItem m_MobileMapItemOpfor;
+	protected SCR_CampaignBase m_WestHQ;
+	protected SCR_CampaignBase m_EastHQ;
+	protected bool m_bIsHQSetupDone;
 	
 #ifdef ENABLE_DIAG
 	protected bool m_bCapturedRelays = false;
@@ -146,7 +153,6 @@ class SCR_CampaignBaseManager : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void UpdateBasesSignalCoverage(SCR_CampaignFaction faction = null, bool byMobileHQ = false)
 	{
-		//Print("Updating");
 		if (!s_aBases)
 			return;
 		
@@ -164,23 +170,19 @@ class SCR_CampaignBaseManager : GenericEntity
 			return;
 		}
 		
-		//PrintFormat("-------------------------- UPDATE SIGNAL FOR %1", faction.GetFactionKey());
-		
 		SCR_CampaignBase HQ = faction.GetMainBase();
 		
 		if (!HQ)
 			return;
 		
-		//PrintFormat("HQ identified as %1", HQ.GetBaseName());
-		
 		IEntity mobileHQ = faction.GetDeployedMobileAssembly();
+		SCR_CampaignMobileAssemblyComponent comp;
 		array<SCR_CampaignBase> basesInRangeOfMobileHQ = {};
-		MapItem mobileMapItem;
+		
 		// Mobile HQ is deployed, grab the covered bases
 		if (mobileHQ)
 		{
 			SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-			SCR_CampaignMobileAssemblyComponent comp;
 			
 			if (campaign)
 				comp = SCR_CampaignMobileAssemblyComponent.Cast(Replication.FindItem(campaign.GetDeployedMobileAssemblyID(faction.GetFactionKey())));
@@ -189,97 +191,90 @@ class SCR_CampaignBaseManager : GenericEntity
 			{
 				basesInRangeOfMobileHQ = comp.GetBasesInRange();
 				SCR_MapDescriptorComponent desc = SCR_MapDescriptorComponent.Cast(mobileHQ.FindComponent(SCR_MapDescriptorComponent));
-				if(!desc)
-					return;
-				mobileMapItem = desc.Item();
-				comp.SetMapItem(desc.Item());
+				
+				if (desc)
+					comp.SetMapItem(desc.Item());
 			}
-			/*Print("Following bases are in range of mobile HQ:");
-			
-			foreach (SCR_CampaignBase base: basesInRangeOfMobileHQ)
-				Print(base.GetBaseName());*/
-		}
-		else
-		{
-			//Print("Mobile HQ not deployed");
 		}
 		
 		bool mobileHQProcessed = false;
 		array<SCR_CampaignBase> coveredBases = {};			// Bases stored here are in radio range
 		int basesCnt = s_aBases.Count();
+		int coveredBasesWithoutMHQ;
+		bool isMHQConnected = false;
+		SCR_CampaignBase base;
+		bool covered;
 		
 		for (int i = 0; i < basesCnt; i++)
 		{
-			SCR_CampaignBase base = s_aBases[i];
+			base = s_aBases[i];
 			
-			if (coveredBases.Contains(base))
+			if (!coveredBases.Contains(base))
 			{
-				//PrintFormat("Skipping %1...", base.GetBaseName());
-				continue;
-			}
-			
-			//PrintFormat("Processing %1...", base.GetBaseName());
-			bool covered = false;
-			
-			if (base == HQ)
-				covered = true;
-			else
-			{
-				// Check if this base is able to send to and receive from any of other bases within signal range
-				foreach (SCR_CampaignBase coveredBase: coveredBases)
-					if (coveredBase.GetOwningFaction() == faction && base.GetBasesInRangeSimple().Contains(coveredBase) && base.GetBasesInRangeSimple(true).Contains(coveredBase))
-					{
-						covered = true;
-						break;
-					}
-			}
-			
-			// Is in signal range
-			if (covered)
-			{
-				//Print("Covered!");
-				coveredBases.Insert(base);
+				covered = false;
 				
-				// If this base is within signal range and within mobile HQ range, add all bases in mobile HQ range to covered list
-				if (!mobileHQProcessed && basesInRangeOfMobileHQ.Contains(base) && base.GetOwningFaction() == faction)
+				if (base == HQ)
+					covered = true;
+				else
 				{
-					//Print("Mobile HQ is extending the signal to the following bases:");
-					mobileHQProcessed = true;
-					
-					foreach (SCR_CampaignBase baseInRangeOfMobileHQ: basesInRangeOfMobileHQ)
-					{
-						if (!coveredBases.Contains(baseInRangeOfMobileHQ))
+					// Check if this base is able to send to and receive from any of other bases within signal range
+					foreach (SCR_CampaignBase coveredBase: coveredBases)
+						if (coveredBase.GetOwningFaction() == faction && coveredBase.GetBasesInRangeSimple().Contains(base))
 						{
-							coveredBases.Insert(baseInRangeOfMobileHQ);
-							//Print(baseInRangeOfMobileHQ.GetBaseName());
+							covered = true;
+							break;
 						}
-					}
 				}
 				
-				// Recheck all previous bases in case they are connected via this base
-				i = -1;
-				//Print("Rechecking!");
+				// Is in signal range
+				if (covered)
+				{
+					coveredBases.Insert(base);
+					
+					if (!isMHQConnected && basesInRangeOfMobileHQ.Contains(base) && base.GetOwningFaction() == faction)
+						isMHQConnected = true;
+					
+					// Recheck all previous bases in case they are connected via this base
+					i = -1;
+				}
+			}
+			
+			// All bases have been processed, take care of MHQ
+			if (i == basesCnt - 1 && isMHQConnected && !mobileHQProcessed)
+			{
+				mobileHQProcessed = true;
+				coveredBasesWithoutMHQ = coveredBases.Count();
+				
+				foreach (SCR_CampaignBase baseInRangeOfMobileHQ: basesInRangeOfMobileHQ)
+				{
+					if (!coveredBases.Contains(baseInRangeOfMobileHQ))
+					{
+						// This base is covered by MHQ, recalculate to take care of additional links
+						coveredBases.Insert(baseInRangeOfMobileHQ);
+						i = -1;
+					}
+				}
 			}
 		}
 		
 		// All relevant bases checked; apply changes
-		foreach (SCR_CampaignBase base : s_aBases)
+		foreach (SCR_CampaignBase processedBase : s_aBases)
 		{
-			if (!base)
+			if (!processedBase)
 				continue;
 			
-			base.SetIsBaseInFactionRadioSignal(faction.GetFactionKey(), coveredBases.Contains(base), byMobileHQ);
+			processedBase.SetIsBaseInFactionRadioSignal(faction.GetFactionKey(), coveredBases.Contains(processedBase), byMobileHQ);
 		}
 		
-		foreach (SCR_CampaignBase base : s_aBases)
+		foreach (SCR_CampaignBase baseToLink : s_aBases)
 		{
-			if (!base)
+			if (!baseToLink)
 				continue;
-			
-			base.HandleMapLinks();
+			baseToLink.HandleMapLinks();
 		}
 		
-		//Print("Done!");
+		if (comp)
+			comp.SetCountOfExclusivelyLinkedBases(coveredBases.Count() - coveredBasesWithoutMHQ);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -333,12 +328,250 @@ class SCR_CampaignBaseManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	int GetClosestVictoryControlPointsAvgDistanceSq(notnull SCR_CampaignBase HQ, notnull array<SCR_CampaignBase> controlPoints)
+	{
+		array<SCR_CampaignBase> nearestControlPoints = {};
+		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		
+		if (!campaign)
+			return 0;
+		
+		int distanceToHQ;
+		int controlPointsCount;
+		int arrayIndex;
+		int nearestControlPointsCount;
+		
+		vector HQPos = HQ.GetOrigin();
+		
+		foreach (SCR_CampaignBase controlPoint : controlPoints)
+		{
+			if (!controlPoint)
+				continue;
+			
+			distanceToHQ = vector.DistanceSqXZ(controlPoint.GetOrigin(), HQPos);
+			controlPointsCount = nearestControlPoints.Count();
+			arrayIndex = controlPointsCount;
+			
+			for (int i = 0; i < controlPointsCount; i++)
+			{
+				if (distanceToHQ < vector.DistanceSqXZ(HQPos, nearestControlPoints[i].GetOrigin()))
+				{
+					arrayIndex = i;
+					break;
+				}
+			}
+			
+			nearestControlPointsCount = nearestControlPoints.InsertAt(controlPoint, arrayIndex);
+		}
+		
+		int limit = campaign.GetControlPointTreshold();
+		
+		// Avoid division by zero
+		if (limit == 0)
+			return 0;
+		
+		if (limit < nearestControlPointsCount)
+			nearestControlPoints.Resize(limit);
+		
+		int totalDist;
+		
+		foreach (SCR_CampaignBase controlPoint : nearestControlPoints)
+			totalDist += vector.DistanceSqXZ(HQPos, controlPoint.GetOrigin());
+		
+		return totalDist / nearestControlPointsCount;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SelectHQs()
+	{
+		m_WestHQ = null;
+		m_EastHQ = null;
+		
+		int candidatesCount;
+		array<SCR_CampaignBase> candidatesForHQ = {};
+		array<SCR_CampaignBase> controlPoints = {};
+		
+		foreach (SCR_CampaignBase base : s_aBases)
+		{
+			if (base.GetCanBeHQ())
+			{
+				candidatesForHQ.Insert(base);
+				candidatesCount++;
+			}
+			
+			if (base.GetIsControlPoint())
+				controlPoints.Insert(base);
+		}
+		
+		if (candidatesCount < 2)
+			return;
+		
+		// If only two HQs are set up, don't waste time with processing
+		if (candidatesCount == 2)
+		{
+			SelectHQsSimple(candidatesForHQ);
+			return;
+		}
+		
+		int iterations;
+		int totalBasesDistance;
+		SCR_CampaignBase westHQ;
+		SCR_CampaignBase eastHQ;
+		array<SCR_CampaignBase> eligibleForHQ;
+		array<SCR_CampaignBase> nearestControlPoints;
+		vector westHQPos;
+		int averageHQDistance;
+		int averageCPDistance;
+		int acceptedCPDistanceDiff;
+		
+		while (!eastHQ && iterations < MAX_HQ_SELECTION_ITERATIONS)
+		{
+			iterations++;
+			totalBasesDistance = 0;
+			eligibleForHQ = {};
+			nearestControlPoints = {};
+			
+			// Pick one of the HQs at random
+			Math.Randomize(-1);
+			westHQ = candidatesForHQ.GetRandomElement();
+			westHQPos = westHQ.GetOrigin();
+			
+			// Calculate average distance between our HQ and others
+			foreach (SCR_CampaignBase otherHQ : candidatesForHQ)
+			{
+				if (otherHQ == westHQ)
+					continue;
+				
+				totalBasesDistance += vector.DistanceSqXZ(westHQPos, otherHQ.GetOrigin());
+			}
+			
+			averageHQDistance = totalBasesDistance / (candidatesCount - 1);	// Our HQ is substracted
+			averageCPDistance = GetClosestVictoryControlPointsAvgDistanceSq(westHQ, controlPoints);
+			acceptedCPDistanceDiff = averageCPDistance * CP_AVG_DISTANCE_TOLERANCE;
+			
+			foreach (SCR_CampaignBase candidate : candidatesForHQ)
+			{
+				if (candidate == westHQ)
+					continue;
+				
+				// Ignore HQs closer than the average distance
+				if (vector.DistanceSqXZ(westHQPos, candidate.GetOrigin()) < averageHQDistance)
+					continue;
+				
+				// Ignore HQs too far from control points (relative to our HQ)
+				if (Math.AbsInt(averageCPDistance - GetClosestVictoryControlPointsAvgDistanceSq(candidate, controlPoints)) > acceptedCPDistanceDiff)
+					continue;
+				
+				eligibleForHQ.Insert(candidate);
+			}
+			
+			// No HQs fit the condition, restart loop
+			if (eligibleForHQ.Count() == 0)
+				continue;
+			 
+			Math.Randomize(-1);
+			eastHQ = eligibleForHQ.GetRandomElement();
+		}
+		
+		// Selection failed, use the simplified but reliable one
+		if (!eastHQ)
+		{
+			SelectHQsSimple(candidatesForHQ);
+			return;
+		}
+		
+		// Randomly assign the factions in reverse in case primary selection gets too limited
+		if (Math.RandomFloat01() >= 0.5)
+		{
+			m_WestHQ = westHQ;
+			m_EastHQ = eastHQ;
+		}
+		else
+		{
+			m_WestHQ = eastHQ;
+			m_EastHQ = westHQ;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SelectHQsSimple(notnull array<SCR_CampaignBase> candidates)
+	{
+		Math.Randomize(-1);
+		SCR_CampaignBase westHQ = candidates.GetRandomElement();
+		candidates.RemoveItem(westHQ);
+		SCR_CampaignBase eastHQ = candidates.GetRandomElement();
+		
+		if (Math.RandomFloat01() >= 0.5)
+		{
+			m_WestHQ = westHQ;
+			m_EastHQ = eastHQ;
+		}
+		else
+		{
+			m_WestHQ = eastHQ;
+			m_EastHQ = westHQ;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetHQs()
+	{
+		m_bIsHQSetupDone = true;
+		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		
+		if (campaign && campaign.GetApplyPresetOwners() && !SCR_GameModeCampaignMP.IsScenarioResumed())
+		{
+			SCR_CampaignBase westHQ;
+			SCR_CampaignBase eastHQ;
+			
+			foreach (SCR_CampaignBase base : s_aBases)
+			{
+				if (base.GetStartingBaseOwnerEnum() == SCR_ECampaignBaseOwner.BLUFOR)
+					westHQ = base;
+				else if (base.GetStartingBaseOwnerEnum() == SCR_ECampaignBaseOwner.OPFOR)
+					eastHQ = base;
+				
+				if (westHQ && eastHQ)
+					break;
+			}
+			
+			if (westHQ && eastHQ)
+			{
+				westHQ.SetAsHQ(SCR_ECampaignBaseOwner.BLUFOR);
+				eastHQ.SetAsHQ(SCR_ECampaignBaseOwner.OPFOR);
+				return;
+			}
+		}
+		
+		if (!m_WestHQ || !m_EastHQ)
+		{
+			Print("No suitable starting locations found in current setup. Check 'Can Be HQ' attributes in Conflict base entities!", LogLevel.ERROR);
+			return;
+		}
+		
+		m_WestHQ.SetAsHQ(SCR_ECampaignBaseOwner.BLUFOR);
+		m_EastHQ.SetAsHQ(SCR_ECampaignBaseOwner.OPFOR);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetIsHQSetupDone()
+	{
+		return m_bIsHQSetupDone;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	static notnull SCR_CampaignBaseManager GetInstance()
 	{
 		if (!s_Instance)
 			GetGame().SpawnEntity(SCR_CampaignBaseManager, GetGame().GetWorld());
 		
 		return s_Instance;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void GetControlPoints(out array<SCR_CampaignBase> bases)
+	{
+		bases = m_aControlPoints;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -454,17 +687,18 @@ class SCR_CampaignBaseManager : GenericEntity
 		if (!s_aBases)
 			return;
 		
-#ifdef ENABLE_BUILDING_DEBUG
-		Print("#");
-		Print(base.GetName());
-		Print("UNREGISTER");
-#endif
+		int index = s_aBases.Find(base);
 		
-		s_aBases.RemoveItem(base);
+		if (index == -1)
+			return;
+		
+		s_aBases.Remove(index);
+		ClearNulls();
+		SCR_CampaignBaseManager baseManager = GetInstance();
 		
 		// Check for init here too since delayed RplLoads can cause this method to be called later
-		if (GetGame().InPlayMode() && GetInstance())
-			GetInstance().CheckBasesInitialized();
+		if (GetGame().InPlayMode() && baseManager)
+			baseManager.CheckBasesInitialized();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -485,9 +719,9 @@ class SCR_CampaignBaseManager : GenericEntity
 			
 			if (s_OnAllBasesInitialized)
 			{
-#ifdef ENABLE_BUILDING_DEBUG
-				Print("ALL BASES INITIALIZED");
-#endif
+				foreach (SCR_CampaignBase baseToLink : s_aBases)
+					baseToLink.LinkBases();
+				
 				UpdateBasesSignalCoverage();
 				s_OnAllBasesInitialized.Invoke();
 			}
@@ -518,15 +752,12 @@ class SCR_CampaignBaseManager : GenericEntity
 	void OnBaseInitialized(SCR_CampaignBase base)
 	{
 		m_iInitializedBasesCount++;
+		
 		if (!s_aBases)
 			return;
 		
-#ifdef ENABLE_BUILDING_DEBUG
-		Print("-");
-		Print(base.GetName());
-		Print(m_iInitializedBasesCount);
-		Print(s_aBases.Count());
-#endif
+		if (base.GetIsControlPoint())
+			m_aControlPoints.Insert(base);
 		
 		CheckBasesInitialized();
 	}
@@ -559,16 +790,9 @@ class SCR_CampaignBaseManager : GenericEntity
 			return;
 		
 		s_aBases.Insert(base);
-		
 		baseManager.UpdatePrefilteredBases(base);
 		
 		int count = s_aBases.Count();
-		
-#ifdef ENABLE_BUILDING_DEBUG
-		Print("------");
-		Print(base.GetName());
-		Print("REGISTER");
-#endif
 		
 		if (count != 0)
 			s_fTickTime = ITERATION_TIME / count;
@@ -615,11 +839,41 @@ class SCR_CampaignBaseManager : GenericEntity
 		if (!s_aBases)
 			return;
 		
-		int basesCnt = s_aBases.Count();
 		int infoCnt = entries.Count();
+		array<SCR_CampaignBase> unprocessedBases = {};
+		unprocessedBases.Copy(s_aBases);
 		
-		if (infoCnt != basesCnt)
-			return;
+		// Find the HQs and set them up first
+		for (int i = 0; i < infoCnt; i++)
+		{
+			SCR_CampaignBaseStruct baseInfo = entries[i];
+			
+			if (!baseInfo || !baseInfo.GetIsHQ())
+				continue;
+			
+			int baseID = baseInfo.GetBaseID();
+			SCR_CampaignBase base = FindBaseByID(baseID);
+			
+			if (!base)
+				continue;
+			
+			Faction faction = GetGame().GetFactionManager().GetFactionByIndex(baseInfo.GetOwningFaction());
+			
+			if (!faction)
+				continue;
+			
+			if (faction.GetFactionKey() == SCR_GameModeCampaignMP.FACTION_BLUFOR)
+				m_WestHQ = base;
+			else if (faction.GetFactionKey() == SCR_GameModeCampaignMP.FACTION_OPFOR)
+				m_EastHQ = base;
+			
+			if (m_WestHQ && m_EastHQ)
+			{
+				break;
+			}
+		}
+		
+		SetHQs();
 		
 		for (int i = 0; i < infoCnt; i++)
 		{
@@ -634,29 +888,13 @@ class SCR_CampaignBaseManager : GenericEntity
 			if (!base)
 				continue;
 			
+			base.InitializeBase();
 			base.LoadState(baseInfo);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void BasesComponentsUpdate(float timeSlice)
-	{
-		m_fComponentUpdateTime -= timeSlice;
-		int basesCount = s_aBases.Count();
-		
-		if (m_fComponentUpdateTime < 0)
-		{
-			if (m_iCurrentBaseComponentUpdateIndex >= basesCount)
-				m_iCurrentBaseComponentUpdateIndex = 0;
-			
-			m_fComponentUpdateTime = COMPONENTS_UPDATE_TIME;
+			unprocessedBases.RemoveItem(base);
 		}
 		
-		if (m_iCurrentBaseComponentUpdateIndex < basesCount)
-		{
-			s_aBases[m_iCurrentBaseComponentUpdateIndex].UpdateComponents(COMPONENTS_UPDATE_TIME);
-			m_iCurrentBaseComponentUpdateIndex++;
-		}
+		foreach (SCR_CampaignBase base : unprocessedBases)
+			base.DisableBase();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -696,8 +934,6 @@ class SCR_CampaignBaseManager : GenericEntity
 	{
 		if (!s_aBases || s_aBases.Count() <= 0)
 			return;
-		
-		BasesComponentsUpdate(timeSlice);
 		
 		m_fCurrentTickTime += timeSlice;
 		

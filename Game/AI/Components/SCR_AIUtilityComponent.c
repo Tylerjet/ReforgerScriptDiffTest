@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system calculations", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system calculations")]
 class SCR_AIUtilityComponentClass: SCR_AIBaseUtilityComponentClass
 {	
 };
@@ -7,7 +7,7 @@ class SCR_AIUtilityComponentClass: SCR_AIBaseUtilityComponentClass
 class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 {
 	GenericEntity m_OwnerEntity;
-	SCR_CharacterControllerComponent m_OwnerController;
+	protected SCR_CharacterControllerComponent m_OwnerController;
 	SCR_AIConfigComponent m_ConfigComponent;
 	SCR_AIInfoComponent m_AIInfo;
 	SCR_AICombatComponent m_CombatComponent;
@@ -15,21 +15,18 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	ref SCR_AIThreatSystem m_ThreatSystem;
 	ref SCR_AILookAction m_LookAction;
 	ref SCR_AIBehaviorBase m_CurrentBehavior; // Used for avoiding constant casting, outside of this class use GetCurrentBehavior()
-	ScriptedDamageManagerComponent m_DamageManager; // for checking health
-	CompartmentAccessComponent m_CompartmentAccess; // for checking if character is inside vehicle or not
-	protected IEntity m_EndangeringVehicle; 		// for caching endangering vehicle
-	
-	SCR_AITargetInfo m_UnknownTarget;
+
+	protected SCR_AITargetInfo m_UnknownTarget;
 
 	protected vector m_vInvestigationDestination; // Used for storing planned destination for investigation
 	protected float m_fLastUpdateTime;
 	protected bool m_bInvestigationDestinationSet;
 	
-	static const float DISTANCE_HYSTERESIS_FACTOR = 0.45; 	// how bigger must be old distance to new in IsInvestigationRelevant()
-	static const float NEARBY_DISTANCE_SQ = 2500; 			// what is the minimal distance of new vs old in IsInvestigationRelevant()	
-
+	protected static const float DISTANCE_HYSTERESIS_FACTOR = 0.45; 	// how bigger must be old distance to new in IsInvestigationRelevant()
+	protected static const float NEARBY_DISTANCE_SQ = 2500; 			// what is the minimal distance of new vs old in IsInvestigationRelevant()	
+	
 	//------------------------------------------------------------------------------------------------
-	SCR_AIBehaviorBase EvaluateBehavior(SCR_AITargetInfo unknownTarget, SCR_AIMessageBase commandMessage)
+	SCR_AIBehaviorBase EvaluateBehavior(SCR_AITargetInfo unknownTarget, SCR_AIMessageBase commandMessage, SCR_AIMessageBase infoMessage)
 	{
 		if (!m_OwnerController || !m_ConfigComponent || !m_OwnerEntity)
 			return null;
@@ -59,6 +56,30 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 			#endif
 			m_ConfigComponent.PerformGoalReaction(this, commandMessage);
 		}
+		
+		// Notify all actions about message
+		if (infoMessage)
+		{
+			bool overrideReaction = false;
+			foreach (SCR_AIActionBase action : m_aActions)
+				overrideReaction = overrideReaction || action.OnInfoMessage(infoMessage);
+			
+			#ifdef AI_DEBUG
+			if (overrideReaction)
+			{
+				#ifdef AI_DEBUG
+				AddDebugMessage(string.Format("InfoMessage consumed by action: %1", infoMessage));
+				#endif
+			}
+			#endif
+			if (!overrideReaction)
+			{
+				#ifdef AI_DEBUG
+				AddDebugMessage(string.Format("PerformInfoReaction: %1", infoMessage));
+				#endif
+				m_ConfigComponent.PerformInfoReaction(this, infoMessage);
+			}
+		}
 			
 		if (unknownTarget && m_UnknownTarget != unknownTarget && m_ConfigComponent.m_Reaction_UnknownTarget)
 		{
@@ -69,20 +90,47 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		}
 		m_UnknownTarget = unknownTarget;
 		
-		m_CombatComponent.EvaluateCurrentTarget();		
 		
-		if (m_CombatComponent.IsTargetChanged() && m_ConfigComponent.m_Reaction_EnemyTarget)
+		// Evaluate current weapon and target
+		bool weaponEvent;
+		bool selectedTargetChanged;
+		bool retreatTargetChanged;
+		bool compartmentChanged;
+		m_CombatComponent.EvaluateWeaponAndTarget(weaponEvent, selectedTargetChanged, retreatTargetChanged, compartmentChanged);
+		m_CombatComponent.EvaluateExpectedWeapon();
+		
+		BaseTarget selectedTarget = m_CombatComponent.GetCurrentTarget();
+		if (selectedTargetChanged || compartmentChanged)
 		{
-			BaseTarget enemy = m_CombatComponent.GetCurrentEnemy();
-			if (enemy)
+			// If we have some target valid for attack, we attack it
+			// Otherwise if there is a target we can't attack, we retreat
+			if (selectedTarget)
 			{
-				#ifdef AI_DEBUG
-				AddDebugMessage(string.Format("PerformReaction: Enemy Target: %1", enemy));
-				#endif
-				m_ConfigComponent.m_Reaction_EnemyTarget.PerformReaction(this, m_ThreatSystem, enemy.GetTargetEntity(), enemy.GetLastSeenPosition());
+				if (m_ConfigComponent.m_Reaction_EnemyTarget)
+				{
+					#ifdef AI_DEBUG
+					AddDebugMessage(string.Format("PerformReaction: Selected Target: %1", selectedTarget));
+					#endif
+					m_ConfigComponent.m_Reaction_EnemyTarget.PerformReaction(this, m_ThreatSystem, selectedTarget.GetTargetEntity(), selectedTarget.GetLastSeenPosition());
+				}
 			}
 		}
-
+		if (!selectedTarget)
+		{
+			BaseTarget retreatTarget = m_CombatComponent.GetRetreatTarget();
+			if (retreatTarget)
+			{
+				if (m_ConfigComponent.m_Reaction_RetreatFromTarget)
+				{
+					// We can't attack anything. Shall we retreat?
+					#ifdef AI_DEBUG
+					AddDebugMessage(string.Format("PerformReaction: Retreat From Target: %1", retreatTarget));
+					#endif
+					m_ConfigComponent.m_Reaction_RetreatFromTarget.PerformReaction(this, m_ThreatSystem, retreatTarget.GetTargetEntity(), retreatTarget.GetLastSeenPosition());
+				}
+			}
+		}
+		
 		// Evaluation: Remove completed behaviors, evaluate, set new behavior
 		RemoveObsoleteActions();
 		SCR_AIActionBase selectedAction = EvaluateActions();
@@ -99,6 +147,13 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		// Update look action target
 		m_LookAction.Evaluate();
 		
+		// Evaluate if we must retreat
+		if (m_CombatComponent.m_bMustRetreat && !HasActionOfType(SCR_AIRetreatNoAmmoBehavior))
+		{
+			SCR_AIActionBase action = new SCR_AIRetreatNoAmmoBehavior(this, false, null);
+			AddAction(action);
+		}
+		
 		m_CurrentBehavior.OnActionExecuted();
 		
 		#ifdef AI_DEBUG
@@ -107,13 +162,12 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		
 		return m_CurrentBehavior;
 	}
-
 	
-	// Independent attacking with movement is allowed only when group combat move is not present or unit state is EUnitState.STATIC
+	// Independent attacking with movement is allowed only when group combat move is not present or unit state is EUnitState.IN_TURRET
 	//------------------------------------------------------------------------------------------------
 	bool CanIndependentlyMove()
 	{
-		if (m_AIInfo && m_AIInfo.HasUnitState(EUnitState.STATIC))
+		if (m_AIInfo && m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
 			return false;
 		
 		foreach (SCR_AIActionBase action : m_aActions)
@@ -123,13 +177,13 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		}
 		return true;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	SCR_AIBehaviorBase GetCurrentBehavior()
 	{
 		return m_CurrentBehavior;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	void WrapBehaviorOutsideOfVehicle(SCR_AIActionBase action)
 	{
@@ -141,28 +195,19 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		if (!compartmentAccess.IsInCompartment())
 			return;	
 		
-		if (m_AIInfo && m_AIInfo.HasUnitState(EUnitState.STATIC))
+		if (m_AIInfo && m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
 			return;
+		
+		SCR_AIActivityBase relatedActivity;
+		SCR_AIBehaviorBase behavior = SCR_AIBehaviorBase.Cast(action);
+		if (behavior)
+			relatedActivity = behavior.m_RelatedGroupActivity;
 		
 		float score = action.Evaluate();
 		IEntity vehicle = compartmentAccess.GetCompartment().GetOwner();
 		ECompartmentType compartmentType = SCR_AIGetUsableVehicle.CompartmentClassToType(compartmentAccess.GetCompartment().Type());
-		AddAction(new SCR_AIGetOutVehicle(this, false, vehicle, score + 100));
-		AddAction(new SCR_AIGetInVehicle(this, false, vehicle, compartmentType));
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void UpdateAttackParameters(IEntity target, vector position)
-	{
-		foreach (SCR_AIActionBase action: m_aActions)
-		{
-			if (action.IsInherited(SCR_AIAttackBehavior))
-			{
-				SCR_AIAttackBehavior behavior = SCR_AIAttackBehavior.Cast(action);
-				behavior.m_vPosition.m_Value = position;
-				behavior.m_Target.m_Value = target; // may be null!				
-			}
-		}
+		AddAction(new SCR_AIGetOutVehicle(this, false, relatedActivity, vehicle, score + 100));
+		AddAction(new SCR_AIGetInVehicle(this, false, relatedActivity, vehicle, compartmentType));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -179,7 +224,6 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		if (!m_OwnerEntity)
 			return;
 
-		m_DamageManager = ScriptedDamageManagerComponent.Cast(m_OwnerEntity.FindComponent(ScriptedDamageManagerComponent));
 		m_AIInfo = SCR_AIInfoComponent.Cast(agent.FindComponent(SCR_AIInfoComponent));
 		m_CombatComponent = SCR_AICombatComponent.Cast(m_OwnerEntity.FindComponent(SCR_AICombatComponent));
 		m_OwnerController = SCR_CharacterControllerComponent.Cast(m_OwnerEntity.FindComponent(SCR_CharacterControllerComponent));
@@ -232,7 +276,7 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	//! Checks conditions specific to investigation behavior
 	bool IsInvestigationAllowed(vector investigatePos)
 	{
-		if (m_AIInfo.HasUnitState(EUnitState.STATIC))
+		if (m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
 			return false;
 		
 		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(GetOwner());
@@ -257,7 +301,7 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	//------------------------------------------------------------------------------------------------
 	//! Checks if new investigation is relevant (ie. should be planned instead of previous investigations
 	//  returns false if one should stick to the old investigation
-	bool IsInvestigationRelevant(vector investigationPosition, float investigationRadiusSq)
+	bool IsInvestigationRelevant(vector investigationPosition)
 	{
 		vector oldInvestigation,myPosition;
 		
@@ -274,16 +318,82 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		return false; // ignore locations further
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	IEntity GetEndangeringVehicle()
+	//----------------------------------------------------------------------------------------------------
+	bool ShouldAttackEnd(out BaseTarget enemyTarget, out bool shouldInvestigateFurther = false, out string context = string.Empty)
 	{
-		return m_EndangeringVehicle;
+		SCR_AIAttackBehavior attackBehavior;
+		// do I have currently run attack behavior?
+		attackBehavior = SCR_AIAttackBehavior.Cast(m_CurrentBehavior);
+		if (attackBehavior)
+		{
+			enemyTarget = attackBehavior.m_Target.m_Value;			
+			if (m_CombatComponent.ShouldAttackEndForTarget(enemyTarget,shouldInvestigateFurther,context))
+				return true;
+			else 
+			{
+#ifdef AI_DEBUG			
+				context = "Attack in progress.";
+#endif				
+				return false;
+			}
+		};
+		// do I have some attack behavior?
+		foreach (SCR_AIActionBase behavior : m_aActions)
+		{
+			attackBehavior = SCR_AIAttackBehavior.Cast(behavior);
+			if (attackBehavior)
+			{
+				enemyTarget = attackBehavior.m_Target.m_Value;
+				if (m_CombatComponent.ShouldAttackEndForTarget(enemyTarget,shouldInvestigateFurther,context))
+					return true;
+			}
+		}
+#ifdef AI_DEBUG			
+		context = "No attack.";
+#endif		
+		return false;
 	}
 	
+	
 	//------------------------------------------------------------------------------------------------
-	void SetEndangeringVehicle(IEntity vehicle)
+	bool FinishAttackForTarget(BaseTarget target, ENodeResult behaviorResult)
 	{
-		m_EndangeringVehicle = vehicle;
+		if (!target)
+			return false;
+		
+		bool returnValue = false;
+		
+		foreach (SCR_AIActionBase action: m_aActions)
+		{
+			if (action.m_eState == EAIActionState.COMPLETED || action.m_eState == EAIActionState.FAILED)
+				continue;
+			auto attack = SCR_AIAttackBehavior.Cast(action);
+			if (!attack)
+			{
+				auto combatMove = SCR_AICombatMoveGroupBehavior.Cast(action);
+				if (combatMove && combatMove.m_Target.m_Value == target)
+				{
+					if (behaviorResult == ENodeResult.SUCCESS)
+						action.Complete();
+					else 
+						action.Fail();
+					returnValue = true;
+				}
+			}
+			else
+			{
+				if (attack.m_Target.m_Value == target)
+				{
+					if (behaviorResult == ENodeResult.SUCCESS)
+						action.Complete();
+					else 
+						action.Fail();
+					returnValue = true;
+				}
+			}
+		};
+		
+		return returnValue;
 	}
 };
 

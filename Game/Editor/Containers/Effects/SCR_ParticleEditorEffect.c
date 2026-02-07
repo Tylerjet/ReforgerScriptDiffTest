@@ -26,7 +26,7 @@ class SCR_ParticleEditorEffect: SCR_BaseEditorEffect
 				if (!entities || entities.Count() == 0) return false;
 				vector pos;
 				if (entities[0].GetPos(pos))
-					SCR_ParticleAPI.PlayOnPositionPTC(m_Particle, pos);
+					SCR_ParticleEmitter.Create(m_Particle, pos);
 				break;
 			}
 			case EEditorEffectTarget.ALL_ENTITIES:
@@ -36,7 +36,7 @@ class SCR_ParticleEditorEffect: SCR_BaseEditorEffect
 				foreach (SCR_EditableEntityComponent entity: entities)
 				{
 					if (entity.GetPos(pos))
-						SCR_ParticleAPI.PlayOnPositionPTC(m_Particle, pos);
+						SCR_ParticleEmitter.Create(m_Particle, pos);
 				}
 				break;
 			}

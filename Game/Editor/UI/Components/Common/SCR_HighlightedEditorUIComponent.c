@@ -68,7 +68,7 @@ class SCR_HighlightedEditorUIComponent: SCR_BaseEditableEntityUIComponent
 			Widget animWidget = w.FindAnyWidget(m_AnimWidgetName);
 			if (animWidget)
 			{
-				WidgetAnimator.StopAllAnimations(animWidget);
+				AnimateWidget.StopAllAnimations(animWidget);
 				animWidget.SetVisible(false);
 			}
 			
@@ -101,8 +101,15 @@ class SCR_HighlightedEditorUIComponent: SCR_BaseEditableEntityUIComponent
 		if (m_bAnimate)
 		{
 			Widget animWidget = w.FindAnyWidget(m_AnimWidgetName);
-			WidgetAnimator.PlayAnimation(new WidgetAnimationOpacity(animWidget, 1, 0, true));
-			WidgetAnimator.PlayAnimation(new WidgetAnimationFrameSize(animWidget, 1, 70, 70, true));
+
+			float size[2] = {70, 70};
+			WidgetAnimationBase anim = AnimateWidget.Opacity(animWidget, 0, 1);
+			if (anim)
+				anim.SetRepeat(true);
+			
+			anim = AnimateWidget.Size(animWidget, size, 1);
+			if (anim)
+				anim.SetRepeat(true);
 			
 			SCR_BaseEditableEntityFilter selectedFilter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.SELECTED);
 			if (selectedFilter)

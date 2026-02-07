@@ -12,7 +12,7 @@ class SCR_PrefabDeleterEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	private bool QueryEntities(IEntity e)
 	{
-		SCR_Global.DeleteEntityAndChildren(e);
+		SCR_EntityHelper.DeleteEntityAndChildren(e);
 		return true;
 	}
 

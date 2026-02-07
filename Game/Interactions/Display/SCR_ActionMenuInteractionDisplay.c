@@ -272,6 +272,7 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	
 
 	protected Widget m_wActionMenu;
+	protected Widget m_wActionButton;
 	protected Widget m_wArrowUp;
 	protected Widget m_wArrowDown;
 	protected Widget m_wHoldText;
@@ -315,6 +316,7 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 		}
 
 		m_wActionMenu = m_wRoot.FindAnyWidget("ActionMenu");
+		m_wActionButton = m_wRoot.FindAnyWidget("ActionButton");
 		m_wArrowUp = m_wRoot.FindAnyWidget("ArrowUp");
 		m_wArrowDown = m_wRoot.FindAnyWidget("ArrowDown");
 		m_wHoldText = m_wRoot.FindAnyWidget("HoldText");
@@ -477,8 +479,11 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	{
 		if (!m_wRoot)
 			return;
-
-		m_wRoot.SetVisible(true);
+		
+		m_bShowLocal = true;
+		
+		if (m_bShowGlobal)
+			m_wRoot.SetVisible(true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -486,6 +491,8 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	{
 		if (!m_wRoot)
 			return;
+		
+		m_bShowLocal = false;
 
 		m_wRoot.SetVisible(false);
 	}
@@ -606,7 +613,8 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 			if (isPointInPIP)
 				alpha = 0.75;
 			
-			m_wRoot.SetOpacity(alpha);
+			m_wActionButton.SetOpacity(alpha);
+			m_wActionMenu.SetOpacity(alpha);
 		}
 	}
 	
@@ -816,7 +824,9 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	{
 		super.ShowDisplay();
 		
-		if (m_wRoot)
+		m_bShowLocal = true;
+		
+		if (m_wRoot && m_bShowGlobal)
 			m_wRoot.SetVisible(true);
 	}
 	
@@ -825,6 +835,8 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	override void HideDisplay()
 	{
 		m_pLastData = null;
+		
+		m_bShowLocal = false;
 		
 		if (m_wRoot)
 			m_wRoot.SetVisible(false);

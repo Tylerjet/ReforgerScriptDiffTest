@@ -67,7 +67,7 @@ class HitZone: ScriptAndConfig
 	proto external float GetCriticalDamageThreshold();
 	//Gets previous damage state of the hitzone
 	proto external EDamageState GetPreviousDamageState();
-	//Hitzone will handle this amount of damage. Damage will only be applied if called from server.
+	//Hitzone will handle this amount of damage. Damage will only be applied if called from server. Use DamageManager.HandleDamage when possible, using this skips DamageManager.OnDamage
 	proto external void HandleDamage(float damage, int damageType, IEntity instigator);
 	//Returns true if its a proxy
 	proto external bool IsProxy();

@@ -66,11 +66,11 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 	// Temporary method to set offset of task marker from base marker. Once we have a proper solution for the map, this can be deleted.
 	float CalculateOffset()
 	{
-		float pixelPerUnit = SCR_MapEntity.GetMapInstance().GetCurrentPixelPerUnit();
+		float pixelPerUnit = SCR_MapEntity.GetMapInstance().GetCurrentZoom();
 		int max_offset = MAX_OFFSET;
 		int min_offset = MIN_OFFSET;
-		float min_zoom = SCR_MapConstants.MIN_PIX_PER_METER;
-		float max_zoom = (SCR_MapEntity.GetMapInstance().GetMinZoom() / SCR_MapEntity.GetMapInstance().GetMapWidget().PixelPerUnit());
+		float min_zoom = SCR_MapConstants.MAX_PIX_PER_METER;
+		float max_zoom = SCR_MapEntity.GetMapInstance().GetMinZoom();
 		
 		float a = max_offset * min_offset * (max_zoom - min_zoom) / (min_offset - max_offset);
 		float b = min_zoom - a / min_offset;
@@ -100,6 +100,36 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 	//PUBLIC OVERRIDE MEMBER METHODS//
 	//******************************//
 	
+	//------------------------------------------------------------------------------------------------
+	override void Deserialize(ScriptBitReader reader)
+	{
+		super.Deserialize(reader);
+		
+		int baseID;
+		reader.ReadInt(baseID);
+		
+		SCR_CampaignBase base = SCR_CampaignBaseManager.GetInstance().FindBaseByID(baseID);
+		if (!base)
+			return;
+		
+		if (base.GetOwningFaction() == GetTargetFaction())
+			return;
+		
+		SetTargetBase(base);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Serialize(ScriptBitWriter writer)
+	{
+		super.Serialize(writer);
+		
+		int baseID = -1;
+		SCR_CampaignBase base = GetTargetBase();
+		if (base)
+			baseID = base.GetBaseID();
+		
+		writer.WriteInt(baseID);
+	}
 	
 	//************************//
 	//PROTECTED MEMBER METHODS//

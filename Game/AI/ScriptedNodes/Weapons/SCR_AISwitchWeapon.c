@@ -1,79 +1,96 @@
-// Script File
-class SCR_AISwitchWeapon: AITaskScripted
+class SCR_AISwitchWeapon : SCR_AIWeaponHandlingBase
 {
-	static const string PORT_WEAPON_TYPE = "WeaponType";
+	protected static const string PORT_WEAPON_COMPONENT = "WeaponComponent";
 	
-	[Attribute("1", UIWidgets.EditBox, "Wanted weapon type", "", ParamEnumArray.FromEnum(EWeaponType) )]
-	EWeaponType m_WeaponType;
-
-	private GenericEntity m_Controlled = null;
-	private BaseWeaponManagerComponent m_WpnManager = null;
-	private SCR_CharacterControllerComponent m_Controller = null;
-	private ref array<WeaponSlotComponent> m_Weapons;
-	
-	override void OnInit(AIAgent owner)
-	{			
-		m_Weapons = new array<WeaponSlotComponent>;
-		m_Controlled = null;
-	}
-	
+	//--------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		int weaponType;
-			
-		if (!GetVariableIn(PORT_WEAPON_TYPE,weaponType))
-			weaponType = m_WeaponType;
-				
-		IEntity contr = owner.GetControlledEntity();
-		if (m_Controlled != contr)
+		if (!m_WeaponMgrComp || !m_ControlComp || !m_InventoryMgr)
+			return ENodeResult.FAIL;
+		
+		BaseWeaponComponent newWeaponComp = null;
+		GetVariableIn(PORT_WEAPON_COMPONENT, newWeaponComp);
+		if (!newWeaponComp)
+			return ENodeResult.FAIL;
+		
+		// Resolve which weapon manager to use
+		BaseCompartmentSlot compartmentSlot = m_CompartmentAccessComp.GetCompartment();
+		BaseWeaponManagerComponent weaponMgr;
+		if (compartmentSlot)
+			weaponMgr = BaseWeaponManagerComponent.Cast(compartmentSlot.GetOwner().FindComponent(BaseWeaponManagerComponent));
+		else
+			weaponMgr = m_WeaponMgrComp;
+		
+		if (!weaponMgr)
+			return ENodeResult.FAIL;
+		
+		// Return success if done
+		BaseWeaponComponent currentWeaponComp = weaponMgr.GetCurrentWeapon();
+		if (currentWeaponComp == newWeaponComp)
 		{
-			m_Controlled = GenericEntity.Cast(contr);
-			if (m_Controlled)
-			{
-				m_WpnManager = BaseWeaponManagerComponent.Cast(m_Controlled.FindComponent(BaseWeaponManagerComponent));
-				m_Controller = SCR_CharacterControllerComponent.Cast(m_Controlled.FindComponent(SCR_CharacterControllerComponent));
-			}
-		}
-
-		if (m_Controller.IsChangingItem())
-		{
-			return ENodeResult.RUNNING;
+			#ifdef AI_DEBUG
+			AddDebugMessage("Weapon switch completed");
+			#endif
+			return ENodeResult.SUCCESS;
 		}
 		
-		if (m_Controlled && m_WpnManager && m_Controller)
+		if (compartmentSlot)
 		{
-			m_WpnManager.GetWeaponsSlots(m_Weapons);
+			//-----------------------------------------
+			// Turret weapon switching
 			
-			foreach (WeaponSlotComponent slot : m_Weapons)
+			IEntity compartmentParentEntity = compartmentSlot.GetOwner();
+			TurretControllerComponent turretController = TurretControllerComponent.Cast(compartmentParentEntity.FindComponent(TurretControllerComponent));
+			
+			if (!turretController)
 			{
-				//PrintFormat("Weapon %1 of type %2", slot, slot.GetWeaponType());
-				if (slot.GetWeaponType() == weaponType)
-				{
-					if (m_Controller.SelectWeapon(slot))
-					{
-						return ENodeResult.SUCCESS;
-					}
-				}							
-			}			
-		}		
+				#ifdef AI_DEBUG
+				AddDebugMessage("Weapon switch failed: no turret controller on turret", LogLevel.WARNING);
+				#endif
+				return ENodeResult.FAIL;
+			}
+			else
+			{
+				#ifdef AI_DEBUG
+				AddDebugMessage(string.Format("StartWeaponSwitchTurret: %1 %2 %3", newWeaponComp, newWeaponComp.GetOwner(), newWeaponComp.GetOwner().GetPrefabData().GetPrefabName()));
+				#endif
+				SCR_AIWeaponHandling.StartWeaponSwitchTurret(turretController, newWeaponComp, owner.GetControlledEntity());
+			}
+			
+		}
+		else
+		{
+			//-----------------------------------------
+			// Character weapon switching
+			
+			if (m_ControlComp.IsChangingItem())
+			{
+				return ENodeResult.RUNNING;
+			}
+			else if (!m_InventoryMgr.Contains(newWeaponComp.GetOwner()))
+			{
+				#ifdef AI_DEBUG
+				AddDebugMessage("Weapon switch failed: weapon is not in inventory", LogLevel.WARNING);
+				#endif
+				
+				return ENodeResult.FAIL;
+			}
+			else
+			{
+				#ifdef AI_DEBUG
+				AddDebugMessage(string.Format("StartWeaponSwitchCharacter: %1 %2 %3", newWeaponComp, newWeaponComp.GetOwner(), newWeaponComp.GetOwner().GetPrefabData().GetPrefabName()));
+				#endif
+				SCR_AIWeaponHandling.StartWeaponSwitchCharacter(m_ControlComp, newWeaponComp);
+				return ENodeResult.RUNNING;
+			}
+		}
+		
 		return ENodeResult.FAIL;
 	}
 	
-	override bool VisibleInPalette()
-	{
-		return true;
-	}
+	//--------------------------------------------------------------------------------------------
+	protected static ref TStringArray s_aVarsIn = {PORT_WEAPON_COMPONENT};
+	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	
-	override bool CanReturnRunning()
-	{
-		return true;
-	}
-	
-	protected static ref TStringArray s_aVarsIn = {
-		PORT_WEAPON_TYPE
-	};
-	override TStringArray GetVariablesIn()
-	{
-		return s_aVarsIn;		
-	}
-};
+	override bool VisibleInPalette() { return true; }
+}

@@ -13,7 +13,7 @@ class SCR_LoadoutArea
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.EditBox, desc: "Row in inventory list" )]
 	private int m_iRow;
 	
-	[Attribute( defvalue: "", uiwidget: UIWidgets.FileNamePicker, desc: "Icon for the Area", params: "edds" )]
+	[Attribute( defvalue: "", desc: "Icon for the Area", params: "edds" )]
 	ResourceName m_sIcon;
 	
 };

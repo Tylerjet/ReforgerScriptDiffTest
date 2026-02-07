@@ -87,13 +87,13 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 	[Attribute()]
 	protected LocalizedString m_sEndGamePopUpConfirm;
 	
-	[Attribute(UISounds.CLICK, UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox, "")]
 	protected string m_sSfxClickedOutsideWindow_Comfirm;
 	
-	[Attribute(UISounds.CLICK_CANCEL, UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.CLICK_CANCEL, UIWidgets.EditBox, "")]
 	protected string m_sSfxClickedOutsideWindow_Cancel;
 	
-	[Attribute(UISounds.CLICK, UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox, "")]
 	protected string m_sSfxOnOpenDialog;
 	
 	//~ Set to comfirm or cancel depending if a setting is changed
@@ -365,14 +365,12 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		//Show toggle lock button
 		SetHasConflictingAttribute(m_bHasConflictingAttributes);
 		
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 
 		m_CategoryConfigs = categoryConfigs;
 		
 		//--- Get current category (must be done before tabs are added, they'll rewrite it)
 		ResourceName currentCategory = m_AttributesManager.GetCurrentCategory();
-		
-		ResourceName tabIcon = string.Empty;
 		
 		if (categoryConfigs.IsEmpty())
 		{
@@ -386,7 +384,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		//Add tabs
 		foreach (int i, ResourceName categoryConfig: categoryConfigs)
 		{			
-			m_TabViewComponent.AddTab(string.Empty, categories[i].GetInfo().GetName(), true, categories[i].GetInfo().GetIconPath(), tabIcon);
+			m_TabViewComponent.AddTab(string.Empty, categories[i].GetInfo().GetName(), true, categories[i].GetInfo().GetIconPath());
 			
 			if (!globalAttributesSet)
 			{
@@ -801,7 +799,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		return typename.EnumToString(EEditableEntityType, type);
 	}
 	
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{			
 		//Show toggle lock button
 		SetHasConflictingAttribute(m_bHasConflictingAttributes);

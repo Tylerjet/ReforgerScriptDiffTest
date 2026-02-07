@@ -252,11 +252,11 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnNewMessageGeneral(string msg, int channel, int senderId)
+	void OnNewMessageGeneral(string msg, int channelId, int senderId)
 	{		
 		SCR_ChatMessageGeneral m = new SCR_ChatMessageGeneral(
 			msg,
-			m_ChatEntity.GetChannel(channel),
+			m_ChatEntity.GetChannel(channelId),
 			senderId,
 			GetGame().GetPlayerManager().GetPlayerName(senderId));
 		
@@ -308,9 +308,6 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 	//------------------------------------------------------------------------------------------------
 	protected void InitDefaultChatCommands()
 	{
-		// "/?" - send basic help with channel list
-		ChatCommandInvoker invoker = GetCommandInvoker("?");
-		invoker.Insert(Callback_OnCommandSendHelpMessageList);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -367,15 +364,5 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 		//! Notify all registered chat panels
 		foreach (SCR_ChatPanel panel : m_aChatPanels)
 			panel.Internal_OnNewMessage(msg);
-	}
-	
-	
-	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnCommandSendHelpMessageList(SCR_ChatPanel panel, string data)
-	{
-		string helpText = panel.Internal_GetChannelListHelpMessage();
-		SCR_ChatMessage msg = new SCR_ChatMessage(helpText);
-		
-		OnNewMessage(msg);
 	}
 };

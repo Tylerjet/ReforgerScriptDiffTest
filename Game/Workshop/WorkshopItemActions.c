@@ -494,3 +494,82 @@ class SCR_WorkshopItemActionCancelReport : SCR_WorkshopItemAction
 		this.Complete();
 	}
 };
+
+
+//-----------------------------------------------------------------------------------------------
+//! Action for blocking author
+class SCR_WorkshopItemActionAddAuthorBlock : SCR_WorkshopItemAction
+{
+	protected ref SCR_WorkshopCallbackBase m_Callback;
+	
+	
+	//-----------------------------------------------------------------------------------------------
+	protected override bool OnActivate()
+	{
+		m_Callback = new SCR_WorkshopCallbackBase();
+		m_Callback.m_OnTimeout.Insert(Callback_OnErrorOrTimeout);
+		m_Callback.m_OnError.Insert(Callback_OnErrorOrTimeout);
+		m_Callback.m_OnSuccess.Insert(Callback_OnSuccess);
+		
+		bool success = m_Wrapper.Internal_AddAuthorBlock(m_Callback);
+		
+		return success;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected override bool OnReactivate()
+	{
+		return this.OnActivate();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void Callback_OnErrorOrTimeout()
+	{
+		this.Fail();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void Callback_OnSuccess()
+	{
+		this.Complete();
+	}
+};
+
+//-----------------------------------------------------------------------------------------------
+//! Action for removing author mod content blocking
+class SCR_WorkshopItemActionRemoveAuthorBlock : SCR_WorkshopItemAction
+{
+	protected ref SCR_WorkshopCallbackBase m_Callback;
+	
+	
+	//-----------------------------------------------------------------------------------------------
+	protected override bool OnActivate()
+	{
+		m_Callback = new SCR_WorkshopCallbackBase();
+		m_Callback.m_OnTimeout.Insert(Callback_OnErrorOrTimeout);
+		m_Callback.m_OnError.Insert(Callback_OnErrorOrTimeout);
+		m_Callback.m_OnSuccess.Insert(Callback_OnSuccess);
+		
+		bool success = m_Wrapper.Internal_RemoveAuthorBlock(m_Callback);
+		
+		return success;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected override bool OnReactivate()
+	{
+		return this.OnActivate();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void Callback_OnErrorOrTimeout()
+	{
+		this.Fail();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void Callback_OnSuccess()
+	{
+		this.Complete();
+	}
+};

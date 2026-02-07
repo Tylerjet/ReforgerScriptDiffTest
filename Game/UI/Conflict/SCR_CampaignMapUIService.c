@@ -4,7 +4,6 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 	protected SCR_CampaignMapUIBase m_Parent;
 
 	protected ECampaignServicePointType m_eServiceType;
-	protected SCR_CampaignDeliveryPoint m_ServiceEntity;
 
 	protected bool m_bEnabled;
 	protected string m_sServiceName;
@@ -40,7 +39,7 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 		if (m_MapItem && m_MapItem.IsVisible()  && mapa)
 		{
 			vector pos = m_MapItem.GetPos();
-			mapa.ZoomPanSmooth(0.5 * mapa.GetMaxZoom(), pos[0], pos[2]);
+			mapa.ZoomPanSmooth(10, pos[0], pos[2]);
 		}
 
 		return false;
@@ -51,6 +50,7 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 	{
 	}
 
+	//------------------------------------------------------------------------------
 	override void AnimCollapse()
 	{
 	}
@@ -62,6 +62,7 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 		m_eIconType = EIconType.SERVICE;
 	}
 
+	//------------------------------------------------------------------------------
 	void ShowHint(bool show)
 	{
 		if (m_Parent)
@@ -108,10 +109,22 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 				m_sServiceName = "#AR-Campaign_Building_FieldHospital";
 			} break;
 
-			case ECampaignServicePointType.REPAIR_DEPOT:
+			case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT:
 			{
-				SetImage(m_sRepairDepot);
-				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_Vehicledepot_US";
+				SetImage(m_sLightVehicleDepot);
+				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_LightVehicleDepot";
+			} break;
+			
+			case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT:
+			{
+				SetImage(m_sHeavyVehicleDepot);
+				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_HeavyVehicleDepot";
+			} break;
+			
+			case ECampaignServicePointType.RADIO_ANTENNA:
+			{
+				SetImage(m_sRadioAntenna);
+				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_RadioAntenna";
 			} break;
 
 			case ECampaignServicePointType.SUPPLY_DEPOT:
@@ -126,36 +139,48 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 				m_sServiceName = "#AR-Campaign_Building_Armory";
 			} break;
 
-			case ECampaignServicePointType.FUEL_DEPOT:
+			/*case ECampaignServicePointType.FUEL_DEPOT:
 			{
 				SetImage(m_sFuelDepot);
 				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_Fueldepot_US";
-			} break;
+			} break;*/
 
-			case ECampaignServicePointType.VEHICLE_DEPOT:
+			/*case ECampaignServicePointType.VEHICLE_DEPOT:
 			{
 				SetImage(m_sVehicleDepot);
 				m_sServiceName = "#AR-Campaign_Building_MotorPool";
-			} break;
+			} break;*/
 		}
 	}
 
+	//------------------------------------------------------------------------------
 	void SetParent(SCR_CampaignMapUIBase parent)
 	{
 		m_Parent = parent;
 	}
 
-	void SetService(SCR_CampaignDeliveryPoint service, bool enabled)
+	//------------------------------------------------------------------------------
+	void SetService(ECampaignServicePointType type, SCR_CampaignServiceComponent service)
 	{
-		m_bEnabled = enabled;
-		m_ServiceEntity = service;
-		m_eServiceType = service.GetServiceType();
+		m_bEnabled = service != null;
+		m_eServiceType = type;
 		SetServiceImage();
-		SCR_CampaignServiceMapDescriptorComponent descr = SCR_CampaignServiceMapDescriptorComponent.Cast(service.FindComponent(SCR_CampaignServiceMapDescriptorComponent));
+		
+		if (!service)
+			return;
+		
+		IEntity owner = service.GetOwner();
+		
+		if (!owner)
+			return;
+		
+		SCR_CampaignServiceMapDescriptorComponent descr = SCR_CampaignServiceMapDescriptorComponent.Cast(owner.FindComponent(SCR_CampaignServiceMapDescriptorComponent));
+		
 		if (descr)
 			m_MapItem = descr.Item();
 	}
 
+	//------------------------------------------------------------------------------
 	override void SetImage(string image)
 	{
 		m_sServiceIcon = image;

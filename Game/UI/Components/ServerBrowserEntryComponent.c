@@ -84,7 +84,7 @@ class ServerBrowserEntryComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OpacityAnimation(int time, float opacityEnd) 
 	{
-		WidgetAnimator.PlayAnimation(GetRootWidget(), WidgetAnimationType.Opacity, opacityEnd, time);
+		AnimateWidget.Opacity(GetRootWidget(), opacityEnd, time);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -6,22 +6,34 @@ class SCR_PlayerRestrictionZoneWarningComponent: ScriptComponent
 {
 	protected SCR_RestrictionZoneWarningHUDComponent m_WarningHUD;
 	protected bool m_bShowingWarning;
+	protected float m_fWarningEffectStrenghtPerc;
+	protected float m_fWarningEffectStrenghtLookAtPerc;
 	
-	
-	void ShowWarningServer(bool showWarning)
+	void ShowWarningServer(bool showWarning, ERestrictionZoneWarningType warningType, bool centerChanged, vector zoneCenter, float warningRadiusSq, float zoneRadiusSq)
 	{
-		if (m_bShowingWarning == showWarning || !Replication.IsServer())
+		if ((m_bShowingWarning == showWarning && !centerChanged) || !Replication.IsServer())
 			return;
 		
 		m_bShowingWarning = showWarning;
-		Rpc(ShowWarningOwner, showWarning);
+		
+		if (showWarning)
+			Rpc(ShowWarningOwner, showWarning, warningType, zoneCenter, warningRadiusSq, zoneRadiusSq);
+		else 
+			Rpc(HideWarningOwner);
 	}
 	
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void ShowWarningOwner(bool showWarning)
+	protected void HideWarningOwner()
+	{
+		if (m_WarningHUD)
+			m_WarningHUD.ShowZoneWarning(false, -1, vector.Zero, -1, -1);
+	}
+	
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void ShowWarningOwner(bool showWarning, ERestrictionZoneWarningType warningType, vector zoneCenter, float warningRadiusSq, float zoneRadiusSq)
 	{		
 		if (m_WarningHUD)
-			m_WarningHUD.Show(showWarning);
+			m_WarningHUD.ShowZoneWarning(showWarning, warningType, zoneCenter, warningRadiusSq, zoneRadiusSq);
 	}
 	
 	override void EOnInit(IEntity owner)

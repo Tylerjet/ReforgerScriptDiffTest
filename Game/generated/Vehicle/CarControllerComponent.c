@@ -16,8 +16,11 @@ class CarControllerComponentClass: VehicleControllerComponentClass
 class CarControllerComponent: VehicleControllerComponent
 {
 	proto external void CancelStart();
+	proto external bool HasAutomaticGearbox();
 	//! returns simulation component of this controllers
 	proto external VehicleWheeledSimulation GetSimulation();
+	//! returns true if throttle "turbo" modifier is active
+	proto external bool IsThrottleTurbo();
 	proto external bool GetPersistentHandBrake();
 	proto external void SetPersistentHandBrake(bool newValue);
 	

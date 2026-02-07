@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Test", description: "This brief script description.", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Test", description: "This brief script description.")]
 class SCR_InteractableBoxComponentClass: ScriptComponentClass
 {
 };
@@ -18,7 +18,7 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	
 	
 	//------------------------------------------------------------------------------------------------
-	void ToggleIsOnFire(string particle, vector offset)
+	void ToggleIsOnFire(ResourceName particle, vector offset)
 	{
 		if (m_bIsDead)
 		{
@@ -36,7 +36,7 @@ class SCR_InteractableBoxComponent : ScriptComponent
 		{
 			if (!m_Fire)
 			{
-				m_Fire = SCR_ParticleAPI.PlayOnObjectPTC(m_Owner, particle, offset);
+				m_Fire = SCR_ParticleEmitter.CreateAsChild(particle, m_Owner, offset);
 			}
 		}
 		else

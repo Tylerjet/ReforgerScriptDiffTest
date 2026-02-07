@@ -19,13 +19,27 @@ class SCR_MilitarySymbolRuleSet
 	protected ref SCR_SortedArray<SCR_GroupIdentityRule> m_aRulesAmplifierSorted = new SCR_SortedArray<SCR_GroupIdentityRule>();
 	
 	/*!
+	Update military symbol based on faction's current state.
+	\param outSymbol Symbol to be updated
+	\param faction Evaluated faction
+	*/
+	void UpdateSymbol(out notnull SCR_MilitarySymbol outSymbol, SCR_Faction faction)
+	{
+		SCR_GroupIdentityRuleData data = SCR_GroupIdentityRuleData.CreateData(faction);
+		
+		ProcessRules(m_aRulesIndentitySorted,	outSymbol, data);
+		ProcessRules(m_aRulesDimensionSorted,	outSymbol, data);
+		ProcessRules(m_aRulesIconSorted,		outSymbol, data);
+		ProcessRules(m_aRulesAmplifierSorted,	outSymbol, data);
+	}
+	/*!
 	Update military symbol based on group's current state.
 	\param outSymbol Symbol to be updated
 	\param group Evaluated group
 	*/
 	void UpdateSymbol(out notnull SCR_MilitarySymbol outSymbol, SCR_AIGroup group)
 	{
-		SCR_GroupIdentityRuleData data = new SCR_GroupIdentityRuleData(group);
+		SCR_GroupIdentityRuleData data = SCR_GroupIdentityRuleData.CreateData(group);
 		
 		ProcessRules(m_aRulesIndentitySorted,	outSymbol, data);
 		ProcessRules(m_aRulesDimensionSorted,	outSymbol, data);
@@ -69,23 +83,31 @@ class SCR_GroupIdentityRuleData
 	ref map<EEditableEntityLabel, float> m_aLabels = new map<EEditableEntityLabel, float>();
 	int m_iMemberCount;
 	
-	void SCR_GroupIdentityRuleData(SCR_AIGroup group)
+	static SCR_GroupIdentityRuleData CreateData(SCR_Faction faction)
 	{
-		m_Faction = SCR_Faction.Cast(group.GetFaction());
-		m_iMemberCount = group.GetAgentsCount();
+		SCR_GroupIdentityRuleData data = new SCR_GroupIdentityRuleData();
+		data.m_Faction = faction;
+		return data;
+	}
+	static SCR_GroupIdentityRuleData CreateData(SCR_AIGroup group)
+	{
+		SCR_GroupIdentityRuleData data = new SCR_GroupIdentityRuleData();
+		
+		data.m_Faction = SCR_Faction.Cast(group.GetFaction());
+		data.m_iMemberCount = group.GetAgentsCount();
 		
 		//--- Weapon types
 		array<AIAgent> agents = {};
-		m_iMemberCount = group.GetAgents(agents);
-		if (m_iMemberCount > 0)
+		data.m_iMemberCount = group.GetAgents(agents);
+		if (data.m_iMemberCount > 0)
 		{
 			IEntity member;
 			BaseWeaponManagerComponent weaponManager;
 			array<WeaponSlotComponent> weapons = {};
 			array<BaseMuzzleComponent> muzzles = {};
 			array<EEditableEntityLabel> labels = {};
-			m_WeaponTypes.Clear();
-			for (int i; i < m_iMemberCount; i++)
+			data.m_WeaponTypes.Clear();
+			for (int i; i < data.m_iMemberCount; i++)
 			{
 				if (!agents[i])
 					continue;
@@ -103,10 +125,10 @@ class SCR_GroupIdentityRuleData
 							continue;
 						
 						float weaponTypeCount;
-						if (m_WeaponTypes.Find(weaponType, weaponTypeCount))
-							m_WeaponTypes[weaponType] = weaponTypeCount + 1;
+						if (data.m_WeaponTypes.Find(weaponType, weaponTypeCount))
+							data.m_WeaponTypes[weaponType] = weaponTypeCount + 1;
 						else
-							m_WeaponTypes.Insert(weaponType, 1);
+							data.m_WeaponTypes.Insert(weaponType, 1);
 						
 						//-- Get muzzle types (e.g., underslung grenade launcher)
 						for (int m = 0, mCount = slot.GetMuzzlesList(muzzles); m < mCount; m++)
@@ -124,10 +146,10 @@ class SCR_GroupIdentityRuleData
 							}
 							if (muzzleWeaponType != -1 && muzzleWeaponType != weaponType)
 							{
-								if (m_WeaponTypes.Find(muzzleWeaponType, weaponTypeCount))
-									m_WeaponTypes[muzzleWeaponType] = weaponTypeCount + 1;
+								if (data.m_WeaponTypes.Find(muzzleWeaponType, weaponTypeCount))
+									data.m_WeaponTypes[muzzleWeaponType] = weaponTypeCount + 1;
 								else
-									m_WeaponTypes.Insert(muzzleWeaponType, 1);
+									data.m_WeaponTypes.Insert(muzzleWeaponType, 1);
 							}
 						}
 					}
@@ -145,10 +167,10 @@ class SCR_GroupIdentityRuleData
 							EEditableEntityLabel label = labels[l];
 							
 							float labelCount;	
-							if (m_aLabels.Find(label, labelCount))
-								m_aLabels[label] = labelCount + 1;
+							if (data.m_aLabels.Find(label, labelCount))
+								data.m_aLabels[label] = labelCount + 1;
 							else
-								m_aLabels.Insert(label, 1);
+								data.m_aLabels.Insert(label, 1);
 						}
 					}
 				}
@@ -156,14 +178,14 @@ class SCR_GroupIdentityRuleData
 			
 			//--- Convert absolute numbers to ratios
 			//Print("------------");
-			foreach (int weaponType, float count: m_WeaponTypes)
+			foreach (int weaponType, float count: data.m_WeaponTypes)
 			{
-				m_WeaponTypes[weaponType] = count / m_iMemberCount;
+				data.m_WeaponTypes[weaponType] = count / data.m_iMemberCount;
 				//PrintFormat("%1: %2", typename.EnumToString(EWeaponType, weaponType), m_WeaponTypes[weaponType]);
 			}
-			foreach (int label, float count: m_aLabels)
+			foreach (int label, float count: data.m_aLabels)
 			{
-				m_aLabels[label] = count / m_iMemberCount;
+				data.m_aLabels[label] = count / data.m_iMemberCount;
 				//PrintFormat("%1: %2", typename.EnumToString(EEditableEntityLabel, label), m_aLabels[label]);
 			}
 		}
@@ -175,8 +197,9 @@ class SCR_GroupIdentityRuleData
 		{
 			vehicle = Vehicle.Cast(vehicles[i]);
 			if (vehicle)
-				m_VehicleTypes |= vehicle.m_eVehicleType;
+				data.m_VehicleTypes |= vehicle.m_eVehicleType;
 		}
+		return data;
 	}
 };
 

@@ -15,6 +15,8 @@ These actions are defined on the editor mode prefab entity as types of SCR_BaseC
 class SCR_ContextActionsEditorComponent : SCR_BaseActionsEditorComponent
 {	
 	protected ref ScriptInvoker m_OnMenuOpen = new ScriptInvoker();
+	protected SCR_LayersEditorComponent m_LayerManager;
+	protected SCR_StatesEditorComponent m_StateManager;
 	
 	/*!
 	Get event called for the user when the menu is opened.
@@ -27,10 +29,75 @@ class SCR_ContextActionsEditorComponent : SCR_BaseActionsEditorComponent
 	
 	override protected int ValidateSelection(bool isInstant)
 	{
-		super.ValidateSelection(isInstant);
+		//--- Evaluate selected/hovered-on entities only when selecting, not when placing or transforming
+		if (!m_StateManager || m_StateManager.GetState() == EEditorState.SELECTING)
+		{
+			//--- With gamepad, when the first selected entity does not have a position, don't clear selection if the cursor is not on one of selected entities
+			//--- Important to allow opening menu on position-less entities like factions
+			bool selectedWithoutPosition;
+			if (m_SelectedManager && !GetGame().GetInputManager().IsUsingMouseAndKeyboard())
+			{
+				vector pos;
+				SCR_EditableEntityComponent firstSelected = m_SelectedManager.GetFirstEntity();
+				selectedWithoutPosition = firstSelected && !firstSelected.GetPos(pos);
+				if (selectedWithoutPosition)
+					m_HoveredEntity = firstSelected;
+			}
+			
+			if (!selectedWithoutPosition)
+			{
+				if (m_HoverManager)
+				{
+					m_HoveredEntity = m_HoverManager.GetFirstEntity();
+					
+					//--- If the entity is inside a composition, make the composition the hovered entity
+					if (m_LayerManager)
+						m_HoveredEntity = m_LayerManager.GetParentBelowCurrentLayer(m_HoveredEntity);
 		
-		EEditorContextActionFlags flags;
+					//--- Update selection (not when the action was activated instantly, i.e., by a shortcut)
+					if (!isInstant)
+					{
+						if (m_HoveredEntity)
+						{
+							//--- Open menu over entity outside of the current selection - select it instead
+							if (!m_SelectedManager.Contains(m_HoveredEntity))
+								m_SelectedManager.Replace(m_HoveredEntity);
+						}
+						else if (m_SelectedManager)
+						{
+							//--- Opened menu without any entity under cursor - clear the selection
+							m_SelectedManager.Clear();
+						}
+					}
+				}
+				else
+				{
+					m_HoveredEntity = null;
+				}
+				
+				//--- Clear previously cached entities
+				m_SelectedEntities.Clear();
+			}
+			
+			//--- Get selected entities	(when the action is activated instantly, e.g., by a shortcut, get selection only if nothing is under cursor)
+			if (!isInstant || !m_HoveredEntity)
+			{
+				if (m_SelectedManager)
+					m_SelectedManager.GetEntities(m_SelectedEntities);
+			}
+			else if (m_HoveredEntity)
+			{
+				m_SelectedEntities.Insert(m_HoveredEntity);
+			}
+		}
+		else
+		{
+			m_HoveredEntity = null;
+			m_SelectedEntities.Clear();
+		}
+		
 		//--- Cache flags
+		EEditorContextActionFlags flags;
 		if (GetManager().IsLimited())
 		{
 			flags |= EEditorContextActionFlags.LIMITED;
@@ -61,6 +128,9 @@ class SCR_ContextActionsEditorComponent : SCR_BaseActionsEditorComponent
 	{
 		super.EOnEditorActivate();
 		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_EDITOR_ACTIONS_MENU, "Actions Menu", "Editor");
+		
+		m_LayerManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent));
+		m_StateManager = SCR_StatesEditorComponent.Cast(SCR_StatesEditorComponent.GetInstance(SCR_StatesEditorComponent));
 	}
 	
 	override void EOnEditorDeactivate()

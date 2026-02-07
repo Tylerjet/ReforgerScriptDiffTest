@@ -97,7 +97,7 @@ class SCR_ButtonEffectPosition : SCR_ButtonEffectWidgetBase
 	
 	override void OnDisabled()
 	{
-		WidgetAnimator.StopAnimation(m_wTarget, WidgetAnimationType.Position);
+		AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationPosition);
 	}
 	
 	protected void Apply(vector value, bool instant)
@@ -105,10 +105,13 @@ class SCR_ButtonEffectPosition : SCR_ButtonEffectWidgetBase
 		if (m_wTarget)
 		{
 			if (!instant && m_vAnimationTime != 0)
-				WidgetAnimator.PlayAnimation(m_wTarget, WidgetAnimationType.Position, 1/m_vAnimationTime, value[0], value[1], false);
+			{
+				float position[2] = {value[0], value[1]};
+				AnimateWidget.Position(m_wTarget, position, 1/m_vAnimationTime);
+			}
 			else
 			{
-				WidgetAnimator.StopAnimation(m_wTarget, WidgetAnimationType.Position);
+				AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationPosition);
 				FrameSlot.SetPos(m_wTarget, value[0], value[1]);
 			}
 		}

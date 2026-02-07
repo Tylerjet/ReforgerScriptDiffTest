@@ -40,10 +40,19 @@ class SharedItem: pointer
 };
 
 typedef func QueryEntitiesCallback;
-bool QueryEntitiesCallback(IEntity e); 
+bool QueryEntitiesCallback(IEntity e);
 
 typedef func TraceEntitiesCallback;
-bool TraceEntitiesCallback(notnull IEntity e, vector start = "0 0 0", vector dir = "0 0 0"); 
+bool TraceEntitiesCallback(notnull IEntity e, vector start = "0 0 0", vector dir = "0 0 0");
+
+TraceParam MakeTraceParam(vector start, vector end, TraceFlags flags)
+{
+	TraceParam param = new TraceParam();
+	param.Start = start;
+	param.End = end;
+	param.Flags = flags;
+	return param;
+}
 
 //@}
  

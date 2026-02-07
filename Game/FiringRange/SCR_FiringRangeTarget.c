@@ -202,7 +202,7 @@ class SCR_FiringRangeTarget : BaseBuilding
 					m_SignalManager.SetSignalValue(m_iTargetHitSignal, ETargetState.TARGET_DOWN);
 					// Play sound
 					if (m_SoundComponent)
-						m_SoundComponent.SoundEvent("SOUND_TARGET_DOWN");
+						m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_TARGET_DOWN);
 			
 					// Count the targets 
 					if (m_LineController)
@@ -218,7 +218,7 @@ class SCR_FiringRangeTarget : BaseBuilding
 					m_SignalManager.SetSignalValue(m_iTargetHitSignal, ETargetState.TARGET_UP);
 					// Play sound
 					if (m_SoundComponent)
-						m_SoundComponent.SoundEvent("SOUND_TARGET_UP");
+						m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_TARGET_UP);
 					
 					Replication.BumpMe();
 				}

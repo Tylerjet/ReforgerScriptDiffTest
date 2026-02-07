@@ -74,6 +74,26 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 		widgets.m_MainContentScrollComponent1.GetOnClick().Insert(OnBackgroundButtonClick);	// Scroll layout intercepts clicks too
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void LoadWorkshopDetails()
+	{
+		if (!m_WorkshopItem)
+			return;
+		
+		if (SCR_WorkshopUiCommon.GetConnectionState())
+		{
+			m_WorkshopItem.m_OnGetAsset.Insert(Callback_OnGetAsset);
+			m_WorkshopItem.m_OnChanged.Insert(Callback_OnItemChanged);
+			m_WorkshopItem.m_OnScenariosLoaded.Insert(Callback_OnDownloadScenarios);
+			m_WorkshopItem.m_OnTimeout.Insert(Callback_OnTimeout);
+			m_WorkshopItem.LoadDetails();
+		}
+		else
+		{
+			Callback_OnDownloadScenarios();
+		}
+	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
@@ -376,7 +396,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 		}
 	}
 	
-	//protected SCR_ModReportDialogComponent m_ModReportDialog;
+	protected SCR_ModReportDialogComponent m_ModReportDialog;
 	
 	//------------------------------------------------------------------------------------------------
 	//! This button used in reported and not reported state. It either sends a report or cancels it.
@@ -386,8 +406,9 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 		if (!m_WorkshopItem.GetOnline())
 			return;
 	
+		// Individually reported mod - reported by me
 		if (m_WorkshopItem.GetReportedByMe())
-		{	
+		{
 			if (m_LoadingOverlayDlg)
 				m_LoadingOverlayDlg.Close();
 			
@@ -397,24 +418,38 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 			m_WorkshopItem.m_OnMyReportLoaded.Insert(Callback_OnLoadMyReportSuccess);
 			m_WorkshopItem.m_OnTimeout.Insert(Callback_OnLoadMyReportTimeout);
 			m_WorkshopItem.LoadReport();
+			
+			return;
 		}
-		else
+		
+		m_ModReportDialog = SCR_ModReportDialogComponent.Cast(m_wRoot.FindHandler(SCR_ModReportDialogComponent));
+		
+		// Mod with reported author 
+		if (m_WorkshopItem.GetModAuthorReportedByMe())
 		{
-			// Not reported yet
-			/*m_ModReportDialog = SCR_ModReportDialogComponent.Cast(m_wRoot.FindHandler(SCR_ModReportDialogComponent));
 			if (m_ModReportDialog)
 			{
-				m_ModReportDialog.OpenSelectReport(m_WorkshopItem);
-			}*/
-			
-			ReportDialogUI dialog = ReportDialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ReportItemDialog));
-			if (dialog)
-			{
-				dialog.Init(m_DetailsMenu);
+				m_ModReportDialog.SetItem(m_WorkshopItem);
+				m_ModReportDialog.OnSelectReportAuthor();
+				m_WorkshopItem.m_OnReportStateChanged.Insert(OnAuthorBlockStateChanged);
 			}
+			
+			return;
+		}
+		
+		// Not reported	
+		if (m_ModReportDialog)
+		{
+			m_ModReportDialog.OpenSelectReport(m_WorkshopItem);
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAuthorBlockStateChanged()
+	{
+		LoadWorkshopDetails();
+		m_WorkshopItem.m_OnReportStateChanged.Remove(OnAuthorBlockStateChanged);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called from scenario line component when scenario state changes
@@ -499,6 +534,13 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 	
 	
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAuthorModUnreport()
+	{
+		
+	}
+	
+	
 	
 	///////////////////////////////////////////////////////////////////
 	// Methods for updating state of individual components
@@ -520,6 +562,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 		if (!GetShown())
 			return;
 		
+		m_WorkshopItem = m_DetailsMenu.m_WorkshopItem;
 		SCR_WorkshopItem item = m_WorkshopItem;
 		
 		auto actionThisItem = item.GetDownloadAction();
@@ -548,10 +591,13 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 			m_NavEnable.SetLabel(enableLabel);
 		}
 		
+		bool reportIndividual = item.GetReportedByMe();
+		bool reportAuthor = item.GetModAuthorReportedByMe();
+		
 		// Report button
 		widgets.m_ReportButtonComponent.SetEnabled(item.GetOnline());
 		string reportButtonMode = "not_reported";
-		if (item.GetReportedByMe())
+		if (reportIndividual || reportAuthor)
 			reportButtonMode = "reported";
 		widgets.m_ReportButtonComponent.SetEffectsWithAnyTagEnabled({"all", reportButtonMode});
 		

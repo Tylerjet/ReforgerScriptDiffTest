@@ -157,9 +157,9 @@ class SCR_PagingButtonComponent : SCR_ButtonBaseComponent
 		PlaySound(m_sSoundHovered);
 
 		if (m_bUseActionHint)
-			WidgetAnimator.PlayAnimation(m_wText, WidgetAnimationType.Color, m_BackgroundHovered, m_fAnimationRate);
+			AnimateWidget.Color(m_wText, m_BackgroundHovered, m_fAnimationRate);
 		else
-			WidgetAnimator.PlayAnimation(m_wBackgroundImage, WidgetAnimationType.Color, m_BackgroundHovered, m_fAnimationRate);
+			AnimateWidget.Color(m_wBackgroundImage, m_BackgroundHovered, m_fAnimationRate);
 
 		return false;
 	}
@@ -173,9 +173,9 @@ class SCR_PagingButtonComponent : SCR_ButtonBaseComponent
 			return false;
 
 		if (m_bUseActionHint)
-			WidgetAnimator.PlayAnimation(m_wText, WidgetAnimationType.Color, m_BackgroundDefault, m_fAnimationRate);
+			AnimateWidget.Color(m_wText, m_BackgroundDefault, m_fAnimationRate);
 		else
-			WidgetAnimator.PlayAnimation(m_wBackgroundImage, WidgetAnimationType.Color, m_BackgroundDefault, m_fAnimationRate);
+			AnimateWidget.Color(m_wBackgroundImage, m_BackgroundDefault, m_fAnimationRate);
 
 		return false;
 	}

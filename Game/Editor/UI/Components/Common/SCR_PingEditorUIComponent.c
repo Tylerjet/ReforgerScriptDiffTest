@@ -9,11 +9,11 @@ class SCR_PingEditorUIComponent: SCR_BaseEditorUIComponent
 	{
 		SendPing(false);
 	}
-	protected void OnEditorPingUrgent(float value, EActionTrigger reason)
+	protected void OnEditorPingUnlimitedOnly(float value, EActionTrigger reason)
 	{
 		SendPing(true);
 	}
-	protected void SendPing(bool urgent)
+	protected void SendPing(bool unlimitedOnly)
 	{
 		vector position;
 		SCR_CursorEditorUIComponent cursorComponent = SCR_CursorEditorUIComponent.Cast(GetRootComponent().FindComponent(SCR_CursorEditorUIComponent, true));
@@ -25,7 +25,7 @@ class SCR_PingEditorUIComponent: SCR_BaseEditorUIComponent
 		SCR_EditableEntityComponent target;
 		if (m_HoverFilter) target = m_HoverFilter.GetEntityUnderCursor();
 
-		m_PingManager.SendPing(urgent, position, target);
+		m_PingManager.SendPing(unlimitedOnly, position, target);
 	}
 	
 	override void HandlerAttachedScripted(Widget w)
@@ -39,7 +39,7 @@ class SCR_PingEditorUIComponent: SCR_BaseEditorUIComponent
 		if (inputManager)
 		{
 			inputManager.AddActionListener("EditorPing", EActionTrigger.DOWN, OnEditorPing);
-			//inputManager.AddActionListener("EditorPingUrgent", EActionTrigger.DOWN, OnEditorPingUrgent);
+			inputManager.AddActionListener("EditorPingUnlimitedOnly", EActionTrigger.DOWN, OnEditorPingUnlimitedOnly);
 		}
 	}
 	override void HandlerDeattached(Widget w)
@@ -50,7 +50,7 @@ class SCR_PingEditorUIComponent: SCR_BaseEditorUIComponent
 		if (inputManager)
 		{
 			inputManager.RemoveActionListener("EditorPing", EActionTrigger.DOWN, OnEditorPing);
-			//inputManager.RemoveActionListener("EditorPingUrgent", EActionTrigger.DOWN, OnEditorPingUrgent);
+			inputManager.RemoveActionListener("EditorPingUnlimitedOnly", EActionTrigger.DOWN, OnEditorPingUnlimitedOnly);
 		}
 	}
 };

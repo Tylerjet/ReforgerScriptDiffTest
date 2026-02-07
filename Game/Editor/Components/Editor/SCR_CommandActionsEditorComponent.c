@@ -91,7 +91,15 @@ class SCR_CommandActionsEditorComponent : SCR_BaseActionsEditorComponent
 
 	override int ValidateSelection(bool isInstant)
 	{
-		super.ValidateSelection(isInstant);
+		if (m_HoverManager)
+			m_HoveredEntity = m_HoverManager.GetFirstEntity();
+		else
+			m_HoveredEntity = null;
+		
+		if (m_SelectedManager)
+			m_SelectedManager.GetEntities(m_SelectedEntities);
+		else
+			m_SelectedEntities.Clear();
 		
 		EEditorCommandActionFlags flags;
 		EEditableEntityType type;

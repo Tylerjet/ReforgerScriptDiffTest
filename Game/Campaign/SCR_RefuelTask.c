@@ -55,9 +55,12 @@ class SCR_RefuelTask : SCR_RequestedTask
 	//------------------------------------------------------------------------------------------------
 	static float GetFuelLimit()
 	{
-		SCR_RefuelTaskSupportClass supportClass = SCR_RefuelTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskBySupportClassType(SCR_RefuelTaskSupportClass));
-		if (supportClass)
-			return supportClass.GetFuelLimit();
+		if (!GetTaskManager())
+			return 0.5;
+		
+		SCR_RefuelTaskSupportEntity supportEntity = SCR_RefuelTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_RefuelTaskSupportEntity));
+		if (supportEntity)
+			return supportEntity.GetFuelLimit();
 		
 		return 0.5;
 	}
@@ -103,17 +106,24 @@ class SCR_RefuelTask : SCR_RequestedTask
 		if (GetTargetVehicle() != vehicle)
 			return;
 		
+		if (!GetTaskManager())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
 		SCR_BaseTaskExecutor assignee = GetAssignee();
 		if (!assignee)
 		{
-			GetTaskManager().FailTask(this);
+			supportEntity.FailTask(this);
 			return;
 		}
 		
 		IEntity assigneeControlledEntity = assignee.GetControlledEntity();
 		if (!assigneeControlledEntity || assigneeControlledEntity != refueler)
 		{
-			GetTaskManager().FailTask(this);
+			supportEntity.FailTask(this);
 			return;
 		}
 		
@@ -123,7 +133,7 @@ class SCR_RefuelTask : SCR_RequestedTask
 		float percent = currentFuel / maxFuel;
 		
 		if (percent >= SCR_RefuelTask.GetFuelLimit())
-			GetTaskManager().FinishTask(this);
+			supportEntity.FinishTask(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------

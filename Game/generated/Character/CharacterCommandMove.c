@@ -24,6 +24,9 @@ class CharacterCommandMove: CharacterCommand
 	proto external float GetCurrentMovementAngle();
 	//! 0,1,2..3 idle, walk, run, sprint
 	proto external float GetCurrentMovementSpeed();
+	proto external float GetMovementSlopeAngle();
+	proto external bool IsRolling();
+	proto external bool IsBlendingOutRoll();
 };
 
 /** @}*/

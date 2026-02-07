@@ -151,6 +151,15 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	*/
 	bool CreateEntity(bool unselectPrefab = true, bool canBePlayer = false)
 	{
+		//--- Check if placing is allowed. If not, prevent the operation and send a notification to player.
+		ENotification notification = -1;
+		if (!CanCreateEntity(notification))
+		{
+			if (notification != -1)
+				SendNotification(notification);
+			return false;
+		}
+		
 		SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
 		if (!prefabData || !m_SelectedPrefab) return false;
 		
@@ -261,7 +270,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		
 		array<RplId> entityIds = {};
 		
-		if (!params.Deserialize())
+		if (!CanCreateEntity() || !params.Deserialize())
 		{
 			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex);
 			return;
@@ -311,9 +320,29 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 					recipients.Insert(recipient);
 			}
 			array<vector> offsets = GetOffsets(recipients.Count());
+			array<ref array<int>> distances = {}; 
+			
+			for (int i = 0; i < recipients.Count(); i++)
+			{
+				array<int> distToPosition = {};
+				vector position;
+				recipients[i].GetPos(position);
+				for (int j = 0; j < offsets.Count(); j++)
+				{
+					//precision to meters and 46km as max distance should be enough
+					distToPosition.Insert(Math.Clamp(vector.DistanceSq(position, offsets[j]), 0, int.MAX));
+				}
+				distances.Insert(distToPosition);
+			}
+			
+			// we try to minimize distances from groups to waypoints
+			// in general it produces paths with less scrossings between them
+			array<int> permutation = {};
+			AssignmentSolver.Solve(distances, permutation);
+
 			foreach (int i, SCR_EditableEntityComponent recipient: recipients)
 			{
-				params.m_Offset = offsets[i];
+				params.m_Offset = offsets[permutation[i]];
 				entity = SpawnEntityResource(params, prefabResource, playerID, isQueue, recipient);
 				entityIds.Insert(Replication.FindId(entity));
 			}
@@ -327,10 +356,10 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			entityIds.Insert(Replication.FindId(entity));
 			currentLayerID = Replication.FindId(params.m_CurrentLayer);
 		}
-		Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, isQueue, hasRecipients, currentLayerID);
+		Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, isQueue, hasRecipients, currentLayerID, 0);
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void CreateEntityOwner(int prefabID, array<RplId> entityIds, int entityIndex, int isQueue, bool hasRecipients, RplId currentLayerID)
+	protected void CreateEntityOwner(int prefabID, array<RplId> entityIds, int entityIndex, int isQueue, bool hasRecipients, RplId currentLayerID, int attempt)
 	{		
 		//--- Delete the ghost preview which was waiting for server callback
 		IEntity waitingPreview;
@@ -355,10 +384,18 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 				entities.Insert(entity);
 		}
 		
+		//--- Wait for entities to be streamed in
 		if (entities.IsEmpty())
 		{
-			SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
-			Print(string.Format("Error when creating entity from prefab '%1' (id = %2)!", prefabData.GetPrefab(prefabID), prefabID), LogLevel.ERROR);
+			if (attempt < 30)
+			{
+				GetGame().GetCallqueue().CallLater(CreateEntityOwner, 1, false, prefabID, entityIds, entityIndex, isQueue, hasRecipients, currentLayerID, attempt + 1);
+			}
+			else
+			{
+				SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
+				Print(string.Format("Error when creating entity from prefab '%1' (id = %2)!", prefabData.GetPrefab(prefabID), prefabID), LogLevel.ERROR);
+			}
 			return;
 		}
 		
@@ -395,6 +432,17 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		
 		SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
 		if (prefabData) SCR_BaseEditorEffect.Activate(prefabData.GetEffectsPlaceConfirm(), this, pos, entities);
+	}
+	/*!
+	Check if the entity can be created.
+	Evaluated both on client an on server (notification is used only on client though)
+	To be overriden by inherited classes.
+	\param[out] outNotification Notification to be sent when attempting to place the entity
+	\return True to allow placing, false to prevent it
+	*/
+	bool CanCreateEntity(out ENotification outNotification = -1)
+	{
+		return true;
 	}
 	
 	protected void CheckBudgetOwner()
@@ -516,24 +564,46 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		else
 			params.GetWorldTransform(logTransform);
 		
+		
 		if (recipient)
 			Print(string.Format("@\"%1\" placed for %3 at %2", prefabResource.GetResource().GetResourceName().GetPath(), logTransform, recipient.GetDisplayName()), LogLevel.VERBOSE);
-		else
+		else if (prefabResource)
 			Print(string.Format("@\"%1\" placed at %2", prefabResource.GetResource().GetResourceName().GetPath(), logTransform), LogLevel.VERBOSE);
+		else 
+			Print(string.Format("@\"%1\" placed at %2", "Entity", logTransform), LogLevel.VERBOSE);
 		
 		return entity;
-	}
+	}	
+	
 	protected static EEditorPlacingFlags GetCompatiblePlacingFlags(Resource prefabResource)
 	{
 		IEntityComponentSource component = SCR_EditableEntityComponentClass.GetEditableEntitySource(prefabResource);
+		
 		switch (SCR_EditableEntityComponentClass.GetEntityType(component))
 		{
 			case EEditableEntityType.CHARACTER:
 				return EEditorPlacingFlags.CHARACTER_PLAYER;
 			
+			//~ Check if can spawn occupants within vehicle
 			case EEditableEntityType.VEHICLE:
-				return EEditorPlacingFlags.VEHICLE_CREWED;
-			
+			{
+				SCR_EditableVehicleUIInfo uiInfo = SCR_EditableVehicleUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(component));
+				if (!uiInfo)
+					return 0;
+				
+				EEditorPlacingFlags vehiclePlacingFlags = 0; 
+				
+				//~ Check if can spawn with crew
+				if (uiInfo.CanFillWithCrew())
+					vehiclePlacingFlags |= EEditorPlacingFlags.VEHICLE_CREWED;
+				
+				//~ Check if can spawn with passangers
+				if (uiInfo.CanFillWithPassangers())
+					vehiclePlacingFlags |= EEditorPlacingFlags.VEHICLE_PASSENGER;
+				
+				return vehiclePlacingFlags;
+			}
+				
 			case EEditableEntityType.TASK:
 				return EEditorPlacingFlags.TASK_INACTIVE;
 		}
@@ -633,6 +703,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		//--- Place instantly
 		if (m_InstantPlacingParam && !prefab.IsEmpty())
 		{
+			m_StatesManager.SetSafeDialog(true); //--- This will prevent m_StatesManager.SetIsWaiting(false) from failing in CreateEntityOwner()
 			m_SelectedPrefab = prefab;
 			m_Recipients = recipients;
 			CreateEntity();
@@ -775,6 +846,30 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			EEditableEntityBudget blockingBudget;
 			m_BudgetManager.CanPlaceEntitySource(SCR_EditableEntityComponentClass.GetEditableEntitySource(Resource.Load(m_SelectedPrefab).GetResource().ToEntitySource()), blockingBudget, isPlacingPlayer);
 		}
+		
+		if (m_SelectedPrefab && (flag & EEditorPlacingFlags.VEHICLE_CREWED || flag & EEditorPlacingFlags.VEHICLE_PASSENGER))
+		{
+			if (flag & EEditorPlacingFlags.VEHICLE_CREWED)
+			{
+				bool placeCrew = SCR_Enum.HasFlag(m_PlacingFlags, EEditorPlacingFlags.VEHICLE_CREWED);
+				
+				//~ Todo: T Need some way to get the budgets to place and set them in the budgets
+				//Get UI info to get GetTotalCrewBudget()
+				
+				//Print("Update Vehicle Crew Budget: " + placeCrew);
+			}
+			
+			if (flag & EEditorPlacingFlags.VEHICLE_PASSENGER)
+			{
+				bool placePassengers = SCR_Enum.HasFlag(m_PlacingFlags, EEditorPlacingFlags.VEHICLE_PASSENGER);
+				
+				//~ Todo: T Need some way to get the budgets to place and set them in the budgets
+				//Get UI info to get GetTotalPassengerBudget()
+				
+				//Print("Update Vehicle Passengers Budget: " + placePassengers);
+			}
+		}
+		
 	}
 	/*!
 	Toggle value of placing flag.
@@ -873,7 +968,6 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		
 		SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
 		
-		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_ENABLE_AI_PILOT_PLACE, string.Empty, "Enable AI pilot", "Editable Entities");
 	}
 	
 	override void EOnEditorDeactivate()
@@ -882,6 +976,5 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		{
 			m_BudgetManager.Event_OnBudgetMaxReached.Remove(OnBudgetMaxReached);
 		}
-		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_ENABLE_AI_PILOT_PLACE);
 	}
 };

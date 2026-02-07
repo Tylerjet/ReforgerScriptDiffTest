@@ -51,7 +51,8 @@ class SCR_ImageGalleryButtonComponent : SCR_WLibComponentBase
 	{
 		//m_SelectedBar.SetVisible(true);
 		m_wRoot.SetColor(Color.White);
-		WidgetAnimator.PlayAnimation(m_wSizeContent, WidgetAnimationType.PaddingOverlay, 10, 4, 4, 4, 4);
+		float padding[4] = {4, 4, 4, 4};
+		AnimateWidget.Padding(m_wSizeContent, padding, 10);
 		//m_wRoot.SetZOrder(1000);
 	}
 	
@@ -59,7 +60,9 @@ class SCR_ImageGalleryButtonComponent : SCR_WLibComponentBase
 	void Deselect()
 	{
 		//m_SelectedBar.SetVisible(false);
-		WidgetAnimator.PlayAnimation(m_wSizeContent, WidgetAnimationType.PaddingOverlay, 10, 0, 0, 0, 0);
+		
+		float padding[4] = {0, 0, 0, 0};
+		AnimateWidget.Padding(m_wSizeContent, padding, 10);
 		//m_wRoot.SetZOrder(1000);
 	}
 };

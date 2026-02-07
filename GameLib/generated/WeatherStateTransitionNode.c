@@ -31,6 +31,13 @@ class WeatherStateTransitionNode
 	*/
 	proto external float GetStateDurationHours();
 	/*!
+	Checks whether this state transition node points to a valid destination state.
+	Invalid state transition nodes cannot be enqueued or triggered to transition.
+	
+	\return True if valid, False if state transition is pointing to an invalid (not found) destination state.
+	*/
+	proto external bool IsValid();
+	/*!
 	Checks whether a transition can be done between this node and the one.
 	\param destinationState Destination state after the current one.
 	\return true if compatibel, false otherwise.

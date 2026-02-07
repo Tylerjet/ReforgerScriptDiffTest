@@ -252,7 +252,7 @@ class RoadGeneratorEntity : GeneratorBaseEntity
 		{
 			if (requireRoad)
 			{
-				Print("RoadGeneratorEntity requires RoadEntity as chiled in hierarchy to be able to generate the road!", LogLevel.ERROR);
+				Print("RoadGeneratorEntity requires RoadEntity as child in hierarchy to be able to generate the road!", LogLevel.ERROR);
 			}
 			return;
 		}

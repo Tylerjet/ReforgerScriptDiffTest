@@ -43,9 +43,9 @@ class CompartmentAccessComponent: GameComponent
 	proto external bool CanGetOutVehicle();
 	//! Returns true if compartment can be gotten out of via the door with index \param doorIndex
 	proto external bool CanGetOutVehicleViaDoor(int doorIndex);
-	//! Get out of current entity via the door with index \param doorIndex
+	//! Get out of current entity via the door with index \param doorInfoIndex
 	proto external bool GetOutVehicle(int doorInfoIndex);
-	//! Move out of (teleport from) current vehicle via the door with index \param doorIndex
+	//! Move out of (teleport from) current vehicle via the door with index \param doorInfoIndex
 	proto external bool MoveOutVehicle(int doorInfoIndex, vector targetTransform[4]);
 	//! Teleport out of the vehicle
 	proto external bool EjectOutOfVehicle();

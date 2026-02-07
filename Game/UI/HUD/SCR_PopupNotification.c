@@ -26,7 +26,6 @@ enum SCR_ECampaignPopupPriority
 	RELAY_DETECTED,
 	TASK_PROGRESS,
 	TASK_DONE,
-	BASE_OVERRUN,
 	BASE_LOST,
 	MHQ,
 	BASE_UNDER_ATTACK,
@@ -88,7 +87,6 @@ class SCR_PopUpNotification: GenericEntity
 	protected RichTextWidget m_wPopupMsg;
 	protected RichTextWidget m_wPopupMsgSmall;
 	protected ProgressBarWidget m_wStatusProgress;
-	protected ImageWidget m_wLine;
 	
 	protected eCampaignStatusMessage m_ePrevMsg = -1;
 	
@@ -101,7 +99,6 @@ class SCR_PopUpNotification: GenericEntity
 	protected float m_fCurPopupMsgFadeOutStart;
 	protected float m_fCurPopupMsgFadeOutEnd;
 	protected float m_fPopupMsgDefaultAlpha;
-	protected float m_fLineDefaultAlpha;
 	protected float m_fCurStatusMsgFadeInStart = -1;
 	protected float m_fCurStatusMsgDurationStart;
 	protected float m_fCurStatusMsgFadeOutStart;
@@ -257,23 +254,29 @@ class SCR_PopUpNotification: GenericEntity
 	{
 		if (!GetGame().GetHUDManager())
 			return;
+		Widget root;
+		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.Cast(GetGame().GetGameMode());
+		
+		if (!campaign)
+			root = GetGame().GetHUDManager().CreateLayout("{8EF935F196AADE33}UI/layouts/Common/PopupUI.layout", EHudLayers.MEDIUM, 0);
+		else
+			root = campaign.GetOverlayWidget();
+		
+		if (!root)
+			return;
 		
 		// Init can be safely processed
 		GetGame().GetCallqueue().Remove(ProcessInit);
 		
 		// Initialize popups UI
-		Widget root = GetGame().GetHUDManager().CreateLayout("{D74D24696C4F32F0}UI/layouts/HUD/CampaignMP/CampaignPopupUI.layout", EHudLayers.MEDIUM, 0);
-		m_wPopupMsg = RichTextWidget.Cast(root.FindWidget("Popup"));
-		m_wPopupMsgSmall = RichTextWidget.Cast(root.FindWidget("PopupSmall"));
-		m_wLine = ImageWidget.Cast(root.FindWidget("Line"));
+		m_wPopupMsg = RichTextWidget.Cast(root.FindAnyWidget("Popup"));
+		m_wPopupMsgSmall = RichTextWidget.Cast(root.FindAnyWidget("PopupSmall"));
 		m_fPopupMsgDefaultAlpha = m_wPopupMsg.GetColor().A();
-		m_fLineDefaultAlpha = m_wLine.GetColor().A();
 		m_wPopupMsg.SetOpacity(0);
 		m_wPopupMsgSmall.SetVisible(false);
-		m_wLine.SetVisible(false);
 		
 		// Initialize status UI
-		m_wStatusProgress = ProgressBarWidget.Cast(root.FindWidget("Progress"));
+		m_wStatusProgress = ProgressBarWidget.Cast(root.FindAnyWidget("Progress"));
 		m_wStatusProgress.SetVisible(false);
 		
 		SetEventMask(EntityEvent.FRAME);
@@ -291,6 +294,31 @@ class SCR_PopUpNotification: GenericEntity
 			if (mapWidget)
 				root.SetZOrder(mapWidget.GetZOrder() - 1);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ChangeProgressBarFinish(float progressEnd)
+	{
+		float curTime = GetWorld().GetWorldTime();
+		
+		if (m_fProgressBarStart < 0 || m_fProgressBarFinish < 0)
+			return;
+		
+		// Save progress bar status so only its filling speed is changed
+		float curProgress = Math.InverseLerp(m_fProgressBarStart, m_fProgressBarFinish, curTime);
+		
+		// Avoid possible division by 0 later
+		if (curProgress == 1)
+			return;
+		
+		// Apply WorldTime offset so we can use it for filling the bar instead of Replication.Time() which is not as smooth
+		m_fProgressBarFinish = progressEnd - (Replication.Time() - curTime);
+		
+		// Recalculate start value so the bar keeps its original progress
+		m_fProgressBarStart = curTime - ((m_fProgressBarFinish - curTime) / (1 - curProgress)) * curProgress;
+		
+		// Needed to reset the progress bar limits
+		m_wStatusProgress.SetVisible(false);		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -313,7 +341,6 @@ class SCR_PopUpNotification: GenericEntity
 				if (m_fCurPopupMsgFadeInStart != -1)
 				{
 					m_wPopupMsgSmall.SetVisible(false);
-					m_wLine.SetVisible(false);
 					m_fCurPopupMsgFadeInStart = -1;
 					m_aPopupMsgTextsQueue.Remove(m_iHighestPrioIndex);
 					m_aPopupMsgTextsSmallQueue.Remove(m_iHighestPrioIndex);
@@ -383,11 +410,9 @@ class SCR_PopUpNotification: GenericEntity
 					{
 						AlphaLerp(m_wPopupMsg, curTime, curTime, fade, m_fPopupMsgDefaultAlpha);
 						AlphaLerp(m_wPopupMsgSmall, curTime, curTime, fade, m_fPopupMsgDefaultAlpha);
-						AlphaLerp(m_wLine, curTime, curTime, fade, m_fLineDefaultAlpha);
 					};
 					
 					m_wPopupMsgSmall.SetVisible(true);
-					m_wLine.SetVisible(true);
 					m_fCurPopupMsgFadeInStart = curTime;
 					m_fCurPopupMsgDurationStart = m_fCurPopupMsgFadeInStart + fade;
 					m_fCurPopupMsgFadeOutStart = m_fCurPopupMsgDurationStart + duration;
@@ -402,7 +427,6 @@ class SCR_PopUpNotification: GenericEntity
 					{
 						m_wPopupMsg.SetOpacity(0);
 						m_wPopupMsgSmall.SetVisible(false);
-						m_wLine.SetVisible(false);
 						m_fCurPopupMsgFadeInStart = -1;
 						m_aPopupMsgTextsQueue.Remove(m_iHighestPrioIndex);
 						m_aPopupMsgTextsSmallQueue.Remove(m_iHighestPrioIndex);
@@ -420,7 +444,6 @@ class SCR_PopUpNotification: GenericEntity
 						{
 							AlphaLerp(m_wPopupMsg, m_fCurPopupMsgFadeInStart, curTime, fade, m_fPopupMsgDefaultAlpha);
 							AlphaLerp(m_wPopupMsgSmall, m_fCurPopupMsgFadeInStart, curTime, fade, m_fPopupMsgDefaultAlpha);
-							AlphaLerp(m_wLine, m_fCurPopupMsgFadeInStart, curTime, fade, m_fLineDefaultAlpha);
 						}
 						else
 						{
@@ -428,7 +451,6 @@ class SCR_PopUpNotification: GenericEntity
 							{
 								AlphaLerp(m_wPopupMsg, m_fCurPopupMsgFadeOutStart, curTime, fade, m_fPopupMsgDefaultAlpha, false);
 								AlphaLerp(m_wPopupMsgSmall, m_fCurPopupMsgFadeOutStart, curTime, fade, m_fPopupMsgDefaultAlpha, false);
-								AlphaLerp(m_wLine, m_fCurPopupMsgFadeOutStart, curTime, fade, m_fLineDefaultAlpha, false);
 							}
 						}
 					}

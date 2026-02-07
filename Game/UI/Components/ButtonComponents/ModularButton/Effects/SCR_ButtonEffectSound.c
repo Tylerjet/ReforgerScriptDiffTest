@@ -5,7 +5,7 @@ Plays a sound.
 [BaseContainerProps(), SCR_ButtonEffectTitleAttribute("Sound", "")]
 class SCR_ButtonEffectSound : SCR_ButtonEffectBase
 {
-	[Attribute(UISounds.CLICK, UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox, "")]
 	protected string m_sSound;
 
 	override void OnStateDefault(bool instant)

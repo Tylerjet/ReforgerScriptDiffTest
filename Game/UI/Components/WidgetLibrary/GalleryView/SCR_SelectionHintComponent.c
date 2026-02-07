@@ -175,7 +175,7 @@ class SCR_SelectionHintComponent : ScriptedWidgetComponent
 			return;
 		
 		if (animate && m_fAnimationRate < SCR_WLibComponentBase.START_ANIMATION_RATE)
-			WidgetAnimator.PlayAnimation(w, WidgetAnimationType.Color, color, m_fAnimationRate);
+			AnimateWidget.Color(w, color, m_fAnimationRate);
 		else
 			w.SetColor(color);
 	}

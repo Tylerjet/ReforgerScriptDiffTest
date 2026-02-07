@@ -37,6 +37,11 @@ class AIAgent: GenericController
 	proto external bool HasOrders();
 	proto external ActionManager GetActionManager();
 	proto external AICommunicationComponent GetCommunicationComponent();
+	proto external AIControlComponent GetControlComponent();
+	proto external AIBaseMovementComponent GetMovementComponent();
+	proto external AIBaseAimingComponent GetAimingComponent();
+	proto external AIBaseSteeringComponent GetSteeringComponent();
+	proto external AIPathfindingComponent GetPathfindingComponent();
 	
 	// callbacks
 	

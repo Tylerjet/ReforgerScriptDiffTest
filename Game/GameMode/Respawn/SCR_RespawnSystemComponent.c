@@ -99,6 +99,18 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	// at which the player should be spawned
 	protected override GenericEntity RequestSpawn(int playerId)
 	{
+		PlayerManager pm = GetGame().GetPlayerManager();
+		SCR_ReconnectComponent reconComp = SCR_ReconnectComponent.GetInstance();
+		if (!reconComp || !reconComp.IsReconnectEnabled() || !reconComp.IsInReconnectList(playerId) )
+		{
+		}
+		else 
+		{
+			IEntity ent = reconComp.ReturnControlledEntity(playerId);
+			if (ent)
+				return GenericEntity.Cast(ent);
+		}
+
 		// Catch illicit requests,
 		// TODO@AS:
 		// TODO@LK:

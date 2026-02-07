@@ -4,10 +4,10 @@ class SCR_ArsenalItem
 	[Attribute(params: "et")]
 	protected ResourceName m_ItemResourceName;
 	
-	[Attribute("1", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalItemType))]
+	[Attribute("2", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalItemType))]
 	protected SCR_EArsenalItemType m_eItemType;
 	
-	[Attribute("0", UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(SCR_EArsenalItemMode))]
+	[Attribute("2", UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(SCR_EArsenalItemMode))]
 	protected SCR_EArsenalItemMode m_eItemMode;
 	
 	protected ref Resource m_ItemResource;

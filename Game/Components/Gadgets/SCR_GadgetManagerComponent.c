@@ -139,8 +139,6 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	protected SCR_InventoryStorageManagerComponent m_InventoryStorageMgr;
 	protected SCR_CharacterControllerComponent m_Controller;
 	protected ref SCR_GadgetInvokersInitState m_pInvokersState = new ref SCR_GadgetInvokersInitState(this);
-	protected Widget m_wFade;
-	protected Widget m_wEffectsRoot;	// cache so it can be cleaned up on manager destruction
 	
 	protected ref array<ref array <SCR_GadgetComponent>> m_aInventoryGadgetTypes = {};	// array of gadget types > array of gadget components
 	protected ref map<EGadgetType, int> m_aGadgetArrayMap = new map<EGadgetType, int>; 	// map of gadget types -> gadget type array ID
@@ -194,7 +192,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	//! \param gadget is the subject
 	//! \param targetMode is the mode being switched into
 	//! \param doFocus determines whether the gadget will becomes focused straight away
-	void SetGadgetMode(IEntity gadget, EGadgetMode targetMode, bool doFocus = true)
+	void SetGadgetMode(IEntity gadget, EGadgetMode targetMode, bool doFocus = false)
 	{		
 		if (!gadget)
 			return;
@@ -297,15 +295,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		
 		return false;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Get widget used for gadget fade in/out
-	//! \return fade widget 
-	Widget GetFadeWidget()
-	{
-		return m_wFade;
-	}
-							
+								
 	//------------------------------------------------------------------------------------------------
 	// MANAGER METHODS
 	//------------------------------------------------------------------------------------------------
@@ -339,9 +329,9 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			if (targetMode == EGadgetMode.IN_HAND)	// Gadget to hand
 			{
 
-				if (gadgetComp.CanBeRaised() && gadgetComp.IsSingleHanded())
+				if (gadgetComp.CanBeRaised())
 					m_Controller.TakeGadgetInLeftHand(gadget, gadgetComp.GetAnimVariable(), doFocus);
-				else 
+				else
 					m_Controller.TakeGadgetInLeftHand(gadget, gadgetComp.GetAnimVariable());
 			}
 			else									// Gadget from hand
@@ -397,7 +387,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	void HandleInput(IEntity gadget, float inputVal)
 	{
 		EGadgetMode targetMode = EGadgetMode.IN_HAND;
-		bool doFocus = inputVal == 1;	// input modifier from config
+		bool doFocus = inputVal != 1;	// input modifier from config
 		
 		if (m_HeldGadget == gadget)		// already holding this gadget
 			targetMode = EGadgetMode.IN_STORAGE;
@@ -553,7 +543,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 				{
 					SCR_PlayerController controller = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 					if (controller)
-						controller.SetFocusOverride(false);
+						controller.SetGadgetFocus(false);
 				}
 			}
 			
@@ -567,7 +557,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		{
 			SCR_PlayerController controller = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 			if (controller)
-				controller.SetFocusOverride(isFocused);
+				controller.SetGadgetFocus(isFocused);
 		}
 	}
 			
@@ -671,7 +661,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 				if (invItemComp)
 				{
 					EquipmentStorageSlot storageSlot = EquipmentStorageSlot.Cast(invItemComp.GetParentSlot());	// Check whether the gadget is in equipment slot (OnAddedToSlot will happen before this)
-					if (storageSlot)
+					if (storageSlot || gadgetComp.GetType() == EGadgetType.RADIO_BACKPACK)	// backpack slot is not EquipmentStorageSlot but we consider it as such
 					{
 						SetGadgetMode(foundItems[i], EGadgetMode.IN_SLOT);
 						continue;
@@ -703,10 +693,6 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		m_InputManager.AddActionListener("GadgetADS", EActionTrigger.DOWN, OnGadgetADS);
 		m_InputManager.AddActionListener("GadgetADSHold", EActionTrigger.DOWN, OnGadgetADSHold);
 		m_InputManager.AddActionListener("GadgetADSHold", EActionTrigger.UP, OnGadgetADSHold);
-				
-		// TODO this can be moved to map?
-		m_wEffectsRoot = GetGame().GetWorkspace().CreateWidgets("{BB249DB0ADF007C7}UI/layouts/HUD/GadgetEffects.layout");
-		m_wFade = m_wEffectsRoot.FindAnyWidget("Fade");
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -726,9 +712,6 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		m_InputManager.RemoveActionListener("GadgetADS", EActionTrigger.DOWN, OnGadgetADS);
 		m_InputManager.RemoveActionListener("GadgetADSHold", EActionTrigger.DOWN, OnGadgetADSHold);
 		m_InputManager.RemoveActionListener("GadgetADSHold", EActionTrigger.UP, OnGadgetADSHold);
-		
-		if (m_wEffectsRoot)
-			m_wEffectsRoot.RemoveFromHierarchy();
 	}
 	
 	//------------------------------------------------------------------------------------------------

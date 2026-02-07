@@ -15,12 +15,6 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 	{
 		super.OnActivate(pPrevCamera, pPrevCameraResult);
 		
-		if (pPrevCamera)
-		{
-			m_fLeftRightAngle = 0.0;
-			m_fUpDownAngle = 0.0;
-		}
-		
 		CharacterCamera3rdPersonVehicle characterCamera3rdPersonVehicle  = CharacterCamera3rdPersonVehicle.Cast(pPrevCamera);
 		if (characterCamera3rdPersonVehicle)
 		{
@@ -59,8 +53,7 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
 		super.OnUpdate(pDt, pOutResult);
-		pOutResult.m_fUseHeading = 0.0;
-		
+		pOutResult.m_fUseHeading = 0.0;	
 		AddVehiclePitchRoll(m_OwnerVehicle, pDt, pOutResult.m_CameraTM);
 	}
 	
@@ -88,5 +81,4 @@ class CharacterCamera1stPersonVehicleTransition extends CharacterCamera1stPerson
 		super.OnActivate(pPrevCamera, pPrevCameraResult);
 		m_bCameraTransition = true;
 	}
-
 };

@@ -44,6 +44,7 @@ enum ShapeFlags
 	NOINSERT,
 	//! Flat shading (no vertex normals are required)
 	FLAT,
+	// Vertex format flags
 	SVF_NORMAL,
 	SVF_COLOR
 };

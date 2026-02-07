@@ -36,31 +36,31 @@ class SCR_SelectionEditorUIComponent: SCR_BaseEditorUIComponent
 	[Attribute(desc: "Curve defining how will gamepad selection widget expand.", defvalue: "0 0 1 1", uiwidget: UIWidgets.GraphDialog, params: "1 1 0 0")]
 	protected ref Curve m_GamepadSelectionCurve;
 	
-	[Attribute("SOUND_E_MULTI_SELECT_START_KEYBOARD", UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.SOUND_E_MULTI_SELECT_START_KEYBOARD, UIWidgets.EditBox)]
 	protected string m_sSfxStartDrawingSelectionFrame_Keyboard;
 	
-	[Attribute("SOUND_E_MULTI_SELECT_START_GAMEPAD", UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.SOUND_E_MULTI_SELECT_START_GAMEPAD, UIWidgets.EditBox)]
 	protected string m_sSfxStartDrawingSelectionFrame_Gamepad;
 	
-	[Attribute("SOUND_E_TRAN_CANCEL", UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.SOUND_E_TRAN_CANCEL, UIWidgets.EditBox)]
 	protected string m_sSfxSelectionFrameClose_NothingSelected;
 	
-	[Attribute("SOUND_E_TRAN_CANCEL", UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.SOUND_E_TRAN_CANCEL, UIWidgets.EditBox)]
 	protected string m_sSfxSelectionFrameClose_Cancel;
 	
-	[Attribute("SOUND_FE_BUTTON_SELECT", UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_SELECT, UIWidgets.EditBox)]
 	protected string m_sSfxSelectEntities;
 	
-	[Attribute(UISounds.TAB_SWITCH, UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.TAB_SWITCH, UIWidgets.EditBox)]
 	protected string m_sSfxToggleEntities;
 	
-	[Attribute("SOUND_FE_BUTTON_SELECT", UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_SELECT, UIWidgets.EditBox)]
 	protected string m_sSfxToggleSingleEntity_On;
 	
-	[Attribute("SOUND_E_TRAN_CANCEL", UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.SOUND_E_TRAN_CANCEL, UIWidgets.EditBox)]
 	protected string m_sSfxToggleSingleEntity_Off;
 	
-	[Attribute("SOUND_E_TRAN_CANCEL", UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.SOUND_E_TRAN_CANCEL, UIWidgets.EditBox)]
 	protected string m_sSfxClearSelection;
 	
 	protected Widget m_SetSelectionWidget;

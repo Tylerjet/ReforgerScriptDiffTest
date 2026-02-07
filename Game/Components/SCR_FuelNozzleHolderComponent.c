@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted", description: "THIS IS THE SCRIPT DESCRIPTION.", color: "0 0 255 255", icon: HYBRID_COMPONENT_ICON)]
+[ComponentEditorProps(category: "GameScripted", description: "THIS IS THE SCRIPT DESCRIPTION.", icon: HYBRID_COMPONENT_ICON)]
 class SCR_FuelNozzleHolderComponentClass: ScriptComponentClass
 {
 };

@@ -23,8 +23,9 @@ enum EMaterialSoundType
 	//BREAK_METAL_TINNY = 18,
 	BREAK_METAL_REGULAR = 19,
 	BREAK_PLASTIC = 20,
-	BREAK_GLASSBOTTLE = 21
+	BREAK_GLASSBOTTLE = 21,
 	//BREAK_METAL_CRUNCHY = 22
+	BELL_SMALL = 23
 };
 
 //------------------------------------------------------------------------------------------------
@@ -291,11 +292,21 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 		
 		// Set position
 		vector mat[4];
-		mat[3] = GetOwner().GetOrigin();
+		
+		// Get position offset for slotted entities
+		vector mins;
+		vector maxs;
+		GetOwner().GetWorldBounds(mins, maxs);
+		
+		for (int i = 0; i < 3; i++)
+		{
+			mat[3][i] = mins[i] + Math.AbsFloat(((maxs[i] - mins[i]) * 0.5));
+		}
+				
 		soundComponent.SetTransformation(mat);
 		
 		// Play sound
-		soundComponent.PlayStr("SOUND_MPD_" + typename.EnumToString(EMaterialSoundType, componentData.m_eMaterialSoundType));
+		soundComponent.PlayStr(SCR_SoundEvent.SOUND_MPD_ + typename.EnumToString(EMaterialSoundType, componentData.m_eMaterialSoundType));
 	}
 	
 	//------------------------------------------------------------------------------------------------

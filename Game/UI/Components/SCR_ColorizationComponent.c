@@ -126,7 +126,7 @@ class SCR_ColorizationComponent: ScriptedWidgetComponent
 			return;
 
 		if (m_bAnimateWidgets)
-			WidgetAnimator.PlayAnimation(m_Widget, WidgetAnimationType.Color, color, m_wAnimationSpeed);
+			AnimateWidget.Color(m_Widget, color, m_wAnimationSpeed);
 		else
 			m_Widget.SetColor(color);
 	}

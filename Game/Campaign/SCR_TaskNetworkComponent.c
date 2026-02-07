@@ -103,17 +103,22 @@ class SCR_TaskNetworkComponent : ScriptComponent
 		if (!assignee)
 			return;
 		
-		SCR_BaseTaskManager taskManager = GetTaskManager();
+		if (!GetTaskManager())
+			return;
 		
-		SCR_BaseTask task = taskManager.GetTask(taskID);
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
+		SCR_BaseTask task = GetTaskManager().GetTask(taskID);
 		if (!task)
 			return;
 		
 		SCR_BaseTask assigneeTask = assignee.GetAssignedTask();
 		if (assigneeTask)
-			taskManager.UnassignTask(assigneeTask, assignee, SCR_EUnassignReason.GM_REASSIGN);
+			supportEntity.UnassignTask(assigneeTask, assignee, SCR_EUnassignReason.GM_REASSIGN);
 		
-		taskManager.AssignTask(task, assignee, true);
+		supportEntity.AssignTask(task, assignee, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -121,7 +126,12 @@ class SCR_TaskNetworkComponent : ScriptComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RPC_CancelTask(int taskID)
 	{
-		GetTaskManager().CancelTask(taskID);
+		if (!GetTaskManager())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (supportEntity)
+			supportEntity.CancelTask(taskID);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Character", description: "Scripted character controller", color: "0 0 255 255", icon: HYBRID_COMPONENT_ICON)]
+[ComponentEditorProps(category: "GameScripted/Character", description: "Scripted character controller", icon: HYBRID_COMPONENT_ICON)]
 class SCR_CharacterControllerComponentClass : CharacterControllerComponentClass
 {
 };
@@ -22,7 +22,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	
 	// Item even invokers
 	ref ScriptInvoker<IEntity> m_OnItemUseBeganInvoker = new ref ScriptInvoker<IEntity>();
-	ref ScriptInvoker<IEntity> m_OnItemUseCompleteInvoker = new ref ScriptInvoker<IEntity>();
+	ref ScriptInvoker<IEntity, SCR_ConsumableEffectAnimationParameters> m_OnItemUseCompleteInvoker = new ref ScriptInvoker<IEntity, SCR_ConsumableEffectAnimationParameters>();
 
 	// Diagnostics, debugging
 	#ifdef ENABLE_DIAG
@@ -43,7 +43,12 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//! Will be called when item use action is started
 	override void OnItemUseBegan(IEntity item) { m_OnItemUseBeganInvoker.Invoke(item); };
 	//! Will be called when item use action is complete
-	override void OnItemUseComplete(IEntity item) { m_OnItemUseCompleteInvoker.Invoke(item); };
+	override void OnItemUseComplete(IEntity item, int actionType, int intParam, float floatParam, bool boolParam)
+	{
+		// Animation duration is not returned.
+		SCR_ConsumableEffectAnimationParameters animParams = new SCR_ConsumableEffectAnimationParameters(actionType, -1.0, intParam, floatParam, boolParam);
+		m_OnItemUseCompleteInvoker.Invoke(item, animParams);
+	};
 
 	//------------------------------------------------------------------------------------------------
 	// handling of melee events. Sends true if melee started, false, when melee ends
@@ -398,36 +403,24 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			UpdateDebugBoolWidget("CanFireWeapon", GetCanFireWeapon());
 			UpdateDebugBoolWidget("CanThrow", GetCanThrow());
 			UpdateDebugBoolWidget("InFreeLook", IsFreeLookEnabled());
+		
+			TextWidget wMovementAngle = TextWidget.Cast(m_wDebugRootWidget.FindAnyWidget("MovementAngle"));
+			CharacterCommandHandlerComponent handler = m_AnimComponent.GetCommandHandler();
+			if (!wMovementAngle || !handler)
+				return;
+			CharacterCommandMove moveCmd = handler.GetCommandMove();
+			if (moveCmd)
+			{
+				float currAngle = moveCmd.GetMovementSlopeAngle();
+				wMovementAngle.SetText(currAngle.ToString() + "deg");
+			}
 		}
 	
 	//-----------------------------------------------------------------------------
 	// #endif ENABLE_DIAG
 	//-----------------------------------------------------------------------------
 	#endif
-	
-		//------------------------------------------------------------------------------------------------
-	private void OnMapOpen(MapConfiguration config)
-	{
-		//! enable/disables player movement when the map is hidden/shown
-		// true, disables the controls.
 		
-		if (SCR_PlayerController.GetLocalControlledEntity() != GetOwner())
-			return;
-
-		SetDisableMovementControls(true);
-	}
-	
-	private void OnMapClose(MapConfiguration config)
-	{
-		//! enable/disables player movement when the map is hidden/shown
-		// false, enables the controls.
-		
-		if (SCR_PlayerController.GetLocalControlledEntity() != GetOwner())
-			return;
-
-		SetDisableMovementControls(false);
-	}
-	
 	override void OnPrepareControls(IEntity owner, ActionManager am, float dt, bool player)
 	{
 		if (am.GetActionTriggered("GetOut") && CanGetOutVehicleScript())
@@ -447,6 +440,28 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 				{
 					compAccess.GetOutVehicle(-1);
 				}
+			}
+		}
+		if (GetStance() == ECharacterStance.PRONE)
+		{
+			float value = am.GetActionValue("CharacterRoll");
+			int rollValue = 0;
+			if (value < -0.0)
+			{
+				rollValue = 1;
+			}
+			else if (value > 0.0)
+			{
+				rollValue = 2;
+			}
+			// If one wants to use hold action - it needs too be allowed on CharacterControllerComponent at character prefab or by calling EnableHoldInputForRoll(true) during construction/initialization
+			if (ShouldHoldInputForRoll())
+			{
+				SetRoll(rollValue);
+			}
+			else if (rollValue != 0)
+			{
+				SetRoll(rollValue);
 			}
 		}
 	}
@@ -471,17 +486,11 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			s_bDiagRegistered = true;
 		}
 		#endif
-
-		SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
-		SCR_MapEntity.GetOnMapClose().Insert(OnMapClose);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_CharacterControllerComponent()
 	{
-		SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
-		SCR_MapEntity.GetOnMapClose().Remove(OnMapClose);
-
 		#ifdef ENABLE_DIAG
 		if (m_wDebugRootWidget)
 			DeleteDebugUI();
@@ -513,6 +522,27 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			variableFovInfo.SetPrevious(allowCycling);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		If a weapon with multiple sights is equipped, switch the next or previous sights on the weapon (if any)
+		\param direction If above zero, advances to next sights. If below zero, advances to previous sights.
+	*/
+	void SetNextSights(int direction = 1)
+	{
+		if (!m_WeaponManager)
+			return;
+		
+		BaseWeaponComponent weaponComponent = m_WeaponManager.GetCurrentWeapon();
+		if (!weaponComponent)
+			return;
+
+		if (direction > 0)
+			weaponComponent.SwitchNextSights();
+		else
+			weaponComponent.SwitchPrevSights();
+	}
+
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns currently used SightsFOVInfo if any, null otherwise.

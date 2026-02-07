@@ -420,7 +420,7 @@ class SCR_ListViewComponent : ScriptedWidgetComponent
 		if (nextBtn)
 		{
 			nextBtn.ShowBorder(true, false);
-			WidgetAnimator.StopAnimation(nextBtn.m_wBorder, WidgetAnimationType.Opacity);
+			AnimateWidget.StopAnimation(nextBtn.m_wBorder, WidgetAnimationOpacity);
 			nextBtn.m_wBorder.SetOpacity(1);
 		}
 	}
@@ -438,7 +438,7 @@ class SCR_ListViewComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OpacityAnimation(Widget w, int time, float opacityEnd) 
 	{
-		WidgetAnimator.PlayAnimation(w, WidgetAnimationType.Opacity, opacityEnd, time);
+		AnimateWidget.Opacity(w, opacityEnd, time);
 	}
 	
 	//------------------------------------------------------------------------------------------------

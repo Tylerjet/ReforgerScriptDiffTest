@@ -16,7 +16,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 	protected static const string ASSIGNEE_TIMEOUT_TEXT 			= "#AR-CampaignTasks_ButtonWait";
 	protected static const string TASK_ABANDONED_TEXT 				= "#AR-CampaignTasks_ButtonWait";
 
-	protected static const float ANIM_SPEED = WidgetAnimator.FADE_RATE_SUPER_FAST;
+	protected static const float ANIM_SPEED = UIConstants.FADE_RATE_SUPER_FAST;
 
 	protected string m_sAssignees = "AssigneesLayout";
 	protected Widget m_wAssignees;
@@ -94,6 +94,14 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 			UpdateAssignButtonText(task);
 			SetTaskTextColor();
 			SetTaskIconColor();
+			
+			TextWidget textWidget = TextWidget.Cast(m_wRoot.FindAnyWidget("TaskTitle"));
+			if (textWidget)
+				task.SetTitleWidgetText(textWidget, task.GetTaskListTaskTitle());
+			
+			textWidget = TextWidget.Cast(m_wRoot.FindAnyWidget("TaskDescription"));
+			if (textWidget)
+				task.SetTitleWidgetText(textWidget, task.GetTaskListTaskText());
 		}
 	}
 
@@ -137,9 +145,10 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 
 		m_AssignButton.SetEnabled(expand);
 		Widget assignBtn = m_wRoot.FindAnyWidget("AcceptButton");
-		WidgetAnimator.PlayAnimation(assignBtn, WidgetAnimationType.Opacity, targetOpacity, ANIM_SPEED);
+		AnimateWidget.Opacity(assignBtn, targetOpacity, ANIM_SPEED);
+
 		Widget mapBtn = m_wRoot.FindAnyWidget("MapButton");
-		WidgetAnimator.PlayAnimation(mapBtn, WidgetAnimationType.Opacity, targetOpacity, ANIM_SPEED);
+		AnimateWidget.Opacity(mapBtn, targetOpacity, ANIM_SPEED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -151,7 +160,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 		if (!im.IsUsingMouseAndKeyboard() || !IsAnyButtonHovered())
 			return false;
 
-		SCR_UISoundEntity.SoundEvent(UISounds.CLICK);
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.CLICK);
 		ExpandTaskLayout();
 
 		return false;

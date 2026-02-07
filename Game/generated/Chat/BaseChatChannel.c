@@ -28,8 +28,8 @@ class BaseChatChannel: ScriptAndConfig
 	/*!
 	Method processes chat message before its send to the server and after receiving it by the server.
 	Will be revisited and made osbolete soon
-	\param sender Senders ChatComponent
 	\param message Chat message
+	\param senderChatComp Senders ChatComponent
 	\param isAuthority true when executed on the server
 	\return Return if the message should be send further through the chat pipeline (send to the server or to the other clients)
 	*/

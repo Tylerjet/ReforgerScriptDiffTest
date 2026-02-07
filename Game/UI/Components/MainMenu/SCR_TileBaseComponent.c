@@ -62,8 +62,8 @@ class SCR_TileBaseComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
-		WidgetAnimator.PlayAnimation(m_wImage, WidgetAnimationType.ImageSaturation, m_fSaturationSelected, m_fAnimationRate);
-		WidgetAnimator.PlayAnimation(m_wImage, WidgetAnimationType.Color, m_ColorSelected, m_fAnimationRate);
+		AnimateWidget.Saturation(m_wImage, m_fSaturationSelected, m_fAnimationRate);
+		AnimateWidget.Color(m_wImage, m_ColorSelected, m_fAnimationRate);
 		m_OnFocused.Invoke(this);
 		return false;
 	}
@@ -71,8 +71,8 @@ class SCR_TileBaseComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
-		WidgetAnimator.PlayAnimation(m_wImage, WidgetAnimationType.ImageSaturation, m_fSaturationDeselected, m_fAnimationRate);
-		WidgetAnimator.PlayAnimation(m_wImage, WidgetAnimationType.Color, m_ColorDeselected, m_fAnimationRate);
+		AnimateWidget.Saturation(m_wImage, m_fSaturationDeselected, m_fAnimationRate);
+		AnimateWidget.Color(m_wImage, m_ColorDeselected, m_fAnimationRate);
 		m_OnFocusLost.Invoke(this);
 		return false;
 	}

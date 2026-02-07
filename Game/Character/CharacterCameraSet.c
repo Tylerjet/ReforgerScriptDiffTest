@@ -1,13 +1,12 @@
 class CharacterCameraSet : ScriptedCameraSet
 {
-	static const int 	CHARACTERCAMERA_DEBUG 					= 0;		//!< 1st person camera
+	static const int 	CHARACTERCAMERA_DEBUG 					= 0;		//!< just a debug
 	static const int 	CHARACTERCAMERA_1ST 					= 1;		//!< 1st person camera
-	static const int 	CHARACTERCAMERA_1ST_UNCONSCIOUS			= 2;		//!< unconscious
+	static const int 	CHARACTERCAMERA_1ST_BONE_TRANSFORM		= 2;		//!< same as 1st, only uses full transform of head bone with given offset
 	static const int	CHARACTERCAMERA_1ST_VEHICLE				= 3;		//!< vehicle 1st person
 	static const int	CHARACTERCAMERA_1ST_VEHICLE_TRANSITION	= 4;		//!< vehicle 1st person
 	static const int	CHARACTERCAMERA_1ST_TURRET				= 5;		//!< turret in 1st person
 	static const int	CHARACTERCAMERA_1ST_READY				= 6;		//!< weapon ready in 1st person
-	static const int	CHARACTERCAMERA_1ST_DEATH				= 7;
 	
 	static const int 	CHARACTERCAMERA_3RD_ERC 				= 10;		//!< 3rd - standing
 	static const int 	CHARACTERCAMERA_3RD_ERC_SPR 			= 11;		//!< 3rd - standing sprint
@@ -55,12 +54,12 @@ class CharacterCameraSet : ScriptedCameraSet
 		// 1PV
 		//
 		RegisterCameraCreator(CHARACTERCAMERA_1ST, CharacterCamera1stPerson);
-		//RegisterCameraCreator(CHARACTERCAMERA_1ST_UNCONSCIOUS, CharacterCamera1stPersonUnconscious);
+		RegisterCameraCreator(CHARACTERCAMERA_1ST_BONE_TRANSFORM, CharacterCamera1stPersonBoneTransform);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_VEHICLE, CharacterCamera1stPersonVehicle);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_VEHICLE_TRANSITION, CharacterCamera1stPersonVehicleTransition);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_TURRET, CharacterCamera1stPersonTurret);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_READY, CharacterCamera1stPersonReady);
-		RegisterCameraCreator(CHARACTERCAMERA_1ST_DEATH, CharacterCamera1stPersonDeath);
+		
 
 		//
 		// 3PV

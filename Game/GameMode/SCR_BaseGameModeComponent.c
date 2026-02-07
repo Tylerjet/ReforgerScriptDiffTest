@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Base for gamemode scripted component.", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Base for gamemode scripted component.")]
 class SCR_BaseGameModeComponentClass: ScriptComponentClass
 {
 };

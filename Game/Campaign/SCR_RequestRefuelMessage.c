@@ -6,8 +6,12 @@ class SCR_RequestRefuelMessage : SCR_RequestMessage
 	//------------------------------------------------------------------------------------------------
 	override void OnDelivery(BaseRadioComponent radio, int freq, float quality, int transcvIdx)
 	{
-		if (m_RequesterMainBase && radio && radio.GetOwner() == m_RequesterMainBase)
-			GetTaskManager().RequestRefuel(m_iRequesterID, m_RequesterVehicle, m_vPosition);
+		if (m_RequesterMainBase && radio && radio.GetOwner() == m_RequesterMainBase && GetTaskManager())
+		{
+			SCR_RefuelTaskSupportEntity supportClass = SCR_RefuelTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_RefuelTaskSupportEntity));
+			if (supportClass)
+				supportClass.RequestRefuel(m_iRequesterID, m_RequesterVehicle, m_vPosition);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

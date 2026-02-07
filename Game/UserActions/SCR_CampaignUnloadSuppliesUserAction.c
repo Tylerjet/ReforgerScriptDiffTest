@@ -193,16 +193,19 @@ class SCR_CampaignUnloadSuppliesUserAction : ScriptedUserAction
 		if (!playerFaction)
 			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 		
-		SCR_CampaignDeliveryPoint depotDeliveryPoint = m_Base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
-		if (!depotDeliveryPoint)
-			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
-		
-		SCR_CampaignSuppliesComponent baseSuppliesComponent = SCR_CampaignSuppliesComponent.Cast(depotDeliveryPoint.FindComponent(SCR_CampaignSuppliesComponent));
+		SCR_CampaignSuppliesComponent baseSuppliesComponent = SCR_CampaignSuppliesComponent.Cast(m_Base.FindComponent(SCR_CampaignSuppliesComponent));
 		if (!baseSuppliesComponent)	
 			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 		
-		if (vector.DistanceSq(m_Box.GetOrigin(), depotDeliveryPoint.GetOrigin()) > Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2))
-			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
+		if (vector.DistanceSq(m_Box.GetOrigin(), m_Base.GetOrigin()) > Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2))
+		{
+			SCR_CampaignServiceComponent service = m_Base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
+			if (!service)
+				return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
+			
+			if (vector.DistanceSq(m_Box.GetOrigin(), service.GetOwner().GetOrigin()) > Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2))
+				return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
+		}
 		
 		// Player can unload supplies only in bases owned by his faction
 		if (m_Base.GetOwningFaction() != playerFaction)

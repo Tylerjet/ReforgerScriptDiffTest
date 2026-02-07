@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Sound", description: "Signal Debug Component", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Sound", description: "Signal Debug Component")]
 class SCR_SignalDebugComponentClass: ScriptComponentClass
 {
 };

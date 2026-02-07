@@ -27,6 +27,7 @@ class CharacterAnimationComponent: BaseAnimPhysComponent
 	*/
 	proto external bool GetCollisionMinMax(ECharacterStance whichStance, out vector outMin, out vector outMax);
 	proto external void GetMovementState(out CharacterMovementState movementState);
+	proto external bool IsWeaponADSTag();
 	proto external bool IsPrimaryTag(AnimationTagID tagID);
 	proto external bool IsSecondaryTag(AnimationTagID tagID);
 	//! Returns max speed for provided model direction and movement type
@@ -38,6 +39,11 @@ class CharacterAnimationComponent: BaseAnimPhysComponent
 	proto external float GetTopSpeed(int moveType = -1, bool ignoreStance = false);
 	//! Returns the current inertia speed.
 	proto external vector GetInertiaSpeed();
+	//! command handler access
+	proto external CharacterCommandHandlerComponent GetCommandHandler();
+	//! Adds damage effectors that will be applied to ragdoll once it is enabled
+	//! Position and Direction in character's local space, force is in m/kg3, maxLifeTime is time in seconds as for how long this damage will be applicable (scales with decrease)
+	proto external void AddRagdollEffectorDamage(vector posLS, vector dirLS, float force, float radius, float maxLifeTime);
 };
 
 /** @}*/

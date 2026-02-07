@@ -60,16 +60,27 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 	/*!
 	Get entity prefab.
+	\param shorten True to include only GUID, not file path
 	\return Prefab path
 	*/
-	ResourceName GetPrefab()
+	ResourceName GetPrefab(bool shorten = true)
 	{
-		if (!m_Owner) return ResourceName.Empty;
+		if (!m_Owner)
+			return ResourceName.Empty;
 		
 		EntityPrefabData prefabData = m_Owner.GetPrefabData();
-		if (!prefabData) return ResourceName.Empty;
+		if (!prefabData)
+			return ResourceName.Empty;
 		
-		return prefabData.GetPrefabName();
+		ResourceName prefab = prefabData.GetPrefabName();
+		if (shorten)
+		{
+			int guidIndex = prefab.LastIndexOf("}");
+			if (guidIndex >= 0)
+				prefab = prefab.Substring(0, guidIndex + 1);
+		}
+		
+		return prefab;
 	}
 	/*!
 	Get prefab data of this editable entity.
@@ -158,7 +169,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	*/
 	bool Serialize(out SCR_EditableEntityComponent target = null, out int targetIndex = -1)
 	{
-		return !HasEntityFlag(EEditableEntityFlag.LOCAL) && !HasEntityFlag(EEditableEntityFlag.NON_SERIALIZABLE);
+		return !HasEntityFlag(EEditableEntityFlag.LOCAL) && !HasEntityFlag(EEditableEntityFlag.NON_SERIALIZABLE) && !IsDestroyed();
 	}
 	/*!
 	Deserialize the entity based on given params.
@@ -179,6 +190,14 @@ class SCR_EditableEntityComponent : ScriptComponent
 	{
 		//--- Check if replication is possible (e.g., not when the game is shutting down) or allowed (e.g., not when flagged as LOCAL)
 		return Replication.IsRunning() && !HasEntityFlag(EEditableEntityFlag.LOCAL);
+	}
+	
+	/*!
+	\return Owner entity.
+	*/
+	GenericEntity GetOwnerScripted()
+	{
+		return m_Owner;
 	}
 	/*!
 	Get position representing the entity.
@@ -400,6 +419,30 @@ class SCR_EditableEntityComponent : ScriptComponent
 		m_bStatic = true;
 	}
 	/*!
+	Mark hierarchy in all parents of the entity as dirty, i.e., modified by user.
+	Used for example to evaluate if the entity should be saved into a save file in its entirety.
+	*/
+	void SetHierarchyAsDirtyInParents()
+	{
+		if (!IsServer()) //--- Server-only flag
+			return;
+		
+		SCR_EditableEntityComponent parent = GetParentEntity();
+		while (parent)
+		{
+			parent.SetHierarchyAsDirty();
+			parent = parent.GetParentEntity();
+		}
+	}
+	/*!
+	Mark entity hierarchy as dirty, i.e., modified by user.
+	Used for example to evaluate if the entity should be saved into a save file in its entirety.
+	*/
+	void SetHierarchyAsDirty()
+	{
+		m_Flags |= EEditableEntityFlag.DIRTY_HIERARCHY;
+	}
+	/*!
 	Update transformation of the entity and all its editor children and broadcast the changes to all clients.
 	\param transform Target transformation
 	*/
@@ -414,8 +457,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	/*!
 	Update entity's transformation and broadcast the changes to all clients.
 	\param transform Target transformation
+	\param changedByUser True when the change was initiated by user
 	*/
-	void SetTransform(vector transform[4])
+	void SetTransform(vector transform[4], bool changedByUser = false)
 	{
 		if (!IsServer() || !m_Owner) return;		
 		
@@ -424,6 +468,10 @@ class SCR_EditableEntityComponent : ScriptComponent
 		vector prevTransform1[4];
 	
 		m_Owner.GetWorldTransform(prevTransform1);
+		
+		//--- Entities modified by user are always to be serialized.
+		if (changedByUser)
+			SetHierarchyAsDirtyInParents();
 		
 		//--- Not ideal to hard-code speific classes, but we can no longer use BaseGameEntity as it's also used for interactive lights
 		//BaseGameEntity baseGameEntity = BaseGameEntity.Cast(m_Owner);
@@ -484,10 +532,11 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 	/*!
 	Delete this editable entity.
+	\param changedByUser True when the change was initiated by user
 	\param updateNavmesh True to update navmesh after the entity is deleted (set to false when deleting children of already deleted entity)
 	\return True if deleted
 	*/
-	bool Delete(bool updateNavmesh = true)
+	bool Delete(bool changedByUser = false, bool updateNavmesh = true)
 	{
 		if (!IsServer())
 			return false;
@@ -511,6 +560,10 @@ class SCR_EditableEntityComponent : ScriptComponent
 				GetGame().GetCallqueue().CallLater(aiWorld.RequestNavmeshRebuildAreas, 1000, false, areas); //--- Called *before* the entity is deleted with a delay, ensures the regeneration doesn't accidentaly get anything from the entity prior to full destruction
 			}
 		}
+		
+		//--- Mark parents as dirty
+		if (changedByUser)
+			SetHierarchyAsDirtyInParents();
 		
 		//--- Delete the entity
 		//delete m_Owner;
@@ -621,12 +674,13 @@ class SCR_EditableEntityComponent : ScriptComponent
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		if (core)
 		{
-			EEditableEntityInteractionFlag interactionFlags = int.MAX;
-			if (IsDestroyed())
-				interactionFlags &= ~EEditableEntityInteractionFlag.ALIVE;
+			EEditableEntityInteractionFlag interactionFlags = EEditableEntityInteractionFlag.DELEGATE;
+		
+			if (!IsDestroyed())
+				interactionFlags |= EEditableEntityInteractionFlag.ALIVE;
 			
-			if (GetPlayerID() != 0)
-				interactionFlags &= ~EEditableEntityInteractionFlag.NON_PLAYABLE;
+			if (GetPlayerID() == 0)
+				interactionFlags |= EEditableEntityInteractionFlag.NON_PLAYABLE;
 			
 			return core.CanSetParent(GetEntityType(), parentEntity, interactionFlags);
 		}
@@ -644,7 +698,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	When placed inside a parent, the entity will inherit some of its settings, like access key or visibility settings.
 	Changing it is allowed only on server.
 	\param parentEntity New parent. When null, the entity will be moved to the root.
-	\param changedByUser True when parent the change was initiated by user
+	\param changedByUser True when the change was initiated by user
 	\return New parent (in case it changes inside)
 	*/
 	SCR_EditableEntityComponent SetParentEntity(SCR_EditableEntityComponent parentEntity, bool changedByUser = false)
@@ -683,8 +737,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 		
 		//--- Set and broadcast
 		SCR_EditableEntityComponent parentPrev = m_ParentEntity;
-		SetParentEntityBroadcast(parentEntity, parentPrev);
-		if (CanRpc()) Rpc(SetParentEntityBroadcastReceive, Replication.FindId(parentEntity), Replication.FindId(parentPrev), 0);
+		SetParentEntityBroadcast(parentEntity, parentPrev, changedByUser);
+		if (CanRpc()) Rpc(SetParentEntityBroadcastReceive, Replication.FindId(parentEntity), Replication.FindId(parentPrev), changedByUser);
 		
 		return parentEntity;
 	}
@@ -701,7 +755,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		if (CanRpc())
 		{
 			int parentEntityID = Replication.FindId(m_ParentEntity);
-			Rpc(SetParentEntityBroadcastReceive, parentEntityID, parentEntityID, 0);
+			Rpc(SetParentEntityBroadcastReceive, parentEntityID, parentEntityID);
 		}
 	}
 	/*!
@@ -878,19 +932,19 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 	///@}
 	
-	protected void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev)
+	protected void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser)
 	{
 		m_ParentEntity = parentEntity;
 		
 		if (parentEntity != parentEntityPrev)
-			RemoveFromParent(parentEntityPrev);
+			RemoveFromParent(parentEntityPrev, changedByUser);
 		
-		AddToParent(parentEntity);
+		AddToParent(parentEntity, changedByUser);
 		
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		if (core) core.Event_OnParentEntityChanged.Invoke(this, parentEntity, parentEntityPrev);
 	}
-	protected void SetParentEntityBroadcast(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool isAutoRegistration = false)
+	protected void SetParentEntityBroadcast(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser = false, bool isAutoRegistration = false)
 	{
 		//if (!CanSetParent(parentEntity)) //--- Prevents players from being registered. ToDo: Fix
 		//	return;
@@ -916,35 +970,28 @@ class SCR_EditableEntityComponent : ScriptComponent
 			(parentEntity && parentEntity.IsRegistered() == IsRegistered())
 		)
 		{
-			OnParentEntityChanged(parentEntity, parentEntityPrev);
+			OnParentEntityChanged(parentEntity, parentEntityPrev, changedByUser);
 		}
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void SetParentEntityBroadcastReceive(int parentEntityID, int parentEntityPrevID, int attemptCount)
+	protected void SetParentEntityBroadcastReceive(RplId parentEntityID, RplId parentEntityPrevID, bool changedByUser)
 	{
 		SCR_EditableEntityComponent parentEntity = SCR_EditableEntityComponent.Cast(Replication.FindItem(parentEntityID));
 		SCR_EditableEntityComponent parentEntityPrev = SCR_EditableEntityComponent.Cast(Replication.FindItem(parentEntityPrevID));
 		
-		if (!IsRegistered())
+		//--- When parent entity was not streamed in yet, register this entity as an orphan that will be fully registered after the parent is initialized
+		if (
+			(parentEntityID.IsValid() && !parentEntity) //--- Parent expected, but not found
+			|| (parentEntity && !parentEntity.IsRegistered()) //--- Parent found, but not registered yet (e.g., when Replication order is different)
+		)
 		{
-			//--- Repeated attempts (needed when entity is created; clients may receive entities in different order; ToDo: Better solution?)
-			if (
-				(parentEntityID != -1 && !parentEntity) //--- Parent expected, but not found
-				|| (parentEntityPrevID != -1 && !parentEntityPrev) //--- Previous parent expected, but not found (IGNORE, entity may have been meanwhile deleted)
-				|| (parentEntity && !parentEntity.IsRegistered()) //--- Parent found, but not registered yet (e.g., when Replication order is different)
-				|| (parentEntityPrev && !parentEntityPrev.IsRegistered()) //--- Previous arent found, but not registered yet
-			)
-			{
-				//--- Try again (only limited number of times)
-				if (attemptCount < 60)
-					GetGame().GetCallqueue().CallLater(SetParentEntityBroadcastReceive, 1, false, parentEntityID, parentEntityPrevID, attemptCount + 1);
-				else
-					Log("Error when setting editable entity parent!", true, LogLevel.ERROR);
-				
-				return;
-			}
+			SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+			core.AddOrphan(parentEntityID, Replication.FindId(this));
 		}
-		SetParentEntityBroadcast(parentEntity, parentEntityPrev);
+		else
+		{
+			SetParentEntityBroadcast(parentEntity, parentEntityPrev, changedByUser);
+		}
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void OnRegistrationChanged(bool toRegister)
@@ -980,6 +1027,14 @@ class SCR_EditableEntityComponent : ScriptComponent
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		if (core) core.RegisterEntity(this);
 		SetParentEntityBroadcast(m_ParentEntity, m_ParentEntity);
+		
+		//--- Restore orphaned entites belonging to this parent
+		array<SCR_EditableEntityComponent> orphans = {};
+		for (int i = 0, count = core.RemoveOrphans(Replication.FindId(this), orphans); i < count; i++)
+		{
+			orphans[i].SetParentEntityBroadcast(this, orphans[i].GetParentEntity());
+			Print(string.Format("Editor parent %1 restored for orphan %2", this, orphans[i]), LogLevel.VERBOSE);
+		}
 	}
 	protected void Unregister(IEntity owner = null)
 	{
@@ -989,11 +1044,15 @@ class SCR_EditableEntityComponent : ScriptComponent
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		if (core) core.UnRegisterEntity(this, owner);
 	}
-	protected void AddToParent(SCR_EditableEntityComponent parentEntity)
+	protected void AddToParent(SCR_EditableEntityComponent parentEntity, bool changedByUser)
 	{
 		if (parentEntity)
 		{
 			parentEntity.AddChild(this);
+		
+			//--- Mark a dirty
+			if (changedByUser)
+				SetHierarchyAsDirtyInParents();
 		}
 		else
 		{
@@ -1001,10 +1060,14 @@ class SCR_EditableEntityComponent : ScriptComponent
 			if (core) core.AddToRoot(this);
 		}
 	}
-	protected void RemoveFromParent(SCR_EditableEntityComponent parentEntity)
+	protected void RemoveFromParent(SCR_EditableEntityComponent parentEntity, bool changedByUser)
 	{
 		if (parentEntity)
 		{
+			//--- Mark a dirty
+			if (changedByUser)
+				SetHierarchyAsDirtyInParents();
+			
 			parentEntity.RemoveChild(this);
 		}
 		else
@@ -1454,7 +1517,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		string space = " ";
 		for (int i = 0; i < 50 - prefix.Length() - displayName.Length(); i++) space += " ";
 		
-		return string.Format("%1%2 | entity: %3, prefab: '%4', pos: %5", displayName, space, m_Owner, prefabName, m_Owner.GetOrigin());
+		return string.Format("%1%2 | entity: %3, prefab: '%4', pos: %5, flags: %6", displayName, space, m_Owner, prefabName, m_Owner.GetOrigin(), SCR_Enum.FlagsToString(EEditableEntityFlag, m_Flags));
 	}
 	/*!
 	Print out entity information.
@@ -1577,7 +1640,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		RplId parentID;
 		reader.ReadRplId(parentID);
 		
-		SetParentEntityBroadcastReceive(parentID, parentID, 0);
+		SetParentEntityBroadcastReceive(parentID, parentID, false);
 		
 		return true;
 	}
@@ -1599,7 +1662,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		//--- Unregister
 		SCR_EditableEntityComponent parentEntity = GetParentEntity();
 		m_ParentEntity = null; //--- Clear the variable, otherise condition in RemoveChild() would ignore this
-		RemoveFromParent(parentEntity);
+		RemoveFromParent(parentEntity, false);
 		Unregister(owner);
 		
 		//--- Delete entities in game hierarchy
@@ -1650,7 +1713,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		//--- Register to the system
 		if (IsServer())
 		{
-			SetParentEntityBroadcast(m_ParentEntity, m_ParentEntity, true);
+			SetParentEntityBroadcast(m_ParentEntity, m_ParentEntity, isAutoRegistration: true);
 		}
 	}
 	void SCR_EditableEntityComponent(IEntityComponentSource src, IEntity ent, IEntity parent)

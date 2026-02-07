@@ -125,6 +125,13 @@ class StatsApi
 	void OnPlayerDisconnect( int iPlayerID )
 	{
 	}
+	
+	/**
+	\brief Event generated when Player is kicked from MP game
+	*/
+	void OnPlayerKicked( int iPlayerID )
+	{
+	}
 
 	/**
 	\brief Generic Player event

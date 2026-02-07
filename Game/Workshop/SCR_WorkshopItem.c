@@ -78,6 +78,8 @@ class SCR_WorkshopItem
 	protected ref SCR_WorkshopItemActionReport m_ActionReport;
 	protected ref SCR_WorkshopItemActionCancelReport m_ActionCancelReport;
 	protected ref SCR_WorkshopItemActionComposite m_ActionDependency; // Composite action we have started for dependencies
+	protected ref SCR_WorkshopItemActionAddAuthorBlock m_ActionAddAuthorBlock;
+	protected ref SCR_WorkshopItemActionRemoveAuthorBlock m_ActionRemoveAuthorBlock;
 	
 	
 	//-----------------------------------------------------------------------------------------------
@@ -151,8 +153,8 @@ class SCR_WorkshopItem
 		_print(string.Format("   SizeBytes:           %1", GetSizeBytes()));
 		_print(string.Format("   UpdateAvailable:     %1", GetUpdateAvailable()));
 		_print(string.Format("   EnabledExternally:   %1", mgr.GetAddonEnabledExternally(this)));
-		_print(string.Format("   TimeSinceLastPlay:   %1, %2", GetTimeSinceLastPlay(), SCR_Global.GetTimeSinceEventImprecise(GetTimeSinceLastPlay())));
-		_print(string.Format("   TimeSinceFirstDl:    %1, %2", GetTimeSinceFirstDownload(), SCR_Global.GetTimeSinceEventImprecise(GetTimeSinceFirstDownload())));
+		_print(string.Format("   TimeSinceLastPlay:   %1, %2", GetTimeSinceLastPlay(), SCR_FormatHelper.GetTimeSinceEventImprecise(GetTimeSinceLastPlay())));
+		_print(string.Format("   TimeSinceFirstDl:    %1, %2", GetTimeSinceFirstDownload(), SCR_FormatHelper.GetTimeSinceEventImprecise(GetTimeSinceFirstDownload())));
 		
 		//if (m_Item)
 		//_print(string.Format("   HasBackendThumbnail: %1", m_Item.HasBackendThumbnail()));
@@ -453,10 +455,26 @@ class SCR_WorkshopItem
 	}
 	
 	//-----------------------------------------------------------------------------------------------
+	bool GetModAuthorReportedByMe()
+	{
+		if (m_Item)
+		{
+			WorkshopAuthor author = m_Item.Author();
+			
+			if (author)
+				return author.IsBlocked();
+			
+			return false;
+		}
+		
+		return false;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
 	//! Returns true when item is restricted for any reason (blocked or reported)
 	bool GetRestricted()
 	{
-		return GetBlocked() || GetReportedByMe();
+		return GetBlocked() || GetReportedByMe() || GetModAuthorReportedByMe();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -505,9 +523,14 @@ class SCR_WorkshopItem
 	string GetAuthorName()
 	{
 		if (m_Item)
-			return m_Item.Author().Name();
-		else
-			return string.Empty;
+		{
+			WorkshopAuthor author = m_Item.Author();
+			
+			if (author)
+				return author.Name();
+		}
+		
+		return string.Empty;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -995,7 +1018,6 @@ class SCR_WorkshopItem
 		}
 	}
 	
-	
 	//-----------------------------------------------------------------------------------------------
 	//! Loads report of current user from backend. Subscribe to m_OnMyReportLoaded to get result.
 	void LoadReport()
@@ -1013,7 +1035,7 @@ class SCR_WorkshopItem
 		
 		m_Item.LoadReport(m_CallbackLoadMyReport);
 	}
-	
+
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Returns our own report. We must load it first with LoadMyReport.
@@ -1052,6 +1074,32 @@ class SCR_WorkshopItem
 		}
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	//! Add block for workshop author and all author mods
+	SCR_WorkshopItemActionAddAuthorBlock AddAuthorBlock()
+	{
+		if (!m_Item)
+			return null;
+		
+		if (!m_ActionAddAuthorBlock)
+			m_ActionAddAuthorBlock = new SCR_WorkshopItemActionAddAuthorBlock(this);
+		
+		return m_ActionAddAuthorBlock;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	//! Add block for workshop author and all author mods
+	SCR_WorkshopItemActionRemoveAuthorBlock RemoveAuthorBlock()
+	{
+		if (!m_Item)
+			return null;
+		
+		if (!m_ActionRemoveAuthorBlock)
+			m_ActionRemoveAuthorBlock = new SCR_WorkshopItemActionRemoveAuthorBlock(this);
+		
+		return m_ActionRemoveAuthorBlock;
+	}
+	
 	
 	
 	//-----------------------------------------------------------------------------------------------
@@ -1076,7 +1124,7 @@ class SCR_WorkshopItem
 	
 	
 	//-----------------------------------------------------------------------------------------------
-	protected Revision GetLatestRevision()
+	Revision GetLatestRevision()
 	{
 		if (!m_aRevisions)
 			return null;
@@ -1563,6 +1611,55 @@ class SCR_WorkshopItem
 		return true;
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	bool Internal_AddAuthorBlock(BackendCallback callback)
+	{
+		#ifdef WORKSHOP_DEBUG
+		_print(string.Format("Internal_AddAuthorBlock(): %1", callback));
+		#endif
+		
+		if (!m_Item)
+			return false;
+		
+		WorkshopAuthor author = m_Item.Author();
+		if (!author)
+			return false;
+		
+		author.AddBlock(callback);
+		
+		#ifdef WORKSHOP_DEBUG
+		_print("OnChanged: Internal_AddAuthorBlock()");
+		#endif
+		
+		SetChanged();
+		
+		return true;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	bool Internal_RemoveAuthorBlock(BackendCallback callback)
+	{
+		#ifdef WORKSHOP_DEBUG
+		_print(string.Format("Internal_RemoveAuthorBlock(): %1", callback));
+		#endif
+		
+		if (!m_Item)
+			return false;
+		
+		WorkshopAuthor author = m_Item.Author();
+		if (!author)
+			return false;
+		
+		author.RemoveBlock(callback);
+		
+		#ifdef WORKSHOP_DEBUG
+		_print("OnChanged: Internal_RemoveAuthorBlock()");
+		#endif
+		
+		SetChanged();
+		
+		return true;
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Called each frame by Addon Manager.
@@ -1704,6 +1801,9 @@ class SCR_WorkshopItem
 			}
 		}
 		
+		// Update mod author block state
+		UpdateAuthorBlock();
+		
 		// Update the offline state
 		bool offlineNew = GetOffline();
 		if (offlineNew != m_bOffline)
@@ -1725,7 +1825,6 @@ class SCR_WorkshopItem
 				m_iAccessState = accessState;
 			}
 		}
-		
 		
 		// Invoke changed script invoker
 		if (m_bChanged)
@@ -1752,6 +1851,48 @@ class SCR_WorkshopItem
 		}
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	//! Check state of action to add and remove author block in update
+	protected void UpdateAuthorBlock()
+	{
+		// Add block
+		if (m_ActionAddAuthorBlock)
+		{
+			m_ActionAddAuthorBlock.Internal_Update();
+			
+			if (m_ActionAddAuthorBlock.IsCompleted())
+			{
+				m_ActionAddAuthorBlock.Internal_Detach();
+				m_ActionAddAuthorBlock = null;
+				
+				#ifdef WORKSHOP_DEBUG
+				_print("OnChanged: Internal_Update: Add author block action Was Completed");
+				#endif
+				
+				SetChanged();
+				m_OnReportStateChanged.Invoke(this, true);
+			}
+		}
+		
+		// Remove block 
+		if (m_ActionRemoveAuthorBlock)
+		{
+			m_ActionRemoveAuthorBlock.Internal_Update();
+			
+			if (m_ActionRemoveAuthorBlock.IsCompleted())
+			{
+				m_ActionRemoveAuthorBlock.Internal_Detach();
+				m_ActionRemoveAuthorBlock = null;
+				
+				#ifdef WORKSHOP_DEBUG
+				_print("OnChanged: Internal_Update: Add author block action Was Completed");
+				#endif
+				
+				SetChanged();
+				m_OnReportStateChanged.Invoke(this, false);
+			}
+		}
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Called by actions when some change happens
@@ -1766,7 +1907,8 @@ class SCR_WorkshopItem
 	//! We don't unregister items if they are offline or have any actions in progress, or if we have reported them (to avoid flushing item cache)
 	bool Internal_GetCanBeUnregistered()
 	{
-		if (m_ActionDownload || m_ActionReport || m_ActionDependency || m_ActionCancelReport || GetOffline())
+		if (m_ActionDownload || m_ActionReport || m_ActionDependency || m_ActionCancelReport || GetOffline() 
+			|| m_ActionAddAuthorBlock || m_ActionRemoveAuthorBlock)
 			return false;
 		else
 			return true;

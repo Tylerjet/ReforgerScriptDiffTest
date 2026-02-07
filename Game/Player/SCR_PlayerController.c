@@ -6,12 +6,16 @@ class SCR_PlayerController : PlayerController
 {
 	static PlayerController s_pLocalPlayerController;
 	static const float WALK_SPEED = 0.5;
+	static const float FOCUS_THRESHOLD = 0.01;
+	static const float FOCUS_TIMEOUT = 0.2;
+	static float s_fADSFocus = 0.7;
+	static float s_fFocusDelay;
 	
 	CharacterControllerComponent m_CharacterController;
 	private bool m_bIsLocalPlayerController;
 	private bool m_bIsPaused;
 	bool m_bRetain3PV;
-	private float m_fFocusOverride;
+	protected bool m_bGadgetFocus;
 	protected float m_fCharacterSpeed;
 	
 	
@@ -77,17 +81,13 @@ class SCR_PlayerController : PlayerController
 			}
 		}
 		
-		
-		//TODO: we might want to set default maxZoomInADS as true on XBOX and PSN ( default for mouse control should be false - see SCR_GameplaySettings )
+		//TODO: we might want to set default focusInADS to 100 on XBOX and PSN ( default for mouse control should be 70 - see SCR_GameplaySettings )
 		BaseContainer fovSettings = GetGame().GetGameUserSettings().GetModule("SCR_FieldOfViewSettings");
-		
 		if (fovSettings)
 		{
-			bool maxZoomInADS = false;
-			if (fovSettings.Get("m_bUseMaximumZoomInADS", maxZoomInADS))
-			{
-				m_CharacterController.SetMaxZoomInADS(maxZoomInADS);
-			}
+			float focusInADS = 0.7;
+			if (fovSettings.Get("m_fFocusInADS", focusInADS))
+				s_fADSFocus = focusInADS;
 		}
 	}
 	
@@ -175,6 +175,33 @@ class SCR_PlayerController : PlayerController
 			}
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Set intial main entity of a player, for a case where an existing entity should be assigned instead of spawning a new one
+	\param entity is the subject entity
+	*/
+	void SetInitialMainEntity(notnull IEntity entity)
+	{			
+		RplComponent rpl = RplComponent.Cast(entity.FindComponent(RplComponent));
+		if (!rpl)
+			return;
+			
+		m_MainEntityID = rpl.Id();
+		OnRplMainEntityFromID();
+		Replication.BumpMe();
+		
+		SCR_PossessingManagerComponent possessingManager = SCR_PossessingManagerComponent.GetInstance();
+		if (possessingManager)
+			possessingManager.SetMainEntity(GetPlayerId(), GetControlledEntity(), entity, m_bIsPossessing);
+
+		rpl.GiveExt(GetRplIdentity(), false); // transfer ownership
+		SetAIActivation(entity, false);
+		SetControlledEntity(entity);
+		
+		m_OnPossessed.Invoke(entity);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Check if player is currently possessing an entity.
@@ -317,7 +344,10 @@ class SCR_PlayerController : PlayerController
 			UpdateLocalPlayerController();
 		
 		if (m_bIsLocalPlayerController)
+		{
 			UpdateControls();
+			//UpdateUI();
+		}
 	}
 	
 	//! Find if this is local player controller. We assume that this never changes during scenario.
@@ -339,7 +369,7 @@ class SCR_PlayerController : PlayerController
 		inputManager.AddActionListener("TacticalPing", EActionTrigger.DOWN, Action_GesturePing );
 		inputManager.AddActionListener("TacticalPingHold", EActionTrigger.DOWN, Action_GesturePingHold );
 		inputManager.AddActionListener("TacticalPingHold", EActionTrigger.UP, Action_GesturePingHold );
-		
+		inputManager.AddActionListener("WeaponSwitchOptics", EActionTrigger.UP, ChangeWeaponOptics);
 	}
 		
 	//! Update disabling of character controls in menus
@@ -353,6 +383,29 @@ class SCR_PlayerController : PlayerController
 		}
 	}
 	
+	protected void UpdateUI()
+	{
+		ChimeraCharacter char = ChimeraCharacter.Cast(GetControlledEntity());
+		if (!char)
+			return;
+		CharacterAnimationComponent animComp = char.GetAnimationComponent();
+		if (!animComp)
+			return;
+		// Command ladder is present only when character is using ladder
+		CharacterCommandLadder ladderCMD = animComp.GetCommandHandler().GetCommandLadder();
+		if (!ladderCMD)
+			return;
+		int lrExitState = ladderCMD.CanExitLR();
+		if (lrExitState & 0x1)
+		{
+			Print("Can exit right");
+		}
+		if (lrExitState & 0x2)
+		{
+			Print("Can exit left");
+		}
+	}
+	
 	protected void ChangeMagnification(float value)
 	{
 		SCR_CharacterControllerComponent characterController = GetCharacterController();
@@ -360,6 +413,13 @@ class SCR_PlayerController : PlayerController
 			characterController.SetNextSightsFOVInfo(value);
 	}
 	
+	protected void ChangeWeaponOptics()
+	{
+		SCR_CharacterControllerComponent characterController = GetCharacterController();
+		if (characterController)
+			characterController.SetNextSights();
+	}
+
 	protected SCR_CharacterControllerComponent GetCharacterController()
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(GetControlledEntity());
@@ -392,11 +452,16 @@ class SCR_PlayerController : PlayerController
 	
 	//------------------------------------------------------------------------------------------------
 	/*! Focus input degree for analogue input
+	\param adsFocus Use automatic ADS focus
 	\return focus Amount of focus between 0 and 1
 	*/
-	float GetFocusValue()
+	float GetFocusValue(bool adsFocus = false, float dt = -1)
 	{
-		float focus = m_fFocusOverride;
+		float focus;
+		
+		if (adsFocus || m_bGadgetFocus)
+			focus = s_fADSFocus;
+		
 		InputManager inputManager = GetGame().GetInputManager();
 		string actionName;
 		if (inputManager.IsContextActive("CarContext"))
@@ -404,8 +469,27 @@ class SCR_PlayerController : PlayerController
 		else
 			actionName = "Focus";
 		
-		if (inputManager.GetActionTriggered(actionName) || inputManager.GetActionInputType(actionName) != EActionValueType.DIGITAL)
-			focus = Math.Max(focus, inputManager.GetActionValue(actionName));
+		// Prevent focus warping back while toggling ADS on controller
+		float input = inputManager.GetActionValue(actionName);
+		
+		// digital: allow action only if action is triggered
+		if (inputManager.GetActionInputType(actionName) == EActionValueType.DIGITAL)
+		{
+			if (inputManager.GetActionTriggered(actionName))
+				s_fFocusDelay = -1;
+			else
+				s_fFocusDelay = FOCUS_TIMEOUT;
+		}
+		// analogue: track timeout as we have no input filter that has thresholds or delays and returns axis value yet
+		else if (input < FOCUS_THRESHOLD)
+			s_fFocusDelay = FOCUS_TIMEOUT;
+		else if (dt > 0)
+			s_fFocusDelay -= dt;
+		else
+			s_fFocusDelay = -1;
+		
+		if (s_fFocusDelay < 0)
+			focus = Math.Max(focus, input);
 		
 		// Ensure return value always within 0-1
 		focus = Math.Clamp(focus, 0, 1);
@@ -413,10 +497,10 @@ class SCR_PlayerController : PlayerController
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Override focus from script
-	void SetFocusOverride(float focus)
+	//! Automatic focusing while gadget is aimed down sights
+	void SetGadgetFocus(bool gadgetFocus)
 	{
-		m_fFocusOverride = Math.Clamp(focus, 0, 1);
+		m_bGadgetFocus = gadgetFocus;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -444,7 +528,7 @@ class SCR_PlayerController : PlayerController
 		IEntity entity = s_pLocalPlayerController.GetControlledEntity();
 		if (!entity)
 			return;
-		
+
 		SCR_InventoryStorageManagerComponent inventory = SCR_InventoryStorageManagerComponent.Cast(entity.FindComponent(SCR_InventoryStorageManagerComponent));
 		if (inventory)
 			inventory.Action_OpenInventory();

@@ -39,7 +39,7 @@ class TrackDecalInfo
 	}
 };
 
-[ComponentEditorProps(category: "GameScripted/Test", description:"SCR_VehicleTrackDecal", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Test", description:"SCR_VehicleTrackDecal")]
 class SCR_VehicleTrackDecalClass : ScriptComponentClass
 {
 };

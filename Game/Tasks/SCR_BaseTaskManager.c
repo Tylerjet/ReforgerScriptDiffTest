@@ -21,8 +21,7 @@ class SCR_BaseTaskManager : GenericEntity
 	//**************************//
 	//PROTECTED MEMBER VARIABLES//
 	//**************************//
-	[Attribute()]
-	ref array<ref SCR_BaseTaskSupportClass> m_aSupportedTaskTypes;
+	protected ref array<SCR_BaseTaskSupportEntity> m_aSupportedTaskTypes = {};
 	
 	[RplProp()]
 	protected float m_fTimestamp = 0;
@@ -47,10 +46,7 @@ class SCR_BaseTaskManager : GenericEntity
 	
 	protected bool m_bInitialized = false;
 	
-	protected static SCR_FactionManager s_FactionManager;
 	protected RplComponent m_RplComponent;
-	
-	protected SCR_RequestedTask m_LocallyRequestedTask;
 	
 	//*****************************//
 	//PUBLIC STATIC SCRIPT INVOKERS//
@@ -74,29 +70,6 @@ class SCR_BaseTaskManager : GenericEntity
 	static ref ScriptInvoker s_OnPeriodicalCheck5Second = new ref ScriptInvoker();
 	static ref ScriptInvoker s_OnPeriodicalCheck60Second = new ref ScriptInvoker();
 	
-	//*********************//
-	//PUBLIC STATIC METHODS//
-	//*********************//
-	
-	//------------------------------------------------------------------------------------------------
-	static bool HasRequestedTask(int playerID)
-	{
-		SCR_BaseTaskExecutor executor = SCR_BaseTaskExecutor.GetTaskExecutorByID(playerID);
-		if (!executor)
-			return true;
-		
-		return GetTaskManager().FindRequestedTask(executor) != null;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	static int GetFactionIndex(Faction faction)
-	{
-		if (!s_FactionManager || !faction)
-			return -1;
-		
-		return s_FactionManager.GetFactionIndex(faction);
-	}
-	
 	//***************************//
 	//PUBLIC EVENT MEMBER METHODS//
 	//***************************//
@@ -116,13 +89,19 @@ class SCR_BaseTaskManager : GenericEntity
 		if (executor)
 			task = executor.GetAssignedTask();
 		
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
 		if (task)
-			UnassignTask(task, executor, SCR_EUnassignReason.ASSIGNEE_DISCONNECT);
+			supportEntity.UnassignTask(task, executor, SCR_EUnassignReason.ASSIGNEE_DISCONNECT);
 		
 		task = FindRequestedTask(executor);
 		
-		if (task)
-			CancelTask(task.GetTaskID());
+		if (!task)
+			return;
+		
+		supportEntity.CancelTask(task.GetTaskID());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -153,14 +132,6 @@ class SCR_BaseTaskManager : GenericEntity
 	//************************//
 	
 	//------------------------------------------------------------------------------------------------
-	//! Checks if this entity is locally owned
-	//! Public because it's also used by tasks as they don't have any RplComponents themselves
-	bool IsProxy()
-	{
-		return (m_RplComponent && m_RplComponent.IsProxy());
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected void PeriodicalCheck2Second()
 	{
 		s_OnPeriodicalCheck2Second.Invoke();
@@ -179,40 +150,9 @@ class SCR_BaseTaskManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void InitializeSupportedTasks()
-	{
-		if (!m_aSupportedTaskTypes)
-			return;
-		
-		for (int i = m_aSupportedTaskTypes.Count() - 1; i >= 0; i--)
-		{
-			m_aSupportedTaskTypes[i].Initialize();
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected SCR_RefuelTask CreateNewRefuelTask(int requesterID, IEntity targetVehicle = null)
-	{
-		SCR_BaseTaskSupportClass supportClass = GetTaskManager().GetSupportedTaskByTaskType(SCR_RefuelTask);
-		if (!supportClass)
-			return null;
-		
-		SCR_RefuelTask refuelTask = SCR_RefuelTask.Cast(GetGame().SpawnEntityPrefab(supportClass.GetTaskPrefab(), GetWorld()));
-		if (!refuelTask)
-			return null;
-		
-		SCR_BaseTaskExecutor requester = SCR_BaseTaskExecutor.GetTaskExecutorByID(requesterID);
-		
-		refuelTask.SetRequester(requester);
-		refuelTask.SetTargetVehicle(targetVehicle);
-		
-		return refuelTask;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected SCR_EvacuateTask CreateNewEvacuationTask(int requesterID)
 	{
-		SCR_BaseTaskSupportClass supportClass = GetTaskManager().GetSupportedTaskByTaskType(SCR_EvacuateTask);
+		SCR_BaseTaskSupportEntity supportClass = GetTaskManager().FindSupportEntity(SCR_EvacuateTaskSupportEntity);
 		if (!supportClass)
 			return null;
 		
@@ -238,112 +178,45 @@ class SCR_BaseTaskManager : GenericEntity
 		}
 	}
 	
+	//*********************//
+	//PUBLIC MEMBER METHODS//
+	//*********************//
+	
 	//------------------------------------------------------------------------------------------------
-	//! Assigns cached tasks if any
-	protected void AssignCachedTasks()
+	string GetReassignText()
 	{
-		for (int i = m_aCachedTaskAssignments.Count() - 1; i >= 0; i--)
-		{
-			SCR_TaskAssignmentData assignmentData = m_aCachedTaskAssignments[i];
-			SCR_BaseTask task = GetTask(assignmentData.m_iTaskID);
-			
-			if (!task)
-				return;
-			
-			foreach (int assignee : assignmentData.m_aAssignees)
-			{
-				SCR_BaseTaskExecutor taskExecutor = SCR_BaseTaskExecutor.GetTaskExecutorByID(assignee);
-				if (!taskExecutor)
-					continue;
-				
-				LocalAssignTask(task, taskExecutor, assignmentData.m_fLastAssigneeAddedTimestamp);
-			}
-			
-			m_aCachedTaskAssignments.Remove(i);
-		}
+		return m_sReassignPopup;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void MoveTask(vector newPosition, int taskID)
+	void AddAssigneeAbandoned(SCR_BaseTaskExecutor assignee)
 	{
-		SCR_BaseTask task = GetTask(taskID);
-		if (!task)
-			return;
-		
-		task.SetOrigin(newPosition);
-		
-		if (IsProxy())
-			return;
-		
-		Rpc(RPC_MoveTask, taskID, newPosition);
+		if (m_mAssigneesAbandoned)
+			m_mAssigneesAbandoned.Set(assignee, m_fTimestamp + DEFAULT_ABANDON_WAITING_TIME);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//Caches a task assignment for later
-	void CacheAssignment(SCR_BaseTaskData taskData, array<int> assignees)
+	//! Checks if this entity is locally owned
+	//! Public because it's also used by tasks as they don't have any RplComponents themselves
+	bool IsProxy()
 	{
-		if (!m_aCachedTaskAssignments)
-			return;
-		
-		SCR_TaskAssignmentData assignmentData = new SCR_TaskAssignmentData();
-		assignmentData.m_fLastAssigneeAddedTimestamp = taskData.GetLastAssigneeAddedTimestamp();
-		assignmentData.m_iTaskID = taskData.GetTaskID();
-		assignmentData.m_aAssignees.Copy(assignees);
-		
-		m_aCachedTaskAssignments.Insert(assignmentData);
+		return (m_RplComponent && m_RplComponent.IsProxy());
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Outs an array with all assignee IDs of the given task
-	protected int GetTaskAssigneeIDs(SCR_BaseTask task, out array<int> assignees)
+	void RegisterSupportEntity(SCR_BaseTaskSupportEntity supportEntity)
 	{
-		if (!assignees)
-			assignees = new array<int>();
-		
-		int count = 0;
-		array<SCR_BaseTaskExecutor> taskAssignees = new array<SCR_BaseTaskExecutor>();
-		task.GetAssignees(taskAssignees);
-		foreach (SCR_BaseTaskExecutor assignee : taskAssignees)
-		{
-			assignees.Insert(SCR_BaseTaskExecutor.GetTaskExecutorID(assignee));
-			count++;
-		}
-		
-		return count;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	int GetTaskTypeIndex(notnull SCR_BaseTask task)
-	{
-		typename taskType = task.Type();
-		for (int i = m_aSupportedTaskTypes.Count() - 1; i >= 0; i--)
-		{
-			if (m_aSupportedTaskTypes[i].GetTypename() == taskType)
-				return i;
-		}
-		
-		return -1;
-	}
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if task of given class has configuration in task manager.
-	\param typeName Task class
-	\return True if the task has configuration
-	*/
-	bool HasTaskData(typename typeName)
-	{
-		for (int i = m_aSupportedTaskTypes.Count() - 1; i >= 0; i--)
-		{
-			if (m_aSupportedTaskTypes[i].GetTypename() == typeName)
-				return true;
-		}
-		return false;
+		m_aSupportedTaskTypes.Insert(supportEntity);
+		supportEntity.Initialize();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns the found task if it exists.
 	SCR_BaseTask GetTask(int taskID)
 	{
+		if (taskID == -1)
+			return null;
+		
 		foreach (SCR_BaseTask task: m_aTaskList)
 		{
 			if (task.GetTaskID() == taskID)
@@ -351,12 +224,13 @@ class SCR_BaseTaskManager : GenericEntity
 				return task;
 			}
 		}
+		
 		return null;
 	}
 	
 	#ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------
-	protected bool CheckMasterOnlyMethod(string methodName)
+	bool CheckMasterOnlyMethod(string methodName)
 	{
 		if (IsProxy())
 		{
@@ -368,9 +242,21 @@ class SCR_BaseTaskManager : GenericEntity
 	}
 	#endif
 	
-	//*********************//
-	//PUBLIC MEMBER METHODS//
-	//*********************//
+	//------------------------------------------------------------------------------------------------
+	bool HasRequestedTask(int playerID)
+	{
+		SCR_BaseTaskExecutor executor = SCR_BaseTaskExecutor.GetTaskExecutorByID(playerID);
+		if (!executor)
+			return true;
+		
+		return GetTaskManager().FindRequestedTask(executor) != null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool Initialized()
+	{
+		return m_bInitialized;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	void DeleteTask(SCR_BaseTask task)
@@ -381,36 +267,7 @@ class SCR_BaseTaskManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetLocallyRequestedTask(notnull SCR_RequestedTask requestedTask)
-	{
-		m_LocallyRequestedTask = requestedTask;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_RequestedTask GetLocallyRequestedTask()
-	{
-		return m_LocallyRequestedTask;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// For use where we can get task.Type()
-	SCR_BaseTaskSupportClass GetSupportedTaskByTaskType(typename type)
-	{
-		if (!m_aSupportedTaskTypes)
-			return null;
-		
-		for (int i = m_aSupportedTaskTypes.Count() - 1; i >= 0; i--)
-		{
-			if (type == m_aSupportedTaskTypes[i].GetTypename())
-				return m_aSupportedTaskTypes[i];
-		}
-		
-		return null;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// For use in static methods, where we cannot access .Type() on tasks
-	SCR_BaseTaskSupportClass GetSupportedTaskBySupportClassType(typename type)
+	SCR_BaseTaskSupportEntity FindSupportEntity(typename type)
 	{
 		if (!m_aSupportedTaskTypes)
 			return null;
@@ -426,7 +283,8 @@ class SCR_BaseTaskManager : GenericEntity
 	
 	//------------------------------------------------------------------------------------------------
 	//Returns the list of all supported task types
-	array<ref SCR_BaseTaskSupportClass> GetSupportedTasks()
+	//Used f.e. for request buttons in task list, which is temporarily disabled
+	array<SCR_BaseTaskSupportEntity> GetSupportedTasks()
 	{
 		return m_aSupportedTaskTypes;
 	}
@@ -472,12 +330,14 @@ class SCR_BaseTaskManager : GenericEntity
 		if (!filterFaction)
 			return GetTasks(tasks);
 		
+		Faction taskFaction;
 		foreach (SCR_BaseTask task: m_aTaskList)
 		{
 			if (!task)
 				continue;
 			
-			if (task.GetTargetFaction() == filterFaction)
+			taskFaction = task.GetTargetFaction();
+			if (!taskFaction || taskFaction == filterFaction)
 			{
 				tasks.Insert(task);
 				count++;
@@ -485,70 +345,6 @@ class SCR_BaseTaskManager : GenericEntity
 		}
 		
 		return count;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//This should only be called on the server!
-	void RequestTransport(int requesterID, vector fromPosition, vector toPosition)
-	{
-		#ifdef ENABLE_DIAG
-		if (!CheckMasterOnlyMethod("RequestTransport()"))
-			return;
-		#endif
-		
-		SCR_TransportTaskSupportClass supportClass = SCR_TransportTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskByTaskType(SCR_TransportTask));
-		if (!supportClass)
-			return;
-		
-		SCR_TransportTask transportTask = supportClass.CreateNewTransportTask(requesterID, fromPosition, toPosition);
-		
-		if (transportTask)
-		{
-			SCR_TransportTaskData data = new SCR_TransportTaskData();
-			data.LoadDataFromTask(transportTask);
-			Rpc(RPC_CreateTransportTaskFromData, data);
-			MoveTask(fromPosition, transportTask.GetTaskID());
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//This should only be called on the server!
-	void RequestRefuel(int requesterID, IEntity vehicle, vector position)
-	{
-		#ifdef ENABLE_DIAG
-		if (!CheckMasterOnlyMethod("RequestRefuel()"))
-			return;
-		#endif
-		
-		SCR_RefuelTask refuelTask = CreateNewRefuelTask(requesterID, vehicle);
-		
-		if (refuelTask)
-		{
-			SCR_RefuelTaskData data = new SCR_RefuelTaskData();
-			data.LoadDataFromTask(refuelTask);
-			Rpc(RPC_CreateRefuelTaskFromData, data);
-			MoveTask(position, refuelTask.GetTaskID());
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//This should only be called on the server!
-	void RequestEvacuation(int requesterID, vector position)
-	{
-		#ifdef ENABLE_DIAG
-		if (!CheckMasterOnlyMethod("RequestEvacuation()"))
-			return;
-		#endif
-		
-		SCR_EvacuateTask evacuateTask = CreateNewEvacuationTask(requesterID);
-		
-		if (evacuateTask)
-		{
-			SCR_EvacuateTaskData data = new SCR_EvacuateTaskData();
-			data.LoadDataFromTask(evacuateTask);
-			Rpc(RPC_CreateEvacuationTaskFromData, data);
-			MoveTask(position, evacuateTask.GetTaskID());
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -563,29 +359,6 @@ class SCR_BaseTaskManager : GenericEntity
 			return true;
 		
 		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void LocalCancelTask(SCR_BaseTask task)
-	{
-		if (!task)
-			return;
-		
-		task.Cancel();
-		DeleteTask(task);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//This should only be called on the server!
-	void CancelTask(int taskID)
-	{
-		#ifdef ENABLE_DIAG
-		if (!CheckMasterOnlyMethod("CancelTask()"))
-			return;
-		#endif
-		
-		Rpc(RPC_CancelTask, taskID);
-		RPC_CancelTask(taskID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -605,7 +378,11 @@ class SCR_BaseTaskManager : GenericEntity
 		if (task.NotifyUnassign())
 			task.DoNotifyUnassign(SCR_BaseTaskExecutor.GetTaskExecutorID(assignee));
 		
-		UnassignTask(task, assignee, SCR_EUnassignReason.ASSIGNEE_ABANDON);
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
+		supportEntity.UnassignTask(task, assignee, SCR_EUnassignReason.ASSIGNEE_ABANDON);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -623,7 +400,11 @@ class SCR_BaseTaskManager : GenericEntity
 		if (task.NotifyAssignment())
 			task.DoNotifyAssignment(SCR_BaseTaskExecutor.GetTaskExecutorID(assignee));
 		
-		AssignTask(task, assignee);
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
+		supportEntity.AssignTask(task, assignee);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -633,8 +414,6 @@ class SCR_BaseTaskManager : GenericEntity
 			CreateTaskExecutors();
 		else
 			LocalCreateTaskExecutor(registeredPlayerID);
-		
-		AssignCachedTasks();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -651,12 +430,6 @@ class SCR_BaseTaskManager : GenericEntity
 			
 			LocalCreateTaskExecutor(playerID);
 		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_FactionManager GetFactionManager()
-	{
-		return s_FactionManager;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -682,196 +455,31 @@ class SCR_BaseTaskManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Creates a new task.
-	SCR_BaseTask CreateNewTask()
+	//! Called from SpawnTask and RPC_SpawnTask methods
+	//! Don't call directly!
+	SCR_BaseTask LocalSpawnTask(ResourceName resourceName)
 	{
-		IEntity taskEntity = GetGame().SpawnEntity(SCR_BaseTask);
-		SCR_BaseTask task = SCR_BaseTask.Cast(taskEntity);
+		if (resourceName.IsEmpty())
+			return null;
+		
+		Resource resource = Resource.Load(resourceName);
+		if (!resource.IsValid())
+			return null;
+		
+		return SCR_BaseTask.Cast(GetGame().SpawnEntityPrefab(resource, GetWorld()));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Call this on the server only
+	SCR_BaseTask SpawnTask(ResourceName resourceName)
+	{
+		SCR_BaseTask task = LocalSpawnTask(resourceName);
+		if (!task)
+			return null;
+		
+		Rpc(RPC_SpawnTask, resourceName, task.GetTaskID());
 		
 		return task;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void LocalFinishTask(notnull SCR_BaseTask task)
-	{
-		if (!task)
-			return;
-		
-		task.Finish();
-		DeleteTask(task);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//This should only be called on the server!
-	void FinishTask(notnull SCR_BaseTask task)
-	{
-		#ifdef ENABLE_DIAG
-		if (!CheckMasterOnlyMethod("FinishTask()"))
-			return;
-		#endif
-		
-		Rpc(RPC_FinishTask, task.GetTaskID());
-		LocalFinishTask(task);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void LocalFailTask(notnull SCR_BaseTask task)
-	{
-		task.Fail();
-		DeleteTask(task);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//This should only be called on the server!
-	void FailTask(notnull SCR_BaseTask task)
-	{
-		#ifdef ENABLE_DIAG
-		if (!CheckMasterOnlyMethod("FailTask()"))
-			return;
-		#endif
-		
-		Rpc(RPC_FailTask, task.GetTaskID());
-		LocalFailTask(task);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void LocalSetTaskFaction(notnull SCR_BaseTask task, Faction faction)
-	{
-		task.SetTargetFaction(faction);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//This should only be called on the server!
-	void SetTaskFaction(notnull SCR_BaseTask task, Faction faction)
-	{
-		#ifdef ENABLE_DIAG
-		if (!CheckMasterOnlyMethod("SetTaskFaction()"))
-			return;
-		#endif
-		
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (!factionManager)
-			return;
-		
-		Rpc(RPC_SetTaskFaction, task.GetTaskID(), factionManager.GetFactionIndex(faction));
-		LocalSetTaskFaction(task, faction);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//Todo: Implement tasks removal with delay
-	//! Removes a task.
-	void RemoveTask(SCR_BaseTask task)
-	{
-		if (!task)
-			return;
-		
-		int index = m_aTaskList.Find(task);
-		
-		if (index == -1)
-			return;
- 		else
-		{
-			task.Remove();
-			DeleteTask(task);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void LocalAssignTask(notnull SCR_BaseTask task, notnull SCR_BaseTaskExecutor assignee, float timestamp = -1, bool forced = false)
-	{
-		task.AddAssignee(assignee, timestamp);
-		s_OnTaskAssigned.Invoke(task);
-		
-		if (forced && assignee == SCR_BaseTaskExecutor.GetLocalExecutor())
-			SCR_PopUpNotification.GetInstance().PopupMsg(m_sAssignPopupGM);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//This should only be called on the server!
-	void AssignTask(notnull SCR_BaseTask task, notnull SCR_BaseTaskExecutor assignee, bool forced = false)
-	{
-		#ifdef ENABLE_DIAG
-		if (!CheckMasterOnlyMethod("AssignTask()"))
-			return;
-		#endif
-		
-		Rpc(RPC_AssignTask, SCR_BaseTaskExecutor.GetTaskExecutorID(assignee), task.GetTaskID(), m_fTimestamp, forced);
-		LocalAssignTask(task, assignee, m_fTimestamp, forced);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void LocalUnassignTask(notnull SCR_BaseTask task, notnull SCR_BaseTaskExecutor assignee, SCR_EUnassignReason reason)
-	{
-		if (!assignee)
-			return;
-		
-		switch (reason)
-		{
-			case SCR_EUnassignReason.ASSIGNEE_TIMEOUT:
-				break;
-			case SCR_EUnassignReason.ASSIGNEE_DISCONNECT:
-				break;
-			case SCR_EUnassignReason.ASSIGNEE_ABANDON:
-			{
-				if (m_mAssigneesAbandoned)
-					m_mAssigneesAbandoned.Set(assignee, m_fTimestamp + DEFAULT_ABANDON_WAITING_TIME);
-				break;
-			}
-			case SCR_EUnassignReason.GM_REASSIGN:
-			{
-				if (assignee == SCR_BaseTaskExecutor.GetLocalExecutor())
-					SCR_PopUpNotification.GetInstance().PopupMsg(m_sReassignPopup);
-				break;
-			}
-		}
-		
-		task.RemoveAssignee(assignee, reason);
-		s_OnTaskUnassigned.Invoke(task);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//This should only be called on the server!
-	void UnassignTask(notnull SCR_BaseTask task, notnull SCR_BaseTaskExecutor assignee, SCR_EUnassignReason reason)
-	{
-		#ifdef ENABLE_DIAG
-		if (!CheckMasterOnlyMethod("UnassignTask()"))
-			return;
-		#endif
-		
-		Rpc(RPC_UnassignTask, task.GetTaskID(), SCR_BaseTaskExecutor.GetTaskExecutorID(assignee), reason);
-		LocalUnassignTask(task, assignee, reason);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Create data for given task.
-	\param task Task
-	\return Task data
-	*/
-	SCR_BaseTaskData CreateTaskData(SCR_BaseTask task)
-	{
-		int taskType = GetTaskTypeIndex(task);
-		if (taskType == -1 || m_aSupportedTaskTypes.Count() <= taskType)
-		{
-			string warning = string.Format("Task data for %1 cannot be created. %1 couldn't be found in m_aSupportedTaskTypes.", task.Type().ToString());
-			Print(warning, LogLevel.WARNING);
-			return null;
-		}
-		
-		return m_aSupportedTaskTypes[taskType].CreateTaskData();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void TransportTaskNextPhase(notnull SCR_TransportTask transportTask)
-	{
-		if (!transportTask.GetVolunteerMet())
-		{
-			transportTask.SetVolunteerMet(true);
-			MoveTask(transportTask.GetTargetPosition(), transportTask.GetTaskID());
-			Rpc(RPC_TransportTaskNextPhase, transportTask.GetTaskID());
-		}
-		else
-			FinishTask(transportTask);
 	}
 	
 	//***********//
@@ -879,187 +487,26 @@ class SCR_BaseTaskManager : GenericEntity
 	//***********//
 	
 	//------------------------------------------------------------------------------------------------
+	//! Called by SpawnTask()
+	//! Don't call directly!
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_TransportTaskNextPhase(int taskID)
+	protected void RPC_SpawnTask(ResourceName resourceName, int taskID)
 	{
-		SCR_TransportTask transportTask = SCR_TransportTask.Cast(GetTask(taskID));
-		transportTask.SetVolunteerMet(true);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_CancelTask(int taskID)
-	{
-		SCR_BaseTask task = GetTask(taskID);
-		LocalCancelTask(task);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_FinishTask(int taskID)
-	{
-		SCR_BaseTask task = GetTask(taskID);
-		
-		if (task)
-			LocalFinishTask(task);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_FailTask(int taskID)
-	{
-		SCR_BaseTask task = GetTask(taskID);
-		
-		if (task)
-			LocalFailTask(task);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_SetTaskFaction(int taskID, int factionIndex)
-	{
-		SCR_BaseTask task = GetTask(taskID);
+		SCR_BaseTask task = LocalSpawnTask(resourceName);
 		if (!task)
 			return;
 		
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (!factionManager)
-			return;
-		
-		LocalSetTaskFaction(task, factionManager.GetFactionByIndex(factionIndex));
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! RPC executed on clients, creating a task based on given parameters
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_CreateMoveTask(SCR_MoveTaskData taskData, array<int> assignees)
-	{
-		ChimeraGame chimera = GetGame();
-		if (!chimera || !taskData || !s_FactionManager)
-			return;
-		
-		Faction targetFaction = s_FactionManager.GetFactionByIndex(taskData.GetFactionIndex());
-		if (!targetFaction)
-			return;
-		
-		SCR_MoveTask task = SCR_MoveTask.Cast(GetGame().SpawnEntity(SCR_MoveTask));
-		if (!task)
-			return;
-		
-		task.SetTaskID(taskData.GetTaskID());
-		task.SetTargetFaction(targetFaction);
-		task.SetIndividual(taskData.GetIndividual());
-		task.SetOrigin(taskData.GetTargetPosition());
-		
-		if (assignees != null && assignees.Count() > 0)
-		{
-			CacheAssignment(taskData, assignees);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! RPC executed on clients, creating a task based on given parameters
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_CreateBaseTask(SCR_BaseTaskData taskData, array<int> assignees)
-	{
-		if (!taskData)
-			return;
-		
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (!factionManager)
-			return;
-		
-		Faction targetFaction = factionManager.GetFactionByIndex(taskData.GetFactionIndex());
-		if (!targetFaction)
-			return;
-		
-		SCR_BaseTask task = SCR_BaseTask.Cast(GetGame().SpawnEntity(SCR_BaseTask));
-		if (!task)
-			return;
-		
-		task.SetTaskID(taskData.GetTaskID());
-		task.SetTargetFaction(targetFaction);
-		task.SetIndividual(taskData.GetIndividual());
-		
-		if (assignees != null && assignees.Count() > 0)
-		{
-			CacheAssignment(taskData, assignees);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_CreateEvacuationTaskFromData(SCR_EvacuateTaskData data)
-	{
-		if (data)
-			data.CreateTask();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_CreateTransportTaskFromData(SCR_TransportTaskData data)
-	{
-		if (data)
-			data.CreateTask();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_CreateRefuelTaskFromData(SCR_RefuelTaskData data)
-	{
-		if (data)
-			data.CreateTask();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Assigns a task on clients.
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RPC_UnassignTask(int taskID, int playerID, SCR_EUnassignReason reason)
-	{
-		SCR_BaseTask task = GetTask(taskID);
-		if (!task)
-			return;
-		
-		SCR_BaseTaskExecutor assignee = SCR_BaseTaskExecutor.GetTaskExecutorByID(playerID);
-		if (assignee)
-			LocalUnassignTask(task, assignee, reason);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Assigns a task on clients.
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RPC_AssignTask(int playerID, int taskID, float timestamp, bool forced)
-	{
-		SCR_BaseTask task = GetTask(taskID);
-		if (!task)
-			return;
-		
-		SCR_BaseTaskExecutor assignee = SCR_BaseTaskExecutor.GetTaskExecutorByID(playerID);
-		if (!assignee)
-			return;
-		
-		LocalAssignTask(task, assignee, timestamp, forced);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RPC_MoveTask(int taskID, vector newPosition)
-	{
-		MoveTask(newPosition, taskID);
+		task.SetTaskID(taskID);
 	}
 	
 	//*************//
 	//ENTITY EVENTS//
 	//*************//
 
-	//-----------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected override void EOnInit(IEntity owner)
 	{
 		m_bInitialized = true;
-		
-		InitializeSupportedTasks();
-		
-		s_FactionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
@@ -1081,7 +528,7 @@ class SCR_BaseTaskManager : GenericEntity
 		GetGame().GetCallqueue().CallLater(PeriodicalCheck60Second, 60000, true);
 	}
 	
-	//-----------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		if (GetTaskManager() && GetTaskManager() != this)
@@ -1123,6 +570,10 @@ class SCR_BaseTaskManager : GenericEntity
 		}
 	}
 	
+	//***********//
+	//JIP METHODS//
+	//***********//
+	
 	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
 	{
@@ -1134,12 +585,18 @@ class SCR_BaseTaskManager : GenericEntity
 			SCR_BaseTask task = m_aTaskList[i];
 			if (!task || task.FindComponent(RplComponent)) //--- Assume that tasks with their own replication will sync data themselves
 			{
-				writer.WriteInt(-1);
+				writer.WriteBool(false);
 				continue;
 			}
 			
-			int taskType = GetTaskTypeIndex(task);
-			writer.WriteInt(taskType);
+			writer.WriteBool(true);
+			
+			EntityPrefabData prefabData = task.GetPrefabData();
+			ResourceName resourceName;
+			if (prefabData)
+				resourceName = prefabData.GetPrefabName();
+			
+			writer.WriteResourceName(prefabData.GetPrefabName()); //Write prefab, then read it in load & spawn correct task
 			
 			task.Serialize(writer);
 		}
@@ -1153,19 +610,27 @@ class SCR_BaseTaskManager : GenericEntity
 		int count;
 		reader.ReadInt(count);
 		
+		ResourceName resourceName;
+		Resource resource;
+		SCR_BaseTask task;
+		bool readTask;
 		for (int i = 0; i < count; i++)
 		{
-			int taskType;
-			reader.ReadInt(taskType);
-			if (taskType == -1)
+			reader.ReadBool(readTask);
+			if (!readTask)
 				continue;
 			
-			SCR_BaseTaskData taskData = m_aSupportedTaskTypes[taskType].CreateTaskData();
-			if (!taskData)
-				return false;
-						
-			taskData.Deserialize(reader);
-			taskData.CreateTask();
+			reader.ReadResourceName(resourceName);
+			
+			resource = Resource.Load(resourceName);
+			if (!resource.IsValid())
+				continue;
+			
+			task = SCR_BaseTask.Cast(GetGame().SpawnEntityPrefab(resource, GetWorld()));
+			if (!task)
+				continue;
+			
+			task.Deserialize(reader);
 		}
 		
 		//Let the game mode know, the tasks are ready
@@ -1173,7 +638,7 @@ class SCR_BaseTaskManager : GenericEntity
 		if (gamemode)
 			gamemode.HandleOnTasksInitialized();
 		
-		AssignCachedTasks();
+		//AssignCachedTasks();
 		
 		return true;
 	}

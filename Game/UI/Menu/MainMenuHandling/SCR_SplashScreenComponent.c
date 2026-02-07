@@ -33,12 +33,11 @@ class SCR_SplashScreenComponent : ScriptedWidgetComponent
 		dust2.SetOpacity(0);
 		
 		float pos[2] = {15000, 0};
-		WidgetAnimator.PlayAnimation(dust1, WidgetAnimationType.Position, 0.0005, pos[0], pos[1]);
-		WidgetAnimator.PlayAnimation(dust1, WidgetAnimationType.Opacity, 1, 0.5);
-		
 		float pos2[2] = {35000, 0};
-		WidgetAnimator.PlayAnimation(dust2, WidgetAnimationType.Position, 0.0005, pos2[0], pos2[1]);
-		WidgetAnimator.PlayAnimation(dust2, WidgetAnimationType.Opacity, 1, 0.5);
+		AnimateWidget.Opacity(dust1, 1, 0.5);
+		AnimateWidget.Opacity(dust2, 1, 0.5);
+		AnimateWidget.Position(dust1, pos, 0.0005);
+		AnimateWidget.Position(dust2, pos2, 0.0005);
 
 		// Chat context has menuSelect action. TODO: Make sure that menu context is here
 		ActivateContext();
@@ -51,7 +50,7 @@ class SCR_SplashScreenComponent : ScriptedWidgetComponent
 		// Prevent null division
 		if (time <= 0)
 			time = 0.0001;
-		WidgetAnimator.PlayAnimation(w, WidgetAnimationType.Opacity, show, 1 / time);
+		AnimateWidget.Opacity(w, show, 1 / time);
 	}
 	
 	//---------------------------------------------------------------------------------------------
@@ -81,7 +80,8 @@ class SCR_SplashScreenComponent : ScriptedWidgetComponent
 	void OnInput()
 	{
 		GetGame().GetInputManager().SetLoading(false);
-		WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, 1, 1);
+		AnimateWidget.Opacity(m_wRoot, 1, 1);
+
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 
 		Fade(m_wFadeImage, true, m_fTransitionTime * 0.5);

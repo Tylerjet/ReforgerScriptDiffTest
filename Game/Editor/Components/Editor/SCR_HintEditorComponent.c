@@ -20,11 +20,8 @@ class SCR_HintEditorComponent: SCR_BaseEditorComponent
 	
 	
 	//--- Refresh hint, as it sometimes uses device-specific lines
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
 		SCR_HintManagerComponent hintManager = SCR_HintManagerComponent.GetInstance();
 		if (hintManager)
 			hintManager.Refresh();
@@ -43,7 +40,7 @@ class SCR_HintEditorComponent: SCR_BaseEditorComponent
 		if (prefabData)
 			prefabData.Init(GetOwner());
 		
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 	}
 	override void EOnEditorDeactivate()
 	{
@@ -58,6 +55,6 @@ class SCR_HintEditorComponent: SCR_BaseEditorComponent
 		if (prefabData)
 			prefabData.Exit(GetOwner());
 		
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
 };

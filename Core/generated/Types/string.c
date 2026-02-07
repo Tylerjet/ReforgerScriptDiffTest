@@ -16,42 +16,62 @@ sealed class string
 	
 	static const string Empty;
 	
-	/**
-	\brief Converts string to integer
-	\return \p int - Converted \p string.
-	@code
-	string str = "56";
-	int i = str.ToInt();
-	Print(i);
-	
-	>> i = 56
-	@endcode
+	/*!
+	Gets the ASCII code of a character in the string.
+	\param index Index of the character, 0 by default.
 	*/
-	proto external int ToAscii();
-	/**
-	\brief Converts string to float
-	\return \p float - Converted \p string \p in float.
-	@code
-	string str = "56.6";
-	float f = str.ToFloat();
-	Print(f);
+	proto external int ToAscii(int index = 0);
+	/*!
+	Parses a float from a string.
+	Any whitespaces at the beginning in front of a number in the string will be skipped.
 	
-	>> f = 56.6
-	@endcode
-	*/
-	proto external float ToFloat();
-	/**
-	\brief Converts string to integer
-	\return \p int - Converted \p string.
-	@code
-	string str = "56";
-	int i = str.ToInt();
-	Print(i);
+	\param default  Will be returned when the parsing fails (e.g. there's no number to parse)
+	\param offset   Number of characters in the string to skip
+	\param parsed   Out param - number of characters read
 	
-	>> i = 56
-	@endcode
+	\return The parsed float (the default if the parsing failed).
+	
+	\code
+	"42.7".ToFloat()    // returns 42.7
+	" 42abc".ToFloat()  // returns 42.0
+	"abc42.7".ToFloat() // returns 42.7
+	"abc42.7".ToFloat(default: 17.6)  // returns 17.6
+	"abc42.7".ToFloat(offset: 3)		  // returns 42.7
+	"42.7".ToFloat(parsed: len)       // returns 42.7, len = 4
+	" 42.7".ToFloat(parsed: len)      // returns 42.7, len = 5
+	"0".ToFloat(parsed: len)          // returns  0.0, len = 1
+	"abc".ToFloat(parsed: len)        // returns  0.0, len = 0
+	"   ".ToFloat(default: 17.6, parsed: len)      // returns 17.6, len = 0
+	"abc 42.7 abc".ToFloat(offset: 3, parsed: len) // returns 42.7, len = 5
+	\endcode
 	*/
-	proto external int ToInt();
+	proto external float ToFloat(float default = 0.0, int offset = 0, out int parsed = -1);
+	/*!
+	Parses an integer from a string.
+	Any whitespaces at the beginning in front of a number in the string will be skipped.
+	
+	\param default  Will be returned when the parsing fails (e.g. there's no number to parse)
+	\param offset   Number of characters in the string to skip
+	\param parsed   Out param - number of characters read
+	
+	\return The parsed integer (the default if the parsing failed).
+	
+	\code
+	"42".ToInt()      // returns 42
+	" 42abc".ToInt()  // returns 42
+	"abc42".ToInt()   // returns 0
+	"abc42".ToInt(default: 17)  // returns 17
+	"abc42".ToInt(offset: 3)    // returns 42
+	"42".ToInt(parsed: len)     // returns 42, len = 2
+	" 42".ToInt(parsed: len)    // returns 42, len = 3
+	" 42.7".ToInt(parsed: len)  // returns 42, len = 3
+	"0".ToInt(parsed: len)      // returns 0,  len = 1
+	"abc".ToInt(parsed: len)    // returns 0,  len = 0
+	"   ".ToInt(default: 17, parsed: len)      // returns 17, len = 0
+	"abc 42 abc".ToInt(offset: 3, parsed: len) // returns 42, len = 3
+	\endcode
+	*/
+	proto external int ToInt(int default = 0, int offset = 0, out int parsed = -1);
 	/**
 	\brief Returns a vector from a string
 	\return \p vector Converted s as vector
@@ -92,18 +112,22 @@ sealed class string
 	
 	*/
 	proto external string Trim();
-	/**
-	\brief Gets n-th character from string
-	\param index character index
-	\return \p string character on index-th position in string
-	@code
+	/*!
+	Builds a string using given format and arguments.
+	\param fmt    Formatting string - any string with special tokens %1 .. %9.
+	\param param1 Replaces the "%1" token in the formatting string in the result
+	\param param1 Replaces the "%2" token
+	
+	\return The resulting string, i.e. the formatting string with all the %1 ... %9 replaced.
+	
+	\code
 	int a = 5;
 	float b = 5.99;
 	string c = "beta";
 	string 	test = string.Format("Ahoj %1 = %3 , %2", a, b, c);
 	Print(test);
 	>> 'Ahoj 5 = 'beta' , 5.99'
-	@endcode
+	\endcode
 	*/
 	static proto string Format(string fmt, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);
 	/**
@@ -207,18 +231,30 @@ sealed class string
 	@endcode
 	*/
 	proto external bool Contains(string sample);
-	/**
-	\brief Retunrs true if string starts with sample, otherwise return false
-	\param sample \p string Finding string expression
-	\return \p bool true if string starts with sample
-	@code
-	string str = "Hello World";
-	Print( str.StartsWith("Hello") );
-	Print( str.StartsWith("World") );
+	/*!
+	Checks whether the string contains a given substring at a given position.
 	
-	>> true
-	>> false
-	@endcode
+	\param sample The substring to test
+	\param pos    Position to test for the substring (index of the string's character)
+	\return true if the string contains the given sample at the given position, false otherwise.
+	
+	\code
+	"Hello World".ContainsAt("Hello", 0); // true (maybe use string.StartsWith() instead?)
+	"Hello World".ContainsAt("World", 6); // true
+	"Hello World".ContainsAt("Hello", 6); // false
+	\endcode
+	*/
+	proto external bool ContainsAt(string sample, int pos);
+	/*!
+	Checks whether the string begins with a given substring.
+	
+	\param sample The substring to test
+	\return true if the string starts with the given sample, false otherwise.
+	
+	\code
+	"Hello World".StartsWith("Hello");    // true
+	"Hello World".StartsWith("World");    // false
+	\endcode
 	*/
 	proto external bool StartsWith(string sample);
 	/**
@@ -337,6 +373,21 @@ sealed class string
 	@endcode
 	*/
 	proto external string Get(int index);
+	/*!
+	Checks whether a character at a given position is a digit.
+	
+	\param index position of the character in the string
+	\return true iff the character at the position is from the "0" .. "9" range
+	*/
+	proto external bool IsDigitAt(int index);
+	/*!
+	Checks whether a character at a given position is a whitespace.
+	A whitespace may be e.g. Space (0x20 " "), Tab (0x09 "\t"), New Line (0x09 "\r", 0x0a "\n") etc.
+	
+	\param index position of the character in the string
+	\return true iff the character at the position is a whitespace
+	*/
+	proto external bool IsSpaceAt(int index);
 	/**
 	\brief Returns internal type representation. Can be used in runtime, or cached in variables and used for faster inheritance checking
 	\returns \p typename Type of class

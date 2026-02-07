@@ -36,7 +36,7 @@ class SCR_SpinningWidgetComponent : ScriptedWidgetComponent
 	//-----------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
-		if (!GetGame().InPlayMode())
+		if (!GetGame() || !GetGame().InPlayMode())
 			return;
 		
 		ScriptCallQueue queue = GetGame().GetCallqueue();

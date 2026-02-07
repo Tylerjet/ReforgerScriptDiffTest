@@ -51,7 +51,7 @@ class SCR_CollapseWidgetComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void ShowWidgetDelayed(float opacity)
 	{
-		WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, opacity, WidgetAnimator.FADE_RATE_FAST);
+		AnimateWidget.Opacity(m_wRoot, opacity, UIConstants.FADE_RATE_FAST);
 		SetCollapsed(true, false);
 	}
 
@@ -191,7 +191,7 @@ class SCR_CollapseWidgetComponent : ScriptedWidgetComponent
 		}
 		
 		if (animate)
-			WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.PaddingLayout, speed, paddings[0], paddings[1], paddings[2], paddings[3]);
+			AnimateWidget.Padding(m_wRoot, paddings, speed);
 		else
 			m_wRoot.SetVisible(!m_bCollapsed); // Do not attempt to set any padding, just hide the widget
 			//AlignableSlot.SetPadding(m_wRoot, paddings[0], paddings[1], paddings[2], paddings[3]);

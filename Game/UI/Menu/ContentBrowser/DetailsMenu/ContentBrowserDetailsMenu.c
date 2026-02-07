@@ -79,9 +79,24 @@ class ContentBrowserDetailsMenu : SCR_SuperMenuBase
 	
 	//-----------------------------------------------------------------------------------------------------------------
 	//! Opens the menu for a given workshop item
-	static ContentBrowserDetailsMenu OpenForWorkshopItem(SCR_WorkshopItem item)
+	// closeSameMenu - when true, an existing details menu will be closed
+	static ContentBrowserDetailsMenu OpenForWorkshopItem(SCR_WorkshopItem item, bool closeExistingMenu = false)
 	{
-		ContentBrowserDetailsMenu detailsMenu = ContentBrowserDetailsMenu.Cast(GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ContentBrowserDetailsMenu, 0, false, false));
+		MenuManager mm = GetGame().GetMenuManager();
+		
+		if (closeExistingMenu)
+		{
+			ContentBrowserDetailsMenu previousMenu = ContentBrowserDetailsMenu.Cast(mm.FindMenuByPreset(ChimeraMenuPreset.ContentBrowserDetailsMenu));
+			if (previousMenu)
+			{
+				if (previousMenu.m_WorkshopItem != item)
+					mm.CloseMenu(previousMenu);
+				else
+					return previousMenu; // Do nothing if asked to open same addon details page again
+			}
+		}
+		
+		ContentBrowserDetailsMenu detailsMenu = ContentBrowserDetailsMenu.Cast(mm.OpenMenu(ChimeraMenuPreset.ContentBrowserDetailsMenu, 0, false, false));
 		
 		if (detailsMenu)
 		{
@@ -215,9 +230,9 @@ class ContentBrowserDetailsMenu : SCR_SuperMenuBase
 		dlg.m_OnClose.Insert(OnReportSuccessDialogConfirm);
 		
 		// Message 
-		/*string msg = dlg.GetMessageStr();
+		string msg = dlg.GetMessageStr();
 		msg += "\n\n" + "#AR-Workshop_ReportModReverse";
-		dlg.GetMessageWidget().SetTextFormat(msg, "#AR-Workshop_State_Reported", "#AR-Workshop_CancelReport");*/
+		dlg.GetMessageWidget().SetTextFormat(msg, "#AR-Workshop_State_Reported", "#AR-Workshop_CancelReport");
 	}
 	
 	

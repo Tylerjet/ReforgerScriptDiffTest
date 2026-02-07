@@ -59,6 +59,47 @@ class SCR_BTParam<Class T> : SCR_BTParamBase
 	}
 };
 
+// Same as SCR_BTParam, but has a strong reference to T
+class SCR_BTParamRef<Class T> : SCR_BTParamBase
+{
+	ref T m_Value;
+	
+	//----------------------------------------------------------------
+	override void SetVariableOut(Node node)
+	{
+		node.SetVariableOut(m_sPortName, m_Value);
+	}
+	
+	//----------------------------------------------------------------
+	override void GetVariableIn(Node node)
+	{
+		T tempVar;
+		if (node.GetVariableIn(m_sPortName, tempVar))
+			m_Value = tempVar;
+	}
+	
+	//----------------------------------------------------------------
+	void Init(array<SCR_BTParamBase> paramsArray, T value)
+	{
+		paramsArray.Insert(this);
+		m_Value = value;
+	}
+	
+	//----------------------------------------------------------------
+	//! Use this in SCR_AIAction constructor.
+	void Init(SCR_AIActionBase action, T value)
+	{
+		action.m_aParams.Insert(this);
+		m_Value = value;
+	}
+	
+	//----------------------------------------------------------------
+	override string ValueToString()
+	{
+		return m_Value.ToString();
+	}
+};
+
 
 //! Same as SCR_BTParam<T>, but can be assigned or not (from script side).
 //! Output: When not assigned, it clears node variable. When assigned, works as usual.

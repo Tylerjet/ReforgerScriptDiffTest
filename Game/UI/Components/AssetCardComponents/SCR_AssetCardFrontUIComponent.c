@@ -326,6 +326,14 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 		m_iPrefabIndex = index;
 	}	
 	
+	/*!
+	\return Prefab index from the list of placeable prefabs.
+	*/
+	int GetPrefabIndex()
+	{
+		return m_iPrefabIndex;
+	}	
+	
 	override void HandlerAttached(Widget w)
     {
 		m_Widget = w;

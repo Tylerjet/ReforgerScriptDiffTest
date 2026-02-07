@@ -87,15 +87,17 @@ class SCR_GalleryComponent : ScriptedWidgetComponent
 		GetGame().GetInputManager().AddActionListener(m_sActionLeft, EActionTrigger.DOWN, OnCustomLeft);
 		GetGame().GetInputManager().AddActionListener(m_sActionRight, EActionTrigger.DOWN, OnCustomRight);
 
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnDeviceChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnDeviceChanged()
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		ShowPagingButtons();
 	}
 	
+	
+	// TODO: This method should be used everywhere, but is bugged!!!
 	//------------------------------------------------------------------------------------------------
 	void ShowPagingButtons(bool animate = true)
 	{
@@ -383,7 +385,7 @@ class SCR_GalleryComponent : ScriptedWidgetComponent
 		if (animate && m_fAnimationRate < 1000)
 		{
 			LayoutSlot.SetFillWeight(widget, !expand);
-			WidgetAnimator.PlayAnimation(widget, WidgetAnimationType.LayoutFill, expand, m_fAnimationRate);
+			AnimateWidget.LayoutFill(widget, expand, m_fAnimationRate);
 		}
 		else
 		{

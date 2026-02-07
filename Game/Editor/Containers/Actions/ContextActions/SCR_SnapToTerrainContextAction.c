@@ -21,7 +21,7 @@ class SCR_SnapToTerrainContextAction : SCR_SelectedEntitiesContextAction
 		vector transform[4];
 		selectedEntity.GetTransform(transform);
 		
-		if (!SCR_Global.SnapToTerrain(transform, owner.GetWorld())) return;
+		if (!SCR_TerrainHelper.SnapToTerrain(transform, owner.GetWorld())) return;
 		
 		selectedEntity.SetTransformWithChildren(transform);
 	}

@@ -127,6 +127,9 @@ class SCR_VONController : ScriptComponent
 			}
 		}
 		
+		if (!m_DirectSpeechEntry || !m_DirectSpeechEntry.m_bIsEnabled)
+			return;
+		
 		if (m_bIsToggledDirect && m_fToggleOffDelay <= 0)	// direct speech toggle is active, cancel it
 			OnVONToggle(0,0);
 		
@@ -284,25 +287,25 @@ class SCR_VONController : ScriptComponent
 			m_bIsActive = true;
 			
 			FactionAffiliationComponent factionComp = FactionAffiliationComponent.Cast( m_VONEntity.FindComponent( FactionAffiliationComponent ) );	// TODO temp hack against sound loopback
-			if (factionComp && SCR_VONEntryRadio.Cast(entry))
+			if (!factionComp || !SCR_VONEntryRadio.Cast(entry))
+				return;
+			
+			SCR_MilitaryFaction playerFaction = SCR_MilitaryFaction.Cast(factionComp.GetAffiliatedFaction());
+			if (!playerFaction)
+				return;
+			
+			int factionHQFrequency = playerFaction.GetFactionRadioFrequency();
+			if (factionHQFrequency != entry.m_RadioComp.GetFrequency())
+				return;
+			
+			foreach (SCR_VONEntry vEntry : m_aEntries)
 			{
-				SCR_MilitaryFaction playerFaction = SCR_MilitaryFaction.Cast(factionComp.GetAffiliatedFaction());
-				if (playerFaction)
+				if (vEntry != entry && vEntry.m_bIsEnabled )
 				{
-					int factionHQFrequency = playerFaction.GetFactionRadioFrequency();
-					if (factionHQFrequency == entry.m_RadioComp.GetFrequency())
-					{
-						foreach (SCR_VONEntry vEntry : m_aEntries)
-						{
-							if (vEntry != entry && vEntry.m_bIsEnabled )
-							{
-								vEntry.ToggleEntry();
-								vEntry.m_bIsSuspended = true;
-							}
-						}
-					}
+					vEntry.ToggleEntry();
+					vEntry.m_bIsSuspended = true;
 				}
-			}
+			}	
 		}
 	}
 	
@@ -417,6 +420,7 @@ class SCR_VONController : ScriptComponent
 				m_aEntries.Clear();
 			
 			m_DirectSpeechEntry = new SCR_VONEntry(this, m_VONComp); // Init direct speech entry
+			m_DirectSpeechEntry.m_bIsEnabled = true;
 			
 			// Init radio entries
 			m_GadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(m_VONEntity);
@@ -457,6 +461,10 @@ class SCR_VONController : ScriptComponent
 	protected void CleanupEntries()
 	{
 		m_aEntries.Clear();
+		
+		if (m_DirectSpeechEntry)
+			m_DirectSpeechEntry.m_bIsEnabled = false;
+		
 		m_VONEntity = null;
 		
 		if (m_GadgetMgr)

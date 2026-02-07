@@ -8,7 +8,7 @@ class SCR_AIHideFromDangerBehavior : SCR_AIBehaviorBase
         return 0;
     }
 
-	void SCR_AIHideFromDangerBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, vector pos = vector.Zero, float desiredDistance = 0)
+	void SCR_AIHideFromDangerBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, vector pos = vector.Zero, float desiredDistance = 0)
     {
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/HideFromDanger.bt";
 		m_bResetLook = true;

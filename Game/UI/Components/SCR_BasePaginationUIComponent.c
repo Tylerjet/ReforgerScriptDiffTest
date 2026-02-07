@@ -57,10 +57,10 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 	[Attribute("1", desc: "If true it will play the next and prev page audio on page change")]
 	protected bool m_bPlayAudioOnPageChange;
 	
-	[Attribute(UISounds.CLICK, UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox)]
 	protected string m_sOneNextPageSfx;
 	
-	[Attribute(UISounds.CLICK, UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox)]
 	protected string m_sOnePrevPageSfx;
 	
 	protected int m_iCurrentPage;
@@ -144,7 +144,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 		int pageCapacity = m_iRows * m_iColumns;
 		int countEntries = GetEntryCount();
 		int totalPages = Math.Ceil(countEntries / (m_iRows * m_iColumns));
-		if (totalPages > 0)
+		if (totalPages > 0 && m_bLoop)
 			page = Math.Repeat(page, totalPages);
 		
 		int indexStart = page * pageCapacity;
@@ -182,7 +182,15 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 			{
 				UniformGridSlot.SetRow(child, row);
 				UniformGridSlot.SetColumn(child, column);
+			
+				//--- Set navigation
+				if (column == 0 && m_sFocusPrevName)
+					child.SetNavigation(WidgetNavigationDirection.LEFT, WidgetNavigationRuleType.EXPLICIT, m_sFocusPrevName);
 				
+				if (column == m_iColumns - 1 && m_sFocusNextName)
+					child.SetNavigation(WidgetNavigationDirection.RIGHT, WidgetNavigationRuleType.EXPLICIT, m_sFocusNextName);
+				
+				//--- Find focused widget
 				if (row == focusedRow && column == focusedColumn)
 					focusedButton = SCR_WidgetTools.FindWidgetInChildren(child, WidgetType.ButtonWidgetTypeID);
 				
@@ -331,10 +339,10 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 		}
 	}
 	
-	protected void OnInputDeviceUserChanged()
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		//--- Always considered "under cursor" with gamepad
-		SetUnderCursor( !GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+		SetUnderCursor(isGamepad);
 	}
 	
 	override protected bool IsUnique()
@@ -453,8 +461,8 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 				ButtonActionComponent.GetOnAction(m_ButtonNextNoScrollWidget, true).Insert(OnButtonNext);
 		}
 		
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
-		OnInputDeviceUserChanged();
+		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		SetPage(m_iCurrentPage, true);
 	}
@@ -462,7 +470,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 	{
 		super.HandlerDeattached(w);
 		
-		if (GetGame().OnInputDeviceUserChangedInvoker())
-			GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		if (GetGame().OnInputDeviceIsGamepadInvoker())
+			GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
 };

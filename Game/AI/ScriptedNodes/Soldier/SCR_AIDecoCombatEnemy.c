@@ -31,13 +31,13 @@ class SCR_AIDecoCurrentEnemy: SCR_AIDecoCombatEnemy
 	//-------------------------------------------------------------------------------------------
 	override protected BaseTarget GetEnemy(SCR_AICombatComponent combatComp)
 	{
-		return combatComp.GetCurrentEnemy();
+		return combatComp.GetCurrentTarget();
 	}
 	
 	//-------------------------------------------------------------------------------------------
 	protected static override string GetOnHoverDescription()
 	{
-		return "Returns true when SCR_AICombatComponent.GetCurrentEnemy() != null.";
+		return "Returns true when SCR_AICombatComponent.GetCurrentTarget() != null.";
 	}
 	
 	//-------------------------------------------------------------------------------------------
@@ -55,7 +55,7 @@ class SCR_AIDecoLastSeenEnemy: SCR_AIDecoCombatEnemy
 	//-------------------------------------------------------------------------------------------
 	protected static override string GetOnHoverDescription()
 	{
-		return "Returns true when SCR_AICombatComponent.GetCurrentEnemy() != null.";
+		return "Returns true when SCR_AICombatComponent.GetCurrentTarget() != null.";
 	}
 	
 	//-------------------------------------------------------------------------------------------

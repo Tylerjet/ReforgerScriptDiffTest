@@ -102,8 +102,11 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		SCR_VotingBase voting = FindVoting(type, value);
 		if (voting)
 		{
-			voting.RemoveVote(playerID);
-			m_OnRemoveVote.Invoke(type, value, playerID);
+			//--- Cancel the vote when no votes are left (i.e., last player canceled theirs) or when player who is target of the vote cancels their vote
+			if (voting.RemoveVote(playerID) || (voting.IsValuePlayerID() && playerID == value))
+				EndVoting(type, value, EVotingOutcome.FORCE_FAIL);
+			else
+				m_OnRemoveVote.Invoke(type, value, playerID);
 		}
 	}
 	/*!
@@ -229,7 +232,7 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	bool IsVotingAvailable(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		SCR_VotingBase template = FindTemplate(type);
-		return template && template.IsAvailable(value, IsVoting(type, value));
+		return template && (template.IsAvailable(value, IsVoting(type, value)) || DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VOTING_ENABLE_ALL));
 	}
 	/*!
 	Check if a voting with given params is currently in effect.
@@ -242,7 +245,7 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		return FindVoting(type, value) != null;
 	}
 	/*!
-	Check ig there is a vote of certain type about given player.
+	Check if there is a vote of certain type about given player.
 	E.g., is there a vote about player being kicked?
 	\param playerID Player ID
 	\param type Type of the vote
@@ -341,7 +344,7 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		{
 			if (template.IsValuePlayerID())
 			{
-				if (template.IsAvailable(playerID, IsVoting(template.GetType(), playerID)))
+				if (template.IsAvailable(playerID, IsVoting(template.GetType(), playerID)) || DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VOTING_ENABLE_ALL))
 					outVotingTypes.Insert(template.GetType());
 			}
 		}
@@ -417,7 +420,7 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	It's purely informative, does not affect voting outcome!
 	\param type Type of the vote
 	\param value Target value, depends on the type (e.g., for KICK it's player ID)
-	return Voted value
+	\return Voted value
 	*/
 	int GetLocalVote(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
@@ -426,6 +429,17 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 			return voting.GetLocalVote();
 		else
 			return SCR_VotingBase.DEFAULT_VALUE;
+	}
+	/*!
+	Check if local vote was cast.
+	It's purely informative, does not affect voting outcome!
+	\param type Type of the vote
+	\param value Target value, depends on the type (e.g., for KICK it's player ID)
+	\return True if the vote was cast
+	*/
+	bool IsLocalVote(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
+	{
+		return GetLocalVote(type, value) != SCR_VotingBase.DEFAULT_VALUE;
 	}
 	/*!
 	Print out information about all ongoing voting instances.
@@ -643,13 +657,11 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		
 		return true;
 	}
-	override void EOnFrame(IEntity owner, float timeSlice)
+	override protected void EOnFrame(IEntity owner, float timeSlice)
 	{
 		m_fUpdateLength += timeSlice;
 		if (m_fUpdateLength >= m_fUpdateStep)
 		{
-			m_fUpdateLength = 0;
-			
 			//--- Update countdowns (only if some players are present)
 			if (GetGame().GetPlayerManager().GetPlayerCount() > 0)
 			{
@@ -663,6 +675,13 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 					}
 				}
 			}
+			
+			m_fUpdateLength = 0; //--- Must be after the code above, as it's passed inside Update() as a parameter
 		}
+	}
+	void SCR_VotingManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
+	{
+		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_VOTING, "Voting", "Game");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_VOTING_ENABLE_ALL, "", "Enable All Vote Types", "Voting");
 	}
 };

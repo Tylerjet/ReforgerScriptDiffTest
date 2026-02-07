@@ -11,16 +11,35 @@ class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
 	[Attribute("Header")]
 	protected string m_sHeaderName;
 	
+	[Attribute(desc: "Config of the global attribute menu category that should be selected upon opening attribute window when there are no playable factions and player tries to select the playable factions with Gamepad.", params: "conf class=SCR_EditorAttributeCategory")]
+	protected ResourceName m_NoFactionAttributeCategory;
+	
 	protected Widget m_wNoPlayerFactionsActive;
 	protected Widget m_wButtonHint;
 	protected Widget m_wHeader;
 	
 	protected override bool CanOpenDialog()
-	{		
+	{				
 		//Are there any playable factions
 		SCR_DelegateFactionManagerComponent delegateFactionManager = SCR_DelegateFactionManagerComponent.GetInstance();
 		if (!delegateFactionManager || delegateFactionManager.GetPlayableFactionDelegateCount() > 0)
 			return super.CanOpenDialog();
+		//~ Open Scenario Settings with factions if it could otherwise open the dialog
+		else if (delegateFactionManager && delegateFactionManager.GetPlayableFactionDelegateCount() == 0 && super.CanOpenDialog())
+		{
+			//~ Open Global Attributes
+			SCR_AttributesManagerEditorComponent attributesManager = SCR_AttributesManagerEditorComponent.Cast(SCR_AttributesManagerEditorComponent.GetInstance(SCR_AttributesManagerEditorComponent));
+			if (attributesManager)
+			{
+				if (m_NoFactionAttributeCategory)
+					attributesManager.SetCurrentCategory(m_NoFactionAttributeCategory);
+				
+				attributesManager.StartEditing(GetGame().GetGameMode());
+			}
+				
+			//~ Do not open the dialog		
+			return false;
+		}
 		
 		//Has attribute been changed yet
 		SCR_AttributesManagerEditorComponent attributeManager = SCR_AttributesManagerEditorComponent.Cast(SCR_AttributesManagerEditorComponent.GetInstance(SCR_AttributesManagerEditorComponent, true));

@@ -247,7 +247,7 @@ class SCR_FilterSetStorage
 	
 	[Attribute()]
 	ref array<string> m_aSelectedCategories;// Categories of those selected filters
-	
+
 	[Attribute()]
 	int m_iVersion;							// Version. In the future filters will change, we will have to detect old filters.
 };
@@ -289,6 +289,7 @@ class SCR_AllFilterSetsStorage : ModuleGameSettings
 		{
 			foreach (SCR_FilterEntry filter : category.GetFilters())
 			{
+				// Save filters 
 				if (filter.GetSelected() && !filter.m_sInternalName.IsEmpty() && !category.m_sInternalName.IsEmpty() )
 				{
 					filterSetStorage.m_aSelectedCategories.Insert(category.m_sInternalName);
@@ -301,7 +302,6 @@ class SCR_AllFilterSetsStorage : ModuleGameSettings
 		
 		BaseContainerTools.ReadFromInstance(allFilterSets, allFilterSetsContainer);
 		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 	}
 	
 	
@@ -385,4 +385,18 @@ class SCR_AllFilterSetsStorage : ModuleGameSettings
 		
 		return true;
 	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set all saved filter values to default
+	static void ResetAllToDefault()
+	{
+		// Find storage
+		SCR_AllFilterSetsStorage allFilterSets = new SCR_AllFilterSetsStorage;
+		allFilterSets.m_aFilterSets = {};
+		BaseContainer allFilterSetsContainer = GetGame().GetGameUserSettings().GetModule("SCR_AllFilterSetsStorage");
+
+		// Save settings
+		BaseContainerTools.ReadFromInstance(allFilterSets, allFilterSetsContainer);
+		GetGame().UserSettingsChanged();
+	}
 };

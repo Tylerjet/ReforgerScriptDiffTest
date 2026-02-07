@@ -180,6 +180,8 @@ class FilteredServerParams : RoomFilterBase
 		RegV("modIds");
 		RegV("scenarioId");
 		
+		RegV("includePing");
+		
 		// Sort ascendence 
 		SCR_FilterEntryRoom asc = new SCR_FilterEntryRoom;
 		asc.m_sInternalName = SORT_ASCENDENT;

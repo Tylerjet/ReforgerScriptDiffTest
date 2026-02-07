@@ -93,7 +93,7 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 			if (duration == 0)
 				duration = m_fDefaultDuration;
 			
-			GetGame().GetCallqueue().CallLater(Hide, duration * 1000);
+			GetGame().GetCallqueue().CallLater(Hide, duration * 1000, false, info);
 		}
 		
 		//--- Mark the hint as shown after a delay (multiple hints may be triggered on the same frame, delay will make sure only the actually shown one will be saved)

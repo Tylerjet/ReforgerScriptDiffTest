@@ -58,7 +58,9 @@ class SCR_FireplaceComponent : SCR_BaseInteractiveLightComponent
 		{
 			SCR_FireplaceComponentClass componentData = SCR_FireplaceComponentClass.Cast(GetComponentData(GetOwner()));
 			if (componentData) 
-				m_pFireParticle = SCR_ParticleAPI.PlayOnObjectPTC(GetOwner(), componentData.GetParticle(), componentData.GetParticleOffset());
+			{
+				m_pFireParticle = SCR_ParticleEmitter.CreateAsChild(componentData.GetParticle(), GetOwner(), componentData.GetParticleOffset());
+			}
 		}
 	
 		// Show decals

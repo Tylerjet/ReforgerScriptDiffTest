@@ -7,9 +7,7 @@ class SCR_CampaignBuildUserAction : ScriptedUserAction
 	protected SCR_CampaignSuppliesComponent m_SuppliesComponent;
 	protected IEntity m_SuppliesProvider;
 	protected SCR_CampaignBuildingClientTrigger m_Trigger;
-	
-	private const string SOUND_BUILD = "SOUND_BUILD";
-		
+			
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
 	{				
@@ -70,7 +68,7 @@ class SCR_CampaignBuildUserAction : ScriptedUserAction
 		else if (m_Base)
 			campaignNetworkComponent.BuildBase(m_SlotEnt.GetID(), m_Base, compIndex, compValue, m_BuildingController.GetAngle());
 		
-		SCR_UISoundEntity.SoundEvent(SOUND_BUILD);
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_BUILD);
 		
 		m_BuildingController.DeactivateController();
 		m_BuildingController.DeactivateActionListeners();	

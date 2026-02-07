@@ -11,6 +11,7 @@ Do not modify, this script is generated
 
 enum EDamageType
 {
+	//! This damage type ignores damage multipliers, damage reduction and threshold!
 	TRUE,
 	COLLISION,
 	MELEE,

@@ -56,7 +56,6 @@ class SCR_LoadingHintComponent : ScriptedWidgetComponent
 		
 		cont.Set("m_aReadHints", m_aReadHints);
 		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 	}
 	
 	//------------------------------------------------------------------------------------------------

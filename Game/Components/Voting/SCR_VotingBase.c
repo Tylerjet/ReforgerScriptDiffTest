@@ -27,9 +27,9 @@ class SCR_VotingBase
 	[Attribute(desc: "Visual representation of the voting.")]
 	protected ref SCR_VotingUIInfo m_Info;
 	
-	protected int m_iLocalValue;
-	
 	static const int DEFAULT_VALUE = -1;
+	
+	protected int m_iLocalValue = DEFAULT_VALUE;
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public, server
@@ -42,8 +42,9 @@ class SCR_VotingBase
 	/*!
 	Remove vote of given player.
 	\param playerID Player ID
+	\return True if the voting should be canceled
 	*/
-	void RemoveVote(int playerID);
+	bool RemoveVote(int playerID);
 	/*!
 	Remove all votes for given value.
 	\param value Value
@@ -263,11 +264,18 @@ class SCR_VotingReferendum: SCR_VotingBase
 	{
 		m_aPlayerIDs.Insert(playerID);
 	}
-	override void RemoveVote(int playerID)
+	override bool RemoveVote(int playerID)
 	{
 		int index = m_aPlayerIDs.Find(playerID);
 		if (index >= 0)
+		{
 			m_aPlayerIDs.Remove(index);
+			return m_aPlayerIDs.IsEmpty();
+		}
+		else
+		{
+			return false;
+		}
 	}
 	override bool RemoveValue(int value)
 	{
@@ -366,10 +374,11 @@ class SCR_VotingElection: SCR_VotingBase
 		m_Votes.Set(playerID, value);
 		UpdateHighestValue();
 	}
-	override void RemoveVote(int playerID)
+	override bool RemoveVote(int playerID)
 	{
 		m_Votes.Remove(playerID);
 		UpdateHighestValue();
+		return m_Votes.IsEmpty();
 	}
 	override bool RemoveValue(int value)
 	{

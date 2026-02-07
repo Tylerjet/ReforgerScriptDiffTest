@@ -30,7 +30,7 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 	protected ResourceName m_sMapTaskIconResourceName;
 
 	//------------------------------------------------------------------------------
-	override void Update()
+	override void Update(float timeSlice)
 	{
 		UpdateIcons();
 	}
@@ -68,6 +68,10 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 
 		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(fm.GetFactionByKey(factionKey));
 		if (!faction)
+			return;
+		
+		SCR_CampaignFaction playerFaction = SCR_CampaignFaction.Cast(SCR_RespawnSystemComponent.GetLocalPlayerFaction());
+		if (faction != playerFaction)
 			return;
 
 		IEntity box = faction.GetDeployedMobileAssembly(); // don't ask me why i named it 'box'
@@ -265,11 +269,58 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 	{
 		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
 		array<SCR_CampaignBase> bases = baseManager.GetBases();
+		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(SCR_RespawnSystemComponent.GetLocalPlayerFaction());
+		
+		if (!faction)
+			return;
 
 		int cnt = bases.Count();
 		for (int i = 0; i < cnt; ++i)
 		{
 			SCR_CampaignBase base = bases[i];
+			
+			if (base.GetIsHQ() && base.GetOwningFaction() != faction)
+			{
+				IEntity ent = base;
+				MapDescriptorComponent mapDesc;
+				IEntity sibling;
+		
+				// Hide all map descriptors
+				while (ent)
+				{
+					mapDesc = MapDescriptorComponent.Cast(ent.FindComponent(MapDescriptorComponent));
+					
+					if (mapDesc && mapDesc.Item())
+						mapDesc.Item().SetVisible(false);
+					
+					sibling = ent.GetSibling();
+					
+					if (sibling)
+						ent = sibling;
+					else
+						ent = ent.GetChildren();
+				}
+				
+				array<SCR_CampaignServiceComponent> services = {};
+				base.GetAllBaseServices(services);
+				
+				foreach (SCR_CampaignServiceComponent service : services)
+				{
+					IEntity serviceEntity = service.GetOwner();
+					
+					if (!serviceEntity)
+						continue;
+					
+					mapDesc = SCR_CampaignServiceMapDescriptorComponent.Cast(serviceEntity.FindComponent(SCR_CampaignServiceMapDescriptorComponent));
+					
+					if (!mapDesc)
+						continue;
+					
+					mapDesc.Item().SetVisible(false);
+				}
+				
+				continue;
+			}
 
 			Widget w = GetGame().GetWorkspace().CreateWidgets(m_sBaseElement, m_ConflictUIRoot);
 			SCR_CampaignMapUIBase handler = SCR_CampaignMapUIBase.Cast(w.FindHandler(SCR_CampaignMapUIBase));
@@ -287,7 +338,6 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 
 		Event_OnIconsInit.Invoke();
 
-		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(SCR_RespawnSystemComponent.GetLocalPlayerFaction());
 		if (faction)
 		{
 			string factionKey = faction.GetFactionKey();
@@ -323,7 +373,7 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 		SCR_MapUITask handler;
 		SCR_Faction f;
 		ButtonWidget taskIconButton;
-		ButtonWidget overlayButton;
+		Widget overlayWidget;
 		ButtonWidget taskAssignButton;
 		Widget widget;
 		Widget w;
@@ -403,10 +453,10 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 					iconButtonHandler.SetRootWidgetHandler(handler);
 			}
 						
-			overlayButton = ButtonWidget.Cast(w.FindAnyWidget("OverlayButton"));
-			if (overlayButton)
+			overlayWidget = w.FindAnyWidget("OverlayWidget");
+			if (overlayWidget)
 			{
-				overlayButtonHandler = SCR_TaskOverlayButton.Cast(overlayButton.FindHandler(SCR_TaskOverlayButton));
+				overlayButtonHandler = SCR_TaskOverlayButton.Cast(overlayWidget.FindHandler(SCR_TaskOverlayButton));
 				if (overlayButtonHandler)
 					overlayButtonHandler.SetRootWidgetHandler(handler);
 			}
@@ -449,8 +499,11 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void ShowSpawnPoint(SCR_SpawnPoint sp)
 	{
+		if (!sp)
+			return;
+		
 		// todo: hotfix for icon duplicates in conflict, figure out a proper solution :wink:
-		if (SCR_GameModeCampaignMP.GetInstance() && sp.Type() == SCR_SpawnPoint)
+		if (SCR_GameModeCampaignMP.GetInstance() && sp.Type() == SCR_SpawnPoint || sp.Type() == SCR_CampaignSpawnPointGroup)
 			return;
 
 		if (!SCR_SelectSpawnPointSubMenu.GetInstance() && sp.GetVisibleInDeployMapOnly())
@@ -500,7 +553,7 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 		
 		vector playerLocation = gamemode.GetPlayerSpawnPos();
 		
-		Widget indicator = GetGame().GetWorkspace().CreateWidgets("{FD71287E68006A26}UI/layouts/Campaign/CampaignPlayerMapIndicator.layout", m_RootWidget);
+		Widget indicator = GetGame().GetWorkspace().CreateWidgets("{FD71287E68006A26}UI/layouts/Campaign/CampaignPlayerMapIndicator.layout", m_ConflictUIRoot);
 		
 		SCR_CampaignMapUIPlayerHighlight highlightHandler = SCR_CampaignMapUIPlayerHighlight.Cast(indicator.FindHandler(SCR_CampaignMapUIPlayerHighlight));
 		
@@ -519,11 +572,8 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 		
 		//Called only after spawn, to center map and zoom to player position.
 		if (!gamemode.WasMapOpened())
-		{
-			vector mapSize = m_MapEntity.GetMapWidget().GetSizeInUnits();
-			float zoomVal = mapSize[0] / (mapSize[0] * (m_MapEntity.GetMapWidget().PixelPerUnit() * 1.5));
-			
-			m_MapEntity.ZoomPanSmooth(zoomVal,playerLocation[0],playerLocation[2]);
+		{			
+			m_MapEntity.ZoomPanSmooth(1.5,playerLocation[0],playerLocation[2]);
 			gamemode.SetMapOpened(true);
 		}
 		

@@ -62,7 +62,7 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		// We don't have author name in scenario header now.
 		if (m_Scenario)
 		{
-			if (m_Scenario.GetOwner())
+			if (m_Scenario.GetOwner() && m_Scenario.GetOwner().Author())
 			{
 				string author = m_Scenario.GetOwner().Author().Name();
 				m_Widgets.m_AuthorNameText.SetText(author);

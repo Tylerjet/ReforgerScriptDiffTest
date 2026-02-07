@@ -8,7 +8,7 @@ class SCR_ModHandlerLib
 {
 	//------------------------------------------------------------------------------------------------
 	//! Return summary size of dependencies list
-	static int GetModListSize(array<Dependency> dependencies)
+	static float GetModListSize(array<Dependency> dependencies)
 	{
 		// Empty array check 
 		if (dependencies.IsEmpty())
@@ -28,7 +28,7 @@ class SCR_ModHandlerLib
 	
 	//------------------------------------------------------------------------------------------------
 	//! Return summary size of workshop item list
-	static int GetModListSize(array<ref SCR_WorkshopItem> items)
+	static float GetModListSize(array<ref SCR_WorkshopItem> items)
 	{
 		// Empty array check 
 		if (items.IsEmpty())

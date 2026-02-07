@@ -6,19 +6,15 @@ class SCR_AIBehaviorBase : SCR_AIActionBase
 	bool m_bAllowLook = true;
 	bool m_bResetLook = false;
 
-	void SCR_AIBehaviorBase(SCR_AIBaseUtilityComponent utility, bool prioritize)
+	void SCR_AIBehaviorBase(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity)
 	{
 		m_Utility = SCR_AIUtilityComponent.Cast(utility);
+		m_RelatedGroupActivity = groupActivity;
 	}
 	
 	void SetCustomPriority(float priority)
 	{
 		m_fPriority = priority;
-	}
-	
-	void SetGroupActivityContext(SCR_AIActivityBase activity)
-	{
-		m_RelatedGroupActivity = activity;
 	}
 	
 	SCR_AIActivityBase GetGroupActivityContext()
@@ -41,7 +37,7 @@ class SCR_AIWaitBehavior : SCR_AIBehaviorBase
         return 10;
     }
 
-    void SCR_AIWaitBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize)
+    void SCR_AIWaitBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity)
     {
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Wait.bt";
         m_eType = EAIActionType.WAIT;
@@ -55,7 +51,7 @@ class SCR_AIIdleBehavior : SCR_AIBehaviorBase
 		return 1;
     }
 
-    void SCR_AIIdleBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize)
+    void SCR_AIIdleBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity)
     {
 		if (!utility)
 			return;
@@ -65,24 +61,3 @@ class SCR_AIIdleBehavior : SCR_AIBehaviorBase
     }
 };
 
-class SCR_AIReturnToDefaultBehavior : SCR_AIBehaviorBase
-{
-	ECharacterStance m_Stance;
-	vector m_vPosition;
-	
-    override float Evaluate()
-    {
-		if (m_Utility.m_OwnerController.GetStance() == ECharacterStance.STAND)
-			return 0;
-		return 5;
-    }	
-	
-    void SCR_AIReturnToDefaultBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize)
-    {
-		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/ReturnToDefault.bt";
-		m_bResetLook = true;
-        m_eType = EAIActionType.RETURN_TO_DEFAULT;
-		m_vPosition = m_Utility.GetOrigin();
-		m_Stance = m_Utility.m_OwnerController.GetStance();
-    }
-};

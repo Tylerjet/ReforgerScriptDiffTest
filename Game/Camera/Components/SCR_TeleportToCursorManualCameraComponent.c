@@ -33,6 +33,9 @@ class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 	[Attribute("15", UIWidgets.Auto, "")]
 	private float m_fMinAngle;
 	
+	[Attribute("-30", UIWidgets.Slider, params: "-89 89 0.1")]
+	private float m_fDefaultAngle;
+	
 	[Attribute()]
 	private string m_sSoundEvent;
 	
@@ -122,7 +125,7 @@ class SCR_TeleportToCursorManualCameraComponent : SCR_BaseManualCameraComponent
 			vector angles = param.transform[2].VectorToAngles().MapAngles();
 			if (m_bIsDefaultAngle)
 			{
-				angles[1] = -45;
+				angles[1] = m_fDefaultAngle;
 			}
 			else if (angles[1] > -m_fMinAngle)
 			{

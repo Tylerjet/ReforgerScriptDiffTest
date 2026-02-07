@@ -28,10 +28,10 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	
 	// ---- Constants ----
 	
-	protected const int GRID_N_COLUMNS = 4;
-	protected const int GRID_N_ROWS = 3;
+	protected const int GRID_N_COLUMNS = 5;
+	protected const int GRID_N_ROWS = 4;
 	
-	protected const ResourceName LAYOUT_GRID_TILE = "{B7FFC0754752F6D3}UI/layouts/Menus/ContentBrowser/Tile/ContentBrowserTile.layout";
+	protected const ResourceName LAYOUT_GRID_TILE = "{9A08C4C52FACC45B}UI/layouts/Menus/ContentBrowser/Tile/ContentBrowserTile_5x4.layout";
 	
 	// Message tags
 	protected const string MESSAGE_TAG_NOTHING_FOUND = "nothing_found";
@@ -496,6 +496,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		// Pack reported
 		SCR_FilterEntry reportedFilter = otherCategory.FindFilter("reported");
 		p.StoreBoolean("reported", reportedFilter.GetSelected());		// <- "reported": true
+		p.StoreBoolean("hidden", reportedFilter.GetSelected());
 		
 		// Pack test mods
 	}

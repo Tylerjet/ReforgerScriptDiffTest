@@ -37,7 +37,7 @@ class SCR_CampaignServiceEntityComponent : ScriptComponent
 		m_DestMultiComp.GetOnDamageInvoker().Insert(EvaluateHit);
 #endif
 		
-		IEntity parentComp = SCR_Global.GetMainParent(owner);
+		IEntity parentComp = SCR_EntityHelper.GetMainParent(owner);
 		if (!parentComp)
 			return;
 		

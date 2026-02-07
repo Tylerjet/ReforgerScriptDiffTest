@@ -525,6 +525,10 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			SetPIPEnabled(true);
 			UpdateVignette();
 			
+			// Switching input
+			if (m_SightsFovInfo.GetStepsCount() > 1)
+				GetGame().GetInputManager().AddActionListener(ACTION_WHEEL, EActionTrigger.VALUE, SelectNextZoomLevel);
+			
 			// Setup illumination 
 			if (m_bHasIllumination)
 			{
@@ -593,6 +597,10 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			SetPIPEnabled(false);
 			GetGame().GetInputManager().RemoveActionListener(ACTION_ILLUMINATION, EActionTrigger.DOWN, ToggleIllumination);
 		}
+		
+		// Removing switching input
+		GetGame().GetInputManager().RemoveActionListener(ACTION_WHEEL, EActionTrigger.VALUE, SelectNextZoomLevel);
+		GetGame().GetInputManager().RemoveActionListener(ACTION_ILLUMINATION, EActionTrigger.DOWN, ToggleIllumination);
 	}
 	
 	

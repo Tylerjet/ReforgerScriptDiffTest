@@ -20,6 +20,11 @@ class SCR_SetModeColorEditorUIComponent: ScriptedWidgetComponent
 		Color color = modeInfo.GetModeColor();
 		color.SetA(m_wRoot.GetColor().A());
 		
+		SetColor(color);
+	}
+		
+	protected void SetColor(Color color)
+	{
 		m_wRoot.SetColor(color);
 	}
 	

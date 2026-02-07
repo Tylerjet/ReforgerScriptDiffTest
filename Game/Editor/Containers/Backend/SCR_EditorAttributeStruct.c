@@ -5,11 +5,12 @@ Saved data for editor attribute.
 */
 class SCR_EditorAttributeStruct: JsonApiStruct
 {
-	protected int m_iId;
-	protected int m_iType;
-	protected float m_fVar0;
-	protected float m_fVar1;
-	protected float m_fVar2;
+	//--- Serialized (names shortened to save memory)
+	protected int id; //--- ID
+	protected int ty; //--- Type
+	protected float v0; //--- Var 0
+	protected float v1; //--- Var 1
+	protected float v2; //--- Var 2
 	
 	/*!
 	Save all attributes for given item.
@@ -35,11 +36,11 @@ class SCR_EditorAttributeStruct: JsonApiStruct
 			
 			SCR_EditorAttributeStruct entry = new SCR_EditorAttributeStruct();
 			outEntries.Insert(entry);
-			entry.m_iId = i;
+			entry.id = i;
 			
-			entry.m_fVar0 = var.GetVector()[0];
-			entry.m_fVar1 = var.GetVector()[1];
-			entry.m_fVar2 = var.GetVector()[2];
+			entry.v0 = var.GetVector()[0];
+			entry.v1 = var.GetVector()[1];
+			entry.v2 = var.GetVector()[2];
 		}
 	}
 	/*!
@@ -55,8 +56,8 @@ class SCR_EditorAttributeStruct: JsonApiStruct
 		
 		foreach (SCR_EditorAttributeStruct entry: entries)
 		{
-			attribute = attributeList.GetAttribute(entry.m_iId);
-			var = SCR_BaseEditorAttributeVar.CreateVector(Vector(entry.m_fVar0, entry.m_fVar1, entry.m_fVar2));
+			attribute = attributeList.GetAttribute(entry.id);
+			var = SCR_BaseEditorAttributeVar.CreateVector(Vector(entry.v0, entry.v1, entry.v2));
 			attribute.WriteVariable(item, var, null, -1);
 		}
 	}
@@ -71,14 +72,14 @@ class SCR_EditorAttributeStruct: JsonApiStruct
 		Print(prefix + "  SCR_EditorAttributeStruct: " + entries.Count());
 		foreach (SCR_EditorAttributeStruct entry: entries)
 		{
-			PrintFormat(prefix + "    %1: %2, %3, %4", attributeList.GetAttribute(entry.m_iId).ClassName(), entry.m_fVar0, entry.m_fVar1, entry.m_fVar2);
+			PrintFormat(prefix + "    %1: %2, %3, %4", attributeList.GetAttribute(entry.id).ClassName(), entry.v0, entry.v1, entry.v2);
 		}
 	}
 	void SCR_EditorAttributeStruct()
 	{
-		RegV("m_iId");
-		RegV("m_fVar0");
-		RegV("m_fVar1");
-		RegV("m_fVar2");
+		RegV("id");
+		RegV("v0");
+		RegV("v1");
+		RegV("v2");
 	}
 };

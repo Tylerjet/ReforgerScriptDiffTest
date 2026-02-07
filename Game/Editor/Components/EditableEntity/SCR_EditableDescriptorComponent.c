@@ -79,7 +79,7 @@ class SCR_EditableDescriptorComponent: SCR_EditableSystemComponent
 	{
 	}
 	
-	protected void UpdateInfo(SCR_UIInfo from = null)
+	protected void UpdateInfo(SCR_UIDescription from = null)
 	{
 		if (!m_UIInfoDescriptor)
 		{

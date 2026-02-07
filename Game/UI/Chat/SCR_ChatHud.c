@@ -4,12 +4,12 @@ There is a Chat Panel prefab Inside the layout.
 The Chat HUD opens the chat on a button press, and doesn't do anything more interesting.
 */
 
-class SCR_ChatHud : SCR_InfoDisplay
+class SCR_ChatHud : SCR_InfoDisplayExtended
 {
 	protected SCR_ChatPanel m_ChatPanel;	
 	
 	//------------------------------------------------------------------------------------------------
-	override void UpdateValues(IEntity owner, float timeSlice)
+	override void DisplayUpdate(IEntity owner, float timeSlice)
 	{
 		if (m_ChatPanel)
 		{
@@ -19,10 +19,8 @@ class SCR_ChatHud : SCR_InfoDisplay
 	
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnStartDraw(IEntity owner)
+	override void DisplayStartDraw(IEntity owner)
 	{
-		super.OnStartDraw(owner);
-		
 		InputManager inputMgr = GetGame().GetInputManager();
 		inputMgr.AddActionListener("ChatToggle", EActionTrigger.DOWN, Callback_OnToggleAction);
 		
@@ -37,10 +35,8 @@ class SCR_ChatHud : SCR_InfoDisplay
 	
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnStopDraw(IEntity owner)
+	override void DisplayStopDraw(IEntity owner)
 	{
-		super.OnStopDraw(owner);
-		
 		InputManager inputMgr = GetGame().GetInputManager();
 		inputMgr.RemoveActionListener("ChatToggle", EActionTrigger.DOWN, Callback_OnToggleAction);
 		

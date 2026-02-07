@@ -9,6 +9,9 @@ Do not modify, this script is generated
 * @{
 */
 
+/*!
+Ball socket joint simulation
+*/
 sealed class PhysicsBallSocketJoint: PhysicsJoint
 {
 };

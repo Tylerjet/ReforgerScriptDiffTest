@@ -22,7 +22,7 @@ class SCR_ServerDetailEntryComponent : SCR_WLibComponentBase
 	[Attribute()]
 	protected string m_sLabel;
 	
-	[Attribute("{1F0A6C9C19E131C6}UI/Textures/Icons/icons_wrapperUI.imageset", UIWidgets.ResourceNamePicker)]
+	[Attribute("{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset", UIWidgets.ResourceNamePicker)]
 	protected ResourceName m_ImageSetDefault;
 	
 	[Attribute()]

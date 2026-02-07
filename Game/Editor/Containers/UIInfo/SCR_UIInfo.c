@@ -5,7 +5,7 @@ Instead of adding SetXXX() functions here, consider using specialized inherited 
 
 Inspired by engine-driven UIInfo, but not related to it.
 */
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_UIInfo: SCR_UIDescription
 {
 	[Attribute(params: "edds imageset", uiwidget: UIWidgets.ResourcePickerThumbnail)]

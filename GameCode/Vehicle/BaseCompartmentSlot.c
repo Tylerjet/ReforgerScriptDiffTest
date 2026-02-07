@@ -1,5 +1,8 @@
 class BaseCompartmentSlot : ExtBaseCompartmentSlot
 {
+	[Attribute(desc: "Contains Default Prefab of character to be spawned into compartment", params: "et")]
+	protected ref SCR_DefaultOccupantData m_DefaultOccupantData;
+	
 	private bool m_bCompartmentAccessible = true;
 
 	bool IsCompartmentAccessible() 
@@ -61,6 +64,15 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 		return vehicle;
 	}
 	
+	/*!
+	Get if compartment is occupied
+	\return returns true if occupied else returns false
+	*/
+	bool IsOccupied()
+	{
+		return GetOccupant() != null;
+	}
+	
 	void DamageOccupant(float damage, EDamageType damageType, IEntity instigator = null, bool gettingIn = false, bool gettingOut = false)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOccupant());
@@ -115,5 +127,141 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 		{
 			damageManager.Kill(instigator)
 		}
+	}
+	
+	/*!
+	Get default occupent prefab data
+	\return Default occupant data
+	*/
+	SCR_DefaultOccupantData GetDefaultOccupantData()
+	{
+		return m_DefaultOccupantData;
+	}
+	
+	/*!
+	Get default occupent prefab ResourceName
+	\return Default occupant prefab
+	*/
+	ResourceName GetDefaultOccupantPrefab(bool checkIfValid = true)
+	{
+		if (!m_DefaultOccupantData || (checkIfValid && !m_DefaultOccupantData.IsValid()))
+			return string.Empty;
+		
+		return m_DefaultOccupantData.GetDefaultOccupantPrefab();
+	}
+	
+	/*!
+	Spawn default character within the compartment (Server only)
+	Default characters are defined on the CompartmentSlot
+	\param[inout] group if Left empty it will create a new group and place the character in it and return it. Else it will place the character in the given group
+	\param groupPrefabGroup prefab,  Generally want to keep it as default value as faction and usch is set automaticly
+	\return Returns spawned character
+	*/
+	IEntity SpawnDefaultCharacterInCompartment(inout AIGroup group, ResourceName groupPrefab = "{000CD338713F2B5A}Prefabs/AI/Groups/Group_Base.et")
+	{
+		return SpawnCharacterInCompartment(GetDefaultOccupantPrefab(), group, groupPrefab);
+	}
+	
+	/*!
+	Spawn character within the compartment (Server only)
+	\param characterPrefab Prefab to spawn in compartment
+	\param[inout] group if Left empty it will create a new group and place the character in it and return it. Else it will place the character in the given group
+	\param createGroupForCharacter If a group should be created for the spawned character
+	\return Returns spawned character
+	*/
+	IEntity SpawnCharacterInCompartment(ResourceName characterPrefab, inout AIGroup group, ResourceName groupPrefab = "{000CD338713F2B5A}Prefabs/AI/Groups/Group_Base.et")
+	{
+		if (characterPrefab.IsEmpty() || !IsCompartmentAccessible() || GetOccupant() != null)
+			return null;
+		
+		IEntity spawnedCharacter = GetGame().SpawnEntityPrefab(Resource.Load(characterPrefab));
+		if (!spawnedCharacter)
+		{
+			Print(string.Format("'BaseCompartmentSlot' Failed to spawn character in compartment. Check if ResourceName is correct! Path: '%1'", characterPrefab), LogLevel.ERROR);
+			return null;
+		}
+			
+		AIControlComponent agentControlComponent = AIControlComponent.Cast(spawnedCharacter.FindComponent(AIControlComponent));
+		if (!agentControlComponent)
+		{
+			Print("'BaseCompartmentSlot' Could not get AIControlComponent from spawned character, so entity is deleted!", LogLevel.ERROR);
+			delete spawnedCharacter;
+			return null;
+		}
+		
+		agentControlComponent.ActivateAI();
+		
+		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(spawnedCharacter.FindComponent(CompartmentAccessComponent));
+		if (!compartmentAccess)
+		{
+			Print("'BaseCompartmentSlot' Could not get CompartmentAccessComponent from spawned character, so entity is deleted!", LogLevel.ERROR);
+			delete spawnedCharacter;
+			return null;
+		}
+		
+		//~ Could not move in compartment so delete
+		if (!compartmentAccess.MoveInVehicle(GetOwner(), this))
+		{
+			Print(string.Format("'BaseCompartmentSlot' Trying to spawn character in compartment but it could not be moved into it so character is deleted. Compartment type: %1", typename.EnumToString(ECompartmentType, SCR_CompartmentAccessComponent.GetCompartmentType(this))), LogLevel.WARNING);
+			delete spawnedCharacter;
+			return null;
+		}	
+		
+		//~ Create new group
+		if (!group)
+		{
+			IEntity groupEntity = GetGame().SpawnEntityPrefab(Resource.Load(groupPrefab));
+			if (!groupEntity) 
+			{
+				Print("'BaseCompartmentSlot' Could not create group for spawned character. Most likly incorrect group prefab given!", LogLevel.ERROR);
+				return spawnedCharacter;
+			}
+			
+			group = AIGroup.Cast(groupEntity);
+			if (!group)
+			{
+				Print("'BaseCompartmentSlot' Could not create group for spawned character as spawned group prefab is missing AIGroup component!", LogLevel.ERROR);
+				delete groupEntity;
+				return spawnedCharacter;
+			}
+					
+			//~ Set group's faction
+			SCR_AIGroup groupScripted = SCR_AIGroup.Cast(group);
+			if (groupScripted)
+			{
+				FactionAffiliationComponent factionComponent = FactionAffiliationComponent.Cast(spawnedCharacter.FindComponent(FactionAffiliationComponent));
+				if (factionComponent)
+				{
+					Faction faction = factionComponent.GetAffiliatedFaction();
+					if (faction) 
+						groupScripted.InitFactionKey(faction.GetFactionKey());
+				}
+			}
+		}
+		
+		//~ Add the entity to the group
+		group.AddAgent(agentControlComponent.GetControlAIAgent());
+
+		return spawnedCharacter;
+	}
+};
+
+[BaseContainerProps(), BaseContainerCustomTitleField("m_sDefaultOccupantPrefab")]
+class SCR_DefaultOccupantData
+{
+	[Attribute(desc: "Default Prefab of character to be spawned into compartment", params: "et")]
+	protected ResourceName m_sDefaultOccupantPrefab;
+	
+	[Attribute("1", desc: "This entry will be considered empty and is ignored if flase")]
+	protected bool m_bEnabled;
+	
+	ResourceName GetDefaultOccupantPrefab()
+	{
+		return m_sDefaultOccupantPrefab;
+	}
+	
+	bool IsValid()
+	{
+		return m_bEnabled && !m_sDefaultOccupantPrefab.IsEmpty();
 	}
 };

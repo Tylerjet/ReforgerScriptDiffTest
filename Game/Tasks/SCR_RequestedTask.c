@@ -29,13 +29,26 @@ class SCR_RequestedTask : SCR_BaseTask
 		}
 		
 		if (SCR_RespawnSystemComponent.GetLocalPlayerFaction() == GetTargetFaction())
-			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_AVAILABLE_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_AVAILABLE, text2: TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT, sound: UISounds.TASK_CREATED);
+			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_AVAILABLE_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_AVAILABLE, text2: TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT, sound: SCR_SoundEvent.TASK_CREATED);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool IsLocallyRequestedTask()
+	{
+		if (!GetTaskManager())
+			return false;
+		
+		SCR_RequestedTaskSupportEntity supportEntity = SCR_RequestedTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_RequestedTaskSupportEntity));
+		if (!supportEntity)
+			return false;
+		
+		return this == supportEntity.GetLocallyRequestedTask();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void SetTitleWidgetText(notnull TextWidget textWidget, string taskText)
 	{
-		if (this == GetTaskManager().GetLocallyRequestedTask())
+		if (IsLocallyRequestedTask())
 		{
 			textWidget.SetTextFormat(GetTaskManager().m_sLocalRequestTitle);
 			return;
@@ -47,7 +60,7 @@ class SCR_RequestedTask : SCR_BaseTask
 	//------------------------------------------------------------------------------------------------
 	override string GetTitleText()
 	{
-		if (this == GetTaskManager().GetLocallyRequestedTask())
+		if (IsLocallyRequestedTask())
 			return GetTaskManager().m_sLocalRequestTitle;
 
 		if (m_Requester)
@@ -57,11 +70,11 @@ class SCR_RequestedTask : SCR_BaseTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override Widget GenerateTaskDescriptionUI(notnull SCR_UITaskManagerComponent uiTaskManagerComponent, array<Widget> widgets)
+	override Widget GenerateTaskDescriptionUI(notnull Widget rootWidget, array<Widget> widgets)
 	{
-		Widget w = super.GenerateTaskDescriptionUI(uiTaskManagerComponent, widgets);
+		Widget w = super.GenerateTaskDescriptionUI(rootWidget, widgets);
 		
-		if (GetTaskManager().GetLocallyRequestedTask() == this)
+		if (IsLocallyRequestedTask())
 		{
 			Widget description = w.FindAnyWidget("TaskDescription");
 		}
@@ -96,7 +109,7 @@ class SCR_RequestedTask : SCR_BaseTask
 	//------------------------------------------------------------------------------------------------
 	override string GetTaskListTaskText()
 	{
-		if (this == GetTaskManager().GetLocallyRequestedTask())
+		if (IsLocallyRequestedTask())
 			return LOCAL_PLAYER_REQUEST;
 		
 		return super.GetTaskListTaskText();
@@ -108,7 +121,7 @@ class SCR_RequestedTask : SCR_BaseTask
 		SCR_BaseTaskExecutor localExecutor = SCR_BaseTaskExecutor.GetLocalExecutor();
 		if (localExecutor == m_Requester || localExecutor == GetAssignee())
 		{
-			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_CANCELLED_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_DONE, sound: UISounds.TASK_CANCELED);
+			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_CANCELLED_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_DONE, sound: SCR_SoundEvent.TASK_CANCELED);
 		}
 		
 		super.Cancel();
@@ -121,17 +134,17 @@ class SCR_RequestedTask : SCR_BaseTask
 		SCR_BaseTaskExecutor localExecutor = SCR_BaseTaskExecutor.GetLocalExecutor();
 
 		if (localExecutor == GetAssignee())
-			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_FAILED_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_DONE, sound: UISounds.TASK_FAILED);
+			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_FAILED_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_DONE, sound: SCR_SoundEvent.TASK_FAILED);
 		
 		if (!m_Requester)
 		{
 			if (localExecutor.GetTaskExecutorID(localExecutor) == m_iRequesterID)
-				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_SUPPORT_CANCELLED_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_DONE, sound: UISounds.TASK_CANCELED);
+				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_SUPPORT_CANCELLED_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_DONE, sound: SCR_SoundEvent.TASK_CANCELED);
 		}
 		else
 		{
 			if (localExecutor == m_Requester)
-				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_SUPPORT_CANCELLED_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_DONE, sound: UISounds.TASK_CANCELED);
+				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_SUPPORT_CANCELLED_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_DONE, sound: SCR_SoundEvent.TASK_CANCELED);
 		}
 		
 		super.Fail(showMsg);
@@ -148,7 +161,7 @@ class SCR_RequestedTask : SCR_BaseTask
 		{
 			SCR_BaseTaskExecutor localExecutor = SCR_BaseTaskExecutor.GetLocalExecutor();
 			if (localExecutor && (localExecutor == GetRequester() || localExecutor == assignee))
-				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_DONE, sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
+				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_DONE, sound: SCR_SoundEvent.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
 			return;
 		}
 		
@@ -164,10 +177,14 @@ class SCR_RequestedTask : SCR_BaseTask
 	//------------------------------------------------------------------------------------------------
 	void OnRequesterKilled()
 	{
-		if (GetTaskManager().IsProxy())
+		if (!GetTaskManager() || GetTaskManager().IsProxy())
 			return;
 		
-		GetTaskManager().FailTask(this);
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
+		supportEntity.FailTask(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -236,6 +253,13 @@ class SCR_RequestedTask : SCR_BaseTask
 	//------------------------------------------------------------------------------------------------
 	void SetRequester(SCR_BaseTaskExecutor requester)
 	{
+		if (!GetTaskManager())
+			return;
+		
+		SCR_RequestedTaskSupportEntity supportEntity = SCR_RequestedTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_RequestedTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
 		if (!requester)
 			return;
 		
@@ -254,7 +278,7 @@ class SCR_RequestedTask : SCR_BaseTask
 		
 		SCR_BaseTaskExecutor localTaskExecutor = SCR_BaseTaskExecutor.GetLocalExecutor();
 		if (localTaskExecutor == requester)
-			GetTaskManager().SetLocallyRequestedTask(this);
+			supportEntity.SetLocallyRequestedTask(this);
 		
 		FactionAffiliationComponent factionAffiliationComponent = FactionAffiliationComponent.Cast(requesterEntity.FindComponent(FactionAffiliationComponent));
 		if (factionAffiliationComponent)
@@ -266,6 +290,16 @@ class SCR_RequestedTask : SCR_BaseTask
 	{
 		if (!m_Requester)
 			AutoSetRequester();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Deserialize(ScriptBitReader reader)
+	{
+		super.Deserialize(reader);
+		
+		int requesterID;
+		reader.ReadInt(requesterID);
+		SetRequesterID(requesterID);
 	}
 	
 	//------------------------------------------------------------------------------------------------

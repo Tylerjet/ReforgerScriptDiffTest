@@ -46,7 +46,7 @@ class SCR_SuperMenuBase: ChimeraMenuBase
 		m_TabViewComponent.Init();
 
 		w.SetOpacity(0);
-		WidgetAnimator.PlayAnimation(w,WidgetAnimationType.Opacity,1,WidgetAnimator.FADE_RATE_SUPER_FAST);
+		AnimateWidget.Opacity(w, 1, UIConstants.FADE_RATE_SUPER_FAST);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -165,8 +165,8 @@ class SCR_SuperMenuBase: ChimeraMenuBase
 			return;
 		}
 		
-		WidgetAnimator.PlayAnimation(GetRootWidget(),WidgetAnimationType.Opacity,0,WidgetAnimator.FADE_RATE_FAST);
-		float time = 1 / WidgetAnimator.FADE_RATE_FAST;
+		AnimateWidget.Opacity(GetRootWidget(), 0, UIConstants.FADE_RATE_FAST);
+		float time = 1 / UIConstants.FADE_RATE_FAST;
 		GetGame().GetCallqueue().CallLater(Close, time);
 	}
 	
@@ -176,5 +176,18 @@ class SCR_SuperMenuBase: ChimeraMenuBase
 		TextWidget wTitle = TextWidget.Cast(GetRootWidget().FindAnyWidget(TITLE_NAME));
 		if (wTitle)
 			wTitle.SetText(title);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OpenSubMenu(int index)
+	{
+		if (m_TabViewComponent)
+			m_TabViewComponent.ShowTab(index);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_SubMenuBase GetOpenedSubMenu()
+	{
+		return m_OpenedSubmenu;
 	}
 };

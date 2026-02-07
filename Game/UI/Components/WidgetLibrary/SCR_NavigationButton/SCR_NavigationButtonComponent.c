@@ -8,6 +8,9 @@ class SCR_NavigationButtonComponent : SCR_ButtonBaseComponent
 
 	[Attribute()]
 	protected string m_sActionName;
+	
+	[Attribute(desc: "Instead of using the action above for hint display, use the one set directly in the Action RichTextWidget")]
+	protected bool m_bUseLayoutActionHint;
 
 	[Attribute("0", "If true action icon should fadeout if context of given action is not active")]
 	protected bool m_bFadeAction;
@@ -68,9 +71,9 @@ class SCR_NavigationButtonComponent : SCR_ButtonBaseComponent
 
 		// Set visuals
 		if (actionActive)
-			WidgetAnimator.PlayAnimation(m_wActionRichText, WidgetAnimationType.Opacity, UIConstants.ENABLED_WIDGET_OPACITY, WidgetAnimator.FADE_RATE_FAST);
+			AnimateWidget.Opacity(m_wActionRichText, UIConstants.ENABLED_WIDGET_OPACITY, UIConstants.FADE_RATE_FAST, true);
 		else
-			WidgetAnimator.PlayAnimation(m_wActionRichText, WidgetAnimationType.Opacity, UIConstants.DISABLED_WIDGET_OPACITY, WidgetAnimator.FADE_RATE_FAST);
+			AnimateWidget.Opacity(m_wActionRichText, UIConstants.DISABLED_WIDGET_OPACITY, UIConstants.FADE_RATE_FAST, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -127,7 +130,9 @@ class SCR_NavigationButtonComponent : SCR_ButtonBaseComponent
 		GetGame().GetInputManager().RemoveActionListener(m_sActionName, EActionTrigger.DOWN, OnInput);
 
 		m_sActionName = action;
-		m_wActionRichText.SetText(string.Format("<action name='%1' scale='1.25'/>", m_sActionName));
+		if (!m_bUseLayoutActionHint)
+			m_wActionRichText.SetText(string.Format("<action name='%1' scale='1.25'/>", m_sActionName));
+		
 		GetGame().GetInputManager().AddActionListener(m_sActionName, EActionTrigger.DOWN, OnInput);
 	}
 

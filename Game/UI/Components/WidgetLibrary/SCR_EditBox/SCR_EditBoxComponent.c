@@ -19,7 +19,7 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	[Attribute("0.4", "0 1")]
 	protected float m_fOpacityFocused;
 	
-	EditBoxWidget m_wEditBox;
+	Widget m_wEditBox;
 	Widget m_wColorOverlay;
 	Widget m_wEditBackground;
 	Widget m_wWarningIcon;
@@ -36,12 +36,14 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	// Arguments passed: SCR_EditBoxComponent, string (text)
 	ref ScriptInvoker m_OnConfirm = new ref ScriptInvoker();
 	ref ScriptInvoker m_OnFocusChangedEditBox = new ref ScriptInvoker();
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
 		m_wColorOverlay = w.FindAnyWidget("OverlayPanel");
-		m_wEditBox = EditBoxWidget.Cast(w.FindAnyWidget("EditBox"));
+		
+		m_wEditBox = w.FindAnyWidget("EditBox");
 		m_wWarningIcon = w.FindAnyWidget("ErrorIcon");
 		m_wEditBackground = w.FindAnyWidget("EditBackground");
 		m_wHorizontalLayout = w.FindAnyWidget("HorizontalLayout");
@@ -111,13 +113,13 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	//------------------------------------------------------------------------------------------------
 	void OnValueChanged()
 	{
-		m_OnChanged.Invoke(this, m_wEditBox.GetText());
+		m_OnChanged.Invoke(this, GetEditBoxText());
 
 		if (m_bValidInput)
 			return;
 		
-		WidgetAnimator.PlayAnimation(m_wWarningIcon, WidgetAnimationType.Opacity, 0, m_fColorsAnimationTime);
-		WidgetAnimator.PlayAnimation(m_wColorOverlay, WidgetAnimationType.Color, COLOR_VALID_INPUT, m_fColorsAnimationTime);
+		AnimateWidget.Opacity(m_wWarningIcon, 0, m_fColorsAnimationTime, true);
+		AnimateWidget.Color(m_wColorOverlay, COLOR_VALID_INPUT, m_fColorsAnimationTime);
 		m_bValidInput = true;
 	}
 	
@@ -126,7 +128,8 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	{
 		// Call focus event on parent class
 		super.OnFocus(m_wRoot, 0, 0);
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Opacity, m_fOpacityFocused, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wBackground, m_fOpacityFocused, m_fAnimationRate);
+
 		m_bIsTyping = true;
 		
 		// Make the widget unfocusable
@@ -139,7 +142,7 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	{
 		// Call focusLost event on parent class
 		super.OnFocusLost(m_wRoot, 0, 0);
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Opacity, m_fOpacityDefault, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wBackground, m_fOpacityDefault, m_fAnimationRate, true);
 		m_bIsTyping = false;
 		
 		// Make focusable again
@@ -151,8 +154,8 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	//------------------------------------------------------------------------------------------------
 	void OnInvalidInput()
 	{
-		WidgetAnimator.PlayAnimation(m_wWarningIcon, WidgetAnimationType.Opacity, 1, m_fColorsAnimationTime);
-		WidgetAnimator.PlayAnimation(m_wColorOverlay, WidgetAnimationType.Color, COLOR_INVALID_INPUT, m_fColorsAnimationTime);
+		AnimateWidget.Opacity(m_wWarningIcon, 1, m_fColorsAnimationTime, true);
+		AnimateWidget.Color(m_wColorOverlay, COLOR_INVALID_INPUT, m_fColorsAnimationTime);
 		m_bValidInput = false;
 	}
 	
@@ -163,6 +166,50 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 			m_OnConfirm.Invoke(this, GetValue());
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected string GetEditBoxText()
+	{
+		if (!m_wEditBox)
+			return string.Empty;
+
+		EditBoxWidget editBox = EditBoxWidget.Cast(m_wEditBox);
+		if (editBox)
+			return editBox.GetText();
+
+		MultilineEditBoxWidget editMulti = MultilineEditBoxWidget.Cast(m_wEditBox);
+		if (editMulti)
+			return editMulti.GetText();
+
+		return string.Empty;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetEditBoxText(string text)
+	{
+		if (!m_wEditBox)
+			return;
+
+		EditBoxWidget editBox = EditBoxWidget.Cast(m_wEditBox);
+		if (editBox)
+		{
+			editBox.SetText(text);
+			return;
+		}
+
+		MultilineEditBoxWidget editMulti = MultilineEditBoxWidget.Cast(m_wEditBox);
+		if (editMulti)
+			editMulti.SetText(text);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected string GetPlaceholderText()
+	{
+		EditBoxWidget editBox = EditBoxWidget.Cast(m_wEditBox);
+		if (editBox)
+			return editBox.GetPlaceholderText();
+		return string.Empty;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Static method to easily find component by providing name and parent.
 	//! Searching all children will go through whole hierarchy, instead of immediate chidren
@@ -184,8 +231,18 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 		return comp;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Set write mode of editbox handler
+	void ActivateWriteMode()
+	{
+		EditBoxWidget editBox = EditBoxWidget.Cast(m_wEditBox);
+		if (editBox)
+			editBox.ActivateWriteMode();
+	}
+	
 	// User API
-	void SetValue(string value) { m_wEditBox.SetText(value); }
-	string GetValue() { return m_wEditBox.GetText(); }	
-	string GetPlaceHolderText() { return m_wEditBox.GetPlaceholderText(); }
+	void SetValue(string value) { SetEditBoxText(value); }
+	string GetValue() { return GetEditBoxText(); }
+	string GetPlaceHolderText() { return GetPlaceholderText(); }
+	Widget GetEditBoxWidget() { return m_wEditBox; }
 };

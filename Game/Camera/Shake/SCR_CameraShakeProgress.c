@@ -15,7 +15,7 @@ class SCR_CameraShakeProgress
 
 	protected vector m_vTranslation;
 	protected vector m_vRotation;
-	protected float m_fFovScale;
+	protected float m_fFovScale = 1.0;
 
 	/*!
 		Returns current translation of this progress.

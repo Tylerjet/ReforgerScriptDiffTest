@@ -1,9 +1,6 @@
 //------------------------------------------------------------------------------------------------
 class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 {
-	const string PLAY_NAME = "#AR-Workshop_ButtonPlay";
-	const string CONTINUE_NAME = "#AR-PauseMenu_Continue";
-	
 	MissionWorkshopItem m_Item;
 	ref SCR_MissionHeader m_Header;
 	string m_sScenarioPath;
@@ -12,12 +9,14 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 	TextWidget m_wName;
 	TextWidget m_wDescription;
 	SCR_NavigationButtonComponent m_Play;
+	SCR_NavigationButtonComponent m_Continue;
 	SCR_NavigationButtonComponent m_Restart;
 	SCR_NavigationButtonComponent m_FindServer;
 	Widget m_wFooter;
 
 	// All return SCR_PlayMenuTileComponent as script invoker
 	ref ScriptInvoker m_OnPlay = new ScriptInvoker();
+	ref ScriptInvoker m_OnContinue = new ScriptInvoker();
 	ref ScriptInvoker m_OnRestart = new ScriptInvoker();
 	ref ScriptInvoker m_OnFindServer = new ScriptInvoker();
 
@@ -33,6 +32,10 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 		m_Play = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Play", w);
 		if (m_Play)
 			m_Play.m_OnActivated.Insert(OnPlay);
+		
+		m_Continue = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Continue", w);
+		if (m_Continue)
+			m_Continue.m_OnActivated.Insert(OnContinue);
 
 		m_FindServer = SCR_NavigationButtonComponent.GetNavigationButtonComponent("FindServer", w);
 		if (m_FindServer)
@@ -59,7 +62,7 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		super.OnFocus(w, x, y);
-		WidgetAnimator.PlayAnimation(m_wFooter, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wFooter, 1, m_fAnimationRate);
 		m_wFooter.SetEnabled(true);
 		return false;
 	}
@@ -68,7 +71,7 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
 		super.OnFocusLost(w, x, y);
-		WidgetAnimator.PlayAnimation(m_wFooter, WidgetAnimationType.Opacity, 0, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wFooter, 0, m_fAnimationRate);
 		m_wFooter.SetEnabled(false);
 		return false;
 	}
@@ -103,11 +106,9 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 		m_wFeatured.SetVisible(isFeatured);
 
 		bool canBeLoaded = m_Header && SCR_SaveLoadComponent.HasSaveFile(m_Header);
-		string buttonName = PLAY_NAME;
-		if (canBeLoaded)
-			buttonName = CONTINUE_NAME;
+		m_Play.SetVisible(!canBeLoaded);
+		m_Continue.SetVisible(canBeLoaded);
 		
-		m_Play.SetLabel(buttonName);
 		m_Restart.SetVisible(canBeLoaded);
 		m_FindServer.SetVisible(item.GetPlayerCount() > 1);
 	}
@@ -129,6 +130,12 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 	void OnPlay()
 	{
 		m_OnPlay.Invoke(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnContinue()
+	{
+		m_OnContinue.Invoke(this);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -23,6 +23,7 @@ enum EntityEvent
 	ANIMEVENT,
 	SIMULATE,
 	POSTSIMULATE,
+	//TODO: too specific. Make a universal physics system event
 	JOINTBREAK,
 	PHYSICSMOVE,
 	CONTACT,

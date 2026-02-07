@@ -133,7 +133,8 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 			m_vLastPos = GetSightsRelPosition();
 		}
 		// Switching input
-		GetGame().GetInputManager().AddActionListener(ACTION_WHEEL, EActionTrigger.VALUE, SelectNextZoomLevel);
+		if (m_SightsFovInfo.GetStepsCount() > 1)
+			GetGame().GetInputManager().AddActionListener(ACTION_WHEEL, EActionTrigger.VALUE, SelectNextZoomLevel);
 		
 		// Setup illumination 
 		if (m_bHasIllumination)
@@ -304,7 +305,15 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	{
 		if (!m_SightsFovInfo)
 			return;
-	
+		
+		// Get reference 1x FOV
+		float referenceFOV;
+		PlayerController pc = GetGame().GetPlayerController();
+		if (pc && pc.GetPlayerCamera())
+			referenceFOV = pc.GetPlayerCamera().GetFocusFOV();
+		else
+			referenceFOV = REFERENCE_FOV;
+		
 		// Set zooms 
 		//m_SightsFovInfo.SetupZooms();
 		array<float> zooms = m_SightsFovInfo.ZoomsToArray();
@@ -317,7 +326,7 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 		{
 			// Calculate fov for each zoom
 			float zoom = zooms[i];
-			float fov = CalculateZoomFov(m_fReferenceFOV, zoom);
+			float fov = CalculateZoomFov(referenceFOV, zoom);
 			m_SightsFovInfo.InsertFov(fov);	
 			
 			// Reticle sizes
@@ -375,6 +384,10 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 		{
 			m_iSelectedZoomLevel++;
 			SelectZoomLevel(m_iSelectedZoomLevel);
+			
+			// Play zoom change sound
+			if (m_WeaponSoundComp)
+				m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ZOOM_IN");
 		}
 		
 		// Up 
@@ -382,6 +395,10 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 		{
 			m_iSelectedZoomLevel--;
 			SelectZoomLevel(m_iSelectedZoomLevel);
+			
+			// Play zoom change sound
+			if (m_WeaponSoundComp)
+				m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ZOOM_OUT");
 		}
 	}
 	
@@ -391,6 +408,16 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	{
 		m_bIsIlluminationOn = !m_bIsIlluminationOn;
 		EnableReticleIllumination(m_bIsIlluminationOn);
+		
+		// Play toggle sound
+		if (!m_WeaponSoundComp)
+			return;
+		
+		if (m_bIsIlluminationOn)
+			m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ILLUM_ON");
+		else 
+			m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ILLUM_OFF");
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------

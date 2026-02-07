@@ -52,8 +52,13 @@ class SCR_CharacterHitZone : ScriptedHitZone
 		
 		if (this != pOriginalHitzone)
 			return;
-
- 		// Only serious hits should cause bleeding
+		
+		// Update last instigator
+		SCR_DamageManagerComponent manager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
+		if (manager)
+			manager.SetInstigatorEntity(instigator);
+		
+		// Only serious hits should cause bleeding
 		if (damage < GetCriticalDamageThreshold()*GetMaxHealth())
 			return;
 		
@@ -82,8 +87,7 @@ class SCR_CharacterHitZone : ScriptedHitZone
 	//-----------------------------------------------------------------------------------------------------------
 	/*! Add bleeding to this hitzone provided with collider ID
 	This should be called from RPC from server on all clients and the host
-	\param colliderID ID of the collider to attach particle effects to Default: -1 (random)
-	\param nodeID ID of the animation node to attach particle effects to. Default: 0 (automatic)
+	\param colliderID ID of physics collider to attach particle effects to Default: -1 (random)
 	*/
 	void AddBleeding(int colliderID = -1)
 	{
@@ -311,7 +315,7 @@ class SCR_CharacterResilienceHitZone : SCR_RegeneratingHitZone
 		// TODO: Set character to unconscious if game mode allows so
 		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
 		if (damageManager)
-			damageManager.Kill();
+			damageManager.Kill(damageManager.GetInstigatorEntity());
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -340,7 +344,7 @@ class SCR_CharacterBloodHitZone : SCR_RegeneratingHitZone
 		// TODO: Death if blood level remains under lethal for over 300 seconds
 		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
 		if (damageManager)
-			damageManager.Kill();
+			damageManager.Kill(damageManager.GetInstigatorEntity());
 	}
 
 	//-----------------------------------------------------------------------------------------------------------

@@ -160,7 +160,7 @@ class SCR_CampaignReconfigureHQRadioUserAction : ScriptedUserAction
 
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
-	{	
+	{
 		CharacterControllerComponent comp = CharacterControllerComponent.Cast(user.FindComponent(CharacterControllerComponent));
 		
 		if (!comp)

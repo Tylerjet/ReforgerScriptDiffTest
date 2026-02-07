@@ -17,7 +17,9 @@ class SCR_MapModuleBase : Managed
 	
 	//------------------------------------------------------------------------------------------------
 	//! Enable open/close events
-	void SetActive(bool active)
+	//! \param active is target state
+	//! \param isCleanup determines if this is just deactivation or a cleanup
+	void SetActive(bool active, bool isCleanup = false)
 	{
 		if (active)
 		{
@@ -28,6 +30,9 @@ class SCR_MapModuleBase : Managed
 		{
 			m_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
 			m_MapEntity.GetOnMapClose().Remove(OnMapClose);
+			
+			if (!isCleanup)
+				m_MapEntity.DeactivateModule(this);
 		}
 	}
 	
@@ -46,15 +51,5 @@ class SCR_MapModuleBase : Managed
 	void SCR_MapModuleBase()
 	{
 		m_MapEntity = SCR_MapEntity.GetMapInstance();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_MapModuleBase() 
-	{
-		if (m_MapEntity)
-		{
-			m_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
-			m_MapEntity.GetOnMapClose().Remove(OnMapClose);
-		}
 	}
 };

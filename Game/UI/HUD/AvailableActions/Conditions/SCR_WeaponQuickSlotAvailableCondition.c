@@ -17,16 +17,12 @@ class SCR_WeaponQuickSlotAvailableCondition : SCR_AvailableActionsGroupCondition
 	static void IncrementCounter()
 	{
 		s_iShowCounter++;
-		GetGame().GetGameUserSettings().GetModule("SCR_InventoryHintSettings").Set("m_iQuickSlotShowCount", s_iShowCounter);
-		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 	}
 
 	void Reset()
 	{
 		GetGame().GetGameUserSettings().GetModule("SCR_InventoryHintSettings").Set("m_iQuickSlotShowCount", 0);
 		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 	}
 
 	void SCR_WeaponQuickSlotAvailableCondition()

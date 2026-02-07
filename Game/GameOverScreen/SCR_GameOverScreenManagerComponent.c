@@ -32,6 +32,8 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 	protected ref array<int> m_aWinningPlayers = new ref array<int>;
 	protected bool m_bIsPlayingGameOverAudio = false;
 	
+	static ref ScriptInvoker s_OnEndGame = new ScriptInvoker();
+	
 	protected Widget m_EndScreenFade;
 	
 	/*!
@@ -49,10 +51,15 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 	protected void StartEndGameFade()
 	{	
 		SetGameOverVarriables(GetGameMode().GetEndGameData());
-		m_EndScreenFade = GetGame().GetHUDManager().CreateLayout(m_sGameOverScreenBasePrefab, EHudLayers.ALWAYS_TOP, 0);
+		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		m_EndScreenFade = hudManager.CreateLayout(m_sGameOverScreenBasePrefab, EHudLayers.ALWAYS_TOP, 0);
 		SCR_FadeUIComponent fadeComponent = SCR_FadeUIComponent.Cast(m_EndScreenFade.FindHandler(SCR_FadeUIComponent));
 		fadeComponent.GetOnFadeDone().Insert(OnEndScreenFadeDone);
 		fadeComponent.FadeIn();
+		
+		// Hide other HUD elements
+		if (hudManager)
+			hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~(EHudLayers.HIGH));
 		
 		//Play game over audio if has any and non are playing
 		if (m_bIsPlayingGameOverAudio)
@@ -60,15 +67,20 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 
 		SCR_BaseGameOverScreenInfo gameOverScreenInfo;
 		if (!m_GameOverScreenConfig.GetGameOverScreenInfo(m_iEndGameType, gameOverScreenInfo))
+		{
+			Print(string.Format("SCR_GameOverScreenManagerComponent could not find end screen: %1", typename.EnumToString(EGameOverTypes, m_iEndGameType)), LogLevel.ERROR);
 			return;
+		}
 		
 		if (!gameOverScreenInfo.HasOptionalParams())
 			return;
 		
 		if (m_bIsFactionVictory)
-			PlayOneShotAudio(gameOverScreenInfo.GetOneShotAudio(m_FactionPlayer, m_aWinningFactions));
+			s_OnEndGame.Invoke(gameOverScreenInfo.GetOneShotAudio(m_FactionPlayer, m_aWinningFactions));
 		else
-			PlayOneShotAudio(gameOverScreenInfo.GetOneShotAudio(m_iPlayerId, m_aWinningPlayers));
+			s_OnEndGame.Invoke(gameOverScreenInfo.GetOneShotAudio(m_iPlayerId, m_aWinningPlayers));
+		
+		m_bIsPlayingGameOverAudio = true;
 	}
 	
 	//End screen fade is done show gameover dialog when delay is done
@@ -76,7 +88,7 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 	{
 		//Close all dialogs
 		GetGame().GetMenuManager().CloseAllMenus();
-		GetGame().GetCallqueue().CallLater(ShowGameOverScreen, m_fShowEndscreenDelay * 1000);
+		GetGame().GetCallqueue().CallLater(ShowGameOverScreen, m_fShowEndscreenDelay * 1000, false, null);
 	}
 	
 	/*!
@@ -88,8 +100,15 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 	{		
 		//Remove the fade UI
 		if (m_EndScreenFade)
+		{
 			m_EndScreenFade.RemoveFromHierarchy();
 			
+			// Unhide other HUD elements which we hid previously when we started the fade
+			SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+			if (hudManager)
+				hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() | EHudLayers.HIGH);
+		}
+				
 		if (!endData)
 			endData = GetGameMode().GetEndGameData();
 		
@@ -111,7 +130,7 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 			if (m_bIsFactionVictory)
 			{
 				if (!m_bIsPlayingGameOverAudio)
-					PlayOneShotAudio(gameOverScreenInfo.GetOneShotAudio(m_FactionPlayer, m_aWinningFactions));
+					s_OnEndGame.Invoke(gameOverScreenInfo.GetOneShotAudio(m_FactionPlayer, m_aWinningFactions));
 				
 				SCR_GameOverScreenUIComponent gameOverScreen = OpenGameOverScreen(gameOverScreenInfo.GetGameOverContentLayout(), endData, gameOverScreenInfo.GetTitle(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetSubtitle(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetDebriefing(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetImage(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetVignetteColor(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetTitleParam(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetSubtitleParam(m_FactionPlayer, m_aWinningFactions), gameOverScreenInfo.GetDebriefingParam(m_FactionPlayer, m_aWinningFactions));
 				gameOverScreenInfo.GameOverUICustomization(gameOverScreen, m_FactionPlayer, m_aWinningFactions);
@@ -120,7 +139,7 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 			else 
 			{
 				if (!m_bIsPlayingGameOverAudio)
-					PlayOneShotAudio(gameOverScreenInfo.GetOneShotAudio(m_iPlayerId, m_aWinningPlayers));
+					s_OnEndGame.Invoke(gameOverScreenInfo.GetOneShotAudio(m_iPlayerId, m_aWinningPlayers));
 
 				SCR_GameOverScreenUIComponent gameOverScreen = OpenGameOverScreen(gameOverScreenInfo.GetGameOverContentLayout(), endData, gameOverScreenInfo.GetTitle(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetSubtitle(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetDebriefing(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetImage(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetVignetteColor(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetTitleParam(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetSubtitleParam(m_iPlayerId, m_aWinningPlayers), gameOverScreenInfo.GetDebriefingParam(m_iPlayerId, m_aWinningPlayers));
 				gameOverScreenInfo.GameOverUICustomization(gameOverScreen, m_iPlayerId, m_aWinningPlayers);
@@ -262,9 +281,16 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		else if (endReason == SCR_GameModeEndData.ENDREASON_DRAW)
 		{
 			if (isFactionVictory)
-				return EGameOverTypes.FACTION_DRAW;
+			{
+				if (!factionPlayer)
+					return EGameOverTypes.FACTION_NEUTRAL;
+				else 
+					return EGameOverTypes.FACTION_DRAW;
+			}
 			else 
+			{
 				return EGameOverTypes.DEATHMATCH_DRAW;
+			}
 		}
 		
 		//// ==== Shared End Reasons ==== \\\\
@@ -274,12 +300,6 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		}
 		
 		//// ==== Editor End Reasons ==== \\\\
-		
-		//Editor Neutral
-		else if (endReason == EGameOverTypes.EDITOR_NEUTRAL)
-		{
-			return EGameOverTypes.EDITOR_NEUTRAL;
-		}
 		//Editor Victory
 		else if (endReason == EGameOverTypes.EDITOR_FACTION_VICTORY)
 		{
@@ -290,39 +310,20 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 			else 
 				return EGameOverTypes.EDITOR_FACTION_DEFEAT;
 		}
-		//Non specific Editor end reasons
-		else if (endReason == EGameOverTypes.EDITOR_NEUTRAL || endReason == EGameOverTypes.EDITOR_NEUTRAL || endReason == EGameOverTypes.EDITOR_FACTION_DRAW)
-		{
-			return endReason;
-		}
-		//Editor victory
-		else if (endReason == EGameOverTypes.EDITOR_FACTION_VICTORY)
+		//Editor Draw
+		else if (endReason == EGameOverTypes.EDITOR_FACTION_DRAW)
 		{
 			if (!factionPlayer)
 				return EGameOverTypes.EDITOR_FACTION_NEUTRAL;
-			else if (factionsVictor.Contains(factionPlayer))
-				return EGameOverTypes.EDITOR_FACTION_VICTORY;
 			else 
-				return EGameOverTypes.EDITOR_FACTION_DEFEAT;
+				return EGameOverTypes.EDITOR_FACTION_DRAW;
 		}
+		
+		//// ==== Specific end reasons ==== \\\\
 		else 
 		{
-			Print(string.Format("'SCR_GameOverScreenConfig': Game over end reason: '%1' is invalid! A neutral end screen is shown instead", endReason.ToString()));
-			return EGameOverTypes.NEUTRAL;
+			return endReason;
 		}
-	}
-	
-	protected void PlayOneShotAudio(string audioOneShot)
-	{
-		if (audioOneShot.IsEmpty())
-			return;
-		
-		SCR_MusicManager musicManager = SCR_MusicManager.GetInstance();
-		if (!musicManager)
-			return;
-		
-		musicManager.PlayMusicOneShot(audioOneShot, true, true, 1000);
-		m_bIsPlayingGameOverAudio = true;
 	}
 	
 	/*!
@@ -351,7 +352,11 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		SCR_GameOverScreenUIComponent screenUIComponent = SCR_GameOverScreenUIComponent.Cast(screen.FindHandler(SCR_GameOverScreenUIComponent));
 		
 		if (screenUIComponent)
-			screenUIComponent.InitGameOverScreen(contentLayout, endData, title, subtitle, debriefing, imageTexture, vignetteColor, titleParam, subtitleParam, debriefingParam);
+		{
+			SCR_GameOverScreenUIContentData content = new SCR_GameOverScreenUIContentData(contentLayout, endData, title, subtitle, debriefing, imageTexture, vignetteColor, titleParam, subtitleParam, debriefingParam);
+			screenUIComponent.InitGameOverScreen(content);
+		}
+			
 		
 		return screenUIComponent;
 	}
@@ -368,7 +373,11 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		
 		SCR_BaseGameOverScreenInfo gameOverInfo = m_GameOverScreenConfig.GetGameOverInfo(m_iEditorSetGameOverType);
 		if (!gameOverInfo)
+		{
+			Print(string.Format("SCR_GameOverScreenManagerComponent could not find end screen: %1", typename.EnumToString(EGameOverTypes, m_iEditorSetGameOverType)), LogLevel.ERROR);
 			return;
+		}
+		
 		
 		SCR_BaseGameOverScreenInfoEditor optionalEditorParam = gameOverInfo.GetEditorOptionalParams();
 		
@@ -434,6 +443,34 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 	{	
 		
 		
+	}
+};
+
+class SCR_GameOverScreenUIContentData
+{
+	ResourceName m_sGameOverLayout;
+	ref SCR_GameModeEndData m_EndGameData;
+	LocalizedString m_sTitle;
+	LocalizedString m_sSubtitle; 
+	LocalizedString m_sDebriefing; 
+	ResourceName m_sImageTexture; 
+	Color m_cVignetteColor; 
+	string m_sTitleParam; 
+	string m_sSubtitleParam; 
+	string m_sDebriefingParam;
+	
+	void SCR_GameOverScreenUIContentData(ResourceName gameOverLayout, SCR_GameModeEndData endGameData, LocalizedString title = string.Empty, LocalizedString subtitle = string.Empty, LocalizedString debriefing = string.Empty, ResourceName imageTexture = ResourceName.Empty, Color vignetteColor = null, string titleParam = string.Empty, string subtitleParam = string.Empty, string debriefingParam = string.Empty)
+	{
+		m_sGameOverLayout = gameOverLayout;
+		m_EndGameData = endGameData;
+		m_sTitle = title;
+		m_sSubtitle = subtitle;
+		m_sDebriefing = debriefing;
+		m_sImageTexture = imageTexture;
+		m_cVignetteColor = vignetteColor;
+		m_sTitleParam = titleParam;
+		m_sSubtitleParam = subtitleParam;
+		m_sDebriefingParam = debriefingParam;
 	}
 };
 

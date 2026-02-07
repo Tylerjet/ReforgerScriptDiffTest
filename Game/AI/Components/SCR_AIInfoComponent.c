@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/AI", description: "Component for AI checking state of characters", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/AI", description: "Component for AI checking state of characters")]
 class SCR_AIInfoComponentClass: SCR_AIInfoBaseComponentClass
 {
 };
@@ -17,7 +17,7 @@ enum EUnitState
 {
 	NONE 			= 0,
 	WOUNDED 		= 1,
-	STATIC 			= 2,
+	IN_TURRET		= 2,
 	IN_VEHICLE		= 4,
 };
 
@@ -41,16 +41,15 @@ enum EUnitAIState
 //------------------------------------------------------------------------------------------------
 class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 {
-	private EUnitRole m_iUnitRoles;
 	private EUnitState m_iUnitStates;
 	private EUnitAIState m_iAIStates;
 	private EFireTeams m_iFireTeams;
 	private SCR_InventoryStorageManagerComponent m_inventoryManagerComponent;
 	private BaseWeaponManagerComponent m_weaponManagerComponent;
 	private SCR_CompartmentAccessComponent m_CompartmentAccessComponent;
-	private ref map<typename,int> m_MagazineWells;
 	private SCR_AIThreatSystem m_ThreatSystem;
 	private ScriptedDamageManagerComponent m_DamageManager;
+	private SCR_AICombatComponent m_CombatComponent;
 	
 	private ECharacterStance m_eStance;
 	private EMovementType m_eMovementType;
@@ -62,14 +61,13 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT);
-		m_MagazineWells = new map<typename,int>;
 	}	
 	
 	void OnVehicleEntered( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
 	{
-		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID);
+		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
 		if (TurretCompartmentSlot.Cast(compSlot))
-			AddUnitState(EUnitState.STATIC);			
+			AddUnitState(EUnitState.IN_TURRET);			
 	}
 	
 	void OnVehicleLeft( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
@@ -77,11 +75,11 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		auto aiworld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
 		if (!aiworld)
 			return;
-		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID);
+		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
 		if (!TurretCompartmentSlot.Cast(compSlot))
 			return;
 		
-		RemoveUnitState(EUnitState.STATIC);
+		RemoveUnitState(EUnitState.IN_TURRET);
 		
 		AIAgent owner = AIAgent.Cast(GetOwner());
 		if (!owner)
@@ -115,19 +113,14 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			m_weaponManagerComponent = BaseWeaponManagerComponent.Cast(ent.FindComponent(BaseWeaponManagerComponent));
 			m_CompartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(ent.FindComponent(SCR_CompartmentAccessComponent));
 			m_DamageManager = ScriptedDamageManagerComponent.Cast(ent.FindComponent(ScriptedDamageManagerComponent));
+			m_CombatComponent = SCR_AICombatComponent.Cast(ent.FindComponent(SCR_AICombatComponent));
 		}
 		
 		if (m_CompartmentAccessComponent)
 		{
 			m_CompartmentAccessComponent.GetOnCompartmentEntered().Insert(OnVehicleEntered);
 			m_CompartmentAccessComponent.GetOnCompartmentLeft().Insert(OnVehicleLeft);			
-		}
-
-		if (m_inventoryManagerComponent)
-		{
-			m_inventoryManagerComponent.m_OnItemAddedInvoker.Insert(OnItemAdded);
-			m_inventoryManagerComponent.m_OnItemRemovedInvoker.Insert(OnItemRemoved);
-		}							
+		}						
 		
 		if (m_DamageManager)
 		{
@@ -139,12 +132,6 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	
 	override protected void OnDelete(IEntity owner)
 	{
-		if (m_inventoryManagerComponent)
-		{
-			m_inventoryManagerComponent.m_OnItemAddedInvoker.Remove(OnItemAdded);
-			m_inventoryManagerComponent.m_OnItemAddedInvoker.Remove(OnItemRemoved);
-		}
-		
 		if (m_CompartmentAccessComponent)
 		{
 			m_CompartmentAccessComponent.GetOnCompartmentEntered().Remove(OnVehicleEntered);
@@ -162,144 +149,37 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	{
 		return GetOwner() == agent;
 	}
-				
-	void OnItemAdded(IEntity item, BaseInventoryStorageComponent storageOwner)
-	{
-		if  (!m_inventoryManagerComponent) 
-			return;
-		
-		if (m_inventoryManagerComponent.GetHealthComponentCount() > 0)
-			AddRole(EUnitRole.MEDIC);
-		
-		if (storageOwner.Type() == EquipedWeaponStorageComponent) // is this item a weapon 
-		{
-			BaseWeaponComponent wpnComponent = BaseWeaponComponent.Cast(item.FindComponent(BaseWeaponComponent));	
-			if (wpnComponent)
-			{
-				switch (wpnComponent.GetWeaponType())
-				{
-					case EWeaponType.WT_RIFLE : 
-					{
-						AddRole(EUnitRole.RIFLEMAN);
-						break;
-					}
-					case EWeaponType.WT_MACHINEGUN : 
-					{
-						AddRole(EUnitRole.MACHINEGUNNER);
-						break;
-					}
-					case EWeaponType.WT_ROCKETLAUNCHER : 
-					{
-						AddRole(EUnitRole.AT_SPECIALIST);
-						break;
-					}
-					case EWeaponType.WT_GRENADELAUNCHER : 
-					{
-						AddRole(EUnitRole.GRENADIER);
-						break;
-					}
-				}
-			}
-		}
-		else
-		{
-			MagazineComponent magComp = MagazineComponent.Cast(item.FindComponent(MagazineComponent));
-			if (magComp)
-			{
-				BaseMagazineWell baseMagwell;
-				baseMagwell = magComp.GetMagazineWell();
-				if (!baseMagwell)
-					return;
-				typename magWell = baseMagwell.Type();
-				int magNum;
-				if (m_MagazineWells.Find(magWell,magNum))
-					m_MagazineWells.Set(magWell,magNum + 1);
-				else
-					m_MagazineWells.Insert(magWell,1);
-			}
-		}
-	}
-	
-	void OnItemRemoved(IEntity item, BaseInventoryStorageComponent storageOwner)
-	{
-		if  (!m_inventoryManagerComponent || !item || !storageOwner)
-			return;
-		
-		if (m_inventoryManagerComponent.GetHealthComponentCount() == 0)
-			RemoveRole(EUnitRole.MEDIC);
-				
-				
-		if (storageOwner.Type() == EquipedWeaponStorageComponent) // is this item a weapon 
-		{
-			BaseWeaponComponent wpnComponent = BaseWeaponComponent.Cast(item.FindComponent(BaseWeaponComponent));
-			if (wpnComponent)
-			{
-				switch (wpnComponent.GetWeaponType())
-				{
-					case EWeaponType.WT_RIFLE : 
-					{
-						RemoveRole(EUnitRole.RIFLEMAN);
-						break;
-					}
-					case EWeaponType.WT_MACHINEGUN : 
-					{
-						RemoveRole(EUnitRole.MACHINEGUNNER);
-						break;
-					}
-					case EWeaponType.WT_ROCKETLAUNCHER : 
-					{
-						RemoveRole(EUnitRole.AT_SPECIALIST);
-						break;
-					}
-					case EWeaponType.WT_GRENADELAUNCHER : 
-					{
-						RemoveRole(EUnitRole.GRENADIER);
-						break;
-					}
-				}
-			}
-		}
-		else 
-		{
-			MagazineComponent magComp = MagazineComponent.Cast(item.FindComponent(MagazineComponent));
-			if (magComp)
-			{
-				BaseMagazineWell baseMagwell;
-				baseMagwell = magComp.GetMagazineWell();
-				if (!baseMagwell)
-					return;
-				typename magWell = baseMagwell.Type();
-				int magNum;
-				m_MagazineWells.Find(magWell,magNum);
-				if (magNum > 0)
-					m_MagazineWells.Set(magWell, magNum - 1);
-				else 
-					Debug.Error("Magazine count does not match!");
-			}
-		}
-	}
 	
 //----------- BIT operations on Roles
-	void AddRole(EUnitRole role)
-	{
-		m_iUnitRoles = m_iUnitRoles | role;
-	}
-	
-	void RemoveRole(EUnitRole role)
-	{
-		if (HasRole(role))
-			m_iUnitRoles = m_iUnitRoles & ~role;
-	}
-	
+
 	bool HasRole(EUnitRole role)
 	{
-		return ( m_iUnitRoles & role );	
+		switch (role)
+		{
+			case EUnitRole.MEDIC:			return m_inventoryManagerComponent.GetHealthComponentCount() > 0;
+			case EUnitRole.MACHINEGUNNER:	return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_MACHINEGUN);
+			case EUnitRole.RIFLEMAN:		return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_RIFLE);
+			case EUnitRole.AT_SPECIALIST:	return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_ROCKETLAUNCHER);
+			case EUnitRole.GRENADIER:		return m_CombatComponent.HasWeaponOfType(EWeaponType.WT_GRENADELAUNCHER); // todo right now it will not detect a UGL muzzle, because weapon type is still rifle
+		}
+		
+		return false;
 	}
 	
 	// ! Use only for debugging!
 	EUnitRole GetRoles()
 	{
-		return m_iUnitRoles;
+		typename t = EUnitRole;
+		int tVarCount = t.GetVariableCount();
+		EUnitRole roles = 0;
+		for (int i = 0; i < tVarCount; i++)
+		{
+			EUnitRole flag;
+			t.GetVariableValue(null, i, flag);
+			if (flag && HasRole(flag))
+				roles |= flag;
+		}
+		return roles;
 	}
 	
 //---------- BIT operation on States
@@ -351,10 +231,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	
 	int GetMagazineCountByWellType(typename magazinyWellType)
 	{
-		int result; 
-		if (m_MagazineWells.Find(magazinyWellType,result))
-			return result;
-		return 0;
+		return m_CombatComponent.GetMagazineCount(magazinyWellType, false);
 	}
 		
 //-------- 	Set or get AI stance, speed, raising weapon etc.

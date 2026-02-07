@@ -63,14 +63,13 @@ class ReportDialogUI: DialogUI
 		overlay.SetFocus();
 		SetAcceptInput(false);
 		
+		// Report
 		m_ReportAction = m_DetailsMenu.m_WorkshopItem.Report(reason, content);
 		
 		m_ReportAction.m_OnCompleted.Insert(OnReportSuccess);
 		
 		m_ReportAction.Activate();
 	}
-	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnReportSuccess()
@@ -151,6 +150,13 @@ class ReportDialogUI: DialogUI
 		
 		// Disable the confirm button initially because text is empty
 		m_Confirm.SetEnabled(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(float tDelta)
+	{
+		if (m_Confirm && m_InputField)
+			m_Confirm.SetEnabled(!m_InputField.GetValue().IsEmpty());
 	}
 	
 	//------------------------------------------------------------------------------------------------

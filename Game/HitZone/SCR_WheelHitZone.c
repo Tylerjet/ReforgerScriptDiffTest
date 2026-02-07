@@ -56,9 +56,9 @@ class SCR_WheelHitZone : ScriptedHitZone
 		
 		IEntity owner = GetOwner();
 		
-		IEntity parent = SCR_Global.GetMainParent(owner, true);
+		IEntity parent = SCR_EntityHelper.GetMainParent(owner, true);
 		VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(parent.FindComponent(VehicleWheeledSimulation));
-		if (!simulation || !simulation.IsValid() || m_iWheelId > simulation.WheelCount())
+		if (!simulation || !simulation.IsValid() || m_iWheelId >= simulation.WheelCount())
 			return;
 		
 		// Update simulation
@@ -151,7 +151,7 @@ class SCR_WheelHitZone : ScriptedHitZone
 			
 			vector transform[4] = {};
 			physics.GetGeomTransform(colliderID, transform);
-			m_iDamagedAudioHandle = soundComponent.SoundEventOffset("SOUND_TIRE_PUNCTURE", transform[3]);
+			m_iDamagedAudioHandle = soundComponent.SoundEventOffset(SCR_SoundEvent.SOUND_TIRE_PUNCTURE, transform[3]);
 		}
 	}
 	
@@ -159,7 +159,7 @@ class SCR_WheelHitZone : ScriptedHitZone
 	//! Wake physics up
 	void WakeUpPhysics()
 	{
-		IEntity parent = SCR_Global.GetMainParent(GetOwner(), true);
+		IEntity parent = SCR_EntityHelper.GetMainParent(GetOwner(), true);
 		Physics physics = parent.GetPhysics();
 		if (!physics)
 			return;

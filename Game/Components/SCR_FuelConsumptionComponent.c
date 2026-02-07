@@ -184,6 +184,9 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 		m_pCurrentFuelTank = FindNonEmptyFuelTank();
 
 		m_pVehicleWheeledSim = VehicleWheeledSimulation.Cast(owner.FindComponent(VehicleWheeledSimulation));
+		if (m_pVehicleWheeledSim && !m_pVehicleWheeledSim.IsValid())
+			m_pVehicleWheeledSim = null;
+		
 		if (m_pVehicleWheeledSim && m_pVehicleWheeledSim.EngineIsOn())
 			SetEnabled(true);
 	}

@@ -108,7 +108,7 @@ class SCR_RadialMenuManagerEditorComponent : SCR_BaseEditorComponent
 			
 			m_RadialMenuHandlers.Clear();
 			
-			SCR_Global.DeleteEntityAndChildren(m_RadialMenuEntity);
+			SCR_EntityHelper.DeleteEntityAndChildren(m_RadialMenuEntity);
 		}
 	}
 };

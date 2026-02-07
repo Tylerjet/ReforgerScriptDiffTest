@@ -22,11 +22,19 @@ class PauseMenuUI: ChimeraMenuBase
 	const string EXIT_SAVE = "#AR-PauseMenu_ReturnSaveTitle";
 	const string EXIT_NO_SAVE = "#AR-PauseMenu_ReturnTitle";
 	
+	const ResourceName ACTIONS_IMAGESET = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
 	const string EXIT_MESSAGE = "#AR-PauseMenu_ReturnText";
 	const string EXIT_TITLE = "#AR-PauseMenu_ReturnTitle";
-	const ResourceName EXIT_IMAGESET = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
 	const string EXIT_IMAGE = "exit";
 	
+	const string RESTART_MESSAGE = "#AR-PauseMenu_RestartText";
+	const string RESTART_TITLE = "#AR-PauseMenu_Restart";
+	const string RESTART_IMAGE = "restart";
+
+	const string LOAD_MESSAGE = "#AR-PauseMenu_LoadText";
+	const string LOAD_TITLE = "#AR-PauseMenu_Load";
+	const string LOAD_IMAGE = "up";
+		
 	static ref ScriptInvoker m_OnPauseMenuOpened = new ScriptInvoker();
 	static ref ScriptInvoker m_OnPauseMenuClosed = new ScriptInvoker();
 
@@ -168,11 +176,9 @@ class PauseMenuUI: ChimeraMenuBase
 
 		m_InputManager = GetGame().GetInputManager();
 		
-		SCR_HUDManagerComponent hud = GetGame().GetHUDManager();
-		if (hud)
-			hud.SetVisible(false);
-		
 		m_OnPauseMenuOpened.Invoke();
+		
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_FE_HUD_PAUSE_MENU_OPEN);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -209,6 +215,8 @@ class PauseMenuUI: ChimeraMenuBase
 			hud.SetVisible(true);
 		
 		m_OnPauseMenuClosed.Invoke();
+		
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_FE_HUD_PAUSE_MENU_CLOSE);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -244,7 +252,7 @@ class PauseMenuUI: ChimeraMenuBase
 		m_wFade.SetVisible(fade);
 		m_wFade.SetOpacity(0);
 		if (fade && animate)
-			WidgetAnimator.PlayAnimation(m_wFade, WidgetAnimationType.Opacity, 1, WidgetAnimator.FADE_RATE_FAST, false, true);
+			AnimateWidget.Opacity(m_wFade, 1, UIConstants.FADE_RATE_FAST, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -268,6 +276,20 @@ class PauseMenuUI: ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	private void OnLoad()
 	{
+		// Create dialog
+		DialogUI dialog = DialogUI.CreateOkCancelDialog();
+		if (!dialog)
+			return;
+		
+		dialog.SetMessage(LOAD_MESSAGE);
+		dialog.SetTitle(LOAD_TITLE);
+		dialog.SetTitleIcon(ACTIONS_IMAGESET, LOAD_IMAGE);
+		dialog.m_OnConfirm.Insert(OnLoadConfirm);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void OnLoadConfirm()
+	{
 		// TODO
 	}
 	
@@ -281,7 +303,7 @@ class PauseMenuUI: ChimeraMenuBase
 		
 		dialog.SetMessage(EXIT_MESSAGE);
 		dialog.SetTitle(EXIT_TITLE);
-		dialog.SetTitleIcon(EXIT_IMAGESET, EXIT_IMAGE);
+		dialog.SetTitleIcon(ACTIONS_IMAGESET, EXIT_IMAGE);
 		dialog.m_OnConfirm.Insert(OnExitConfirm);
 	}
 	
@@ -411,6 +433,20 @@ class PauseMenuUI: ChimeraMenuBase
 
 	//------------------------------------------------------------------------------------------------
 	private void OnRestart()
+	{
+		// Create dialog
+		DialogUI dialog = DialogUI.CreateOkCancelDialog();
+		if (!dialog)
+			return;
+		
+		dialog.SetMessage(RESTART_MESSAGE);
+		dialog.SetTitle(RESTART_TITLE);
+		dialog.SetTitleIcon(ACTIONS_IMAGESET, RESTART_IMAGE);
+		dialog.m_OnConfirm.Insert(OnRestartConfirm);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void OnRestartConfirm()
 	{
 		GetGame().GetMenuManager().CloseAllMenus();
 		ChimeraMenuBase.ReloadCurrentWorld();

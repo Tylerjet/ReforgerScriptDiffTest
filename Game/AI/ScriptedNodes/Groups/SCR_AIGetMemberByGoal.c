@@ -11,13 +11,12 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 	static const string PORT_ENTITY_IN	= "EntityIn";
 	static const string PORT_GROUP_MEMBER_OUT	= "GroupMemberOut";
 	static const string PORT_IS_UNIQUE_OUT	= "IsUniqueOut";
+	static const string PORT_AGENTS_EXCLUDE_ARRAY = "AgentsExcludeArray";
 	
 	[Attribute("0", UIWidgets.ComboBox, "Find member best for goal", "", ParamEnumArray.FromEnum(EGroupGoals) )]
 	protected EGroupGoals m_goalToAchieve;
 	
 	SCR_AIGroupUtilityComponent m_GroupUtilityComponent;
-	
-	int m_selectedIndex = 0;
 	
 	//------------------------------------------------------------------------------------------------
 	override bool VisibleInPalette() {return true;}
@@ -48,9 +47,16 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 		if (m_goalToAchieve == EGroupGoals.RESUPPLY && !GetVariableIn(PORT_REQUIREMENTS_IN, magazineWell))
 			Debug.Error("No MagazineWell provided for resupply?!");
 		
-		for (int i = 0, length = m_GroupUtilityComponent.m_aListOfAIInfo.Count(); i < length; i++)
+		array<AIAgent> agentsExclude;
+		if (!GetVariableIn(PORT_AGENTS_EXCLUDE_ARRAY, agentsExclude))
+			agentsExclude = {};
+		
+		int selectedIndex = m_GroupUtilityComponent.m_iGetMemberByGoalNextIndex;
+		
+		int length = m_GroupUtilityComponent.m_aListOfAIInfo.Count();
+		for (int i = 0; i < length; i++)
 		{
-			aIInfoComponent = m_GroupUtilityComponent.m_aListOfAIInfo[(i + m_selectedIndex) % length];
+			aIInfoComponent = m_GroupUtilityComponent.m_aListOfAIInfo[(i + selectedIndex) % length];
 			if( !aIInfoComponent )
 				return ENodeResult.FAIL;
 			//prevent selecting requesting EntityID
@@ -59,7 +65,10 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 				continue;
 			if(agent.GetControlledEntity() == inEntity)
 				continue;
+			if(agentsExclude.Contains(agent))
+				continue;
 			
+						
 			switch (m_goalToAchieve)
 			{
 				case EGroupGoals.RESUPPLY:
@@ -78,11 +87,11 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 							if (notFound) 
 							{
 								notFound = false;
-								m_selectedIndex = (i + m_selectedIndex) % length;
+								selectedIndex = (i + selectedIndex) % length;
 							}	
 							else
 							{ 
-								m_selectedIndex = (i + m_selectedIndex) % length;
+								selectedIndex = (i + selectedIndex) % length;
 								isUnique = false;
 							}
 						}
@@ -99,7 +108,7 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 							if (notFound) 
 							{
 								notFound = false;
-								m_selectedIndex = (i + m_selectedIndex) % length;
+								selectedIndex = (i + selectedIndex) % length;
 							}	
 							else 
 								isUnique = false;		
@@ -110,6 +119,8 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 			}
 		}
 		
+		m_GroupUtilityComponent.m_iGetMemberByGoalNextIndex = (selectedIndex + 1) % length; // If we don't do +1, next time we start checking same member
+		
 		if (!isRolePresent)
 		{
 			return ENodeResult.FAIL;
@@ -117,7 +128,7 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 				
 		if (!notFound)
 		{
-			AIAgent agent = AIAgent.Cast(m_GroupUtilityComponent.m_aListOfAIInfo[m_selectedIndex].GetOwner());
+			AIAgent agent = AIAgent.Cast(m_GroupUtilityComponent.m_aListOfAIInfo[selectedIndex].GetOwner());
 			if (agent)
 				SetVariableOut(PORT_GROUP_MEMBER_OUT,agent);
 			else 
@@ -135,6 +146,8 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 		
 		ClearVariable(PORT_GROUP_MEMBER_OUT);
 		ClearVariable(PORT_IS_UNIQUE_OUT);
+		
+		
 		return ENodeResult.RUNNING;
 	}
 	
@@ -157,7 +170,8 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
 		PORT_REQUIREMENTS_IN,
-		PORT_ENTITY_IN
+		PORT_ENTITY_IN,
+		PORT_AGENTS_EXCLUDE_ARRAY
 	};
 	override TStringArray GetVariablesIn()
     {

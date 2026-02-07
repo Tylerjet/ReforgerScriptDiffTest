@@ -8,7 +8,7 @@ class SCR_FieldManualPiece_ConfigEntryList : SCR_FieldManualPiece
 	protected ResourceName m_Layout;
 
 	//------------------------------------------------------------------------------------------------
-	void SCR_FieldManualPieceImageGallery()
+	void SCR_FieldManualPiece_ConfigEntryList()
 	{
 		if (!m_aConfigEntries) // can be config-provided
 		{

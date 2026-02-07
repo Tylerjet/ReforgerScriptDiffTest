@@ -29,6 +29,28 @@ class GameOverScreenInput: ChimeraMenuBase
 		
 		//~ Find GameOverScreen UI
 		m_GameOverScreenUIComponent = SCR_GameOverScreenUIComponent.Cast(widgetRoot.FindHandler(SCR_GameOverScreenUIComponent));
+		
+		// Hide unnecessary HUD elements. This should hide chat as well.
+		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		if (hudManager)
+			hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~(EHudLayers.HIGH | EHudLayers.ALWAYS_TOP));
+		
+		GetGame().GetInputManager().AddActionListener("ShowScoreboard", EActionTrigger.DOWN, ShowPlayerList);
+	}
+	
+	override void OnMenuClose()
+	{
+		super.OnMenuClose();
+		
+		// Show back the previously hidden HUD elements.
+		PlayerController pc = GetGame().GetPlayerController();
+		if (pc)
+		{
+			SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+			if (hudManager)
+				hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() | EHudLayers.HIGH | EHudLayers.ALWAYS_TOP);
+		}
+		GetGame().GetInputManager().RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, ShowPlayerList);
 	}
 	
 	override void OnMenuUpdate(float tDelta)
@@ -68,5 +90,11 @@ class GameOverScreenInput: ChimeraMenuBase
 			return;
 		
 		OnBackToMainMenu();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ShowPlayerList()
+	{
+		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.PlayerListMenu, 0, true, false);
 	}
 };

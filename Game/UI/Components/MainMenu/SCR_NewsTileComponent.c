@@ -68,7 +68,7 @@ class SCR_NewsTileComponent : SCR_TileBaseComponent
 		if (m_wFooter)
 		{
 			m_wFooter.SetEnabled(true);
-			WidgetAnimator.PlayAnimation(m_wFooter, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
+			AnimateWidget.Opacity(m_wFooter, 1, m_fAnimationRate);
 		}
 		
 		SetRead();
@@ -84,7 +84,7 @@ class SCR_NewsTileComponent : SCR_TileBaseComponent
 		if (!m_wFooter)
 			return false;
 		
-		WidgetAnimator.PlayAnimation(m_wFooter, WidgetAnimationType.Opacity, 0, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wFooter, 0, m_fAnimationRate);
 		m_wFooter.SetEnabled(false);
 		return false;
 	}
@@ -97,7 +97,7 @@ class SCR_NewsTileComponent : SCR_TileBaseComponent
 
 		m_Entry.m_bRead = true;
 		if (m_wUnreadImage)
-			WidgetAnimator.PlayAnimation(m_wUnreadImage, WidgetAnimationType.Opacity, 0, WidgetAnimator.FADE_RATE_DEFAULT);
+			AnimateWidget.Opacity(m_wUnreadImage, 0, UIConstants.FADE_RATE_DEFAULT);
 		
 		array<SCR_AccountWidgetComponent> accounts = SCR_AccountWidgetComponent.GetInstances();
 		foreach (SCR_AccountWidgetComponent account : accounts)

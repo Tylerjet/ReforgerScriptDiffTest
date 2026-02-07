@@ -58,7 +58,9 @@ enum EWorkshopItemQuery
 	DEPENDENCY_MISSING				= 1<<14,
 	ENABLED_AND_DEPENDENCY_DISABLED	= 1<<15,
 
-	FAVOURITE		= 1<<16
+	FAVOURITE		= 1<<16,
+	
+	AUTHOR_BLOCKED	= 1<<17
 };
 
 [EntityEditorProps(category: "", description: "A centralized system which lets many users perform actions on addons. Most likely only needed in the main menu world.")]
@@ -73,7 +75,9 @@ class SCR_AddonManager : GenericEntity
 	// Constants
 	static const string ADDONS_CLI = "addons"; // Cli parameter used to load addons.
 	static const string VERSION_DOT = ".";
-
+	protected const static float ADDONS_ENABLED_UPDATE_INTERVAL_S = 1/30;
+	protected const static float ADDONS_OUTDATED_UPDATE_INTERVAL_S = 1.0;
+	
 	// Public callbacks
 	ref ScriptInvoker m_OnAddonsChecked = new ref ScriptInvoker;
 
@@ -86,17 +90,27 @@ class SCR_AddonManager : GenericEntity
 	// Called as a result of NegotiateUgcPrivilege
 	ref ScriptInvoker m_OnUgcPrivilegeResult = new ref ScriptInvoker;	// (bool result)
 
+	// Called wherever set of enabled addons has changed
+	ref ScriptInvoker m_OnAddonsEnabledChanged = new ref ScriptInvoker; //
+	
 
 	// Other
 	protected ref map<string, ref SCR_WorkshopItem> m_mItems = new map<string, ref SCR_WorkshopItem>();
 	protected static SCR_AddonManager s_Instance;		// Pointer to instance of this class
-
+	protected ref SCR_WorkshopAddonManagerPresetStorage m_Storage;
+	protected int m_iAddonsOutdated;
+	protected float m_fAddonsOutdatedTimer = 0;
+	protected float m_fAddonsEnabledTimer = 0;
+	protected string m_sAddonsEnabledPrev;
+	
 	// Connected to WorkshopApi.OnItemsChecked, which automatically runs at start up.
 	protected bool m_bAddonsChecked			= false;
 	protected ref SCR_WorkshopCallbackBase m_CallbackCheckAddons;
 	protected ref SCR_ScriptPlatformRequestCallback m_CallbackGetPrivilege;
 	protected bool m_bInitFinished 			= false;
 
+	
+	
 	//-----------------------------------------------------------------------------------------------
 	// 				P U B L I C   A P I
 	//-----------------------------------------------------------------------------------------------
@@ -220,6 +234,13 @@ class SCR_AddonManager : GenericEntity
 	bool GetUgcPrivilege()
 	{
 		return GetGame().GetPlatformService().GetPrivilege(UserPrivilege.USER_GEN_CONTENT);
+	}
+	
+	//----------------------------------------------------------------------------------------------------------------------------------------------------
+	//! Returns count of outdated addons
+	int GetCountAddonsOutdated()
+	{
+		return m_iAddonsOutdated;
 	}
 
 	//-----------------------------------------------------------------------------------------------
@@ -419,7 +440,84 @@ class SCR_AddonManager : GenericEntity
 
 		return -1;
 	}
+	
+	protected SCR_LoadingOverlay m_LoadingOverlay;
+	
+	protected ref ScriptInvoker<SCR_WorkshopItem, int> Event_OnAddonEnabled;
+	protected ref ScriptInvoker<> Event_OnAllAddonsEnabled;
+	
+	//------------------------------------------------------------------------------------------------
+	protected void InvokeEventOnAddonEnabled(SCR_WorkshopItem arg0, int arg1)
+	{
+		if (Event_OnAddonEnabled)
+			Event_OnAddonEnabled.Invoke(arg0, arg1);
+	}
 
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetEventOnAddonEnabled()
+	{
+		if (!Event_OnAddonEnabled)
+			Event_OnAddonEnabled = new ScriptInvoker();
+
+		return Event_OnAddonEnabled;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void InvokeEventOnAllAddonsEnabled()
+	{
+		if (Event_OnAllAddonsEnabled)
+			Event_OnAllAddonsEnabled.Invoke();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetEventOnAllAddonsEnabled()
+	{
+		if (!Event_OnAllAddonsEnabled)
+			Event_OnAllAddonsEnabled = new ScriptInvoker();
+
+		return Event_OnAllAddonsEnabled;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	//! Enable/disable multiple mods recursively to save performance 
+	void EnableMultipleAddons(array<ref SCR_WorkshopItem> items, bool enable)
+	{
+		int count = items.Count() - 1;
+		
+		GetGame().GetCallqueue().CallLater(EnableAddonsRecursively, 0, false, items, count, enable);
+		
+		//m_LoadingOverlay = SCR_LoadingOverlayDialog.Create();
+		if (!m_LoadingOverlay)
+			m_LoadingOverlay = SCR_LoadingOverlay.ShowForWidget(GetGame().GetWorkspace(), string.Empty);
+		else
+			m_LoadingOverlay.SetShown(true);
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void EnableAddonsRecursively(array<ref SCR_WorkshopItem> addons, out int remaining, bool enable)
+	{
+		if (remaining > -1)
+		{
+			addons[remaining].SetEnabled(enable);
+			InvokeEventOnAddonEnabled(addons[remaining], remaining);
+			remaining--;
+			
+			GetGame().GetCallqueue().CallLater(EnableAddonsRecursively, 0, false, addons, remaining, enable);
+		}
+		else
+		{
+			if (m_LoadingOverlay)
+			{
+				m_LoadingOverlay.SetShown(false);
+				InvokeEventOnAllAddonsEnabled();
+			}
+			else 
+			{
+				InvokeEventOnAllAddonsEnabled();
+			}
+		}
+	}
+	
 	//-----------------------------------------------------------------------------------------------
 	//-----------------------------------------------------------------------------------------------
 	//-----------------------------------------------------------------------------------------------
@@ -502,6 +600,7 @@ class SCR_AddonManager : GenericEntity
 			case EWorkshopItemQuery.DEPENDENCY_MISSING:					return item.GetAnyDependencyMissing();
 			case EWorkshopItemQuery.ENABLED_AND_DEPENDENCY_DISABLED:	return item.GetEnabledAndAnyDependencyDisabled();
 			case EWorkshopItemQuery.FAVOURITE:							return item.GetFavourite();
+			case EWorkshopItemQuery.AUTHOR_BLOCKED:						return item.GetModAuthorReportedByMe();
 			default: return false;
 		}
 		return false;
@@ -573,6 +672,13 @@ class SCR_AddonManager : GenericEntity
 
 		_print("Init Finished", LogLevel.NORMAL);
 		_print(string.Format("  User Workshop access:           %1", GetReady()), LogLevel.NORMAL);
+		
+		// Request versions from all downloaded addons, otherwise we will not know if they are outdated
+		auto offlineAddons = GetOfflineAddons();
+		foreach (SCR_WorkshopItem offlineItem : offlineAddons)
+		{
+			offlineItem.LoadDetails();
+		}
 	}
 
 
@@ -619,6 +725,9 @@ class SCR_AddonManager : GenericEntity
 		}
 
 		Internal_CheckAddons();
+		
+		if(GetGame().InPlayMode())
+			m_Storage = new SCR_WorkshopAddonManagerPresetStorage();
 	}
 
 
@@ -730,6 +839,37 @@ class SCR_AddonManager : GenericEntity
 				m_mItems.Remove(id);
 			}
 		}
+		
+		// Detection of case when addons get enabled/disabled
+		// Iterate all addons and invoke event whenever current list of enabled addons is different from prev. list
+		// It's not a perfect implementation but it's fine in main menu
+		m_fAddonsEnabledTimer += timeSlice;
+		if (m_fAddonsEnabledTimer > ADDONS_ENABLED_UPDATE_INTERVAL_S)
+		{
+			string addonsEnabled;
+			foreach (string id, SCR_WorkshopItem item : m_mItems)
+			{
+				if (item.GetEnabled())
+					addonsEnabled = addonsEnabled + id + " ";
+			}
+			
+			if (addonsEnabled != m_sAddonsEnabledPrev)
+			{
+				m_OnAddonsEnabledChanged.Invoke();
+				m_sAddonsEnabledPrev = addonsEnabled;
+			}
+			
+			m_fAddonsEnabledTimer = 0;
+		}
+		
+		// Count and cache amount of outdated addons
+		// This doesn't need to happen often, 1s is enough
+		m_fAddonsOutdatedTimer += timeSlice;
+		if (m_fAddonsOutdatedTimer > ADDONS_OUTDATED_UPDATE_INTERVAL_S)
+		{
+			m_iAddonsOutdated = CountItemsBasic(GetOfflineAddons(), EWorkshopItemQuery.UPDATE_AVAILABLE);
+			m_fAddonsOutdatedTimer = 0;
+		}
 	}
 
 
@@ -739,9 +879,113 @@ class SCR_AddonManager : GenericEntity
 	{
 		m_OnNewDownload.Invoke(item, action);
 	}
+	
+	
+	
+	//-----------------------------------------------------------------------------------------------
+	// Handling of addon presets
+	
+	//----------------------------------------------------------------------------------------------------------------------------------------------------
+	SCR_WorkshopAddonManagerPresetStorage GetPresetStorage()
+	{
+		return m_Storage;
+	}
+	
+	
+	//----------------------------------------------------------------------------------------------------------------------------------------------------
+	// Looks up addon from internal map
+	SCR_WorkshopItem GetItem(string id)
+	{
+		return m_mItems.Get(id);
+	}
+	
+	protected SCR_WorkshopAddonPreset m_SelectedPreset;
+	protected ref array<ref SCR_WorkshopAddonPresetAddonMeta> m_aAddonsNotFound = {};
+	
+	//----------------------------------------------------------------------------------------------------------------------------------------------------
+	// Enables addons from preset, disables all addons from other presets
+	void SelectPreset(SCR_WorkshopAddonPreset preset, notnull array<ref SCR_WorkshopAddonPresetAddonMeta> addonsNotFound)
+	{	
+		array<ref SCR_WorkshopItem> addons = GetOfflineAddons();
+		GetEventOnAllAddonsEnabled().Insert(OnOfflineAddonsDisabled);
+		m_SelectedPreset = preset;
+		EnableMultipleAddons(addons, false);
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void OnOfflineAddonsDisabled()
+	{
+		GetEventOnAllAddonsEnabled().Remove(OnOfflineAddonsDisabled);
+		
+		array<ref SCR_WorkshopAddonPresetAddonMeta> enabledAddons = m_SelectedPreset.GetAddons();
+		array<ref SCR_WorkshopItem> addons = {};
+		
+		foreach (SCR_WorkshopAddonPresetAddonMeta meta : enabledAddons)
+		{
+			string guid = meta.GetGuid();
+			SCR_WorkshopItem item = GetItem(guid);
+		
+			if (item && item.GetOffline())
+				addons.Insert(item);
+			else 
+				m_aAddonsNotFound.Insert(meta);
+		}
+		
+		GetEventOnAllAddonsEnabled().Insert(OnAllAddonsEnabledCorrupted);
+		EnableMultipleAddons(addons, true);
+		m_SelectedPreset = null;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	//! Call this when all dialog are enabled, but some are missing to show which one
+	protected void OnAllAddonsEnabledCorrupted()
+	{
+		if (!m_aAddonsNotFound.IsEmpty())
+		{
+			new SCR_WorkshopErrorPresetLoadDialog(m_aAddonsNotFound);
+			m_aAddonsNotFound.Clear();
+		}	
+		
+		GetEventOnAllAddonsEnabled().Remove(OnAllAddonsEnabledCorrupted);
+	}
+	
+	
+	//----------------------------------------------------------------------------------------------------------------------------------------------------
+	SCR_WorkshopAddonPreset CreatePresetFromEnabledAddons(string presetName)
+	{		
+		// Get GUIDs of addons which are enabled
+		
+		array<ref SCR_WorkshopItem> enabledAddons = SCR_AddonManager.SelectItemsBasic(GetOfflineAddons(), EWorkshopItemQuery.ENABLED);
+		
+		array<ref SCR_WorkshopAddonPresetAddonMeta> addonsMeta = {};
+		foreach (SCR_WorkshopItem item : enabledAddons)
+		{
+			string guid = item.GetId();			
+			addonsMeta.Insert((new SCR_WorkshopAddonPresetAddonMeta()).Init(guid, item.GetName()) );
+		}
+		
+		if (addonsMeta.IsEmpty())
+			return null;
+		
+		SCR_WorkshopAddonPreset preset = (new SCR_WorkshopAddonPreset()).Init(presetName, addonsMeta);
+		
+		return preset;
+	}
+	
+	//----------------------------------------------------------------------------------------------------------------------------------------------------
+	//! Return int count of all enabled mods
+	int CountOfEnabledAddons()
+	{
+		array<ref SCR_WorkshopItem> enabledAddons = SCR_AddonManager.SelectItemsBasic(GetOfflineAddons(), EWorkshopItemQuery.ENABLED);
+		return enabledAddons.Count();
+	} 
 
-
-
+	//-----------------------------------------------------------------------------------------------
+	map<string, ref SCR_WorkshopItem> GetItemsMap()
+	{
+		return m_mItems;
+	}
+	
 	//-----------------------------------------------------------------------------------------------
 	//-----------------------------------------------------------------------------------------------
 	//-----------------------------------------------------------------------------------------------

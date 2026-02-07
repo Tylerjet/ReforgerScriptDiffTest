@@ -169,6 +169,10 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 
 		ProcessInput(tDelta);
 	}
+	override protected bool CanShowAsDisabled()
+	{
+		return !m_PlacingManager.CanCreateEntity();
+	}
 	override void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);

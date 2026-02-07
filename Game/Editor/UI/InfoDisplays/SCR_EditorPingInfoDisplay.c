@@ -24,22 +24,16 @@ class SCR_EditorPingInfoDisplay : SCR_InfoDisplay
 	{
 		SendPing(false);
 	}
-	protected void OnEditorPingUrgentAction(float value, EActionTrigger reason)
+	protected void OnEditorPingUnlimitedOnlyAction(float value, EActionTrigger reason)
 	{
 		SendPing(true);
 	}
-	protected void SendPing(bool urgent)
+	protected void SendPing(bool unlimitedOnly)
 	{
 		if (SCR_EditorManagerEntity.IsOpenedInstance()) return;
 		
 		vector position;
 		SCR_EditableEntityComponent target;
-		
-		if (urgent)
-		{
-			//--- Player position
-			target = SCR_EditableEntityComponent.GetEditableEntity(SCR_PlayerController.GetLocalControlledEntity());
-		}
 		
 		if (!target || !target.GetPos(position))
 		{
@@ -72,7 +66,7 @@ class SCR_EditorPingInfoDisplay : SCR_InfoDisplay
 			position = startPos + outDir * traceDis;
 		}
 
-		m_PingManager.SendPing(urgent, position, target);
+		m_PingManager.SendPing(unlimitedOnly, position, target);
 	}
 	protected void OnPingEntityRegister(int reporterID, SCR_EditableEntityComponent pingEntity)
 	{
@@ -172,7 +166,7 @@ class SCR_EditorPingInfoDisplay : SCR_InfoDisplay
 		if (inputManager)
 		{
 			inputManager.AddActionListener("EditorPing", EActionTrigger.DOWN, OnEditorPingAction);
-			//inputManager.AddActionListener("EditorPingUrgent", EActionTrigger.DOWN, OnEditorPingUrgentAction);
+			inputManager.AddActionListener("EditorPingUnlimitedOnly", EActionTrigger.DOWN, OnEditorPingUnlimitedOnlyAction);
 		}
 	}
 	override event void OnStopDraw(IEntity owner)
@@ -195,7 +189,7 @@ class SCR_EditorPingInfoDisplay : SCR_InfoDisplay
 		if (inputManager)
 		{
 			inputManager.RemoveActionListener("EditorPing", EActionTrigger.DOWN, OnEditorPingAction);
-			//inputManager.RemoveActionListener("EditorPingUrgent", EActionTrigger.DOWN, OnEditorPingUrgentAction);
+			inputManager.RemoveActionListener("EditorPingUnlimitedOnly", EActionTrigger.DOWN, OnEditorPingUnlimitedOnlyAction);
 		}
 	}
 };

@@ -86,6 +86,8 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 	SCR_HorizontalScrollAnimationComponent m_NameScrollAnim;
 	SCR_HorizontalScrollAnimationComponent m_ScenarioScrollAnim;
 	
+	protected bool m_bInnerButtonInteraction = false;
+	
 	//------------------------------------------------------------------------------------------------
 	// Override API
 	//------------------------------------------------------------------------------------------------
@@ -183,7 +185,7 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 	override bool OnDoubleClick(Widget w, int x, int y, int button)
 	{
 		// LMB check
-		if (button != 0)
+		if (button != 0 || m_bInnerButtonInteraction)
 			return false;
 		
 		m_OnDoubleClick.Invoke(this);
@@ -254,6 +256,7 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 			if (m_bFavoritingEnabled)
 			{
 				m_FavComponent.m_OnClicked.Insert(OnFavoriteClicked);
+				m_FavComponent.m_OnHover.Insert(OnFavoriteHover);
 				m_FavComponent.m_OnHoverLeave.Insert(OnFavoriteLeave);
 			}
 		}
@@ -268,6 +271,9 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 		// Visualize as empty?
 		if (!m_RoomInfo)
 			return;
+		
+		// Disable if not joinable 
+		EnableEntry(room.Joinable());
 		
 		// Name
 		SetCellText("Name", m_RoomInfo.Name());
@@ -308,11 +314,11 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 		// Play star fade animation 
 		if (m_bIsFavorite)
 		{
-			WidgetAnimator.PlayAnimation(m_wFavoriteImage, WidgetAnimationType.Color, COLOR_CHECKED_TRUE, WidgetAnimator.FADE_RATE_FAST);
+			AnimateWidget.Color(m_wFavoriteImage, COLOR_CHECKED_TRUE, UIConstants.FADE_RATE_FAST);
 		}
 		else 
 		{
-			WidgetAnimator.PlayAnimation(m_wFavoriteImage, WidgetAnimationType.Color, COLOR_CHECKED_FALSE, WidgetAnimator.FADE_RATE_FAST);
+			AnimateWidget.Color(m_wFavoriteImage, COLOR_CHECKED_FALSE, UIConstants.FADE_RATE_FAST);
 		}
 		
 		if (callback)
@@ -342,10 +348,18 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnFavoriteHover()
+	{
+		m_bInnerButtonInteraction = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnFavoriteLeave(Widget w)
 	{
 		if (GetGame().GetWorkspace().GetFocusedWidget() == m_wRoot && !w)
 			GetGame().GetWorkspace().SetFocusedWidget(m_wRoot);
+		
+		m_bInnerButtonInteraction = false
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -427,7 +441,7 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OpacityAnimation(int time, float opacityEnd) 
 	{
-		WidgetAnimator.PlayAnimation(GetRootWidget(), WidgetAnimationType.Opacity, opacityEnd, time);
+		AnimateWidget.Opacity(GetRootWidget(), opacityEnd, time);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -528,6 +542,19 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 		// Disabled 
 		anim.AnimationStop();
 		anim.ResetPosition();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void EnableEntry(bool enable)
+	{
+		if (enable)
+		{
+			GetRootWidget().SetOpacity(1);
+		}
+		else 
+		{
+			GetRootWidget().SetOpacity(0.5);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -3,10 +3,10 @@
 //------------------------------------------------------------------------------------------------
 class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 {
-	[Attribute(UISounds.MOUSE_OVER, UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_HOVER, UIWidgets.EditBox, "")]
 	protected string m_sSoundHovered;
 
-	[Attribute(UISounds.CLICK, UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox, "")]
 	protected string m_sSoundClicked;
 
 	[Attribute(defvalue: "0.2", UIWidgets.EditBox, "How fast each animation proceeds")]
@@ -68,7 +68,7 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 	protected void OnEnabled(bool animate)
 	{
 		if (animate && m_fAnimationRate != START_ANIMATION_RATE)
-			WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
+			AnimateWidget.Opacity(m_wRoot, 1, m_fAnimationRate);
 		else
 			m_wRoot.SetOpacity(1);
 	}
@@ -77,7 +77,7 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 	protected void OnDisabled(bool animate)
 	{
 		if (animate && m_fAnimationRate != START_ANIMATION_RATE)
-			WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, m_fDisabledOpacity, m_fAnimationRate);
+			AnimateWidget.Opacity(m_wRoot, m_fDisabledOpacity, m_fAnimationRate);
 		else
 			m_wRoot.SetOpacity(m_fDisabledOpacity);
 	}
@@ -162,7 +162,7 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void SetEnabled(bool enabled, bool animate = true)
 	{
-		if (m_wRoot.IsEnabled() == enabled)
+		if (!m_wRoot || m_wRoot.IsEnabled() == enabled)
 			return;
 
 		m_wRoot.SetEnabled(enabled);
@@ -175,20 +175,37 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void SetVisible(bool visible, bool animate = true)
 	{
-		m_wRoot.SetVisible(visible);
-		// todo animation if needed
+		if (!m_wRoot)
+			return;
+		
+		if (animate)
+			AnimateWidget.Opacity(m_wRoot, visible, m_fAnimationRate, true);
+		else
+			m_wRoot.SetVisible(visible);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	bool IsVisible()
 	{
+		if (!m_wRoot)
+			return false;
+		
 		return m_wRoot.IsVisible();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	bool IsEnabled()
 	{
+		if (!m_wRoot)
+			return false;
+		
 		return m_wRoot.IsEnabled();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetMouseOverToFocus(bool mouseOverToFocus)
+	{
+		m_bMouseOverToFocus = mouseOverToFocus;
 	}
 
 	//------------------------------------------------------------------------------------------------

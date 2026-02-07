@@ -84,11 +84,11 @@ class SCR_ScenarioTileComponent : SCR_ButtonBaseComponent
 		}
 		
 		m_wGamepadModNameButton = m_wRoot.FindAnyWidget("ModNavButton");
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnChangeInput);
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnChangeInput);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
-		WidgetAnimator.PlayAnimation(m_wPlayableButtom, WidgetAnimationType.Opacity, 0, m_fAnimationRate);
-		OnChangeInput();
+		AnimateWidget.Opacity(m_wPlayableButtom, 0, m_fAnimationRate);
+		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -191,7 +191,7 @@ class SCR_ScenarioTileComponent : SCR_ButtonBaseComponent
 		{
 			m_wFavouriteOverlay.SetVisible(true);
 			if (scenario.IsFavorite())
-				WidgetAnimator.PlayAnimation(m_wFavouriteOverlay, WidgetAnimationType.Opacity, 1, WidgetAnimator.FADE_RATE_DEFAULT);
+				AnimateWidget.Opacity(m_wPlayableButtom, 1, UIConstants.FADE_RATE_DEFAULT);
 			m_FavComponent.SetSelected(scenario.IsFavorite(), false);
 		}
 		
@@ -328,9 +328,10 @@ class SCR_ScenarioTileComponent : SCR_ButtonBaseComponent
 		m_OnFocus.Invoke(w);
 
 		m_FavComponent.ShowButton();
-		WidgetAnimator.PlayAnimation(m_wWhiteFrame, WidgetAnimationType.Color, m_BackgroundSelected, m_fAnimationRate );
-		WidgetAnimator.PlayAnimation(m_wPlayableButtom, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
-		//WidgetAnimator.PlayAnimation(m_wGamepadModNameButton, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wPlayableButtom, 1, m_fAnimationRate);
+		AnimateWidget.Color(m_wWhiteFrame, m_BackgroundSelected, m_fAnimationRate);
+		//AnimateWidget.Opacity(m_wGamepadModNameButton, 1, m_fAnimationRate);
+
 		if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
 		{
 			m_wGamepadModNameButton.SetOpacity(0);
@@ -348,12 +349,12 @@ class SCR_ScenarioTileComponent : SCR_ButtonBaseComponent
 	override bool OnFocusLost(Widget w, int x, int y)
 	{	
 		/*if (GetWidgetUnderCursor() == w)
-			WidgetAnimator.PlayAnimation(m_wWhiteFrame, WidgetAnimationType.Color, COLOR_BACKGROUND_HOVERED, m_fAnimationRate);
+			AnimateWidget.Color(m_wWhiteFrame, COLOR_BACKGROUND_HOVERED, m_fAnimationRate);
 		else
 		{*/
-			WidgetAnimator.PlayAnimation(m_wWhiteFrame, WidgetAnimationType.Color, UIColors.TRANSPARENT, m_fAnimationRate );
-			WidgetAnimator.PlayAnimation(m_wPlayableButtom, WidgetAnimationType.Opacity, 0, m_fAnimationRate);
-			WidgetAnimator.PlayAnimation(m_wGamepadModNameButton, WidgetAnimationType.Opacity, 0, m_fAnimationRate);
+			AnimateWidget.Color(m_wWhiteFrame, UIColors.TRANSPARENT, m_fAnimationRate);
+			AnimateWidget.Opacity(m_wPlayableButtom, 0, m_fAnimationRate);
+			AnimateWidget.Opacity(m_wGamepadModNameButton, 0, m_fAnimationRate);
 		//}
 			m_InputManager.RemoveActionListener("MenuRefresh", EActionTrigger.PRESSED, OpenParentModGamepad);
 			m_wGamepadModNameButton.SetOpacity(0);
@@ -368,7 +369,7 @@ class SCR_ScenarioTileComponent : SCR_ButtonBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnChangeInput()
+	void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 
 	}

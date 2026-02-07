@@ -158,13 +158,9 @@ class SCR_NotificationsLogComponent: MenuRootSubComponent
 	}
 	
 	//======================== INPUT TYPE CHANGED ========================\\
-	protected void CheckInputTypeChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
-	{		
-		//Only switched between mouse and keyboard
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
-		m_bIsUsingMouseAndKeyboard = (newDevice == EInputDeviceType.KEYBOARD || newDevice == EInputDeviceType.MOUSE);
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
+	{
+		m_bIsUsingMouseAndKeyboard = !isGamepad;
 		EventOnInputDeviceChanged.Invoke(m_bIsUsingMouseAndKeyboard);
 	}
 	
@@ -300,7 +296,7 @@ class SCR_NotificationsLogComponent: MenuRootSubComponent
 		//Fade logics. 
 		m_NotificationsManager.GetOnNotification().Insert(OnNotification);
 		
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(CheckInputTypeChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 			
 		EInputDeviceType inputDevice = GetGame().GetInputManager().GetLastUsedInputDevice();
 		m_bIsUsingMouseAndKeyboard = (inputDevice == EInputDeviceType.KEYBOARD || inputDevice == EInputDeviceType.MOUSE);
@@ -358,7 +354,7 @@ class SCR_NotificationsLogComponent: MenuRootSubComponent
 		if (!m_NotificationsManager) return;
 			
 		m_NotificationsManager.GetOnNotification().Remove(OnNotification);
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(CheckInputTypeChanged);	
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);	
 	}
 };
 

@@ -24,7 +24,7 @@ class SCR_AIGetInVehicle : SCR_AIVehicleBehavior
 	ref SCR_BTParam<IEntity> m_Vehicle = new SCR_BTParam<IEntity>(SCR_AIActionTask.ENTITY_PORT);
 	ref SCR_BTParam<ECompartmentType> m_eRoleInVehicle = new SCR_BTParam<ECompassType>(SCR_AIActionTask.ROLEINVEHICLE_PORT);
 	
-	void SCR_AIGetInVehicle(SCR_AIBaseUtilityComponent utility, bool prioritize, IEntity vehicleEntity, ECompartmentType role = ECompartmentType.Cargo, float priority = PRIORITY_BEHAVIOR_VEHICLE)
+	void SCR_AIGetInVehicle(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, IEntity vehicleEntity, ECompartmentType role = ECompartmentType.Cargo, float priority = PRIORITY_BEHAVIOR_VEHICLE)
     {
 		m_Vehicle.Init(m_aParams, vehicleEntity);
 		m_eRoleInVehicle.Init(m_aParams, role);
@@ -43,7 +43,7 @@ class SCR_AIGetOutVehicle : SCR_AIVehicleBehavior
 {
 	ref SCR_BTParam<IEntity> m_Vehicle = new SCR_BTParam<IEntity>(SCR_AIActionTask.ENTITY_PORT);
 	
-    void SCR_AIGetOutVehicle(SCR_AIBaseUtilityComponent utility, bool prioritize, IEntity vehicle, float priority = PRIORITY_BEHAVIOR_GET_OUT_VEHICLE)
+    void SCR_AIGetOutVehicle(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, IEntity vehicle, float priority = PRIORITY_BEHAVIOR_GET_OUT_VEHICLE)
     {
 		m_Vehicle.Init(this, vehicle);
 		

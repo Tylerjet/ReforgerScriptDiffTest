@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Test", description: "Test component showcasing doing the replication from script the WRONG way", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Test", description: "Test component showcasing doing the replication from script the WRONG way")]
 class SCR_RplTestComponentWrongClass: ScriptComponentClass
 {
 };

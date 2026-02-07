@@ -3,6 +3,9 @@ class SCR_GameOverScreenContentUIComponent: ScriptedWidgetComponent
 	[Attribute("GameOver_Image")]
 	protected string m_sImageName;
 	
+	[Attribute("Image_SizeSetter")]
+	protected string m_sImageHolderName;
+	
 	[Attribute("GameOver_State")]
 	protected string m_sTileName;
 	
@@ -16,18 +19,9 @@ class SCR_GameOverScreenContentUIComponent: ScriptedWidgetComponent
 	
 	/*!
 	Fills the widgets of the gameover screen content
-	\param gameOverLayout layout that will be spawned which contains the specific endscreen widget
-	\param endGameData send to the gameOverLayout to access any additional data
-	\param title title of game over screen
-	\param subtitle subtitle of game over screen
-	\param debriefing debriefing text of game over screen
-	\param imageTexture Image shown in game over screen
-	\param titleParam title param %1
-	\param subtitleParam subtitle param %1
-	\param debriefingParam debriefing param %1
-	\return Widget endscreen widget
+	\param endScreenUIContent contains the layout and any neccessary information for the endscreen content widget
 	*/
-	void InitContent(SCR_GameModeEndData endGameData, LocalizedString title = string.Empty, LocalizedString subtitle = string.Empty, LocalizedString debriefing = string.Empty, ResourceName imageTexture = ResourceName.Empty, string titleParam = string.Empty, string subtitleParam = string.Empty, string debriefingParam = string.Empty)
+	void InitContent(SCR_GameOverScreenUIContentData endScreenUIContent)
 	{
 		TextWidget titleWidget = TextWidget.Cast(m_wRoot.FindAnyWidget(m_sTileName));
 		TextWidget subtitleWidget = TextWidget.Cast(m_wRoot.FindAnyWidget(m_sSubtitleName));
@@ -35,18 +29,25 @@ class SCR_GameOverScreenContentUIComponent: ScriptedWidgetComponent
 		ImageWidget image = ImageWidget.Cast(m_wRoot.FindAnyWidget(m_sImageName));
 		
 		if (titleWidget)
-			titleWidget.SetTextFormat(title, titleParam);
+			titleWidget.SetTextFormat(endScreenUIContent.m_sTitle, endScreenUIContent.m_sTitleParam);
 
 		if (subtitleWidget)
-			subtitleWidget.SetTextFormat(subtitle, subtitleParam);
+			subtitleWidget.SetTextFormat(endScreenUIContent.m_sSubtitle, endScreenUIContent.m_sSubtitleParam);
 		
 		if (debriefingWidget)
-			debriefingWidget.SetTextFormat(debriefing, debriefingParam);
+			debriefingWidget.SetTextFormat(endScreenUIContent.m_sDebriefing, endScreenUIContent.m_sDebriefingParam);
 		
 		
-		if (image && !imageTexture.IsEmpty())
+		if (image && !endScreenUIContent.m_sImageTexture.IsEmpty())
 		{
-			image.LoadImageTexture(0, imageTexture);
+			image.LoadImageTexture(0, endScreenUIContent.m_sImageTexture);
+		}
+		//~ Hide image if non set
+		else 
+		{
+			Widget imageHolder = m_wRoot.FindAnyWidget(m_sImageHolderName);
+			if (imageHolder)
+				imageHolder.SetVisible(false);
 		}
 	}
 	

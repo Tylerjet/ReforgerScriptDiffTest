@@ -5,15 +5,9 @@ class SCR_DeviceSpecificComponent: ScriptedWidgetComponent
 	
 	private Widget m_Widget;
 
-	protected void OnInputDeviceUserChanged()
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		ArmaReforgerScripted game = GetGame();
-		if (!game) return;
-		
-		InputManager inputManager = game.GetInputManager();
-		if (!inputManager) return;
-		
-		bool enable = m_bControllerOnly != inputManager.IsUsingMouseAndKeyboard();
+		bool enable = m_bControllerOnly == isGamepad;
 		m_Widget.SetEnabled(enable);
 		m_Widget.SetVisible(enable);
 	}
@@ -23,25 +17,13 @@ class SCR_DeviceSpecificComponent: ScriptedWidgetComponent
 		
 		m_Widget = w;
 		
-		ArmaReforgerScripted game = GetGame();
-		if (!game) return;
-		
-		ScriptInvoker invoker = game.OnInputDeviceUserChangedInvoker();
-		if (!invoker) return;
-		
-		invoker.Insert(OnInputDeviceUserChanged);
-		OnInputDeviceUserChanged();
+		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 	}
 	override void HandlerDeattached(Widget w)
 	{
 		if (SCR_Global.IsEditMode()) return;
 		
-		ArmaReforgerScripted game = GetGame();
-		if (!game) return;
-		
-		ScriptInvoker invoker = game.OnInputDeviceUserChangedInvoker();
-		if (!invoker) return;
-		
-		invoker.Remove(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
 };

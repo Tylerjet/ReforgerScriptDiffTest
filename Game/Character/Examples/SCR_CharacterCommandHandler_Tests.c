@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Character", description: "Scripted character command handler FOR TESTING", color: "0 0 255 255", icon: HYBRID_COMPONENT_ICON)]
+[ComponentEditorProps(category: "GameScripted/Character", description: "Scripted character command handler FOR TESTING", icon: HYBRID_COMPONENT_ICON)]
 class SCR_CharacterCommandHandlerComponent_TestsClass : SCR_CharacterCommandHandlerComponentClass
 {
 };

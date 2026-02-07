@@ -134,11 +134,8 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 	{
 		Clean();
 	}
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
 		CancelEditing();
 	}
 	
@@ -224,7 +221,7 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 				m_InputManager.AddActionListener("EditorCancelTransforming", EActionTrigger.UP, OnEditorCancelTransformingUp);
 			}
 			
-			game.OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+			game.OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		}
 		
 		SCR_MapEntity.GetOnMapOpen().Insert(CancelEditing);
@@ -263,7 +260,7 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 				m_InputManager.RemoveActionListener("EditorCancelTransforming", EActionTrigger.UP, OnEditorCancelTransformingUp);
 			}
 			
-			game.OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+			game.OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		}
 		
 		SCR_MapEntity.GetOnMapOpen().Remove(CancelEditing);

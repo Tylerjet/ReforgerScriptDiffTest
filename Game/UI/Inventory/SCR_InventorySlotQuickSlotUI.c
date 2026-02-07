@@ -7,16 +7,16 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 	
 	protected ImageWidget m_wGamepadHintSmall;
 	protected ImageWidget m_wGamepadHintLarge;
-	protected const string s_aIconNames[10] = {
-		"X", "Y", "A", "B", "", "DPAD_up", "DPAD_down", "DPAD_left", "DPAD_right", ""
-	};
+	protected RichTextWidget m_wKeybindText;
+
 	//ResourceName m_sPrimarySecondaryWeapon = "{E6BDE9DF9368C48C}UI/Textures/WeaponIcons/weapon_AK74.edds";
 	//------------------------------------------------------------------------ USER METHODS ----------------------------------------------------------------------
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void Init()
 	{
 		super.Init();
+		GetGame().GetGame().OnInputDeviceIsGamepadInvoker().Insert(UpdateHints);
 		// preparation for the icon
 		//if ( m_iQuickSlotIndex < 2 )				//Primary or secondary weapon
 		//	SetIcon( "{E6BDE9DF9368C48C}UI/Textures/WeaponIcons/weapon_AK74.edds" );
@@ -27,28 +27,42 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 	override void SetSlotVisible( bool bVisible )
 	{
 		super.SetSlotVisible( bVisible );
-		
-		if (!GetGame().GetInputManager().IsUsingMouseAndKeyboard())
+
+		m_wKeybindText = RichTextWidget.Cast(m_widget.FindAnyWidget("KeybindRichText"));
+		if (m_wKeybindText && !GetStorageUI().GetInventoryMenuHandler())
 		{
-			m_wGamepadHintSmall = ImageWidget.Cast(m_widget.FindAnyWidget("GamepadHintSmall"));
-			m_wGamepadHintLarge = ImageWidget.Cast(m_widget.FindAnyWidget("GamepadHintLarge"));
-			SCR_InventoryStorageQuickSlotsUI storage = SCR_InventoryStorageQuickSlotsUI.Cast(GetStorageUI());
-			if (storage)
-				SetQuickSlotHint(storage.GetGamepadIcons(), m_iQuickSlotIndex);
+			EInputDeviceType currentDevice = GetGame().GetInputManager().GetLastUsedInputDevice();
+			InputBinding binding = GetGame().GetInputManager().CreateUserBinding();
+
+			string deviceString = "keyboard";
+			if (currentDevice == EInputDeviceType.GAMEPAD)
+				deviceString = "gamepad";
+
+			string name = string.Format("%1%2", "SwitchWeaponCategory", (m_iQuickSlotIndex + 1));
+
+			array<string> bindings = {};
+			if (deviceString == "gamepad" &&
+				!binding.GetBindings(name, bindings, currentDevice))
+				return;
+
+			if (name == "SwitchWeaponCategory10")
+				name = "SwitchWeaponCategory0";
+
+			m_wKeybindText.SetText(string.Format("<action name='%1' preset='%2' device='" + deviceString + "' scale='1.25'/>", name, ""));
 		}
 
 		if( bVisible )
 		{
 			if ( !m_pItem )	//if item is not available, it's the empty slot, show the large number
 			{
-				m_wTextQuickSlotLarge = TextWidget.Cast( m_widget.FindAnyWidget( "TextQuickSlotLarge" ) );			
+				m_wTextQuickSlotLarge = TextWidget.Cast( m_widget.FindAnyWidget( "TextQuickSlotLarge" ) );
 				SetQuickSlotIndexVisible( m_wTextQuickSlotLarge, true );
-				SetQuickSlotHintVisible(m_wGamepadHintLarge);
+				SetQuickSlotHintVisible(m_wKeybindText);
 			}
 			else
 			{
 				SetQuickSlotIndexVisible( m_wTextQuickSlot, true );
-				SetQuickSlotHintVisible(m_wGamepadHintSmall);
+				SetQuickSlotHintVisible(m_wKeybindText);
 			}
 		}
 		else
@@ -77,30 +91,19 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 		return slotLayout;
 	}
 
+	void UpdateHints()
+	{
+		// SetQuickSlotHintVisible(m_wKeybindText);
+		m_wKeybindText.SetVisible(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+	}
+
 	//------------------------------------------------------------------------------------------------
-	void SetQuickSlotHintVisible(ImageWidget hintWidget)
+	void SetQuickSlotHintVisible(RichTextWidget hintWidget)
 	{
 		if (!GetGame().GetInputManager().IsUsingMouseAndKeyboard() && hintWidget.IsEnabled()) 
 			hintWidget.SetVisible(true);		
 	}
 
-	//------------------------------------------------------------------------------------------------
-	void SetQuickSlotHint(ResourceName texture, int id)
-	{
-		if (!m_wGamepadHintSmall || !m_wGamepadHintLarge || GetStorageUI().GetInventoryMenuHandler()) // show hints only in quickslot bar
-			return;
-
-		string quad = s_aIconNames[id];
-
-		if (!quad.IsEmpty())
-		{
-			m_wGamepadHintSmall.LoadImageFromSet(0, texture, quad);
-			m_wGamepadHintSmall.SetEnabled(true);
-			m_wGamepadHintLarge.LoadImageFromSet(0, texture, quad);		
-			m_wGamepadHintLarge.SetEnabled(true);
-		}
-	}
-	
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
@@ -108,7 +111,6 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 	{
 		m_iQuickSlotIndex = iSlotIndex;
 		m_Attributes = pAttributes;
-		
 	}
 	
 	//------------------------------------------------------------------------------------------------

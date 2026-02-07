@@ -145,6 +145,13 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 	protected ref set<SCR_EditableEntityComponent> m_SelectedEntities = new set<SCR_EditableEntityComponent>;
 	
 	/*!
+	\return Entity under cursor when context menu was opened
+	*/
+	SCR_EditableEntityComponent GetHoveredEntity()
+	{
+		return m_HoveredEntity;
+	}
+	/*!
 	Gets all actions on the component
 	\param actions output array containing all actions on this component
 	\return Amount of total actions
@@ -210,34 +217,6 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 	*/
 	protected int ValidateSelection(bool isInstant)
 	{
-		if (m_HoverManager)
-		{
-			m_HoveredEntity = m_HoverManager.GetFirstEntity();
-		}
-		else
-		{
-			m_HoveredEntity = null;
-		}
-		
-		//--- Clear previously cached entities
-		m_SelectedEntities.Clear();
-		
-		//--- Prioritize focused entities on instant activation (not when context menu is opened)
-		if (isInstant)
-		{
-			SCR_BaseEditableEntityFilter focusedFilter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.FOCUSED);
-			if (focusedFilter)
-			{
-				focusedFilter.GetEntities(m_SelectedEntities);
-			}
-		}
-		
-		//--- When there are no focused entities, get selected ones
-		if (m_SelectedEntities.IsEmpty() && m_SelectedManager)
-		{
-			m_SelectedManager.GetEntities(m_SelectedEntities);
-		}
-		
 		return 0;
 	}
 	
@@ -285,6 +264,10 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 	void ActionPerform(SCR_BaseEditorAction action, vector cursorWorldPosition, int flags)
 	{
 		int param = action.GetParam();
+		
+		//~ Check if on cooldown and set cooldown if any. Always checked locally
+		if (action.CheckAndSetCooldown())
+			return;
 		
 		// If action requires execution on server and role is proxy/client, send action to server
 		if (action.IsServer() && m_RplComponent.Role() == RplRole.Proxy)

@@ -25,9 +25,9 @@ class SCR_EditableSpawnPointComponent: SCR_EditableDescriptorComponent
 	{
 		UpdateText();
 	}
-	override void SetTransform(vector transform[4])
+	override void SetTransform(vector transform[4], bool changedByUser = false)
 	{	
-		super.SetTransform(transform);
+		super.SetTransform(transform, changedByUser);
 		UpdateNearestLocation();
 	}
 	override ScriptInvoker GetOnUIRefresh()

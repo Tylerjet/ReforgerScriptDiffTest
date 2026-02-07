@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Vehicle", description:"Vehicle camera data", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Vehicle", description:"Vehicle camera data")]
 class SCR_VehicleCameraDataComponentClass: ScriptComponentClass
 {
 };
@@ -24,9 +24,9 @@ class SCR_VehicleCameraDataComponent : ScriptComponent
 	float m_fFOV;
 	[Attribute("10", UIWidgets.EditBox, "Maximum Field Of View adjustment based on speed (in deg)")]
 	float m_fFOV_SpeedAdjustMax;
-	[Attribute("0.3", UIWidgets.Slider, "How much roll (0=0%, 1=100%, ...5=500% of original) is applied of the parent vehicle roll.", params: "0 5 0.001")]
+	[Attribute("0.4", UIWidgets.Slider, "How much roll (0=0%, 1=100%, ...5=500% of original) is applied of the parent vehicle roll.", params: "0 5 0.001")]
 	float m_fRollFactor;
-	[Attribute("0.1", UIWidgets.Slider, "How much pitch (0=0%, 1=100%, ...5=500% of original) is applied of the parent vehicle pitch.", params: "0 5 0.001")]
+	[Attribute("0.2", UIWidgets.Slider, "How much pitch (0=0%, 1=100%, ...5=500% of original) is applied of the parent vehicle pitch.", params: "0 5 0.001")]
 	float m_fPitchFactor;
 	[Attribute("20", UIWidgets.EditBox, "Angle in third person added to the camera on the vehicle (in deg)")]
 	float m_fAngleThirdPerson;

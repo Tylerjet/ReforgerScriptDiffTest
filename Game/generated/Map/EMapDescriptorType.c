@@ -101,10 +101,12 @@ enum EMapDescriptorType
 	MDT_SPAWNPOINT,
 	MDT_TASK,
 	MDT_ICON,
+	//! remaining types are debug/ functional
 	MDT_IMAGE_COUNT,
 	MDT_DEBUG_SELECTED,
 	MDT_DEBUG_HOVER,
 	MDT_DEBUG_HIGHLIGHT,
+	//! remaining types are not colorized by faction
 	MDT_COLORIZE_COUNT,
 	MDT_DEBUG_POINTS,
 	MDT_COUNT

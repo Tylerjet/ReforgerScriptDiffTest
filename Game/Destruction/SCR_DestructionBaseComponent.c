@@ -625,6 +625,7 @@ class SCR_DestructionHitInfo : SCR_HitInfo
 {
 	bool m_TotalDestruction;
 	
+	//------------------------------------------------------------------------------------------------
 	static SCR_DestructionHitInfo FromHitInfo(SCR_HitInfo hitInfo, bool totalDestruction)
 	{
 		SCR_DestructionHitInfo destHitInfo = new SCR_DestructionHitInfo;
@@ -636,6 +637,19 @@ class SCR_DestructionHitInfo : SCR_HitInfo
 		destHitInfo.m_HitDirection = hitInfo.m_HitDirection;
 		destHitInfo.m_HitNormal = hitInfo.m_HitNormal;
 		return destHitInfo;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_DestructionHitInfo FromDestructionData(SCR_DestructionData destructionData)
+	{
+		SCR_DestructionHitInfo destructionHitInfo = new SCR_DestructionHitInfo();
+		destructionHitInfo.m_TotalDestruction = destructionData.m_bTotalDestruction;
+		destructionHitInfo.m_HitDamage = destructionData.m_fHitDamage;
+		destructionHitInfo.m_DamageType = destructionData.m_eDamageType;
+		destructionHitInfo.m_HitPosition = destructionData.m_vHitPosition;
+		destructionHitInfo.m_HitDirection = destructionData.m_vHitDirection;
+		destructionHitInfo.m_HitNormal = destructionData.m_vHitNormal;
+		return destructionHitInfo;
 	}
 };
 
@@ -735,7 +749,7 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 	float m_fRandomVelocityAngular;
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Type of material for debris sound", "", ParamEnumArray.FromEnum(EMaterialSoundType))]
 	EMaterialSoundType m_eMaterialSoundType;
-	[Attribute("20", UIWidgets.Slider, "Sound is triggered if impulse is bigger", "0 30 1")]
+	[Attribute("20", UIWidgets.Slider, "Sound is triggered if impulse is bigger", "0 50 1")]
 	float m_fSoundTriggerThreshold;
 	
 	//------------------------------------------------------------------------------------------------

@@ -18,11 +18,11 @@ class ScriptTemplatePlugin: WorkbenchPlugin
 
 	[Attribute("", UIWidgets.EditBox, "Parent class name. When empty, default for given script type will be used.")]
 	protected string m_sParentName;
-	
+
 	//--- Let's not expose this, could be overwhelming for the user
 	//[Attribute("{51BB186E949A991B}Configs/Workbench/ScriptTemplatePlugin/ScriptTemplateConfig.conf", uiwidget: UIWidgets.ResourceNamePicker, params: "conf")]
 	protected ResourceName m_Config = "{51BB186E949A991B}Configs/Workbench/ScriptTemplatePlugin/ScriptTemplateConfig.conf";
-	
+
 	override void Run()
 	{
 		ScriptEditor scriptEditor = Workbench.GetModule(ScriptEditor);
@@ -32,7 +32,7 @@ class ScriptTemplatePlugin: WorkbenchPlugin
 			Print("Cannot insert script template, no file is opened!", LogLevel.WARNING);
 			return;
 		}
-		
+
 		if (Workbench.ScriptDialog("Fill from Template", "Insert a template of given class type to selected line in currently opened file.", this) && Workbench.OpenModule(ScriptEditor))
 		{
 			//--- Load config
@@ -42,13 +42,14 @@ class ScriptTemplatePlugin: WorkbenchPlugin
 				Debug.Error2(Type().ToString(), string.Format("Cannot load config '%1'!", m_Config));
 				return;
 			}
+
 			ScriptTemplateConfig config = ScriptTemplateConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(configResource.GetResource().ToBaseContainer()));
 			if (!config)
 			{
 				Debug.Error2(Type().ToString(), string.Format("Cannot load config '%1'!", m_Config));
 				return;
 			}
-			
+
 			//--- Get template
 			string fullPath, defaultParentName;
 			foreach (ScriptTemplateConfigEntry entry: config.m_Entries)
@@ -60,7 +61,7 @@ class ScriptTemplatePlugin: WorkbenchPlugin
 					break;
 				}
 			}
-			
+
 			//--- Get script class
 			if (m_sClassName.IsEmpty())
 			{
@@ -71,7 +72,7 @@ class ScriptTemplatePlugin: WorkbenchPlugin
 			{
 				className = m_sClassName;
 			}
-			
+
 			//--- Get parent class
 			string parentName;
 			if (m_sParentName.IsEmpty())
@@ -83,8 +84,8 @@ class ScriptTemplatePlugin: WorkbenchPlugin
 				parentName = m_sParentName;
 			}
 			if (parentName)
-				parentName = ": " + parentName;
-			
+				parentName = " : " + parentName;
+
 			//--- Open template file
 			FileHandle file = FileIO.OpenFile(fullPath, FileMode.READ);
 			if (!file)
@@ -92,7 +93,7 @@ class ScriptTemplatePlugin: WorkbenchPlugin
 				Print(string.Format("Cannot open file '%1'!", fullPath), LogLevel.ERROR);
 				return;
 			}
-			
+
 			//--- Copy template into the script
 			string line;
 			int lineNumber = scriptEditor.GetCurrentLine();
@@ -104,11 +105,13 @@ class ScriptTemplatePlugin: WorkbenchPlugin
 			file.CloseFile();
 		}
 	}
+	
 	[ButtonAttribute("Fill", true)]
 	bool ButtonConfirm()
 	{
 		return true;
 	}
+	
 	[ButtonAttribute("Cancel")]
 	bool ButtonCancel()
 	{
@@ -122,15 +125,16 @@ class ScriptTemplateConfig
 	[Attribute()]
 	ref array<ref ScriptTemplateConfigEntry> m_Entries;
 };
+
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EScriptTemplateType, "m_Type")]
 class ScriptTemplateConfigEntry
 {
-	[Attribute("", uiwidget: UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(EScriptTemplateType))]
+	[Attribute(defvalue: "", uiwidget: UIWidgets.ComboBox, desc: "", enums: ParamEnumArray.FromEnum(EScriptTemplateType))]
 	EScriptTemplateType m_Type;
-	
+
 	[Attribute("", uiwidget: UIWidgets.ResourceNamePicker, params: "txt")]
 	ResourceName m_TemplateFile;
-	
+
 	[Attribute()]
 	string m_sDefaultParentName;
 };

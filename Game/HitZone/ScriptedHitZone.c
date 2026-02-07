@@ -103,4 +103,49 @@ class ScriptedHitZone : HitZone
 	Called when the max damage changes.
 	*/
 	protected void OnMaxHealthChanged();
+	
+	/*!
+	Calculates the amount of damage a hitzone will receive.
+		
+	\param EDamageType damageType, damage type
+	\param float rawDamage, incoming damage, without any modifiers taken into account
+	\param IEntity hitEntity, damaged entity
+	\param HitZone struckHitZone, hitzone to damage
+	\param IEntity damageSource, projectile
+	\param IEntity damageSourceGunner, damage source instigator 
+	\param IEntity damageSourceParent, damage source parent entity (soldier, vehicle)
+	\param const GameMaterial hitMaterial, hit surface physics material
+	\param int colliderID, collider ID - if it exists
+	\param const inout vector hitTransform[3], hit position, direction and normal
+	\param const vector impactVelocity, projectile velocity in time of impact
+	\param int nodeID, bone index in mesh obj
+	\param bool isDOT, true if this is a calculation for DamageOverTime 
+	*/
+	float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, IEntity damageSourceGunner, IEntity damageSourceParent, const GameMaterial hitMaterial, int colliderID, const inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
+	{
+		if (rawDamage == 0)
+			return 0;
+
+		if (damageType == EDamageType.TRUE)
+			return rawDamage;
+
+		//apply base multiplier
+		float effectiveDamage = rawDamage * GetBaseDamageMultiplier();
+		//apply damage multiplier for this specific damage type
+		effectiveDamage *= GetDamageMultiplier(damageType);
+
+		//DOT doesn't get affected by damage reduction/thresholds, and neither does healing.
+		if (isDOT || effectiveDamage < 0)
+			return effectiveDamage;
+
+		//apply flat damage reduction
+		effectiveDamage -= GetDamageReduction();
+
+		//if its less than the damage threshold we discard the damage.
+		//if the damage to take becomes negative (healing) because of the flat damage reduction, this should reset it back to 0 dmg to take.
+		if (effectiveDamage < GetDamageThreshold())
+			effectiveDamage = 0;
+
+		return effectiveDamage;
+	}
 };

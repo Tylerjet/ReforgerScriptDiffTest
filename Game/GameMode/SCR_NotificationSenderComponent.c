@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Base for gamemode scripted component.", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Base for gamemode scripted component.")]
 class SCR_NotificationSenderComponentClass: SCR_BaseGameModeComponentClass
 {
 };
@@ -14,6 +14,12 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	
 	[Attribute("40", desc: "If killfeed is enabled, what is the relationship between the player that died and the local player. (Full killfeed is always displayed in open unlimited Editor)", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EKillFeedReceiveType))]
 	protected EKillFeedReceiveType m_iReceiveKillFeedType;
+	
+	[Attribute("0", desc: "Array of Killfeed names")]
+	protected ref array<ref SCR_NotificationKillfeedTypeName> m_aKillfeedTypeNames;
+	
+	[Attribute("0", desc: "Array of Killfeed receive names")]
+	protected ref array<ref SCR_NotificationKillfeedreceiveTypeName> m_aKillfeedReceiveTypeNames;
 	
 	protected Faction m_FactionOnSpawn;
 	
@@ -395,8 +401,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		if (!weatherManager) 
 			return;
 		
-		WeatherState currentState = new WeatherState();
-		weatherManager.GetCurrentWeatherState(currentState);
+		WeatherState currentState = weatherManager.GetCurrentWeatherState();
 		
 		if (!currentState)
 			return;
@@ -405,7 +410,35 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	}
 	
 	
-	//======================================== SET SHOW KILLFEED ========================================\\	
+	//======================================== KILLFEED ========================================\\	
+	/*!
+	Get an list of all killfeed types and the localized name
+	\param killFeedTypeNames list of killfeed type and name
+	\return the amount of names in the list
+	*/
+	int GetKillFeedTypeNames(notnull array<ref SCR_NotificationKillfeedTypeName> killFeedTypeNames)
+	{
+		killFeedTypeNames.Clear();
+		foreach (SCR_NotificationKillfeedTypeName killfeedTypeName: m_aKillfeedTypeNames)
+			killFeedTypeNames.Insert(killfeedTypeName);
+		
+		return killFeedTypeNames.Count();
+	}
+	
+	/*!
+	Get an list of all killfeed receive types and the localized name
+	\param killFeedReceiveTypeNames list of killfeed receive type and name
+	\return the amount of names in the list
+	*/
+	int GetKillFeedReceiveTypeNames(notnull array<ref SCR_NotificationKillfeedreceiveTypeName> killFeedReceiveTypeNames)
+	{
+		killFeedReceiveTypeNames.Clear();
+		foreach (SCR_NotificationKillfeedreceiveTypeName killfeedReceiveTypeName: m_aKillfeedReceiveTypeNames)
+			killFeedReceiveTypeNames.Insert(killfeedReceiveTypeName);
+		
+		return killFeedReceiveTypeNames.Count();
+	}
+	
 	/*!
 	Get the current killfeed type
 	\return the type of killfeed that is displayed
@@ -428,8 +461,8 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		SetKillFeedTypeBroadcast(killFeedType);
 		Rpc(SetKillFeedTypeBroadcast, killFeedType);
 		
-		/*if (playerNotificationId > 0)
-			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_CHANGED_KILLFEED_TYPE, playerNotificationId, killFeedType);*/
+		if (playerNotificationId > 0)
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_CHANGED_KILLFEED_TYPE, playerNotificationId, killFeedType, false);
 	}
 	
 	/*!
@@ -454,8 +487,8 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		SetReceiveKillFeedTypeBroadcast(receiveKillFeedType);
 		Rpc(SetReceiveKillFeedTypeBroadcast, receiveKillFeedType);
 		
-		/*if (playerNotificationId > 0)
-			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_CHANGED_KILLFEED_RECEIVE_TYPE, playerNotificationId, receiveKillFeedType);*/
+		if (playerNotificationId > 0)
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_CHANGED_KILLFEED_RECEIVE_TYPE, playerNotificationId, receiveKillFeedType, true);
 	}
 	
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
@@ -531,6 +564,7 @@ Noted that players with unlimited Editor will always see full killfeed if Editor
 */
 enum EKillFeedType
 {
+	//~ If changes are made in this enum make sure to change m_aKillfeedTypeNames
 	DISABLED = 0, ///< Killfeed is disabled
 	UNKNOWN_KILLER = 10, ///< Will see killfeed messages but will never know who the killer is
 	FULL = 20, ///< Will see every player (except possessed pawns) killed messages. Including killer
@@ -543,6 +577,7 @@ Noted that players with unlimited Editor will always see full killfeed if Editor
 */
 enum EKillFeedReceiveType
 {
+	//~ If changes are made in this enum make sure to change m_aKillfeedReceiveTypeNames
 	ALL = 0, ///< Will see killfeed from allies and enemies alike
 	ENEMIES_ONLY = 10, ///< Will see killfeed from enemies only
 	ALLIES_ONLY = 20, ///< Will see killfeed from allies only
@@ -550,4 +585,65 @@ enum EKillFeedReceiveType
 	GROUP_ONLY = 40, ///< Will see killfeed from group members only
 };
 
+/*!
+Class to get Killfeed type name
+*/
+[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EKillFeedType, "m_iKillfeedType")]
+class SCR_NotificationKillfeedTypeName
+{
+	[Attribute(desc: "Killfeed type", uiwidget : UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EKillFeedType))]
+	protected EKillFeedType m_iKillfeedType;
+	
+	[Attribute(desc: "Name displayed in Notification", uiwidget: UIWidgets.LocaleEditBox)]
+	protected LocalizedString m_sKillfeedTypeName;
+	
+	/*!
+	Get the killfeed type
+	\return the killfeed type enum
+	*/
+	EKillFeedType GetKillfeedType()
+	{
+		return m_iKillfeedType;
+	}
+	
+	/*!
+	Get the killfeed Type name
+	\return the killfeed type name as string
+	*/
+	string GetName()
+	{
+		return m_sKillfeedTypeName;
+	}
+};
+
+/*!
+Class to get Killfeed receive type name
+*/
+[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EKillFeedReceiveType, "m_iKillfeedreceiveType")]
+class SCR_NotificationKillfeedreceiveTypeName
+{
+	[Attribute(desc: "Killfeed receive type", uiwidget : UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EKillFeedReceiveType))]
+	protected EKillFeedReceiveType m_iKillfeedreceiveType;
+	
+	[Attribute(desc: "Name displayed in Notification", uiwidget: UIWidgets.LocaleEditBox)]
+	protected LocalizedString m_sKillfeedReceiveTypeName;
+	
+	/*!
+	Get the killfeed receive Type
+	\return the killfeed receive type enum
+	*/
+	EKillFeedType GetKillfeedReceiveType()
+	{
+		return m_iKillfeedreceiveType;
+	}
+	
+	/*!
+	Get the killfeed receive type name
+	\return the killfeed receive type name as string
+	*/
+	string GetName()
+	{
+		return m_sKillfeedReceiveTypeName;
+	}
+};
 

@@ -344,6 +344,14 @@ class TextureType
 		lutType.AddBaseConfig("PS4", "{F34906600DC4FE84}configs/ResourceTypes/PS4/TextureLut.conf");
 		lutType.AddBaseConfig("HEADLESS", "{3D6CF9FDEC095638}configs/ResourceTypes/HEADLESS/TextureLut.conf");
 		
+		//this is special type, it looks if file with same name but .fnt extension is exist next to .edds
+		ref TextureType fontType = new FontTextureType(container, "_fnt.");
+		fontType.AddBaseConfig("PC", "{F18523FA5BAAEA63}configs/ResourceTypes/PC/TextureFonts.conf");
+		fontType.AddBaseConfig("XBOX_ONE", "{02B393E0229C74CB}configs/ResourceTypes/XBOX_ONE/TextureFonts.conf");
+		fontType.AddBaseConfig("XBOX_SERIES", "{85ECC27BD918BA89}configs/ResourceTypes/XBOX_SERIES/TextureFonts.conf");
+		fontType.AddBaseConfig("PS4", "{3C102C974458DF07}configs/ResourceTypes/PS4/TextureFonts.conf");
+		fontType.AddBaseConfig("HEADLESS", "{D20F8633D63483FA}configs/ResourceTypes/HEADLESS/TextureFonts.conf");
+		
 		//this is special type which will be assigned when no one from normal types above matches
 		ref TextureType unspecifiedType = new TextureType(container, "");
 		unspecifiedType.Insert(Conversion, MetaEddsConversion, MetaEddsConversion.DXTCompression);
@@ -359,6 +367,20 @@ class TextureType
 		// new TextureType(container, "_dtsmdi.");
 		// new TextureType(container, "_nrm.");
 		// new TextureType(container, "_as.");
+	}
+}
+
+class FontTextureType: TextureType
+{
+	override bool IsType(string path)
+	{
+		string fntPath = FilePath.ReplaceExtension(path, "fnt");
+		return FileIO.FileExist(fntPath);
+	}
+	
+	override bool TestPostFix(string resource)
+	{
+		return IsType(resource);
 	}
 }
 
@@ -482,7 +504,7 @@ class TextureImportPlugin: ResourceManagerPlugin
 [WorkbenchPluginAttribute("Batch texture processor", "Perform simple checks and fixes on many textures", "", "", {"ResourceManager"},"",0xf1c5)]
 class BatchTextureProcessorPlugin: WorkbenchPlugin
 {
-	[Attribute("", UIWidgets.EditBox, "Check only textures whose path starts with given filter string.")]
+	[Attribute("", UIWidgets.FileNamePicker, "Check only textures whose path starts with given filter string.", params:"folders")]
 	string PathStartsWith;
 
 	[Attribute("", UIWidgets.EditBox, "Check only textures whose path contains given filter string.")]

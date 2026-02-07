@@ -29,7 +29,12 @@ class DamageManagerComponent: SCR_HitZoneContainerComponent
 	proto external float GetMaxHealth();
 	// Returns default hitzone's DamageState
 	proto external EDamageState GetState();
+	//returns true if the default hitzone is in Destroyed damage state
 	proto external bool IsDestroyed();
+	//Sets the given entity as the last instigator of damage.
+	proto external void SetInstigator(IEntity instigator);
+	//Returns last instigator
+	proto external IEntity GetInstigator();
 	/*!
 	Call HandleDamage on a specified hitzone
 	\param dType Type of damage
@@ -39,7 +44,7 @@ class DamageManagerComponent: SCR_HitZoneContainerComponent
 	\param struckHitZone HitZone to be damaged
 	\param damageSource Damage source instigator
 	\param surface Properties of the surface struck
-	\param collider Name of the collider receiving damage
+	\param colliderID ID of the collider receiving damage
 	\param externNodeIndex External node index
 	*/
 	proto external void HandleDamage(EDamageType dType, float damage, out vector hitPosDirNorm[3],	IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, SurfaceProperties surface, int colliderID, int externNodeIndex);

@@ -60,12 +60,7 @@ class SCR_EntityTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
 					break;
 				}
 			}
-			//detailsWidget.SetVisible(m_DetailType != null);
-		}
-		if (!m_DetailType)
-		{
-			widget.SetVisible(false);
-			return false;
+			detailsWidget.SetVisible(m_DetailType != null);
 		}
 		
 		//--- Get entity info (or if player without entity)

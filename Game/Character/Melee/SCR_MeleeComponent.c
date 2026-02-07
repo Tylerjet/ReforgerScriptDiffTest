@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Character", description: "Enables melee for character", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Character", description: "Enables melee for character")]
 class SCR_MeleeComponentClass: ScriptComponentClass
 {
 };
@@ -174,7 +174,7 @@ class SCR_MeleeComponent : ScriptComponent
 		Math3D.MatrixIdentity3(mat);
 		mat[3] = m_MeleeHitData.m_vHitPosition;
 		soundComp.SetTransformation(mat);
-		soundComp.PlayStr("SOUND_MELEE_IMPACT");
+		soundComp.PlayStr(SCR_SoundEvent.SOUND_MELEE_IMPACT);
 	}
 	
 	
@@ -210,35 +210,47 @@ class SCR_MeleeComponent : ScriptComponent
 	*/
 	private void ProcessMeleeAttack()
 	{
+		RplComponent rplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
+		if (rplComponent && rplComponent.IsProxy())
+			return; // Don't call on clients
+		
 		if (!CheckCollisionsSimple(m_MeleeHitData))
 			return;
 		
 		if (m_MeleeHitData.m_Weapon)
 			HandleMeleeSound();
 		
-		//! check if the entity has the damage manager component
-		HitZone hitzone;
-		DamageManagerComponent damageManager = SearchHierarchyForDamageManager(m_MeleeHitData.m_Entity, hitzone);
-		if (!damageManager)
-			return;
-		
-		vector hitPosDirNorm[3];
-		hitPosDirNorm[0] = m_MeleeHitData.m_vHitPosition;
-		
-		damageManager.HandleDamage(EDamageType.MELEE,
-		m_MeleeHitData.m_fDamage, 
-		hitPosDirNorm,
-		m_MeleeHitData.m_Entity, 
-		hitzone,
-		null, //add who is the instigator todo@matousvoj1 
-		m_MeleeHitData.m_SurfaceProps,
-		m_MeleeHitData.m_iColliderIndex, 
-		m_MeleeHitData.m_iNodeIndex);
-		
 #ifdef SCR_MELEE_DEBUG
 		m_aDbgSamplePositionsShapes.Clear();
 		Debug_DrawSphereAtPos(m_MeleeHitData.m_vHitPosition, m_aDbgSamplePositionsShapes, 0xff00ff00, 0.03, ShapeFlags.NOZBUFFER);
 #endif
+		
+		vector hitPosDirNorm[3];
+		hitPosDirNorm[0] = m_MeleeHitData.m_vHitPosition;
+		
+		//! check if the entity has the damage manager component
+		HitZone hitzone;
+		DamageManagerComponent damageManager = SearchHierarchyForDamageManager(m_MeleeHitData.m_Entity, hitzone);
+		if (damageManager)
+		{
+			damageManager.HandleDamage(EDamageType.MELEE,
+			m_MeleeHitData.m_fDamage, 
+			hitPosDirNorm,
+			m_MeleeHitData.m_Entity, 
+			hitzone,
+			GetOwner().GetChildren(), // This is a workaround, to make the character the damage instigator, just pass any child of the character as damageSource
+			m_MeleeHitData.m_SurfaceProps,
+			m_MeleeHitData.m_iColliderIndex, 
+			m_MeleeHitData.m_iNodeIndex);
+			return;
+		}
+		
+		SCR_DestructibleEntity destructible = SCR_DestructibleEntity.Cast(m_MeleeHitData.m_Entity);
+		if (destructible)
+		{
+			destructible.HandleDamage(EDamageType.MELEE, m_MeleeHitData.m_fDamage, hitPosDirNorm);
+			return;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

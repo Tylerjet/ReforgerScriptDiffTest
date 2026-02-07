@@ -20,7 +20,7 @@ class SCR_OrientToTerrainContextAction : SCR_SelectedEntitiesContextAction
 		vector transform[4];
 		selectedEntity.GetTransform(transform);
 		
-		if (!SCR_Global.OrientToTerrain(transform, owner.GetWorld())) return;
+		if (!SCR_TerrainHelper.OrientToTerrain(transform, owner.GetWorld())) return;
 		
 		selectedEntity.SetTransform(transform);
 	}

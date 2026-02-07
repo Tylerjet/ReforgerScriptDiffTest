@@ -26,7 +26,7 @@ class CharacterCameraADS extends CharacterCameraBase
 		m_WeaponManager = BaseWeaponManagerComponent.Cast(m_OwnerCharacter.FindComponent(BaseWeaponManagerComponent));
 		m_AimingComponent = CharacterAimingComponent.Cast(m_OwnerCharacter.FindComponent(CharacterAimingComponent));
 		m_GadgetManager = SCR_GadgetManagerComponent.Cast(m_OwnerCharacter.FindComponent(SCR_GadgetManagerComponent));
-		m_CmdHandler = CharacterCommandHandlerComponent.Cast(m_OwnerCharacter.FindComponent(CharacterCommandHandlerComponent));
+		m_OffsetLS = "0.0 0.03 -0.07";
 		
 		#ifdef ENABLE_DIAG
 		if (!s_bDebugRegistered) {
@@ -132,7 +132,7 @@ class CharacterCameraADS extends CharacterCameraBase
 	}
 	
 	//-----------------------------------------------------------------------------
-	private void SolveCameraHeadAttach(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult)
+	protected void SolveCameraHeadAttach(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult)
 	{
 		//! In some cases this compensation is needed (sloped surfaces)
 		float parentPitch = m_OwnerCharacter.GetLocalYawPitchRoll()[1];
@@ -174,7 +174,7 @@ class CharacterCameraADS extends CharacterCameraBase
 	/*!
 		Stable ADS camera solver that used RightHandProp as camera root.
 	*/
-	private void SolveNewMethod(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult, float pDt, bool allowInterpolation)
+	protected void SolveNewMethod(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult, float pDt, bool allowInterpolation)
 	{
 		// Right hand prop is where weapon is attached to
 		vector propBoneMS[4];
@@ -251,7 +251,9 @@ class CharacterCameraADS extends CharacterCameraBase
 			isUnstable = m_ControllerComponent.IsSprinting() ||
 						 m_CmdHandler.GetTargetLadder() != null ||
 						 m_ControllerComponent.IsMeleeAttack() ||
-						 m_CmdHandler.GetCommandModifier_Item() && m_CmdHandler.GetCommandModifier_Item().IsChangingItemTag();
+						 m_CmdHandler.GetCommandModifier_Item() && m_CmdHandler.GetCommandModifier_Item().IsChangingItemTag() ||
+						 m_CmdHandler.IsProneStanceTransition() && m_ControllerComponent.GetMovementVelocity().LengthSq() > 0.0 ||
+						 (!m_WeaponManager || !m_WeaponManager.GetCurrentSights());
 		}
 
 		if (isUnstable)
@@ -289,9 +291,11 @@ class CharacterCameraADS extends CharacterCameraBase
 			m_fFreelookBlendAlpha =  Math.Clamp( Math.Sqrt( blendAlpha * blendOutSpeed ), 0.0, 1.0 );
 			if ( m_fFreelookBlendAlpha <= alphaEpsilon )
 				m_fFreelookBlendAlpha = 0.0;
-			
+			vector freeLookMat[4];
+			vector additiveRotation = "0 0 0";
+			m_CharacterHeadAimingComponent.GetLookTransformationLS(GetCameraBoneIndex(), EDirectBoneMode.RelativePosition, m_OffsetLS, additiveRotation, freeLookMat);
 			// Blend up to 25% of head position, feels solid
-			vector endPosMS = vector.Lerp( projectedPosMS, cameraBoneMS[3], 0.25 * m_fFreelookBlendAlpha );
+			vector endPosMS = cameraBoneMS[3] + freeLookMat[3];
 			// Do not blend all the way to projected position, blend up to 60%?
 			resultPosition = vector.Lerp( resultPosition, endPosMS, 0.6 * m_fFreelookBlendAlpha );
 		}
@@ -334,7 +338,7 @@ class CharacterCameraADS extends CharacterCameraBase
 	}
 
 	//-----------------------------------------------------------------------------
-	private void SolveCameraHandAttach(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult, float pDt, bool allowInterpolation)
+	protected void SolveCameraHandAttach(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult, float pDt, bool allowInterpolation)
 	{
 		//! In some cases this compensation is needed (sloped surfaces)
 		float parentPitch = m_OwnerCharacter.GetLocalYawPitchRoll()[1];
@@ -422,7 +426,7 @@ class CharacterCameraADS extends CharacterCameraBase
 	}
 	
 	//-----------------------------------------------------------------------------
-	private void SolveCamera2DSight(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult)
+	protected void SolveCamera2DSight(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult)
 	{
 
 		float targetFOV;
@@ -501,28 +505,17 @@ class CharacterCameraADS extends CharacterCameraBase
 		bool canFreelook = sights && sights.CanFreelook();
 		//! update fov
 		m_fFreelookFOV = GetBaseFOV();
-		
-		float udAngle = UpdateUDAngle(m_fUpDownAngle, CONST_UD_MIN, CONST_UD_MAX, pDt);
-		m_fLeftRightAngle = UpdateLRAngle(m_fLeftRightAngle, CONST_LR_MIN, CONST_LR_MAX, pDt);
-		
+
 		pOutResult.m_vBaseAngles = GetBaseAngles();
 		
 
 		//! yaw pitch roll vector
-		vector lookAngles = "0.0 0.0 0.0";
-		lookAngles[2] = 0;
-		if (canFreelook)
-		{
-			lookAngles[0] = m_fLeftRightAngle;
-			lookAngles[1] = udAngle;
-		}
-		else
+		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
+		if (!canFreelook)
 		{
 			lookAngles[0] = m_CommandWeapons.GetAimAngleLR();
 			lookAngles[1] = m_CommandWeapons.GetAimAngleUD();
 		}
-		
-		
 		//! Prepare data
 		
 		cameraData.m_fDeltaTime = pDt;
@@ -631,7 +624,6 @@ class CharacterCameraADS extends CharacterCameraBase
 	protected BaseWeaponComponent m_LastWeaponComponent;
 	protected CharacterAimingComponent m_AimingComponent;
 	protected SCR_GadgetManagerComponent m_GadgetManager;
-	protected CharacterCommandHandlerComponent m_CmdHandler;
 	protected BaseSightsComponent m_BinocularSight;
 	
 	protected	bool	m_bIsFullyBlend = false;

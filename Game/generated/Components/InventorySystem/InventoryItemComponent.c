@@ -39,6 +39,8 @@ class InventoryItemComponent: GameComponent
 	proto external float GetTotalWeight();
 	//! Implemented for convinience, returns volume from ItemPhysicalAttributes objects
 	proto external float GetVolume();
+	//! Returns UI info of this item
+	proto external UIInfo GetUIInfo();
 	/*!
 	Convinience method
 	Finds first occurance of the coresponding attribute data object in owned PrefabData AttributeCollection.

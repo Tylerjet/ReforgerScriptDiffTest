@@ -415,9 +415,13 @@ class SCR_NameTagRulesetBase : Managed
 			targetOrigin[1] = targetOrigin[1] * verticalWeight;
 		}
 			
-		vector direction = vector.Direction(camPosFix, targetOrigin);							// vector from camera to target										
+		vector direction = vector.Direction(camPosFix, targetOrigin);							// vector from camera to target									
 		float dotProduct = vector.Dot(camDirFix, direction);									// dot product of target dir & and screen center dir
-		float vectorsAngle = Math.Acos( dotProduct / (direction.Length() * camDirFix.Length()) );	// angle between two vectors (radians)
+		float vectorMagnitude = direction.Length() * camDirFix.Length();	
+		if (vectorMagnitude == 0)
+			vectorMagnitude = 1;
+								
+		float vectorsAngle = Math.Acos( dotProduct / vectorMagnitude );	// angle between two vectors (radians)
 		float angle = vectorsAngle * Math.RAD2DEG;																
 		return angle;
 	}

@@ -10,8 +10,8 @@ class SCR_AIReactionBase
 	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "(TEMP) Relavive path to a behavior tree with forward slashes \nExample: 'AI/BehaviorTrees/Chimera/Soldier/Wait.bt'", params: "bt")]
 	string m_OverrideBehaviorTree;
 	
-	//200 - sorry for that, its defined in Soldier.bt in a node GetTarget, should be moved somewhere we can call Get()
-	static const int AI_PERCEPTION_DISTANCE = 200;
+	// Beyond this distance AI considers shooting as long range fire
+	static const int LONG_RANGE_FIRE_DISTANCE = 200;
 	
 	// will be defined on AI component hopefully later
 	static const int AI_WEAPONFIRED_REACTION_DISTANCE = 500;
@@ -29,7 +29,7 @@ class SCR_AIWaitReaction : SCR_AIReactionBase
 {
 	override void PerformReaction(notnull SCR_AIUtilityComponent utility) 
 	{
-		auto behavior = new SCR_AIWaitBehavior(utility, false);
+		auto behavior = new SCR_AIWaitBehavior(utility, false, null);
 		//if (behavior.m_sBehaviorTree != string.Empty)
 			//behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 		utility.AddAction(behavior);
@@ -41,7 +41,7 @@ class SCR_AIIdleReaction : SCR_AIReactionBase
 {
 	override void PerformReaction(notnull SCR_AIUtilityComponent utility) 
 	{
-		auto behavior = new SCR_AIIdleBehavior(utility, false);
+		auto behavior = new SCR_AIIdleBehavior(utility, false, null);
 		//if (behavior.m_sBehaviorTree != string.Empty)
 			//behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 		utility.AddAction(behavior);
@@ -51,15 +51,5 @@ class SCR_AIIdleReaction : SCR_AIReactionBase
 	{
 		auto activity = new SCR_AIIdleActivity(utility, false, false);
 		utility.AddAction(activity);
-	}
-};
-
-[BaseContainerProps()]
-class SCR_AIReturnToDefaultReaction : SCR_AIReactionBase
-{
-	override void PerformReaction(notnull SCR_AIUtilityComponent utility) 
-	{
-		auto behavior = new SCR_AIReturnToDefaultBehavior(utility, false);
-		utility.AddAction(behavior);
 	}
 };

@@ -6,16 +6,16 @@ The player is able to use the menu to switch between layers
 class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 {	
 	//SFX
-	[Attribute("SOUND_E_LAYER_EDIT_START", UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.SOUND_E_LAYER_EDIT_START, UIWidgets.EditBox, "")]
 	protected string m_sSfxStartLayerEditing;
 	
-	[Attribute("SOUND_E_LAYER_EDIT_END", UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.SOUND_E_LAYER_EDIT_END, UIWidgets.EditBox, "")]
 	protected string m_sSfxStopLayerEditing;
 	
-	[Attribute("SOUND_E_LAYER_DEEPER", UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.SOUND_E_LAYER_DEEPER, UIWidgets.EditBox, "")]
 	protected string m_sSfxGoLayerDeeper;
 	
-	[Attribute("SOUND_E_LAYER_BACK", UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.SOUND_E_LAYER_BACK, UIWidgets.EditBox, "")]
 	protected string m_sSfxGoLayerBack;
 	
 	//Widget References
@@ -84,7 +84,7 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 			m_LayersManager.SetCurrentLayer(layer);
 	}
 	
-	//~ToDo: Check is gamepad is used and show controlles for it: GetGame().OnInputDeviceUserChangedInvoker(). Hide L1 + Right button hint if no children. Check if input can be displayed dynamicly
+	//~ToDo: Check is gamepad is used and show controlles for it: GetGame().OnInputDeviceIsGamepadInvoker(). Hide L1 + Right button hint if no children. Check if input can be displayed dynamicly
 	//======================== CREATE LAYER UI ========================\\
 	//On Layer changed recreate layer menu
 	protected void OnCompositionLayerChanged(SCR_EditableEntityComponent currentLayer, SCR_EditableEntityComponent prevLayer)
@@ -117,9 +117,9 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 	} 
 	
 	//On input change
-	protected void OnInputDeviceChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		m_bUsesGamepad = (newDevice == EInputDeviceType.GAMEPAD || newDevice == EInputDeviceType.JOYSTICK);
+		m_bUsesGamepad = isGamepad;
 		
 		RefreshLayerUI();
 	}
@@ -395,11 +395,8 @@ class SCR_LayersEditorUIComponent : SCR_BaseEditorUIComponent
 		if (m_LayerElementHolder)
 		{
 			//Input device changed
-			InputManager inputManager = GetGame().GetInputManager();
-			if (inputManager)
-				OnInputDeviceChanged(inputManager.GetLastUsedInputDevice(), inputManager.GetLastUsedInputDevice());
-			
-			GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceChanged);
+			OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+			GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 			
 			//Get layersEditorComponent
 			m_LayersManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent, true));

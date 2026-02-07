@@ -128,22 +128,22 @@ class LightUserAction : BaseLightUserAction
 			{				
 				if (lightsState)
 				{
-					soundComponent.SoundEventOffset("SOUND_VEHICLE_CLOSE_LIGHT_ON", offset);				
+					soundComponent.SoundEventOffset(SCR_SoundEvent.SOUND_VEHICLE_CLOSE_LIGHT_ON, offset);				
 				}
 				else
 				{
-					soundComponent.SoundEventOffset("SOUND_VEHICLE_CLOSE_LIGHT_OFF", offset);
+					soundComponent.SoundEventOffset(SCR_SoundEvent.SOUND_VEHICLE_CLOSE_LIGHT_OFF, offset);
 				}
 			}
 			else
 			{
 				if (lightsState)
 				{
-					soundComponent.SoundEvent("SOUND_VEHICLE_CLOSE_LIGHT_ON");				
+					soundComponent.SoundEvent(SCR_SoundEvent.SOUND_VEHICLE_CLOSE_LIGHT_ON);				
 				}
 				else
 				{
-					soundComponent.SoundEvent("SOUND_VEHICLE_CLOSE_LIGHT_OFF");
+					soundComponent.SoundEvent(SCR_SoundEvent.SOUND_VEHICLE_CLOSE_LIGHT_OFF);
 				}
 			}			
 		}

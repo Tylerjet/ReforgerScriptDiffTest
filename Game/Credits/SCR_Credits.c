@@ -77,9 +77,10 @@ class SCR_Credits: ChimeraMenuBase
 	void StartCredits()
 	{
 		ChangeBackground();
-		WidgetAnimator.PlayAnimation(m_wBackgroundImage, WidgetAnimationType.Opacity, 1, NAME_ANIMATION_TIME);
-		WidgetAnimator.PlayAnimation(m_wSideVignette, WidgetAnimationType.Opacity, 1, NAME_ANIMATION_CREDITS);
-		WidgetAnimator.PlayAnimation(m_wCreditsText, WidgetAnimationType.Opacity, 1, NAME_ANIMATION_CREDITS);
+		
+		AnimateWidget.Opacity(m_wBackgroundImage, 1, NAME_ANIMATION_TIME);
+		AnimateWidget.Opacity(m_wSideVignette, 1, NAME_ANIMATION_CREDITS);
+		AnimateWidget.Opacity(m_wCreditsText, 1, NAME_ANIMATION_CREDITS);
 		GetGame().GetCallqueue().CallLater(ShowNames, 3000,false,0,0);
 		GetGame().GetCallqueue().CallLater(ChangeBackground, BACKGROUND_CHANGE_INTERVAL, true);
 	}
@@ -217,16 +218,14 @@ class SCR_Credits: ChimeraMenuBase
 			}
 		}
 		//Switch to next slide with animation
-		WidgetAnimator.PlayAnimation(m_wCreditsMain, WidgetAnimationType.Opacity, 1, NAME_ANIMATION_TIME);
-	
+		AnimateWidget.Opacity(m_wCreditsMain, 1, NAME_ANIMATION_TIME);
 		GetGame().GetCallqueue().CallLater(HideNames,NAME_TIMEOUT,false,deptCount,names);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void HideNames(int departments, int names)
 	{
-		WidgetAnimator.PlayAnimation(m_wCreditsMain, WidgetAnimationType.Opacity, 0, NAME_ANIMATION_TIME);
-		
+		AnimateWidget.Opacity(m_wCreditsMain, 0, NAME_ANIMATION_TIME);
 		GetGame().GetCallqueue().CallLater(ShowNames,NAME_CHANGE_DELAY,false,departments,names);
 	}
 	
@@ -238,4 +237,4 @@ class SCR_Credits: ChimeraMenuBase
 		GetGame().GetCallqueue().Remove(ChangeBackground);
 		GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.CreditsMenu)
 	}
-}
+};

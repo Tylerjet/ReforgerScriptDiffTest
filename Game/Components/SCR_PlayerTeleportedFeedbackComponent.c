@@ -20,11 +20,11 @@ class SCR_PlayerTeleportedFeedbackComponent: ScriptComponent
 	On player teleported send a notification and event that the local player character is teleported
 	Will only send event if editor is open
 	*/
-	void TeleportedByEditor(SCR_EditableCharacterComponent character)
+	void TeleportedByEditor(SCR_EditableCharacterComponent character, bool isLongFade)
 	{
 		bool editorIsOpen = SCR_EditorManagerEntity.IsOpenedInstance();
 		
-		Event_OnPlayerTeleportedByEditor.Invoke(editorIsOpen);
+		Event_OnPlayerTeleportedByEditor.Invoke(editorIsOpen, isLongFade);
 		
 		int id = Replication.FindId(character);
 		

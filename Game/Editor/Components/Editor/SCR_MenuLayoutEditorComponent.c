@@ -45,6 +45,18 @@ class SCR_MenuLayoutEditorComponent : SCR_BaseEditorComponent
 		else
 			return false;
 	}
+	/*!
+	Get entity under cursor, even if it's not editable.
+	To get editable entity under cursor, use SCR_BaseEditableEntityFilter of type EEditableEntityState.HOVER.
+	\return Entity under cursor
+	*/
+	IEntity GetTraceEntity()
+	{
+		if (m_CursorComponent)
+			return m_CursorComponent.GetTraceEntity();
+		else
+			return null;
+	}
 	
 	override void EOnEditorPostActivate()
 	{
@@ -78,8 +90,9 @@ class SCR_MenuLayoutEditorComponent : SCR_BaseEditorComponent
 		
 		//--- Fade in
 		//m_Widget.SetOpacity(0);
-		//WidgetAnimator.PlayAnimation(m_Widget, WidgetAnimationType.Opacity, 1, 5);
+		//AnimateWidget.Opacity(m_Widget, 1, 5);
 	}
+	
 	override void EOnEditorPostDeactivate()
 	{
 		if (m_Widget)

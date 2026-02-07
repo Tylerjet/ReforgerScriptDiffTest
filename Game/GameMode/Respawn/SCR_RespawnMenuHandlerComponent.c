@@ -24,6 +24,8 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 	[Attribute("1", category: "Respawn Handler")]
 	protected float m_fMenuOpenDelay;
 
+	protected float m_fMenuOpenDelayCounter = 0;
+
 	[Attribute("#AR-DeployMenu_NoSpawnPoints_Text", uiwidget: UIWidgets.EditBox, "Message shown when no spawn points are available", category: "Respawn Handler")]
 	protected LocalizedString m_sRespawnUnavailable;
 
@@ -31,6 +33,9 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 	protected LocalizedString m_sFactionMenuMessage;
 
 	protected ref SimplePreload m_Preload;
+
+	protected ref set<int> m_aSpawnQueue = new set<int>();
+	protected ref set<int> m_aProcessingQueue = new set<int>();
 
 	/*!
 		Whether local client is enqueued for respawning, ie. menu should be open.
@@ -104,19 +109,43 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 			}
 			return;
 		}
+
+		if (m_pGameMode.IsMaster() && !m_aSpawnQueue.IsEmpty())
+		{
+			PlayerManager pm = GetGame().GetPlayerManager();
+			int count = m_aSpawnQueue.Count();
+			int pid;
+			for (int index = 0; index < count; ++index)
+			{
+				pid = m_aSpawnQueue[index];
+				if (m_pGameMode.CanPlayerRespawn(pid))
+				{
+					m_aProcessingQueue.Insert(pid);
+					pm.GetPlayerController(pid).RequestRespawn();
+					m_aSpawnQueue.Remove(index);
+				}
+			}
+		}
+
 		// Make sure that we open menu only when we can
 		bool isOpen = SCR_RespawnSystemComponent.IsRespawnMenuOpened();
 		if (m_bLocalPlayerEnqueued && CanOpenRespawnMenu())
 		{
-			if (!isOpen)
+			if (m_fMenuOpenDelayCounter > 0)
+				m_fMenuOpenDelayCounter -= timeSlice;
+
+			if (!isOpen && m_fMenuOpenDelayCounter <= 0)
 				SCR_RespawnSystemComponent.OpenRespawnMenu();
 		}
 		else
 		{
 			if (isOpen)
+			{
+				m_fMenuOpenDelayCounter = m_fMenuOpenDelay;
 				SCR_RespawnSystemComponent.CloseRespawnMenu();
+			}
 		}
-		
+
 		super.EOnFrame(owner, timeSlice);
 	}
 
@@ -192,6 +221,80 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 		{
 			menu.HandleOnPlayerDisconnected(playerId);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnPlayerSpawned(int playerId, IEntity controlledEntity)
+	{
+		int index = m_aProcessingQueue.Find(playerId);
+		if (m_aProcessingQueue.Contains(playerId))
+			m_aProcessingQueue.Remove(index);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void RequestRespawn(int playerId)
+	{
+		if (!m_pGameMode.IsMaster())
+			return;
+
+		if (m_aSpawnQueue.Contains(playerId) || m_aProcessingQueue.Contains(playerId))
+			return;
+
+		m_aSpawnQueue.Insert(playerId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void RequestQuickRespawn(int playerId)
+	{
+		if (!m_pGameMode.IsMaster())
+			return;
+
+		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
+		Faction playerFaction = respawnSystem.GetPlayerFaction(playerId);
+		if (!playerFaction)
+		{
+			FactionManager factionManager = GetGame().GetFactionManager();
+			if (!factionManager)
+				return;
+
+			array<Faction> factions = {};
+			int factionsCount = factionManager.GetFactionsList(factions);
+			if (factionsCount == 0)
+			{
+				Print("Could not randomize player faction, no factions are available!", LogLevel.ERROR);
+				return;
+			}
+
+			array<SCR_Faction> availableFactions = {};
+			foreach (Faction faction : factions)
+			{
+				SCR_Faction scriptedFaction = SCR_Faction.Cast(faction);
+				if (!scriptedFaction)
+					continue;
+				if (scriptedFaction.IsPlayable() && respawnSystem.CanSetFaction(playerId, respawnSystem.GetFactionIndex(scriptedFaction)))
+					availableFactions.Insert(scriptedFaction);
+			}
+
+			int lastPlayerCount = int.MAX;
+			int factionIndex;
+			// balance factions
+			foreach (SCR_Faction faction : availableFactions)
+			{
+				if (faction.GetPlayerCount() < lastPlayerCount)
+				{
+					lastPlayerCount = faction.GetPlayerCount();
+					factionIndex = respawnSystem.GetFactionIndex(faction);
+				}
+			}
+
+			respawnSystem.DoSetPlayerFaction(playerId, factionIndex);
+		}
+
+		RandomizePlayerGroup(playerId);
+		RandomizePlayerLoadout(playerId);
+		RandomizePlayerSpawnPoint(playerId);
+
+		RequestRespawn(playerId);
 	}
 
 	//------------------------------------------------------------------------------------------------

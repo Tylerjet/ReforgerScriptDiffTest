@@ -21,7 +21,7 @@ class BaseMoveComponent: BaseProjectileComponent
 	proto external float GetRewindDuration();
 	/*!
 	* Sets the rewind duration (equal to the RTT of the remote shooter's connection) of the projectile for lag compensation.
-	* \param duration The new rewind duration, in seconds.
+	* \param duration The new rewind duration in milliseconds.
 	* \warning This has to be performed on authority, and must be done after the shell is launched.
 	*/
 	proto external void SetRewindDuration(float duration);

@@ -94,11 +94,9 @@ class SCR_ButtonEffectSize : SCR_ButtonEffectWidgetBase
 		Apply(m_vToggledOff, instant);
 	}
 	
-	
-	
 	override void OnDisabled()
 	{
-		WidgetAnimator.StopAnimation(m_wTarget, WidgetAnimationType.FrameSize);
+		AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationFrameSize);
 	}
 	
 	protected void Apply(vector value, bool instant)
@@ -106,10 +104,13 @@ class SCR_ButtonEffectSize : SCR_ButtonEffectWidgetBase
 		if (m_wTarget)
 		{
 			if (!instant && m_vAnimationTime != 0)
-				WidgetAnimator.PlayAnimation(m_wTarget, WidgetAnimationType.FrameSize, 1/m_vAnimationTime, value[0], value[1], false);
+			{
+				float size[2] = {value[0], value[1]};
+				AnimateWidget.Size(m_wTarget, size, 1 / m_vAnimationTime);
+			}
 			else
 			{
-				WidgetAnimator.StopAnimation(m_wTarget, WidgetAnimationType.FrameSize);
+				AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationFrameSize);
 				FrameSlot.SetSize(m_wTarget, value[0], value[1]);
 			}
 		}

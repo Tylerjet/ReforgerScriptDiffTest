@@ -937,7 +937,7 @@ class SCR_RadialMenuVisuals : SCR_InfoDisplayExtended
 		SetVisibleSafe(widget, true);
 		
 		widget.SetOpacity(valueStart);
-		WidgetAnimator.PlayAnimation(widget, WidgetAnimationType.Opacity, valueEnd, speed);
+		AnimateWidget.Opacity(widget, valueEnd, speed);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -6,7 +6,8 @@ enum EAIDebugMsgType
 	COMBAT	= 3,
 	INFO	= 4,
 	ACTION	= 5,
-	THREAT	= 6
+	THREAT	= 6,
+	WEAPON	= 7
 };
 
 class SCR_AIDebugMessage
@@ -19,7 +20,8 @@ class SCR_AIDebugMessage
 		"COMBAT",
 		"INFO  ",
 		"ACTION",
-		"THREAT"
+		"THREAT",
+		"WEAPON"
 	};
 	
 	int m_Hours;

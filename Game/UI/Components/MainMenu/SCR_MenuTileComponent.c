@@ -100,8 +100,8 @@ class SCR_MenuTileComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
-		WidgetAnimator.PlayAnimation(m_wDescription, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
-		WidgetAnimator.PlayAnimation(m_wImageSelected, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wDescription, 1, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wImageSelected, 1, m_fAnimationRate);
 		m_OnFocused.Invoke(this);
 		return false;
 	}
@@ -109,8 +109,8 @@ class SCR_MenuTileComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
-		WidgetAnimator.PlayAnimation(m_wImageSelected, WidgetAnimationType.Opacity, 0, m_fAnimationRate);
-		WidgetAnimator.PlayAnimation(m_wDescription, WidgetAnimationType.Opacity, 0, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wDescription, 0, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wImageSelected, 0, m_fAnimationRate);
 		m_OnFocusLost.Invoke(this);
 		return false;
 	}

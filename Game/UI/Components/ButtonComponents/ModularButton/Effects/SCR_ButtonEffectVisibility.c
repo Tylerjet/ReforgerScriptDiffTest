@@ -96,7 +96,7 @@ class SCR_ButtonEffectVisibility : SCR_ButtonEffectWidgetBase
 	// Called when effect is disabled. Here you should stop all running effects.
 	override void OnDisabled()
 	{
-		WidgetAnimator.StopAnimation(m_wTarget, WidgetAnimationType.Opacity);
+		AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationOpacity);
 	}
 	
 	protected void Apply(bool visible, bool instant)

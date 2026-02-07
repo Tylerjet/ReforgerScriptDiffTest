@@ -16,7 +16,7 @@ class AimingComponentClass: BaseAimingComponentClass
 class AimingComponent: BaseAimingComponent
 {
 	/*!
-	Set the desied aiming rotation. It will move the aiming rotation smoothly to your desired aiming rotation.
+	Set the desired aiming rotation. It will move the aiming rotation smoothly to your desired aiming rotation.
 	\param inRotation The rotation wanted in radians
 	*/
 	proto external void SetAimingRotationWanted(vector inRotation);

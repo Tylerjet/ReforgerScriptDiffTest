@@ -2,8 +2,17 @@
 //! Serves as a container of data to be displayed on player UI
 class WeaponUIInfo : UIInfo
 {
+	// Show weapon name indicator in weapon UI
+	[Attribute("false", UIWidgets.CheckBox, "Show weapon name indicator in weapon UI.")]
+	protected bool m_bShowWeaponName;	
+
+	bool ShowWeaponName()
+	{
+		return m_bShowWeaponName;
+	}	
+	
 	[Attribute("", UIWidgets.Object)]
-	ref SCR_MagazineIndicatorConfiguration m_MagIndicator;
+	ref SCR_MagazineIndicatorConfiguration m_MagIndicator;	
 };
 
 class GrenadeUIInfo : WeaponUIInfo

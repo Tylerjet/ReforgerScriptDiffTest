@@ -28,6 +28,15 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	[Attribute("0.5", UIWidgets.Auto, desc: "Character bleeding rate multiplier", category: "Bleeding")]
 	private float m_fBleedingRateScale;
 	
+	private TAnimGraphCommand m_iPlayerBandageSelfCmdId = -1;
+	
+	//-----------------------------------------------------------------------------------------------------------
+	event override void OnInit(IEntity owner)
+	{
+		CharacterAnimationComponent pAnimationComponent = CharacterAnimationComponent.Cast(owner.FindComponent(CharacterAnimationComponent));
+		m_iPlayerBandageSelfCmdId = pAnimationComponent.BindCommand("CMD_BandageSelf");
+	}
+	
 	//-----------------------------------------------------------------------------------------------------------
 	protected override void OnDamageStateChanged(EDamageState state)
 	{
@@ -169,6 +178,11 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	HitZone GetBloodHitZone()
 	{
 		return m_pBloodHitZone;
+	}
+	
+	TAnimGraphCommand GetPlayerBandageSelfCmdId()
+	{
+		return m_iPlayerBandageSelfCmdId;
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -350,8 +364,8 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		if (!hitZone.TryGetColliderDescription(GetOwner(), colliderDescriptorIndex, transform, boneIndex, boneNode))
 			return;
 		
-		SCR_ParticleEmitter particleEmitter = SCR_ParticleAPI.PlayOnObjectPTC(GetOwner(), m_sBleedingParticle, vector.Zero, vector.Zero, boneNode);
-		SCR_ParticleAPI.LerpAllEmitters(particleEmitter, bleedingRate * m_fBleedingParticleRateScale, EmitterParam.BIRTH_RATE);
+		SCR_ParticleEmitter particleEmitter = SCR_ParticleEmitter.CreateAsChild(m_sBleedingParticle, GetOwner(), boneID: boneNode);
+		particleEmitter.GetParticles().MultParam(-1, EmitterParam.BIRTH_RATE, bleedingRate * m_fBleedingParticleRateScale);
 		
 		if (!m_mBleedingParticles)
 			m_mBleedingParticles = new map<HitZone, SCR_ParticleEmitter>;
@@ -382,7 +396,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	//-----------------------------------------------------------------------------------------------------------
 	//! Stop all bleeding
 	void RemoveBleeding()
-	{		
+	{
 		if (m_aBleedingHitZones)
 		{
 			HitZone hitZone;
@@ -396,6 +410,8 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		
 		if (m_pBloodHitZone)
 			m_pBloodHitZone.SetDamageOverTime(EDamageType.BLEEDING, 0);
+		
+		SetInstigatorEntity(null);
 		
 		UpdateBloodyFace();
 	}

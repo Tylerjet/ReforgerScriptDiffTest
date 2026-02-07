@@ -42,7 +42,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 	//! Position of last played sound
 	private vector m_vSoundPositionLast;
 	//! Minimal distance from last played sound
-	private static const float MINIMAL_DISTANCE_SQ = 0.1;
+	private static const float MINIMAL_DISTANCE_SQ = 0.2;
 	//! Minimum entity lifetime to play sound
 	private static const float MINIMAL_AGE = 0.3;
 	//! Stores last sound
@@ -149,7 +149,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 		vector mat[4];
 		GetTransform(mat); 
 		vector pos = Vector(mat[3][0], mat[3][1], mat[3][2]);
-		SCR_ParticleAPI.PlayOnObjectPTC(owner, "{065B39FFF4D32DF8}graphics/particle/legacy/tkom/contact/debris_stone_s.ptc", pos);
+		SCR_ParticleEmitter.CreateAsChild("{065B39FFF4D32DF8}graphics/particle/legacy/tkom/contact/debris_stone_s.ptc", owner, pos);
 		
 		DeleteDebris();
 	}
@@ -175,7 +175,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 		vector mat[4];
 		mat[3] = m_vSoundPosition;
 		soundComponent.SetTransformation(mat);
-		m_AudioHandle = soundComponent.PlayStr("SOUND_MPD_" + typename.EnumToString(EMaterialSoundType, m_eMaterialSoundType));
+		m_AudioHandle = soundComponent.PlayStr(SCR_SoundEvent.SOUND_MPD_ + typename.EnumToString(EMaterialSoundType, m_eMaterialSoundType));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -224,7 +224,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 				#ifdef ENABLE_DIAG 
 				if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_MPDESTRUCTION_SHOW_IMPULSEVALUES))
 				{	
-					Print("Playing sound " + "SOUND_MPD_" + typename.EnumToString(EMaterialSoundType, m_eMaterialSoundType) + " on " + owner.ToString() + ", impulse of " + (Math.Round(m_fSoundImpulse * 100) * 0.01).ToString())
+					Print("Playing sound " + SCR_SoundEvent.SOUND_MPD_ + typename.EnumToString(EMaterialSoundType, m_eMaterialSoundType) + " on " + owner.ToString() + ", impulse of " + (Math.Round(m_fSoundImpulse * 100) * 0.01).ToString())
 				}
 				#endif
 			}	

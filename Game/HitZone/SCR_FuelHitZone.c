@@ -19,7 +19,7 @@ class SCR_FuelHitZone : ScriptedHitZone
 	{
 		m_iFuelTankID = fuelNodeID;
 		
-		IEntity parent = SCR_Global.GetMainParent(GetOwner(), true);
+		IEntity parent = SCR_EntityHelper.GetMainParent(GetOwner(), true);
 		FuelManagerComponent fuelManager = FuelManagerComponent.Cast(parent.FindComponent(FuelManagerComponent));
 		if (!fuelManager)
 			return;

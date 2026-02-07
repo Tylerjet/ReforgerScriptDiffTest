@@ -29,7 +29,7 @@ class SCR_SelectFactionSubMenu : SCR_RespawnSubMenuBase
 	[Attribute("{F010750A52F76A5D}UI/layouts/Menus/RoleSelection/PlayerName.layout")]
 	protected ResourceName m_sPlayerName;
 
-	[Attribute("{1F0A6C9C19E131C6}UI/Textures/Icons/icons_wrapperUI.imageset")]
+	[Attribute("{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset")]
 	protected ResourceName m_sPlatformIcons;
 
 	[Attribute("PermanentFaction")]

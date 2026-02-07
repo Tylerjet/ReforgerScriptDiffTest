@@ -8,7 +8,7 @@ class SCR_SoundBellTime
 	int m_iRepetitionCount;
 };
 
-[ComponentEditorProps(category: "GameScripted/Sound", description: "Bell Sound Component", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Sound", description: "Bell Sound Component")]
 class SCR_BellSoundComponentClass: SoundComponentClass
 {
 };
@@ -57,15 +57,15 @@ class SCR_BellSoundComponent : SoundComponent
 				
 				if (m_iRepetitionCount == 1)
 				{
-					eventName = "SOUND_BELL_END";
+					eventName = SCR_SoundEvent.SOUND_BELL_END;
 				}
 				else if (m_iRepetitionCount%2 == 0)
 				{
-					eventName = "SOUND_BELL_A";
+					eventName = SCR_SoundEvent.SOUND_BELL_A;
 				}
 				else
 				{
-					eventName = "SOUND_BELL_B";
+					eventName = SCR_SoundEvent.SOUND_BELL_B;
 				}
 
 				SoundEvent(eventName);

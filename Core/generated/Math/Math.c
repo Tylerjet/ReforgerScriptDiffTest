@@ -19,6 +19,7 @@ sealed class Math
 	static const float PI_HALF = 1.570796326794;
 	static const float RAD2DEG = 57.2957795130823208768;
 	static const float DEG2RAD = 0.01745329251994329577;
+	static const float E = 2.71828182845905;
 	
 	/**
 	\brief Returns mathematical round of value
@@ -208,6 +209,32 @@ sealed class Math
 	@endcode
 	*/
 	static proto float Log2(float x);
+	/**
+	\brief Returns the base 10 logarithm of x.
+	\param x \p float Value whose logarithm is calculated.
+	\return \p float The binary logarithm of x: log10 x.
+	\n If x is negative, it causes a domain error:
+	\n If x is zero, it may cause a pole error (depending on the library implementation).
+	@code
+	Print( Math.Log10(100.0) );
+	
+	>> 2.0
+	@endcode
+	*/
+	static proto float Log10(float x);
+	/**
+	\brief Returns the natural logarithm of x.
+	\param x \p float Value whose logarithm is calculated.
+	\return \p float The binary logarithm of x: log2x.
+	\n If x is negative, it causes a domain error:
+	\n If x is zero, it may cause a pole error (depending on the library implementation).
+	@code
+	Print( Math.Log2(1.0) );
+	
+	>> 0.0
+	@endcode
+	*/
+	static proto float Log(float x);
 	/**
 	\brief Does the CD smoothing function - easy in | easy out / S shaped smoothing
 	\param val \p actual value

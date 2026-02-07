@@ -45,7 +45,7 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fFirstPersonFOV", "1PP"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fThirdPersonFOV", "3PP"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fVehicleFOV", "VehicleFOV"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_bUseMaximumZoomInADS", "MaxZoomADS"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fFocusInADS", "FocusIntensityADS"));
 
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AimSensitivitySettings", "m_fMouseSensitivity", "AimMouse"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AimSensitivitySettings", "m_fStickSensitivity", "AimGamepad"));

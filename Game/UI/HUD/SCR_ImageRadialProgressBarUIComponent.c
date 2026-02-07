@@ -81,14 +81,7 @@ class SCR_ImageRadialProgressBarUIComponent: SCR_RadialProgressBarUIComponent
 			GetGame().GetCallqueue().CallLater(FadeUpdate, 500, true);
 		}
 		
-		if (WidgetAnimator.IsAnimating(m_wFadeImage))
-			WidgetAnimator.StopAnimation(m_wFadeImage, WidgetAnimationType.Opacity);
-
-		if (fadeIn)
-			WidgetAnimator.PlayAnimation(m_wFadeImage, WidgetAnimationType.Opacity, 1, m_bFadeImageInSpeed);
-		else
-			WidgetAnimator.PlayAnimation(m_wFadeImage, WidgetAnimationType.Opacity, 0, m_bFadeImageOutSpeed);
-		
+		AnimateWidget.Opacity(m_wFadeImage, fadeIn, m_bFadeImageInSpeed);
 	}
 	
 	protected void FadeUpdate()
@@ -121,8 +114,7 @@ class SCR_ImageRadialProgressBarUIComponent: SCR_RadialProgressBarUIComponent
 			GetGame().GetCallqueue().Remove(FadeUpdate);
 		}
 		
-		if (WidgetAnimator.IsAnimating(m_wFadeImage))
-			WidgetAnimator.StopAnimation(m_wFadeImage, WidgetAnimationType.Opacity);
+		AnimateWidget.StopAnimation(m_wFadeImage, WidgetAnimationOpacity);
 		
 		m_bIsFadeImageVisible = setVisible;
 		

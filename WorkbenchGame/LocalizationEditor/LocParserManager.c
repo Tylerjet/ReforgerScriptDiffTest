@@ -271,25 +271,11 @@ class LocParserManager
 		}
 		
 		//--- Process children
-		IEntitySource entityContainer = IEntitySource.Cast(container);
-		if (entityContainer)
+		if (container)
 		{
-			for (int e = 0, entityCount = entityContainer.GetNumChildren(); e < entityCount; e++)
+			for (int e = 0, count = container.GetNumChildren(); e < count; e++)
 			{
-				ProcessContainer(entityContainer.GetChild(e), foundCount, objectsCopy, indexesCopy, path);
-			}
-		}
-		else
-		{
-			WidgetSource widgetContainer = WidgetSource.Cast(container);
-			if (widgetContainer)
-			{
-				WidgetSource child = widgetContainer.GetChildren();
-				while (child)
-				{
-					ProcessContainer(child, foundCount, objectsCopy, indexesCopy, path);
-					child = child.GetSibling();
-				}
+				ProcessContainer(container.GetChild(e), foundCount, objectsCopy, indexesCopy, path);
 			}
 		}
 	}

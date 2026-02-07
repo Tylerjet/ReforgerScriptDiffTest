@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/HUD", description: "Commading functionality component", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/HUD", description: "Commading functionality component")]
 class SCR_CommunicationComponentClass: SCR_MailboxComponentClass
 {
 };
@@ -88,7 +88,7 @@ class SCR_CommunicationComponent : SCR_MailboxComponent
 	[Attribute("{A1A4D9A0D9219C92}UI/layouts/HUD/Commanding/BasicPing.layout", UIWidgets.ResourceNamePicker, "Ping layout", "layout")]
 	protected ResourceName m_PingLayout;
 
-	[Attribute("{1F0A6C9C19E131C6}UI/Textures/Icons/icons_wrapperUI.imageset", UIWidgets.ResourceNamePicker, "", "layout")]
+	[Attribute("{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset", UIWidgets.ResourceNamePicker, "", "layout")]
 	protected ResourceName m_PingImageSet;
 
 	protected SCR_RadialMenuHandler m_RadialMenu;
@@ -239,14 +239,14 @@ class SCR_CommunicationComponent : SCR_MailboxComponent
 		}
 		
 		m_Group = SCR_AIGroup.Cast(m_World.FindEntityByName(name));
-		EnableRadialMenu(m_Group != null);
+		//EnableRadialMenu(m_Group != null);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void ConnectToGroup(SCR_AIGroup group)
 	{
 		m_Group = group;
-		EnableRadialMenu(m_Group != null);
+//		EnableRadialMenu(m_Group != null);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -259,7 +259,7 @@ class SCR_CommunicationComponent : SCR_MailboxComponent
 		if (!interactions)
 			return;
 
-		interactions.SetCanOpenMenu(enable);
+		interactions.SetCanOpenMenu(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -455,7 +455,7 @@ class SCR_CommunicationComponent : SCR_MailboxComponent
 		foreach (Managed ent : ents)
 		{
 			SCR_RadialMenuComponent comp = SCR_RadialMenuComponent.Cast(ent);
-			if (comp.m_sInput_Toggle == "OpenCommandMenu")
+			if (comp.m_sInput_Toggle == "DisabledPrototype")
 				return comp.m_pRadialMenu;
 		}
 		return null;
@@ -619,7 +619,7 @@ class SCR_CommunicationComponent : SCR_MailboxComponent
 		
 		SetPingTexture(w, type);
 		w.SetOpacity(0);
-		WidgetAnimator.PlayAnimation(w, WidgetAnimationType.Opacity, 1, m_fFadeInRate);
+		AnimateWidget.Opacity(w, 1, m_fFadeInRate);
 
 		Tuple3<Widget, float, vector> data = new Tuple3<Widget, float, vector>(w, m_World.GetWorldTime() + m_fPingLifetime, position);
 		m_aActivePings.Insert(data);

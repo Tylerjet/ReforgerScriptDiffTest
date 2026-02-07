@@ -60,7 +60,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	const int											MID_CLICK	= 2;
 	protected bool										m_bEnabled 	= true;
 	protected bool										m_bSelected = false;
-	protected Widget									m_wSelectedEffect, m_wMoveEffect, m_wMoveWhatEffect, m_wDimmerEffect;
+	protected Widget									m_wSelectedEffect, m_wMoveEffect, m_wDimmerEffect;
 	protected TextWidget								m_wTextQuickSlot = null;
 	protected TextWidget								m_wTextQuickSlotLarge = null;
 	protected int										m_iQuickSlotIndex;
@@ -143,7 +143,6 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void Init()
 	{
-		
 		m_iPage = -1;		//no page placement by default
 		//and create the visual slot
 		
@@ -241,7 +240,6 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			}
 			m_wSelectedEffect = m_widget.FindAnyWidget( "SelectedFrame" );
 			m_wMoveEffect = m_widget.FindAnyWidget( "IconMove" );
-			m_wMoveWhatEffect = m_widget.FindAnyWidget( "TextMove" );
 			m_wDimmerEffect = m_widget.FindAnyWidget( "Dimmer" );
 			m_wButton = ButtonWidget.Cast( m_widget.FindAnyWidget( "ItemButton" ) );
 			m_wStackNumber = TextWidget.Cast( m_widget.FindAnyWidget( "stackNumber" ) );
@@ -302,7 +300,6 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			m_wPreviewImage = null;
 			m_wSelectedEffect = null;
 			m_wMoveEffect = null;
-			m_wMoveWhatEffect = null;
 			m_wDimmerEffect = null;
 			m_wButton = null;
 			m_wVolumeBar = null;
@@ -397,17 +394,8 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		m_bSelected = !m_bSelected;
 		if ( !m_wSelectedEffect )
 			return;
-		if ( m_bSelected )
-		{
-			m_wSelectedEffect.SetVisible( true );
-			if( this.Type() != SCR_InventorySlotStorageUI )
-				m_wMoveWhatEffect.SetVisible( true );
-		}
-		else
-		{
-			m_wSelectedEffect.SetVisible( false );
-			m_wMoveWhatEffect.SetVisible( false );
-		}
+
+		m_wSelectedEffect.SetVisible( m_bSelected );
 		m_pStorageUI.SetSlotSelected( this, m_bSelected );
 	}
 	//------------------------------------------------------------------------------------------------
@@ -417,18 +405,8 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		m_bSelected = select;
 		if ( !m_wSelectedEffect )
 			return;
-		if ( select )
-		{
-			m_wSelectedEffect.SetVisible( true );
-			if( this.Type() != SCR_InventorySlotStorageUI )
-				m_wMoveWhatEffect.SetVisible( true );
-		}
-		else
-		{
-			m_wSelectedEffect.SetVisible( false );
-			m_wMoveWhatEffect.SetVisible( false );
-		}
-		
+
+		m_wSelectedEffect.SetVisible(select);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -673,38 +651,64 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		{
 			case ESlotFunction.TYPE_MAGAZINE:
 			{
-				ReloadCurrentWeapon(player);			
-			} break;
+				ReloadCurrentWeapon(player);
+				break;
+			}
 			case ESlotFunction.TYPE_WEAPON:
 			{
-				CharacterControllerComponent controller = CharacterControllerComponent.Cast(player.FindComponent(CharacterControllerComponent));
+				CharacterControllerComponent controller = character.GetCharacterController();
 				if (!controller)
 					break;
 				
-				IEntity pEnt =  m_pItem.GetOwner();
-
-				SCR_InventoryStorageManagerComponent pInvManager = GetInventoryManager();
-				
-				m_pCallback.m_pEnt = pEnt;
+				m_pCallback.m_pEnt = itemEnt;
 				m_pCallback.m_pCharCtrl = controller;
 				
 				if (!IsCharacterInTurretCompartment(character))
 				{
-					if (!pInvManager.GetIsWeaponEquipped(pEnt))
+					BaseWeaponComponent currentWeapon;
+					BaseWeaponManagerComponent manager = controller.GetWeaponManagerComponent();
+					if (manager)
+						currentWeapon = manager.GetCurrentWeapon();
+					
+					SCR_InventoryStorageManagerComponent pInvManager = GetInventoryManager();
+					if (!pInvManager)
+						break;
+					
+					// Swap grenade type only if reselecting the same grenade slot
+					BaseWeaponComponent itemWeapon = BaseWeaponComponent.Cast(itemEnt.FindComponent(BaseWeaponComponent));
+					array<EWeaponType> grenadeTypes = {EWeaponType.WT_FRAGGRENADE, EWeaponType.WT_SMOKEGRENADE};
+					if (currentWeapon && itemWeapon && currentWeapon.GetWeaponType() == itemWeapon.GetWeaponType() && grenadeTypes.Contains(itemWeapon.GetWeaponType()))
 					{
-						pInvManager.EquipWeapon(pEnt, m_pCallback, false);
+						// Equip different type of grenade
+						IEntity nextGrenade = pInvManager.FindNextWeaponOfType(itemWeapon.GetWeaponType(), currentWeapon.GetOwner());
+						if (nextGrenade)
+							m_pCallback.m_pEnt = nextGrenade;
 					}
+					// Currently selected weapon can have alternative muzzle
+					else if (currentWeapon && currentWeapon.GetOwner() == itemEnt && !controller.IsGadgetInHands())
+					{
+						// Select next muzzle of a selected weapon
+						int nextMuzzleID = SCR_WeaponLib.GetNextMuzzleID(currentWeapon); 
+						if (nextMuzzleID != -1)
+						{
+							controller.SetMuzzle(nextMuzzleID);
+							Refresh();
+						}
+						
+						break;
+					}
+					
+					// TODO: Interrupt current equipping process
+					if (!pInvManager.GetIsWeaponEquipped(m_pCallback.m_pEnt))
+						pInvManager.EquipWeapon(m_pCallback.m_pEnt, m_pCallback, false);
 					else
-					{
-						controller.TryEquipRightHandItem(pEnt, EEquipItemType.EEquipTypeWeapon, false);
-					}
+						controller.TryEquipRightHandItem(m_pCallback.m_pEnt, EEquipItemType.EEquipTypeWeapon, false);
 				}
 				else
 				{	
 					TurretControllerComponent turretController;
 					array<WeaponSlotComponent> turretWeaponSlots = {};		
 					int result = GetTurretWeapons(character, turretWeaponSlots, turretController);
-					
 					if (result <= 0)
 						break;
 					
@@ -719,7 +723,8 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 					if (turretController && highlightedWeaponsSlot)
 						turretController.SelectWeapon(player, highlightedWeaponsSlot);
 				}
-			} break;
+				break;
+			}
 			case ESlotFunction.TYPE_GADGET:
 			{
 				if (character.IsInVehicleADS())
@@ -727,7 +732,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 				
 				// need to run through manager	TODO kamil: this doesnt call setmode when switching to other item from gadget (no direct call to scripted togglefocused for example, possibly other issues?)
 				SCR_GadgetManagerComponent gadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(player);
-				gadgetMgr.HandleInput(itemEnt, 1);	// 1 means standard input
+				gadgetMgr.SetGadgetMode(itemEnt, EGadgetMode.IN_HAND);
 								
 				break;
 			}
@@ -770,14 +775,6 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 				if (!IsCharacterInTurretCompartment(character))
 				{
 					if (!controller.GetCanFireWeapon())
-						return false;	
-					if (controller.IsGadgetInHands())
-						return true;	
-					
-					BaseWeaponManagerComponent pWeaponManager = controller.GetWeaponManagerComponent();
-					BaseWeaponComponent currentWeapon = pWeaponManager.GetCurrentWeapon();
-					
-					if (currentWeapon && itemEnt == currentWeapon.GetOwner())
 						return false;
 				}
 				else
@@ -969,6 +966,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		if ( !m_wStackNumber )
 			return;
 
+		m_wStackNumber.SetVisible(m_iStackNumber > 1);
 		m_wStackNumber.SetText( m_iStackNumber.ToString() );
 	}
 	

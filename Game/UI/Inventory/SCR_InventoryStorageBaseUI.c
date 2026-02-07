@@ -43,7 +43,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	protected SCR_SpinBoxPagingComponent 						m_wPagingSpinboxComponent;
 	protected ref array<BaseInventoryStorageComponent> 			m_aTraverseStorage 		= new ref array<BaseInventoryStorageComponent>();
 	protected ref array<Widget>									m_aTraverseTitle 		= {};
-	protected ButtonWidget 										m_wButton, m_wLastCloseTraverseButton;
+	protected ButtonWidget 										m_wButton, m_wLastCloseTraverseButton, m_wCloseStorageButton;
 	
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------							
 	
@@ -240,7 +240,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		if (!m_aTraverseStorage.Find(storage))
 		{
 			IEntity entity = storage.GetOwner();
-			m_InventoryManager.PlayItemSound(entity, "SOUND_CONTAINER_OPEN");
+			m_InventoryManager.PlayItemSound(entity, SCR_SoundEvent.SOUND_CONTAINER_OPEN);
 		}
 	}
 
@@ -254,11 +254,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		if (lastStorage)
 		{
 			IEntity entity = lastStorage.GetOwner();
-			
-			if (entity.Type() == Vehicle)
-					m_InventoryManager.PlayItemSound(entity, "SOUND_VEHICLE_TRUNK_CLOSE");
-			else 
-					m_InventoryManager.PlayItemSound(entity, "SOUND_CLOSE");
+			m_InventoryManager.PlayItemSound(entity, SCR_SoundEvent.SOUND_CONTAINER_CLOSE);
 		}
 		
 		auto storage = PopState( traverseStorageIndex );
@@ -350,7 +346,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		m_wGrid.SetVisible( m_bShown );
 		if ( m_bShown )
 		{
-			SCR_UISoundEntity.SoundEvent("SOUND_INV_CONTAINER_OPEN", true);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_OPEN, true);
 			m_InventoryStorage.SetStorageAsShown( m_Storage );
 			if ( m_iNrOfPages > 1 && m_wPagingSpinboxComponent )
 			{
@@ -359,7 +355,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		}
 		else
 		{
-			SCR_UISoundEntity.SoundEvent("SOUND_INV_CONTAINER_CLOSE", true);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_CLOSE, true);
 			m_InventoryStorage.SetStorageAsHidden( m_Storage );
 			ShowPagesCounter( false );
 		}
@@ -550,6 +546,8 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		{
 			m_iLastShownPage = 0;
 			m_aTraverseStorage.Clear();
+			ClearTraverseTitles();
+
 			// Create root layout
 			CreateSlots();
 		}
@@ -612,26 +610,9 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 
 		array<IEntity> pItemsInStorage = {};
 
-		if (ClothNodeStorageComponent.Cast(m_Storage))
-		{
-			array<BaseInventoryStorageComponent> storages = {};
-			array<IEntity> items = {};
-			m_Storage.GetOwnedStorages(storages, 1, false);
-			foreach (BaseInventoryStorageComponent storage : storages)
-			{
-				if (!storage)
-					continue;
-				storage.GetAll(items);
-				pItemsInStorage.Copy(items);
-			}
-		}
-		else
-		{
-			if (GetCurrentNavigationStorage())
-				GetCurrentNavigationStorage().GetAll(pItemsInStorage);
-			else
-				GetAllItems(pItemsInStorage);
-		}
+		BaseInventoryStorageComponent storage = GetCurrentNavigationStorage();
+	
+		GetAllItems(pItemsInStorage, storage);
 
 		int count = pItemsInStorage.Count();
 		int newStackCount = 0;
@@ -888,7 +869,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		int count = m_aTraverseStorage.Count();
 		
 		ref array<IEntity> pItemsInStorage = new ref array<IEntity>();
-		GetCurrentNavigationStorage().GetAll(pItemsInStorage);
+		GetAllItems(pItemsInStorage, GetCurrentNavigationStorage());
 		UpdateOwnedSlots(pItemsInStorage);
 		
 		BaseInventoryStorageComponent currentStorage;
@@ -969,7 +950,29 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	// ! 
 	protected void GetAllItems( out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null )
 	{
-		if ( m_Storage )
+		if (ClothNodeStorageComponent.Cast(pStorage))
+		{
+			array<BaseInventoryStorageComponent> pStorages = {};
+			array<IEntity> pItems = {};
+			pStorage.GetOwnedStorages(pStorages, 1, false);
+			
+			foreach (BaseInventoryStorageComponent pStor : pStorages)
+			{
+				if (!pStor)
+					continue;
+				pStor.GetAll(pItems);
+				pItemsInStorage.Copy(pItems);
+			}
+			return;
+		}
+		
+		if (pStorage)
+		{
+			pStorage.GetAll(pItemsInStorage);
+			return;
+		}
+			
+		if (m_Storage)
 			m_Storage.GetAll(pItemsInStorage);
 	}
 	
@@ -1092,6 +1095,9 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		float occupiedVolumePercantage;
 		float capacity = GetMaxVolumeCapacity(storage);
 		
+		if (capacity == 0)
+			return 0;
+		
 		if (occupiedSpace != 0)
 			occupiedVolumePercantage = Math.Round(occupiedSpace / (capacity / 100));
 		else
@@ -1211,7 +1217,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		if ( !m_wPagingSpinboxComponent )
 			return;
 		
-		m_wPagingSpinboxComponent.SetVisible( bShow );
+		m_wPagingSpinboxComponent.SetVisible( bShow, false );
 						
 		if ( bShow )
 		{

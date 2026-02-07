@@ -15,7 +15,7 @@ class SCR_LenseColor
 	
 	[Attribute("5.0", UIWidgets.Slider, desc: "Light Value", "-8.0 20 1", category: "Flashlight")]
 	float m_fLightValue;
-}
+};
 
 //------------------------------------------------------------------------------------------------
 class SCR_FlashlightComponent : SCR_GadgetComponent
@@ -35,10 +35,10 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	[Attribute("0.1", UIWidgets.EditBox, desc: "In meters, light ignores objects up to set distance to avoid unwanted shadows", params: "0.1 5", category: "Light near plane")]
 	protected float m_fLightNearPlaneVehicle;
 	
-	[Attribute("SOUND_FLASHLIGHT_ON", UIWidgets.EditBox, desc: "Activation sound", category: "Sound")]
+	[Attribute(SCR_SoundEvent.SOUND_FLASHLIGHT_ON, UIWidgets.EditBox, desc: "Activation sound", category: "Sound")]
 	protected string m_sSoundActivation;
 	
-	[Attribute("SOUND_FLASHLIGHT_OFF", UIWidgets.EditBox, desc: "Deactivation sound", category: "Sound")]
+	[Attribute(SCR_SoundEvent.SOUND_FLASHLIGHT_OFF, UIWidgets.EditBox, desc: "Deactivation sound", category: "Sound")]
 	protected string m_sSoundDeactivation;
 	
 	protected bool m_bLastLightState;	// remember the last light state for cases where you put your flashlight into storage but there is no slot available -> true = active
@@ -159,7 +159,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		if (!m_bActivated)
 			return;
 		
-		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID);
+		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
 		IEntity occupant = compSlot.GetOccupant();
 		if (occupant == m_CharacterOwner)
 			SetShadowNearPlane(true);
@@ -172,7 +172,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		if (!m_bActivated)
 			return;
 		
-		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID);
+		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
 		IEntity occupant = compSlot.GetOccupant();
 		if (occupant == m_CharacterOwner)
 			SetShadowNearPlane(true, true);

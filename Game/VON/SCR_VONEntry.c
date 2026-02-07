@@ -19,6 +19,9 @@ class SCR_VONEntry : Managed
 	//! Activate entry 
 	void ActivateEntry()
 	{
+		if (!m_VONComp)
+			return;
+		
 		m_VONComp.SetCommMethod(ECommMethod.DIRECT);
 		m_VONComp.SetTransmitRadio(null);
 	}
@@ -27,6 +30,12 @@ class SCR_VONEntry : Managed
 	//! Adjust entry configuration such as radio frequency
 	//! \param modifier is custom logic modifier 
 	void AdjustEntry(int modifier)
+	{}
+	
+	//------------------------------------------------------------------------------------------------ 
+	//! Adjust entry configuration such as radio frequency, modified input
+	//! \param modifier is custom logic modifier 
+	void AdjustEntryModif(int modifier)
 	{}
 	
 	//------------------------------------------------------------------------------------------------ 

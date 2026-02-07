@@ -143,7 +143,7 @@ class ScenarioDetailsMenu: ChimeraMenuBase
 		{
 			GetGame().SetGameFlags(m_eFocusedGameflags, false);
 			
-			SCR_UISoundEntity.SoundEvent(UISounds.CLICK);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.CLICK);
 			
 			WorkshopApi workshopApi = GetGame().GetBackendApi().GetWorkshop();
 			if (workshopApi)

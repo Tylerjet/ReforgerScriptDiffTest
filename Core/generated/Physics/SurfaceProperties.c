@@ -9,8 +9,12 @@ Do not modify, this script is generated
 * @{
 */
 
+/*!
+General surface properties
+*/
 sealed class SurfaceProperties: BaseContainer
 {
+	//! Returns physics surface properties
 	proto external PhysicsMaterial GetPhysics();
 };
 

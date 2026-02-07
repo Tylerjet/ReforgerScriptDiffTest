@@ -6,6 +6,9 @@ class SCR_ListBoxElementComponent : SCR_ModularButtonComponent
 	protected const string WIDGET_IMAGE = "Image";
 	protected const string WIDGET_TEXT = "Text";
 	
+	[Attribute("Text")]
+	protected string m_sWidgetTextName;
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -35,7 +38,7 @@ class SCR_ListBoxElementComponent : SCR_ModularButtonComponent
 	
 	void SetText(string text)
 	{
-		TextWidget w = TextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_TEXT));
+		TextWidget w = TextWidget.Cast(m_wRoot.FindAnyWidget(m_sWidgetTextName));
 		
 		if (w)
 			w.SetText(text);

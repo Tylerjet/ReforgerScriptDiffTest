@@ -453,7 +453,7 @@ class SCR_DestructibleBuildingEntity : Building
 				m_SoundComponent.SetSignalValueStr("partSoundID", region);
 				m_SoundComponent.SetSignalValueStr("Distance", vector.Distance(camMat[3], SCR_Global.GetEntityCenterWorld(regionEnt)));
 				m_SoundComponent.SetTransformation(regionMat);
-				m_SoundComponent.PlayStr("SOUND_BUILDING_CRACK");
+				m_SoundComponent.PlayStr(SCR_SoundEvent.SOUND_BUILDING_CRACK);
 			}
 		}
 		

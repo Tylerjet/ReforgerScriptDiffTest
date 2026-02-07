@@ -4,6 +4,7 @@ class SCR_AIDecoCombatMoveControl : DecoratorScripted
 {
 	static const string PORT_NEXT_COVER = "NextCoverPos";
 	static const string PORT_COMBAT_STANCE = "CombatStance";
+	static const string PORT_ALLOW_STANCE_STAND = "AllowStanceStand";
 	
 	protected SCR_AICombatComponent m_CombatComponent;
 	protected SCR_AIUtilityComponent m_Utility;
@@ -18,6 +19,14 @@ class SCR_AIDecoCombatMoveControl : DecoratorScripted
 	override TStringArray GetVariablesOut()
 	{
 		return s_aVarsOut;
+	}
+	
+	protected static ref TStringArray s_aVarsIn = {
+		PORT_ALLOW_STANCE_STAND
+	};
+	override TStringArray GetVariablesIn()
+	{
+		return s_aVarsIn;
 	}
 	
 	override void OnInit(AIAgent owner)
@@ -50,7 +59,12 @@ class SCR_AIDecoCombatMoveControl : DecoratorScripted
 		
 		if (m_Utility)
 		{
+			bool allowStand = true;
+			GetVariableIn(PORT_ALLOW_STANCE_STAND, allowStand);
+			
 			ECharacterStance threatStance = GetStanceFromThreat(m_Utility.m_ThreatSystem.GetState());
+			if (threatStance == ECharacterStance.STAND && !allowStand)
+				threatStance = ECharacterStance.CROUCH;
 			SetVariableOut(PORT_COMBAT_STANCE, threatStance);
 		}
 		return true;			

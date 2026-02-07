@@ -81,3 +81,101 @@ static ECharacterStance GetStanceFromThreat(EAIThreatState threatState)
 	}
 	return ECharacterStance.STAND;
 };
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Weapon Handling
+class SCR_AIWeaponHandling
+{
+	//--------------------------------------------------------------------------------------------
+	static int GetCurrentMuzzleId(BaseWeaponManagerComponent weapMgr)
+	{
+		BaseWeaponComponent weaponComp = weapMgr.GetCurrentWeapon();
+		
+		if (!weaponComp)
+			return -1;
+				
+		// Find muzzle ID
+		array<BaseMuzzleComponent> muzzles = {};
+		weaponComp.GetMuzzlesList(muzzles);
+		BaseMuzzleComponent currentMuzzle = weaponComp.GetCurrentMuzzle();
+		
+		if (!currentMuzzle || muzzles.IsEmpty())
+			return -1;
+		
+		int currentMuzzleId = muzzles.Find(currentMuzzle);
+		return currentMuzzleId;
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	static BaseMagazineComponent GetCurrentMagazineComponent(BaseWeaponManagerComponent weapMgr)
+	{
+		BaseWeaponComponent weaponComp = weapMgr.GetCurrentWeapon();
+		
+		if (!weaponComp)
+			return null;
+		
+		BaseMuzzleComponent	currentMuzzle = weaponComp.GetCurrentMuzzle();
+		if (!currentMuzzle)
+			return null;
+		
+		return currentMuzzle.GetMagazine();
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	//! Although trivial, there are several ways to get current weapon, thus let's keep this function
+	static BaseWeaponComponent GetCurrentWeaponComponent(BaseWeaponManagerComponent weapMgr)
+	{
+		return weapMgr.GetCurrentWeapon();
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	static void StartMuzzleSwitch(CharacterControllerComponent controller, int newMuzzleId)
+	{
+		controller.SetMuzzle(newMuzzleId);
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	static void StartMagazineSwitchCharacter(CharacterControllerComponent controller, BaseMagazineComponent newMagazineComp)
+	{
+		controller.ReloadWeaponWith(newMagazineComp.GetOwner());
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	static void StartMagazineSwitchTurret(TurretControllerComponent controller, BaseMagazineComponent newMagazineComp)
+	{
+		controller.DoReloadWeaponWith(newMagazineComp.GetOwner());
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	static void StartWeaponSwitchCharacter(CharacterControllerComponent controller, BaseWeaponComponent newWeaponComp)
+	{
+		controller.TryEquipRightHandItem(newWeaponComp.GetOwner(), EEquipItemType.EEquipTypeWeapon, false);
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	static void StartWeaponSwitchTurret(TurretControllerComponent controller, BaseWeaponComponent newWeaponComp, IEntity turretOperator)
+	{
+		// Find weapon slot which has this weapon
+		IEntity newWeaponEntity = newWeaponComp.GetOwner();
+		BaseWeaponManagerComponent weaponMgr = controller.GetWeaponManager();
+		if (!weaponMgr)
+			return;
+		
+		WeaponSlotComponent newWeaponSlot;
+		array<WeaponSlotComponent> slots = {};
+		weaponMgr.GetWeaponsSlots(slots);
+		foreach (WeaponSlotComponent slot : slots)
+		{
+			if (slot.GetWeaponEntity() == newWeaponEntity)
+				newWeaponSlot = slot;
+		}
+		
+		if (!newWeaponSlot)
+		{
+			// There is no slot which has this weapon
+			return;
+		}
+		
+		controller.SelectWeapon(turretOperator, newWeaponSlot);
+	}
+}

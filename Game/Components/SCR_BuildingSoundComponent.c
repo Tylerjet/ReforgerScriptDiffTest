@@ -1,107 +1,93 @@
-enum ESoundSpawnType
-{
-	Entity,
-	Top,
-	TopMiddleX,
-	TopMiddleZ,
-};
-
-[ComponentEditorProps(category: "GameScripted/Sound", description: "THIS IS THE SCRIPT DESCRIPTION.", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Sound", description: "THIS IS THE SCRIPT DESCRIPTION.")]
 class SCR_BuildingSoundComponentClass: SoundComponentClass
 {
 };
 
 //------------------------------------------------------------------------------------------------
 class SCR_BuildingSoundComponent : SoundComponent
-{
-	[Attribute("0", UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(ESoundSpawnType))]
-	ESoundSpawnType m_eSoundSpawnType;
-	
+{	
 	[Attribute("10", UIWidgets.Slider, "Time interval when maximum WindSpeed [s]", "0 60 1")]
 	int m_iTimeIntervalMin;
 	
 	[Attribute("30", UIWidgets.Slider, "Time interval when minimum WindSpeed [s]", "0 60 1")]
 	int m_iTimeIntervalMax;
-			
-	[Attribute("100", UIWidgets.Slider, "Percentage amount of bouding box used for sound spawning", "0 100 1")]
-	int m_iBoundingBoxUsage;
+				
+	[Attribute("0 0 0", UIWidgets.Coords, "Mins OOB Point")]
+	vector m_vMins;
 	
-	static protected GameSignalsManager m_GlobalSignalsManager;
-	
-	static protected int m_iWindSpeedSignalIdx;
-	
-	private static const string SOUND_EVENT = "SOUND_CREAK";
+	[Attribute("0 0 0", UIWidgets.Coords, "Maxs OOB Point")]
+	vector m_vMaxs;
+				
 	private static const float RANDOM_PERCENTAGE_MIN = 0.7;
 	private static const float RANDOM_PERCENTAGE_MAX = 1.3;
 	
-	protected float m_fTimer;
 	protected float m_fTriggerInterval;
 
 	//------------------------------------------------------------------------------------------------				
 	private void TriggeredSoundHandler(IEntity owner, float timeSlice)
 	{	
-		if (m_eSoundSpawnType != ESoundSpawnType.Entity)
-		{ 
-			vector mat[4];
-			mat[3] = GetSoundPosition(owner);
-			SetTransformation(mat);
-		}
+		vector mat[4];
+		mat[3] = GetSoundPosition(owner);
+		SetTransformation(mat);
+	
+		//Set Interior signal
+		SetInteriorSignal(owner);
 
-		SoundEvent(SOUND_EVENT);
+		// Play sound
+		SoundEvent(SCR_SoundEvent.SOUND_CREAK);
 		
+		// Get remetition time
 		GetTimeInterval();
-		m_fTimer = 0;
+	}
+	
+	private void SetInteriorSignal(IEntity owner)
+	{
+		bool interior;
+		
+		float gInterior = GetGame().GetSignalsManager().GetSignalValue(GetGame().GetSignalsManager().AddOrFindSignal("GInterior"));
+		
+		if (gInterior == 1)
+		{
+			PlayerController playerControler = GetGame().GetPlayerController();
+			if (!playerControler)
+				return;
+			
+			PlayerCamera playerCamera = playerControler.GetPlayerCamera();
+			if (!playerCamera)
+				return;
+						
+			interior = IsInWorldBounds(playerCamera.GetOrigin(), owner);
+		}
+	
+		SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));		
+		if (signalsManagerComponent)
+			signalsManagerComponent.SetSignalValue(signalsManagerComponent.AddOrFindSignal("Interior"), interior);		
+	}
+	
+	private bool IsInWorldBounds(vector point, IEntity entity)
+	{
+		vector mins = vector.Zero;
+		vector maxs = vector.Zero;
+		
+		entity.GetWorldBounds(mins, maxs);
+			
+		return !(point[0] < mins[0] || point[0] > maxs[0] || point[1] < mins[1] || point[1] > maxs[1] || point[2] < mins[2] || point[2] > maxs[2]);
 	}
 	
 	private void GetTimeInterval()
-	{
-		if (m_iWindSpeedSignalIdx == -1)
-		{
-			m_fTriggerInterval = Math.RandomFloat(m_iTimeIntervalMax * RANDOM_PERCENTAGE_MIN, m_iTimeIntervalMax * RANDOM_PERCENTAGE_MAX);
-			return;
-		}
-		
-		float windSpeed = m_GlobalSignalsManager.GetSignalValue(m_iWindSpeedSignalIdx);		
+	{		
+		float windSpeed = GetGame().GetSignalsManager().GetSignalValue(GetGame().GetSignalsManager().AddOrFindSignal("WindSpeed"));		
 		float timeInterval = Interpolate(windSpeed, SCR_AmbientSoundsComponent.WINDSPEED_MIN, SCR_AmbientSoundsComponent.WINDSPEED_MAX, m_iTimeIntervalMax, m_iTimeIntervalMin);
 			
 		m_fTriggerInterval = Math.RandomFloat(timeInterval * RANDOM_PERCENTAGE_MIN, timeInterval * RANDOM_PERCENTAGE_MAX);
 	}
 	
 	private vector GetSoundPosition(IEntity owner)
-	{
-		vector mins = vector.Zero;
-		vector maxs = vector.Zero;						
+	{		
 		vector v;
-		
-		owner.GetBounds(mins, maxs);
-		
-		// Unused perfentage of bounding box <0, 1>
-		float scaleFactor = (100 - m_iBoundingBoxUsage) * 0.005;
-		
-		switch (m_eSoundSpawnType)
-		{
-			case ESoundSpawnType.Top:
-			{				
-				v[0] = Math.RandomFloat(mins[0] + (maxs[0] - mins[0]) * scaleFactor, maxs[0] - (maxs[0] - mins[0]) * scaleFactor); 
-				v[1] = maxs[1];
-				v[2] = Math.RandomFloat(mins[2] + (maxs[2] - mins[2]) * scaleFactor, maxs[2] - (maxs[2] - mins[2]) * scaleFactor);
-				break;
-			};
-			case ESoundSpawnType.TopMiddleX:
-			{				
-				v[0] = mins[0] + (maxs[0] - mins[0]) * Math.RandomFloat(scaleFactor, 1 - scaleFactor);
-				v[1] = maxs[1];
-				v[2] = mins[2] + (maxs[2] - mins[2]) * 0.5;			
-				break;
-			};
-			case ESoundSpawnType.TopMiddleZ:
-			{				
-				v[0] = mins[0] + (maxs[0] - mins[0]) * 0.5; 
-				v[1] = maxs[1];
-				v[2] = mins[2] + (maxs[2] - mins[2]) * Math.RandomFloat(scaleFactor, 1 - scaleFactor);
-				break;
-			};
-		};
+		v[0] = Math.RandomFloat(m_vMins[0], m_vMaxs[0]);
+		v[1] = Math.RandomFloat(m_vMins[1], m_vMaxs[1]);
+		v[2] = Math.RandomFloat(m_vMins[2], m_vMaxs[2]);
 		
 		// From Local To World Space;	
 		v = owner.CoordToParent(v);
@@ -123,9 +109,9 @@ class SCR_BuildingSoundComponent : SoundComponent
 	//------------------------------------------------------------------------------------------------		
 	override void UpdateSoundJob(IEntity owner, float timeSlice)
 	{
-		m_fTimer += timeSlice;
+		m_fTriggerInterval -= timeSlice;
 	
-		if (m_fTimer < m_fTriggerInterval)
+		if (m_fTriggerInterval > 0)
 			return;
 		
 		TriggeredSoundHandler(owner, timeSlice);
@@ -146,12 +132,6 @@ class SCR_BuildingSoundComponent : SoundComponent
 		#ifdef DISABLE_SCRIPTAMBIENTSOUNDS
 			return;
 		#endif
-							
-		// Get GlobalSignalsManager
-		m_GlobalSignalsManager = GetGame().GetSignalsManager();
-			
-		// Get WindSpeed signal index
-		m_iWindSpeedSignalIdx = m_GlobalSignalsManager.AddOrFindSignal("WindSpeed");
 	}
 
 	//------------------------------------------------------------------------------------------------

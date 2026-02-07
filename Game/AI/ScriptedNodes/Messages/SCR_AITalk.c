@@ -51,8 +51,8 @@ class SCR_AITalk: AITaskScripted
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
     {
 		IEntity speaker;
-		GenericEntity pControlledEnt;
-
+		SCR_AIGroup speakerGroup;
+		
 		GetVariableIn(PORT_SPEAKER,speaker);
 		
 		if (!speaker)
@@ -62,24 +62,34 @@ class SCR_AITalk: AITaskScripted
 		AIAgent pAg = AIAgent.Cast(speaker);
 		 
 		if (pGr)
-			pControlledEnt = GenericEntity.Cast(pGr.GetLeaderEntity());	
-		else if (pAg)
-			pControlledEnt = GenericEntity.Cast(pAg.GetControlledEntity());
-		
-		if (!m_vonComponent && pControlledEnt)
 		{
-			m_vonComponent = VoNComponent.Cast(pControlledEnt.FindComponent(VoNComponent));
+			speaker = pGr.GetLeaderEntity();
+			speakerGroup = SCR_AIGroup.Cast(pGr);
+			if (speakerGroup && speakerGroup.IsSlave())
+				return ENodeResult.SUCCESS;	// skipping RadioProtocol for leader of player's group
+		}	
+		else if (pAg)
+		{
+			speaker = pAg.GetControlledEntity();
+			speakerGroup = SCR_AIGroup.Cast(pAg.GetParentGroup());	
+			if (speakerGroup && speaker == speakerGroup.GetLeaderEntity() && speakerGroup.IsSlave())
+				return ENodeResult.SUCCESS;	// skipping RadioProtocol for leader of player's group
+		}	
+		
+		if (!m_vonComponent && speaker)
+		{
+			m_vonComponent = VoNComponent.Cast(speaker.FindComponent(VoNComponent));
 		}
 			
-		if (!m_vonComponent || !pControlledEnt)
+		if (!m_vonComponent || !speaker)
 			return ENodeResult.SUCCESS;
 		
-		SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(pControlledEnt.FindComponent(SignalsManagerComponent));
+		SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(speaker.FindComponent(SignalsManagerComponent));
 		if(!signalsManagerComponent)
 			return ENodeResult.SUCCESS;
 		
 		IEntity target;
-		vector knownLocation, myLocation = pControlledEnt.GetOrigin();
+		vector knownLocation, myLocation = speaker.GetOrigin();
 		AIAgent targetAgent;
 			
 		GetVariableIn(PORT_TARGET, target);
@@ -111,22 +121,22 @@ class SCR_AITalk: AITaskScripted
 					return ENodeResult.FAIL;
 				SetSignal_TargetValues(target, signalsManagerComponent);
 				SetSignal_SoldierCalledValues(signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL);
-				m_vonComponent.SoundEventPriority("SOUND_CP_TARGET", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_TARGET, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_MOVE:
 			{
 				SetSignal_SoldierCalledValues(signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL);
 				if (SetSignal_PositionValues(target, signalsManagerComponent, knownLocation,myLocation))
-					m_vonComponent.SoundEventPriority("SOUND_CP_MOVE_MID", m_signals, NORMAL_PRIORITY);
+					m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOVE_MID, m_signals, NORMAL_PRIORITY);
 				else
-					m_vonComponent.SoundEventPriority("SOUND_CP_MOVE_CLOSE",  m_signals, NORMAL_PRIORITY);
+					m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOVE_CLOSE,  m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_RETURN:
 			{
 				SetSignal_SoldierCalledValues(signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL);
-				m_vonComponent.SoundEventPriority("SOUND_CP_RETURN", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_RETURN, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_MOUNT:
@@ -135,7 +145,7 @@ class SCR_AITalk: AITaskScripted
 					return ENodeResult.FAIL;
 				SetSignal_TargetValues(target, signalsManagerComponent);
 				SetSignal_SoldierCalledValues(signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL);
-				m_vonComponent.SoundEventPriority("SOUND_CP_MOUNT_BOARD", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOUNT_BOARD, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_MOUNT_AS:
@@ -147,20 +157,20 @@ class SCR_AITalk: AITaskScripted
 					role = 0;
 					
 				SetSignal_MountAsValues(signalsManagerComponent, m_CallsignComponent.GetCharacterCallsignIndex(), RoleInVehicleToSoundRoleEnum(role));
-				m_vonComponent.SoundEventPriority("SOUND_CP_MOUNT_ROLE", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOUNT_ROLE, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_UNMOUNT:
 			{
 				SetSignal_SoldierCalledValues(signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL);	
-				m_vonComponent.SoundEventPriority("SOUND_CP_MOUNT_GETOUT", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOUNT_GETOUT, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_STOP:
 			{
 				if (m_CallsignComponent)
 					SetSignal_SoldierCalledValues(signalsManagerComponent, m_CallsignComponent.GetCharacterCallsignIndex());
-				m_vonComponent.SoundEventPriority("SOUND_CP_STOP", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_STOP, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_FLANK:
@@ -169,7 +179,7 @@ class SCR_AITalk: AITaskScripted
 					return ENodeResult.FAIL;
 				SetSignal_SoldierCalledValues(signalsManagerComponent, m_CallsignComponent.GetCharacterCallsignIndex());
 				SetSignal_FlankValues(signalsManagerComponent, 0);	
-				m_vonComponent.SoundEventPriority("SOUND_CP_FLANK", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_FLANK, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_CONTACT:
@@ -179,53 +189,53 @@ class SCR_AITalk: AITaskScripted
 				SetSignal_TargetValues(target, signalsManagerComponent);
 				SetSignal_PositionValues(target, signalsManagerComponent, knownLocation,myLocation);
 				SetSignal_FactionValues(signalsManagerComponent, 1);
-				m_vonComponent.SoundEventPriority("SOUND_CP_SPOTTED_MID", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_SPOTTED_MID, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_NO_AMMO:
 			{
-				m_vonComponent.SoundEventPriority("SOUND_REPORTS_STATUS_NOAMMO", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_STATUS_NOAMMO, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_CLEAR:
 			{
-				m_vonComponent.SoundEventPriority("SOUND_REPORTS_STATUS_CLEAR", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_STATUS_CLEAR, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_ENGAGING:
 			{
-				m_vonComponent.SoundEventPriority("SOUND_REPORTS_STATUS_ENGAGING", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_STATUS_ENGAGING, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_TARGET_DOWN:
 			{
-				m_vonComponent.SoundEventPriority("SOUND_REPORTS_STATUS_TARGETDOWN", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_STATUS_TARGETDOWN, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_RELOADING:
 			{
-				m_vonComponent.SoundEventPriority("SOUND_REPORTS_ACTIONSTATUS_RELOAD", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_ACTIONSTATUS_RELOAD, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_MOVING:
 			{
-				m_vonComponent.SoundEventPriority("SOUND_REPORTS_ACTIONSTATUS_MOVE", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_ACTIONSTATUS_MOVE, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_COVERING:
 			{
-				m_vonComponent.SoundEventPriority("SOUND_REPORTS_ACTIONSTATUS_COVER", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_ACTIONSTATUS_COVER, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_DEFEND:
 			{
 				SetSignal_SoldierCalledValues(signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL);
-				m_vonComponent.SoundEventPriority("SOUND_CP_DEFEND_POSITION", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_DEFEND_POSITION, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_NEGATIVE:
 			{
-				m_vonComponent.SoundEventPriority("SOUND_CP_NEGATIVEFEEDBACK_NEGATIVE", m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_NEGATIVEFEEDBACK_NEGATIVE, m_signals, NORMAL_PRIORITY);
 				break;
 			}
 		}

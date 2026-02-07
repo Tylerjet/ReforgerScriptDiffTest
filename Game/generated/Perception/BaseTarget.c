@@ -24,10 +24,18 @@ class BaseTarget: ScriptAndConfig
 	proto external float GetTimeSinceTypeRecognized();
 	// Last time the target's side was recognized
 	proto external float GetTimeSinceSideRecognized();
+	// Last time the target endangered us
+	proto external float GetTimeSinceEndangered();
 	// Position where the target was seen last
 	proto external vector GetLastSeenPosition();
 	// Position where the target was detected last
 	proto external vector GetLastDetectedPosition();
+	// Returns how we percieve whether that target is endangering us or not. The actual value is updated periodically.
+	proto external bool IsEndangering();
+	// Returns unit type, same as in PerceivableComponent of that target
+	proto external EAIUnitType GetUnitType();
+	// Returns perceivable component of target
+	proto external PerceivableComponent GetPerceivableComponent();
 };
 
 /** @}*/

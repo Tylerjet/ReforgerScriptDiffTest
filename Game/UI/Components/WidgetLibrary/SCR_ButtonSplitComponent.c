@@ -24,8 +24,6 @@ class SCR_ButtonSplitComponent : SCR_ButtonComponent
 	
 	protected bool m_bColorizeFocusLost = true;
 	
-	ref ScriptInvoker m_OnFocusLost = new ref ScriptInvoker;
-	
 	//------------------------------------------------------------------------------------------------
 	void SetColorizeFocusLost(bool colorize) { m_bColorizeFocusLost = colorize; }
 	
@@ -64,27 +62,12 @@ class SCR_ButtonSplitComponent : SCR_ButtonComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool OnFocusLost(Widget w, int x, int y)
-	{		
-		super.OnFocusLost(w, x, y);
-		
-		m_OnFocusLost.Invoke(w);
-		
-		return false;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	override protected void ColorizeWidgets(Color colorBackground, Color colorContent, float speed = -1)
 	{
 		if (speed < 0)
 			speed = m_fAnimationRate;
 		
-
 		m_cColorContent = colorContent;
-		
-		//WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, colorBackground, speed);
-		//WidgetAnimator.PlayAnimation(m_wOverlay, WidgetAnimationType.Color, colorContent, speed);
-		
 		ColorizeCellPart("Background", colorBackground, speed, false);
 		ColorizeCellPart("Content", m_cColorContent, speed, true);
 	}
@@ -161,7 +144,7 @@ class SCR_ButtonSplitComponent : SCR_ButtonComponent
 				wPart = w.FindAnyWidget("Overlay");
 			
 			if (wPart)
-				WidgetAnimator.PlayAnimation(wPart, WidgetAnimationType.Color, c, speed);
+				AnimateWidget.Color(wPart, c, speed);
 		}
 	}
 	
@@ -182,7 +165,7 @@ class SCR_ButtonSplitComponent : SCR_ButtonComponent
 			wPart = w.FindAnyWidget("Overlay");
 		
 		if (wPart)
-			WidgetAnimator.PlayAnimation(wPart, WidgetAnimationType.Color, c, speed);
+			AnimateWidget.Color(wPart, c, speed);
 	}
 	
 	//------------------------------------------------------------------------------------------------

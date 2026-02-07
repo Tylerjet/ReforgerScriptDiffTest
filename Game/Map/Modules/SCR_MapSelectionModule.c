@@ -110,7 +110,7 @@ class SCR_MapSelectionModule: SCR_MapModuleBase
 		m_DrawCanvas = CanvasWidget.Cast(config.RootWidgetRef.FindAnyWidget(SCR_MapConstants.DRAWING_WIDGET_NAME));
 		m_CursorInfo = m_CursorModule.GetCursorInfo();
 		
-		m_DrawCanvas.SetZoom(m_MapEntity.GetCurrentZoom());
+		m_DrawCanvas.SetZoom(m_MapEntity.GetCurrentZoom() / m_MapEntity.GetMapWidget().PixelPerUnit());
 		m_DrawCanvas.SetOffsetPx(m_MapEntity.GetCurrentPan() * -1);
 		
 		m_MapEntity.ResetSelection();		

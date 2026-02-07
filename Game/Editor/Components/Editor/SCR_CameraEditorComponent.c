@@ -186,7 +186,7 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 					
 					m_Camera.SetTransform(m_vPreActivateCameraTransform);
 					bool disableInterruption = !GetGame().GetInputManager().IsUsingMouseAndKeyboard();
-					teleportComponent.TeleportCamera(m_PreActivateControlledEntity.GetOrigin(), true, true, true, disableInterruption, m_fDistance, true);
+					teleportComponent.TeleportCamera(m_vPreActivateCameraTransform[3], true, true, true, disableInterruption, m_fDistance, true);
 				}
 			}
 		}

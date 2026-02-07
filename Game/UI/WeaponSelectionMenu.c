@@ -49,7 +49,7 @@ class SCR_WeaponSelectionMenu : SCR_InfoDisplay
 	[Attribute("5", UIWidgets.EditBox, "")]
 	protected float m_fHighlightAnimationSpeed;
 	
-	[Attribute(UISounds.FOCUS, UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.FOCUS, UIWidgets.EditBox, "")]
 	protected ResourceName m_sSoundSwitch;
 
 	[Attribute("{0054C496786770A6}UI/Textures/Icons/icons_keyboard_32.imageset", UIWidgets.ResourceNamePicker, "")]
@@ -82,7 +82,7 @@ class SCR_WeaponSelectionMenu : SCR_InfoDisplay
 					SCR_WeaponSelectionMenu weaponSwitching = SCR_WeaponSelectionMenu.Cast(display);
 					if (weaponSwitching && weaponSwitching != this)
 					{
-						weaponSwitching.Show(false, WidgetAnimator.FADE_RATE_DEFAULT, true);
+						weaponSwitching.Show(false, UIConstants.FADE_RATE_DEFAULT, true);
 						break;
 					}
 				}
@@ -370,7 +370,7 @@ class SCR_WeaponSelectionMenu : SCR_InfoDisplay
 			{
 				SetDefaultColor(m_wHighlightedWeapon);
 				SetHighlightColor(w);
-				SCR_UISoundEntity.SoundEvent(UISounds.ITEM_SELECTED);
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.ITEM_SELECTED);
 				m_wHighlightedWeapon = w;
 			}
 		}
@@ -514,12 +514,12 @@ class SCR_WeaponSelectionMenu : SCR_InfoDisplay
 		if (!background)
 			return;
 		
-		SCR_UISoundEntity.SoundEvent(UISounds.ITEM_CONFIRMED);
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.ITEM_CONFIRMED);
 		
 		if (animate)
 		{
-			WidgetAnimator.PlayAnimation(background, WidgetAnimationType.Color, backgroundColor, m_fHighlightAnimationSpeed);
-			WidgetAnimator.PlayAnimation(w, WidgetAnimationType.Color, colorChild, m_fHighlightAnimationSpeed);
+			AnimateWidget.Color(background, backgroundColor, m_fHighlightAnimationSpeed);
+			AnimateWidget.Color(w, colorChild, m_fHighlightAnimationSpeed);
 		}
 		else
 		{
@@ -543,7 +543,7 @@ class SCR_WeaponSelectionMenu : SCR_InfoDisplay
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Show(bool show, float speed = WidgetAnimator.FADE_RATE_DEFAULT, bool force = false)
+	override void Show(bool show, float speed = UIConstants.FADE_RATE_DEFAULT, bool force = false)
 	{
 		super.Show(show, speed, force);
 		
@@ -637,8 +637,8 @@ class SCR_WeaponSelectionMenu : SCR_InfoDisplay
 			float time = owner.GetWorld().GetWorldTime();
 			if (switching == 0 && time > m_fLastInteractionTime + m_fInteractionTimeout)
 			{
-				SCR_UISoundEntity.SoundEvent(UISounds.ITEM_CANCELLED);
-				Show(false, WidgetAnimator.FADE_RATE_SLOW);
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.ITEM_CANCELLED);
+				Show(false, UIConstants.FADE_RATE_SLOW);
 				return;
 			}
 		}
@@ -681,7 +681,7 @@ class SCR_WeaponSelectionMenu : SCR_InfoDisplay
 				SCR_WeaponSelectionMenu weaponSwitching = SCR_WeaponSelectionMenu.Cast(display);
 				if (weaponSwitching && weaponSwitching != this)
 				{
-					weaponSwitching.Show(true, WidgetAnimator.FADE_RATE_DEFAULT, false);
+					weaponSwitching.Show(true, UIConstants.FADE_RATE_DEFAULT, false);
 					break;
 				}
 			}

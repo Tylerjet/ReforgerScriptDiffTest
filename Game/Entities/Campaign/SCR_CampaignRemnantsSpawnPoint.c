@@ -13,6 +13,12 @@ class SCR_CampaignRemnantsSpawnPoint : GenericEntity
 	[Attribute("0", UIWidgets.ComboBox, "Valid only for hierarchy parent.", "", ParamEnumArray.FromEnum(SCR_CampaignRemnantsGroupType))]
 	private SCR_CampaignRemnantsGroupType m_eGroupType;
 	
+	[Attribute("0", UIWidgets.EditBox, "How often will the group respawn. (0 = no respawn)")]
+	protected int m_iGroupRespawnPeriod;
+	
+	[Attribute("0", UIWidgets.CheckBox, "This entity is used as a respawn position from which Remnants will move to their target.")]
+	protected bool m_bIsRespawn;
+	
 	//------------------------------------------------------------------------------------------------
 	int GetWaypointIndex()
 	{
@@ -23,6 +29,18 @@ class SCR_CampaignRemnantsSpawnPoint : GenericEntity
 	SCR_CampaignRemnantsGroupType GetGroupType()
 	{
 		return m_eGroupType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetGroupRespawnPeriod()
+	{
+		return m_iGroupRespawnPeriod;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetIsRespawn()
+	{
+		return m_bIsRespawn;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -39,9 +57,6 @@ class SCR_CampaignRemnantsSpawnPoint : GenericEntity
 		
 		// Gamemode will take care of the rest
 		campaign.RegisterRemnantsPresence(this);
-		
-		if (SCR_CampaignBase.Cast(GetParent()))
-			campaign.RegisterRemnantsPresence(this, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -80,12 +95,12 @@ class SCR_CampaignRemnantsPresence
 	protected bool m_bSpawned = false;
 	protected float m_fDespawnTimer = -1;
 	protected SCR_AIGroup m_Group;
-	protected bool m_bIsDefendersSpawn;
 	protected SCR_CampaignBase m_ParentBase;
-	protected Faction m_Faction;
-	protected float m_fSpawnTime;
+	protected float m_fRespawnTimestamp;
+	protected int m_iRespawnPeriod;
+	protected ref array<vector> m_aRespawns = {};
 	static const int PARENT_BASE_DISTANCE_THRESHOLD = 300;
-	static const int DEFENDERS_SPAWN_DELAY = 90;
+	static const int RESPAWN_PLAYER_DISTANCE_THRESHOLD = 200;
 	
 	//------------------------------------------------------------------------------------------------
 	void SetID(int ID)
@@ -184,6 +199,42 @@ class SCR_CampaignRemnantsPresence
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	float GetRespawnTimestamp()
+	{
+		return m_fRespawnTimestamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetRespawnTimestamp(float time)
+	{
+		m_fRespawnTimestamp = time;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetRespawnPeriod()
+	{
+		return m_iRespawnPeriod;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetRespawnPeriod(int time)
+	{
+		m_iRespawnPeriod = time;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddRespawn(vector respawn)
+	{
+		m_aRespawns.Insert(respawn);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<vector> GetRespawns()
+	{
+		return m_aRespawns;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetSpawnedGroup(SCR_AIGroup group)
 	{
 		m_Group = group;
@@ -196,18 +247,6 @@ class SCR_CampaignRemnantsPresence
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetIsDefendersSpawn(bool defender)
-	{
-		m_bIsDefendersSpawn = defender;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool GetIsDefendersSpawn()
-	{
-		return m_bIsDefendersSpawn;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	void SetParentBase(notnull SCR_CampaignBase base)
 	{
 		m_ParentBase = base;
@@ -217,30 +256,6 @@ class SCR_CampaignRemnantsPresence
 	SCR_CampaignBase GetParentBase()
 	{
 		return m_ParentBase;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetDefendersFaction(notnull Faction faction)
-	{
-		m_Faction = faction;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	Faction GetDefendersFaction()
-	{
-		return m_Faction;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetSpawnTime(float time)
-	{
-		m_fSpawnTime = time;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	float GetSpawnTime()
-	{
-		return m_fSpawnTime;
 	}
 };
 

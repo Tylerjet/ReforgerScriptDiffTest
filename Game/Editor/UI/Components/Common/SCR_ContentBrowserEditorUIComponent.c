@@ -17,6 +17,9 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 	[Attribute(params: "layout")]
 	private ResourceName m_sUndefinedCardPrefab;
 	
+	[Attribute("Title")]
+	protected string m_sHeaderWidgetName;
+	
 	[Attribute("Filters")]
 	private string m_sLabelComponentWidget;
 	
@@ -44,15 +47,18 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 	[Attribute(defvalue: "ActiveFilters")]
 	protected string m_sActiveFiltersName;
 	
-	[Attribute(UISounds.CLICK, UIWidgets.EditBox, "")]
+	[Attribute(defvalue: "SelectButton")]
+	protected string m_sSelectCardButtonName;
+	
+	[Attribute(defvalue: "ToggleButton")]
+	protected string m_sToggleFilterdButtonName;
+
+	[Attribute("SOUND_E_OPENASSETBROWSER", UIWidgets.EditBox, "")]
 	protected string m_sSfxOnOpenDialog;
 	
-	[Attribute(UISounds.CLICK_CANCEL, UIWidgets.EditBox, "Played when no entity card is selected on close dialog")]
+	[Attribute(SCR_SoundEvent.CLICK_CANCEL, UIWidgets.EditBox, "Played when no entity card is selected on close dialog")]
 	protected string m_sSfxOnCloseDialog;
 	
-	private ref array<int> m_aFilteredPrefabIDs = {};
-	private int m_iFilteredPrefabIDsCount;
-	private SCR_PrefabsCacheEditorComponent m_PrefabsCache;
 	private SCR_EditableEntityCore m_EntityCore;
 	private SCR_BudgetEditorComponent m_BudgetManager;
 	private SCR_ContentBrowserEditorComponent m_ContentBrowserManager;
@@ -75,11 +81,12 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 	protected Widget m_wToggleSearchButton;
 	protected Widget m_LastSelectedOnSearch;
 	protected Widget m_NoFilterResultsWidget;
+	protected Widget m_SelectCardButton;
+	protected Widget m_ToggleFilterdButton;
 	
 	protected Widget m_ContentLoadingVisual;
 	protected SCR_EditBoxComponent m_SearchEditBox;
 	protected ScrollLayoutWidget m_ScrollLayout;
-	protected string m_sLastSearch;
 	protected ref array<string> m_aLocalizationKeys = {};
 	
 	private ref ScriptInvoker m_LabelApplyCallback = new ScriptInvoker();
@@ -96,14 +103,13 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		if (!placingManager) return;
 		
 		int entryIndex = GetEntryIndex(assetWidget);
-		int prefabID = m_aFilteredPrefabIDs[entryIndex];
+		int prefabID = m_ContentBrowserManager.GetFilteredPrefabID(entryIndex);
 		
 		ResourceName prefab = GetPrefab(prefabID);
 		
 		if (placingManager.SetSelectedPrefab(prefab, showBudgetMaxNotification: true))
 		{
 			// Only close window if prefab can be selected
-			m_bBudgetPreviewUpdateEnabled = false;
 			CloseContentBrowser();
 			m_bCardSelected = true;
 		}
@@ -114,30 +120,21 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 	*/
 	void CloseContentBrowser()
 	{
+		m_bBudgetPreviewUpdateEnabled = false;
 		if (m_ContentBrowserDialog)
 			m_ContentBrowserDialog.Close();
 	}
 	
 	override void ShowEntries(Widget contentWidget, int indexStart, int indexEnd)
 	{
-		Widget firstCard;
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		
 		//Show no result indicator and hide grid		
 		bool showNoResults = indexEnd == 0 && !m_bContentLoadingWidgetActive;
 		if (m_NoFilterResultsWidget)
 			m_NoFilterResultsWidget.SetVisible(showNoResults);
 		contentWidget.SetVisible(!showNoResults);
-
-		SCR_PlacingEditorComponentClass placingPrefabData = SCR_PlacingEditorComponentClass.Cast(SCR_PlacingEditorComponentClass.GetInstance(SCR_PlacingEditorComponent, true));
-		if (!placingPrefabData) return;
 		
-		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		if (!workspace) return;
-		
-		//ResourceName prefab;
-		Resource prefabResource;
-		IEntityComponentSource componentSource;
-		SCR_UIInfo info;
 		ResourceName cardPrefab, defaultCardPrefab;
 		foreach (SCR_ContentBrowserEditorCard cardPrefabCandidate: m_aCardPrefabs)
 		{
@@ -148,11 +145,12 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 			}
 		}
 		
+		Widget firstCard;
+		SCR_UIInfo info;
 		ScriptCallQueue callQueue = GetGame().GetCallqueue();
-		
 		for (int i = indexStart; i < indexEnd; i++)
 		{
-			int prefabID = m_aFilteredPrefabIDs[i];
+			int prefabID = m_ContentBrowserManager.GetFilteredPrefabID(i);
 			info = m_ContentBrowserManager.GetInfo(prefabID);
 			
 			cardPrefab = m_sUndefinedCardPrefab;
@@ -184,7 +182,8 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 			
 			SCR_EditableEntityCoreBudgetSetting blockingBudgetSettings;
 			array<ref SCR_EntityBudgetValue> budgetCosts = {};
-			if (GetEntityPreviewBudgetCosts(prefabID, budgetCosts))
+			SCR_EditableEntityUIInfo uiInfo = m_ContentBrowserManager.GetInfo(prefabID);
+			if (m_BudgetManager.GetEntityPreviewBudgetCosts(uiInfo, budgetCosts))
 			{
 				EEditableEntityBudget blockingBudget;
 				if (!m_BudgetManager.CanPlace(budgetCosts, blockingBudget, false))
@@ -198,8 +197,9 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 			//Set card focus
 			if (firstCard == null)
 				firstCard = assetCard.GetButtonWidget();
-			if (prefabID == m_iCardFocusIndex)
-				m_wFocusedCard = assetCard.GetButtonWidget();
+			
+			//if (prefabID == m_iCardFocusIndex)
+			//	m_wFocusedCard = assetCard.GetButtonWidget();
 			
 			assetCard.GetOnHover().Insert(OnCardHover);
 			assetCard.GetOnFocus().Insert(OnCardFocus);
@@ -210,6 +210,7 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 			{
 				assetWidget.SetOpacity(0);
 				int cardIndexOnPage = (i - indexStart);
+				
 				callQueue.CallLater(AnimateCardFadeIn, cardIndexOnPage * 20, false, assetWidget);
 			}
 		}
@@ -218,20 +219,37 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		if (m_wFocusedCard == null)
 			m_wFocusedCard = firstCard;
 		
+		/* Currently overridden by paging focus
+		if (m_wFocusedCard)
+		{
+			m_FocusedIndex[0] = UniformGridSlot.GetRow(m_wFocusedCard);
+			m_FocusedIndex[1] = UniformGridSlot.GetColumn(m_wFocusedCard);
+			GetGame().GetWorkspace().SetFocusedWidget(m_wFocusedCard);
+		}
+		*/
+		
 		m_bAnimateEntries = false;
+		m_bBudgetPreviewUpdateEnabled = true;
 	}
 	
 	override int GetEntryCount()
 	{
-		return m_iFilteredPrefabIDsCount;
+		if (m_ContentBrowserManager && !m_bContentLoadingWidgetActive)
+		{
+			return m_ContentBrowserManager.GetFilteredPrefabCount();
+		}
+		else
+		{
+			return 0;
+		}
 	}
 	
 	protected void AnimateCardFadeIn(Widget cardWidget)
 	{
-		WidgetAnimator.PlayAnimation(new WidgetAnimationOpacity(cardWidget, m_iCardFadeInSpeed, 1.0));
+		AnimateWidget.Opacity(cardWidget, 1.0, m_iCardFadeInSpeed);
 	}
 	
-	protected ResourceName GetPrefab(int prefabID)
+	ResourceName GetPrefab(int prefabID)
 	{
 		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
 		if (!placingManager) return ResourceName.Empty;
@@ -248,6 +266,8 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 			SwitchToFilters();
 		else
 			SwitchToAssetCards();
+		
+		GamepadToggleSelectButtonSwap();
 	}
 	
 	protected void SwitchToAssetCards()
@@ -260,6 +280,12 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 			return;
 
 		workspace.SetFocusedWidget(m_wFocusedCard);
+	}
+	
+	protected void GamepadToggleSelectButtonSwap()
+	{
+		m_SelectCardButton.SetVisible(m_bFocusingAssetCard);
+		m_ToggleFilterdButton.SetVisible(!m_bFocusingAssetCard);
 	}
 	
 	protected void SwitchToFilters()
@@ -289,7 +315,7 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		Widget focusedWidget = workspace.GetFocusedWidget();
 		if (!forceToggle && (focusedWidget == m_SearchEditBox.GetRootWidget() || focusedWidget == m_SearchEditBox.m_wEditBox))
 		{
-			m_SearchEditBox.m_wEditBox.ActivateWriteMode();
+			EditBoxWidget.Cast(m_SearchEditBox.m_wEditBox).ActivateWriteMode();
 		}
 		else if (m_bSearchIsToggled != toggle) 
 		{
@@ -298,14 +324,13 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 			if (m_bSearchIsToggled)
 			{			
 				workspace.SetFocusedWidget(m_SearchEditBox.GetRootWidget());
-				m_SearchEditBox.m_wEditBox.ActivateWriteMode();
+				EditBoxWidget.Cast(m_SearchEditBox.m_wEditBox).ActivateWriteMode();
 			}
 			else 
 			{
 				workspace.SetFocusedWidget(m_wFocusedCard);
 			}
 		}
-		
 	}
 	
 	protected void ResetSearch()
@@ -314,121 +339,62 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		{
 			m_SearchEditBox.SetValue(string.Empty);	
 		}
-		m_ContentBrowserManager.SetLastSearch(m_sLastSearch);
-		m_sLastSearch = string.Empty;
+		m_ContentBrowserManager.SetCurrentSearch(string.Empty);
+		m_ContentBrowserManager.SetPageIndex(0);
+		m_ContentBrowserManager.SaveBrowserState(false);
 		
 		if (m_bUsingGamePad)
 			GamePadToggleSearch(false);
 	}
 	
-	protected bool GetEntityPreviewBudgetCosts(int prefabID, out notnull array<ref SCR_EntityBudgetValue> budgetCosts)
-	{		
-		SCR_EditableEntityUIInfo editableUIInfo = m_ContentBrowserManager.GetInfo(prefabID);
-		if (!editableUIInfo || !m_BudgetManager)
-		{
-			return false;
-		}
-		
-		return m_BudgetManager.GetEntityPreviewBudgetCosts(editableUIInfo, budgetCosts));
-	}
-	
-	protected void RefreshBudgetPreviewCost(int prefabID = -1)
+	protected void FilterEntries(bool resetPage = true, bool resetSearch = true, bool animateEntries = false)
 	{
-		if (m_PlacingManager.HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER) || prefabID == -1)
-		{
-			m_BudgetManager.ResetPreviewCost();
-			return;
-		}
-		
-		array<ref SCR_EntityBudgetValue> budgetCosts = {};
-		if (GetEntityPreviewBudgetCosts(prefabID, budgetCosts))
-		{
-			m_BudgetManager.UpdatePreviewCost(budgetCosts);
-		}
-	}
-	
-	protected void FilterEntries(bool resetPage = true, bool resetSearch = true)
-	{
-		SCR_EditableEntityComponent extendedEntity = m_ContentBrowserManager.GetExtendedEntity();
-		bool isExtending = extendedEntity != null;
-		ResourceName extendedPrefab;
-		bool isInheritedSlot;
-		if (isExtending)
-		{
-			extendedPrefab = extendedEntity.GetPrefab();
-			isInheritedSlot = extendedEntity.HasEntityFlag(EEditableEntityFlag.SLOT);
-		}
-		
-		m_aFilteredPrefabIDs.Clear();
-		m_aLocalizationKeys.Clear();
-		array<EEditableEntityLabel> entityLabels = {};
-		SCR_EditableEntityUIInfo info;
-		int count = m_ContentBrowserManager.GetInfoCount();
-		for (int i = 0; i < count; i++)
-		{
-			entityLabels.Clear();
-			info = m_ContentBrowserManager.GetInfo(i);
-			
-			if (!info)
-			{
-				continue;
-			}
-			
-			if (isExtending)
-			{
-				if (m_PrefabsCache && isInheritedSlot)
-				{
-					if (!m_PrefabsCache.IsPrefabInherited(info.GetSlotPrefab(), extendedPrefab))
-						continue;
-				}
-				else
-				{
-					if (info.GetSlotPrefab() != extendedPrefab)
-						continue;
-				}
-			}
-			else
-			{
-				//--- Browser opened generically - ignore assets on fixed position
-				if (info.HasEntityFlag(EEditableEntityFlag.STATIC_POSITION) && extendedPrefab != extendedPrefab)
-					continue;
-			}
-			
-			info.GetEntityLabels(entityLabels);
-			if (!m_ContentBrowserManager.IsMatchingToggledLabels(entityLabels))
-				continue;
-			
- 			m_aFilteredPrefabIDs.Insert(i);
-			
-			m_aLocalizationKeys.Insert(info.GetName());
-		}
-		m_iFilteredPrefabIDsCount = m_aFilteredPrefabIDs.Count();
-		
+		// Search
 		if (resetSearch)
 		{
 			ResetSearch();
 		}
+		else
+		{
+			string searchInputText = m_SearchEditBox.GetValue().Trim();
+			if (!searchInputText.IsEmpty() && searchInputText != m_ContentBrowserManager.GetCurrentSearch())
+			{
+				m_ContentBrowserManager.SetCurrentSearch(searchInputText);
+			}
+		}
 		
 		if (resetPage)
 		{
-			SetPage(0);	
+			m_ContentBrowserManager.SetPageIndex(0);
 		}
-		else
-		{
-			SetPage(m_ContentBrowserManager.GetPageIndex());
-		}
-		m_bBudgetPreviewUpdateEnabled = true;
+		
+		
+		m_ContentBrowserManager.FilterEntries();
+		
+		// Set page
+		m_bAnimateEntries = animateEntries;
+						
+		SetPage(m_ContentBrowserManager.GetPageIndex());
 	}
 	
-	protected void OnInputDeviceChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepadScripted(bool isGamepad)
 	{
-		m_bUsingGamePad = (newDevice == EInputDeviceType.GAMEPAD || newDevice == EInputDeviceType.JOYSTICK);
+		m_bUsingGamePad = isGamepad;
 		
 		if (m_bFocusingAssetCard)
 			OnCardHover(null, -1, true);
 		else
 			OnCardHover(null, -1, false);
 		
+		if (isGamepad)
+		{
+			GamepadToggleSelectButtonSwap();
+		}
+		else 
+		{
+			m_SelectCardButton.SetVisible(false);
+			m_ToggleFilterdButton.SetVisible(false);
+		}
 		
 		if (!m_SearchEditBox)
 			return;
@@ -448,23 +414,25 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 	}
 	
 	protected void OnCardHover(Widget card, int prefabIndex, bool hover)
-	{
+	{		
 		if (!hover)
 		{
-			RefreshBudgetPreviewCost();
+			m_ContentBrowserManager.RefreshPreviewCost();
 			return;
 		}
 		
 		if (!m_bBudgetPreviewUpdateEnabled || m_bUsingGamePad) return;
 		
-		RefreshBudgetPreviewCost(prefabIndex);
+		m_ContentBrowserManager.RefreshPreviewCost(prefabIndex);
+		
 	}
 	
 	protected void OnCardFocus(Widget card, int prefabIndex, bool focus)
-	{	
+	{			
 		if (!m_bUsingGamePad) return;
 		
 		m_bFocusingAssetCard = focus;
+		GamepadToggleSelectButtonSwap();
 		
 		if (m_bFocusingAssetCard)
 		{
@@ -473,7 +441,7 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		else
 		{
 			m_wToggleCardFilterButton.SetLabel("#AR-Editor_ContentBrowser_SwitchToCards");
-			RefreshBudgetPreviewCost();
+			m_ContentBrowserManager.RefreshPreviewCost();
 			return;
 		}
 		
@@ -481,7 +449,7 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		{
 			m_wFocusedCard = card;
 			m_iCardFocusIndex = prefabIndex;
-			RefreshBudgetPreviewCost(prefabIndex);
+			m_ContentBrowserManager.RefreshPreviewCost();
 		}
 	}
 	
@@ -492,59 +460,43 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 	}
 	
 	protected void OnSearchConfirmed(SCR_EditBoxComponent editBox, string text)
-	{		
+	{
 		string search = text.Trim();
-		if (search == m_sLastSearch)
-		{
-			return;
-		}
-		m_sLastSearch = search;
-		m_bAnimateEntries = true;
+		m_ContentBrowserManager.SetCurrentSearch(search);
 		
-		FilterEntries(false, false);
-		
-		if (!m_sLastSearch.IsEmpty())
-		{
-			array<int> searchResultPrefabID = {};
-			array<int> searchResultIndices = {};
-			WidgetManager.SearchLocalized(m_sLastSearch, m_aLocalizationKeys, searchResultIndices);
-			
-			foreach (int searchResultIndex : searchResultIndices)
-			{
-				int prefabID = m_aFilteredPrefabIDs.Get(searchResultIndex);
-				searchResultPrefabID.Insert(prefabID);
-			}
-			
-			m_aFilteredPrefabIDs.Copy(searchResultPrefabID);
-			m_iFilteredPrefabIDsCount = m_aFilteredPrefabIDs.Count();
-			m_bAnimateEntries = true;
-			
-			int pageIndex = 0;
-			if (m_ContentBrowserManager)
-			{
-				pageIndex = m_ContentBrowserManager.GetPageIndex();
-			}
-			SetPage(pageIndex);
-		}
+		FilterEntries(true, false, true);
 		
 		//If using gamepad make sure search box is no longer selected
 		if (m_bUsingGamePad && m_wFocusedCard)
 			GamePadToggleSearch(false);
+	}	
+	
+	//~ After Browser state is loaded
+	protected void OnBrowserEntriesFiltered()
+	{
+		m_SearchEditBox.SetValue(m_ContentBrowserManager.GetCurrentSearch());
+		
+		m_bAnimateEntries = true;
+		SetPage(m_ContentBrowserManager.GetPageIndex());
 	}
 	
 	protected void OnMenuClosed()
 	{
+		if (m_ContentBrowserManager)
+		{
+			m_ContentBrowserManager.OnMenuClosed();
+		}
+		
 		if (m_BudgetManager && m_bBudgetPreviewUpdateEnabled)
 		{
 			m_BudgetManager.ResetPreviewCost();
 		}
-		ResetSearch();
 	}
 	
 	protected void OnResetClicked()
 	{
 		m_LabelsUIComponent.OnResetClicked();
-		ResetSearch();
+		m_ContentBrowserManager.ResetBrowserState(false);
 	}
 	
 	protected void OnShowLoadingCircle(bool state = true)
@@ -554,17 +506,17 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 			return;
 		}
 		m_ContentLoadingVisual.SetVisible(state);
-		m_aFilteredPrefabIDs.Clear();
-		m_iFilteredPrefabIDsCount = 0;
 		m_bContentLoadingWidgetActive = state;
-		SetPage(0);
+		
+		RefreshPage();
+		
+		m_ContentBrowserManager.SetSaveStateTabsEnabled(!state);
 	}
 	
 	protected void OnApplyLabelChanges()
 	{
 		OnShowLoadingCircle(false);
-		m_bAnimateEntries = true;
-		FilterEntries(true, false);
+		FilterEntries(true, false, true);
 	}
 	
 	protected void InitializeLabels()
@@ -587,7 +539,43 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		}
 	}
 	
-	override protected bool IsUnique()
+	//~ Returns the UI Info of highest ordered label (in the highest ordered group)
+	protected SCR_UIInfo GetHighestOrderedLabelUIInfo(notnull array<EEditableEntityLabel> labels)
+	{
+		EEditableEntityLabelGroup groupLabel;
+	
+		int newLabelOrder;
+		int newLabelGroupOrder;
+		
+		int lowestGroupOrder = int.MAX;
+		int lowestLabelOrder = int.MAX;
+
+		EEditableEntityLabel highestOrderedLabel;
+		
+		foreach(EEditableEntityLabel label: labels)
+        {
+			m_ContentBrowserManager.GetLabelGroupType(label, groupLabel);
+			newLabelGroupOrder = m_ContentBrowserManager.GetLabelGroupOrder(groupLabel);
+			
+			if (newLabelGroupOrder <= lowestGroupOrder)
+			{
+				newLabelOrder = m_ContentBrowserManager.GetLabelOrderInGroup(label);
+				
+				if (newLabelOrder < lowestLabelOrder)
+				{
+					lowestGroupOrder = newLabelGroupOrder;
+					lowestLabelOrder = newLabelOrder;
+					highestOrderedLabel = label;
+				}
+			}
+        }
+		
+		SCR_UIInfo uiInfo;
+		m_ContentBrowserManager.GetLabelUIInfo(highestOrderedLabel, uiInfo);
+		return uiInfo;
+	}
+	
+	protected override bool IsUnique()
 	{
 		return true;
 	}
@@ -596,23 +584,29 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 	{
 		if (m_bPlayAudioOnPageChange)
 			SCR_UISoundEntity.SoundEvent(m_sOnePrevPageSfx, true);
-			
-			SetPage(m_iCurrentPage - 1);			
+		
+		int previousPageIndex = m_iCurrentPage - 1;
+		if (SetPage(previousPageIndex))
+		{
+			m_ContentBrowserManager.SetPageIndex(previousPageIndex);
+		}
 	}
 	
 	protected override void OnButtonNext()
 	{
 		if (m_bPlayAudioOnPageChange)
 			SCR_UISoundEntity.SoundEvent(m_sOnePrevPageSfx, true);
-			
-		SetPage(m_iCurrentPage + 1);
+		
+		int nextPageIndex = m_iCurrentPage + 1;
+		if (SetPage(nextPageIndex))
+		{
+			m_ContentBrowserManager.SetPageIndex(nextPageIndex);
+		}
 	}
 	
 	override protected void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);
-		
-		InputManager inputManager =  GetGame().GetInputManager();
 		
 		Widget toggleBetweenCardAndFilter = w.FindAnyWidget(m_sToggleCardFilterButton);
 		
@@ -635,23 +629,35 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		if (!m_ContentBrowserManager)
 			return;
 		
+		m_ContentBrowserManager.SetPageEntryCount(GetRows() * GetColumns());
+		
 		m_PlacingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true));
 		m_BudgetManager = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent));
-		m_PrefabsCache = SCR_PrefabsCacheEditorComponent.Cast(SCR_PrefabsCacheEditorComponent.GetInstance(SCR_PrefabsCacheEditorComponent));	
+		
 		m_ContentBrowserDialog = EditorBrowserDialogUI.Cast(GetMenu());
 		m_ContentBrowserDialog.GetOnMenuHide().Insert(OnMenuClosed);
 		
 		m_NoFilterResultsWidget = w.FindAnyWidget(m_sNoFilterResultsWidgetName);
-				
+		
+		m_SelectCardButton = w.FindAnyWidget(m_sSelectCardButtonName);
+		m_ToggleFilterdButton = w.FindAnyWidget(m_sToggleFilterdButtonName);
+		
 		Widget resetFiltersButton = w.FindAnyWidget(m_sResetFiltersButtonName);
 		if (resetFiltersButton)
+		{
 			ButtonActionComponent.GetOnAction(resetFiltersButton, false, 0).Insert(OnResetClicked);		
+		}
 		
 		m_SearchEditBox = SCR_EditBoxComponent.GetEditBoxComponent(m_sSearchEditBoxName, w, true);
 		if (m_SearchEditBox)
 		{
 			m_SearchEditBox.m_OnConfirm.Insert(OnSearchConfirmed);
 			m_SearchEditBox.m_OnFocusChangedEditBox.Insert(OnSearchFocusChanged);
+			
+			if (m_ContentBrowserManager.GetCurrentSearch())
+			{
+				m_SearchEditBox.SetValue(m_ContentBrowserManager.GetCurrentSearch());
+			}
 		}
 		
 		m_ContentLoadingVisual = w.FindAnyWidget(m_sContentLoadingWidgetName);
@@ -666,28 +672,33 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 			ButtonActionComponent.GetOnAction(m_wToggleSearchButton, false, 0).Insert(GamePadSwitchToggleSearch);
 		
 		//Input device changed
-		if (inputManager)
-		{
-			OnInputDeviceChanged(inputManager.GetLastUsedInputDevice(), inputManager.GetLastUsedInputDevice());
-		}
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceChanged);
+		OnInputDeviceIsGamepadScripted(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepadScripted);
 		
 		InitializeLabels();
 		
-		string lastSearch = m_ContentBrowserManager.GetLastSearch();
-		if (!lastSearch.IsEmpty())
+		if (m_ContentBrowserManager.GetContentBrowserDisplayConfig())
 		{
-			m_SearchEditBox.SetValue(lastSearch);
-			OnSearchConfirmed(m_SearchEditBox, lastSearch);
-		}
-		else
-		{
-			m_bAnimateEntries = true;
-			FilterEntries(false, true);
+			string header = m_ContentBrowserManager.GetContentBrowserDisplayConfig().GetHeader();
+			
+			if (header != string.Empty)
+			{
+				TextWidget headerWidget = TextWidget.Cast(w.FindAnyWidget(m_sHeaderWidgetName));
+				
+				if (headerWidget)
+					headerWidget.SetText(header);
+			}
 		}
 		
+		m_ContentBrowserManager.GetOnBrowserEntriesFiltered().Insert(OnBrowserEntriesFiltered);
+		m_ContentBrowserManager.GetOnBrowserStateCleared().Insert(OnBrowserEntriesFiltered);
+		m_ContentBrowserManager.RefreshPreviewCost();
+		
 		SCR_UISoundEntity.SoundEvent(m_sSfxOnOpenDialog, true);
-		RefreshBudgetPreviewCost();
+		
+		m_bAnimateEntries = true;
+		
+		SetPage(m_ContentBrowserManager.GetPageIndex());
 	}
 	
 	override protected void HandlerDeattached(Widget w)
@@ -695,7 +706,7 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		super.HandlerDeattached(w);
 		
 		//Input device changed
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepadScripted);
 		
 		if (SCR_Global.IsEditMode()) return;
 		
@@ -706,8 +717,11 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		
 		if (m_ContentBrowserManager)
 		{
-			m_ContentBrowserManager.SetPageIndex(GetCurrentPage());
 			m_ContentBrowserManager.SetExtendedEntity(null);
+
+			//~ State loading
+			m_ContentBrowserManager.GetOnBrowserEntriesFiltered().Remove(OnBrowserEntriesFiltered);
+			m_ContentBrowserManager.GetOnBrowserStateCleared().Remove(OnBrowserEntriesFiltered);
 		}
 		
 		if (m_SearchEditBox)

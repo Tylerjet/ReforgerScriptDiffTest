@@ -6,7 +6,7 @@ class SCR_UISoundEntityClass: GenericEntityClass
 
 class SCR_UISoundEntity : GenericEntity
 {
-	static private SoundComponent m_SoundComponent;
+	static private SimpleSoundComponent m_SoundComponent;
 	static private SCR_UISoundEntity m_Instance;
 
 	static SCR_UISoundEntity GetInstance()
@@ -22,7 +22,7 @@ class SCR_UISoundEntity : GenericEntity
 			if (!m_Instance)
 				return AudioHandle.Invalid;
 
-			m_SoundComponent = SoundComponent.Cast(m_Instance.FindComponent(SoundComponent));
+			m_SoundComponent = SimpleSoundComponent.Cast(m_Instance.FindComponent(SimpleSoundComponent));
 			if (!m_SoundComponent)
 				return AudioHandle.Invalid;
 		}
@@ -30,7 +30,7 @@ class SCR_UISoundEntity : GenericEntity
 		if (force)
 			m_SoundComponent.TerminateAll();
 		
-		return m_SoundComponent.SoundEvent(eventName);
+		return m_SoundComponent.PlayStr(eventName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ class SCR_UISoundEntity : GenericEntity
 			if (!m_Instance)
 				return;
 
-			m_SoundComponent = SoundComponent.Cast(m_Instance.FindComponent(SoundComponent));
+			m_SoundComponent = SimpleSoundComponent.Cast(m_Instance.FindComponent(SimpleSoundComponent));
 			if (!m_SoundComponent)
 				return;
 		}
@@ -52,7 +52,7 @@ class SCR_UISoundEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		m_SoundComponent = SoundComponent.Cast(FindComponent(SoundComponent));
+		m_SoundComponent = SimpleSoundComponent.Cast(FindComponent(SimpleSoundComponent));
 		
 		// Insert radio protocol subtitles settings change event
 		GetGame().OnUserSettingsChangedInvoker().Insert(SCR_CommunicationSoundComponent.SetSubtitiles);

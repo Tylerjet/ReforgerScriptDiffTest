@@ -1,6 +1,8 @@
 //! Custom string table item for the game
 class CustomStringTableItem: ScriptStringTableItem
 {
+	static override string GetTargetPrefix() { return "Target_"; }
+	
 	[Attribute(category:"Default", desc: "English (United States)\nServes as a source for translated texts.\nIf proofreading or translation is in progress, use 'Target_en_us_edited' instead.", uiwidget: UIWidgets.EditBoxWithButton)]
 	string Target_en_us;
 	[Attribute(category:"Default", desc: "English (United States)\nUse this when the string is being processed by proofreaders or translators.\nOnce it's done, the Localization Manager will move this text to 'Target_en_us'.", uiwidget: UIWidgets.EditBoxWithButton)]

@@ -39,6 +39,10 @@ class CharacterModifierAttributes: BaseItemAttributeData
 	Returns true if you can equip gadget while being in vehicle
 	*/
 	proto external bool CanBeEquippedInVehicle();
+	/*!
+	Returns true if character can roll and reload weapon at the same time
+	*/
+	proto external bool IsAllowedReloadingWithRoll();
 };
 
 /** @}*/

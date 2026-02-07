@@ -36,8 +36,8 @@ class SCR_FieldOfViewSettings : ModuleGameSettings
 	[Attribute(defvalue: "74", uiwidget: UIWidgets.Slider, params: "40 90 1", desc: "Field of view in vehicle camera.")]
 	float m_fVehicleFOV;
 
-	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Once toggling ADS, use maximum possible zoom.")]
-	bool m_bUseMaximumZoomInADS;
+	[Attribute(defvalue: "0.7", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "Aiming down sights focus intensity.")]
+	float m_fFocusInADS;
 
 	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Use focus mode by holding right mouse button.")]
 	bool m_bEnableFocus;
@@ -45,7 +45,7 @@ class SCR_FieldOfViewSettings : ModuleGameSettings
 
 class SCR_AudioSettings : ModuleGameSettings
 {
-	[Attribute(defvalue: "100", uiwidget: UIWidgets.Slider, params: "0 100 5", desc: "Ambient sounds dynamic range.")]
+	[Attribute(defvalue: "100", uiwidget: UIWidgets.Slider, params: "0 200 5", desc: "Audio dynamic range.")]
 	float m_fDynamicRange;
 };
 
@@ -155,7 +155,6 @@ class SCR_HintSettings : ModuleGameSettings
 		container.Set("m_aShownHints", m_aShownHints);
 		container.Set("m_aShownHintCounts", m_aShownHintCounts);
 		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 	}
 };
 

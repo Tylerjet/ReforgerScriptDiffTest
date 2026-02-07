@@ -28,7 +28,7 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 	bool AttachTo(IEntity target)
 	{
 		//--- No target, already attached target or inactive target - ignore
-		if (!target || target == m_Target || !(target.GetFlags() & EntityFlags.ACTIVE)) return false;
+		if (!target || target == m_Target || !SCR_Enum.HasFlag(target.GetFlags(), EntityFlags.ACTIVE | EntityFlags.TRACEABLE)) return false;
 		
 		SCR_ManualCamera camera = GetCameraEntity();
 		if (!camera) return false;

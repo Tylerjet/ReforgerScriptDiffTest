@@ -23,7 +23,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//this is changed only localy and doesnt replicate
 	protected bool m_bConfirmedByPlayer;
 	
-	private static SCR_GroupsManagerComponent s_Instance;
+	protected static SCR_GroupsManagerComponent s_Instance;
 	
 #ifdef DEBUG_GROUPS
 	static Widget s_wDebugLayout;
@@ -100,6 +100,24 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		
 		group.AddPlayer(playerID);
 		return groupID;
+	}
+	
+	//------------------------------------------------------------------------
+	void SetGroupLeader(int groupID, int playerID)
+	{
+		SCR_AIGroup group = FindGroup(groupID);
+		if (!group)
+			return;
+		group.SetGroupLeader(playerID);
+	}
+	
+	//------------------------------------------------------------------------
+	void SetPrivateGroup(int groupID, bool isPrivate)
+	{
+		SCR_AIGroup group = FindGroup(groupID);
+		if (!group)
+			return;
+		group.SetPrivate(isPrivate);
 	}
 	
 	//------------------------------------------------------------------------
@@ -383,7 +401,6 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	{
 		ReleaseFrequency(group.GetGroupFrequency(), group.GetFaction());
 		UnregisterGroup(group);
-		m_OnPlayableGroupRemoved.Invoke(group);
 		delete group;
 	}
 	
@@ -486,7 +503,11 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	SCR_AIGroup CreateNewPlayableGroup(Faction faction)
 	{
-		if (!Replication.IsServer())
+		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
+		if (!rplComp)
+			return null;
+		
+		if (!rplComp.IsMaster())
 			return null;
 		
 		Resource groupResource = Resource.Load(m_sDefaultGroupPrefab);
@@ -510,7 +531,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_AIGroup GetFirstNotFullForFaction(notnull Faction faction)
+	SCR_AIGroup GetFirstNotFullForFaction(notnull Faction faction, SCR_AIGroup ownGroup = null, bool respectPrivate = false)
 	{
 		SCR_AIGroup group;
 		array<SCR_AIGroup> factionGroups = GetPlayableGroupsByFaction(faction);
@@ -519,7 +540,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		
 		for (int i = 0, count = factionGroups.Count(); i < count; i++)
 		{
-			if (!factionGroups[i].IsFull())
+			if (!factionGroups[i].IsFull() && factionGroups[i] != ownGroup && (!respectPrivate || !factionGroups[i].IsPrivate()))
 			{
 				group = factionGroups[i];
 				break;
@@ -535,6 +556,10 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		FactionHolder factions = new FactionHolder();
 		if (GetFreeFrequency(newGroupFaction) == -1)
 			return false;
+		
+		if (TryFindEmptyGroup(newGroupFaction))
+			return false;
+		
 		return true;
 	}
 	

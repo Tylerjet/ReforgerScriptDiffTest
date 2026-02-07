@@ -196,7 +196,7 @@ class SCR_AIThreatSystem
 		
 		if (m_Combat)
 		{
-			if (m_Combat.GetCurrentEnemy())
+			if (m_Combat.GetCurrentTarget())
 				m_fThreatIsEndangered = ENDANGERED_INCREMENT;
 			else
 				m_fThreatIsEndangered -= m_fThreatIsEndangered * THREAT_ENDANGERED_DROP_RATE * timeSlice;

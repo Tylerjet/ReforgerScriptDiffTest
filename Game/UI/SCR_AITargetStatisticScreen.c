@@ -38,6 +38,8 @@ class SCR_AITargetStatsScreen
 			return;
 		
 		LayoutSlot.SetPadding(m_wRootTarget, 0, 10, 0, 0);
+		
+		GetGame().GetWorkspace().CreateWidgets("{1664A3BA018F3151}UI/layouts/Debug/AccuracyDebugLegend.layout", GetGame().GetWorkspace());
 	}
 	
 	void AddAccuracyDisplay()

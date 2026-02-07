@@ -13,7 +13,7 @@ class SCR_FlammableHitZone: SCR_DestructibleHitzone
 	private static const float			FIRE_TERRAIN_HEIGHT_TOLERANCE = 2.2; // Prevents spawning of ground fire effect if the vehicle is too high (in meters)
 	protected static const float 		LIGHT_EMISSIVITY_START = 1;
 	
-	private IEntity						m_pFireInstigator;
+	private int							m_iFireInstigatorID;
 	private EFireState					m_eFireState;
 	private float						m_fFireRate;
 	private float						m_fLightSmokeReductionRate;
@@ -160,8 +160,35 @@ class SCR_FlammableHitZone: SCR_DestructibleHitzone
 		SetFireRate(m_fFireRate + damage);
 		
 		// Last shot that sets the vehicle on fire is going to be remembered as instigator of fire
-		if (m_eFireState == EFireState.SMOKING_IGNITING || (!m_pFireInstigator && m_eFireState == EFireState.BURNING))
-			m_pFireInstigator = instigator;
+		if (m_eFireState == EFireState.SMOKING_IGNITING || (m_iFireInstigatorID == 0 && m_eFireState == EFireState.BURNING))
+			SetFireInstigator(instigator);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Inform damage manager about fire instigator
+	void SetFireInstigator(IEntity instigator)
+	{
+		int instigatorID;
+		
+		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
+		if (damageManager)
+		{
+			damageManager.SetInstigatorEntity(instigator);
+			instigatorID = damageManager.GetInstigatorID();
+		}
+		
+		SetFireInstigatorID(instigatorID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Inform damage manager about fire instigator
+	void SetFireInstigatorID(int instigatorID)
+	{
+		m_iFireInstigatorID = instigatorID;
+		
+		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
+		if (damageManager)
+			damageManager.SetInstigatorID(m_iFireInstigatorID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -174,18 +201,9 @@ class SCR_FlammableHitZone: SCR_DestructibleHitzone
 			return;
 		
 		if (GetDamageState() == EDamageState.DESTROYED)
-		{
 			StartDestructionFire();
-			if (m_pFireInstigator && m_eFireState == EFireState.BURNING)
-				m_pLastInstigatorMap.Set(this, m_pFireInstigator);
-			
-			m_pFireInstigator = null;
-		}
 		else if (GetPreviousDamageState() == EDamageState.DESTROYED)
-		{
 			StopDestructionFire();
-			m_pFireInstigator = null;
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -290,7 +308,7 @@ class SCR_FlammableHitZone: SCR_DestructibleHitzone
 		
 		// Clean the fire instigator if the fire is extinguished
 		if (m_eFireState < EFireState.SMOKING_IGNITING)
-			m_pFireInstigator = null;
+			SetFireInstigatorID(0);
 		
 		// Send update to remote clients
 		array<HitZone> hitZones = {};
@@ -373,6 +391,13 @@ class SCR_FlammableHitZone: SCR_DestructibleHitzone
 		
 		SetDamageOverTime(EDamageType.FIRE, fireRate);
 		
+		IEntity instigator;
+		if (m_iFireInstigatorID != 0)
+		{
+			SetFireInstigatorID(m_iFireInstigatorID);
+			instigator = GetGame().GetPlayerManager().GetPlayerControlledEntity(m_iFireInstigatorID);
+		}
+		
 		/*
 		// Damage surrounding hitzones
 		// TODO: Optimize and exclude current hitzone
@@ -391,7 +416,7 @@ class SCR_FlammableHitZone: SCR_DestructibleHitzone
 			damageOccupants *= fireRate / m_fFireDamageRateMin;
 		
 		if (damageOccupants > 0)
-			m_pCompartmentManager.DamageOccupants(damageOccupants, EDamageType.FIRE, m_pFireInstigator, false, false);
+			m_pCompartmentManager.DamageOccupants(damageOccupants, EDamageType.FIRE, instigator, false, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -491,7 +516,7 @@ class SCR_FlammableHitZone: SCR_DestructibleHitzone
 			return;
 		
 		if (!m_pDstParticle && !m_sDestructionParticle.IsEmpty())
-			m_pDstParticle = SCR_ParticleAPI.PlayOnObjectPTC( owner, m_sDestructionParticle, m_vParticleOffset, vector.Zero );
+			m_pDstParticle = SCR_ParticleEmitter.CreateAsChild(m_sDestructionParticle, owner, m_vParticleOffset, vector.Zero);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -541,7 +566,7 @@ class SCR_FlammableHitZone: SCR_DestructibleHitzone
 		position[1] = surfaceY;
 		
 		if (!m_sDestructionParticle.IsEmpty())
-			m_pBurningGroundParticle = SCR_ParticleAPI.PlayOnPositionPTC(m_sBurningGroundParticle, position);
+			m_pBurningGroundParticle =SCR_ParticleEmitter.Create(m_sBurningGroundParticle, position);
 	}
 	
 	// Stops fire on vehicle and on the ground
@@ -584,19 +609,19 @@ class SCR_FlammableHitZone: SCR_DestructibleHitzone
 			// Spawn particles on object
 			if (!m_pDmgParticleLight)
 			{
-				m_pDmgParticleLight = SCR_ParticleAPI.PlayOnObjectPTC(owner, m_sDamagedParticle, m_vParticleOffset, vector.Zero);
+				m_pDmgParticleLight = SCR_ParticleEmitter.CreateAsChild(m_sDamagedParticle, owner, m_vParticleOffset, vector.Zero);
 				m_pDmgParticleLight.Pause();
 			}
 			
 			if (!m_pDmgParticleHeavy)
 			{
-				m_pDmgParticleHeavy = SCR_ParticleAPI.PlayOnObjectPTC(owner, m_sDamagedParticleHeavy, m_vParticleOffset, vector.Zero);
+				m_pDmgParticleHeavy = SCR_ParticleEmitter.CreateAsChild(m_sDamagedParticleHeavy, owner, m_vParticleOffset, vector.Zero);
 				m_pDmgParticleHeavy.Pause();
 			}
 			
 			if (!m_pBurningParticle)
 			{
-				m_pBurningParticle = SCR_ParticleAPI.PlayOnObjectPTC(owner, m_sBurningParticle, m_vParticleOffset, vector.Zero);
+				m_pBurningParticle = SCR_ParticleEmitter.CreateAsChild(m_sBurningParticle, owner, m_vParticleOffset, vector.Zero);
 				m_pBurningParticle.Pause();
 			}
 		}
@@ -607,7 +632,7 @@ class SCR_FlammableHitZone: SCR_DestructibleHitzone
 		{
 			if (!m_bIsBurning)
 			{
-				m_pBurningParticle.RestartParticle();
+				m_pBurningParticle.GetParticles().Restart();
 				m_bIsBurning = true;	
 			}
 			

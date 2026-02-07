@@ -101,7 +101,7 @@ class SCR_CameraParticleEditor
 	{
 		if (m_Effect.IsEmpty()) return;
 		
-		m_Emitter = SCR_ParticleAPI.PlayOnObjectPTC(target, m_Effect);
+		m_Emitter =SCR_ParticleEmitter.CreateAsChild(m_Effect, target);
 	}
 	void Destroy()
 	{

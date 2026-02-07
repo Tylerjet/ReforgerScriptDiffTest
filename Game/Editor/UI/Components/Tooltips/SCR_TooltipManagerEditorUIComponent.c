@@ -115,12 +115,13 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 	protected void PlayAnimation()
 	{
 		//m_TooltipArea.GetWidget().SetOpacity(1);
-		WidgetAnimator.PlayAnimation(m_TooltipArea.GetWidget(), WidgetAnimationType.Opacity, 1, m_fFadeInSpeed);
+		AnimateWidget.Opacity(m_TooltipArea.GetWidget(), 1, m_fFadeInSpeed);
+		
 		m_bTooltipShown = true;
 	}
 	protected void ResetAnimation()
 	{
-		WidgetAnimator.StopAnimation(m_TooltipArea.GetWidget(), WidgetAnimationType.Opacity);
+		AnimateWidget.StopAnimation(m_TooltipArea.GetWidget(), WidgetAnimationOpacity);
 		m_TooltipArea.GetWidget().SetOpacity(0);
 		m_bTooltipShown = false;
 	}
@@ -153,23 +154,16 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 			ShowEntityTooltip(entitiesInsert[0]);
 		}
 	}
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
+		/*
+		if (!GetMenu())
 			return;
 		
-		MenuRootBase menu = GetMenu();
-		if (!menu) return;
-		
-		/*
-		if (m_InputManager.IsUsingMouseAndKeyboard())
-		{
-			menu.GetOnMenuUpdate().Insert(OnMenuUpdate);
-		}
+		if (newDevice == EInputDeviceType.KEYBOARD || newDevice == EInputDeviceType.MOUSE)
+			GetMenu().GetOnMenuUpdate().Insert(OnMenuUpdate);
 		else
-		{
-			menu.GetOnMenuUpdate().Remove(OnMenuUpdate);
-		}
+			GetMenu().GetOnMenuUpdate().Remove(OnMenuUpdate);
 		*/
 	}
 	protected void OnRadialMenuToggle(IEntity owner, bool isOpened)
@@ -273,7 +267,7 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		m_InputManager = GetGame().GetInputManager();
 		if (!m_InputManager) return;
 		
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		MenuRootBase menu = GetMenu();
 		if (menu)
@@ -314,8 +308,8 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 	}
 	override void HandlerDeattached(Widget w)
 	{
-		if (GetGame().OnInputDeviceUserChangedInvoker())
-			GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+		if (GetGame().OnInputDeviceIsGamepadInvoker())
+			GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		
 		MenuRootBase menu = GetMenu();
 		if (menu)

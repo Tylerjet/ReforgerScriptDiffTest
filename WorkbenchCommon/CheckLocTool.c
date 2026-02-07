@@ -13,8 +13,10 @@ class CheckLocalizationPlugin: LocalizationEditorPlugin
 				report = "Text = \"" + text + "\" in Widget: " + src.GetName() + "\n";
 			}
 			
-			report += FindTexts(src.GetChildren());
-			report += FindTexts(src.GetSibling());
+			for (int e = 0, count = src.GetNumChildren(); e < count; e++)
+			{
+				report += FindTexts(src.GetChild(e));
+			}
 		}
 		
 		return report;

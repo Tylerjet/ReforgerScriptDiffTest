@@ -15,7 +15,7 @@ class SCR_LifetimeComponent : ScriptComponent
 	{
 		if (m_fLifeTime < 0)
 		{
-			SCR_Global.DeleteEntityAndChildren(owner);
+			SCR_EntityHelper.DeleteEntityAndChildren(owner);
 			return;
 		}
 		m_fLifeTime -= timeSlice;

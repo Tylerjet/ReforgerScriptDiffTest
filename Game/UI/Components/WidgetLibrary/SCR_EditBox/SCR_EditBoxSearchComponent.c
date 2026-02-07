@@ -23,7 +23,7 @@ class SCR_EditBoxSearchComponent : SCR_EditBoxComponent
 		super.OnHandlerFocus();
 		
 		if (!m_bIsFilterActive)
-			WidgetAnimator.PlayAnimation(m_wSeachIcon, WidgetAnimationType.Color, COLOR_FOCUSED, m_fColorsAnimationTime);
+			AnimateWidget.Color(m_wSeachIcon, COLOR_FOCUSED, m_fColorsAnimationTime);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ class SCR_EditBoxSearchComponent : SCR_EditBoxComponent
 	{
 		super.OnHandlerFocusLost();
 		if (!m_bIsFilterActive)
-			WidgetAnimator.PlayAnimation(m_wSeachIcon, WidgetAnimationType.Color, COLOR_DEFAULT, m_fColorsAnimationTime);
+			AnimateWidget.Color(m_wSeachIcon, COLOR_DEFAULT, m_fColorsAnimationTime);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -44,11 +44,11 @@ class SCR_EditBoxSearchComponent : SCR_EditBoxComponent
 		if (GetValue() == string.Empty)
 		{
 			m_bIsFilterActive = false;
-			WidgetAnimator.PlayAnimation(m_wSeachIcon, WidgetAnimationType.Color, COLOR_FOCUSED, m_fColorsAnimationTime);
+			AnimateWidget.Color(m_wSeachIcon, COLOR_FOCUSED, m_fColorsAnimationTime);
 		}
 		else
 		{
-			WidgetAnimator.PlayAnimation(m_wSeachIcon, WidgetAnimationType.Color, COLOR_SEARCHED, m_fColorsAnimationTime);
+			AnimateWidget.Color(m_wSeachIcon, COLOR_SEARCHED, m_fColorsAnimationTime);
 			m_bIsFilterActive = true;
 		}
 	}

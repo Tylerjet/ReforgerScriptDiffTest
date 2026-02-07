@@ -33,11 +33,8 @@ class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 		return m_OnSpeedChange;
 	}
 	
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
 		m_fMultiplier = 1;
 		m_OnSpeedChange.Invoke(m_fMultiplier, false);
 		m_Widget.SetVisible(false);
@@ -121,7 +118,7 @@ class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 		{
 			Print("Value range in SCR_AdjustSpeedManualCameraComponent must contain 1!", LogLevel.ERROR);
 		}
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		GetInputManager().AddActionListener("ManualCameraSpeedReset", EActionTrigger.DOWN, ManualCameraSpeedReset);
 		
@@ -130,7 +127,7 @@ class SCR_AdjustSpeedManualCameraComponent : SCR_BaseManualCameraComponent
 	}
 	override void EOnCameraExit()
 	{
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		
 		GetInputManager().RemoveActionListener("ManualCameraSpeedReset", EActionTrigger.DOWN, ManualCameraSpeedReset);
 		

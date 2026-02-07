@@ -495,7 +495,7 @@ class SCR_DestructibleTreeV2 : Tree
 			BaseSoundComponent soundComponent = synchManager.GetSoundComponent();
 			if (soundComponent)
 			{
-				soundComponent.PlayStr("SOUND_HIT_GROUND");
+				soundComponent.PlayStr(SCR_SoundEvent.SOUND_HIT_GROUND);
 			}
 		}
 	}

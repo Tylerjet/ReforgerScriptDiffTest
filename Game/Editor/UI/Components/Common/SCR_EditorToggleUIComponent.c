@@ -86,7 +86,7 @@ class SCR_EditorToggleUIComponent: ScriptedWidgetComponent
 		
 		if (m_AutoInit.IsVisible())
 		{
-			WidgetAnimator.PlayAnimation(new WidgetAnimationOpacity(m_AutoInit, WidgetAnimator.FADE_RATE_SUPER_SLOW, 0));
+			AnimateWidget.Opacity(m_AutoInit, 0, UIConstants.FADE_RATE_SUPER_SLOW);
 			
 			if (m_InitLoadingWidget)
 				m_InitLoadingWidget.FadeOut(true);

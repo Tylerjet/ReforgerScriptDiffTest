@@ -43,6 +43,12 @@ class UIColors
 
 class UIConstants
 {
+	static const float FADE_RATE_SUPER_FAST = 20;
+	static const float FADE_RATE_FAST = 10;
+	static const float FADE_RATE_DEFAULT = 5; // Used for near instant actions
+	static const float FADE_RATE_SLOW = 1; // Used for fading out elements that should be visible for some time
+	static const float FADE_RATE_SUPER_SLOW = 0.2; // Very slow fade out
+	
     const float DISABLED_WIDGET_OPACITY = 0.3;
     const float ENABLED_WIDGET_OPACITY = 1;
 	

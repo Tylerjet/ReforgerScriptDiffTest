@@ -159,7 +159,7 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 		GetGame().GetCallqueue().CallLater(AutoFadeDelay, fadeDelay);
 		
 		m_wRoot.SetOpacity(0);
-		WidgetAnimator.PlayAnimation(new WidgetAnimationOpacity(m_wRoot, FADE_IN_SPEED, 1));
+		AnimateWidget.Opacity(m_wRoot, 1, FADE_IN_SPEED);
 	}
 	
 	//======================== SET COLOR ========================\\
@@ -316,8 +316,7 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 	
 	protected void FadeDelete(float fadeSpeed)
 	{
-		WidgetAnimator.StopAllAnimations(m_wRoot);
-		WidgetAnimator.PlayAnimation(new WidgetAnimationOpacity(m_wRoot, fadeSpeed, 0));
+		AnimateWidget.Opacity(m_wRoot, 0, fadeSpeed);
 		
 		if (!m_bIsListeningToDoneFade)
 		{
@@ -329,7 +328,7 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 	
 	protected void AnimationDoneListenerUpdate()
 	{
-		if (!WidgetAnimator.IsAnimating(m_wRoot))
+		if (!AnimateWidget.IsAnimating(m_wRoot))
 			DeleteNotification();
 	}
 	

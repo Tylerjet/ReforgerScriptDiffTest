@@ -4,16 +4,21 @@
 [BaseContainerProps()]
 class SCR_CharacterHasGadgetCondition : SCR_AvailableActionCondition
 {
-	//This will check equipemnt of specific widget - otherwise will check aný
-	[Attribute("1", UIWidgets.ComboBox, "", "" )]
-	private bool m_bCheckSpecificGadget;
+	//This will check equipemnt of specific widget - otherwise will check any
+	[Attribute("1", UIWidgets.CheckBox, "Only if gadget is in hands", "" )]
+	protected bool m_bEquipped;
 	
-	[Attribute("0", UIWidgets.ComboBox, "Which gadget?", "", ParamEnumArray.FromEnum(EGadgetType) )]
-	private EGadgetType m_eGadget;
+	[Attribute("1", UIWidgets.CheckBox, "", "" )]
+	protected bool m_bCheckSpecificGadget;
 	
-	// Probably split or sth
-	[Attribute("0", UIWidgets.ComboBox, "Does the gadget have to be currently selected for the condition to pass?", "" )]
-	private bool m_bEquipped;
+	[Attribute(defvalue: SCR_Enum.GetDefault(EGadgetType.MAP), UIWidgets.ComboBox, "Gadget type", "", ParamEnumArray.FromEnum(EGadgetType) )]
+	protected EGadgetType m_eGadget;
+	
+	[Attribute("0", UIWidgets.CheckBox, "Pass if the gadget is turned on", "" )]
+	protected bool m_bIsToggledOn;
+	
+	[Attribute("0", UIWidgets.CheckBox, "Pass if the gadget is turned off", "" )]
+	protected bool m_bIsToggledOff;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when current controlled entity has specified gadget
@@ -23,27 +28,37 @@ class SCR_CharacterHasGadgetCondition : SCR_AvailableActionCondition
 		if (!data)
 			return false;
 		
-		//IEntity gadget = data.GetGadget(m_eGadget);
-		IEntity heldGadget = data.GetHeldGadget();
-		bool result = heldGadget != null;
+		bool equipped;
 		
-		// We want to have it equipped, but it is not equipped
-		if (m_bEquipped && heldGadget)
+		SCR_GadgetComponent heldGadgetComponent = data.GetHeldGadgetComponent();
+		if (m_bCheckSpecificGadget)
 		{
-			SCR_GadgetComponent heldGadgetCom = SCR_GadgetComponent.Cast(heldGadget.FindComponent(SCR_GadgetComponent));
-			
-			if (m_bCheckSpecificGadget)
-			{
-				if (!heldGadget || heldGadgetCom.GetType() != m_eGadget)
-					result = false;
-			}
-			else
-			{
-				if (!heldGadget)
-					result = false;
-				else
-					result = true;
-			}
+			// Specific gadget type is required
+			equipped = heldGadgetComponent && heldGadgetComponent.GetType() == m_eGadget;
+		}
+		else if (data.GetHeldGadget())
+		{
+			// Any gadget will do
+			equipped = true;
+		}
+		
+		bool result;
+		if (!m_bEquipped)
+		{
+			// Check gadgets that are not in hands
+			// Fail if gadget of the same type is already equipped
+			result = !equipped && data.GetGadget(m_eGadget);
+		}
+		// Allow only toggled on or off
+		else if (equipped && (m_bIsToggledOn || m_bIsToggledOff))
+		{
+			// Pass if either requirement is met
+			bool isToggledOn = heldGadgetComponent && heldGadgetComponent.IsToggledOn();
+			result = (isToggledOn && m_bIsToggledOn) || (!isToggledOn && m_bIsToggledOff);
+		}
+		else
+		{
+			result = equipped;
 		}
 		
 		return GetReturnResult(result);

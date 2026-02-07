@@ -1,25 +1,30 @@
 class SCR_WeatherForecastUIComponent: ScriptedWidgetComponent
-{
-	[Attribute("#AR-Weather_Forecast_Looping")]
- 	protected LocalizedString m_sLoopingWeatherText;
-	
-	[Attribute("#AR-Weather_Forecast_NoTimeProgression")]
-	protected LocalizedString m_sNoTimeProgressionText;
-	
-	[Attribute("WeatherIcon")]
+{	
+	[Attribute("Current_Icon")]
 	protected string m_sCurrentWeatherIconName;
 	
-	[Attribute("CurrentWeather")] 
+	[Attribute("Current_Name")] 
 	protected string m_sCurrentWeatherTextName;
 	
-	[Attribute("NextWeather")] 
-	protected string m_sNextWeatherTextName;
-		
-	[Attribute("#AR-Date_Format_CurrentWeather")] 
-	protected LocalizedString m_sCurrentWeatherFormat;
+	[Attribute("Forecast_Icon")]
+	protected string m_sNextWeatherIconName;
 	
-	[Attribute("#AR-Date_Format_NextWeather")] 
-	protected LocalizedString m_sNextWeatherFormat;
+	[Attribute("Forecast_Title")] 
+	protected string m_sNextWeatherTimeName;
+	
+	[Attribute("Forecast_Name")] 
+	protected string m_sNextWeatherTextName;
+	
+	[Attribute("GameInfo_Weather_Forecast")] 
+	protected string m_sNextWeatherHolderName;
+	
+	[Attribute("#AR-Weather_Forecast_Looping", uiwidget: UIWidgets.LocaleEditBox)]
+	protected LocalizedString m_sLoopingWeatherText;
+	
+	[Attribute("1", "Update freq of weather UI in seconds")]
+	protected float m_fUIUpdateFreq;
+	
+	protected bool m_bListeningToUpdate;
 	
 	protected TimeAndWeatherManagerEntity m_TimeAndWeatherEntity;
 	protected WeatherStateTransitionManager m_WeatherStateManager;
@@ -28,6 +33,9 @@ class SCR_WeatherForecastUIComponent: ScriptedWidgetComponent
 	protected ImageWidget m_wCurrentWeatherIcon;
 	protected TextWidget m_wCurrentWeatherText;
 	protected TextWidget m_wNextWeatherText;
+	protected TextWidget m_wNextWeatherTimeText;
+	protected ImageWidget m_wNextWeatherIcon;
+	protected Widget m_wNextWeatherHolder;
 	protected Widget m_wRoot;
 	
 	//~Todo: Update using TimeAndWeather callback once implemented
@@ -38,32 +46,54 @@ class SCR_WeatherForecastUIComponent: ScriptedWidgetComponent
 		
 		WeatherState currentWeather = m_WeatherStateManager.GetCurrentState();		
 		m_wCurrentWeatherIcon.LoadImageTexture(0, currentWeather.GetIconPath());
-		m_wCurrentWeatherText.SetTextFormat(m_sCurrentWeatherFormat, currentWeather.GetLocalizedName());
+		m_wCurrentWeatherText.SetText(currentWeather.GetLocalizedName());
 		
 		WeatherState nextWeather = m_WeatherStateManager.GetNextState();
-		
-		//~ Time progression disabled
-		if (!m_TimeAndWeatherEntity.GetIsDayAutoAdvanced())
+		if (!nextWeather)
 		{
-			m_wNextWeatherText.SetTextFormat(m_sNoTimeProgressionText);
-		}
-		//~ Is looping
-		else if (m_TimeAndWeatherEntity.IsWeatherLooping())
-		{
-			m_wNextWeatherText.SetTextFormat(m_sLoopingWeatherText);
+			m_wNextWeatherHolder.SetVisible(false);
+			return;
 		}
 		else 
-		{		
+		{
+			m_wNextWeatherHolder.SetVisible(true);
+		}
+		
+
+		//~ Looping weather or Time progression disabled
+		if (m_TimeAndWeatherEntity.IsWeatherLooping() || !m_TimeAndWeatherEntity.GetIsDayAutoAdvanced())
+		{
+			m_wNextWeatherTimeText.SetText(m_sLoopingWeatherText);
+		}
+		else 
+		{
 			float duration = m_WeatherStateManager.GetTimeLeftUntilNextState();
-			
 			float changeTime = duration + m_TimeAndWeatherEntity.GetTimeOfTheDay();
-			if (changeTime >= 24)
+			while (changeTime >= 24)
 				changeTime -= 24;
 			int nextWeatherHour = Math.Floor(changeTime);
 			int nextWeatherMinutes = (changeTime - nextWeatherHour) * 60;
-
-			m_wNextWeatherText.SetTextFormat(m_sNextWeatherFormat, nextWeather.GetLocalizedName(), SCR_Global.GetTimeFormattingHoursMinutes(nextWeatherHour, nextWeatherMinutes));
+			
+			if (nextWeatherMinutes >= 0 && nextWeatherMinutes <= 15)
+				nextWeatherMinutes = 15;
+			else if (nextWeatherMinutes > 15 && nextWeatherMinutes <= 30)
+				nextWeatherMinutes = 30;
+			else if (nextWeatherMinutes > 30 && nextWeatherMinutes <= 45)
+				nextWeatherMinutes = 45;
+			else if (nextWeatherMinutes > 45)
+			{
+				nextWeatherMinutes = 0;
+				nextWeatherHour++;
+				
+				if (nextWeatherHour >= 24)
+					nextWeatherHour -= 24;
+			}
+			
+			m_wNextWeatherTimeText.SetTextFormat(SCR_Global.GetTimeFormattingHoursMinutes(nextWeatherHour, nextWeatherMinutes));
 		}
+			
+		m_wNextWeatherText.SetText(nextWeather.GetLocalizedName()); 
+		m_wNextWeatherIcon.LoadImageTexture(0, nextWeather.GetIconPath());
 	}
 	
 	protected void ShowWeatherUI(bool show)
@@ -74,18 +104,30 @@ class SCR_WeatherForecastUIComponent: ScriptedWidgetComponent
 	
 	override void HandlerAttached(Widget w)
 	{
+		if (SCR_Global.IsEditMode())
+			return;
+		
 		m_wRoot = w;
 		m_wCurrentWeatherIcon = ImageWidget.Cast(w.FindAnyWidget(m_sCurrentWeatherIconName));
 		m_wCurrentWeatherText = TextWidget.Cast(w.FindAnyWidget(m_sCurrentWeatherTextName));
-		m_wNextWeatherText = TextWidget.Cast(w.FindAnyWidget(m_sNextWeatherTextName));
 		
-		if (!m_wCurrentWeatherIcon || !m_wCurrentWeatherText || !m_wNextWeatherText)
+		if (!m_wCurrentWeatherIcon || !m_wCurrentWeatherText)
 		{
-			Print("SCR_WeatherForecastUIComponent is missing weather widgets and won't work.", LogLevel.WARNING);
+			Print("'SCR_WeatherForecastUIComponent' is missing current weather widgets and won't work.", LogLevel.WARNING);
 			return;
 		}
-			
 		
+		m_wNextWeatherIcon  = ImageWidget.Cast(w.FindAnyWidget(m_sNextWeatherIconName));
+		m_wNextWeatherText = TextWidget.Cast(w.FindAnyWidget(m_sNextWeatherTextName));
+		m_wNextWeatherTimeText = TextWidget.Cast(w.FindAnyWidget(m_sNextWeatherTimeName));
+		
+		if (!m_wNextWeatherIcon || !m_wNextWeatherText || !m_wNextWeatherTimeText)
+		{
+			Print("'SCR_WeatherForecastUIComponent' is missing next weather widgets and won't work.", LogLevel.WARNING);
+			return;
+		}
+		
+		m_wNextWeatherHolder = w.FindAnyWidget(m_sNextWeatherHolderName);		
 		m_TimeAndWeatherEntity = GetGame().GetTimeAndWeatherManager();
 		
 		if (!m_TimeAndWeatherEntity)
@@ -111,14 +153,12 @@ class SCR_WeatherForecastUIComponent: ScriptedWidgetComponent
 		}
 		
 		CheckWeatherUpdate();
-		GetGame().GetCallqueue().CallLater(CheckWeatherUpdate, 2000, true);
-		
+		m_bListeningToUpdate = true;
+		GetGame().GetCallqueue().CallLater(CheckWeatherUpdate, m_fUIUpdateFreq * 1000, true);
 	}
 	override void HandlerDeattached(Widget w)
 	{
-		if (!m_WeatherStateManager || m_WeatherStates.IsEmpty() || !m_wCurrentWeatherIcon || !m_wCurrentWeatherText || !m_wNextWeatherText)
-			return;
-		
-		GetGame().GetCallqueue().Remove(CheckWeatherUpdate);
+		if (m_bListeningToUpdate)
+			GetGame().GetCallqueue().Remove(CheckWeatherUpdate);
 	}
 };

@@ -75,18 +75,3 @@ enum CharacterStance
 	STANCE_PRONE_RAISED
 };
 
-/*! 
-!!! Do NOT inherit from this class, use ShapePointDataScriptBase instead
-Dummy class just to make sure the inheritance works
-*/
-class ShapePointDataBase
-{
-}
-
-/*!
-Classes inherited from this class can be data of ShapeEntity points
-Dummy class just to make sure the inheritance works
-*/
-class ShapePointDataScriptBase : ShapePointDataBase
-{
-}

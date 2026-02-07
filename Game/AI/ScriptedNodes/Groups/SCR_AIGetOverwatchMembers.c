@@ -108,7 +108,7 @@ class SCR_AIGetOverwatchMembers: AITaskScripted
 				continue;
 
 			if (aIInfoComponent.GetFireTeam() == teamSelection && 
-				(aIInfoComponent.HasRole(EUnitRole.RIFLEMAN) || aIInfoComponent.HasRole(EUnitRole.MACHINEGUNNER) || aIInfoComponent.HasUnitState(EUnitState.STATIC)))
+				(aIInfoComponent.HasRole(EUnitRole.RIFLEMAN) || aIInfoComponent.HasRole(EUnitRole.MACHINEGUNNER) || aIInfoComponent.HasUnitState(EUnitState.IN_TURRET)))
 			{
 				isCoveringPresent = true;
 				//Selection conditions could be improved

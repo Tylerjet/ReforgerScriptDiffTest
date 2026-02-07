@@ -12,29 +12,176 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 {
 	protected const int ASYNC_TICK_LENGTH = 16; //--- How many ticks are allowed per async loading cycle
 	
-	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Labels that are active by default", "", ParamEnumArray.FromEnum(EEditableEntityLabel))]
-	protected ref array<EEditableEntityLabel> m_DefaultActiveLabels;
+	/*[Attribute("0", uiwidget: UIWidgets.ComboBox, "Labels that are active by default", "", ParamEnumArray.FromEnum(EEditableEntityLabel))]
+	protected ref array<EEditableEntityLabel> m_DefaultActiveLabels;*/
 	
 	[Attribute(desc: "Content browser menu preset.", defvalue: "-1", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(ChimeraMenuPreset))]
 	private ChimeraMenuPreset m_MenuPreset;
+
+	[Attribute(desc: "A list of saved states of the content browser such as labels and pagination. Index 0 is the saved hand filters.")]
+	protected ref array<ref SCR_EditorContentBrowserSaveStateDataUI> m_aContentBrowserTabStates;
+
+	//~ Saved content browser state when content browser is opened with config
+	protected ref map<ref SCR_EditorContentBrowserDisplayConfig, ref SCR_EditorContentBrowserSaveStateData> m_mContentBrowserConfigStates = new ref map<ref SCR_EditorContentBrowserDisplayConfig, ref SCR_EditorContentBrowserSaveStateData>;
+	
+	protected ref SCR_EditorContentBrowserDisplayConfig m_ContentBrowserConfig;
 	
 	private ref array<EEditableEntityLabel> m_ActiveLabels = {};
 	
 	protected ref array<ref SCR_EditableEntityCoreLabelGroupSetting> m_LabelGroups = {};
 	
+	protected ref array<int> m_aFilteredPrefabIDs = {};
+	protected ref array<string> m_aLocalizationKeys = {};
+	protected int m_iFilteredPrefabIDsCount;
+	
+	protected SCR_MenuEditorComponent m_EditorMenuManager;
+	protected SCR_PlacingEditorComponent m_PlacingManager;
+	protected SCR_BudgetEditorComponent m_BudgetManager;
+	protected SCR_PrefabsCacheEditorComponent m_PrefabsCache;
 	protected ref array<ref SCR_EditableEntityUIInfo> m_aInfos;
 	protected ref array<ResourceName> m_aAsyncPrefabs;
 	protected int m_iAsyncIndex;
 	
+	protected int m_iBrowserStateIndex = 0;
 	protected int m_iPageIndex;
+	protected int m_iPageEntryCount = 15;
+	protected string m_sCurrentSearchText;
 	protected string m_sLastSearchText;
 	
 	protected SCR_EditableEntityComponent m_ExtendedEntity;
 	protected SCR_EditableEntityCore m_EntityCore;
 	
 	protected ref ScriptInvoker Event_OnLabelChanged = new ScriptInvoker;
-	protected ref ScriptInvoker Event_OnActiveLabelsReset = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnSearchConfirm = new ScriptInvoker; //~ Sends current search string
+	protected ref ScriptInvoker Event_OnBrowserStatesSaved = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnBrowserStatePreload = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnBrowserStateLoaded = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnBrowserEntriesFiltered = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnBrowserStateCleared = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnEnableSaveStateTabs = new ScriptInvoker; //~ Sends enable bool
 	
+	
+	/*!
+	Get prefab ID of item at given index
+	\param index Index of entry in filtered list/grid
+	\return int Prefab ID of entity at index
+	*/
+	int GetFilteredPrefabID(int index)
+	{
+		if (index >= 0 && index < m_aFilteredPrefabIDs.Count())
+		{
+			return m_aFilteredPrefabIDs.Get(index);
+		}
+		return -1;
+	}
+	
+	/*!
+	Get prefab ID of item at given index
+	\param index Index of entry in filtered list/grid
+	\return int Prefab ID of entity at index
+	*/
+	int GetFilteredPrefabCount()
+	{
+		return m_iFilteredPrefabIDsCount;
+	}
+	
+	/*!
+	Filter entries cached on component with current filters
+	\return bool True when provided labels match active labels
+	*/
+	void FilterEntries()
+	{
+		SCR_EditableEntityComponent extendedEntity = GetExtendedEntity();
+		bool isExtending = extendedEntity != null;
+		ResourceName extendedPrefab;
+		bool isInheritedSlot;
+		if (isExtending)
+		{
+			extendedPrefab = extendedEntity.GetPrefab();
+			isInheritedSlot = extendedEntity.HasEntityFlag(EEditableEntityFlag.SLOT);
+		}
+		
+		// Filter labels
+		m_aFilteredPrefabIDs.Clear();
+		m_aLocalizationKeys.Clear();
+		array<EEditableEntityLabel> entityLabels = {};
+		
+		SCR_EditableEntityUIInfo info;
+		int count = GetInfoCount();
+		for (int i = 0; i < count; i++)
+		{
+			entityLabels.Clear();
+			info = GetInfo(i);
+			
+			if (!info)
+			{
+				continue;
+			}
+			
+			if (isExtending)
+			{
+				if (m_PrefabsCache && isInheritedSlot)
+				{
+					if (!m_PrefabsCache.IsPrefabInherited(info.GetSlotPrefab(), extendedPrefab))
+						continue;
+				}
+				else
+				{
+					if (info.GetSlotPrefab() != extendedPrefab)
+						continue;
+				}
+			}
+			else
+			{
+				//--- Browser opened generically - ignore assets on fixed position
+				if (info.HasEntityFlag(EEditableEntityFlag.STATIC_POSITION) && extendedPrefab != extendedPrefab)
+					continue;
+			}
+			
+			info.GetEntityLabels(entityLabels);
+			if (!IsMatchingToggledLabels(entityLabels))
+				continue;
+			
+ 			m_aFilteredPrefabIDs.Insert(i);
+			
+			m_aLocalizationKeys.Insert(info.GetName());
+		}
+		
+		// Search
+		string currentSearch = GetCurrentSearch();		
+		if (!currentSearch.IsEmpty())
+		{
+			array<int> searchResultPrefabID = {}, searchResultIndices = {};
+			WidgetManager.SearchLocalized(currentSearch, m_aLocalizationKeys, searchResultIndices);
+			
+			foreach (int searchResultIndex : searchResultIndices)
+			{
+				int prefabID = m_aFilteredPrefabIDs.Get(searchResultIndex);
+				searchResultPrefabID.Insert(prefabID);
+			}
+			m_aFilteredPrefabIDs.Copy(searchResultPrefabID);
+		}
+		
+		m_iFilteredPrefabIDsCount = m_aFilteredPrefabIDs.Count();
+		
+		Event_OnBrowserEntriesFiltered.Invoke();
+	}
+	
+	bool isMatchingToggledLabelsOfState(int savedStateIndex)
+	{
+		if (savedStateIndex >= m_aContentBrowserTabStates.Count())
+			return false;
+		
+		 array<EEditableEntityLabel> activeLabels = {};
+		
+		m_aContentBrowserTabStates[savedStateIndex].GetLabels(activeLabels);
+		return IsMatchingToggledLabels(activeLabels);
+	}
+	
+	/*!
+	Get if provided (entity) labels match current active selection, according to rules defined in config
+	\return bool True when provided labels match active labels
+	*/
 	bool IsMatchingToggledLabels(notnull array<EEditableEntityLabel> entityLabels)
 	{
 		if (!IsAnyLabelActive())
@@ -88,16 +235,30 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		return true;
 	}
 	
+	/*!
+	Get if passed entity label currently active
+	\param EEditableEntityLabel enum value
+	\return bool True when label is active
+	*/
 	bool IsLabelActive(EEditableEntityLabel entityLabel)
 	{
 		return m_ActiveLabels.Find(entityLabel) != -1;
 	}
 	
+	/*!
+	Get if any label is currently active
+	\return bool True when at least one label is active
+	*/
 	bool IsAnyLabelActive()
 	{
 		return !m_ActiveLabels.IsEmpty();
 	}
 	
+	/*!
+	Set label active
+	\param EEditableEntityLabel enum value
+	\param bool set active state
+	*/
 	void SetLabel(EEditableEntityLabel entityLabel, bool active)
 	{
 		bool labelActive = IsLabelActive(entityLabel);
@@ -113,10 +274,16 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		Event_OnLabelChanged.Invoke(entityLabel, active);
 	}
 	
-	void ResetAllLabels()
+	/*!
+	Reset the set labels
+	\param setConfigData if true and applicable will set config data hidding certain labels and setting labels active
+	*/
+	void ResetAllLabels(bool setConfigData = true)
 	{
 		m_ActiveLabels.Clear();
-		Event_OnActiveLabelsReset.Invoke();
+		
+		if (setConfigData)
+			SetConfigLabels();
 	}
 	
 	void ResetLabelsOfGroup(EEditableEntityLabelGroup groupType)
@@ -126,7 +293,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	
 	void GetActiveLabels(out notnull array<EEditableEntityLabel> activeLabels)
 	{
-		activeLabels.InsertAll(m_ActiveLabels);
+		activeLabels.Copy(m_ActiveLabels);
 	}
 	
 	int GetActiveLabelCount()
@@ -144,6 +311,16 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		return m_EntityCore.GetLabelGroupType(entityLabel, groupLabel);
 	}
 	
+	/*!
+	Get the order of the given group type
+	\param groupLabel given group type
+	\return order
+	*/
+	int GetLabelGroupOrder(EEditableEntityLabelGroup groupLabel)
+	{
+		return m_EntityCore.GetLabelGroupOrder(groupLabel);
+	}
+	
 	bool GetLabelsOfGroup(EEditableEntityLabelGroup labelGroupType, out notnull array<SCR_EditableEntityCoreLabelSetting> labels)
 	{
 		return m_EntityCore.GetLabelsOfGroup(labelGroupType, labels);
@@ -154,11 +331,42 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		return m_EntityCore.GetLabelUIInfo(entityLabel, uiInfo);
 	}
 	
-	int GetLabelOrder(EEditableEntityLabel entityLabel)
+	/*!
+	Order given labels. Using group order and label order
+	\param[inout] labels that need to be ordered
+	*/
+	void OrderLabels(inout notnull array<EEditableEntityLabel> activeLabels)
 	{
-		// return m_EntityCore.GetLabelOrder(entityLabel);
+		m_EntityCore.OrderLabels(activeLabels);
 	}
 	
+	/*!
+	Get order of given label type in it's label group
+	\return Label order
+	*/
+	int GetLabelOrderInGroup(EEditableEntityLabel entityLabel)
+	{
+		EEditableEntityLabelGroup groupLabel;
+		GetLabelGroupType(entityLabel, groupLabel);
+		
+		array<SCR_EditableEntityCoreLabelSetting> labelsInGroup = new array<SCR_EditableEntityCoreLabelSetting>;
+		GetLabelsOfGroup(groupLabel, labelsInGroup);
+		int count = labelsInGroup.Count();
+		
+		for (int i = 0; i < count; i++)
+        {
+        	if (labelsInGroup[i].GetLabelType() == entityLabel)
+				return i;
+        }
+		
+		return -1;
+	}
+	
+		
+	/*!
+	Get label name of given Label type
+	\return Label name
+	*/
 	string GetLabelName(EEditableEntityLabel entityLabel)
 	{
 		SCR_UIInfo uiInfo;
@@ -169,29 +377,136 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		return string.Empty;
 	}
 	
+	/*!
+	Set current page index
+	\param New Index
+	*/
 	void SetPageIndex(int pageIndex)
 	{
 		m_iPageIndex = pageIndex;
 	}
 	
+	/*!
+	Get current page index
+	\return Current page index
+	*/
 	int GetPageIndex()
 	{
 		return m_iPageIndex;
 	}
 	
-	void SetLastSearch(string searchText)
+	void SetPageEntryCount(int pageEntryCount)
 	{
-		m_sLastSearchText = searchText;
+		m_iPageEntryCount = pageEntryCount;
 	}
 	
+	int GetPageEntryCount()
+	{
+		return m_iPageEntryCount;
+	}
+	
+	/*!
+	Set the index of the Browser state (which is set by tabs in content browser)
+	\param New Index
+	*/
+	void SetBrowserStateIndex(int index)
+	{
+		m_iBrowserStateIndex = index;
+	}
+	
+	/*!
+	Get the index of the Browser state (which is set by tabs in content browser)
+	\return Current Browser state index
+	*/
+	int GetBrowserStateIndex()
+	{
+		return m_iBrowserStateIndex;
+	}
+	
+	/*!
+	Get list of all Browser content browser states
+	\param[out] List of all states
+	\return Count of states
+	*/
+	int GetContentBrowserTabStates(out notnull array<SCR_EditorContentBrowserSaveStateDataUI> contentBrowserStates)
+	{
+		foreach (SCR_EditorContentBrowserSaveStateDataUI state: m_aContentBrowserTabStates)
+			contentBrowserStates.Insert(state);
+			
+		return contentBrowserStates.Count();
+	}
+	
+	/*!
+	Get Browser content browser state by index
+	\param Index of state, use -1 to get current tab state
+	\return State
+	*/
+	SCR_EditorContentBrowserSaveStateData GetContentBrowserTabState(int index = -1)
+	{
+		if (index == -1)
+		{
+			SCR_EditorContentBrowserSaveStateData state;
+			if (GetConfigState(m_ContentBrowserConfig, state))
+			{
+				return state;
+			}
+			index = GetBrowserStateIndex();
+		}
+		
+		if (index < 0 || index >= m_aContentBrowserTabStates.Count())
+			return null;
+		
+		return m_aContentBrowserTabStates[index];
+	}
+	
+	/*!
+	Get Last search string
+	\return Last search string
+	*/
 	string GetLastSearch()
 	{
 		return m_sLastSearchText;
 	}
 	
 	/*!
+	Get current search string
+	\return Current search string
+	*/
+	string GetCurrentSearch()
+	{
+		return m_sCurrentSearchText;
+	}
+	
+	/*!
+	Set current search string
+	\param searchText search string to save
+	*/
+	void SetCurrentSearch(string searchText)
+	{
+		m_sLastSearchText = m_sCurrentSearchText;
+		m_sCurrentSearchText = searchText;
+	}
+	
+	/*!
+	Set save state tabs enabled
+	\param true to set enabled
+	*/
+	void SetSaveStateTabsEnabled(bool enabled)
+	{
+		Event_OnEnableSaveStateTabs.Invoke(enabled);
+	}
+	
+	/*!
+	Get can save persistent browser states.
+	*/
+	bool CanSavePersistentBrowserStates()
+	{
+		return !GetContentBrowserDisplayConfig();
+	}
+	
+	/*!
 	Get on label changed event
-	\param Event_OnLabelChanged Script invoker
+	\return OnLabelChanged ScriptInvoker
 	*/
 	ScriptInvoker GetOnLabelChanged()
 	{
@@ -199,12 +514,66 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	}
 	
 	/*!
-	Get on labels reset event
-	\param Event_OnActiveLabelsReset Script invoker
+	Event send when browser states are saved
+	\return Script invoker
 	*/
-	ScriptInvoker GetOnActiveLabelsReset()
+	ScriptInvoker GetOnBrowserStatesSaved()
 	{
-		return Event_OnActiveLabelsReset;
+		return Event_OnBrowserStatesSaved;
+	}		
+	
+	/*!
+	Event send just before browser state is loaded
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnBrowserStatePreload()
+	{
+		return Event_OnBrowserStatePreload;
+	}	
+	
+	/*!
+	Event send when browser state is loaded
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnBrowserStateLoaded()
+	{
+		return Event_OnBrowserStateLoaded;
+	}
+	
+	/*!
+	Event send when browser state done loading
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnBrowserEntriesFiltered()
+	{
+		return Event_OnBrowserEntriesFiltered;
+	}	
+	
+	/*!
+	Event send when browser state is cleared
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnBrowserStateCleared()
+	{
+		return Event_OnBrowserStateCleared;
+	}
+	
+	/*!
+	Event send when browser state is cleared
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnEnableSaveStateTabs()
+	{
+		return Event_OnEnableSaveStateTabs;
+	}	
+	
+	/*!
+	Get on search confirm, sends over current search string
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnSearchConfirm()
+	{
+		return Event_OnSearchConfirm;
 	}
 	
 	/*!
@@ -228,11 +597,13 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	
 	/*!
 	Get info for placeaable prefab with given index.
-	\param Prefab index
-	\return UI info
+	\return Total UI info count
 	*/
 	int GetInfoCount()
 	{
+		if (!m_aInfos)
+			return 0;
+		
 		return m_aInfos.Count();
 	}
 	
@@ -243,6 +614,24 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	\return UI info
 	*/
 	SCR_EditableEntityUIInfo GetInfo(int index)
+	{
+		if (m_aInfos && index >= 0 && index < m_aInfos.Count())
+		{
+			return m_aInfos[index];	
+		}
+		else
+		{
+			return null;
+		}
+	}
+	
+	/*!
+	Get info for placeaable prefab with given index.
+	Infos are store dint he same order as prefabs from SCR_PlacingEditorComponentClass.
+	\param Prefab index
+	\return UI info
+	*/
+	SCR_EditableEntityUIInfo GetInfoAtIndex(int index)
 	{
 		if (m_aInfos)
 		{
@@ -257,35 +646,85 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	/*!
 	Find index of given editable entity (info), used for find in content browser
 	\param info EditableEntityInfo of the entity
-	\return index of editable entity in content browser
+	\return int index of editable entity in content browser, -1 if not found
 	*/
 	int FindIndexOfInfo(SCR_EditableEntityUIInfo info)
 	{
-		if (m_aInfos)
+		if (m_aInfos && info)
 		{
-			int i = 0;
-			foreach (SCR_EditableEntityUIInfo browserInfo : m_aInfos)
+			foreach (int i, SCR_EditableEntityUIInfo browserInfo : m_aInfos)
 			{
-				if (browserInfo.GetName() == info.GetName())
+				if (browserInfo && browserInfo.GetName() == info.GetName())
 				{
 					return i;
 				}
-				i++;
 			}
 		}
 		return -1;
 	}
 	
+	bool RefreshPreviewCost(int prefabID = -1)
+	{
+		if (m_PlacingManager.HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER) || prefabID == -1)
+		{
+			m_BudgetManager.ResetPreviewCost();
+			return false;
+		}
+		
+		SCR_EditableEntityUIInfo editableUIInfo = GetInfo(prefabID);
+		if (!editableUIInfo)
+		{
+			return false;
+		}
+		
+		array<ref SCR_EntityBudgetValue> budgetCosts = {};
+		if (m_BudgetManager.GetEntityPreviewBudgetCosts(editableUIInfo, budgetCosts))
+		{
+			m_BudgetManager.UpdatePreviewCost(budgetCosts);
+			return true;
+		}
+		return false;
+	}
+	
 	/*!
 	Open content browser.
-	\param Active labels
+	\param browserStateIndex The state that needs to be loaded upon opening. -1 to use lasted saved state
 	\return True if opened
 	*/
-	static bool OpenBrowserInstance(array<EEditableEntityLabel> labels = null)
+	static bool OpenBrowserInstance(int browserStateIndex = -1)
 	{
 		SCR_ContentBrowserEditorComponent contentBrowserManager = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent, true));
 		if (contentBrowserManager)
-			return contentBrowserManager.OpenBrowser(0, labels);
+			return contentBrowserManager.OpenBrowser(browserStateIndex);
+		else
+			return false;
+	}
+	
+	/*!
+	Open content browser with state
+	\param browserStateIndex The state that needs to be loaded upon opening. -1 to use lasted saved state
+	\return True if opened
+	*/
+	static bool OpenBrowserInstance(SCR_EditorContentBrowserSaveStateData saveState)
+	{
+		SCR_ContentBrowserEditorComponent contentBrowserManager = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent, true));
+		if (contentBrowserManager)
+			return contentBrowserManager.OpenBrowserState(saveState);
+		else
+			return false;
+	}
+
+	/*!
+	Open content browser with label config
+	Allows labels to be active on opening and label groups/labels to be hidden
+	\param config with label data
+	\return True if opened
+	*/
+	static bool OpenBrowserLabelConfigInstance(SCR_EditorContentBrowserDisplayConfig contentBrowserConfig = null)
+	{
+		SCR_ContentBrowserEditorComponent contentBrowserManager = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent, true));
+		if (contentBrowserManager)
+			return contentBrowserManager.OpenBrowserLabelConfig(contentBrowserConfig);
 		else
 			return false;
 	}
@@ -295,16 +734,18 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	Content browser will be opened, showing only entities which fir the extended entity.
 	Selecting one will instantly place it.
 	\param extendedEntity Extended entity
+	\param config with label data
 	\return True if opened
 	*/
-	bool OpenBrowser(SCR_EditableEntityComponent extendedEntity)
-	{
-		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true));
-		if (!placingManager || placingManager.IsPlacing())
+	bool OpenBrowserExtended(SCR_EditableEntityComponent extendedEntity, SCR_EditorContentBrowserDisplayConfig contentBrowserConfig = null)
+	{		
+		
+		if (!m_PlacingManager || m_PlacingManager.IsPlacing())
 			return false;
 		
 		SetExtendedEntity(extendedEntity);
-		if (OpenBrowser())
+
+		if ((!contentBrowserConfig && OpenBrowser()) || (contentBrowserConfig && OpenBrowserLabelConfig(contentBrowserConfig)))
 		{
 			EEditorTransformVertical verticalMode = EEditorTransformVertical.SEA;
 			SCR_PreviewEntityEditorComponent previewManager = SCR_PreviewEntityEditorComponent.Cast(SCR_PreviewEntityEditorComponent.GetInstance(SCR_PreviewEntityEditorComponent, false));
@@ -316,7 +757,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 			SCR_EditorPreviewParams params = SCR_EditorPreviewParams.CreateParams(transform, verticalMode: verticalMode);
 			params.SetTarget(extendedEntity);
 			params.m_TargetInteraction = EEditableEntityInteraction.SLOT;
-			placingManager.SetInstantPlacing(params);
+			m_PlacingManager.SetInstantPlacing(params);
 			return true;
 		}
 		return false;
@@ -324,43 +765,324 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	
 	/*!
 	Open content browser with preset labels
-	\param Active labels
+	\param browserStateIndex The state that needs to be loaded upon opening. -1 to use lasted saved state
 	\return True if opened
 	*/
-	bool OpenBrowser(int pageIndex = -1, array<EEditableEntityLabel> labels = null)
+	bool OpenBrowser(int browserStateIndex = -1)
 	{
-		SCR_MenuEditorComponent editorMenu = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent, true));
-		if (!editorMenu)
+		if (!m_EditorMenuManager)
 			return false;
 		
-		if (labels)
+		//~ Clear config as browser is opened without it
+		m_ContentBrowserConfig = null;
+		if (browserStateIndex > 0)
 		{
-			ResetAllLabels();
-			foreach (EEditableEntityLabel label: labels)
-			{
-				SetLabel(label, true);
-			}
-			SetPageIndex(0);
-		}
-		if (pageIndex > -1)
-		{
-			SetPageIndex(pageIndex);
+			SetBrowserState(browserStateIndex);
 		}
 		
-		editorMenu.GetMenu().OpenDialog(m_MenuPreset);
+		//~ Open context browser
+		OpenBrowserMenu();
 		return true;
 	}
 	
-	override void EOnEditorActivate()
+	/*!
+	Open content browser with external state
+	\param browserStateIndex The state that needs to be loaded upon opening. -1 to use lasted saved state
+	\return True if opened
+	*/
+	bool OpenBrowserState(SCR_EditorContentBrowserSaveStateData saveState, SCR_EditorContentBrowserDisplayConfig displayConfig = null)
 	{
+		if (!m_EditorMenuManager)
+			return false;
 		
+		//~ Clear config as browser is opened without it
+		m_ContentBrowserConfig = displayConfig;
+		
+		LoadBrowserState(saveState, false);
+		SaveBrowserState(false);
+		
+		//~ Open context browser
+		OpenBrowserMenu();
+		return true;
+	}
+	
+	/*!
+	Open content browser with label config
+	Allows labels to be active on opening and label groups/labels to be hidden
+	\param config with label data
+	\return True if opened
+	*/
+	bool OpenBrowserLabelConfig(SCR_EditorContentBrowserDisplayConfig contentBrowserConfig)
+	{
+		if (!contentBrowserConfig)
+			return OpenBrowser();
+		
+		if (!m_EditorMenuManager)
+			return false;
+		
+		m_ContentBrowserConfig = contentBrowserConfig;
+		
+		SetBrowserState(contentBrowserConfig);
+		
+		//~ Open context browser
+		OpenBrowserMenu();
+		return true;
+	}
+	
+	/*!
+	Set Browser State
+	\param browserStateIndex index of state to set
+	\param saveCurrentState wether or not the current state should be saved
+	*/
+	void SetBrowserState(int browserStateIndex = -1, bool saveCurrentState = false)
+	{
+		if (saveCurrentState)
+		 	SaveBrowserState(false);
+		
+		if (browserStateIndex < 0)
+			LoadBrowserState(m_iBrowserStateIndex, true);
+		else 
+		{
+			SetBrowserStateIndex(browserStateIndex);
+			LoadBrowserState(browserStateIndex, true);
+		}
+	}
+	
+	/*!
+	Set Browser State
+	\param contentBrowserConfig config of state to set
+	\param saveCurrentState wether or not the current state should be saved
+	*/
+	void SetBrowserState(SCR_EditorContentBrowserDisplayConfig contentBrowserConfig, bool saveCurrentState = false)
+	{
+		m_ContentBrowserConfig = contentBrowserConfig;
+		SCR_EditorContentBrowserSaveStateData state;
+		if (GetConfigState(contentBrowserConfig, state))
+			LoadBrowserState(state, false);
+		else 
+			ClearBrowserState(false);
+	}
+		
+	/*!
+	Save the current browser state eg: Active filter labels, search string and current page
+	\param clearBrowserState if should also clear the browser for when the browser stays open and a new state is given
+	\return True if succesfully saved
+	*/
+	bool SaveBrowserState(bool clearBrowserState)
+	{
+		SCR_EditorContentBrowserSaveStateData state;
+		
+		//~ Does not use config so use default logic
+		if (!m_ContentBrowserConfig)
+		{			
+			state = GetContentBrowserTabState(m_iBrowserStateIndex);
+			
+			//~ Invalid
+			if (!state)
+				return false;
+		}
+		//~ Uses config and allows for content browser state saving
+		else if (!GetConfigState(m_ContentBrowserConfig, state) || !m_ContentBrowserConfig.GetSaveContentBrowserState())
+		{
+			//~ Do not save state
+			return false;
+		}
+		
+		state.SetLabels(m_ActiveLabels);
+		state.SetPageIndex(m_iPageIndex);
+		state.SetSearchString(m_sCurrentSearchText);
+
+		Event_OnBrowserStatesSaved.Invoke();
+		
+		//Clear browser state
+		if (clearBrowserState)
+			ClearBrowserState(false);
+		
+		//~ Saved state successfully
+		return true;
+	}
+	
+	void ResetBrowserState(bool clearConfigData)
+	{
+		ClearBrowserState(clearConfigData);
+		FilterEntries();
+	}
+	
+	void OnMenuClosed()
+	{
+		SetBrowserState(-1, true);
+		
+		//~ Save the persistent state
+		if (CanSavePersistentBrowserStates())
+			SaveAllPersistentBrowserState();
+	}
+	
+	protected bool OpenBrowserMenu()
+	{
+		if (m_EditorMenuManager)
+		{
+			return m_EditorMenuManager.GetMenu().OpenDialog(m_MenuPreset);
+		}
+		return false;
+	}
+	
+	//~ Clear browser state
+	protected void ClearBrowserState(bool clearConfigData)
+	{
+		ResetAllLabels(!clearConfigData);
+		SetPageIndex(0);
+		SetCurrentSearch(string.Empty);
+		
+		//~ Clear config
+		if (clearConfigData)
+			m_ContentBrowserConfig = null;
+		
+		Event_OnBrowserStateCleared.Invoke();
+	}
+	
+	//~ Load the saved browser state using index
+	protected void LoadBrowserState(int stateIndex, bool clearConfigData)
+	{
+		if (stateIndex < 0 || stateIndex >= m_aContentBrowserTabStates.Count())
+			return;
+		
+		SCR_EditorContentBrowserSaveStateData state = m_aContentBrowserTabStates[stateIndex];
+		if (state)
+		{
+			LoadBrowserState(state, clearConfigData);
+		}
+	}
+	
+	//~ Load the saved browser state
+	protected void LoadBrowserState(SCR_EditorContentBrowserSaveStateData state, bool clearConfigData)
+	{		
+		//~ Preload before browser is cleared
+		Event_OnBrowserStatePreload.Invoke(state);
+		
+		ClearBrowserState(clearConfigData);
+		
+		//~ Labels
+		array<EEditableEntityLabel> stateActiveLabels = new array<EEditableEntityLabel>;
+		state.GetLabels(stateActiveLabels);
+		
+		foreach (EEditableEntityLabel activeLabel : stateActiveLabels)
+			SetLabel(activeLabel, true);
+
+		//~ Page Index
+		SetPageIndex(state.GetPageIndex());
+		
+		//~ Search String
+		SetCurrentSearch(state.GetSearchString());
+		
+		//~ Load Event
+		Event_OnBrowserStateLoaded.Invoke(state);
+		
+		FilterEntries();
+	}
+	
+	protected bool GetConfigState(SCR_EditorContentBrowserDisplayConfig browserConfig, out SCR_EditorContentBrowserSaveStateData state)
+	{
+		if (!browserConfig)
+			return false;
+		
+		if (!m_mContentBrowserConfigStates.Find(browserConfig, state))
+		{
+			state = new SCR_EditorContentBrowserSaveStateData();
+			m_mContentBrowserConfigStates.Insert(browserConfig, state);
+		}
+		return true;
+	}
+	
+	protected void SetConfigLabels()
+	{
+		if (!m_ContentBrowserConfig)
+			return;
+		
+		//~ Set labels active
+		array<EEditableEntityLabel> labels = new array<EEditableEntityLabel>;
+		m_ContentBrowserConfig.GetAlwaysActiveLabels(labels);
+			
+		foreach (EEditableEntityLabel label: labels)
+			SetLabel(label, true);
+	}
+	
+	/*!
+	Get the set content browser config
+	\return SCR_EditorContentBrowserDisplayConfig config
+	*/
+	SCR_EditorContentBrowserDisplayConfig GetContentBrowserDisplayConfig()
+	{
+		return m_ContentBrowserConfig;
+	}
+	
+	//~ Save all tab states into settings. So it can be loaded when a diffrent scenario is loaded or the game is booted up again
+	void SaveAllPersistentBrowserState()
+	{
+		BaseContainer editorSettings = GetGame().GetGameUserSettings().GetModule("SCR_EditorPersistentData");
+		if (!editorSettings) 
+			return;
+		
+		array<ref SCR_EditorContentBrowserSaveStateData> settingBrowserStates = {};
+		
+		//~ Get the SCR_EditorContentBrowserStateDataUI data
+		foreach(SCR_EditorContentBrowserSaveStateData state: m_aContentBrowserTabStates)
+			settingBrowserStates.Insert(state);
+		
+		//~ Save the Data
+		editorSettings.Set("m_aSavedContentBrowserStates", settingBrowserStates);
+		
+		GetGame().UserSettingsChanged();
+	}
+	
+	//~ Load Persistent browser state from where the player left off last time
+	protected void LoadAllPersistentBrowserState()
+	{
+		BaseContainer editorSettings = GetGame().GetGameUserSettings().GetModule("SCR_EditorPersistentData");
+		if (!editorSettings) 
+			return;
+		
+		array<ref SCR_EditorContentBrowserSaveStateData> settingBrowserStates;
+		editorSettings.Get("m_aSavedContentBrowserStates", settingBrowserStates);
+		
+		if (!settingBrowserStates)
+			return;
+		
+		int savedCount = settingBrowserStates.Count(); 
+		
+		//~ Check if saved settings are same as given tabs
+		if (m_aContentBrowserTabStates.Count() == savedCount)
+		{
+			array<EEditableEntityLabel> settingSavedLabels = {};
+			
+			//~  Get persistant data and apply the data to Browser States
+			for(int i = 0; i < savedCount; i++)
+	        {
+				//~ Note, does not load pageIndex as this might change if mods are added/removed. Plus it might be frustrating/confusing for user
+				settingBrowserStates[i].GetLabels(settingSavedLabels);
+	            m_aContentBrowserTabStates[i].SetLabels(settingSavedLabels, true);
+				m_aContentBrowserTabStates[i].SetSearchString(settingBrowserStates[i].GetSearchString());
+	        }
+		}
 	}
 	
 	override void EOnEditorInit()
 	{
 		m_EntityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		m_EntityCore.GetLabelGroups(m_LabelGroups);
-		m_ActiveLabels.Copy(m_DefaultActiveLabels);
+		
+		m_PrefabsCache = SCR_PrefabsCacheEditorComponent.Cast(SCR_PrefabsCacheEditorComponent.GetInstance(SCR_PrefabsCacheEditorComponent));
+		//~ Load Persistent browser state from where the player left off last time
+		LoadAllPersistentBrowserState();
+		
+		//~ Init the first page, else it will not load correctly
+		SetBrowserState(0);
+	}
+	
+	override void EOnEditorActivate()
+	{
+		m_EditorMenuManager = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
+		m_PlacingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true));
+		m_BudgetManager = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent, true));
 	}
 	
 	override bool EOnEditorActivateAsync(int attempt)
@@ -395,6 +1117,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 			if (m_iAsyncIndex >= count)
 			{
 				m_aAsyncPrefabs = null;
+				FilterEntries();
 				return true;
 			}
 			
@@ -436,9 +1159,11 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		}
 		return false;
 	}
+	
 	override void EOnEditorDeactivate()
 	{
 		m_aInfos = null;
 	}
 	
 };
+

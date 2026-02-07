@@ -3,11 +3,22 @@ class SCR_LadderUserAction : ScriptedUserAction
 {
 	static const float MAX_LADDER_TEST_DISTANCE = 5.0;
 	static const float MAX_LADDER_ENTRY_ANGLE = 75.0;
-	protected LadderComponent m_pLadderComponent;
+	protected IEntity m_pLadderOwner;
+	
+	[Attribute("0", UIWidgets.EditBox, "Which ladder component to use", "0 inf")]
+	protected int m_iLadderComponentIndex;
 	
 	protected override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
-		m_pLadderComponent = LadderComponent.Cast(pOwnerEntity.FindComponent(LadderComponent));
+		array<Managed> ladderComponents = {};
+		pOwnerEntity.FindComponents(LadderComponent, ladderComponents);
+		if (!ladderComponents.IsIndexValid(m_iLadderComponentIndex))
+		{
+			Print("m_iLadderComponentIndex : " + m_iLadderComponentIndex + " is not an index valid", LogLevel.ERROR);
+			return;
+		}
+		
+		m_pLadderOwner = pOwnerEntity;
 	}
 	
 	protected SCR_CharacterCommandHandlerComponent FindCommandHandler(IEntity pUser)
@@ -27,19 +38,22 @@ class SCR_LadderUserAction : ScriptedUserAction
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
 		CharacterControllerComponent controller = character.GetCharacterController();
-		controller.TryUseLadder(m_pLadderComponent, MAX_LADDER_TEST_DISTANCE, MAX_LADDER_ENTRY_ANGLE);
+		controller.TryUseLadder(m_pLadderOwner, m_iLadderComponentIndex, MAX_LADDER_TEST_DISTANCE, MAX_LADDER_ENTRY_ANGLE);
 	}	
 	
 	protected override bool CanBePerformedScript(IEntity user)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (!character)
+			return false;
+		
 		CharacterControllerComponent controller = character.GetCharacterController();
-		return controller.CanUseLadder(m_pLadderComponent, MAX_LADDER_TEST_DISTANCE, MAX_LADDER_ENTRY_ANGLE);
+		return controller && controller.CanUseLadder(m_pLadderOwner, m_iLadderComponentIndex, MAX_LADDER_TEST_DISTANCE, MAX_LADDER_ENTRY_ANGLE);
 	}
 	
 	protected override bool CanBeShownScript(IEntity user)
 	{
-		if (!m_pLadderComponent)
+		if (!m_pLadderOwner)
 			return false;
 		
 		// Already on a ladder

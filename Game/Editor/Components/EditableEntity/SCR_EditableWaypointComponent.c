@@ -92,7 +92,7 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 		return m_Group;
 	}
 
-	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev)
+	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser)
 	{
 		if (!parentEntity)
 			return;
@@ -107,7 +107,7 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 				if (!group) break;
 			
 				m_Group = group;
-				super.OnParentEntityChanged(group, parentEntityPrev);
+				super.OnParentEntityChanged(group, parentEntityPrev, changedByUser);
 				break;
 			}
 		}

@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system calculations", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system calculations")]
 class SCR_AIConfigComponentClass: ScriptComponentClass
 {
 };
@@ -49,6 +49,15 @@ class SCR_AIConfigComponent : ScriptComponent
 	
 	[Attribute("", UIWidgets.Object)]
     ref SCR_AITargetReactionBase m_Reaction_UnknownTarget;
+	
+	[Attribute("", UIWidgets.Object)]
+	ref SCR_AITargetReactionBase m_Reaction_RetreatFromTarget;
+	
+	[Attribute("", UIWidgets.Auto, "Specifies which behavior tree is used for specific weapon type", category: "Weapon Handling")]
+	ref array<ref SCR_AIWeaponTypeSelectionConfig> m_aWeaponTypeSelectionConfig;
+	
+	[Attribute("{3EA0ED1A7C3B8FE5}AI/BehaviorTrees/Chimera/Soldier/HandleWeapon_Default.bt", UIWidgets.Auto, "Fallback BT when nothing found in WeaponTypeSelectionConfig", category: "Weapon Handling")]
+	ResourceName m_sDefaultWeaponBehaviorTree;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
@@ -149,6 +158,23 @@ class SCR_AIConfigComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void PerformInfoReaction(SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		SCR_AIMessageInfo infoMessage = SCR_AIMessageInfo.Cast(message);
+		if (!infoMessage)
+		{
+			Debug.Error("Message mismatch");
+			return;
+		}
+		SCR_AIInfoReaction reaction = m_aInfoReactionsPacked[infoMessage.m_MessageType];
+		if (reaction)
+		{
+			reaction.PerformReaction(utility, message);
+			return;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	bool PerformDangerReaction(SCR_AIUtilityComponent utility, AIDangerEvent dangerEvent)
 	{
 		SCR_AIDangerReaction reaction = m_mDangerReactions[dangerEvent.GetDangerType()];
@@ -168,11 +194,29 @@ class SCR_AIConfigComponent : ScriptComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void AddDefaultActivities(SCR_AIGroupUtilityComponent utility)
 	{
 		foreach (SCR_AIReactionBase reaction : m_aDefaultReactions)
 		{
 			reaction.PerformReaction(utility); // @TODO: This has to work for all reactions, now it would work only on default ones
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns resource name set for specific WeaponType and MuzzleType as sub-filter
+	ResourceName GetTreeNameForWeaponType(EWeaponType weaponType, EMuzzleType muzzleType)
+	{
+		foreach (SCR_AIWeaponTypeSelectionConfig configItem : m_aWeaponTypeSelectionConfig)
+		{
+			if (configItem.m_eWeaponType == EWeaponType.WT_NONE || configItem.m_eWeaponType == weaponType) // NONE will work as ANY, first filter = weapon type
+			{
+				if (configItem.m_eMuzzleType == muzzleType) // second filter = muzzle type
+				{
+					return configItem.m_sBehaviorTree;
+				}
+			}
+		}
+		return m_sDefaultWeaponBehaviorTree;
 	}
 };

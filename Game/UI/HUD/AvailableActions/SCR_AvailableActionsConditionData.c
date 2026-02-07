@@ -47,6 +47,8 @@ class SCR_AvailableActionsConditionData
 	protected bool m_bIsQuickSlotAvailable;
 	//! Is weapon quick bar shown
 	protected bool m_bIsQuickSlotShown;
+	//! Is gadget selection mode active
+	protected bool m_bIsGadgetSelection;
 	//! Is character in focus mode
 	protected float m_fFocusMode;
 	//! How long is character bleeding 
@@ -92,7 +94,6 @@ class SCR_AvailableActionsConditionData
 	protected bool m_IsForcedUpdate = false;
 	//! Inventory fetching limitation
 	protected bool m_bCanFetchInventory = true;
-	
 	
 	//------------------------------------------------------------------------------------------------
 	private void OnItemAddedListener( IEntity item, BaseInventoryStorageComponent storage )
@@ -142,6 +143,7 @@ class SCR_AvailableActionsConditionData
 		m_bIsCharacterWeaponRaised = false;
 		m_bCanCharacterFireWeapon = false;
 		m_bIsCharacterUsingItem = false;
+		m_bIsGadgetSelection = false;
 		m_fFocusMode = 0.0;
 		//m_iAdditionalMagazines = 0;
 		m_pCurrentItemEntity = null;
@@ -152,50 +154,54 @@ class SCR_AvailableActionsConditionData
 		m_pCurrentVehicle = null;
 		m_pCurrentVehicleSignals = null;
 		m_pCurrentVehicleWeapon = null;
-		
-		m_pHeldGadget = null;
 
 		m_bIsValid = false;
 	}
 	
 	/* Gadgets magic */
 	protected SCR_GadgetManagerComponent m_GadgetManager;
-	protected IEntity m_pHeldGadget;
-	protected bool m_bGadgetRaised;
 	
 	//------------------------------------------------------------------------------------------------
-	private void GetAvailableGadgets(out IEntity heldGadget)
+	private void GetAvailableGadgets()
 	{
 		m_GadgetManager = SCR_GadgetManagerComponent.GetGadgetManager( SCR_PlayerController.GetLocalControlledEntity() );
-		if (!m_GadgetManager)
-			return;
-	
-		heldGadget = m_GadgetManager.GetHeldGadget();
-		m_bGadgetRaised = m_GadgetManager.GetIsGadgetADS();
+		m_bIsGadgetSelection = GetGame().GetInputManager().GetActionTriggered("GadgetSelection");
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns held gadget or null if none
 	IEntity GetHeldGadget()
 	{
-		return m_pHeldGadget;
+		if (m_GadgetManager)
+			return m_GadgetManager.GetHeldGadget();
+		return null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Return 
+	//! Returns held gadget component or null if none
+	SCR_GadgetComponent GetHeldGadgetComponent()
+	{
+		if (m_GadgetManager)
+			return m_GadgetManager.GetHeldGadgetComponent();
+		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Return held gadget being aimed with
 	bool GetGadgetRaised()
 	{
-		return m_bGadgetRaised;
+		if (m_GadgetManager)
+			return m_GadgetManager.GetIsGadgetADS();
+		return null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns gadget by type or null if none
 	IEntity GetGadget(EGadgetType type)
 	{
-		if (!type)
-			return null;
-		
-		return m_GadgetManager.GetGadgetByType(type);
+		if (m_GadgetManager)
+			return m_GadgetManager.GetGadgetByType(type);
+		return null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -393,6 +399,12 @@ class SCR_AvailableActionsConditionData
 	{
 		return m_bIsQuickSlotShown;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsGadgetSelection()
+	{
+		return m_bIsGadgetSelection;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns current character item or null if none
@@ -442,6 +454,14 @@ class SCR_AvailableActionsConditionData
 	{
 		return m_fTurboTime;
 	}
+	
+	//------------------------------------------------------------------------------------------------	
+	//! Returns the actual animation controller
+	CharacterAnimationComponent GetAnimationComponent()
+	{
+		return m_CharacterEntity.GetAnimationComponent();
+	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	bool IsValid()
@@ -520,7 +540,7 @@ class SCR_AvailableActionsConditionData
 		m_bIsCharacterUsingItem = m_ControllerComponent.IsUsingItem();
 		// Item that character is holding in his right hand
 		m_pCurrentItemEntity = m_ControllerComponent.GetAttachedGadgetAtLeftHandSlot();
-		
+				
 		// Temporary sprinting time tracking 
 		if (m_bIsCharacterSprinting && !m_ControllerComponent.GetIsSprintingToggle())
 			m_fSprintingTime += timeSlice;
@@ -654,7 +674,7 @@ class SCR_AvailableActionsConditionData
 		}
 		
 		// Fetch available gadgets
-		GetAvailableGadgets(m_pHeldGadget);
+		GetAvailableGadgets();
 		
 		VonActions();
 		

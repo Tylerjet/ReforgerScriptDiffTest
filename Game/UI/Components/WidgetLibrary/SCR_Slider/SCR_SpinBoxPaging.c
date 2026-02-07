@@ -140,9 +140,9 @@ class SCR_SpinBoxPagingComponent : SCR_WLibComponentBase
 	void SetPageCount(int count, bool animate = true) 
 	{
 		if (count == 0 || count == 1)
-			WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, 0, 5);
+			AnimateWidget.Opacity(m_wRoot, 0, UIConstants.FADE_RATE_DEFAULT);
 		else
-			WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, 1, 5);
+			AnimateWidget.Opacity(m_wRoot, 1, UIConstants.FADE_RATE_DEFAULT);
 		
 		if (count == m_iPageCount)
 			return;

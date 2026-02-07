@@ -117,7 +117,7 @@ class SCR_ContentBrowser_ScenarioLineComponent : ScriptedWidgetComponent
 			int timeSinceLastPlayedSeconds = m_Mission.GetTimeSinceLastPlay();
 			string timeSinceLastPlayText;
 			if (timeSinceLastPlayedSeconds > 0 )
-				timeSinceLastPlayText = SCR_Global.GetTimeSinceEventImprecise(timeSinceLastPlayedSeconds);
+				timeSinceLastPlayText = SCR_FormatHelper.GetTimeSinceEventImprecise(timeSinceLastPlayedSeconds);
 			else
 				timeSinceLastPlayText = "-";
 			m_Widgets.m_LastPlayedText.SetText(timeSinceLastPlayText);

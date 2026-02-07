@@ -148,9 +148,8 @@ class SCR_SelectableButtonComponent : SCR_ButtonComponent
 	{
 		if (speed < 0)
 			speed = m_fAnimationRate;
-		
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, colorBackground, speed);
-		
+
+		AnimateWidget.Color(m_wBackground, colorBackground, speed);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -158,9 +157,9 @@ class SCR_SelectableButtonComponent : SCR_ButtonComponent
 	protected void ColorizeCheckWidget()
 	{
 		if (m_bIsSelected)
-			WidgetAnimator.PlayAnimation(m_wOverlay, WidgetAnimationType.Color, COLOR_CHECKED_TRUE, m_fAnimationRate);
+			AnimateWidget.Color(m_wOverlay, COLOR_CHECKED_TRUE, m_fAnimationRate);
 		else
-			WidgetAnimator.PlayAnimation(m_wOverlay, WidgetAnimationType.Color, COLOR_CHECKED_FALSE, m_fAnimationRate);
+			AnimateWidget.Color(m_wOverlay, COLOR_CHECKED_FALSE, m_fAnimationRate);
 	}
 	
 	// User API

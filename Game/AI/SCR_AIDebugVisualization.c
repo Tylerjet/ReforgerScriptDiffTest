@@ -15,8 +15,10 @@ class SCR_AIDebugVisualization : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	static void Init()
 	{
-		if (!s_Instance)
-			s_Instance = SCR_AIDebugVisualization.Cast(GetGame().SpawnEntity(SCR_AIDebugVisualization, GetGame().GetWorld()));
+		if (s_Instance)
+			SCR_EntityHelper.DeleteEntityAndChildren(s_Instance);
+		
+		s_Instance = SCR_AIDebugVisualization.Cast(GetGame().SpawnEntity(SCR_AIDebugVisualization, GetGame().GetWorld()));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -157,7 +159,7 @@ class SCR_AIDebugVisualization : GenericEntity
 		s_Instance = this;
 		
 		SetEventMask(EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, false);
+		SetFlags(EntityFlags.ACTIVE, true);
 	}
 
 	//------------------------------------------------------------------------------------------------

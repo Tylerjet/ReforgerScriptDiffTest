@@ -3,6 +3,7 @@
 //------------------------------------------------------------------------------------------------
 class SCR_InventoryNavigationButtonBack : SCR_NavigationButtonComponent 
 {
+	protected bool m_bCloseWithGamepad;
 	protected SCR_InventoryStorageBaseUI m_pParentStorage = null;
 	protected int m_iStorageIndex = -1;
 	
@@ -31,6 +32,9 @@ class SCR_InventoryNavigationButtonBack : SCR_NavigationButtonComponent
 		if (!m_wRoot)
 			return;
 		
+		if (!m_bCloseWithGamepad)
+			return;
+
 		bool bEnabled = m_wRoot.IsEnabled();
 		bool bVisible = m_wRoot.IsVisible();
 		
@@ -70,6 +74,12 @@ class SCR_InventoryNavigationButtonBack : SCR_NavigationButtonComponent
 		m_iStorageIndex = index;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	void EnableCloseWithGamepad(bool enable)
+	{
+		m_bCloseWithGamepad = enable;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	int GetStorageIndex()
 	{

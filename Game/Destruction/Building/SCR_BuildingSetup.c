@@ -295,7 +295,7 @@ class SCR_BuildingSetup
 		if (ptcPath != "")
 		{
 			vector pos = fxMat[3];
-			SCR_ParticleAPI.PlayOnPositionPTC(ptcPath, pos);
+			SCR_ParticleEmitter.Create(ptcPath, pos);
 		}
 		
 		// TODO: Implement playing sound
@@ -306,7 +306,7 @@ class SCR_BuildingSetup
 			if (resource.IsValid())
 			{
 				IEntity pfbParent = GetGame().SpawnEntityPrefab(resource);
-				SCR_Global.SetHierarchyTransform(pfbParent, fxMat);
+				SCR_EntityHelper.SetHierarchyTransform(pfbParent, fxMat);
 			}
 		}
 		

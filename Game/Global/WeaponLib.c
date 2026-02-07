@@ -73,4 +73,18 @@ class SCR_WeaponLib
 	
 		return false;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get ID of next muzzle
+	static int GetNextMuzzleID(notnull BaseWeaponComponent weapon)
+	{
+		array<BaseMuzzleComponent> muzzles = {};
+		weapon.GetMuzzlesList(muzzles);
+		if (muzzles.IsEmpty())
+			return -1;
+		
+		int currentMuzzleID = muzzles.Find(weapon.GetCurrentMuzzle());
+		
+		return (currentMuzzleID + 1) % muzzles.Count();
+	}
 };

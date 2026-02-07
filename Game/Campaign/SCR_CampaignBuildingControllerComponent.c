@@ -91,9 +91,11 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 	void SetMarker()
 	{
 		SCR_MapDescriptorComponent descr = SCR_MapDescriptorComponent.Cast(GetOwner().FindComponent(SCR_MapDescriptorComponent));
+		
 		if (descr)
 		{
 			MapItem item = descr.Item();
+			
 			if (!item)
 				return; 
 			
@@ -182,7 +184,12 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 		m_Base = SCR_CampaignBase.Cast(suppliesProvider);
 		if (m_Base)
 		{
-			SCR_CampaignDeliveryPoint supplyDepot = m_Base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
+			SCR_CampaignServiceComponent supplyDepotService = m_Base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
+			
+			if (!supplyDepotService)
+				return;
+			
+			IEntity supplyDepot = supplyDepotService.GetOwner();
 			
 			if (!supplyDepot)
 				return;
@@ -415,14 +422,19 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 		// Remove EH to change color
 		if (m_Base)
 		{
-			SCR_CampaignDeliveryPoint supplyDepot = m_Base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
+			SCR_CampaignServiceComponent supplyDepotService = m_Base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
 			
-			if (supplyDepot)
+			if (supplyDepotService)
 			{
-				SCR_CampaignSuppliesComponent supp = SCR_CampaignSuppliesComponent.Cast(supplyDepot.FindComponent(SCR_CampaignSuppliesComponent));
+				IEntity supplyDepot = supplyDepotService.GetOwner();
 			
-				if (supp)
-					supp.m_OnSuppliesChanged.Remove(SetCompositionColor);
+				if (supplyDepot)
+				{
+					SCR_CampaignSuppliesComponent supp = SCR_CampaignSuppliesComponent.Cast(supplyDepot.FindComponent(SCR_CampaignSuppliesComponent));
+					
+					if (supp)
+						supp.m_OnSuppliesChanged.Remove(SetCompositionColor);
+				}
 			}
 			
 			return;

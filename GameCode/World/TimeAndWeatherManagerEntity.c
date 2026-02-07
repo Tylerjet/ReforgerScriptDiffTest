@@ -17,6 +17,9 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	[Attribute(desc: "An array of monephase naming in order from New moon to Full moon. Check GetMoonPhaseNameForDate before changing this array!")]
 	protected ref array<ref SCR_MoonPhaseInfo> m_aMoonPhasesInfo;
 	
+	[Attribute(desc: "Ordered days of the weeks, Monday (Start), Tuesday, Wednesday, ect. to Sunday (Last)")]
+	protected ref array<LocalizedString> m_aOrderedDaysOfWeek;
+	
 	protected bool m_bDelayedWindOverride = false;
 	protected int m_iDelayedPlayerChangingWind = -1;
 	protected float m_fDelayedWindSpeedOverride = -1;
@@ -25,6 +28,35 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	
 	//Replicated
 	protected bool m_bWeatherIsLooping = false;
+	
+	/*!
+	Use current date to get day of the week localized string (eg Monday, Tuesday ect)
+	\return Day of the week
+	*/
+	string GetWeekDayString()
+	{		
+		int weekdayIndex = GetWeekDay();
+		
+		if (weekdayIndex < 0 || weekdayIndex > m_aOrderedDaysOfWeek.Count())
+			return string.Empty;
+		
+		return m_aOrderedDaysOfWeek[weekdayIndex];
+	}
+	
+	/*!
+	Use given date to get day of the week localized string (eg Monday, Tuesday ect)
+	\return Day of the week
+	*/
+	string GetWeekDayStringForDate(int year, int month, int day)
+	{
+		int weekdayIndex = GetWeekDayForDate(year, month, day);
+		
+		if (weekdayIndex < 0 || weekdayIndex > m_aOrderedDaysOfWeek.Count())
+			return string.Empty;
+		
+		 return m_aOrderedDaysOfWeek[weekdayIndex];
+	}
+	
 	
 	/*!
 	Sets current weather to looping true or false.  (server only)
@@ -125,6 +157,13 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	bool IsWeatherLooping()
 	{
 		return m_bWeatherIsLooping;
+	}
+	
+	SCR_MoonPhaseUIInfo GetCurrentMoonPhaseInfoForDate()
+	{
+		int day, month, year;
+		GetDate(year, month, day);
+		return GetMoonPhaseInfoForDate(year, month, day, GetTimeOfTheDay(), GetTimeZoneOffset(), GetDSTOffset(), GetCurrentLatitude());
 	}
 	
 	/*!
@@ -261,24 +300,37 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	/*!
 	Gets the UI info of the current time of day. Also returns the index of the current time of day info
 	\param[out] uiInfo ui info of time of day
-	/return int time of day info
+	\return int time of day info index
 	*/
 	int GetCurrentDayTimeUIInfo(out SCR_UIInfo uiInfo)
 	{
 		CreateDayTimeInfoArray();
-		
 		return GetDayTimeUIInfo(GetTimeOfTheDay(), uiInfo);		
+	}
+	
+	/*!
+	Gets the current daytime Ui info and Phase
+	\param[out] uiInfo ui info of time of day
+	\return Current DayTimePhase
+	*/
+	EDayTimeEnums GetCurrentDayTimeUIInfoAndPhase(out SCR_UIInfo uiInfo)
+	{
+		CreateDayTimeInfoArray();
+		EDayTimeEnums dayTimePhase;
+		return GetDayTimeUIInfo(GetTimeOfTheDay(), uiInfo, dayTimePhase);		
 	}
 	
 	/*!
 	Gets an array of daytime info which holds the UIinfo of specific times of the day
 	\param TimeOfDay the time of day to get time info of
 	\param[out] uiInfo time info of the given day time
+	\param[out] dayTimePhase Phase of current daytime
 	\param year date to get time info of
 	\param month date to get time info of
 	\param day date to get time info of
+	\return int time of day info index
 	*/
-	int GetDayTimeUIInfo(float TimeOfDay, out SCR_UIInfo uiInfo, int year = -1, int month = -1, int day = -1)
+	int GetDayTimeUIInfo(float TimeOfDay, out SCR_UIInfo uiInfo, out EDayTimeEnums dayTimePhase = -1, int year = -1, int month = -1, int day = -1)
 	{
 		CreateDayTimeInfoArray(year, month, day);
 		
@@ -288,6 +340,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 		if (TimeOfDay < m_aOrderedDaytimeInfo[0].GetDayTime())
 		{
 			uiInfo = m_aOrderedDaytimeInfo[count -1].GetDayTimeUIInfo();
+			dayTimePhase =  m_aOrderedDaytimeInfo[count -1].GetDaytimeEnum();
 			return count -1;
 		}
 		
@@ -296,12 +349,14 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 			if (TimeOfDay > m_aOrderedDaytimeInfo[i].GetDayTime() && TimeOfDay < m_aOrderedDaytimeInfo[i +1].GetDayTime())
 			{
 				uiInfo = m_aOrderedDaytimeInfo[i].GetDayTimeUIInfo();
+				dayTimePhase =  m_aOrderedDaytimeInfo[i].GetDaytimeEnum();
 				return i;
 			} 
 		}
 		
 		//Just before Midnight
 		uiInfo = m_aOrderedDaytimeInfo[count -2].GetDayTimeUIInfo();
+		dayTimePhase =  m_aOrderedDaytimeInfo[count -2].GetDaytimeEnum();
 		return count -2;
 	}
 	

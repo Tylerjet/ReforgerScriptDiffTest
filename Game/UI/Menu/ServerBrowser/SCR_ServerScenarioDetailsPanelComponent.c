@@ -15,6 +15,8 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 	const string WIDGET_MODS_LOADING = "LoadingMods";
 	const string WIDGET_MODS_ICON = "AddonSizeIcon";
 	
+	const string WIDGET_BACKEND_IMAGE = "m_BackendImage";
+	
 	// Icons names 
 	const string ICON_MODS_DONWLOADED = "check";
 	const string ICON_MODS_MISSING = "update";
@@ -35,7 +37,8 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 	protected ImageWidget m_wImgName = null;
 	protected TextWidget m_wTxtModsCount = null;
 	protected SCR_LoadingOverlay m_ModsLoading = null;
-	//protected TextWidget m_wTxtModsSize;
+	
+	protected SCR_ScenarioBackendImageComponent m_ScenarioBackendImage;
 	
 	// Server additional data 
 	protected Room m_Room = null;
@@ -65,6 +68,11 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		if (wModsLoading)
 			m_ModsLoading = SCR_LoadingOverlay.Cast(wModsLoading.FindHandler(SCR_LoadingOverlay));
 		
+		// Backend image 
+		Widget wScenarioBackendImage = w.FindAnyWidget(WIDGET_BACKEND_IMAGE);
+		if (wScenarioBackendImage)
+			m_ScenarioBackendImage = SCR_ScenarioBackendImageComponent.Cast(wScenarioBackendImage.FindHandler(SCR_ScenarioBackendImageComponent));
+		
 		// Setup widgets 
 		SetDefaultScenario("");
 		HideModsWidgets();
@@ -73,9 +81,42 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 	//------------------------------------------------------------------------------------------------
 	override void SetScenario(MissionWorkshopItem scenario)
 	{
-		super.SetScenario(scenario);
+		m_ScenarioBackendImage.GetEventOnImageSelected().Clear();
+		m_ScenarioBackendImage.GetEventOnImageSelected().Insert(OnScenarioBackendImageSelected);
+		
 		DisplayRoomDataScenario(m_Room);
-		//DisplayRoomData(m_Room);
+		
+		// Update scenario
+		m_Scenario = scenario;	
+		if (scenario)
+		{
+			SCR_MissionHeader header = SCR_MissionHeader.Cast(scenario.GetHeader());
+			m_Header = header;
+		}
+		else
+			m_Header = null;
+		
+		UpdateAllWidgets();
+		
+		// Set room version
+		string strVersion = STR_DEFAULT_VERSION;
+		if (m_Room.GameVersion())
+			strVersion = "v" + m_Room.GameVersion();
+		
+		if (m_Room.GameVersion() != GetGame().GetBuildVersion())
+			strVersion += " - " + STR_VERSION_MISMATCH + "!";
+		
+		m_Widgets.m_AuthorNameText.SetText(strVersion);
+		
+		m_wImgName.SetVisible(false);
+		m_Widgets.m_TypeOverlay.SetVisible(true);
+		m_Widgets.m_TypeText.SetText(m_Room.Name());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnScenarioBackendImageSelected()
+	{
+		m_ScenarioBackendImage.GetEventOnImageSelected().Remove(OnScenarioBackendImageSelected);
 		m_Widgets.m_LoadingOverlay.SetVisible(false);
 	}
 	
@@ -180,7 +221,6 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		if (!m_Widgets.m_AuthorNameText || !m_Widgets.m_TypeText)
 			return;
 		
-		m_wImgName.SetVisible(false);
 		m_Widgets.m_NameText.SetVisible(true);
 		m_Widgets.m_AuthorNameText.SetVisible(true);
 		m_Widgets.m_TypeOverlay.SetVisible(true);
@@ -214,6 +254,15 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		}
 		
 		m_Widgets.m_LoadingOverlay.SetVisible(true);
+	}
+	
+	//-----------------------------------------------------------------------------------
+	void DisplayDefaultScenarioImage()
+	{
+		if (m_ScenarioBackendImage)
+			m_ScenarioBackendImage.SetScenarioAndImage(null, null);
+		
+		m_Widgets.m_LoadingOverlay.SetVisible(false);
 	}
 
 	//-----------------------------------------------------------------------------------

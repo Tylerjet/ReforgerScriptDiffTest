@@ -31,6 +31,9 @@ class SCR_LoadingOverlayHelperComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
+		if (!GetGame().GetWorkspace())
+			return;
+		
 		// When the target widget is deleted, we also delete the overlay
 		if (m_OverlayComponent)
 		{

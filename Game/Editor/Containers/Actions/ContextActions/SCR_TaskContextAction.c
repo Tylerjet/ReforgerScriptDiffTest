@@ -16,8 +16,11 @@ class SCR_TaskContextAction : SCR_SelectedEntitiesContextAction
 	
 	override void Perform(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition)
 	{
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
+		if (!GetTaskManager())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
+		if (!supportEntity)
 			return;
 		
 		SCR_BaseTask task = SCR_BaseTask.Cast(selectedEntity.GetOwner());
@@ -29,13 +32,13 @@ class SCR_TaskContextAction : SCR_SelectedEntitiesContextAction
 			//--- Complete
 			case 0:
 			{
-				taskManager.FinishTask(task);
+				supportEntity.FinishTask(task);
 				break;
 			}
 			//--- Fail
 			case 1:
 			{
-				taskManager.FailTask(task);
+				supportEntity.FailTask(task);
 				break;
 			}
 		}

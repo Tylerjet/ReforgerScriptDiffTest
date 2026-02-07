@@ -182,6 +182,8 @@ sealed class BaseWorld: pointer
 	proto external void SetCameraHDRBrightness(int cam, float hdrBrightness);
 	//! Returns actual camera HDR exposure
 	proto external float GetCameraHDRBrightness(int cam);
+	//! Returns actual camera normalized scene middle brightness
+	proto external float GetCameraSceneMiddleBrightness(int cam);
 	/*!
 	set postprocess effect to camera
 	To disable effect in some prioroty ppEffect, just set effectName or name to NULL
@@ -217,7 +219,8 @@ sealed class BaseWorld: pointer
 	\param outDir Returned direction vector
 	*/
 	proto external vector ProjectViewportToWorld(float x, float y, int cam, int width, int height, out vector outDir);
-	proto external bool TraceLineToEntity(notnull IEntity ent, vector start, vector end, out TraceContact contact);
+	[Obsolete("use TraceMove instead")]
+	proto external bool TraceLineToEntity(notnull IEntity ent, vector start, vector end, Class placeHolder = null);
 	/*!
 	traces shape collision at start position, return <0 if we hit something
 	//OUTPUT:

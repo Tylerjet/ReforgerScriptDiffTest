@@ -6,10 +6,12 @@ class SCR_AISetBehaviorInterruptable : SCR_AIActionTask
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if (!IsActionValid())
+		SCR_AIActionBase action = GetExecutedAction();
+		
+		if (!action)
 			return ENodeResult.FAIL;
 		
-		m_Action.SetActionInterruptable(m_IsInterruptable);
+		action.SetActionInterruptable(m_IsInterruptable);
 		return ENodeResult.SUCCESS;
 	}
 

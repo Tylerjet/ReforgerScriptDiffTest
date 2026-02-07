@@ -59,7 +59,7 @@ class SCR_MapLightUI : SCR_MapUIBaseComponent
 		
 	//------------------------------------------------------------------------------------------------
 	//! Toggle map light 
-	protected void ToggleActive()
+	void ToggleActive()
 	{
 		if (!m_bActive)
 			ActivateLight();
@@ -92,12 +92,7 @@ class SCR_MapLightUI : SCR_MapUIBaseComponent
 		}
 		//else 
 		//m_eLightMode = EMapLightMode.LIGHTER;
-		
-		// Add ctx menu entry
-		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapContextualMenuUI));
-		if (ctxMenu)
-			ctxMenu.ContextRegisterDynamic("Toggle Light (Night only)", true).m_OnClick.Insert(ToggleActive);
-		
+				
 		UpdateLightMode();
 	}
 	 
@@ -243,7 +238,7 @@ class SCR_MapLightUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Update()
+	override void Update(float timeSlice)
 	{
 		if (!m_TimeMgr)
 			return;

@@ -1,4 +1,4 @@
-class SCR_AILookAction : SCR_AIActionBase
+class SCR_AILookAction // : SCR_AIActionBase
 {
 	SCR_AIUtilityComponent m_Utility;
 	vector m_vPosition;
@@ -9,6 +9,8 @@ class SCR_AILookAction : SCR_AIActionBase
 	static const float PRIO_ENEMY_TARGET = 80;
 	static const float PRIO_UNKNOWN_TARGET = 50;
 	static const float PRIO_DANGER_EVENT = 20;
+	
+	protected float m_fPriority;
 	
 	void SCR_AILookAction(SCR_AIBaseUtilityComponent utility, bool prioritize)
 	{
@@ -37,7 +39,7 @@ class SCR_AILookAction : SCR_AIActionBase
 		m_bValidLookPosition = true;
 	}
 
-	override float Evaluate()
+	float Evaluate()
 	{
 		m_bCanLook = m_bValidLookPosition && m_Utility.m_CurrentBehavior.m_bAllowLook;
 		return m_fPriority;
@@ -49,7 +51,7 @@ class SCR_AILookAction : SCR_AIActionBase
 		m_bResetLook = true;
 	}
 	
-	override void Complete()
+	void Complete()
 	{
 		m_bValidLookPosition = false;
 		m_bCanLook = false;

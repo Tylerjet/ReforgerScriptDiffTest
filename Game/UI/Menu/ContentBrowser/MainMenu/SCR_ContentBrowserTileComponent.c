@@ -36,7 +36,7 @@ class SCR_ContentBrowserTileComponent : ScriptedWidgetComponent
 	
 	// Other
 	
-	protected ResourceName ICON_IMAGE_SET = "{1F0A6C9C19E131C6}UI/Textures/Icons/icons_wrapperUI.imageset";
+	protected ResourceName ICON_IMAGE_SET = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
 	protected ref SCR_WorkshopItem m_Item;
 	protected bool m_bShowRestricted;
 	protected bool m_bRatingVisible = true;
@@ -313,14 +313,37 @@ class SCR_ContentBrowserTileComponent : ScriptedWidgetComponent
 		
 		
 		// Visibility of addon size
-		//widgets.m_MainBottomLeft.SetVisible(hintText.IsEmpty()); // Visible if downloaded, or if focused
+		bool addonSizeVisible = m_Item.GetOffline() || m_bFocus || m_Item.GetSizeBytes() > ContentBrowserUI.GetSmallDownloadThreshold();
+		widgets.m_AddonSizeOverlay.SetVisible(addonSizeVisible);
 		
 		// Visibility of addon rating
 		widgets.m_RatingOverlay.SetVisible(m_bRatingVisible);
 		
+		ShowBackendEnv();
+		
 		return;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void ShowBackendEnv()
+	{
+		string gameEnv = GetGame().GetBackendApi().GetBackendEnv();
+		string modEnv = m_Item.GetWorkshopItem().GetBackendEnv();
+		
+		bool display = (modEnv != "local") && (modEnv != "ask") && (modEnv != "invalid");
+		bool envMatch = gameEnv == modEnv;
+		
+		widgets.m_BackendSource.SetVisible(display && !envMatch);
+		if (!display)
+			return;
+		
+		widgets.m_BackendSourceText.SetText(modEnv);
+		
+		if (envMatch)
+			widgets.m_BackendSourceIcon.SetColor(UIColors.CONFIRM);
+		else
+			widgets.m_BackendSourceIcon.SetColor(UIColors.WARNING);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnFrame(float tDelta)
@@ -398,7 +421,7 @@ class SCR_ContentBrowserTileComponent : ScriptedWidgetComponent
 		// Addon size - Text
 		// Addon size visibility is updated separately!
 		float sizef = item.GetSizeBytes();
-		string sizeStr = SCR_ByteFormat.GetReadableSize(sizef);
+		string sizeStr = SCR_ByteFormat.GetReadableSizeMb(sizef);
 		widgets.m_AddonSizeText.SetText(sizeStr);
 		
 		
@@ -531,13 +554,10 @@ class SCR_ContentBrowserTileComponent : ScriptedWidgetComponent
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		m_OnFocus.Invoke(this, m_Item);
-		
 		m_bFocus = true;
 		
-		WidgetAnimator.PlayAnimation(widgets.m_BorderPanel, WidgetAnimationType.Opacity, 1, WidgetAnimator.FADE_RATE_DEFAULT, false);
-		
+		AnimateWidget.Opacity(widgets.m_BorderPanel, 1, UIConstants.FADE_RATE_DEFAULT);
 		UpdateAllWidgets();
-		
 		return false;
 	}
 	
@@ -547,11 +567,8 @@ class SCR_ContentBrowserTileComponent : ScriptedWidgetComponent
 	override bool OnFocusLost(Widget w, int x, int y)
 	{	
 		m_bFocus = false;
-		
-		WidgetAnimator.PlayAnimation(widgets.m_BorderPanel, WidgetAnimationType.Opacity, 0, WidgetAnimator.FADE_RATE_DEFAULT, false);
-		
+		AnimateWidget.Opacity(widgets.m_BorderPanel, 0, UIConstants.FADE_RATE_DEFAULT);
 		UpdateAllWidgets();
-		
 		return true;
 	}
 	

@@ -302,7 +302,7 @@ class ObjectBrushTool : WorldEditorTool
 				continue;
 			
 			transformTemp[3] = point;
-			SCR_Global.SnapToTerrain(transformTemp, m_World);
+			SCR_TerrainHelper.SnapToTerrain(transformTemp, m_World);
 			point = transformTemp[3];
 			
 			if (m_bAvoidObjects && QueryEntityOnPosition(point, m_API.GetWorld(), obj.m_fBotDistance))
@@ -395,7 +395,7 @@ class ObjectBrushTool : WorldEditorTool
 				
 				entity.GetWorldTransform(mat);
 				
-				SCR_Global.OrientToTerrain(mat, m_World);
+				SCR_TerrainHelper.OrientToTerrain(mat, m_World);
 				
 				angles = Math3D.MatrixToAngles(mat);
 			}

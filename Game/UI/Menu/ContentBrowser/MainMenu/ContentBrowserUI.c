@@ -147,7 +147,7 @@ class ContentBrowserUI : SCR_SuperMenuBase
 	//! Downloads above this size should cause a confirmation popup.
 	static float GetSmallDownloadThreshold()
 	{
-		return 5*1024*1024; // 5 Megabytes
+		return 50*1024*1024; // 50 Megabytes
 	}
 	
 	//------------------------------------------------------------------------------------------------

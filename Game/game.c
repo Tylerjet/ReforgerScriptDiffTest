@@ -47,6 +47,9 @@ class ArmaReforgerScripted : ChimeraGame
 
 	//! Object responsible for managing and providing game modes with list of available loadouts.
 	protected SCR_LoadoutManager m_pLoadoutManager;
+	
+	//! Object responsible for tracking and connecting to the database for Career Profile
+	protected SCR_DataCollectorComponent m_DataCollectorComponent;
 
 	ref ScriptInvoker m_OnMissionSetInvoker = new ScriptInvoker();
 	ref RplSessionErrorHandler m_SessionErrorHandler;
@@ -60,6 +63,7 @@ class ArmaReforgerScripted : ChimeraGame
 	//------------------------------------------------------------------------------------------------
 	protected ref ScriptInvoker m_OnChangeUserSettingsInvoker = new ScriptInvoker();
 	protected ref ScriptInvoker m_OnInputDeviceUserChangedInvoker = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnInputDeviceIsGamepadInvoker = new ScriptInvoker();
 	protected ref ScriptInvoker m_OnWorldSimulatePhysicsInvoker = new ScriptInvoker();
 	protected ref ScriptCallQueue m_Callqueue = new ScriptCallQueue();
 
@@ -68,7 +72,25 @@ class ArmaReforgerScripted : ChimeraGame
 	{
 		g_ARGame = null;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_DataCollectorComponent GetDataCollector()
+	{
+		return m_DataCollectorComponent;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RegisterDataCollector(SCR_DataCollectorComponent instance)
+	{
+		if (m_DataCollectorComponent)
+		{
+			Print("Trying to register a SCR_DataCollectorComponent, but one is already registered!", LogLevel.ERROR);
+			return;
+		}
+		
+		m_DataCollectorComponent = instance;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns currently registered SCR_LoadoutManager if any is present.
@@ -98,6 +120,12 @@ class ArmaReforgerScripted : ChimeraGame
 	}
 
 	//------------------------------------------------------------------------------------------------
+	ScriptInvoker OnInputDeviceIsGamepadInvoker()
+	{
+		return m_OnInputDeviceIsGamepadInvoker;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	ScriptInvoker OnWorldSimulatePhysicsInvoker()
 	{
 		return m_OnWorldSimulatePhysicsInvoker;
@@ -123,7 +151,7 @@ class ArmaReforgerScripted : ChimeraGame
 		string reason = "<unknown>";
 		switch(groupInt)
 		{
-			case KickCauseGroup.REPLICATION:
+			case RplKickCauseGroup.REPLICATION:
 				group = "REPLICATION";
 				switch(reasonInt)
 				{
@@ -134,6 +162,8 @@ class ArmaReforgerScripted : ChimeraGame
 					case RplError.FLOODED: reason = "FLOODED"; break;
 					case RplError.STALLED: reason = "STALLED"; break;
 					case RplError.SERVICE_FAILURE: reason = "SERVICE_FAILURE"; break;
+					case RplError.JIP_ERROR: reason = "JIP_ERROR"; break;
+					case RplError.SHUTDOWN: reason = "SHUTDOWN"; break;
 				}
 			break;
 
@@ -191,11 +221,11 @@ class ArmaReforgerScripted : ChimeraGame
 				group = "PLAYER_MANAGER";
 				switch (reasonInt)
 				{
-					//FIXME: KICK_REQUESTED -> KICK
-					case PlayerManagerKickReason.KICK: reason = "KICK_REQUESTED"; break;
-					//FIXME: KICK_VOTED
+					case PlayerManagerKickReason.KICK: reason = "KICK"; break;
 					case PlayerManagerKickReason.KICK_VOTED: reason = "KICK_VOTED"; break;
 					case PlayerManagerKickReason.DUPLICATE_PLAYER_IDENTITY: reason = "DUPLICATE_PLAYER_IDENTITY"; break;
+					case PlayerManagerKickReason.BAN: reason = "BAN"; break;
+					case PlayerManagerKickReason.TEMP_BAN: reason = "TEMP_BAN"; break;
 					case SCR_PlayerManagerKickReason.KICKED_BY_GM: reason = "KICKED_BY_GM"; break;
 					case SCR_PlayerManagerKickReason.BANNED_BY_GM: reason = "BANNED_BY_GM"; break;
 					case SCR_PlayerManagerKickReason.FRIENDLY_FIRE: reason = "FRIENDLY_FIRE"; break;
@@ -476,6 +506,12 @@ class ArmaReforgerScripted : ChimeraGame
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void OnInputDeviceIsGamepadEvent(bool isGamepad)
+	{
+		m_OnInputDeviceIsGamepadInvoker.Invoke(isGamepad);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnWorldSimulatePhysics(float timeSlice)
 	{
 		m_OnWorldSimulatePhysicsInvoker.Invoke(timeSlice);
@@ -483,6 +519,37 @@ class ArmaReforgerScripted : ChimeraGame
 
 	#ifdef ENABLE_DIAG
 	private ref QueryTargetDiag m_pQueryTargetDiag = new QueryTargetDiag();
+	private bool GetQueryTargetInfo(IEntity ent, out string name, out string tree)
+	{
+		if (!ent)
+			return false;
+		
+		EntityPrefabData pd = ent.GetPrefabData();
+		if (!pd)
+			return false;
+		
+		name = pd.GetPrefabName();
+		tree = "";
+		
+		BaseContainer cont = pd.GetPrefab();
+		while (cont)
+		{
+			string contName = cont.GetName();
+			if (!contName.IsEmpty())
+			{
+				tree += contName;
+				if (!tree.IsEmpty())
+					tree += "\n";
+				
+				if (name.IsEmpty())
+					name = contName;
+			}
+			
+			cont = cont.GetAncestor();
+		}
+		
+		return true;	
+	}
 	#endif
 
 	//------------------------------------------------------------------------------------------------
@@ -536,20 +603,20 @@ class ArmaReforgerScripted : ChimeraGame
 					{
 						// Name
 						string name = ent.GetName();
-						// Prefab data
-						EntityPrefabData prefabData = ent.GetPrefabData();
-						string prefabName = "";
-						if (prefabData)
-							prefabName = prefabData.GetPrefabName();
 						// Draw text
 						DbgUI.Text("Name: " + name);
-						DbgUI.Text("Prefab: " + prefabName);
+						string pname;
+						string ptree;
+						if (GetQueryTargetInfo(ent, pname, ptree))
+						{
+							DbgUI.Text("Prefab: " + pname);
+							DbgUI.Text("Prefab Inheritance Tree: " + ptree);
+						}
 						DbgUI.Spacer(32);
-
-						string infoText = string.Format("Name=\"%1\"\nPrefab=\"%2\"", name, prefabName);
+						string infoText = string.Format("Name=\"%1\"\nPrefab=\"%2\"\nTree=\"%3\"", name, pname, ptree);
+						
 						if (DbgUI.Button("Copy to clipboard"))
 						{
-
 							System.ExportToClipboard(infoText);
 						}
 
@@ -585,20 +652,20 @@ class ArmaReforgerScripted : ChimeraGame
 					{
 						// Name
 						string name = ent.GetName();
-						// Prefab data
-						EntityPrefabData prefabData = ent.GetPrefabData();
-						string prefabName = "";
-						if (prefabData)
-							prefabName = prefabData.GetPrefabName();
 						// Draw text
 						DbgUI.Text("Name: " + name);
-						DbgUI.Text("Prefab: " + prefabName);
+						string pname;
+						string ptree;
+						if (GetQueryTargetInfo(ent, pname, ptree))
+						{
+							DbgUI.Text("Prefab: " + pname);
+							DbgUI.Text("Prefab Inheritance Tree: " + ptree);
+						}
 						DbgUI.Spacer(32);
-
-						string infoText = string.Format("Name=\"%1\"\nPrefab=\"%2\"", name, prefabName);
+						string infoText = string.Format("Name=\"%1\"\nPrefab=\"%2\"\nTree=\"%3\"", name, pname, ptree);
+						
 						if (DbgUI.Button("Copy to clipboard"))
 						{
-
 							System.ExportToClipboard(infoText);
 						}
 
@@ -785,7 +852,7 @@ class ArmaReforgerScripted : ChimeraGame
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void PlayGameConfig(string sResource)
+	override void PlayGameConfig(ResourceName sResource)
 	{
 		ref SCR_MissionHeader header = SCR_MissionHeader.Cast(SCR_MissionHeader.ReadMissionHeader(sResource));
 		PlayMission(header);
@@ -793,12 +860,18 @@ class ArmaReforgerScripted : ChimeraGame
 
 
 	//------------------------------------------------------------------------------------------------
-	override void HostGameConfig(string sResource)
+	override void HostGameConfig(ResourceName sResource)
 	{
 		ref SCR_MissionHeader header = SCR_MissionHeader.Cast(SCR_MissionHeader.ReadMissionHeader(sResource));
 		HostMission(header);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override Managed ReadGameConfig(string sResource)
+	{
+		return MissionHeader.ReadMissionHeader(sResource);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void HostMission(SCR_MissionHeader header)
 	{

@@ -45,7 +45,7 @@ class EditorBrowserDialogUI: EditorMenuBase
 	{
 		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
 		if (placingManager)
-		{
+		{			
 			SCR_EditorBaseEntity editorManager = SCR_EditorBaseEntity.Cast(placingManager.GetOwner());
 			if (editorManager) editorManager.GetOnDeactivate().Remove(CloseWithoutPlacing);
 		}

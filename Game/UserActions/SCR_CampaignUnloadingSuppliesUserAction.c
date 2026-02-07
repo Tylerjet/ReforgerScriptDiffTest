@@ -12,14 +12,14 @@ class SCR_CampaignUnloadingSuppliesUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool GetActionNameScript(out string outName)
 	{
+		ActionNameParams[0] = GetGame().GetPlayerManager().GetPlayerName(m_SuppliesComponent.GetLoadingPlayer(true));
 		outName = "#AR-Campaign_SupplyUnloadInProgress-UC";
 		return true;
 	}
+	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
-		string playerName = GetGame().GetPlayerManager().GetPlayerName(m_SuppliesComponent.GetLoadingPlayer(true));
-		SetCannotPerformReason(playerName);
 		return false;
 	}
 	//------------------------------------------------------------------------------------------------

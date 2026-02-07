@@ -37,7 +37,8 @@ enum ELocalAmbientSignal
 	SeaAngle,
 	DistanceToCoast,
 	SunAngle,
-	EnvironmentType
+	EnvironmentType,
+	Seed,
 };
 
 enum EOutputStateSignal
@@ -76,7 +77,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	
 	//Looped sounds	
 	private const int LOOP_SOUND_HEIGHT_LIMIT = 25;
-	private const int LOOP_SOUND_COUNT = 12;
+	private const int LOOP_SOUND_COUNT = 9;
 	
 	private ref array<IEntity>  m_aClosestEntityID = new array<IEntity>;
 
@@ -92,7 +93,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	// Constants		
 	private const int QUERY_RADIUS = 25;
 	private const int QUERY_PROCESSING_INTERVAL = 2;
-	private const int QUERY_MINIMUM_MOVE_DISTANCE = 2;
+	private const int QUERY_MINIMUM_MOVE_DISTANCE_SQ = 2;
 	private const int TREE_LEAFY_HEIGHT_LIMIT = 10;
 	private const int TREE_LEAFYDOMESTIC_HEIGHT_LIMIT = 6;
 	private const int TREE_CONIFER_HEIGHT_LIMIT = 12;
@@ -216,7 +217,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 							
 		m_vCameraPosQuery = m_vCameraPosFrame;
 				
-		if (vector.Distance(m_vCameraPosQuery, m_vCameraPosQueryLast) < 1)
+		if (vector.DistanceSqXZ(m_vCameraPosQuery, m_vCameraPosQueryLast) < QUERY_MINIMUM_MOVE_DISTANCE_SQ)
 		{
 			m_fTimerQuery = QUERY_PROCESSING_INTERVAL;
 			return;
@@ -257,7 +258,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 			
 		m_vCameraPosLooped = m_vCameraPosFrame;
 				
-		if (vector.Distance(m_vCameraPosLooped, m_vCameraPosLoopedLast) < QUERY_MINIMUM_MOVE_DISTANCE)
+		if (vector.DistanceSqXZ(m_vCameraPosLooped, m_vCameraPosLoopedLast) < QUERY_MINIMUM_MOVE_DISTANCE_SQ)
 		{
 			return;
 		}
@@ -266,8 +267,14 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		
 		m_aClosestEntityID.Clear();
 			
+		// Get Bush sound count
+		// Play at least 4 bush sounds. Use full LOOP_SOUND_COUNT limit when no tree is present.
+		int bushLoopSoundLimit = LOOP_SOUND_COUNT - (m_aQueryTypeCount[EQueryType.TreeLeafy] + m_aQueryTypeCount[EQueryType.TreeLeafyDomestic]);
+		if (bushLoopSoundLimit < 4)
+			bushLoopSoundLimit = 4;
+		
 		//Get closest entities	
-		GetClosestEntities(EQueryType.TreeBush, 4, m_aClosestEntityID);
+		GetClosestEntities(EQueryType.TreeBush, bushLoopSoundLimit, m_aClosestEntityID);
 		GetClosestEntities(EQueryType.TreeLeafy, LOOP_SOUND_COUNT, m_aClosestEntityID);	
 		GetClosestEntities(EQueryType.TreeLeafyDomestic, LOOP_SOUND_COUNT, m_aClosestEntityID);
 		
@@ -385,22 +392,27 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 				if (treeClass.SoundType == 2 || treeClass.SoundType == 6)
 				{					
 					if (treeFoliageAboveGround < 3)
-						eventName = "SOUND_LEAFYTREE_SMALL_LP";
+						eventName = SCR_SoundEvent.SOUND_LEAFYTREE_SMALL_LP;
 					else if (treeFoliageAboveGround < 5)
-						eventName = "SOUND_LEAFYTREE_MEDIUM_LP";
+						eventName = SCR_SoundEvent.SOUND_LEAFYTREE_MEDIUM_LP;
 					else if (treeFoliageAboveGround < 7)
-						eventName = "SOUND_LEAFYTREE_LARGE_LP";
+						eventName = SCR_SoundEvent.SOUND_LEAFYTREE_LARGE_LP;
 					else
-						eventName = "SOUND_LEAFYTREE_VERYLARGE_LP";
+						eventName = SCR_SoundEvent.SOUND_LEAFYTREE_VERYLARGE_LP;
 				}
 				else
 				{
-					eventName = "SOUND_BUSH_LP";
+					// Set Seed signal
+					m_LocalSignalsManager.SetSignalValue(m_aLocalAmbientSignalIndex[ELocalAmbientSignal.Seed], VectorToRandomNumber(mat[3]));
+					
+					eventName = SCR_SoundEvent.SOUND_BUSH_LP;
 				}
 														
 				// Set sound position							
 				SetTransformation(mat);
 				
+				
+
 				// Play sound					
 				treeFoliage.m_AudioHandle = SoundEvent(eventName);
 				m_aTreeFoliage.Insert(treeFoliage);
@@ -454,6 +466,15 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 			position[1] = treeFoliage.m_fMaxY;
 		
 		return position;
+	}
+	
+	private float VectorToRandomNumber(vector v)
+	{		
+		int i = v[0];
+		int j = v[2];		
+		int mod = (i * j) % 100;
+		
+		return Math.AbsInt(mod) * 0.01;
 	}
 							
 	// ---------------------------------------------------------------------------------------
@@ -970,49 +991,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 			m_LocalSignalsManager.SetSignalValue(alwaysChangingSignal.m_iSignalIdx, Math.Lerp(alwaysChangingSignal.m_fSignalTargetLast, alwaysChangingSignal.m_fSignalTarget, fInterpolationTimeCurrent));
 		}		
 	}
-	
-	// ---------------------------------------------------------------------------
-	// Wind gusts ----------------------------------------------------------------
-	// ---------------------------------------------------------------------------
-	
-	protected float m_fTimerWingGust;
-	private const int WINDGUST_TIME_DELAY 			= 60000;
-	private const int WINDGUST_TIME_DELAY_RANDOM 	= 15000;
-	private const int ABOVESEA_MINIMUM			 	= 5; 
-	private const float TIME_FACTOR					= 0.4;
-	private const float WIND_DISTANCE				= 100;
-	protected AudioHandle m_WindGustAudioHandle		= AudioHandle.Invalid;
-	
-	private void HandleWindGust(float timeSlice)
-	{					
-		if (m_fTimerWingGust > m_fWorldTime)
-			return;
-
-		if (m_fAboveSeaSignalValue > ABOVESEA_MINIMUM)
-		{
-			// Get Windgust position
-			vector windDirDeg;
-			windDirDeg[0] = m_GlobalSignalsManager.GetSignalValue(m_aGlobalSignalIndex[EGlobalSignal.WindDir]) * Math.RAD2DEG + 180 + Math.RandomInt(-30, 30);
-	
-			vector windDir = windDirDeg.AnglesToVector() * WIND_DISTANCE;
-			vector mat[4];
-			mat[3] = windDir + m_vCameraPosFrame;
 			
-			// Stop last windgust
-			if (!IsFinishedPlaying(m_WindGustAudioHandle))
-				Terminate(m_WindGustAudioHandle);
-			
-			// Play sound
-			m_WindGustAudioHandle = SoundEvent("SOUND_WIND_GUST");
-			SetSoundTransformation(m_WindGustAudioHandle, mat);
-		}
-		
-		// Get repetition time, depends on wind speed
-		float timeFactor = Interpolate(m_GlobalSignalsManager.GetSignalValue(m_aGlobalSignalIndex[EGlobalSignal.WindSpeed]), WINDSPEED_MIN, WINDSPEED_MAX, 1, TIME_FACTOR);
-
-		m_fTimerWingGust = m_fWorldTime + Math.RandomIntInclusive(WINDGUST_TIME_DELAY - WINDGUST_TIME_DELAY_RANDOM, WINDGUST_TIME_DELAY + WINDGUST_TIME_DELAY_RANDOM) * timeFactor;
-	}
-		
 	// ---------------------------------------------------------------------------
 	// Debug  --------------------------------------------------------------------
 	// ---------------------------------------------------------------------------
@@ -1293,7 +1272,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
     	if (settings)        
         	settings.Get("m_fDynamicRange", value);    
 	
-		m_GlobalSignalsManager.SetSignalValue(m_aGlobalSignalIndex[EGlobalSignal.DynamicRange], 100 - value);
+		m_GlobalSignalsManager.SetSignalValue(m_aGlobalSignalIndex[EGlobalSignal.DynamicRange], value * 0.01 - 1);
 	}
 
 	// ---------------------------------------------------------------------------
@@ -1338,13 +1317,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 			// Always changing signal ----------------------------------------------------------------------
 			
 			HandleAlwaysChangingSignal(timeSlice);
-			
-			// ---------------------------------------------------------------------------------------------
-			// Wind gusts ----------------------------------------------------------------------------------
-			// ---------------------------------------------------------------------------------------------
-			
-			HandleWindGust(timeSlice);
-			
+						
 			// ---------------------------------------------------------------------------------------------
 			// Set Output Stage Signals --------------------------------------------------------------------
 			// ---------------------------------------------------------------------------------------------

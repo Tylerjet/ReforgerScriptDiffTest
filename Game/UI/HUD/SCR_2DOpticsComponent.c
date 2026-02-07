@@ -3,7 +3,6 @@ class SCR_2DOpticsComponentClass: ScriptedSightsComponentClass
 {
 };
 
-
 //------------------------------------------------------------------------------------------------
 //! Base class for 2D optics 
 //! Unifiying binoculars and optic sight
@@ -34,7 +33,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	const string WIDGET_BLUR = "Blur";
 	const string WIDGET_IMAGE_FILTER = "ImgFilter";
 		
-	const float m_fReferenceFOV = 38;
+	const float REFERENCE_FOV = 38;
 	const float OPACITY_INITIAL = 0.75; 
 	
 	const float NEAR_PLANE_DEFAULT = 0.05;
@@ -224,6 +223,8 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	protected IEntity m_Owner = null;	
 	protected ChimeraCharacter m_ParentCharacter = null;
 	
+	protected WeaponSoundComponent m_WeaponSoundComp;
+	
 	static ref ScriptInvoker<bool, m_fFovZoomed> s_OnSightsADSChanged = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
@@ -240,7 +241,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void OnSightADSActivated()
-	{
+	{	
 		// Setup scope widgets 
 		if (!m_wRootWidget)
 		{
@@ -252,7 +253,14 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 			if (m_wRootWidget)
 			{
-				m_fFovZoomed = CalculateZoomFov(m_fReferenceFOV, m_fMagnification);
+				float referenceFOV;
+				PlayerController pc = GetGame().GetPlayerController();
+				if (pc && pc.GetPlayerCamera())
+					referenceFOV = pc.GetPlayerCamera().GetFocusFOV();
+				else
+					referenceFOV = REFERENCE_FOV;
+				
+				m_fFovZoomed = CalculateZoomFov(referenceFOV, m_fMagnification);
 				
 				// HUD and widgets setup
 				m_wRootWidget.SetZOrder(-1);
@@ -267,7 +275,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		s_OnSightsADSChanged.Invoke(true, m_fFovZoomed);
 		
 		// Prevent calnceling animation
-		WidgetAnimator.StopAnimation(m_wRootWidget, WidgetAnimationType.Opacity);
+		AnimateWidget.StopAnimation(m_wRootWidget, WidgetAnimationOpacity);
 		GetGame().GetCallqueue().Remove(DeactivateHUD);
 		
 		// Play cover fade in animaiton 
@@ -301,7 +309,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		GetGame().GetCallqueue().Remove(ActivateHUD); // in case this is called quickly after OnSightADSActivated, ActivateHUD needs to be cleared to prevent conflict
 		
 		// Prevent entering animation
-		WidgetAnimator.StopAnimation(m_wRootWidget, WidgetAnimationType.Opacity);
+		AnimateWidget.StopAnimation(m_wRootWidget, WidgetAnimationOpacity);
 		GetGame().GetCallqueue().Remove(PlayEntryAnimation);
 		
 		if (m_wImgCover)
@@ -309,7 +317,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		
 		// Leaving animation 
 		m_fNearPlaneCurrent = NEAR_PLANE_DEFAULT;
-		WidgetAnimator.StopAnimation(m_wRootWidget, WidgetAnimationType.Opacity);
 		GetGame().GetCallqueue().CallLater(DeactivateHUD, m_iHudDeactivationDelay, false);
 		
 		m_bZoomed = false;
@@ -324,7 +331,10 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		m_fCurrentReticleOffsetY = Math.Lerp(m_fCurrentReticleOffsetY, reticleTarget, interp);		
 		float pitchTarget = GetCameraPitchTarget();
 		m_fCurrentCameraPitch = Math.Lerp(m_fCurrentCameraPitch, pitchTarget, interp);
-
+		
+		// Set sound comp
+		if (!m_WeaponSoundComp)
+			m_WeaponSoundComp = WeaponSoundComponent.Cast(m_Owner.GetParent().FindComponent(WeaponSoundComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -592,12 +602,13 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		if (!camera)
 			return vector.Zero;
 		
-		vector opticPos = GetSightsRearPosition();
-		vector opticDir = GetSightsFrontPosition() - opticPos;
+		vector opticDir = GetSightsDirection(false, false);
 		
 #ifdef ENABLE_DEBUG
 		if (m_bDebug2DSights)
 		{
+			vector opticPos = GetSightsRearPosition();
+			
 			if (!s_aDebugShapes)
 				s_aDebugShapes = {};
 			

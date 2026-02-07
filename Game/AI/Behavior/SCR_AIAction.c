@@ -21,8 +21,11 @@ enum EAIActionType
 	SEEK_DESTROY,			// Different group behavior regime than ordinary move
 	MOVE_COMBAT_GROUP,		// Move to designated areas between covers
 	MOVE_FROM_DANGER,		// Move away from given possition
+	MOVE_FROM_UNKNOWN_FIRE,	// Moves away from shooter
+	MOVE_FROM_VEHICLE_HORN,	// Moves from a friendly vehicle horn
 	FOLLOW,					// Follow entity
 	INVESTIGATE,			// Investigate location with estimated threat level
+	FIND_FIRE_POSITION,		// Find a position from where we can engage a target
 	ATTACK,					// Encapsulates most attack behaviors or activities
 	ATTACK_STATIC,			// Attacking from static turret or vehicle weapon
 	TAKE_COVER,				// Select best cover and go to it
@@ -32,10 +35,13 @@ enum EAIActionType
 	HEAL,					// Healing behavior for single soldier
 	HEAL_WAIT,				// Waiting to be healed by someone
 	MEDIC_HEAL,				// Healing and repairing of other entities
-	RESUPPLY,				// Resupply other group member with ammo
 	PERFORM_ACTION,			// Performing a user action on a object(opening doors etc.)
 	RECONFIGURE,			// Reconfiguring of relays by AI
 	DEFEND,					// Use covers and active objects in designated area	
+	THROW_GRENADE, 			// Throw a grenade object to a given position or target
+	PROVIDE_AMMO,			// Provide ammo to someone
+	PICKUP_INVENTORY_ITEMS,	// Pick up inventory items on the ground
+	ACTIVITY_RESUPPLY
 };
 
 class SCR_AIActionBase
@@ -47,6 +53,7 @@ class SCR_AIActionBase
 	// TODO: Get rid of flags we don't neccesarily need	
 	bool m_bUniqueInActionQueue = true;
 	bool m_bIsInterruptable = true;
+	bool m_bSuspended = false;
 	float m_fPriority;
 	ResourceName m_sBehaviorTree;
 	
@@ -77,6 +84,20 @@ class SCR_AIActionBase
 	EAIActionState GetActionState()
 	{
 		return m_eState;
+	}
+	
+	void SetSuspended(bool suspended)
+	{
+		#ifdef AI_DEBUG
+		AddDebugMessage(string.Format("SetSuspended: %1, %2", suspended, GetActionDebugInfo()));
+		#endif
+		
+		m_bSuspended = suspended;
+	}
+	
+	bool GetSuspended()
+	{
+		return m_bSuspended;
 	}
 	
 	void Complete()
@@ -118,6 +139,10 @@ class SCR_AIActionBase
 	// Called when utility component recognizes failure of the behavior
 	void OnActionFailed() {m_eState = EAIActionState.FAILED;}
 	
+	// Called when any new info message arrives, regardless of state of this action.
+	// When any of the messages returns true, the reaction is not invoked.
+	bool OnInfoMessage(SCR_AIMessageBase msg) { return false; };
+	
 	bool IsActionInterruptable()
 	{
 		return m_bIsInterruptable;
@@ -129,7 +154,7 @@ class SCR_AIActionBase
 	}
 	
 	void SCR_AIActionBase(SCR_AIBaseUtilityComponent utility, bool prioritize)
-	{
+	{	
 		m_bPrioritize.Init(m_aParams, prioritize);
 		
 		m_UtilityBase = utility;
@@ -141,7 +166,7 @@ class SCR_AIActionBase
 	protected void AddDebugMessage(string str)
 	{
 		SCR_AIInfoBaseComponent infoComp = SCR_AIInfoBaseComponent.Cast(m_UtilityBase.GetOwner().FindComponent(SCR_AIInfoBaseComponent));
-		infoComp.AddDebugMessage(str, msgType: EAIDebugMsgType.ACTION);
+		infoComp.AddDebugMessage(string.Format("%1: %2", this, str), msgType: EAIDebugMsgType.ACTION);
 	}
 	#endif
 	
@@ -172,28 +197,31 @@ class SCR_AIActionBase
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	
-	
-	
-	IEntity GetActionParameter_Entity(){return null;}	// used to quickly access most common parameter of behaviors and activities
-	
 	const static float MAX_PRIORITY = 100;
 	
 	// Unit behaviors
-	const static float PRIORITY_BEHAVIOR_RETREAT				= 100;
-	const static float PRIORITY_BEHAVIOR_RESUPPLY				= 90;
-	const static float PRIORITY_BEHAVIOR_MOVE_FROM_DANGER		= 85;
-	const static float PRIORITY_BEHAVIOR_COMBAT_MOVE_GROUP		= 84;
-	const static float PRIORITY_BEHAVIOR_ATTACK_SELECTED		= 83;
-	const static float PRIORITY_BEHAVIOR_HEAL_WAIT				= 81;
-	const static float PRIORITY_BEHAVIOR_HEAL					= 70;
-	const static float PRIORITY_BEHAVIOR_ATTACK_NOT_SELECTED	= 65;
+	const static float PRIORITY_BEHAVIOR_RETREAT_MELEE			= 190;
+	const static float PRIORITY_BEHAVIOR_RETREAT				= 170;
+	const static float PRIORITY_BEHAVIOR_MOVE_FROM_DANGER		= 160;
+	const static float PRIORITY_BEHAVIOR_ATTACK_HIGH_PRIORITY	= 120;	// Attack high priority
+	const static float PRIORITY_BEHAVIOR_PICKUP_INVENTORY_ITEMS = 118;
+	const static float PRIORITY_BEHAVIOR_RETREAT_FROM_TARGET	= 115;	//		(when attack exists, retreat does not, and the other way)
+	const static float PRIORITY_BEHAVIOR_COMBAT_MOVE_GROUP		= 106;
+	const static float PRIORITY_BEHAVIOR_MEDIC_HEAL				= 101;
+	const static float PRIORITY_BEHAVIOR_PROVIDE_AMMO			= 100;
+	const static float PRIORITY_BEHAVIOR_ATTACK_SELECTED		= 90;	// Attack selected
+	const static float PRIORITY_BEHAVIOR_HEAL					= 85;
+	const static float PRIORITY_BEHAVIOR_HEAL_WAIT				= 83;
+	const static float PRIORITY_BEHAVIOR_THROW_GRENADE			= 73;
+	const static float PRIORITY_BEHAVIOR_MOVE_FROM_VEHICLE_HORN	= 72;	
+	const static float PRIORITY_BEHAVIOR_ATTACK_NOT_SELECTED	= 70;	// Attack not selected
+	const static float PRIORITY_BEHAVIOR_MOVE_FROM_UNKNOWN_FIRE	= 65;
+	const static float PRIORITY_BEHAVIOR_FIND_FIRE_POSITION		= 61;
 	const static float PRIORITY_BEHAVIOR_MOVE_INDIVIDUALLY		= 60;
 	const static float PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE	= 60;
 	const static float PRIORITY_BEHAVIOR_VEHICLE				= 51;
 	const static float PRIORITY_BEHAVIOR_GET_OUT_VEHICLE		= 51;
 	const static float PRIORITY_BEHAVIOR_PERFORM_ACTION			= 50;
-	const static float PRIORITY_BEHAVIOR_MEDIC_HEAL				= 40;
 	const static float PRIORITY_BEHAVIOR_MOVE					= 30;
 	const static float PRIORITY_BEHAVIOR_MOVE_IN_FORMATION		= 30;
 	//const static float PRIORITY_BEHAVIOR_

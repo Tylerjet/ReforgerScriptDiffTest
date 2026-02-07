@@ -122,15 +122,14 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 				m_ProgressBar.SetValue(1, false);
 			}
 				
-			WidgetAnimator.StopAllAnimations(m_Widget);
-			WidgetAnimator.PlayAnimation(new WidgetAnimationOpacity(m_Widget, WidgetAnimator.FADE_RATE_FAST, 1));
+			AnimateWidget.Opacity(m_Widget, 1, UIConstants.FADE_RATE_FAST);
 			
 			//--- Create highlights a bit later, so widgets which are part of the menu this hint UI belongs to have time to register
 			if (m_HighlightLayout)
 				GetGame().GetCallqueue().CallLater(CreateHighlights, 1, false, info);
 		
 			if (!isSilent)
-				SCR_UISoundEntity.SoundEvent(UISounds.HINT, true);
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.HINT, true);
 		}
 		else
 		{
@@ -139,8 +138,8 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 	}
 	protected void OnHintHide(SCR_HintUIInfo info, bool isSilent)
 	{
-		WidgetAnimator.PlayAnimation(new WidgetAnimationOpacity(m_Widget, WidgetAnimator.FADE_RATE_DEFAULT, 0, false, true));
-		
+		AnimateWidget.Opacity(m_Widget, 0, UIConstants.FADE_RATE_DEFAULT, true);
+
 		if (m_aHighlightWidgets)
 		{
 			foreach (Widget hightlightWidget: m_aHighlightWidgets)

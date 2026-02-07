@@ -38,23 +38,26 @@ class SCR_MapCursorInfo
 [BaseContainerProps()]
 class SCR_MapCursorModule: SCR_MapModuleBase
 {	
-	[Attribute(defvalue: "1.5", uiwidget: UIWidgets.EditBox, desc: "Panning: multiplier of keyboard panning speed", params: "0.1 10", category: "Input Configuration")]
+	[Attribute(defvalue: "1.5", uiwidget: UIWidgets.EditBox, desc: "Panning: multiplier of keyboard panning speed", params: "0.1 10")]
 	float m_fPanKBMMultiplier;
 	
-	[Attribute(defvalue: "1.5", uiwidget: UIWidgets.EditBox, desc: "Panning: multiplier of thubmstick panning speed", params: "0.1 10", category: "Input Configuration")]
+	[Attribute(defvalue: "1.5", uiwidget: UIWidgets.EditBox, desc: "Panning: multiplier of thubmstick panning speed", params: "0.1 10")]
 	float m_fPanStickMultiplier;
 	
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enables panning by moving cursor to the screen edges")]
 	bool m_bEnableCursorEdgePan;
 				
-	[Attribute(defvalue: "0.1", uiwidget: UIWidgets.EditBox, desc: "Time it takes to perform zooming of a single step", params: "0.01 10", category: "Input Configuration")]
+	[Attribute(defvalue: "0.1", uiwidget: UIWidgets.EditBox, desc: "Time it takes to perform zooming of a single step", params: "0.01 10")]
 	float m_fZoomAnimTime;
 	
-	[Attribute(defvalue: "2", uiwidget: UIWidgets.EditBox, desc: "Each zoom step is increased/decreased by the currentZoom/thisVariable, lower number means faster steps", params: "0.1 10", category: "Input Configuration")]
+	[Attribute(defvalue: "2", uiwidget: UIWidgets.EditBox, desc: "Each zoom step is increased/decreased by the currentZoom/thisVariable, lower number means faster steps", params: "0.1 10")]
 	float m_fZoomStrength;
 	
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "Enables crosshair grid lines")]
-	bool m_bEnableCrosshairGrid;
+	[Attribute(defvalue: "100", uiwidget: UIWidgets.EditBox, desc: "This is multiplier of average frame time resulting in a rotation degree value", params: "100 1000")]
+	int m_iRotateSpeedMouse;
+	
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enables custom map crosshair visuals")]
+	bool m_bEnableMapCrosshairVisuals;
 	
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "Enables crosshair grid coordinate display")]
 	bool m_bEnableCrosshairCoords;
@@ -69,23 +72,27 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	
 	// const
 	const int CURSOR_CAPTURE_OFFSET = 10;		// hardcoded(code) screen edges in pixels for cursor capture
+	const int GUILDING_LINE_WIDTH = 16;
 	const float PAN_DEFAULT_COUNTDOWN = 0.1;
 	const float SINGLE_SELECTION_RANGE = 200.0;	// range in world pos
 	const float CIRCLE_SELECTION_RANGE = 500.0;	// range in world pos
 	const float FREE_CURSOR_RESET = 3.0;		// seconds, time before free cursor resets to locked mode on controller
 	
-	const EMapCursorState STATE_PAN_RESTRICTED	= EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
-	const EMapCursorState STATE_ZOOM_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
+	const EMapCursorState CUSTOM_CURSOR_LOCKED = EMapCursorState.CS_ROTATE;
+	const EMapCursorState STATE_PAN_RESTRICTED	= EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
+	const EMapCursorState STATE_ZOOM_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_HOVER_RESTRICTED = EMapCursorState.CS_MOVE | EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_MULTI_SELECTION 
 												 | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_SELECT_RESTRICTED = EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW;
-	const EMapCursorState STATE_MULTISELECT_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
-	const EMapCursorState STATE_DRAG_RESTRICTED	= EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MULTI_SELECTION;
+	const EMapCursorState STATE_MULTISELECT_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MODIFIER;
+	const EMapCursorState STATE_DRAG_RESTRICTED	= EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_ROTATE;
+	const EMapCursorState STATE_ROTATE_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_DRAW_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_CTXMENU_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW;
 	
 	// timers
 	protected float m_fPanCountdown;		// used to stop panning cursor state and refresh start position for next drag panning
+	protected float m_fModifActionDelay;	// delay between modifier action activation 
 	protected float m_fZoomHoldTime;		// zoom hold time for adjusting speed of zoom
 	protected float m_fHoverTime;			// hover activation
 	protected float m_fFreeCursorTime;		// free cursor deactivation
@@ -98,6 +105,8 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	protected bool m_bIsDisabled;			// temporary module disable
 	protected bool m_bIsDraggingAvailable;
 	protected bool m_bIsSelectionAvailable;
+	protected bool m_bIsModifierActive;
+	protected int m_iRotationDirVal;
 	protected float m_fZoomMultiplierWheel = 1;
 	protected InputManager m_InputManager;
 	protected ref SCR_MapCursorInfo m_CursorInfo;
@@ -106,10 +115,11 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	protected SCR_MapSelectionModule m_SelectionModule;
 	
 	// positioning & sizing
-	protected ImageWidget m_wCrossRTop;	// vertical sizing
-	protected ImageWidget m_wGLTop;		// vertical sizing
-	protected ImageWidget m_wCrossLTop;	// vertical sizing
-	protected ImageWidget m_wGLLeft;	// horizontal sizing
+	protected ImageWidget m_wCrossLTop;	// top left fill image, width and heigth determined by the cursor pos
+	protected ImageWidget m_wCrossRTop;	// top right fill image, width by (screen reso - cursor pos),  height determined by cursos pos
+	protected ImageWidget m_wCrossLBot;	// bot left fill image, width set by top left fill, height by (screen reso - cursor pos)
+	protected ImageWidget m_wGLLeft;	// guiding line sizing
+	protected ImageWidget m_wGLTop;		// guiding line sizing
 	protected Widget m_wCrossMCenter;	// used for centering
 	
 	// Rest of guide lines for coloring
@@ -153,7 +163,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	//! Sets cursor type - visual style
 	protected void SetCursorType(EMapCursorState type)
 	{
-		if (!m_bEnableCrosshairGrid)
+		if (!m_bEnableMapCrosshairVisuals)
 			return;
 		
 		if (type == EMapCursorState.CS_DISABLE)
@@ -164,9 +174,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	
 	//------------------------------------------------------------------------------------------------
 	//! Sets active device - KB+M or controller
-	protected void SetInputDevice() 
+	protected void OnInputDeviceIsGamepad(bool isGamepad) 
 	{ 
-		m_CursorInfo.isGamepad = !m_InputManager.IsUsingMouseAndKeyboard();
+		m_CursorInfo.isGamepad = isGamepad;
 		if (m_CursorInfo.isGamepad)
 			ForceCenterCursor();
 		else if (m_fFreeCursorTime != 0)	// if scheme switched during fade
@@ -419,16 +429,16 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	//! \param startDrag determines whether dragging should begin or stop
 	protected void HandleDrag(bool startDrag)
 	{		
-		// disable drag state
-		if (m_CursorState & STATE_DRAG_RESTRICTED)
-			return;
-
 		// begin drag
 		if (startDrag)
 		{
+			// disable drag state
+			if (m_CursorState & STATE_DRAG_RESTRICTED)
+				return;
+			
 			if ( ~m_CursorState & EMapCursorState.CS_DRAG )
 			{
-				if (SCR_MapDragComponent.StartDrag())
+				if (SCR_MapToolInteractionUI.StartDrag())
 				{
 					SetCursorState(EMapCursorState.CS_DRAG);
 				}
@@ -440,7 +450,32 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			if (m_CursorState & EMapCursorState.CS_DRAG)
 			{
 				UnsetCursorState(EMapCursorState.CS_DRAG);
-				SCR_MapDragComponent.EndDrag();
+				SCR_MapToolInteractionUI.EndDrag();
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Handle rotate map tool
+	protected void HandleRotateTool(bool startRotate)
+	{		
+		if (m_CursorState & STATE_ROTATE_RESTRICTED)
+			return;
+		
+		if (startRotate)
+		{
+			if ( ~m_CursorState & EMapCursorState.CS_ROTATE )
+			{
+				if (SCR_MapToolInteractionUI.StartRotate())
+					SetCursorState(EMapCursorState.CS_ROTATE);
+			}
+		}
+		else 
+		{
+			if (m_CursorState & EMapCursorState.CS_ROTATE)
+			{
+				UnsetCursorState(EMapCursorState.CS_ROTATE);
+				SCR_MapToolInteractionUI.EndRotate();
 			}
 		}
 	}
@@ -506,7 +541,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		if (!canOpen)
 			HandleContextualMenu(true);
 	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	// SUPPORT METHODS
 	//------------------------------------------------------------------------------------------------
@@ -527,7 +562,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			else if (m_eMultiSelType == EMapCursorSelectType.CIRCLE)
 			{			
 				float circleRadius = m_SelectionModule.GetSelCircleSize() / 2; // size is in pixels while we want radius
-				m_MapEntity.GetInsideCircle(mapItems, curPos, circleRadius / m_MapEntity.GetCurrentPixelPerUnit());
+				m_MapEntity.GetInsideCircle(mapItems, curPos, circleRadius / m_MapEntity.GetCurrentZoom());
 			}
 	}
 	
@@ -731,11 +766,11 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		if ( (m_CursorState & EMapCursorState.CS_ZOOM) && m_fZoomHoldTime < 0.05)	// if pressed, call once every 0.05 second
 			return;
 		
-		float zoom = m_MapEntity.GetCurrentZoom();
+		float zoomPPU = m_MapEntity.GetCurrentZoom();
 		if (value == 1)
-				m_MapEntity.ZoomSmooth(zoom + zoom/m_fZoomStrength, m_fZoomAnimTime, false);
+				m_MapEntity.ZoomSmooth(zoomPPU + zoomPPU/m_fZoomStrength, m_fZoomAnimTime, false);
 			else
-				m_MapEntity.ZoomSmooth(zoom - zoom/(m_fZoomStrength + 1), m_fZoomAnimTime, false);
+				m_MapEntity.ZoomSmooth(zoomPPU - zoomPPU/m_fZoomStrength, m_fZoomAnimTime, false);
 		
 		m_fZoomHoldTime = 0;
 	}
@@ -748,9 +783,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		if (m_CursorState & STATE_ZOOM_RESTRICTED)
 			return;
 					
-		float zoom = m_MapEntity.GetTargetZoom();
+		float targetPPU = m_MapEntity.GetTargetZoomPPU();
 		value = value * m_fZoomMultiplierWheel;
-		m_MapEntity.ZoomSmooth(zoom + zoom*(value*0.001), m_fZoomAnimTime, false);
+		m_MapEntity.ZoomSmooth(targetPPU + targetPPU * (value * 0.001), m_fZoomAnimTime, false);	// the const here is adjusting the value to match the input with zoom range
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -761,9 +796,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		if (m_CursorState & STATE_ZOOM_RESTRICTED)
 			return;
 		
-		float zoom = m_MapEntity.GetTargetZoom();
+		float targetPPU = m_MapEntity.GetTargetZoomPPU();
 		value = value * m_fZoomMultiplierWheel;
-		m_MapEntity.ZoomSmooth(zoom - zoom*(value*0.001), m_fZoomAnimTime, false);		
+		m_MapEntity.ZoomSmooth(targetPPU - targetPPU/2 * (value * 0.001), m_fZoomAnimTime, false);	// the const here is adjusting the value to match the input with zoom range
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -781,6 +816,21 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	//! Digital drag
 	protected void OnInputDrag( float value, EActionTrigger reason )
 	{		
+		if (m_CursorState & EMapCursorState.CS_MODIFIER)
+		{
+			if (reason == EActionTrigger.PRESSED)
+			{
+				if (m_CursorState & EMapCursorState.CS_DRAG)
+					HandleDrag(false);
+				
+				HandleRotateTool(true);
+			}
+			else 
+				HandleRotateTool(false);
+				
+			return;
+		}
+		
 		if (reason == EActionTrigger.PRESSED)
 		{
 			if (m_bIsDraggingAvailable)
@@ -809,6 +859,132 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		// Start
 		if (m_bIsDraggingAvailable)
 			HandleDrag(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Digital modifier key
+	protected void OnInputModifier( float value, EActionTrigger reason )
+	{
+		if (reason == EActionTrigger.DOWN)
+			SetCursorState(EMapCursorState.CS_MODIFIER);
+		else 
+		{
+			UnsetCursorState(EMapCursorState.CS_MODIFIER);
+			if (SCR_MapToolInteractionUI.s_bIsRotating)
+				HandleRotateTool(false);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Analog modifier action UP
+	protected void OnInputModifRotGamepadUp( float value, EActionTrigger reason )
+	{
+		if (~m_CursorState & EMapCursorState.CS_MODIFIER || !m_CursorInfo.isGamepad)
+			return;
+		
+		OnInputModifRotGamepad(value, reason, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Analog modifier action DOWN
+	protected void OnInputModifRotGamepadDown( float value, EActionTrigger reason )
+	{
+		if (~m_CursorState & EMapCursorState.CS_MODIFIER || !m_CursorInfo.isGamepad)
+			return;
+		
+		OnInputModifRotGamepad(value, reason, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Called by OnInputModifierGamepad methods
+	protected void OnInputModifRotGamepad(float value, EActionTrigger reason, bool direction)
+	{				
+		if (m_fModifActionDelay < 0.05)	// this const servers to disable rotation state, since classic actio ntrigger cant be used here due to it being a VALUE trigger
+		{
+			m_fModifActionDelay += System.GetFrameTimeS();
+			
+			if (m_fModifActionDelay < 0.025 || value == 0)	// this const is delay between rottion calls
+				return;
+		}
+		else if (value == 0)
+		{
+			if (m_CursorState & EMapCursorState.CS_ROTATE)
+				HandleRotateTool(false);
+			
+			return;
+		}
+					
+		m_fModifActionDelay = 0;
+		
+		if (m_CursorState & STATE_ROTATE_RESTRICTED)
+			return;
+		
+		if (!SCR_MapToolInteractionUI.s_bIsRotating)
+		{
+			HandleRotateTool(true);
+			
+			if (!SCR_MapToolInteractionUI.s_bIsRotating)	// didnt find rotatable widget under cursor
+				return;
+		}
+		
+		int rotateBy = Math.Round(value * 4);	// (0-1 * 4) gives variety of movement between 1 - 4 degrees
+		if (rotateBy == 0)
+			rotateBy == 1;
+		
+		SCR_MapToolInteractionUI.RotateWidget(direction,  Math.Round(value * 4));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Motion mouse input
+	protected void OnInputModifRotate( float value, EActionTrigger reason )
+	{	
+		if (!SCR_MapToolInteractionUI.s_bIsRotating || value == m_iRotationDirVal)
+			return;
+		
+		OnInputModifRot(value, reason, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Motion mouse input
+	protected void OnInputModifRotateBack( float value, EActionTrigger reason )
+	{			
+		if (!SCR_MapToolInteractionUI.s_bIsRotating || value == m_iRotationDirVal)
+			return;
+		
+		OnInputModifRot(value, reason, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Called by OnInputModifRotate methods
+	protected void OnInputModifRot( float value, EActionTrigger reason, bool actionDir )
+	{
+		bool dir;
+				
+		if (actionDir)
+		{
+			if (value < m_iRotationDirVal)
+				dir = true;
+		}
+		else 
+		{
+			if (value > m_iRotationDirVal)
+				dir = true;
+		}
+		
+		m_iRotationDirVal = value;
+		
+		if (m_CursorState & STATE_ROTATE_RESTRICTED)
+			return;
+		
+		SCR_MapToolInteractionUI.RotateWidget(dir,  m_iRotateSpeedMouse * System.GetFrameTimeS());
+		ForceCenterCursor();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Digital click
+	protected void OnInputModifClick( float value, EActionTrigger reason )
+	{
+		SCR_MapToolInteractionUI.ActivateAction();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -900,7 +1076,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	//------------------------------------------------------------------------------------------------
 	//! Update crosshair UI
 	protected void UpdateCrosshairUI()
-	{
+	{		
 		float sizeX, sizeY, cursorX, cursorY;
 		m_wCrossMCenter.GetScreenSize(sizeX, sizeY);		
 		
@@ -914,13 +1090,13 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		
 		m_CustomCursor.Update(m_CursorInfo.x, m_CursorInfo.y);
 		
-		//m_wCrossMTop.GetScreenSize(sizeX, sizeY);	// size of the top guiding line is set within layout, we need to keep it unchanged
-		int GLwidth = 16;
+		m_MapWidget.GetScreenSize(sizeX, sizeY);	
 		
 		m_wCrossLTop.SetSize(cursorX, cursorY);
-		m_wGLTop.SetSize(GLwidth, cursorY);
-		m_wCrossRTop.SetSize(0, cursorY);
-		m_wGLLeft.SetSize(cursorX, GLwidth);
+		m_wCrossRTop.SetSize(workspace.DPIUnscale(sizeX) - cursorX, cursorY);
+		m_wCrossLBot.SetSize(0, workspace.DPIUnscale(sizeY) - cursorY);
+		m_wGLTop.SetSize(GUILDING_LINE_WIDTH, cursorY);
+		m_wGLLeft.SetSize(cursorX, GUILDING_LINE_WIDTH);
 		
 		if (m_bEnableCrosshairCoords)
 		{
@@ -938,13 +1114,14 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_MapWidget = m_MapEntity.GetMapWidget();
 		
 		Widget crossGrid = root.FindAnyWidget("CursorCrosshair");
-		if (m_bEnableCrosshairGrid)
+		if (m_bEnableMapCrosshairVisuals)
 		{
 			crossGrid.SetVisible(true);
 			// positioning widgets
 			m_wCrossMCenter = root.FindAnyWidget("CrossMCenter");	
 			m_wCrossRTop = ImageWidget.Cast(root.FindAnyWidget("CrossRTop"));	
-			m_wCrossLTop = ImageWidget.Cast(root.FindAnyWidget("CrossLTop"));	
+			m_wCrossLTop = ImageWidget.Cast(root.FindAnyWidget("CrossLTop"));
+			m_wCrossLBot = ImageWidget.Cast(root.FindAnyWidget("CrossLBot"));
 			m_wGLTop = ImageWidget.Cast(root.FindAnyWidget("GLTop"));
 			m_wGLLeft = ImageWidget.Cast(root.FindAnyWidget("GLLeft"));
 			// guidelines	
@@ -969,12 +1146,12 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			m_wCoordText.SetColor(m_GuidelineColor);
 			
 			m_wCoordText.SetOpacity(0); // text
+			
+			if (m_bEnableCrosshairCoords)
+				m_wCoordText.SetOpacity(1);	
 		}
 		else 
 			crossGrid.SetVisible(false);
-		
-		if (m_bEnableCrosshairGrid && m_bEnableCrosshairCoords)
-			m_wCoordText.SetOpacity(1);	
 		
 		// cursor 
 		if (!m_CustomCursor)
@@ -988,8 +1165,8 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_InputManager = g_Game.GetInputManager();
 		
 		// controller detection 
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(SetInputDevice);
-		SetInputDevice();
+		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		// pause menu 
 		PauseMenuUI.m_OnPauseMenuOpened.Insert(OnPauseMenuOpened);
@@ -1005,11 +1182,8 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_InputManager.AddActionListener("MapZoom", EActionTrigger.PRESSED, OnInputZoom);
 		m_InputManager.AddActionListener("MapWheelUp", EActionTrigger.PRESSED, OnInputZoomWheelUp);
 		m_InputManager.AddActionListener("MapWheelDown", EActionTrigger.PRESSED, OnInputZoomWheelDown);
-		m_InputManager.AddActionListener("MapDrag", EActionTrigger.PRESSED, OnInputDrag);
-		m_InputManager.AddActionListener("MapDrag", EActionTrigger.UP, OnInputDrag);
-		m_InputManager.AddActionListener("MapDragGamepad", EActionTrigger.PRESSED, OnInputDragGamepad);
 		m_InputManager.AddActionListener("MapSelect", EActionTrigger.UP, HandleSelect);
-				
+		
 		// ctx menu
 		if ( SCR_MapContextualMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapContextualMenuUI)) )
 		{
@@ -1026,9 +1200,22 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			m_InputManager.AddActionListener("MapMultiSelectGamepad", EActionTrigger.UP, OnInputMultiSelGamepad);
 		}
 		
-		// dragging 
-		if ( SCR_MapDragComponent.Cast(m_MapEntity.GetMapUIComponent(SCR_MapDragComponent)) )
+		// tool interaction UI
+		if ( SCR_MapToolInteractionUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolInteractionUI)) )
+		{
 			m_bIsDraggingAvailable = true;
+			
+			m_InputManager.AddActionListener("MapModifierKey", EActionTrigger.DOWN, OnInputModifier);
+			m_InputManager.AddActionListener("MapModifierKey", EActionTrigger.UP, OnInputModifier);
+			m_InputManager.AddActionListener("MapModifRotGamepadUp", EActionTrigger.VALUE, OnInputModifRotGamepadUp);
+			m_InputManager.AddActionListener("MapModifRotGamepadDown", EActionTrigger.VALUE, OnInputModifRotGamepadDown);
+			m_InputManager.AddActionListener("MapModifRotate", EActionTrigger.PRESSED, OnInputModifRotate);
+			m_InputManager.AddActionListener("MapModifRotateBack", EActionTrigger.PRESSED, OnInputModifRotateBack);
+			m_InputManager.AddActionListener("MapModifClick", EActionTrigger.DOWN, OnInputModifClick);
+			m_InputManager.AddActionListener("MapDrag", EActionTrigger.PRESSED, OnInputDrag);
+			m_InputManager.AddActionListener("MapDrag", EActionTrigger.UP, OnInputDrag);
+			m_InputManager.AddActionListener("MapDragGamepad", EActionTrigger.PRESSED, OnInputDragGamepad);
+		}
 		else 
 			m_bIsDraggingAvailable = false;
 	
@@ -1042,7 +1229,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			m_InputManager = g_Game.GetInputManager();
 		
 		// controller detection 
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(SetInputDevice);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		
 		// pause menu
 		PauseMenuUI.m_OnPauseMenuOpened.Remove(OnPauseMenuOpened);
@@ -1058,10 +1245,18 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_InputManager.RemoveActionListener("MapZoom", EActionTrigger.PRESSED, OnInputZoom);
 		m_InputManager.RemoveActionListener("MapWheelUp", EActionTrigger.PRESSED, OnInputZoomWheelUp);
 		m_InputManager.RemoveActionListener("MapWheelDown", EActionTrigger.PRESSED, OnInputZoomWheelDown);
+		m_InputManager.RemoveActionListener("MapSelect", EActionTrigger.UP, HandleSelect);
+		
+		m_InputManager.RemoveActionListener("MapModifierKey", EActionTrigger.DOWN, OnInputModifier);
+		m_InputManager.RemoveActionListener("MapModifierKey", EActionTrigger.UP, OnInputModifier);
+		m_InputManager.RemoveActionListener("MapModifRotGamepadUp", EActionTrigger.VALUE, OnInputModifRotGamepadUp);
+		m_InputManager.RemoveActionListener("MapModifRotGamepadDown", EActionTrigger.VALUE, OnInputModifRotGamepadDown);
+		m_InputManager.RemoveActionListener("MapModifRotate", EActionTrigger.PRESSED, OnInputModifRotate);
+		m_InputManager.RemoveActionListener("MapModifRotateBack", EActionTrigger.PRESSED, OnInputModifRotateBack);
+		m_InputManager.RemoveActionListener("MapModifClick", EActionTrigger.DOWN, OnInputModifClick);
 		m_InputManager.RemoveActionListener("MapDrag", EActionTrigger.PRESSED, OnInputDrag);
 		m_InputManager.RemoveActionListener("MapDrag", EActionTrigger.UP, OnInputDrag);
 		m_InputManager.RemoveActionListener("MapDragGamepad", EActionTrigger.PRESSED, OnInputDragGamepad);
-		m_InputManager.RemoveActionListener("MapSelect", EActionTrigger.UP, HandleSelect);
 		
 		m_InputManager.RemoveActionListener("MapMultiSelect", EActionTrigger.PRESSED, OnInputMultiSel);
 		m_InputManager.RemoveActionListener("MapMultiSelect", EActionTrigger.UP, OnInputMultiSel);
@@ -1083,6 +1278,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		InitInputs();
 
 		SetCursorType(m_CursorState);
+		ForceCenterCursor();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1114,13 +1310,13 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		HandleZoom();
 		
 		// crosshair grid lines
-		if (m_bEnableCrosshairGrid)
+		if (m_bEnableMapCrosshairVisuals && (m_CursorState & CUSTOM_CURSOR_LOCKED) == 0)
 			UpdateCrosshairUI();
 		
-		// debug
-		/*DbgUI.Begin("cursor debug");
-		DbgUI.Text( m_CursorState.ToString() );
-		DbgUI.End();*/
+		if (m_CursorState & EMapCursorState.CS_MODIFIER)
+		{
+			m_InputManager.ActivateContext("MapModifierContext");
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

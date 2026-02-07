@@ -36,10 +36,24 @@ class SCR_AITargetReaction_Enemy : SCR_AITargetReactionBase
 			return;
 		}
 		
+		// Resolve BaseTarget in our perception
+		BaseTarget baseTarget = utility.m_CombatComponent.FindTargetByEntity(target);
+		if (!baseTarget)
+			return;
+		
+		// Terminate retreat action if we had one
+		SCR_AIActionBase retreatAction = utility.FindActionOfType(SCR_AIRetreatFromTargetBehavior);
+		if (retreatAction)
+			retreatAction.Complete();
+		
+		// Terminate all attack actions on same target if we had any
+		ENodeResult finishAttackResult;
+		utility.FinishAttackForTarget(baseTarget, finishAttackResult);
+		
 		//this shouldn't be dependent on Info component since Info component should provide state of agent to outside
-		if (!utility.m_AIInfo.HasUnitState(EUnitState.STATIC))
-		{		
-			auto behavior = new SCR_AIAttackBehavior(utility, false, target, lastSeenPosition);
+		if (!utility.m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
+		{
+			auto behavior = new SCR_AIAttackBehavior(utility, false, null, baseTarget, lastSeenPosition);
 			// AddAction must be used here, not AddActionIfMissing!
 			// When target switches, we must delete the old behavior.
 			utility.AddAction(behavior);
@@ -48,9 +62,34 @@ class SCR_AITargetReaction_Enemy : SCR_AITargetReactionBase
 		}
 		else
 		{
-			auto behavior = new SCR_AIAttackStaticBehavior(utility, false, target, lastSeenPosition);
+			auto behavior = new SCR_AIAttackStaticBehavior(utility, false, null, baseTarget, lastSeenPosition);
 			utility.AddActionIfMissing(behavior);
 			utility.m_LookAction.LookAt(target, SCR_AILookAction.PRIO_ENEMY_TARGET);
 		}
 	}
 };
+
+[BaseContainerProps()]
+class SCR_AITargetReaction_RetreatFromEnemy : SCR_AITargetReactionBase
+{
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, IEntity target, vector lastSeenPosition)
+	{
+		// Resolve BaseTarget in our perception
+		BaseTarget baseTarget = utility.m_CombatComponent.FindTargetByEntity(target);
+		if (!baseTarget)
+			return;
+		
+		// Find if we already have a retreat action from that target
+		SCR_AIRetreatFromTargetBehavior prevRetreatBehavior = SCR_AIRetreatFromTargetBehavior.Cast(utility.FindActionOfType(SCR_AIRetreatFromTargetBehavior));
+		if (prevRetreatBehavior)
+		{
+			if (prevRetreatBehavior.m_RetreatFromTarget.m_Value == baseTarget)
+				return;
+			else
+				prevRetreatBehavior.Complete();
+		}
+		
+		SCR_AIRetreatFromTargetBehavior behavior = new SCR_AIRetreatFromTargetBehavior(utility, false, null, baseTarget);
+		utility.AddAction(behavior);
+	}
+}

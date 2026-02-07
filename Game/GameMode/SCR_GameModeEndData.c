@@ -133,12 +133,18 @@ class SCR_GameModeEndData
 		int winnerCount = prop.m_aWinnerIds.Count();
 		snapshot.SerializeInt(winnerCount);
 		for (int i = 0; i < winnerCount; i++)
-			snapshot.SerializeInt(prop.m_aWinnerIds[i]);
+		{
+			int id = prop.m_aWinnerIds[i]; 			
+			snapshot.SerializeInt(id);
+		}
 
 		int factionWinnerCount = prop.m_aWinnerFactionIds.Count();
 		snapshot.SerializeInt(factionWinnerCount);
 		for (int i = 0; i < factionWinnerCount; i++)
-			snapshot.SerializeInt(prop.m_aWinnerFactionIds[i]);
+		{
+			int id = prop.m_aWinnerFactionIds[i];
+			snapshot.SerializeInt(id);
+		}
 
 		return true;
 	}

@@ -15,9 +15,8 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 	protected SCR_NavigationButtonComponent m_PrevSpawnPoint;
 	protected SCR_NavigationButtonComponent m_NextSpawnPoint;
 
-	protected bool m_bSmoothPan;
 	protected bool m_bUsingSpawnPointGroups;
-	protected float m_fZoom;
+	protected float m_fZoom = 1;
 
 	protected RplId m_SelectedSpawnPointId = RplId.Invalid();
 	protected RplId m_DefaultSpawnPointId = RplId.Invalid();
@@ -25,6 +24,9 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 
 	protected static SCR_SelectSpawnPointSubMenu s_Instance;
 	static ref ScriptInvoker Event_OnSpawnPointChanged = new ScriptInvoker();
+
+	[Attribute("{418989FA279F1257}Configs/Map/MapSpawnMenu.conf")]
+	protected ResourceName m_sMapConfigPath;
 
 	[Attribute("SelectionSpinBox")]
 	protected string m_sSelectionSpinBox;
@@ -92,7 +94,7 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 	{
 		if (m_MapEntity)
 		{
-			m_MapConfigSpawn = m_MapEntity.SetupMapConfig(EMapEntityMode.SPAWNSCREEN, "{418989FA279F1257}Configs/Map/MapSpawnMenu.conf", GetRootWidget());
+			m_MapConfigSpawn = m_MapEntity.SetupMapConfig(EMapEntityMode.SPAWNSCREEN, m_sMapConfigPath, GetRootWidget());
 			m_MapEntity.OpenMap(m_MapConfigSpawn);
 		}
 	}
@@ -104,10 +106,10 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 
 		if (m_MapEntity && m_MapEntity.IsOpen() && m_InputManager)
 		{
-				m_InputManager.ActivateContext("MapContext");
-				m_InputManager.ActivateContext("DeployMenuMapContext");
-			}
+			m_InputManager.ActivateContext("MapContext");
+			m_InputManager.ActivateContext("DeployMenuMapContext");
 		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
@@ -150,13 +152,26 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 			m_ConfirmButton.SetToggled(false, true, false);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void OnMapOpen()
 	{
+		m_MapEntity.SetZoom(m_fZoom);
 		UpdateAndShowSelection();
 		if (!SelectLastSelectedSpawnPoint())
 			SelectSpawnPoint();
-		FocusOnSelectedSpawnPoint();
+		FocusOnSelectedSpawnPoint(false);
 		UpdateTimedSpawnPoint();
+		SCR_SpawnPoint sp = SCR_SpawnPoint.GetSpawnPointByRplId(m_SelectedSpawnPointId);
+		Event_OnSpawnPointChanged.Invoke(sp);	
+		GetGame().GetCallqueue().CallLater(SelectLater, 100, false,);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SelectLater()
+	{
+		// needed only for first selection because UI icons might not be initialized yet
+		SCR_SpawnPoint sp = SCR_SpawnPoint.GetSpawnPointByRplId(m_SelectedSpawnPointId);
+		Event_OnSpawnPointChanged.Invoke(sp);	
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -177,11 +192,7 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 		m_wRoot.SetZOrder(-1);
 
 		if (m_MapEntity && !m_MapEntity.IsOpen())
-		{
 			InitMap();
-			m_MapEntity.OpenMap(m_MapConfigSpawn);
-			// m_MapEntity.SetZoom(m_fZoom);
-		}
 
 		PlayerManager pm = GetGame().GetPlayerManager();
 		SCR_RespawnComponent rc = SCR_RespawnComponent.Cast(pm.GetPlayerRespawnComponent(m_iPlayerId));
@@ -347,7 +358,7 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void FocusOnSelectedSpawnPoint()
+	protected void FocusOnSelectedSpawnPoint(bool smoothPan = true)
 	{
 		if (!m_MapEntity)
 			return;
@@ -369,18 +380,10 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 		vector itemPos = descr.Item().GetPos();
 
 		m_MapEntity.WorldToScreen(itemPos[0], itemPos[2], x, y);
-		if (m_bSmoothPan)
-		{
+		if (smoothPan)
 			m_MapEntity.PanSmooth(x, y);
-		}
 		else
-		{
-			// menu opened, set the pan directly
-			// note(koudelkaluk): hotfix since SetPan() doesn't seem to work atm
-			m_MapEntity.ZoomPanSmooth(m_MapEntity.GetCurrentZoom(), itemPos[0], itemPos[2], 0.01);
-			//m_MapEntity.SetPan(x, y);
-			m_bSmoothPan = true;
-		}
+			m_MapEntity.SetPan(x, y);
 	}
 
 	//------------------------------------------------------------------------------------------------

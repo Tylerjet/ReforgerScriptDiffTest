@@ -1,38 +1,34 @@
 //------------------------------------------------------------------------------------------------
 class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUIComponent
 {
-	[Attribute(UISounds.FOCUS, UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.FOCUS, UIWidgets.EditBox)]
 	protected string m_sSoundOnOpen;
 	
-	[Attribute("SOUND_E_TRAN_CANCEL", UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.SOUND_E_TRAN_CANCEL, UIWidgets.EditBox)]
 	protected string m_sSoundOnCancelClose;
 	
 	//~ Makes sure context action is never opened if not selection state
 	protected bool m_bEditorIsSelectingState = true;
 	
-	override void PopulateContextMenu(vector cursorWorldPosition)
+	protected SCR_EditableEntityComponent m_HoveredEntityReference;
+	
+	protected void OnHoveredEntityCheck(float tDelta)
 	{
-		//--- Selection rules
-		SCR_BaseEditableEntityFilter selectedFilter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.SELECTED);
-		SCR_BaseEditableEntityFilter hoveredFilter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.HOVER);
-		if (hoveredFilter && selectedFilter)
+		if (!m_HoveredEntityReference)
 		{
-			SCR_EditableEntityComponent hoveredEntity = hoveredFilter.GetFirstEntity();
-			if (hoveredEntity)
-			{
-				m_HoveredEntityReference = hoveredEntity;
-				//--- Open menu over entity outside of the current selection - select it instead
-				if (!selectedFilter.Contains(hoveredEntity))
-					selectedFilter.Replace(hoveredEntity);
-			}
-			else
-			{
-				//--- Opened menu without any entity under cursor - clear the selection
-				selectedFilter.Clear();
-			}
+			CloseContextMenu();
+			GetMenu().GetOnMenuUpdate().Remove(OnHoveredEntityCheck);
 		}
-		
+	}
+	
+	override protected void PopulateContextMenu(vector cursorWorldPosition)
+	{
 		super.PopulateContextMenu(cursorWorldPosition);
+		m_HoveredEntityReference = m_EditorActionsComponent.GetHoveredEntity();
+		if (m_HoveredEntityReference)
+		{
+			GetMenu().GetOnMenuUpdate().Insert(OnHoveredEntityCheck);
+		}
 	}
 	
 	override protected void OnEditorModeChanged()
@@ -52,6 +48,12 @@ class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUICompo
 	{
 		if (m_ContextMenu && m_ContextMenu.IsVisible())
 			GetGame().GetCallqueue().CallLater(DelayedCloseSound, 100);
+		
+		if (m_HoveredEntityReference)
+		{
+			GetMenu().GetOnMenuUpdate().Remove(OnHoveredEntityCheck);
+			m_HoveredEntityReference = null;
+		}
 			
 		super.CloseContextMenu();
 	}

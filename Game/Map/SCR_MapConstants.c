@@ -2,7 +2,7 @@
 class SCR_MapConstants
 {
 	const int CANVAS_COMMAND_VERTICES_LIMIT = 400; 		// hardcoded in ENF, should be increased on req
-	const float MIN_PIX_PER_METER = 20;					// minimal possible zoom in the form of PixelPerUnit value
+	const float MAX_PIX_PER_METER = 20;					// maximal possible zoom in the form of max allowed PixelPerUnit value
 	
 	const string MAP_WIDGET_NAME = "MapWidget";			// name of the MapWidget within map layout
 	const string DRAWING_WIDGET_NAME = "DrawingWidget";	// name of the CanvasWidget for drawing within map layout		
@@ -48,7 +48,9 @@ enum EMapCursorState
 	CS_DRAG 			= 1<<7,
 	CS_DRAW 			= 1<<8,
 	CS_CONTEXTUAL_MENU	= 1<<9,
-	CS_LAST				= 1<<10
+	CS_MODIFIER			= 1<<10,
+	CS_ROTATE			= 1<<11,
+	CS_LAST				= 1<<12
 };
 
 //------------------------------------------------------------------------------------------------

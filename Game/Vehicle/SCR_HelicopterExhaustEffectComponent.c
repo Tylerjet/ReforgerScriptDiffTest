@@ -5,7 +5,7 @@ class SCR_HelicopterExhaustEffectComponentClass: MotorExhaustEffectComponentClas
 
 class SCR_HelicopterExhaustEffectComponent : MotorExhaustEffectComponent
 {
-	IEntity m_Effect;
+	Particles m_Effect;
 	
 	[Attribute( "", UIWidgets.EditBox, "Speed in m/s which tops the effect's interpolation from 100 to 0% lifetime value" )]
 	float m_ExhaustEndSpeedInM;
@@ -15,7 +15,7 @@ class SCR_HelicopterExhaustEffectComponent : MotorExhaustEffectComponent
 		Physics physics = owner.GetPhysics();
 		
 		if (!m_Effect)
-			m_Effect = GetParticleEntity();
+			m_Effect = GetParticleEntity().GetParticles();
 		
 		if (physics  &&  m_Effect  &&  m_ExhaustEndSpeedInM > 0)
 		{
@@ -24,8 +24,8 @@ class SCR_HelicopterExhaustEffectComponent : MotorExhaustEffectComponent
 			
 			float lifetime_scale = Math.Clamp( 1 - (speed_m_per_s / m_ExhaustEndSpeedInM) , 0 , 1 );
 			
-			SCR_ParticleAPI.LerpAllEmitters(m_Effect,  lifetime_scale, EmitterParam.LIFETIME );
-			SCR_ParticleAPI.LerpAllEmitters(m_Effect,  lifetime_scale, EmitterParam.LIFETIME_RND );
+			m_Effect.MultParam(-1, EmitterParam.LIFETIME,     lifetime_scale);
+			m_Effect.MultParam(-1, EmitterParam.LIFETIME_RND, lifetime_scale);
 		}
 	}
 };

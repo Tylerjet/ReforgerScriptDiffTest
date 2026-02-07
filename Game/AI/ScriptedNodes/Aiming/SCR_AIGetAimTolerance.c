@@ -5,6 +5,7 @@ class SCR_AIGetAimTolerance: AITaskScripted
 	static const string PORT_ANGULAR_SIZE = "AngularSizeIn";
 	static const float BIG_TOLERANCE = 10.0;
 	static const float NORMAL_TOLERANCE = 2.2;
+	static const float MINIMAL_TOLERANCE = 0.003;
 	
 	private SCR_AICombatComponent m_CombatComponent;
 	private SCR_AIUtilityComponent m_Utility;
@@ -49,8 +50,8 @@ class SCR_AIGetAimTolerance: AITaskScripted
 			return ENodeResult.FAIL;
 		
 		IEntity enemy;
-		if (m_CombatComponent.GetCurrentEnemy())
-			enemy = m_CombatComponent.GetCurrentEnemy().GetTargetEntity();
+		if (m_CombatComponent.GetCurrentTarget())
+			enemy = m_CombatComponent.GetCurrentTarget().GetTargetEntity();
 		else 
 			GetVariableIn(PORT_ENTITY, enemy);
 				
@@ -83,7 +84,7 @@ class SCR_AIGetAimTolerance: AITaskScripted
 			}
 			
 			//PrintFormat("Aiming tolerance is: %1", tolerance);
-			SetVariableOut(PORT_TOLERANCE, tolerance);
+			SetVariableOut(PORT_TOLERANCE, Math.Clamp(tolerance, MINIMAL_TOLERANCE, 90.0));
 			return ENodeResult.SUCCESS;
 		}
 		else

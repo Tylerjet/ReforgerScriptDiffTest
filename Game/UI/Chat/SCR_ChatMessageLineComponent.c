@@ -69,19 +69,15 @@ class SCR_ChatMessageLineComponent : ScriptedWidgetComponent
 		else if (messageGeneral)
 			senderNameText = messageGeneral.m_sSenderName + ": ";
 		
+		Color textColor = Color.White;		
 		
 		// Player name color
-		if (!senderNameText.IsEmpty())
-		{
-			Color playerNameColor = Color.White;
-			if (style.m_bColoredPlayerName)
-				playerNameColor = style.m_Color;
-			
-			senderNameText = SCR_RichTextTags.TagColor(senderNameText, playerNameColor);
-		}
-		
+		if (!senderNameText.IsEmpty() && style.m_bColoredPlayerName)
+			textColor = style.m_Color;
+
 		m_Widgets.m_TypeImage.LoadImageFromSet(0, CHAT_IMAGESET, chatTypeImageName);
-		
+
+		m_Widgets.m_MessageText.SetColor(textColor);		
 		m_Widgets.m_MessageText.SetText(senderNameText + msg.m_sMessage);	
 	}
 	

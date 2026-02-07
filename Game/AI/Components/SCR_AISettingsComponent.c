@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system calculations", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system calculations")]
 class SCR_AISettingsComponentClass: ScriptComponentClass
 {
 };

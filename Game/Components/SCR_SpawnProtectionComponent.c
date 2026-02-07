@@ -6,8 +6,11 @@ class SCR_SpawnProtectionComponentClass: SCR_BaseGameModeComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_SpawnProtectionComponent: SCR_BaseGameModeComponent
 {
-	[Attribute(defvalue: "10", desc: "How long should be player protected?")]
+	[Attribute(defvalue: "0.5", desc: "How long should be player protected?")]
 	protected float m_fProtectionTime;
+	
+	[Attribute(defvalue: "2", desc: "How long can be player protected in maximum (failsafe value, to be used if player loading takes too long)?")]
+	protected float m_fProtectionTimeMaximum;
 	
 	[Attribute(defvalue: "1", desc: "Should be protection disabled if player shoots?")]
 	protected bool m_bDisableOnAttack;
@@ -16,11 +19,16 @@ class SCR_SpawnProtectionComponent: SCR_BaseGameModeComponent
 	protected bool m_bAllowPlayerSpawnpoints;
 	
 	protected RplComponent m_RplComponent;
+	protected SCR_PlayerLoadingDetectionComponent m_LoadingDetectionComponent;
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerSpawned(int playerId, IEntity controlledEntity)
 	{	
 		if (IsProxy())
 			return;
+		
+		SCR_PlayerController controller = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerId));
+		if (!controller)
+			return; 
 		
 		//Check for radio respawns
 		if (!m_bAllowPlayerSpawnpoints)
@@ -36,9 +44,6 @@ class SCR_SpawnProtectionComponent: SCR_BaseGameModeComponent
 		
 		damageManager.EnableDamageHandling(false);
 		
-		
-		GetGame().GetCallqueue().CallLater(DisablePlayerProtection, m_fProtectionTime*1000, false, controlledEntity);
-		
 		// TODO: Check also for melee and grenade throw
 		if (m_bDisableOnAttack)
 		{
@@ -49,6 +54,37 @@ class SCR_SpawnProtectionComponent: SCR_BaseGameModeComponent
 			eventHandlerManager.RegisterScriptHandler("OnAmmoCountChanged", controlledEntity, OnPlayerAmmoChangeCallback);
 		}
 		
+		// Delayed turn-off start, as player probably isn't in loading screen yet
+		GetGame().GetCallqueue().CallLater(ProtectionHandler, 1000, false, controller);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ProtectionHandler(SCR_PlayerController controller)
+	{
+		SCR_PlayerLoadingDetectionComponent loadingDetectionComponent = SCR_PlayerLoadingDetectionComponent.Cast(controller.FindComponent(SCR_PlayerLoadingDetectionComponent));
+		IEntity controlledEntity = controller.GetControlledEntity();
+		
+		if (loadingDetectionComponent && loadingDetectionComponent.IsLoading())
+		{
+			loadingDetectionComponent.GetOnLoadingFinished().Insert(StartTimer);
+			GetGame().GetCallqueue().CallLater(DisablePlayerProtection, m_fProtectionTimeMaximum*1000, false, controlledEntity);
+		}
+		else
+		{
+			GetGame().GetCallqueue().CallLater(DisablePlayerProtection, m_fProtectionTime*1000, false, controlledEntity);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void StartTimer(SCR_PlayerController controller)
+	{
+		SCR_PlayerLoadingDetectionComponent loadingDetectionComponent = SCR_PlayerLoadingDetectionComponent.Cast(controller.FindComponent(SCR_PlayerLoadingDetectionComponent));
+		if (loadingDetectionComponent)
+			loadingDetectionComponent.GetOnLoadingFinished().Remove(StartTimer);
+		
+		IEntity controlledEntity = controller.GetControlledEntity();
+
+		GetGame().GetCallqueue().CallLater(DisablePlayerProtection, m_fProtectionTime*1000, false, controlledEntity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -77,12 +113,8 @@ class SCR_SpawnProtectionComponent: SCR_BaseGameModeComponent
 		if (!playerEntity)
 			return;
 		
-		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(playerEntity);
-		if (!GetGame().GetPlayerManager().GetPlayerController(playerID))
-			return;
-		
 		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(playerEntity.FindComponent(SCR_DamageManagerComponent));
-		if (!damageManager)
+		if (!damageManager && damageManager.IsDamageHandlingEnabled())
 			return;
 		
 		damageManager.EnableDamageHandling(true);
@@ -110,4 +142,4 @@ class SCR_SpawnProtectionComponent: SCR_BaseGameModeComponent
 		if (!m_RplComponent)
 			return;
 	}
-}
+};

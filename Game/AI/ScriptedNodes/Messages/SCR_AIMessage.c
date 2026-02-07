@@ -10,7 +10,10 @@ enum EMessageType_Info
 	REQ_RETREAT,
 	REQ_AMMO,
 	TARGET_ELIMINATED,
-	SIT_REP,	
+	SIT_REP,
+	ACTION_FAILED, // Reaction is not implemented
+	HEAL_FAILED,
+	I_WAS_HEALED
 };
 
 enum EMessageType_Goal
@@ -33,13 +36,15 @@ enum EMessageType_Goal
 	UNGROUP,
 	HEAL,
 	HEAL_WAIT,
-	RESUPPLY,
 	INVESTIGATE,
 	DEFEND,
 	RETREAT,
 	PERFORM_ACTION,
 	CANCEL,
-	SIT_REP
+	SIT_REP,
+	THROW_GRENADE_TO,
+	PROVIDE_AMMO,
+	PICKUP_INVENTORY_ITEMS
 };
 
 //----------------- EXPAND MESSAGE TYPES
@@ -47,7 +52,7 @@ class SCR_AIMessageBase : AIMessage
 {
 	int m_MessageType;	// here is kept enum for message type, which enum it is depends on IsInherited()
 	
-	void SetMessageParameters(SCR_AISendMessage node) // this method fills an existing message with content
+	void SetMessageParameters(SCR_AISendMessageBase node) // this method fills an existing message with content
 	{
 		string debugText;
 		if (!node.GetVariableIn(node.PORT_STRING,debugText))
@@ -106,13 +111,15 @@ class SCR_AIMessage_Target : SCR_AIMessageInfo
 	vector m_LastSeenPosition;	
 	
 	
-	override void SetMessageParameters(SCR_AISendMessage node)
+	override void SetMessageParameters(SCR_AISendMessageBase node)
 	{
 		super.SetMessageParameters(node);
-		
-		node.GetVariableIn(node.PORT_ENTITY, m_Target);
-		if (!node.GetVariableIn(node.PORT_VECTOR, m_LastSeenPosition))
-			m_LastSeenPosition = node.m_vector;
+	
+		SCR_AISendMessageGeneric genericNode = SCR_AISendMessageGeneric.Cast(node);
+					
+		genericNode.GetVariableIn(genericNode.PORT_ENTITY, m_Target);
+		if (!genericNode.GetVariableIn(genericNode.PORT_VECTOR, m_LastSeenPosition))
+			m_LastSeenPosition = genericNode.m_vector;
 	}
 };
 
@@ -150,12 +157,24 @@ class SCR_AIMessage_NoAmmo : SCR_AIMessageInfo
 		m_MessageType = EMessageType_Info.NO_AMMO;
 	}
 	
-	override void SetMessageParameters(SCR_AISendMessage node)
+	override void SetMessageParameters(SCR_AISendMessageBase node)
 	{
 		super.SetMessageParameters(node);
 		
-		node.GetVariableIn(node.PORT_ENTITY, m_entityToSupply);
-		node.GetVariableIn(node.PORT_TYPENAME, m_MagazineWell);
+		SCR_AISendMessageGeneric genericNode = SCR_AISendMessageGeneric.Cast(node);
+		
+		genericNode.GetVariableIn(genericNode.PORT_ENTITY, m_entityToSupply);
+		genericNode.GetVariableIn(genericNode.PORT_TYPENAME, m_MagazineWell);
+	}
+	
+	static SCR_AIMessage_NoAmmo Create(IEntity entityToResupply, typename magazineWell)
+	{
+		SCR_AIMessage_NoAmmo msg = new SCR_AIMessage_NoAmmo();
+		
+		msg.m_entityToSupply = entityToResupply;
+		msg.m_MagazineWell = magazineWell;
+		
+		return msg;
 	}
 };
 
@@ -168,12 +187,14 @@ class SCR_AIMessage_UnderFire : SCR_AIMessageInfo
 		m_MessageType = EMessageType_Info.UNDER_FIRE;
 	}
 	
-	override void SetMessageParameters(SCR_AISendMessage node)
+	override void SetMessageParameters(SCR_AISendMessageBase node)
 	{
 		super.SetMessageParameters(node);
 		
-		if (!node.GetVariableIn(node.PORT_VECTOR, m_vPosition))
-			m_vPosition = node.m_vector;
+		SCR_AISendMessageGeneric genericNode = SCR_AISendMessageGeneric.Cast(node);
+		
+		if (!genericNode.GetVariableIn(genericNode.PORT_VECTOR, m_vPosition))
+			m_vPosition = genericNode.m_vector;
 	}
 };
 
@@ -186,12 +207,14 @@ class SCR_AIMessage_FoundCorpse : SCR_AIMessageInfo
 		m_MessageType = EMessageType_Info.FOUND_CORPSE;
 	}
 	
-	override void SetMessageParameters(SCR_AISendMessage node)
+	override void SetMessageParameters(SCR_AISendMessageBase node)
 	{
 		super.SetMessageParameters(node);
 		
-		if (!node.GetVariableIn(node.PORT_VECTOR, m_vPosition))
-			m_vPosition = node.m_vector;
+		SCR_AISendMessageGeneric genericNode = SCR_AISendMessageGeneric.Cast(node);
+		
+		if (!genericNode.GetVariableIn(genericNode.PORT_VECTOR, m_vPosition))
+			m_vPosition = genericNode.m_vector;
 	}		
 };
 
@@ -211,13 +234,15 @@ class SCR_AIMessage_Wounded : SCR_AIMessage_FoundCorpse
 		return m;
 	}
 	
-	override void SetMessageParameters(SCR_AISendMessage node)
+	override void SetMessageParameters(SCR_AISendMessageBase node)
 	{
 		super.SetMessageParameters(node);
 		
-		node.GetVariableIn(node.PORT_ENTITY, m_WoundedEntity);
-		if (!node.GetVariableIn(node.PORT_VECTOR, m_vPosition))
-			m_vPosition = node.m_vector;
+		SCR_AISendMessageGeneric genericNode = SCR_AISendMessageGeneric.Cast(node);
+		
+		genericNode.GetVariableIn(genericNode.PORT_ENTITY, m_WoundedEntity);
+		if (!genericNode.GetVariableIn(genericNode.PORT_VECTOR, m_vPosition))
+			m_vPosition = genericNode.m_vector;
 	}		
 };
 
@@ -229,6 +254,34 @@ class SCR_AIMessage_SitRep : SCR_AIMessageInfo
 	{
 		m_MessageType = EMessageType_Info.SIT_REP;
 	}		
+};
+
+class SCR_AIMessage_ActionFailed : SCR_AIMessageInfo
+{
+	EAIActionType m_eActionType; // The action which we have failed
+	
+	void SCR_AIMessage_ActionFailed()
+	{
+		m_MessageType = EMessageType_Info.ACTION_FAILED;
+	}
+};
+
+class SCR_AIMessage_HealFailed : SCR_AIMessageInfo
+{
+	IEntity m_TargetEntity;
+	
+	void SCR_AIMessage_HealFailed()
+	{
+		m_MessageType = EMessageType_Info.HEAL_FAILED;
+	}
+};
+
+class SCR_AIMessage_IWasHealed : SCR_AIMessageInfo
+{
+	void SCR_AIMessage_IWasHealed()
+	{
+		m_MessageType = EMessageType_Info.I_WAS_HEALED;
+	}
 };
 
 //----------------- EXPAND MESSAGE SUBTYPES - goal type for issuing commands
@@ -352,6 +405,7 @@ class SCR_AIMessage_Investigate : SCR_AIMessageGoal
 	vector m_vMovePosition;
 	float m_fRadius;
 	bool m_bIsDangerous;
+	EAIUnitType m_eTargetUnitType = EAIUnitType.UnitType_Infantry;
 	
 	void SCR_AIMessage_Investigate() 
 	{
@@ -396,25 +450,41 @@ class SCR_AIMessage_Heal : SCR_AIMessage_Move
 	}
 };
 
-class SCR_AIMessage_Resupply : SCR_AIMessageGoal
+class SCR_AIMessage_ProvideAmmo : SCR_AIMessageGoal
 {
-	IEntity m_ResupplyEntity;
-	vector m_ResupplyPosition;		
+	IEntity m_AmmoConsumer;
 	typename m_MagazineWell;
 	
-	void SCR_AIMessage_Resupply() 
+	void SCR_AIMessage_ProvideAmmo()
 	{
-		m_MessageType = EMessageType_Goal.RESUPPLY;
+		m_MessageType = EMessageType_Goal.PROVIDE_AMMO;
 	}
-		
+	
 	override void SetMessageParameters(SCR_AISendGoalMessage node, SCR_AIActivityBase relatedActivity)
 	{
 		super.SetMessageParameters(node, relatedActivity);
-		node.GetVariableIn(node.PORT_ENTITY, m_ResupplyEntity);
-		node.GetVariableIn(node.PORT_VECTOR, m_ResupplyPosition);
-		node.GetVariableIn(node.PORT_TYPENAME, m_MagazineWell);
+		node.GetVariableIn(SCR_AISendGoalMessage.PORT_ENTITY, m_AmmoConsumer);
+		node.GetVariableIn(SCR_AISendGoalMessage.PORT_TYPENAME, m_MagazineWell);
 	}
-};
+}
+
+class SCR_AIMessage_PickupInventoryItems : SCR_AIMessageGoal
+{
+	vector m_vPickupPosition;
+	typename m_MagazineWellType;
+	
+	void SCR_AIMessage_PickupInventoryItems()
+	{
+		m_MessageType = EMessageType_Goal.PICKUP_INVENTORY_ITEMS;
+	}
+	
+	override void SetMessageParameters(SCR_AISendGoalMessage node, SCR_AIActivityBase relatedActivity)
+	{
+		super.SetMessageParameters(node, relatedActivity);
+		node.GetVariableIn(SCR_AISendGoalMessage.PORT_VECTOR, m_vPickupPosition);
+		node.GetVariableIn(SCR_AISendGoalMessage.PORT_TYPENAME, m_MagazineWellType);
+	}
+}
 
 class SCR_AIMessage_Defend : SCR_AIMessageGoal
 {
@@ -533,6 +603,29 @@ class SCR_AIMessage_Flee : SCR_AIMessageGoal
 	void SCR_AIMessage_Flee() 
 	{
 		m_MessageType = EMessageType_Goal.FLEE;
+	}
+};
+
+class SCR_AIMessage_ThrowGrenadeTo : SCR_AIMessageGoal
+{
+	IEntity m_TargetEntity;
+	vector m_vTargetPosition;
+	
+	void SCR_AIMessage_ThrowGrenadeTo()
+	{
+		m_MessageType = EMessageType_Goal.THROW_GRENADE_TO;
+	}
+	
+
+	override void SetMessageParameters(SCR_AISendGoalMessage node, SCR_AIActivityBase relatedActivity)
+	{
+		super.SetMessageParameters(node);
+		
+		SCR_AISendMessageGeneric genericNode = node;
+		
+		genericNode.GetVariableIn(genericNode.PORT_ENTITY, m_TargetEntity);
+		if (!genericNode.GetVariableIn(genericNode.PORT_VECTOR, m_vTargetPosition))
+			m_vTargetPosition = genericNode.m_vector;
 	}
 };
 

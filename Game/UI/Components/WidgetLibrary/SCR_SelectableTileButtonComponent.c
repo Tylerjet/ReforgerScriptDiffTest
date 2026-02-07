@@ -16,9 +16,7 @@ class SCR_SelectableTileButtonComponent : SCR_ButtonComponent
 		super.HandlerAttached(w);
 		
 		m_wIcon = m_wRoot.FindAnyWidget("ContentImage");
-
-		
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, COLOR_BACKGROUND_DEFAULT, m_fAnimationRate);
+		AnimateWidget.Color(m_wBackground, COLOR_BACKGROUND_DEFAULT, m_fAnimationRate);
 		ColorizeCheckWidget();
 	}
 	
@@ -42,9 +40,7 @@ class SCR_SelectableTileButtonComponent : SCR_ButtonComponent
 		PlaySound(m_sSoundHovered);
 		
 		if (GetGame().GetWorkspace().GetFocusedWidget() != w)
-		{
-				WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, COLOR_BACKGROUND_HOVERED, m_fAnimationRate);
-		}
+			AnimateWidget.Color(m_wBackground, COLOR_BACKGROUND_HOVERED, m_fAnimationRate);
 		
 		return false;
 	}
@@ -52,15 +48,14 @@ class SCR_SelectableTileButtonComponent : SCR_ButtonComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
-
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, COLOR_BACKGROUND_DEFAULT, m_fAnimationRate);
+		AnimateWidget.Color(m_wBackground, COLOR_BACKGROUND_DEFAULT, m_fAnimationRate);
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wBackground, 1, m_fAnimationRate);
 		PlaySound(m_sSoundHovered);
 		return false;
 	}
@@ -68,9 +63,7 @@ class SCR_SelectableTileButtonComponent : SCR_ButtonComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Opacity, 0, m_fAnimationRate);
-		
-		
+		AnimateWidget.Opacity(m_wBackground, 0, m_fAnimationRate);
 		return false;
 	}
 	
@@ -95,14 +88,10 @@ class SCR_SelectableTileButtonComponent : SCR_ButtonComponent
 	//! Set color of checked line 
 	protected void ColorizeCheckWidget()
 	{
-		if(m_bIsSelected)
-		{
-			WidgetAnimator.PlayAnimation(m_wIcon, WidgetAnimationType.Color, COLOR_BACKGROUND_CLICKED, m_fAnimationRate);
-		}
+		if (m_bIsSelected)
+			AnimateWidget.Color(m_wIcon, COLOR_BACKGROUND_CLICKED, m_fAnimationRate);
 		else
-		{
-			WidgetAnimator.PlayAnimation(m_wIcon, WidgetAnimationType.Color, COLOR_CONTENT_DEFAULT, m_fAnimationRate);
-		}
+			AnimateWidget.Color(m_wIcon, COLOR_CONTENT_DEFAULT, m_fAnimationRate);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -128,20 +117,15 @@ class SCR_SelectableTileButtonComponent : SCR_ButtonComponent
 	//------------------------------------------------------------------------------------------------
 	void ShowButton()
 	{
-		WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, 1, WidgetAnimator.FADE_RATE_DEFAULT);
-		
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wRoot, 1, m_fAnimationRate);
+		AnimateWidget.Opacity(m_wBackground, 1, m_fAnimationRate);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void HideButton()
 	{
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Opacity, 0, m_fAnimationRate);
-		
+		AnimateWidget.Opacity(m_wBackground, 0, m_fAnimationRate);
 		if (!m_bIsSelected)
-			WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, 0, WidgetAnimator.FADE_RATE_DEFAULT);
-			
-		
-	}
-	
+			AnimateWidget.Opacity(m_wRoot, 0, m_fAnimationRate);
+	}	
 };

@@ -16,7 +16,11 @@ enum PlayerManagerKickReason
 	//! Voted to kick.
 	KICK_VOTED,
 	//! Another connected player with the same identity found.
-	DUPLICATE_PLAYER_IDENTITY
+	DUPLICATE_PLAYER_IDENTITY,
+	//! Banned by admin/GM.
+	BAN,
+	//! Temporary banned AKA kick with timeout.
+	TEMP_BAN
 };
 
 /** @}*/

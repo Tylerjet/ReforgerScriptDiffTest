@@ -10,7 +10,7 @@ class SCR_AIReadInfoMessage: SCR_AIReadMessage
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
     {
 		if (! owner)
-			Print("No owner of the task read m_Message! Something wrong!");
+			Print("No owner of the task read m_Message! Something wrong!", LogLevel.ERROR);
 		
 		if ( m_Mailbox )
 		{

@@ -13,17 +13,8 @@ class SCR_InventorySlotStorageEmbeddedUI : SCR_InventorySlotStorageUI
 		
 		if ( !m_wSelectedEffect )
 			return;
-		if ( select )
-		{
-			m_wSelectedEffect.SetVisible( true );
-			if( this.Type() != SCR_InventorySlotStorageUI )
-				m_wMoveWhatEffect.SetVisible( true );
-		}
-		else
-		{
-			m_wSelectedEffect.SetVisible( false );
-			m_wMoveWhatEffect.SetVisible( false );
-		}
+
+		m_wSelectedEffect.SetVisible(select);
 	}
 	
 		

@@ -66,6 +66,34 @@ class GenericComponent
 	* \return Returns true, if component is active.
 	*/
 	proto external bool IsActive();
+	/*!
+	Native implementation of OnTransformReset.
+	
+	The default implementation does nothing except calling OnTransformReset on the child components.
+	
+	Can be overridden in the native code to alter the default behavior
+	(usually the override should also call the base implementation to preserve the recursion).
+	There's a script version of OnTransformResetImpl to override too.
+	
+	\param params See the TransformResetParams documentation.
+	*/
+	proto external private void OnTransformResetImplNative(TransformResetParams params);
+	/*!
+	Notifies the component that a transformation of the owner entity has been discontinuously changed.
+	
+	Should be called after any transformation discontinuity (right after updating the transform)
+	e.g. by teleportation or desync-correction code so the component can react appropriately.
+	By default, this is called automatically from GenericEntity::OnTransformReset.
+	
+	The default implementation does nothing except calling OnTransformReset on the child components.
+	
+	The default behavior may be changed in inherited components by overriding OnTransformResetImpl.
+	
+	\param isCorrection [optional] Hint that the transform was reset due to its correction (e.g. by net-code),
+	i.e. not a placement/teleport
+	\param newVelocity  [optional] Initial velocity of the owner entity after the transform reset
+	*/
+	proto external void OnTransformReset(bool isCorrection = false, vector newVelocity = vector.Zero);
 	
 	// callbacks
 	
@@ -107,6 +135,17 @@ class GenericComponent
 	event void _WB_OnRename(IEntity owner, IEntitySource src, string oldName);
 	//! Possibility to get variable value choices dynamically
 	event array<ref ParamEnum> _WB_GetUserEnums(string varName, IEntity owner, IEntityComponentSource src);
+	/*!
+	Script-side implementation of OnTransformReset.
+	
+	The default implementation does nothing except calling OnTransformReset on the child components.
+	
+	Can be overridden to alter the default behavior.
+	Usually, you'll want to call the base implementation somewhere in the override to preserve the recursion.
+	
+	\param params See the TransformResetParams documentation.
+	*/
+	event protected void OnTransformResetImpl(TransformResetParams params){ OnTransformResetImplNative(params); };
 };
 
 /** @}*/

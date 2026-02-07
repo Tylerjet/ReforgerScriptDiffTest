@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/AI", description: "Component for AI checking state of group", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/AI", description: "Component for AI checking state of group")]
 class SCR_AIGroupInfoComponentClass: SCR_AIInfoBaseComponentClass
 {
 };
@@ -18,6 +18,26 @@ class SCR_AIGroupInfoComponent : SCR_AIInfoBaseComponent
 	private EGroupControlMode m_eGroupControlMode;
 	
 	protected ref ScriptInvoker Event_OnControlModeChanged = new ScriptInvoker;
+	
+	protected float m_fTimeGrenadeThrowAllowed_ms;
+	protected AIAgent m_GrenadeThrowAgent;
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsGrenadeThrowAllowed(AIAgent soldierAgent)
+	{
+		if (soldierAgent == m_GrenadeThrowAgent)
+			return true;
+		float time_ms = GetGame().GetWorld().GetWorldTime();
+		return time_ms > m_fTimeGrenadeThrowAllowed_ms;		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnAgentSelectedGrenade(AIAgent soldierAgent)
+	{
+		float time_ms = GetGame().GetWorld().GetWorldTime();
+		m_fTimeGrenadeThrowAllowed_ms = time_ms + 4000;
+		m_GrenadeThrowAgent = soldierAgent;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected void OnPostInit(IEntity owner)

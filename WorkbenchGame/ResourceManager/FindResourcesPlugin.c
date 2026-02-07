@@ -78,25 +78,11 @@ class FindResourcesPlugin1: ResourceManagerPlugin
 			}
 		
 			//--- Process children
-			IEntitySource entityContainer = IEntitySource.Cast(container);
-			if (entityContainer)
+			if (container)
 			{
-				for (int e = 0, entityCount = entityContainer.GetNumChildren(); e < entityCount; e++)
+				for (int e = 0, count = container.GetNumChildren(); e < count; e++)
 				{
-					containers.Insert(entityContainer.GetChild(e));
-				}
-			}
-			else
-			{
-				WidgetSource widgetContainer = WidgetSource.Cast(container);
-				if (widgetContainer)
-				{
-					WidgetSource child = widgetContainer.GetChildren();
-					while (child)
-					{
-						containers.Insert(child);
-						child = child.GetSibling();
-					}
+					containers.Insert(container.GetChild(e));
 				}
 			}
 		}

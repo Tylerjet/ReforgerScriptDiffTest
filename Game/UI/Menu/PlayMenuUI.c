@@ -201,6 +201,7 @@ class PlayMenuUI: ChimeraMenuBase
 
 			entry.SetTile(tile, tile.m_wRoot);
 			tile.m_OnPlay.Insert(OnPlay);
+			tile.m_OnContinue.Insert(OnContinue);
 			tile.m_OnRestart.Insert(OnRestart);
 			tile.m_OnFindServer.Insert(OnFindServer);
 			tile.m_OnFocused.Insert(OnTileFocused);
@@ -227,12 +228,21 @@ class PlayMenuUI: ChimeraMenuBase
 		}
 		else
 		{
-			SCR_MissionHeader header = tile.m_Header;
-			if (header && !header.GetSaveFileName().IsEmpty())
-				SCR_SaveLoadComponent.LoadOnStart(header);
-			
+			SCR_SaveLoadComponent.LoadOnStart();
 			TryPlayScenario(tile.m_Item);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnContinue(SCR_PlayMenuTileComponent tile)
+	{
+		SCR_MissionHeader header = tile.m_Header;
+		if (header && !header.GetSaveFileName().IsEmpty())
+			SCR_SaveLoadComponent.LoadOnStart(header);
+		else
+			SCR_SaveLoadComponent.LoadOnStart();
+		
+		TryPlayScenario(tile.m_Item);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -330,6 +340,5 @@ class PlayMenuUI: ChimeraMenuBase
 		if (cont)
 			cont.Set("m_bTutorialPlayed", true);
 		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 	}
 };

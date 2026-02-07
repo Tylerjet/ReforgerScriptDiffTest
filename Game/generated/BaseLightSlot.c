@@ -13,6 +13,7 @@ class BaseLightSlot: ScriptAndConfig
 	proto external bool IsPresence();
 	proto external bool IsLightFunctional();
 	proto external IEntity GetOwner();
+	proto external IEntity GetLightEntity();
 	proto external ELightType GetLightType();
 	proto external int GetLightID();
 	//! Set whether the light works or is broken

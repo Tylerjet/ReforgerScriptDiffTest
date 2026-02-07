@@ -11,23 +11,21 @@ class SCR_ModdedScenarioComponent : SCR_ButtonComponent
 		m_wRoot = w;
 		m_wPlayablePC = m_wRoot.FindAnyWidget("PlayablePC");
 		m_pButton = SCR_ButtonSplitComponent.Cast(w.FindHandler(SCR_ButtonSplitComponent));
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnChangeInput);
-		OnChangeInput();
+
+		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 	}	
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnChangeInput);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnChangeInput()
+	void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
-			m_wPlayablePC.SetVisible(true);
-		else
-			m_wPlayablePC.SetVisible(false);
+		m_wPlayablePC.SetVisible(!isGamepad);
 	}
 	
 	//------------------------------------------------------------------------------------------------

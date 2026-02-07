@@ -81,12 +81,19 @@ class SCR_GameOverTypeEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 	protected int GetEditorGameOverInfoArray(notnull array <SCR_BaseGameOverScreenInfo> gameOverScreens, notnull out array <SCR_BaseGameOverScreenInfo> editorGameOverScreens)
 	{
 		SCR_BaseGameOverScreenInfoEditor editorOptional;
+		bool hasPlayableFactions = false;
+		
+		SCR_DelegateFactionManagerComponent delegateFactionManager = SCR_DelegateFactionManagerComponent.GetInstance();		
+		if (delegateFactionManager)
+		{
+			hasPlayableFactions = (delegateFactionManager.GetPlayableFactionDelegateCount() > 0);
+		}
 		
 		foreach(SCR_BaseGameOverScreenInfo screen: gameOverScreens)
 		{
 			editorOptional = screen.GetEditorOptionalParams();
 			
-			if (!editorOptional || !editorOptional.m_bCanBeSetByGameMaster)
+			if (!editorOptional || !editorOptional.m_bCanBeSetByGameMaster || (editorOptional.m_bNeedsPlayableFactions && !hasPlayableFactions))
 				continue;
 			
 			editorGameOverScreens.Insert(screen);

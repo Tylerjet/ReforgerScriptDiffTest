@@ -9,6 +9,13 @@ class SCR_MoveTask : SCR_EditorTask
 	
 	void PeriodicalCheck()
 	{		
+		if (!GetTaskManager())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
 		array<SCR_BaseTaskExecutor> assignees = new array<SCR_BaseTaskExecutor>();
 		GetAssignees(assignees);
 		
@@ -24,7 +31,7 @@ class SCR_MoveTask : SCR_EditorTask
 			
 			if (distance < m_fMaxDistance)
 			{
-				GetTaskManager().FinishTask(this);
+				supportEntity.FinishTask(this);
 				return;
 			}
 		}

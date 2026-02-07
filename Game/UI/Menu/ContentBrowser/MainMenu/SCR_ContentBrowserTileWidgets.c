@@ -25,6 +25,12 @@ class SCR_ContentBrowserTileWidgets
 
 	HorizontalLayoutWidget m_AddonSizeOverlay;
 
+	HorizontalLayoutWidget m_BackendSource;
+
+	ImageWidget m_BackendSourceIcon;
+
+	TextWidget m_BackendSourceText;
+
 	TextWidget m_AddonSizeText;
 
 	ButtonWidget m_FavouriteButton;
@@ -78,6 +84,12 @@ class SCR_ContentBrowserTileWidgets
 
 		m_AddonSizeOverlay = HorizontalLayoutWidget.Cast(root.FindWidget("overlay.m_NormalMode.m_MainAreaSizeRatio.MainArea.m_HideOnMainButtonHover.m_AddonSizeOverlay"));
 
+		m_BackendSource = HorizontalLayoutWidget.Cast(root.FindWidget("overlay.m_NormalMode.m_MainAreaSizeRatio.MainArea.m_HideOnMainButtonHover.m_AddonSizeOverlay.m_BackendSource"));
+
+		m_BackendSourceIcon = ImageWidget.Cast(root.FindWidget("overlay.m_NormalMode.m_MainAreaSizeRatio.MainArea.m_HideOnMainButtonHover.m_AddonSizeOverlay.m_BackendSource.Size.Overlay.m_BackendSourceIcon"));
+
+		m_BackendSourceText = TextWidget.Cast(root.FindWidget("overlay.m_NormalMode.m_MainAreaSizeRatio.MainArea.m_HideOnMainButtonHover.m_AddonSizeOverlay.m_BackendSource.m_BackendSourceText"));
+
 		m_AddonSizeText = TextWidget.Cast(root.FindWidget("overlay.m_NormalMode.m_MainAreaSizeRatio.MainArea.m_HideOnMainButtonHover.m_AddonSizeOverlay.m_AddonSizeText"));
 
 		m_FavouriteButton = ButtonWidget.Cast(root.FindWidget("overlay.m_NormalMode.m_MainAreaSizeRatio.MainArea.Frame.m_FavouriteButton"));
@@ -112,4 +124,4 @@ class SCR_ContentBrowserTileWidgets
 
 		return true;
 	}
-};
+}

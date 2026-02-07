@@ -6,8 +6,12 @@ class SCR_CampaignMapUIElement : SCR_MapUIElement
 	protected string m_sArmory;
 	[Attribute("FuelDepot")]
 	protected string m_sFuelDepot;
-	[Attribute("VehicleWorkshop")]
-	protected string m_sRepairDepot;
+	[Attribute("LightVehicleDepot")]
+	protected string m_sLightVehicleDepot;
+	[Attribute("HeavyVehicleDepot")]
+	protected string m_sHeavyVehicleDepot;
+	[Attribute("RadioAntenna")]
+	protected string m_sRadioAntenna;
 	[Attribute("Medical")]
 	protected string m_sFieldHospital;
 	[Attribute("Barracks")]

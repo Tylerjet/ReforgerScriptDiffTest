@@ -33,7 +33,11 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		return m_Agent;
 	}
 	
-	protected SCR_EditableEntityComponent CreateGroupForCharacter()
+	/*!
+	Create a new group and add the character to the group (Server only)
+	\return The created group
+	*/
+	SCR_EditableEntityComponent CreateGroupForCharacter()
 	{
 		if (!m_Agent) return null;
 		
@@ -96,12 +100,32 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		}
 	}
 	
+	//~ Check if local player is owner of entity
+	protected bool IsLocalPlayerOwner()
+	{
+		//~ Not replicated so always owner
+		if (!IsReplicated())
+			return true;
+		
+		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
+		return !rplComp || rplComp.IsOwner();
+	}
+	
+	/*!
+	Check if character is Player or Possessed by a player
+	Return true if controlled by player
+	*/
+	bool IsPlayerOrPossesed() 
+	{
+		return !m_AgentControlComponent || !m_AgentControlComponent.IsAIActivated();
+	}
+	
 	protected void OnDestroyed(IEntity owner)
 	{
 		m_OnUIRefresh.Invoke();
 	}
 	
-	override bool Delete(bool updateNavmesh = true)
+	override bool Delete(bool changedByUser = false, bool updateNavmesh = true)
 	{
 		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
 		if (compartmentAccess)
@@ -139,11 +163,13 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	{
 		super.SetTransformOwner(transform);
 		
+		PlayerTeleportedFeedback(false);
+	}
+	
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void PlayerTeleportedFeedback(bool isLongFade)
+	{
 		if (!m_Owner)
-			return;
-		
-		PlayerManager playerManager = GetGame().GetPlayerManager();
-		if (!playerManager)
 			return;
 		
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
@@ -157,7 +183,17 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		if (!playerTeleportedComponent)
 			return;
 		
-		playerTeleportedComponent.TeleportedByEditor(this);
+		playerTeleportedComponent.TeleportedByEditor(this, isLongFade);
+	}
+	
+	/*!
+	Called when character was moved by Parent (aka when in vehicle)
+	Checks if player controlled and if Owned by local player. If true shows feedback
+	*/
+	void PlayerTeleportedByParentFeedback(bool isLongFade)
+	{
+		if (IsPlayerOrPossesed())
+			Rpc(PlayerTeleportedFeedback, isLongFade);
 	}
 	
 	override SCR_EditableEntityComponent SetParentEntity(SCR_EditableEntityComponent parentEntity, bool changedByUser = false)
@@ -166,7 +202,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		if (changedByUser && IsServer() && !GetOwner().IsDeleted() && !IsDestroyed())
 		{			
 			AIControlComponent aiControl = AIControlComponent.Cast(GetOwner().FindComponent(AIControlComponent));
-			if (aiControl && aiControl.IsAIActivated())
+			if (aiControl && aiControl.IsAIActivated()) 
 			{
 				EEditableEntityType parentType = EEditableEntityType.GENERIC;
 				if (parentEntity)
@@ -184,8 +220,9 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		
 		return super.SetParentEntity(parentEntity);
 	}
-	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev)
-	{		
+	
+	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser)
+	{					
 		EEditableEntityType parentType;
 		if (parentEntity) parentType = parentEntity.GetEntityType();
 		
@@ -193,25 +230,30 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		{
 			case EEditableEntityType.VEHICLE:
 			{
+				//~ Checks if called for owner and is Player or possessed. Show teleport feedback
+				if (IsPlayerOrPossesed() && IsLocalPlayerOwner())
+					PlayerTeleportedFeedback(true);
+				
 				//--- Execute on server, MoveInVehicle handles distribution to clients
 				if (Replication.IsServer())
 				{
 					SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
 					if (compartmentAccess)
 					{
-						// Disabled for 0.95 for AI, AI can not drive [Ticket-22635]
 						GenericEntity parentOwner = parentEntity.GetOwner();
-						bool isAi = m_AgentControlComponent && m_AgentControlComponent.IsAIActivated() && !DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_ENABLE_AI_PILOT_PLACE);
+						bool isAi = !IsPlayerOrPossesed();
 						
 						//Add vehicle to group
 						if (isAi)
 							AddUsableVehicle(parentEntity.GetOwner());
-							
+						
+						//~ Todo: Post 0.9.6 fix
 						if (!isAi && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Pilot)) break;
 						if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Turret)) break;
 						if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Cargo)) break;
 					}
 				}
+				
 				break;
 			}
 			case EEditableEntityType.GROUP:
@@ -220,23 +262,23 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 				if (!parentEntity) break;
 
 				SCR_EditableEntityComponent group = parentEntity.GetAIGroup();
-				super.OnParentEntityChanged(group, parentEntityPrev);
+				super.OnParentEntityChanged(group, parentEntityPrev, changedByUser);
 				m_OnUIRefresh.Invoke(); //--- Update GUI when character moves to another group (in case it's a group of a different faction)
 				break;
 			}
 			default:
 			{
 				//--- Register player
-				super.OnParentEntityChanged(null, parentEntityPrev);
+				super.OnParentEntityChanged(null, parentEntityPrev, changedByUser);
 			}
 		}
-		
+
 		//--- Create a new group (ToDo: Solve together with entity<->entity interaction)
 		//SCR_EditableEntityComponent newGroup = CreateGroupForCharacter();
 		//SetParentEntity(newGroup);
 	}
-	override void SetTransform(vector transform[4])
-	{
+	override void SetTransform(vector transform[4], bool changedByUser = false)
+	{		
 		//--- Move out of a vehicle
 		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(GetOwner().FindComponent(CompartmentAccessComponent));
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
@@ -246,15 +288,19 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			if (IsServer())
 				GetGame().GetCallqueue().CallLater(RemoveUsableVehicle, 100, false, GetVehicle().GetOwner(), true);
 			
+			//~ If moved out vehicle by GM. Check if player or possessed. If true send teleport feedback request
+			if (changedByUser && IsPlayerOrPossesed())
+				Rpc(PlayerTeleportedFeedback, false);
+			
 			compartmentAccess.MoveOutVehicle(-1, transform);
 			
 			return;
 		}
 		
-		super.SetTransform(transform);
+		super.SetTransform(transform, changedByUser);
 	}	
 	override int GetPlayerID()
-	{
+	{		
 		if (IsDestroyed())
 			return 0;
 		else

@@ -100,7 +100,7 @@ class SCR_CustomMaterialAnimatorEntity: GenericEntity
 			//~ Animation done delete self and children
 			else if (m_iActionWhenDone == EActionWhenDone.DELETE_SELF_AND_CHILDREN)
 			{
-				SCR_Global.DeleteEntityAndChildren(this);
+				SCR_EntityHelper.DeleteEntityAndChildren(this);
 			}
 		}
 	}

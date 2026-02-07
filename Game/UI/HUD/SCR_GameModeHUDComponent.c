@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/GameMode", description: "Base UI Component for deathmatch game mode", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/GameMode", description: "Base UI Component for deathmatch game mode")]
 class SCR_GameModeHUDComponentClass: ScriptComponentClass
 {
 };

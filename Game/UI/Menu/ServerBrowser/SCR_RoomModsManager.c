@@ -89,7 +89,7 @@ class SCR_RoomModsManager
 	protected ref array<ref SCR_OnlineServiceBackendCallbacks> m_aModsCallbacks = {};
 	
 	protected int m_iLoadedModItemsCount = 0;
-	protected int m_iModsSize = 0;
+	protected float m_fModsSize = 0;
 	
 	// String lenght constants 
 	const int STRING_LENGHT_MOD_SIZE = -1;
@@ -333,8 +333,8 @@ class SCR_RoomModsManager
 		if (itemScenario)
 		{
 			// Load scenario details  
-			m_ScenarioCallback.m_OnScenarios.Clear();
-			m_ScenarioCallback.m_OnScenarios.Insert(LoadScenario);
+			m_ScenarioCallback.m_OnItem.Clear();
+			m_ScenarioCallback.m_OnItem.Insert(LoadScenario);
 			itemScenario.AskDetail(m_ScenarioCallback);
 		}
 	}
@@ -343,7 +343,7 @@ class SCR_RoomModsManager
 	//! Call this when sceario is loaded 
 	void LoadScenario()
 	{
-		m_ScenarioCallback.m_OnScenarios.Clear();
+		m_ScenarioCallback.m_OnItem.Clear();
 		
 		if (!m_Room)
 			return;
@@ -383,11 +383,15 @@ class SCR_RoomModsManager
 		m_OnGettingScenario.Invoke(m_ScenarioDependency);
 	}
 	
+	protected int m_iDebugModCount = 0;
+	
 	//------------------------------------------------------------------------------------------------
 	//! Call this when room receive list of all mod dependencies 
 	protected void AddonsFullList()
 	{
 		m_ModsCallback.m_OnFullList.Remove(AddonsFullList);
+		
+		m_iDebugModCount = 0;
 		
 		if (!m_Room)
 			return;
@@ -412,6 +416,8 @@ class SCR_RoomModsManager
 		
 		// Clear mod callbacks 
 		m_aModsCallbacks.Clear();
+		
+		//Print("[SCR_RoomModsManager.AddonsFullList] dependencies for: " + m_Room.Name());
 		
 		// Go through mods dependecies if their items were loaded 
 		foreach (Dependency dep : m_aRoomDependecies)
@@ -456,11 +462,14 @@ class SCR_RoomModsManager
 	//! Call this callback when mod item finished loading
 	protected void OnLoadingModItem()
 	{
+		m_iDebugModCount++;
+		//Print("Loading mod success: " + m_iDebugModCount);
+		
 		// Empty room dependencies check - safe check, sholdn't be happenning with proper use 
 		if (m_aRoomDependecies.IsEmpty())
 		{
 			#ifdef SB_DEBUG
-			Print("Items loaded was called, but items list is empty!", LogLevel.ERROR);
+			Print("Items loaded was called, but items list is empty! - of: " + m_Room.Name(), LogLevel.ERROR);
 			#endif
 			return;
 		}	
@@ -469,7 +478,7 @@ class SCR_RoomModsManager
 		if (m_aRoomDependecies.Count() < m_iLoadedModItemsCount)
 			return;
 		
-		Dependency dep = m_aRoomDependecies[m_iLoadedModItemsCount];
+		/*Dependency dep = m_aRoomDependecies[m_iLoadedModItemsCount];
 		
 		if (!dep)
 			return;
@@ -478,11 +487,20 @@ class SCR_RoomModsManager
 		{
 			// Register item as loaded 
 			m_iLoadedModItemsCount++;
+			//Print("		Loaded mods: " + m_iLoadedModItemsCount);
 		}
 		else 
 		{
 			// Add to list for items to be loaded 
 			m_aRoomDependecies[m_iLoadedModItemsCount].LoadItem(m_ModsCallback);
+		}*/
+		
+		m_iLoadedModItemsCount++;
+		
+		// TODO: remove when done with debug 
+		if (m_iDebugModCount == m_aRoomDependecies.Count() && m_iLoadedModItemsCount < m_aRoomDependecies.Count())
+		{
+			//Print("Not all mods loaded");
 		}
 		
 		// Is loading done 
@@ -506,9 +524,9 @@ class SCR_RoomModsManager
 		//float size = SCR_DownloadManager.GetModListSize();
 		
 		// Save size
-		m_iModsSize = size;
+		m_fModsSize = size;
 		
-		if (m_iModsSize <= 0)
+		if (m_fModsSize <= 0)
 			return string.Empty;
 		
 		// Size string
@@ -535,7 +553,7 @@ class SCR_RoomModsManager
 		m_aDownloads.Clear();
 
 		// Mods data size - TODO@wernerjak - use download manager for this 
-		m_iModsSize = SCR_ModHandlerLib.GetModListSize(m_aItemsToUpdate);
+		m_fModsSize = SCR_ModHandlerLib.GetModListSize(m_aItemsToUpdate);
 		
 		// Register mods and start download 
 		foreach (SCR_WorkshopItem mod : m_aItemsToUpdate)
@@ -632,7 +650,7 @@ class SCR_RoomModsManager
 	bool GetModsMatching() { return m_bModsMatching; }
 	
 	//------------------------------------------------------------------------------------------------
-	int GetModsSize() { return m_iModsSize; }
+	float GetModsSize() { return m_fModsSize; }
 	
 	// Mods counts 
 	//------------------------------------------------------------------------------------------------

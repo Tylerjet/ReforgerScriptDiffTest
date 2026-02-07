@@ -12,7 +12,7 @@ class SCR_DayDurationEditorAttributeUIComponent: SCR_SliderEditorAttributeUIComp
 		float realLifeSecondsFloat = Math.Round(3600 / value);
 		
 		int days, hours, minutes, seconds;
-		SCR_Global.ConvertSecondsToDaysHoursMinutesSeconds((int)realLifeSecondsFloat, days, hours, minutes, seconds);
+		SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds((int)realLifeSecondsFloat, days, hours, minutes, seconds);
 		
 		OverrideDescription(true, m_sDaydurationTooltip, hours.ToString(), minutes.ToString(), seconds.ToString());
 		

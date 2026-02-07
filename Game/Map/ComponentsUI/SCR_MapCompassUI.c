@@ -2,6 +2,8 @@
 //! Compass in map UI
 class SCR_MapCompassUI: SCR_MapRTWBaseUI
 {		
+	const string ICON_NAME = "compass";
+	
 	protected SCR_CompassComponent m_CompassComp;
 
 	//------------------------------------------------------------------------------------------------
@@ -50,27 +52,7 @@ class SCR_MapCompassUI: SCR_MapRTWBaseUI
 		BaseWorld previewWorld = m_RTWorld.GetRef();
 		previewWorld.UpdateEntities();
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	override string GetPrefabResource()
-	{
-		ResourceName prefabName = string.Empty;
 		
-		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(SCR_PlayerController.GetLocalControlledEntity());
-		if (gadgetManager)
-		{
-			IEntity compass = gadgetManager.GetGadgetByType(EGadgetType.COMPASS);
-			if (compass)
-			{
-				SCR_CompassComponent compassComp = SCR_CompassComponent.Cast( compass.FindComponent(SCR_GadgetComponent) );
-				if (compassComp)
-					prefabName = compassComp.GetCompassPrefab();
-			}
-		}
-		
-		return prefabName;
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	override void SetVisible(bool visible)
 	{		
@@ -81,8 +63,11 @@ class SCR_MapCompassUI: SCR_MapRTWBaseUI
 				return;
 			
 			// No compass equipped
-			if (!gadgetManager.GetGadgetByType(EGadgetType.COMPASS))
+			if (!FindRelatedGadget())
+			{
+				super.SetVisible(false);
 				return;
+			}
 			
 			super.SetVisible(visible);
 					
@@ -104,43 +89,20 @@ class SCR_MapCompassUI: SCR_MapRTWBaseUI
 			super.SetVisible(visible);
 		}
 	}
-				
-	//------------------------------------------------------------------------------------------------
-	override void OnMapOpen(MapConfiguration config)
-	{
-		super.OnMapOpen(config);
-		
-		if (m_bWantedVisible)
-		{
-			SetVisible(true);
-			
-			if (m_ToolMenuEntry) 
-				m_ToolMenuEntry.SetColor(UIColors.CONTRAST_COLOR);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnMapClose(MapConfiguration config)
-	{
-		m_bWantedVisible = m_bIsVisible;
-		SetVisible(false);
-		
-		super.OnMapClose(config);
-	}
-				
+									
 	//------------------------------------------------------------------------------------------------
 	override void Init()
 	{
-		SCR_MapToolMenuModule toolMenu = SCR_MapToolMenuModule.Cast(m_MapEntity.GetMapModule(SCR_MapToolMenuModule));
+		SCR_MapToolMenuUI toolMenu = SCR_MapToolMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolMenuUI));
 		if (toolMenu)
 		{
-			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuModule.ICONS_IMAGESET, "compass", m_bIsVisible, 1);
+			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 1);
 			m_ToolMenuEntry.m_OnClick.Insert(ToggleVisible);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Update()
+	override void Update(float timeSlice)
 	{		
 		// Drag compass
 		if (m_bIsVisible && m_bIsDragged)
@@ -154,5 +116,11 @@ class SCR_MapCompassUI: SCR_MapRTWBaseUI
 			m_fPosX = workspace.DPIUnscale(m_fPosX);
 			m_fPosY = workspace.DPIUnscale(m_fPosY);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_MapCompassUI()
+	{
+		m_eGadgetType = EGadgetType.COMPASS;
 	}
 };

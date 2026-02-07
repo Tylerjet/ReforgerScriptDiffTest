@@ -45,7 +45,7 @@ class SCR_AIAbortDefendWaypoint: AITaskScripted
 			if (receiver)
 			{
 				SCR_AIInfoComponent aiInfo = SCR_AIInfoComponent.Cast(receiver.FindComponent(SCR_AIInfoComponent));
-				if (!aiInfo || !aiInfo.HasUnitState(EUnitState.STATIC))
+				if (!aiInfo || !aiInfo.HasUnitState(EUnitState.IN_TURRET))
 					continue;
 				
 				SCR_AIMessage_AttackStaticDone msg1 = SCR_AIMessage_AttackStaticDone.Cast(mailbox.CreateMessage(m_aiWorld.GetGoalMessageOfType(EMessageType_Goal.ATTACK_STATIC_DONE)));

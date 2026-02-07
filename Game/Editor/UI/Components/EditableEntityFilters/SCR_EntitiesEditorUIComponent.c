@@ -17,6 +17,7 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 	protected SCR_CursorEditorUIComponent m_CursorComponent;
 	protected SCR_EditableEntityComponent m_EntityUnderCursor;
 	protected SCR_MouseAreaEditorUIComponent m_MouseArea;
+	protected SCR_MapEntity m_MapEntity;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Registration
@@ -103,11 +104,8 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		
 		return false;
 	}
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
 		//--- Reset the value, otherwise it would linger on after switching from gamepad to mouse&keyboard
 		m_EntityUnderCursor = null;
 	}
@@ -152,7 +150,9 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 	//--- Update
 	void OnMenuUpdate(float tDelta)
 	{
-		if (!m_Workspace) return;
+		//--- No scene interaction when the map is opened
+		if (m_MapEntity && m_MapEntity.IsOpen())
+			return;
 		
 		int screenW = m_Workspace.GetWidth();
 		int screenH = m_Workspace.GetHeight();
@@ -217,7 +217,7 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		m_InputManager = GetGame().GetInputManager();
 		m_HoverManager = SCR_HoverEditableEntityFilter.Cast(entityManager.GetFilter(EEditableEntityState.HOVER));
 		
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		MenuRootComponent root = GetRootComponent();
 		if (root)
@@ -239,6 +239,8 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 			m_aEffectsMap.Insert(state, effect);
 		}
 		
+		m_MapEntity = SCR_MapEntity.GetMapInstance();
+		
 		super.HandlerAttachedScripted(w);
 	}
 	override void HandlerDeattached(Widget w)
@@ -249,7 +251,7 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 		MenuRootBase menu = GetMenu();
 		if (menu) menu.GetOnMenuUpdate().Remove(OnMenuUpdate);
 		
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		
 		if (m_EditableEntityUIConfig)
 		{

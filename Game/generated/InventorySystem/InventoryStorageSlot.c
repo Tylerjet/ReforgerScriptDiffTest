@@ -11,7 +11,6 @@ Do not modify, this script is generated
 
 class InventoryStorageSlot: EntitySlotInfo
 {
-	proto external void Init(IEntity ent);
 	proto external bool ScriptOnRplSave(ScriptBitWriter writer);
 	proto external bool ScriptOnRplLoad(ScriptBitReader reader);
 	//! Either current slot is locked

@@ -22,13 +22,13 @@ class SCR_DSSessionCallback: DSSessionCallback
 		{
 			//--- MP
 			storage.RequestSave(fileName);
-			PrintFormat("RequestSave: $profile:.backend\\%1.json", fileName);
+			PrintFormat("RequestSave: $profile:.save\\%1.json", fileName);
 		}
 		else
 		{
 			//--- SP
 			storage.LocalSave(fileName);
-			PrintFormat("LocalSave: $profile:.backend\\%1.json", fileName);
+			PrintFormat("LocalSave: $profile:.save\\%1.json", fileName);
 		}
 	}
 	/*!
@@ -44,13 +44,13 @@ class SCR_DSSessionCallback: DSSessionCallback
 		{
 			//--- MP
 			storage.RequestLoad(fileName);
-			PrintFormat("RequestLoad: $profile:.backed\\%1.json", fileName);
+			PrintFormat("RequestLoad: $profile:.save\\%1.json", fileName);
 		}
 		else if (RplSession.Mode() == RplMode.None)
 		{
 			//--- SP
 			storage.LocalLoad(fileName);
-			PrintFormat("LocalLoad: $profile:.backed\\%1.json", fileName);
+			PrintFormat("LocalLoad: $profile:.save\\%1.json", fileName);
 		}
 	}
 	/*!

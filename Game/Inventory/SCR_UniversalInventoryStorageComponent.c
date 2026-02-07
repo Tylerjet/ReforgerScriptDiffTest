@@ -84,6 +84,50 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
+ 	override bool CanReplaceItem(IEntity nextItem, int slotID)
+	{
+		// nextItem  == The item that is being replaced
+		// slotID == slotID is the slot ID for the item that replaces nextItem
+		
+		if (!nextItem)
+			return false;
+		
+		InventoryItemComponent nextItemComp = GetItemComponent(nextItem);
+		if(!nextItemComp)
+			return false;
+				
+		IEntity item = Get(slotID); // item == the item that is should replace nextItem
+		
+		if (!item)
+			return false;
+		
+		InventoryItemComponent itemComp = GetItemComponent(item);
+		if(!itemComp)
+			return false;
+		
+		SCR_ItemAttributeCollection nextItemAttributes = SCR_ItemAttributeCollection.Cast(nextItemComp.GetAttributes());
+		SCR_ItemAttributeCollection itemAttributes = SCR_ItemAttributeCollection.Cast(itemComp.GetAttributes());
+		
+		float nextItemVolume = nextItemAttributes.GetVolume();
+		float itemVolume = itemAttributes.GetVolume();
+		float occupiedVolumeWithoutItem = GetOccupiedSpace() - itemVolume;
+		
+		bool bVolumeOK = occupiedVolumeWithoutItem + nextItemVolume <= GetMaxVolumeCapacity();
+		if(!bVolumeOK && pInventoryManager)
+		{	
+			pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_BIG);
+		}
+		bool bWeightOK = IsWeightOk(nextItemComp.GetTotalWeight() - itemComp.GetTotalWeight());
+		if(!bWeightOK && pInventoryManager)
+		{
+			pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_HEAVY);
+		}
+		bool bDimensionsOK = PerformDimensionValidation(item);
+		
+		return bVolumeOK && bWeightOK && bDimensionsOK;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnRemovedFromSlot(IEntity item, int slotID)
 	{
 		GenericEntity pGenComp = GenericEntity.Cast( item );

@@ -284,6 +284,14 @@ class Dependency
 
 class WorkshopAuthor extends WorkshopCatalogue
 {
+	private void WorkshopAuthor()
+	{
+	}
+
+	void ~WorkshopAuthor()
+	{
+	}
+	
 	proto native string Name();
 	proto native bool IsBlocked();
 	proto native void AddBlock(BackendCallback callback);
@@ -479,6 +487,8 @@ class WorkshopItem extends BaseWorkshopItem
 	*/
 	proto native string Summary();
 	
+	proto native string License();
+	proto native string LicenseText();
 	
 	/**
 	\brief Get image gallery
@@ -536,6 +546,10 @@ class WorkshopItem extends BaseWorkshopItem
 	proto native static void SetThumbnailGridScale(int scale);
 	
 	proto native string GetBackendEnv();
+	
+	proto native string GetPath();
+
+	proto native EWorkshopItemType GetType();
 };
 
 
@@ -715,6 +729,7 @@ class WorkshopApi extends WorkshopCatalogue
 	\brief Create a workshop item. DEBUG API
 	*/
 	proto native ref WorkshopItem GetWorkshopItem(string id);
+
 };
 
 // -------------------------------------------------------------------------

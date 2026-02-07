@@ -50,6 +50,20 @@ class SCR_VoterComponent: ScriptComponent
 		Rpc(RemoveVoteServer, type, value);
 		manager.RemoveVoteLocal(type, value);
 	}
+	/*!
+	Check if player did cast the vote.
+	\param type Type of the vote
+	\param value Voted value, depends on the type (e.g., for KICK it's player ID)
+	\return True if the vote was cast
+	*/
+	bool DidVote(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
+	{
+		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
+		if (manager)
+			return manager.IsLocalVote(type, value);
+		else
+			return false;
+	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Protected, server

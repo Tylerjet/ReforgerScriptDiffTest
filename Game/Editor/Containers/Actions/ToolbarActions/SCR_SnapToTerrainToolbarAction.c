@@ -26,7 +26,7 @@ class SCR_SnapToTerrainToolbarAction : SCR_EditorToolbarAction
 			vector transform[4];
 			entity.GetTransform(transform);
 		
-			if (!SCR_Global.SnapToTerrain(transform, owner.GetWorld())) return;
+			if (!SCR_TerrainHelper.SnapToTerrain(transform, owner.GetWorld())) return;
 		
 			entity.SetTransform(transform);
 		}

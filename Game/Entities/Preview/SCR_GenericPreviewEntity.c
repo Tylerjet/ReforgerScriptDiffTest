@@ -171,7 +171,7 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 		entity.GetWorldTransform(worldTransform);
 		
 		//--- Get surface basis
-		if (!SCR_Global.GetTerrainBasis(worldTransform[3], surfaceBasis, entity.GetWorld(), isUnderwater))
+		if (!SCR_TerrainHelper.GetTerrainBasis(worldTransform[3], surfaceBasis, entity.GetWorld(), !isUnderwater))
 			return;
 		
 		//--- Get identity matrix rotated according to the entity

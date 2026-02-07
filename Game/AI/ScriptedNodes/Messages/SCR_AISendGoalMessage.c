@@ -1,4 +1,4 @@
-class SCR_AISendGoalMessage: SCR_AISendMessage
+class SCR_AISendGoalMessage: SCR_AISendMessageGeneric
 {
 	[Attribute("0", UIWidgets.ComboBox, "Message type", "", ParamEnumArray.FromEnum(EMessageType_Goal) )]
 	private EMessageType_Goal m_messageType;
@@ -24,25 +24,13 @@ class SCR_AISendGoalMessage: SCR_AISendMessage
 					
 		if ( !msg )
 		{
-			Print("Unable to create valid message!");
+			Print("Unable to create valid message!", LogLevel.ERROR);
 			return ENodeResult.FAIL;
 		}	
 		
 		msg.SetMessageParameters(this,GetRelatedActivity(owner));
 		
-		#ifdef AI_DEBUG
-		SCR_MailboxComponent mailboxComp = SCR_MailboxComponent.Cast(m_Mailbox);
-		if (mailboxComp)
-			mailboxComp.DebugLogBroadcastMessage(msg, m_Receiver);
-		#endif
-		
-		if (m_Mailbox.RequestBroadcast(msg, m_Receiver))
-			return ENodeResult.SUCCESS;
-		else
-		{
-			PrintFormat("Unable to send message from %1 to %2",owner,m_Receiver);
-			return ENodeResult.FAIL;
-    	};		
+		return SendMessage(owner, msg);
 	}
 	
 	override protected string GetNodeMiddleText()

@@ -23,9 +23,12 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	//------------------------------------------------------------------------------------------------
 	static float GetMinAllyDistance()
 	{
-		SCR_CampaignDefendTaskSupportClass supportClass = SCR_CampaignDefendTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskBySupportClassType(SCR_CampaignDefendTaskSupportClass));
-		if (supportClass)
-			return supportClass.GetMinAllyDistance();
+		if (!GetTaskManager())
+			return DEFEND_TASK_DEFAULT_MIN_ALLY_DISTANCE;
+		
+		SCR_CampaignDefendTaskSupportEntity supportEntity = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
+		if (supportEntity)
+			return supportEntity.GetMinAllyDistance();
 		
 		return DEFEND_TASK_DEFAULT_MIN_ALLY_DISTANCE;
 	}
@@ -33,9 +36,12 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	//------------------------------------------------------------------------------------------------
 	static float GetMaxAllyDistance()
 	{
-		SCR_CampaignDefendTaskSupportClass supportClass = SCR_CampaignDefendTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskBySupportClassType(SCR_CampaignDefendTaskSupportClass));
-		if (supportClass)
-			return supportClass.GetMaxAllyDistance();
+		if (!GetTaskManager())
+			return DEFEND_TASK_DEFAULT_MAX_ALLY_DISTANCE;
+		
+		SCR_CampaignDefendTaskSupportEntity supportEntity = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
+		if (supportEntity)
+			return supportEntity.GetMaxAllyDistance();
 		
 		return DEFEND_TASK_DEFAULT_MAX_ALLY_DISTANCE;
 	}
@@ -43,9 +49,12 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	//------------------------------------------------------------------------------------------------
 	static float GetMinEnemyDistance()
 	{
-		SCR_CampaignDefendTaskSupportClass supportClass = SCR_CampaignDefendTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskBySupportClassType(SCR_CampaignDefendTaskSupportClass));
-		if (supportClass)
-			return supportClass.GetMinEnemyDistance();
+		if (!GetTaskManager())
+			return DEFEND_TASK_DEFAULT_MIN_ENEMY_DISTANCE;
+		
+		SCR_CampaignDefendTaskSupportEntity supportEntity = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
+		if (supportEntity)
+			return supportEntity.GetMinEnemyDistance();
 		
 		return DEFEND_TASK_DEFAULT_MIN_ENEMY_DISTANCE;
 	}
@@ -53,9 +62,12 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	//------------------------------------------------------------------------------------------------
 	static float GetMaxEnemyDistance()
 	{
-		SCR_CampaignDefendTaskSupportClass supportClass = SCR_CampaignDefendTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskBySupportClassType(SCR_CampaignDefendTaskSupportClass));
-		if (supportClass)
-			return supportClass.GetMaxEnemyDistance();
+		if (!GetTaskManager())
+			return DEFEND_TASK_DEFAULT_MAX_ENEMY_DISTANCE;
+		
+		SCR_CampaignDefendTaskSupportEntity supportEntity = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
+		if (supportEntity)
+			return supportEntity.GetMaxEnemyDistance();
 		
 		return DEFEND_TASK_DEFAULT_MAX_ENEMY_DISTANCE;
 	}
@@ -151,19 +163,19 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		if (!enemyFaction)
 			return false;
 		
-		SCR_CampaignDefendTaskSupportClass supportClass = SCR_CampaignDefendTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskBySupportClassType(SCR_CampaignDefendTaskSupportClass));
-		if (!supportClass)
+		SCR_CampaignDefendTaskSupportEntity supportEntity = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
+		if (!supportEntity)
 			return false;
 		
 		float distanceSq;
 		if (initialCheck)
-			distanceSq = supportClass.GetMinEnemyDistance();
+			distanceSq = supportEntity.GetMinEnemyDistance();
 		else
-			distanceSq = supportClass.GetMaxEnemyDistance();
+			distanceSq = supportEntity.GetMaxEnemyDistance();
 		
-		distanceSq = Math.Pow(distanceSq, 2);
+		distanceSq *= distanceSq;
 		
-		array<SCR_ChimeraCharacter> enemyCharacters = supportClass.GetCharactersByFaction(enemyFaction);
+		array<SCR_ChimeraCharacter> enemyCharacters = supportEntity.GetCharactersByFaction(enemyFaction);
 		if (!enemyCharacters)
 			return false;
 		
@@ -186,8 +198,8 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		if (!tasks)
 			return false;
 		
-		SCR_CampaignDefendTaskSupportClass supportClass = SCR_CampaignDefendTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskBySupportClassType(SCR_CampaignDefendTaskSupportClass));
-		if (!supportClass)
+		SCR_CampaignDefendTaskSupportEntity supportEntity = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
+		if (!supportEntity)
 			return false;
 		
 		for (int i = tasks.Count() - 1; i >= 0; i--)
@@ -196,38 +208,11 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 			if (!defendTask)
 				continue;
 			
-			if (defendTask.IsCharacterInDefendTaskRange(character, supportClass))
+			if (defendTask.IsCharacterInDefendTaskRange(character, supportEntity))
 				return true;
 		}
 		
 		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//Call this only on server!
-	static SCR_CampaignDefendTask CreateTask(SCR_CampaignBase targetBase, SCR_CampaignFaction targetFaction)
-	{
-		SCR_BaseTaskSupportClass supportClass = GetTaskManager().GetSupportedTaskByTaskType(SCR_CampaignDefendTask);
-		if (!supportClass)
-			return null;
-		
-		SCR_CampaignDefendTask task = SCR_CampaignDefendTask.Cast(GetGame().SpawnEntityPrefab(supportClass.GetTaskPrefab(), GetGame().GetWorld()));
-		if (!task)
-			return null;
-		
-		task.SetTargetFaction(targetFaction);
-		task.SetTargetBase(targetBase);
-		
-		SCR_CampaignDefendTaskData taskData = new SCR_CampaignDefendTaskData();
-		taskData.LoadDataFromTask(task);
-		
-		SCR_CampaignTaskManager taskManager = SCR_CampaignTaskManager.GetCampaignTaskManagerInstance();
-		if (!taskManager)
-			return task;
-		
-		taskManager.CreateCampaignDefendTask(taskData);
-		
-		return task;
 	}
 	
 	//*********************************//
@@ -307,13 +292,13 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		
 		if (showMsg)
 		{
-			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: m_TargetBase.GetBaseNameUpperCase(), sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
+			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: m_TargetBase.GetBaseNameUpperCase(), sound: SCR_SoundEvent.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
 		}
 		
 		// Reward XP for reconfiguring a relay
 		if (!GetTaskManager().IsProxy())
 		{
-			SCR_CampaignDefendTaskSupportClass supportClass = SCR_CampaignDefendTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskByTaskType(Type()));
+			SCR_CampaignDefendTaskSupportEntity supportClass = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
 			if (!supportClass)
 				return;
 			
@@ -342,7 +327,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
 		if (campaign && showMsg)
 		{
-			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_FAILED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: m_TargetBase.GetBaseNameUpperCase(), sound: UISounds.TASK_FAILED);
+			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_FAILED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: m_TargetBase.GetBaseNameUpperCase(), sound: SCR_SoundEvent.TASK_FAILED);
 		}
 	}
 	
@@ -351,11 +336,11 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	//*********************//
 	
 	//------------------------------------------------------------------------------------------------
-	bool IsCharacterInDefendTaskRange(notnull SCR_ChimeraCharacter character, SCR_CampaignDefendTaskSupportClass supportClass = null)
+	bool IsCharacterInDefendTaskRange(notnull SCR_ChimeraCharacter character, SCR_CampaignDefendTaskSupportEntity supportClass = null)
 	{
 		if (!supportClass)
 		{
-			supportClass = SCR_CampaignDefendTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskByTaskType(Type()));
+			supportClass = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
 			if (!supportClass)
 				return false;
 		}
@@ -385,9 +370,16 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		if (!m_TargetBase || !campaignFaction)
 			return;
 		
+		if (!GetTaskManager())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
 		// Enemy presence not found == success
 		if (!FindEnemyPresence(m_TargetBase, campaignFaction, false))
-			GetTaskManager().FinishTask(this);
+			supportEntity.FinishTask(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -402,26 +394,17 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	//! An event called when a base has been captured.
 	void OnBaseCaptured(SCR_CampaignBase capturedBase)
 	{
-		if (!capturedBase || capturedBase != m_TargetBase)
+		if (!capturedBase || capturedBase != m_TargetBase || !GetTaskManager())
 			return;
 		
 		if (capturedBase.GetOwningFaction() == m_TargetFaction)
 			return;
 		
-		GetTaskManager().FailTask(this);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void Serialize(ScriptBitWriter writer)
-	{
-		super.Serialize(writer);
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
 		
-		int baseID = -1;
-		SCR_CampaignBase base = GetTargetBase();
-		if (base)
-			baseID = base.GetBaseID();
-		
-		writer.WriteInt(baseID);
+		supportEntity.FailTask(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -445,9 +428,9 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		if (SCR_GameModeCampaignMP.s_OnBaseCaptured)
 			SCR_GameModeCampaignMP.s_OnBaseCaptured.Insert(OnBaseCaptured);
 		
-		SCR_CampaignDefendTaskSupportClass supportClass = SCR_CampaignDefendTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskByTaskType(Type()));
+		SCR_CampaignDefendTaskSupportEntity supportClass = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
 		if (supportClass)
-			supportClass.m_OnCharacterDeath.Insert(OnCharacterDeath);
+			supportClass.GetOnCharacterDeath().Insert(OnCharacterDeath);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -465,8 +448,8 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		if (SCR_GameModeCampaignMP.s_OnBaseCaptured)
 			SCR_GameModeCampaignMP.s_OnBaseCaptured.Remove(OnBaseCaptured);
 		
-		SCR_CampaignDefendTaskSupportClass supportClass = SCR_CampaignDefendTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskByTaskType(Type()));
+		SCR_CampaignDefendTaskSupportEntity supportClass = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
 		if (supportClass)
-			supportClass.m_OnCharacterDeath.Remove(OnCharacterDeath);
+			supportClass.GetOnCharacterDeath().Remove(OnCharacterDeath);
 	}
 };

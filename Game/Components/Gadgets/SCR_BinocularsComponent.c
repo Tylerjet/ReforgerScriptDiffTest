@@ -101,12 +101,6 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool IsSingleHanded()
-	{
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override bool IsVisibleEquipped()
 	{
 		return true;

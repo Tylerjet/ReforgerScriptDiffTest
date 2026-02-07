@@ -21,7 +21,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	[Attribute("0", UIWidgets.EditBox, "Extra pixels to the right from the center of the widget")]
 	float m_fExtraPaddingRight;
 	
-	[Attribute(UISounds.FOCUS, UIWidgets.EditBox, "")]
+	[Attribute(SCR_SoundEvent.FOCUS, UIWidgets.EditBox, "")]
 	protected string m_sSoundClosed;
 
 	protected InputManager m_InputManager;

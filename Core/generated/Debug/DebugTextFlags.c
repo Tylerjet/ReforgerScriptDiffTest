@@ -15,8 +15,7 @@ enum DebugTextFlags
 	CENTER,
 	FACE_CAMERA,
 	ONCE,
-	IN_WORLD,
-	PROCESSED
+	IN_WORLD
 };
 
 /** @}*/

@@ -30,7 +30,7 @@ class SCR_TransportTask : SCR_RequestedTask
 		{
 			if (IsAssignedToLocalPlayer())
 				SCR_PopUpNotification.GetInstance().PopupMsg(m_sRequesterMetText, prio: SCR_ECampaignPopupPriority.TASK_DONE);
-			if (this == GetTaskManager().GetLocallyRequestedTask())
+			if (IsLocallyRequestedTask())
 				SCR_PopUpNotification.GetInstance().PopupMsg(m_sAssigneeMetText, prio: SCR_ECampaignPopupPriority.TASK_DONE);
 		}
 	}
@@ -50,16 +50,23 @@ class SCR_TransportTask : SCR_RequestedTask
 	//------------------------------------------------------------------------------------------------
 	override void OnAssigneeKilled()
 	{
-		if (GetTaskManager().IsProxy())
+		if (!GetTaskManager() || GetTaskManager().IsProxy())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
 			return;
 		
 		if (GetVolunteerMet())
-			GetTaskManager().FailTask(this);
+			supportEntity.FailTask(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void PeriodicalCheck()
 	{
+		if (!GetTaskManager())
+			return;
+		
 		SCR_BaseTaskExecutor assignee = GetAssignee();
 		if (!assignee)
 			return;
@@ -67,22 +74,34 @@ class SCR_TransportTask : SCR_RequestedTask
 		IEntity assigneeEntity = assignee.GetControlledEntity();
 		IEntity requesterEntity = m_Requester.GetControlledEntity();
 		
-		SCR_TransportTaskSupportClass supportClass = SCR_TransportTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskByTaskType(Type()));
-		if (!supportClass)
+		SCR_TransportTaskSupportEntity supportEntity = SCR_TransportTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_TransportTaskSupportEntity));
+		if (!supportEntity)
 			return;
 		
 		if (!GetVolunteerMet())
 		{
-			if (vector.DistanceSq(assigneeEntity.GetOrigin(), requesterEntity.GetOrigin()) > supportClass.GetMaxDistanceAssigneeSq())
+			if (vector.DistanceSq(assigneeEntity.GetOrigin(), requesterEntity.GetOrigin()) > supportEntity.GetMaxDistanceAssigneeSq())
 				return;
 			
-			GetTaskManager().TransportTaskNextPhase(this);
+			supportEntity.TransportTaskNextPhase(this);
 			return;
 		}
-		else if (vector.DistanceSq(requesterEntity.GetOrigin(), GetOrigin()) > supportClass.GetMaxDistanceDestinationSq())
+		else if (vector.DistanceSq(requesterEntity.GetOrigin(), GetOrigin()) > supportEntity.GetMaxDistanceDestinationSq())
 			return;
 		
-		GetTaskManager().FinishTask(this);
+		supportEntity.FinishTask(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Deserialize(ScriptBitReader reader)
+	{
+		super.Deserialize(reader);
+		
+		reader.ReadVector(m_vTargetPosition);
+		
+		bool volunteerMet;
+		reader.ReadBool(volunteerMet);
+		SetVolunteerMet(volunteerMet);
 	}
 	
 	//------------------------------------------------------------------------------------------------

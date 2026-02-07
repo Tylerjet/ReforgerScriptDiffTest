@@ -99,7 +99,7 @@ class SCR_CarControllerComponent : CarControllerComponent
 			if (!soundComponent.IsFinishedPlaying(m_EngineStopHandle))
 				soundComponent.Terminate(m_EngineStopHandle);
 			
-			m_EngineStarterHandle = soundComponent.SoundEvent("SOUND_ENGINE_STARTER_LP");
+			m_EngineStarterHandle = soundComponent.SoundEvent(SCR_SoundEvent.SOUND_ENGINE_STARTER_LP);
 		}
 	}
 
@@ -150,7 +150,7 @@ class SCR_CarControllerComponent : CarControllerComponent
 			if (!soundComponent.IsFinishedPlaying(m_EngineStartHandle))
 				soundComponent.Terminate(m_EngineStartHandle);
 
-			m_EngineStartHandle = soundComponent.SoundEvent("SOUND_ENGINE_START");
+			m_EngineStartHandle = soundComponent.SoundEvent(SCR_SoundEvent.SOUND_ENGINE_START);
 		}
 	}
 
@@ -178,7 +178,7 @@ class SCR_CarControllerComponent : CarControllerComponent
 			if (reason != EVehicleEngineStartFailedReason.NO_FUEL)
 				return;
 			
-			soundComponent.SoundEvent("SOUND_ENGINE_START_FAILED");
+			soundComponent.SoundEvent(SCR_SoundEvent.SOUND_ENGINE_START_FAILED);
 		}
 	}
 
@@ -230,7 +230,7 @@ class SCR_CarControllerComponent : CarControllerComponent
 			if (!soundComponent.IsFinishedPlaying(m_EngineStartHandle))
 				soundComponent.Terminate(m_EngineStartHandle);
 			
-			m_EngineStopHandle = soundComponent.SoundEvent("SOUND_ENGINE_STOP");
+			m_EngineStopHandle = soundComponent.SoundEvent(SCR_SoundEvent.SOUND_ENGINE_STOP);
 		}
 	}
 	

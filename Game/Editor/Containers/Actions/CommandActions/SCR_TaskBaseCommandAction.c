@@ -15,6 +15,6 @@ class SCR_TaskBaseCommandAction : SCR_BaseCommandAction
 			return false;
 		
 		Resource resource = Resource.Load(m_CommandPrefab);
-		return resource.IsValid() && GetTaskManager().HasTaskData(resource.GetResource().ToBaseContainer().GetClassName().ToType());
+		return resource.IsValid();
 	}
 };

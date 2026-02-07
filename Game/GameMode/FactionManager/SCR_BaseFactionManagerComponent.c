@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/FactionManager/Components", description: "Base for FactionManager scripted component.", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/FactionManager/Components", description: "Base for FactionManager scripted component.")]
 class SCR_BaseFactionManagerComponentClass: ScriptComponentClass
 {
 };

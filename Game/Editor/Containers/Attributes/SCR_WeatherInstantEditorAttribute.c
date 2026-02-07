@@ -25,8 +25,7 @@ class SCR_WeatherInstantEditorAttribute: SCR_BasePresetsEditorAttribute
 		if (weatherStates.IsEmpty()) 
 			return null;
 		
-		WeatherState currentState = new WeatherState();
-		weatherManager.GetCurrentWeatherState(currentState);
+		WeatherState currentState = weatherManager.GetCurrentWeatherState();
 		return SCR_BaseEditorAttributeVar.CreateInt(currentState.GetStateID());
 	}
 	

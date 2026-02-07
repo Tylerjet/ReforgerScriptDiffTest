@@ -11,7 +11,7 @@ Do not modify, this script is generated
 
 sealed class ChimeraWorld: BaseWorld
 {
-	proto external MusicManagerController GetMusicController();
+	proto external MusicManager GetMusicManager();
 };
 
 /** @}*/

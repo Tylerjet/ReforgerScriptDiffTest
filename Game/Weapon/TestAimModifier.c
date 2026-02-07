@@ -3,8 +3,8 @@ class TestAimModifier: ScriptedWeaponAimModifier
 	//------------------------------------------------------------------------------------------------
 	private void Register(SCR_DebugMenuID id, string name, bool angles = false)
 	{
-		const string angleLimits = "-180, 180, 0, 0.2";
-		const string linearLimits = "-10, 10, 0, 0.001";
+		const string angleLimits = "-180, 180, 0, 0.01";
+		const string linearLimits = "-10, 10, 0, 0.0001";
 	
 		if (angles)
 			DiagMenu.RegisterRange(id, "", name, "TestAimModifier", angleLimits);

@@ -296,7 +296,7 @@ class SCR_TreePartV2 : Tree
 					Math3D.MatrixIdentity3(mat);
 					mat[3] = m_vPositionVector;
 					soundComponent.SetTransformation(mat);
-					soundComponent.PlayStr("SOUND_BREAK");
+					soundComponent.PlayStr(SCR_SoundEvent.SOUND_BREAK);
 				}
 			}
 		}

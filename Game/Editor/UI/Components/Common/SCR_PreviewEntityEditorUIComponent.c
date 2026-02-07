@@ -131,7 +131,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		}
 		
 		vector pos = m_vClickTransformBase[3];
-		m_vTerrainNormal = SCR_Global.GetTerrainNormal(pos, m_World, !m_PreviewEntityManager.IsUnderwater());
+		m_vTerrainNormal = SCR_TerrainHelper.GetTerrainNormal(pos, m_World, !m_PreviewEntityManager.IsUnderwater());
 	}
 	protected void SetClickPos(vector clickPos)
 	{
@@ -188,6 +188,10 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		return m_World.TraceMove(trace, null);
 	}
+	/*!
+	\return True if the preview should be shpown as disabled, false if it should be shown in normal state. To be overriden by inherited classes.
+	*/
+	protected bool CanShowAsDisabled();
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Transformation functions
@@ -418,6 +422,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		vector previewTransform[4];
 		m_PreviewEntityManager.GetPreviewTransform(previewTransform);
 		EEditorTransformVertical verticalMode = m_PreviewEntityManager.GetVerticalMode();
+		
+		m_PreviewEntityManager.ShowAsDisabled(CanShowAsDisabled());
 		
 		//--- Automatic animation when restoring transformation after unsnapping from a target
 		if (m_bIsAnimated)

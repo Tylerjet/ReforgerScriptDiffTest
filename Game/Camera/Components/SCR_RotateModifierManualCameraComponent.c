@@ -9,13 +9,10 @@ class SCR_RotateModifierManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	private bool m_bRotate;
 	
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
 		//--- Always rotate with controller, cancel rotation when switching to mouse and keyboard
-		m_bRotate = !GetInputManager().IsUsingMouseAndKeyboard();
+		m_bRotate = isGamepad;
 	}
 	protected void ManualCameraRotateDown()
 	{
@@ -41,15 +38,15 @@ class SCR_RotateModifierManualCameraComponent : SCR_BaseManualCameraComponent
 	}
 	override bool EOnCameraInit()
 	{
-		OnInputDeviceUserChanged(-1, -1);
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		GetInputManager().AddActionListener("ManualCameraRotate", EActionTrigger.DOWN, ManualCameraRotateDown);
 		GetInputManager().AddActionListener("ManualCameraRotate", EActionTrigger.UP, ManualCameraRotateUp);
 		return true;
 	}
 	override void EOnCameraExit()
 	{
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		GetInputManager().RemoveActionListener("ManualCameraRotate", EActionTrigger.DOWN, ManualCameraRotateDown);
 		GetInputManager().RemoveActionListener("ManualCameraRotate", EActionTrigger.UP, ManualCameraRotateUp);
 	}

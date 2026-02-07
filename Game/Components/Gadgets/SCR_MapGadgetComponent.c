@@ -9,13 +9,11 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 {
 	[Attribute("0.35", UIWidgets.EditBox, desc: "seconds, delay before map gets activated giving time for the animation to be visible", params: "1 1000", category: "Map")]
 	protected float m_fActivationDelay;
-		
-	[Attribute("0.35", UIWidgets.EditBox, desc: "seconds, how long it taks to fade in completely", params: "1 1000", category: "Map")]
-	protected float m_fFadeInTime;
-		
+				
 	protected bool m_bIsMapOpen;
 	protected bool m_bIsFirstTimeOpened = true;		// whether the map has bene opened since put into a lot
-	protected SCR_MapEntity m_MapEntity = null;		// map instance
+	protected SCR_MapEntity m_MapEntity;			// map instance
+	protected SCR_ScreenEffects m_ScreenEffects;	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Switch between map view
@@ -27,35 +25,28 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 				
 		// no delay/fade for forced cancel
 		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(m_CharacterOwner.FindComponent(SCR_CharacterControllerComponent));
-		SCR_GadgetManagerComponent gadgetMgr =  SCR_GadgetManagerComponent.GetGadgetManager(m_CharacterOwner);
-		if (!gadgetMgr)
-			return;
 		
 		float delay; 
-		
-		if (controller.IsDead()) 
-		{
-			delay = 0;
-			
-			if (gadgetMgr.GetFadeWidget())
-				gadgetMgr.GetFadeWidget().SetOpacity(0);
-		}
-		else 
-		{
-			delay = m_fActivationDelay*1000;
-		
-			// fade in
-			if (gadgetMgr.GetFadeWidget())
-				WidgetAnimator.PlayAnimation( gadgetMgr.GetFadeWidget(), WidgetAnimationType.Opacity, 1.0, 1/m_fFadeInTime);
-		}
+		if (!controller.IsDead()) 
+			delay = m_fActivationDelay * 1000;
+
 				
 		GetGame().GetCallqueue().Remove(ToggleMapGadget);
 		
-		
 		if (state)
+		{
 			GetGame().GetCallqueue().CallLater(ToggleMapGadget, delay, false, true);
+			
+			if (m_ScreenEffects)
+				m_ScreenEffects.FadeOutEffect(true, m_fActivationDelay); // fade out after map placed in hand
+		}
 		else		
+		{
 			GetGame().GetCallqueue().CallLater(ToggleMapGadget, delay, false, false);
+			
+			if (!controller.IsDead()) 
+				m_MapEntity.FadeOut(true, m_fActivationDelay); // fade out on map close
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -65,14 +56,7 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	{
 		if (!m_MapEntity)
 			return;
-				
-		SCR_GadgetManagerComponent gadgetMgr =  SCR_GadgetManagerComponent.GetGadgetManager(m_CharacterOwner);
-		if (gadgetMgr && gadgetMgr.GetFadeWidget())
-		{
-			WidgetAnimator.StopAnimation(gadgetMgr.GetFadeWidget());
-			WidgetAnimator.PlayAnimation( gadgetMgr.GetFadeWidget(), WidgetAnimationType.Opacity, 0.0, 1/m_fFadeInTime);
-		}
-				
+								
 		if (state)
 		{
 			SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
@@ -86,6 +70,9 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 			MenuManager menuManager = g_Game.GetMenuManager();
 			menuManager.CloseMenuByPreset(ChimeraMenuPreset.MapMenu);
 			m_bIsMapOpen = false;
+			
+			if (m_ScreenEffects)
+				m_ScreenEffects.FadeOutEffect(false, m_fActivationDelay); // fade in after map close 
 			
 			SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
 		}		
@@ -117,7 +104,10 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 			return;
 		
 		if (mode == EGadgetMode.IN_HAND)
+		{
+			m_ScreenEffects = SCR_ScreenEffects.GetScreenEffectsDisplay();
 			ToggleFocused(true);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

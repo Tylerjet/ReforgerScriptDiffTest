@@ -593,7 +593,7 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OpacityAnimation(Widget w, int time, float opacityEnd) 
 	{
-		WidgetAnimator.PlayAnimation(w, WidgetAnimationType.Opacity, opacityEnd, time);
+		AnimateWidget.Opacity(w, opacityEnd, time);
 	}
 
 	//------------------------------------------------------------------------------------------------

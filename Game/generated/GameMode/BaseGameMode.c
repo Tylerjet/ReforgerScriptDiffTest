@@ -47,7 +47,7 @@ class BaseGameMode: GenericEntity
 	Called after a player is disconnected.
 	\param playerId PlayerId of disconnected player.
 	*/
-	event protected void OnPlayerDisconnected(int playerId);
+	event protected void OnPlayerDisconnected(int playerId, KickCauseCode cause);
 	/*!
 	Called after a player is spawned.
 	\param playerId PlayerId of spawned player.

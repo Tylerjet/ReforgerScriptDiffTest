@@ -15,7 +15,7 @@ class SCR_AISendSmartAction: SCR_AISendGoalMessage
 					
 		if ( !msg )
 		{
-			Print("Unable to create valid message!");
+			Print("Unable to create valid message!", LogLevel.ERROR);
 			return ENodeResult.FAIL;		
 		}	
 		

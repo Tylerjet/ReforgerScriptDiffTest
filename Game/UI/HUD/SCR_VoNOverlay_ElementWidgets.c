@@ -66,4 +66,4 @@ class SCR_VoNOverlay_ElementWidgets
 
 		return true;
 	}
-}
+};

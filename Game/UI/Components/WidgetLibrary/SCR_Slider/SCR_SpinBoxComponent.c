@@ -127,18 +127,16 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 		int count = m_aHintElements.Count();
 		if (oldIndex > -1 && oldIndex < count)
 		{
-			WidgetAnimator.PlayAnimation(m_aHintElements[oldIndex], WidgetAnimationType.Color, COLOR_HINT_DESELECTED, m_fAnimationRate);
-
+			AnimateWidget.Color(m_aHintElements[oldIndex], COLOR_HINT_DESELECTED, m_fAnimationRate);
 			if (m_fHintSelectedWidthMultiplier != 1)
-				WidgetAnimator.PlayAnimation(m_aHintElements[oldIndex], WidgetAnimationType.LayoutFill, 1, m_fAnimationRate);
+				AnimateWidget.LayoutFill(m_aHintElements[oldIndex], 1, m_fAnimationRate);
 		}
 
 		if (currentIndex > -1 && currentIndex < count)
 		{
-			WidgetAnimator.PlayAnimation(m_aHintElements[currentIndex], WidgetAnimationType.Color, COLOR_HINT_SELECTED, m_fAnimationRate);
-
+			AnimateWidget.Color(m_aHintElements[currentIndex], COLOR_HINT_SELECTED, m_fAnimationRate);
 			if (m_fHintSelectedWidthMultiplier != 1)
-				WidgetAnimator.PlayAnimation(m_aHintElements[currentIndex], WidgetAnimationType.LayoutFill, m_fHintSelectedWidthMultiplier, m_fAnimationRate);
+				AnimateWidget.LayoutFill(m_aHintElements[currentIndex], m_fHintSelectedWidthMultiplier, m_fAnimationRate);
 		}
 	}
 

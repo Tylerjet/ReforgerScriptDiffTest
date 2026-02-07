@@ -59,7 +59,8 @@ class SCR_EntityEditorEffect: SCR_BaseEditorEffect
 			spawnParams.Transform[2] = spawnParams.Transform[2] * scale;
 		}
 		
-		if (m_bReplacePrevious) SCR_Global.DeleteEntityAndChildren(m_Entity);		
+		if (m_bReplacePrevious)
+			SCR_EntityHelper.DeleteEntityAndChildren(m_Entity);		
 		m_Entity = GetGame().SpawnEntityPrefab(resource, GetGame().GetWorld(), spawnParams);
 		return true;
 	}

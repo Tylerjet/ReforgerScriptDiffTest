@@ -27,13 +27,13 @@ class SCR_MapEntity: MapEntity
 		
 	// zoom
 	protected bool m_bIsZoomInterp;		// is currently zoom animating
-	protected float m_fZoom = 1;		// current zoom value
-	protected float m_fStartZoom;		// zoom start val
-	protected float m_fTargetZoom = 1;	// zoom target val
+	protected float m_fZoomPPU = 1;		// current zoom PixelPerUnit value
+	protected float m_fStartPPU;		// zoom start PixelPerUnit
+	protected float m_fTargetPPU = 1;	// zoom target PixelPerUnit
 	protected float m_fZoomTimeModif;	// zoom anim speed modifier
 	protected float m_fZoomSlice;		// zoom anim timeslce
-	protected float m_fMinZoom = 1;		// minimal zoom
-	protected float m_fMaxZoom;			// maximal zoom
+	protected float m_fMinZoom = 1;		// minimal zoom PixelPerUnit
+	protected float m_fMaxZoom;			// maximal zoom PixelPerUnit
 	
 	// pan
 	protected bool m_bIsPanInterp;		// is currently pan animating
@@ -54,7 +54,7 @@ class SCR_MapEntity: MapEntity
 	protected static ref ScriptInvoker<MapConfiguration> s_OnMapInit 	= new ScriptInvoker();	// map init, called straight after opening the map
 	protected static ref ScriptInvoker<MapConfiguration> s_OnMapOpen 	= new ScriptInvoker();	// map open, called after map is properly initialized
 	protected static ref ScriptInvoker<MapConfiguration> s_OnMapClose 	= new ScriptInvoker();	// map close
-	protected static ref ScriptInvoker<float, float, bool> s_OnMapPan 	= new ScriptInvoker();	// map pan
+	protected static ref ScriptInvoker<float, float, bool> s_OnMapPan 	= new ScriptInvoker();	// map pan, passes UNSCALED x & y
 	protected static ref ScriptInvoker<float, float> s_OnMapPanEnd 		= new ScriptInvoker();	// map pan interpolated end
 	protected static ref ScriptInvoker<float> s_OnMapZoom				= new ScriptInvoker();	// map zoom
 	protected static ref ScriptInvoker<float> s_OnMapZoomEnd			= new ScriptInvoker();	// map zoom interpolated end
@@ -67,6 +67,7 @@ class SCR_MapEntity: MapEntity
 	//TEMP & TODOs
 	protected int m_iLayerIndex = 0;	// current layer (switch to getter from gamecode)	
 	ref array<int> imagesetIndices = new array<int>();
+	protected Widget m_wFadeInOut;		// merge into screen effects when possible 
 	
 	//------------------------------------------------------------------------------------------------
 	// GETTERS / SETTERS
@@ -111,10 +112,8 @@ class SCR_MapEntity: MapEntity
 	float GetMaxZoom() { return m_fMaxZoom; }
 	//! Get minimal zoom
 	float GetMinZoom() { return m_fMinZoom; }
-	//! Get current zoom
-	float GetCurrentZoom() { return m_fZoom; }
-	//! Get target zoom, which is different from current zoom if interpolation is ongoing
-	float GetTargetZoom() { return m_fTargetZoom; }
+	//! Get target zoom in the form of PixelPerUnit value, which is different from current zoom if interpolation is ongoing
+	float GetTargetZoomPPU() { return m_fTargetPPU; }
 	//! Get whether zoom interpolation is ongoing
 	bool IsZooming() { return m_bIsZoomInterp;	}
 	//! Get current DPIScaled pan offsets 
@@ -127,11 +126,11 @@ class SCR_MapEntity: MapEntity
 	void SetMapWidget(Widget mapW) { m_MapWidget = CanvasWidget.Cast(mapW); }
 		
 	//------------------------------------------------------------------------------------------------
-	//! Get how much pixels per unit are currently visible on screen
+	//! Get how much pixels per unit(meter) are currently visible on screen. If this value is 1 and resolution is 1920x1080, then 1920 units(meters) of map will be visible
 	//! \return Current pixel per unit value
-	float GetCurrentPixelPerUnit()
+	float GetCurrentZoom()
 	{		
-		return m_MapWidget.PixelPerUnit() * m_fZoom;
+		return m_fZoomPPU;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -195,6 +194,12 @@ class SCR_MapEntity: MapEntity
 		if (!config)
 			return;
 		
+		if (m_bIsOpen)
+		{
+			Print("SCR_MapEntity: Attempted opening a map while it is already open", LogLevel.WARNING);
+			CloseMap();
+		}
+		
 		if (config.MapEntityMode != m_eLastMapMode)
 			m_bDoReload = true;
 		
@@ -204,6 +209,17 @@ class SCR_MapEntity: MapEntity
 		m_wMapRoot = config.RootWidgetRef;
 		
 		SetMapWidget(config.RootWidgetRef.FindAnyWidget(SCR_MapConstants.MAP_WIDGET_NAME));		
+		
+		if (config.MapEntityMode == EMapEntityMode.FULLSCREEN)
+		{
+			m_wFadeInOut = ImageWidget.Cast(m_wMapRoot.FindAnyWidget("FadeOut"));
+			FadeOut(false);
+			
+			ChimeraCharacter char = ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
+			if (char)
+				SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).m_OnPlayerDeathWithParam.Insert(OnPlayerDeath);
+		}
+		
 		InitLayers(config.LayerCount, config.LayerConfigs);
 				
 		SetFrame(Vector(0, 0, 0), Vector(0, 0, 0)); // Gamecode starts rendering stuff like descriptors straight away instead of waiting a frame - this is a hack to display nothing, avoiding the "blink" of icons
@@ -253,11 +269,31 @@ class SCR_MapEntity: MapEntity
 			s_OnMapOpen.Invoke(config);
 
 		if (config.MapEntityMode == EMapEntityMode.FULLSCREEN)
-			SCR_UISoundEntity.SoundEvent(UISounds.MAP_OPEN);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_HUD_MAP_OPEN);
 		
 		EnableVisualisation(true);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Fade the screen in/out TODO move this to screen effects when ZOrder supports it
+	//! \param fadeDirection fades out if true, in if false 
+	void FadeOut(bool fadeDirection, float seconds = 0.35)
+	{
+		if (!m_wFadeInOut || seconds == 0)
+			return;
+		
+		float targetVal;
+		if (fadeDirection)
+		{
+			m_wFadeInOut.SetOpacity(0);
+			targetVal = 1;
+		}
+		else 
+			m_wFadeInOut.SetOpacity(1);
+		
+		AnimateWidget.Opacity(m_wFadeInOut, targetVal, 1/seconds, true);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Map close event
 	protected void OnMapClose()
@@ -266,7 +302,13 @@ class SCR_MapEntity: MapEntity
 			s_OnMapClose.Invoke(m_ActiveMapCfg);
 		
 		if (m_ActiveMapCfg.MapEntityMode == EMapEntityMode.FULLSCREEN)
-			SCR_UISoundEntity.SoundEvent(UISounds.MAP_CLOSE);
+		{
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_HUD_MAP_CLOSE);
+			
+			ChimeraCharacter char = ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
+			if (char)
+				SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).m_OnPlayerDeathWithParam.Remove(OnPlayerDeath);
+		}
 		
 		if ( m_ActiveMapCfg.OtherComponents & EMapOtherComponents.LEGEND_SCALE)
 			EnableLegend(false);
@@ -274,6 +316,23 @@ class SCR_MapEntity: MapEntity
 		EnableVisualisation(false);
 		
 		Cleanup();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_CharacterControllerComponent event
+	//! Called only in case of a fullscreen map
+	protected void OnPlayerDeath(SCR_CharacterControllerComponent charController, IEntity instigator)
+	{		
+		SCR_GadgetManagerComponent gadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(GetGame().GetPlayerController().GetControlledEntity());
+		if (!gadgetMgr)
+			return;
+		
+		IEntity mapGadget = gadgetMgr.GetGadgetByType(EGadgetType.MAP);
+		if (!mapGadget)
+			return;
+		
+		SCR_MapGadgetComponent mapComp = SCR_MapGadgetComponent.Cast(mapGadget.FindComponent(SCR_MapGadgetComponent));
+		mapComp.SetMapMode(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -451,14 +510,14 @@ class SCR_MapEntity: MapEntity
 		int x, y;
 		WorldToScreen(GetMapSizeX() / 2, GetMapSizeY() / 2, x, y);
 
-		SetPan(x, y, true); 
+		SetPan(x, y); 
 	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! Set minimal zoom and center the map
 	void ZoomOut()
 	{
-		SetZoom(m_fMinZoom);
+		SetZoom(m_fMinZoom, true);
 		CenterMap();
 	}
 			
@@ -471,8 +530,9 @@ class SCR_MapEntity: MapEntity
 		
 	//------------------------------------------------------------------------------------------------
 	//! Set zoom value
-	//! \param zoom is zoom value
-	void SetZoom(float zoom)
+	//! \param targetPPU is wanted pixel per unit (zoom) value
+	//! \param instant determines whether it is a one time zoom or an animation
+	void SetZoom(float targetPPU, bool instant = false)
 	{
 		if (m_iDelayCounter > 0)
 		{
@@ -482,25 +542,24 @@ class SCR_MapEntity: MapEntity
 		
 		UpdateZoomBounds(); // TODO call this somewhere on reso/settings changed
 		
-		if (zoom > m_fMaxZoom)
-			zoom = m_fMaxZoom;
-		else if (zoom < m_fMinZoom)
-			zoom = m_fMinZoom;
+		targetPPU = Math.Clamp(targetPPU, m_fMinZoom, m_fMaxZoom); 
 		
-		m_fZoom = zoom;
+		m_fZoomPPU = targetPPU;
 		AssignViewLayer();
-		// contours
-		ZoomChange(m_fZoom);
+		ZoomChange(targetPPU / m_MapWidget.PixelPerUnit());	// contours
 		
-		s_OnMapZoom.Invoke(zoom);
+		if (instant)
+			m_fTargetPPU = m_fZoomPPU;
+		
+		s_OnMapZoom.Invoke(targetPPU);
 	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! Interpolated zoom
-	//! \param zoomValue is zoom value target
+	//! \param targetPixPerUnit is the target pixel per unit value
 	//! \param zoomTime is interpolation duration
 	//! \param zoomToCenter determines whether zoom target is screen center (true) or relative position of mouse within window (false)
-	void ZoomSmooth(float zoomValue, float zoomTime = 0.25, bool zoomToCenter = true)
+	void ZoomSmooth(float targetPixPerUnit, float zoomTime = 0.25, bool zoomToCenter = true)
 	{
 		if (m_iDelayCounter > 0)
 		{
@@ -508,15 +567,13 @@ class SCR_MapEntity: MapEntity
 			return;
 		}
 		
-		float zoomVal = zoomValue;
+		if (zoomTime <= 0)
+			zoomTime = 0.1;
 
-		if (zoomVal > m_fMaxZoom)
-			zoomVal = m_fMaxZoom;
-		else if (zoomVal < m_fMinZoom)
-			zoomVal = m_fMinZoom;
-
-		m_fStartZoom = m_fZoom;
-		m_fTargetZoom = zoomVal;
+		targetPixPerUnit = Math.Clamp(targetPixPerUnit, m_fMinZoom, m_fMaxZoom);
+		
+		m_fStartPPU = m_fZoomPPU;
+		m_fTargetPPU = targetPixPerUnit;
 		m_fZoomTimeModif = 1/zoomTime;
 		m_fZoomSlice = 1.0;
 		m_bIsZoomInterp = true;
@@ -528,28 +585,28 @@ class SCR_MapEntity: MapEntity
 		{
 			// zoom according to the current screen center
 			GetMapCenterWorldPosition(worldX, worldY);
-			WorldToScreen( worldX, worldY, targetScreenX, targetScreenY, false, m_fTargetZoom );
+			WorldToScreen( worldX, worldY, targetScreenX, targetScreenY, false, targetPixPerUnit );
 			PanSmooth( targetScreenX, targetScreenY, zoomTime ); 
 		}
 		else
 		{
-			// Calculate target pan position in a way mhich makes cursor stay on the same world pos while zooming
+			// Calculate target pan position in a way which makes cursor stay on the same world pos while zooming
 			float diffX = screenX/2 - m_Workspace.DPIScale(SCR_MapCursorInfo.x); // difference in pixels between screen center and cursor
 			float diffY = screenY/2 - m_Workspace.DPIScale(SCR_MapCursorInfo.y);
 
 			GetMapCursorWorldPosition(worldX, worldY); // current cursor world pos, relative anchor of zoom
-			WorldToScreen( worldX, worldY, targetScreenX, targetScreenY, false, m_fTargetZoom ); // target screen pos of cursor with zoom applied
+			WorldToScreen( worldX, worldY, targetScreenX, targetScreenY, false, targetPixPerUnit ); // target screen pos of cursor with zoom applied
 			PanSmooth( targetScreenX + diffX, targetScreenY + diffY, zoomTime );  // offset the target position by the pix diference from screen center
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Interpolated zoom with custom pan target for simultaneous use of zoom+pan
-	//! \param zoomValue is zoom value target
+	//! \param targetPixPerUnit is the target pixel per unit value
 	//! \param worldX is world pos X panning target
 	//! \param worldY is world pos Y panning target
 	//! \param zoomTime is interpolation duration
-	void ZoomPanSmooth(float zoomValue, float worldX, float worldY, float zoomTime = 0.25)
+	void ZoomPanSmooth(float targetPixPerUnit, float worldX, float worldY, float zoomTime = 0.25)
 	{
 		if (m_iDelayCounter > 0)
 		{
@@ -557,15 +614,16 @@ class SCR_MapEntity: MapEntity
 			return;
 		}
 		
-		float zoomVal = zoomValue;
+		if (zoomTime <= 0)
+			zoomTime = 0.1;
 
-		if (zoomVal > m_fMaxZoom)
-			zoomVal = m_fMaxZoom;
-		else if (zoomVal < m_fMinZoom)
-			zoomVal = m_fMinZoom;
+		if (targetPixPerUnit > targetPixPerUnit)
+			targetPixPerUnit = targetPixPerUnit;
+		else if (targetPixPerUnit < m_fMinZoom)
+			targetPixPerUnit = m_fMinZoom;
 
-		m_fStartZoom = m_fZoom;
-		m_fTargetZoom = zoomVal;
+		m_fStartPPU = m_fZoomPPU;
+		m_fTargetPPU = targetPixPerUnit;
 		m_fZoomTimeModif = 1/zoomTime;
 		m_fZoomSlice = 1.0;
 		m_bIsZoomInterp = true;
@@ -573,17 +631,17 @@ class SCR_MapEntity: MapEntity
 		float screenX, screenY, targetScreenX, targetScreenY;
 		m_MapWidget.GetScreenSize(screenX, screenY);
 		
-		WorldToScreen( worldX, worldY, targetScreenX, targetScreenY, false, m_fTargetZoom ); // target pos with zoom applied
+		WorldToScreen( worldX, worldY, targetScreenX, targetScreenY, false, targetPixPerUnit ); // target pos with zoom applied
 		PanSmooth( targetScreenX, targetScreenY, zoomTime );
 	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! Pan the map to target position, all of scripted panning is called through this
-	//! \param x is horizontal UNSCALED coordinate
-	//! \param y is vertical UNSCALED coordinate
+	//! \param x is horizontal screen UNSCALED coordinate
+	//! \param y is vertical screen UNSCALED coordinate
 	//! \param center determines whether the map should center to the supplied coordinates
 	//! \param IsPanEnd determines whether this is also the end of panning operation, resetting the start pos for drag pannning
-	void SetPan(float x, float y, bool isPanEnd = false, bool center = true)
+	void SetPan(float x, float y, bool isPanEnd = true, bool center = true)
 	{	
 		if (m_iDelayCounter > 0)
 		{
@@ -657,8 +715,8 @@ class SCR_MapEntity: MapEntity
 	
 	//------------------------------------------------------------------------------------------------
 	//! Interpolated pan
-	//! \param panX is x target coordinate in DPIScaled px
-	//! \param panY is y target coordinate in DPIScaled px
+	//! \param panX is x target screen coordinate in DPIScaled px
+	//! \param panY is y target screen coordinate in DPIScaled px
 	//! \param panTime is interpolation duration
 	void PanSmooth(float panX, float panY, float panTime = 0.25)
 	{		
@@ -670,6 +728,9 @@ class SCR_MapEntity: MapEntity
 		
 		float screenWidth, screenHeight;
 		m_MapWidget.GetScreenSize(screenWidth, screenHeight);
+		
+		if (panTime <= 0)
+			panTime = 0.1;
 		
 		// un-center to get direct pan pos
 		m_aStartPan = { m_Workspace.DPIUnscale(screenWidth/2) - m_fPanX, m_Workspace.DPIUnscale(screenHeight/2) - m_fPanY };
@@ -738,14 +799,14 @@ class SCR_MapEntity: MapEntity
 	// \param screenPosX is screen x
 	// \param screenPosY is screen y
 	// \param withPan determines whether current pan is added to the result
-	// \param targetZoom determines whether the calculation uses current zoom value (when 0) or zoom supplied to it (fur future zoom calculation)
-	void WorldToScreen(float worldX, float worldY, out int screenPosX, out int screenPosY, bool withPan = false, float targetZoom = 0)
+	// \param targetPPU determines whether the calculation uses current PixelPerUnit (when 0) or one supplied to it (fur future zoom calculation)
+	void WorldToScreen(float worldX, float worldY, out int screenPosX, out int screenPosY, bool withPan = false, float targetPPU = 0)
 	{
 		vector mapSizeUnits = m_MapWidget.GetSizeInUnits();
-		float pixPerUnit = GetCurrentPixelPerUnit();
+		float pixPerUnit = m_fZoomPPU;
 		
-		if (targetZoom > 0)
-			pixPerUnit = targetZoom * m_MapWidget.PixelPerUnit();
+		if (targetPPU > 0)
+			pixPerUnit = targetPPU;
 		
 		worldY = mapSizeUnits[1] - worldY; // fix Y axis which is reversed between screen and world
 	
@@ -770,10 +831,9 @@ class SCR_MapEntity: MapEntity
 	void ScreenToWorld(int screenPosX, int screenPosY, out float worldX, out float worldY)
 	{
 		vector mapSizeUnits = m_MapWidget.GetSizeInUnits();
-		float pixPerUnit = GetCurrentPixelPerUnit();
 				
-		worldX = (screenPosX - m_Workspace.DPIScale(m_fPanX)) / pixPerUnit;
-		worldY = (screenPosY - m_Workspace.DPIScale(m_fPanY)) / pixPerUnit;
+		worldX = (screenPosX - m_Workspace.DPIScale(m_fPanX)) / m_fZoomPPU;
+		worldY = (screenPosY - m_Workspace.DPIScale(m_fPanY)) / m_fZoomPPU;
 		worldY =  mapSizeUnits[1] - worldY;	// fix Y axis which is reversed between screen and world
 	}
 	
@@ -784,12 +844,9 @@ class SCR_MapEntity: MapEntity
 	// \param worldX is world x
 	// \param worldY is world y
 	void ScreenToWorldNoFlip(int screenPosX, int screenPosY, out float worldX, out float worldY)
-	{
-		vector mapSizeUnits = m_MapWidget.GetSizeInUnits();
-		float pixPerUnit = GetCurrentPixelPerUnit();
-		
-		worldX = (screenPosX - m_Workspace.DPIScale(m_fPanX)) / pixPerUnit;
-		worldY = (screenPosY - m_Workspace.DPIScale(m_fPanY)) / pixPerUnit;
+	{		
+		worldX = (screenPosX - m_Workspace.DPIScale(m_fPanX)) / m_fZoomPPU;
+		worldY = (screenPosY - m_Workspace.DPIScale(m_fPanY)) / m_fZoomPPU;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -863,7 +920,7 @@ class SCR_MapEntity: MapEntity
 		
 		// map size in px
 		vector size = m_MapWidget.GetSizeInUnits();
-		float pixPerUnit = GetCurrentPixelPerUnit();	
+		float pixPerUnit = m_fZoomPPU;	
 			
 		int width 	= size[0] * pixPerUnit;
 		int height 	= size[1] * pixPerUnit;
@@ -922,10 +979,9 @@ class SCR_MapEntity: MapEntity
 		m_MapWidget.GetScreenSize(screenWidth, screenHeight);
 
 		vector size = m_MapWidget.GetSizeInUnits();	
-		float maxPossibleUnitsPerScreen = screenHeight / m_MapWidget.PixelPerUnit();	
-		
-		m_fMinZoom = maxPossibleUnitsPerScreen / size[1];
-		m_fMaxZoom = (size[0] * SCR_MapConstants.MIN_PIX_PER_METER ) / (size[0] * m_MapWidget.PixelPerUnit()) ;
+		float maxUnitsPerScreen = screenHeight / m_MapWidget.PixelPerUnit();	
+		m_fMinZoom = (maxUnitsPerScreen / size[1]) * m_MapWidget.PixelPerUnit();
+		m_fMaxZoom = SCR_MapConstants.MAX_PIX_PER_METER;
 		
 		return true;
 	}
@@ -941,7 +997,7 @@ class SCR_MapEntity: MapEntity
 		
 		for ( int layer = 0; layer < count; layer++ )
 		{
-			if ( GetCurrentPixelPerUnit() >= GetLayer(layer).GetCeiling() )
+			if ( GetCurrentZoom() >= GetLayer(layer).GetCeiling() )
 			{
 				ChangeLayer(layer);
 				break;
@@ -1083,13 +1139,15 @@ class SCR_MapEntity: MapEntity
 		if (modules.IsEmpty())
 			return;
 				
+		array<SCR_MapModuleBase> modulesToInit = new array<SCR_MapModuleBase>();
+		
 		foreach ( SCR_MapModuleBase module : modules ) 
 		{
 			// load new module
 			if (m_bDoReload)
 			{
 				m_aLoadedModules.Insert(module);
-				module.Init();
+				modulesToInit.Insert(module);
 				m_aActiveModules.Insert(module);
 				module.SetActive(true);
 			}
@@ -1112,6 +1170,11 @@ class SCR_MapEntity: MapEntity
 				}
 			}
 		}
+		
+		foreach ( SCR_MapModuleBase module : modulesToInit )
+		{
+			module.Init();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1122,13 +1185,15 @@ class SCR_MapEntity: MapEntity
 		if (components.IsEmpty())
 			return;
 				
+		array<SCR_MapUIBaseComponent> componentsToInit = new array<SCR_MapUIBaseComponent>();
+		
 		foreach ( SCR_MapUIBaseComponent component : components ) 
 		{
 			// load new component
 			if (m_bDoReload)
 			{
 				m_aLoadedComponents.Insert(component);
-				component.Init();
+				componentsToInit.Insert(component);
 				m_aActiveComponents.Insert(component);
 				component.SetActive(true);
 			}
@@ -1151,6 +1216,12 @@ class SCR_MapEntity: MapEntity
 				}
 			}
 		}
+		
+		foreach ( SCR_MapUIBaseComponent component : componentsToInit )
+		{
+			component.Init();
+		}
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1172,7 +1243,21 @@ class SCR_MapEntity: MapEntity
 			EnableGrid(false);
 
 	}
-		
+	
+	//------------------------------------------------------------------------------------------------
+	//! Deactivate module 
+	void DeactivateModule(SCR_MapModuleBase module)
+	{
+		m_aActiveModules.RemoveItem(module);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Deactivate UI component 
+	void DeactivateComponent(SCR_MapUIBaseComponent component)
+	{
+		m_aActiveComponents.RemoveItem(component);
+	}	
+	
 	//------------------------------------------------------------------------------------------------
 	//! Map close cleanup
 	protected void Cleanup()
@@ -1180,13 +1265,13 @@ class SCR_MapEntity: MapEntity
 		// deactivate components & modules
 		foreach (SCR_MapUIBaseComponent component : m_aActiveComponents )
 		{
-			component.SetActive(false);
+			component.SetActive(false, true);
 		}
 		m_aActiveComponents.Clear();
 		
 		foreach (SCR_MapModuleBase module : m_aActiveModules )
 		{
-			module.SetActive(false);
+			module.SetActive(false, true);
 		}
 		m_aActiveModules.Clear();
 				
@@ -1241,14 +1326,14 @@ class SCR_MapEntity: MapEntity
 		if (m_fPanSlice <= 0)
 		{
 			m_bIsPanInterp = false;
-			SetPan(m_aTargetPan[0], m_aTargetPan[1], true);
+			SetPan(m_aTargetPan[0], m_aTargetPan[1]);
 			s_OnMapPanEnd.Invoke(m_aTargetPan[0],  m_aTargetPan[1]);
 		}
 		else
 		{
 			float panX = Math.Lerp(m_aStartPan[0], m_aTargetPan[0], 1 - m_fPanSlice);
 			float panY = Math.Lerp(m_aStartPan[1], m_aTargetPan[1], 1 - m_fPanSlice);
-			SetPan(panX, panY);
+			SetPan(panX, panY, false);
 		}
 	}
 	
@@ -1262,13 +1347,13 @@ class SCR_MapEntity: MapEntity
 		// End interpolation
 		if (m_fZoomSlice <= 0)
 		{
+			SetZoom(m_fTargetPPU);
+			s_OnMapZoomEnd.Invoke(m_fTargetPPU);
 			m_bIsZoomInterp = false;
-			SetZoom(m_fTargetZoom);
-			s_OnMapZoomEnd.Invoke(m_fTargetZoom);
 		}
 		else
 		{
-			float zoom = Math.Lerp(m_fStartZoom, m_fTargetZoom, 1 - m_fZoomSlice);
+			float zoom = Math.Lerp(m_fStartPPU, m_fTargetPPU, 1 - m_fZoomSlice);
 			SetZoom(zoom);
 		}
 	}
@@ -1293,8 +1378,8 @@ class SCR_MapEntity: MapEntity
 		DbgUI.Text( string.Format( dbg2, wX, wY ) );
 		string dbg3 = "PAN OFFSET: x: %1 y: %2 ";
 		DbgUI.Text( string.Format( dbg3, pan[0], pan[1] ) );
-		string dbg4 = "ZOOM: min: %1 max: %2 | currentVal: %3 | pixPerUnit: %4";
-		DbgUI.Text( string.Format( dbg4, GetMinZoom(), GetMaxZoom(), GetCurrentZoom(), GetCurrentPixelPerUnit() ) );
+		string dbg4 = "ZOOM: min: %1 max: %2 | pixPerUnit: %3";
+		DbgUI.Text( string.Format( dbg4, GetMinZoom(), GetMaxZoom(), GetCurrentZoom() ) );
 		string dbg5 = "LAYER: current: %1 | pixPerUnit ceiling: %2";
 		DbgUI.Text( string.Format( dbg5, m_iLayerIndex, GetLayer(m_iLayerIndex).GetCeiling() ) );
 		string dbg6 = "MODULES: loaded: %1 | active: %2 | list: %3 ";
@@ -1320,7 +1405,7 @@ class SCR_MapEntity: MapEntity
 		//update components
 		foreach ( SCR_MapUIBaseComponent component : m_aActiveComponents)
 		{
-			component.Update();
+			component.Update(timeSlice);
 		}
 		
 		// interpolation update

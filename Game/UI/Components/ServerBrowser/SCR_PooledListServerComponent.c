@@ -120,8 +120,9 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 	//! Move list scroll to top
 	override void MoveToTop()
 	{
-		UpdateLoadedPage();
+		//UpdateLoadedPage();
 		super.MoveToTop();
+		UpdateLoadedPage();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -135,7 +136,7 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 			return;
 		
 		border.SetOpacity(opacity);
-		WidgetAnimator.StopAnimation(border, WidgetAnimationType.Opacity);
+		AnimateWidget.StopAnimation(border, WidgetAnimationOpacity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -367,4 +368,16 @@ class SCR_PooledServerListComponent : SCR_PooledListComponent
 	
 	//------------------------------------------------------------------------------------------------
 	array<SCR_ServerBrowserEntryComponent> GetRoomEntries() { return m_aRoomEntries; }
+	
+	//------------------------------------------------------------------------------------------------
+	int GetLoadedPage()
+	{
+		return m_iLoadedPage;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetCurrentPage()
+	{
+		return m_iCurrentPage;
+	}
 };

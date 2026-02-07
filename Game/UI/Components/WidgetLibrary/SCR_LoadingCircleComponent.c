@@ -37,8 +37,9 @@ class SCR_LoadingCircleComponent : SCR_WLibComponentBase
 			return;
 		
 		m_wImage.SetRotation(0);
-		WidgetAnimator.PlayAnimation(m_wImage, WidgetAnimationType.ImageRotation, 360, m_fSpeed);
-		GetGame().GetCallqueue().CallLater(Animate, 1000 / m_fSpeed, false);
+		WidgetAnimationBase anim = AnimateWidget.Rotation(m_wImage, 360, m_fSpeed);
+		if (anim)
+			anim.GetOnCompleted().Insert(Animate);
 	}
 	
 	//------------------------------------------------------------------------------------------------

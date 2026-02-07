@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/AIComponent", description: "Scripted m_Mailbox component", color: "0 0 255 255", icon: HYBRID_COMPONENT_ICON)]
+[ComponentEditorProps(category: "GameScripted/AIComponent", description: "Scripted m_Mailbox component", icon: HYBRID_COMPONENT_ICON)]
 class SCR_MailboxComponentClass: AICommunicationComponentClass
 {
 };
@@ -73,13 +73,19 @@ class SCR_MailboxComponent : AICommunicationComponent
 	//-------------------------------------------------------------------------------------------------
 	// Debugging
 	
+	void DebugGetInboxSize(out int nMessages, out int nDangerEvents)
+	{
+		nMessages = m_aMessages.Count();
+		nDangerEvents = m_aDangerEvents.Count();
+	}
+	
 	#ifdef AI_DEBUG
-	void DebugLogBroadcastMessage(AIMessage message, AIAgent receiver)
+	void DebugLogBroadcastMessage(AIMessage message)
 	{
 		AIAgent agent = GetAIAgent();
 		SCR_AIMessageBase msgBase = SCR_AIMessageBase.Cast(message);
 		
-		string debugTextBasic = string.Format("----> SendMessage: %1 --> %2:\n", agent, receiver);
+		string debugTextBasic = string.Format("----> SendMessage: %1 --> %2:\n", agent, message.GetReceiver());
 		
 		string debugText;
 		if (msgBase)

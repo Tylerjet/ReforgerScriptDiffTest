@@ -79,7 +79,7 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 				killerChar = GetInstigatorFromVehicle(instigator, true)
 		}
 		
-		if (!killerChar)
+		if (!killerChar || entity == killerChar)
 			return;
 		
 		int killerPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(killerChar);
@@ -188,11 +188,30 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 				playerPenaltyData.AddPenaltyScore(-forgivenScore);
 			}
 			
-			// Check penalty limit for kick / ban (only for present players except for host)
-			if (m_iKickPenaltyLimit > 0 && GetGame().GetPlayerManager().GetPlayerController(playerPenaltyData.GetPlayerId()) && playerPenaltyData.GetPlayerId() != SCR_PlayerController.GetLocalPlayerId())
+			int playerId = playerPenaltyData.GetPlayerId();
+			
+			// Player is not connected
+			if (!GetGame().GetPlayerManager().GetPlayerController(playerId))
+				continue;
+			
+			// Player is host
+			if (playerId == SCR_PlayerController.GetLocalPlayerId())
+				continue;
+			
+			float bannedUntil = playerPenaltyData.GetBannedUntil();
+			
+			// If a player reconnected within ban duration, kick them immediately
+			if (bannedUntil > Replication.Time())
 			{
-				if (playerPenaltyData.GetPenaltyScore() >= m_iKickPenaltyLimit)
-					BanPlayer(playerPenaltyData.GetPlayerId(), m_iBanDuration, SCR_PlayerManagerKickReason.FRIENDLY_FIRE);
+				KickPlayer(playerId, playerPenaltyData.GetKickReason());
+				continue;
+			}
+			
+			// Check penalty limit for kick / ban
+			if (m_iKickPenaltyLimit > 0 && playerPenaltyData.GetPenaltyScore() >= m_iKickPenaltyLimit)
+			{
+				BanPlayer(playerId, m_iBanDuration, SCR_PlayerManagerKickReason.FRIENDLY_FIRE);
+				continue;
 			}
 		}
 	}
@@ -211,6 +230,14 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void KickPlayer(int playerId, SCR_PlayerManagerKickReason reason, bool showNotification = true)
 	{
+		SCR_PlayerPenaltyData playerPenaltyData = GetPlayerPenaltyData(playerId);
+		
+		if (playerPenaltyData)
+		{
+			playerPenaltyData.SetWasKicked(true);
+			playerPenaltyData.SetKickReason(reason);
+		}
+		
 		GetGame().GetPlayerManager().KickPlayer(playerId, reason);
 		
 		if (showNotification)
@@ -237,8 +264,6 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 		// Don't kick the player again
 		if (playerPenaltyData.GetWasKicked())
 			return;
-		
-		playerPenaltyData.SetWasKicked(true);
 		
 		if (duration < 0)
 			SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED_NO_DURATION, playerId);
@@ -326,6 +351,7 @@ class SCR_PlayerPenaltyData
 	protected int m_iPenaltyScore;
 	protected float m_fNextPenaltySubstractionTimestamp;
 	protected bool m_bWasKicked;
+	protected SCR_PlayerManagerKickReason m_eKickReason = SCR_PlayerManagerKickReason.DISRUPTIVE_BEHAVIOUR;
 	
 	//------------------------------------------------------------------------------------------------
 	void SetPlayerId(int playerId)
@@ -389,5 +415,17 @@ class SCR_PlayerPenaltyData
 	bool GetWasKicked()
 	{
 		return m_bWasKicked;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetKickReason(SCR_PlayerManagerKickReason reason)
+	{
+		m_eKickReason = reason;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_PlayerManagerKickReason GetKickReason()
+	{
+		return m_eKickReason;
 	}
 };

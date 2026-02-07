@@ -23,6 +23,11 @@ class SCR_OpenVehicleStorageAction : SCR_InventoryAction
 			return false;
 
 		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+
+		CompartmentAccessComponent compAccess = CompartmentAccessComponent.Cast(character.FindComponent(CompartmentAccessComponent));
+		if (compAccess && compAccess.IsGettingIn() || compAccess.IsGettingOut())
+			return false;
+
 		if (!m_bShowFromOutside && !character.IsInVehicle())
 			return false;
 

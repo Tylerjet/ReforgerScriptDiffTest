@@ -50,7 +50,7 @@ class SCR_PositionEditorAttribute : SCR_ValidTypeBaseEditorAttribute
 		vector value = var.GetVector();
 
 		mat[3] = value;
-		editableEntity.SetTransform(mat);
+		editableEntity.SetTransform(mat, true);
 		
 		//Print("UPDATE CHILDREN!");
 	}

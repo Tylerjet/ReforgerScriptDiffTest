@@ -40,6 +40,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 {	
 	protected ref array<LightEntity> m_aLights;
 	protected SoundComponent m_SoundComponent;
+	protected SignalsManagerComponent m_SignalsManagerComponent;
 	protected ParametricMaterialInstanceComponent m_EmissiveMaterialComponent;
 	protected float m_fCurLV;
 	protected float m_fCurEM;
@@ -109,7 +110,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	{
 		if (!System.IsConsoleApp() && playSound && m_SoundComponent)
 		{
-			m_SoundComponent.SoundEvent("SOUND_TURN_ON");
+			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_TURN_ON);
 		}
 
 		LightEntity light;
@@ -154,8 +155,8 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 				m_aLights[i].SetColor(Color.FromVector(componentData.GetLightData()[i].GetLightColor()), componentData.GetLightLV());
 			}
 
-			if (m_SoundComponent)
-				m_SoundComponent.SetSignalValueStr("Trigger", 1);
+			if (m_SignalsManagerComponent)
+				m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("Trigger"), 1);
 
 			return;
 		}
@@ -176,8 +177,9 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 			{
 				if (!System.IsConsoleApp() && playSound && m_SoundComponent)
 				{
-					m_SoundComponent.SoundEvent("SOUND_TURN_OFF");
-					m_SoundComponent.SetSignalValueStr("Trigger", 0);
+					m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_TURN_OFF);
+					if (m_SignalsManagerComponent)
+						m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("Trigger"), 0);
 				}
 				
 				RemoveLights();
@@ -195,12 +197,12 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	{
 		SCR_BaseInteractiveLightComponentClass componentData = SCR_BaseInteractiveLightComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!componentData) 
-			return;
+			return;		
 		
-		if (m_SoundComponent)
+		if (m_SignalsManagerComponent)
 		{
 			m_fSoundSignalValue += m_fSoundSignalStep;
-			m_SoundComponent.SetSignalValueStr("Trigger", m_fSoundSignalValue);
+			m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("Trigger"), m_fSoundSignalValue);
 		}
 
 		for (int i = 0, count = componentData.GetLightData().Count(); i < count; i++)
@@ -263,6 +265,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	override void OnPostInit(IEntity owner)
 	{		
 		m_SoundComponent = SoundComponent.Cast(owner.FindComponent(SoundComponent));
+		m_SignalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
 		m_EmissiveMaterialComponent = ParametricMaterialInstanceComponent.Cast(owner.FindComponent(ParametricMaterialInstanceComponent));
 		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
 		

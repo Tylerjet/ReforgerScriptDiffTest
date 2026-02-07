@@ -27,7 +27,7 @@ class TestParticleAction : ScriptedUserAction
 	{
 		if (!m_ParticleEntity)
 		{
-			m_ParticleEntity = SCR_ParticleAPI.PlayOnObjectPTC(m_Owner, m_sParticle, m_vParticleOffset);
+			m_ParticleEntity = SCR_ParticleEmitter.CreateAsChild(m_sParticle, m_Owner, m_vParticleOffset);
 			m_bIsPlaying = true;
 		}
 	}

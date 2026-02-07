@@ -16,6 +16,6 @@ class SCR_DeleteSelectedContextAction : SCR_SelectedEntitiesContextAction
 	override void Perform(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition)
 	{
 		if (selectedEntity)
-			selectedEntity.Delete();
+			selectedEntity.Delete(true);
 	}
 };

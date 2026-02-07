@@ -147,6 +147,25 @@ class OnDirectJoinCallback extends ServerBrowserCallback
 };
 
 //------------------------------------------------------------------------------------------------
+//! Scripted room callback specific for single room 
+class SCR_RoomCallback : SCR_BackendCallback
+{
+	protected Room m_Room;
+	
+	//------------------------------------------------------------------------------------------------
+	void SetRoom(Room room)
+	{
+		m_Room = room;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	Room GetRoom()
+	{
+		return m_Room;
+	}
+}
+
+//------------------------------------------------------------------------------------------------
 //! Callback for joining 
 class OnJoinRoomSB extends ServerBrowserCallback
 {	

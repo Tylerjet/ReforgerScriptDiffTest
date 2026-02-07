@@ -4,11 +4,8 @@ class SCR_PlaceEntityContextAction: SCR_DoubleClickAction
 	[Attribute(uiwidget: UIWidgets.ComboBox, desc: "Placing flags enabled upon creating an entity.", enums: ParamEnumArray.FromEnum(EEditorPlacingFlags))]
 	protected EEditorPlacingFlags m_PlacingFlag;
 	
-	[Attribute(desc: "When enabled, labels defined below will be pre-selected upon opening asset browser.")]
-	protected bool m_bForceCustomLabels;
-	
-	[Attribute(uiwidget: UIWidgets.ComboBox, "Labels to be pre-selected upon opening asset browser.\nValid only if enabled above.", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
-	protected ref array<EEditableEntityLabel> m_aLabels;
+	[Attribute(desc: "Active labels and white listed labels and label groups")]
+	protected ref SCR_EditorContentBrowserDisplayConfig m_ContentBrowserConfig;
 	
 	override bool CanBeShown(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
@@ -54,10 +51,7 @@ class SCR_PlaceEntityContextAction: SCR_DoubleClickAction
 		else
 			Math3D.MatrixIdentity3(transform);
 		
-		if (!m_bForceCustomLabels)
-			m_aLabels = null;
-		
-		if (SCR_ContentBrowserEditorComponent.OpenBrowserInstance(m_aLabels))
+		if (SCR_ContentBrowserEditorComponent.OpenBrowserLabelConfigInstance(m_ContentBrowserConfig))
 		{
 			placingManager.SetPlacingFlag(m_PlacingFlag, true);
 			placingManager.SetInstantPlacing(SCR_EditorPreviewParams.CreateParams(transform));

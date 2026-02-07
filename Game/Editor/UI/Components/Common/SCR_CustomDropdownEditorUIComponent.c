@@ -69,7 +69,7 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		
 		if (enable)
 		{
-			OnInputDeviceUserChanged();
+			OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 		}
 		else 
 		{
@@ -179,7 +179,7 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		
 		// Set arrow image angle
 		if (m_ArrowWidget)
-			m_ArrowWidget.SetRotation(270);
+			m_ArrowWidget.SetRotation(90);
 		
 		//Rotate arrow
 		
@@ -206,7 +206,7 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		
 		// Set arrow image angle
 		if (m_ArrowWidget)
-			m_ArrowWidget.SetRotation(90);
+			m_ArrowWidget.SetRotation(270);
 		
 		m_bIsOpened = false;
 		Event_OnDropdownClosed.Invoke(this);
@@ -323,22 +323,16 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		return Event_OnDropdownClosed;
 	}
 	
-	protected void OnInputDeviceUserChanged()
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{	
 		if (!m_bIsEnabled)
 			return;
 		
-		InputManager inputManager = GetGame().GetInputManager();
-		if (!inputManager) 
-			return;
-		
-		bool usesKeyboard = inputManager.IsUsingMouseAndKeyboard();
-		
-		m_ArrowWidget.SetVisible(usesKeyboard);
+		m_ArrowWidget.SetVisible(!isGamepad);
 		
 		Widget gamePadhintWidget = m_Root.FindAnyWidget(m_sGamepadHintWidgetName);
 		if (gamePadhintWidget)
-			gamePadhintWidget.SetVisible(!usesKeyboard);
+			gamePadhintWidget.SetVisible(isGamepad);
 	}
 	
 	
@@ -390,18 +384,18 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		m_DropdownButton = SCR_ButtonImageComponent.Cast(dropDownWidget.FindHandler(SCR_ButtonImageComponent));
 		m_DropdownButton.m_OnClicked.Insert(OnDropDownClicked);
 		
-		ScriptInvoker invoker = GetGame().OnInputDeviceUserChangedInvoker();
+		ScriptInvoker invoker = GetGame().OnInputDeviceIsGamepadInvoker();
 		if (invoker)
-			invoker.Insert(OnInputDeviceUserChanged);
+			invoker.Insert(OnInputDeviceIsGamepad);
 
-		OnInputDeviceUserChanged();
+		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 	}
 	
 	override void HandlerDeattached(Widget w)
 	{
-		ScriptInvoker invoker = GetGame().OnInputDeviceUserChangedInvoker();
+		ScriptInvoker invoker = GetGame().OnInputDeviceIsGamepadInvoker();
 		if (invoker)
-			invoker.Remove(OnInputDeviceUserChanged);
+			invoker.Remove(OnInputDeviceIsGamepad);
 		
 		GetGame().GetInputManager().RemoveActionListener("MouseLeft", EActionTrigger.DOWN, OnLMB);
 	}

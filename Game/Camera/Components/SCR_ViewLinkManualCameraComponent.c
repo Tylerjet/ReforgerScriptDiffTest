@@ -20,7 +20,7 @@ class SCR_ViewLinkManualCameraComponent : SCR_BaseManualCameraComponent
 				if (values.Count() >= 2)
 				{
 					string fullLink = GetGame().GetWorldFile();
-					int begin = fullLink.IndexOf("worlds/");
+					int begin = fullLink.IndexOf(":") + 1;
 					string worldPath = fullLink.Substring(begin, fullLink.Length() - begin);
 					if (values[0] == prefix + worldPath)
 					{

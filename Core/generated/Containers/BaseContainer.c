@@ -34,6 +34,7 @@ sealed class BaseContainer: BaseResourceObject
 	proto external int GetLimits(int varIndex, out float min, out float max, out float step);
 	proto external void GetEnumValues(int varIndex, out array<string> names, out array<int> values);
 	proto external bool Get(string varName, out void val);
+	proto external bool GetDefaultAsString(string varName, out string val);
 	proto external BaseContainer GetObject(string varName);
 	proto external bool SetObject(string varName, BaseContainer val);
 	proto external ref BaseContainerList GetObjectArray(string varName);
@@ -41,6 +42,9 @@ sealed class BaseContainer: BaseResourceObject
 	proto external bool Set(string varName, void val);
 	//! Get list of addons where resource is defined or modified
 	proto external int GetSourceAddons(out notnull array<string> addonNames);
+	proto external BaseContainer GetChild(int n);
+	proto external int GetNumChildren();
+	proto external BaseContainer GetParent();
 };
 
 /** @}*/

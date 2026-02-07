@@ -134,7 +134,8 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("VideoUserSettings", "Vsynch", "VSync"));
 
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("GrassMaterialSettings", "Lod", "GrassLOD"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("GrassMaterialSettings", "Distance", "GrassDistance"));
+		// We are using game settings to be able to override distance of grass
+		//m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("GrassMaterialSettings", "Distance", "GrassDistance"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("TerrainGenMaterialSettings", "Detail", "TerrainSurfaceDetail"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("MaterialSystemUserSettings", "TextureFilter", "TextureFiltering"));
 
@@ -159,7 +160,7 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 
 		SetupQualityPreset();
 		SetupViewDistance();
-		//SetupGrassDistance();
+		SetupGrassDistance();
 		SetupResolution();
 		SetupResolutionScale();
 		SetupShadowQuality();
@@ -238,7 +239,6 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		
 		GetGame().ApplySettingsPreset();
 		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 		LoadSettings(true, false);
 		
 		// all scripted widgets have to be manually done here

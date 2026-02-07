@@ -31,6 +31,8 @@ class DoorComponent: GameComponent
 	proto external float GetControlValue();
 	//! Returns the current door state
 	proto external float GetDoorState();
+	//! Returns the normal of the door in it's current state
+	proto external vector GetDoorNormal();
 };
 
 /** @}*/

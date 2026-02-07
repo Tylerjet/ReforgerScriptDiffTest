@@ -37,7 +37,7 @@ class SCR_LightningContextAction : SCR_BaseContextAction
 		EntitySpawnParams spawnParams = new EntitySpawnParams;
 		spawnParams.Transform[3] = cursorWorldPosition;
 		
-		SCR_Global.SnapToTerrain(spawnParams.Transform, GetGame().GetWorld(), true);
+		SCR_TerrainHelper.SnapToTerrain(spawnParams.Transform, GetGame().GetWorld(), true);
 		
 		//~ Apply scale from prefab
 		float scale;

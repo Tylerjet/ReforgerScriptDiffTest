@@ -4,7 +4,7 @@ Do not modify, this script is generated
 ===========================================
 */
 
-class WeatherWindPattern
+class WeatherWindPattern: ScriptAndConfig
 {
 	proto external float GetMinSpeed();
 	proto external float GetMaxSpeed();

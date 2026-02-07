@@ -176,6 +176,14 @@ class SCR_ScoringSystemComponent : SCR_BaseScoringSystemComponent
 		
 		Faction playerFaction = playerAffiliation.GetAffiliatedFaction();
 		Faction killerFaction = killerAffiliation.GetAffiliatedFaction();
+		if (!playerFaction || !killerFaction)
+		{
+			// This behaviour is undefined, but we will follow the
+			// general rule above.
+			super.AddKill(killerId);
+			return;
+		}
+		
 		if (playerFaction.IsFactionFriendly(killerFaction))
 		{
 			super.AddTeamKill(killerId);

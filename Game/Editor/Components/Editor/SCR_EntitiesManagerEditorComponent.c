@@ -252,23 +252,38 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 	{
 		if (!m_aFilters) return;
 		
+		//--- Get the list of valid values
+		array<int> enumValues = {};
+		SCR_Enum.GetEnumValues(EEditableEntityState, enumValues);
+		enumValues.InsertAt(0, 0);
+		
 		//--- Get managers
 		int i = 0;
 		while (!m_aFilters.IsEmpty())
-		{
+		{			
 			SCR_BaseEditableEntityFilter filter = m_aFilters[i];
 			SCR_BaseEditableEntityFilter predecessor = null;
-
-			// Incorrect filter, ignore it
-			if (!filter || filter.GetState() == 0 || filter.GetState() == filter.GetPredecessorState())
+			
+			//--- Filter not found, ignore it
+			if (!filter)
 			{
-				Print(string.Format("Error when loading '%1'!", Type()), LogLevel.ERROR);
+				Print(string.Format("Error when loading entity filter on index %1!", i), LogLevel.ERROR);
 				m_aFilters.Remove(i);
-				i--;
 				continue;
 			}
 			
-			if (filter.GetPredecessorState() == 0 || filter.GetState() == filter.GetPredecessorState())
+			EEditableEntityState state = filter.GetState();
+			EEditableEntityState predecessorState = filter.GetPredecessorState();
+			
+			//--- Incorrectly configured filter, ignore it
+			if (state == 0 || state == predecessorState || !enumValues.Contains(predecessorState))
+			{
+				Print(string.Format("Error when loading entity filter %1:%2 with predecessor %3:%4!", state, typename.EnumToString(EEditableEntityState, state), predecessorState, typename.EnumToString(EEditableEntityState, predecessorState)), LogLevel.ERROR);
+				m_aFilters.Remove(i);
+				continue;
+			}
+			
+			if (predecessorState == 0)
 			{
 				//--- No predecessor, insert at the beginning
 				m_aFiltersSorted.InsertAt(filter, 0);
@@ -276,12 +291,12 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 			}
 			else
 			{
-				m_FiltersMap.Find(filter.GetPredecessorState(), predecessor);
+				m_FiltersMap.Find(predecessorState, predecessor);
 				int predecessorID = m_aFiltersSorted.Find(predecessor);
 				if (predecessorID < 0)
 				{
 					//--- Predecessor not yet registered, skip to the next filter
-					i++;
+					i = Math.Repeat(i + 1, m_aFilters.Count()); //--- Prevent index overflow
 					continue;
 				}
 				else
@@ -297,8 +312,8 @@ class SCR_EntitiesManagerEditorComponent : SCR_BaseEditorComponent
 			}
 				
 			//--- Start again
-			m_FiltersMap.Insert(filter.GetState(), filter);
-			m_Successors.Insert(filter.GetState(), new array<SCR_BaseEditableEntityFilter>);
+			m_FiltersMap.Insert(state, filter);
+			m_Successors.Insert(state, new array<SCR_BaseEditableEntityFilter>);
 			filter.InitVariables(this, predecessor);
 			m_aFilters.Remove(i);
 			i = 0;

@@ -41,8 +41,6 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 	protected SCR_CursorEditorUIComponent m_CursorComponent;
 	protected SCR_MouseAreaEditorUIComponent m_MouseArea;
 	
-	protected SCR_EditableEntityComponent m_HoveredEntityReference;
-	
 	protected int m_ActionFlagsOnOpen;
 	
 	protected ref ScriptInvoker m_OnContextMenuToggle = new ScriptInvoker();
@@ -52,12 +50,6 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 		if (m_ContextMenu) m_ContextMenu.SetVisible(false);
 		if (m_WorkSpace) m_WorkSpace.SetFocusedWidget(null);
 		
-		if (m_HoveredEntityReference)
-		{
-			GetMenu().GetOnMenuUpdate().Remove(OnHoveredEntityCheck);
-			m_HoveredEntityReference = null;
-		}
-		
 		m_OnContextMenuToggle.Invoke(false);
 	}
 	ScriptInvoker GetOnContextMenuToggle()
@@ -65,11 +57,8 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 		return m_OnContextMenuToggle;
 	}
 	
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
 		CloseContextMenu();
 	}
 	
@@ -137,11 +126,6 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 		
 		PopulateContextMenu(m_MouseDownWorldPos);
 		
-		if (m_HoveredEntityReference)
-		{
-			GetMenu().GetOnMenuUpdate().Insert(OnHoveredEntityCheck);
-		}
-		
 		// Get context menu size and screen size
 		float contextMenuWidth, contextMenuHeight, screenWidth, screenHeight;
 		m_WorkSpace.GetScreenSize(screenWidth, screenHeight);
@@ -176,15 +160,6 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 		{
 			m_ContextMenu.SetVisible(true);	
 			m_OnContextMenuToggle.Invoke(true);
-		}
-	}
-	
-	protected void OnHoveredEntityCheck(float tDelta)
-	{
-		if (!m_HoveredEntityReference)
-		{
-			CloseContextMenu();
-			GetMenu().GetOnMenuUpdate().Remove(OnHoveredEntityCheck);
 		}
 	}
 	
@@ -276,7 +251,7 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 			Print("Button prefab not set on (actions/waypoint) ContextMenuEditorUIComponent", LogLevel.ERROR);
 		}
 		
-		game.OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		game.OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		m_EditorManager = SCR_EditorManagerEntity.Cast(SCR_EditorManagerEntity.GetInstance());
 		
@@ -322,7 +297,7 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 			m_EditorManager.GetOnModeChange().Remove(OnEditorModeChanged);
 		}
 		
-		if (GetGame().OnInputDeviceUserChangedInvoker())
-			GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+		if (GetGame().OnInputDeviceIsGamepadInvoker())
+			GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
 };

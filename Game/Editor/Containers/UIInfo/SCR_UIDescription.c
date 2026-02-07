@@ -3,7 +3,7 @@ Class used to hold UI name and description.
 Data are intentionally *READ ONLY*, because the class is often used on prefabs, not instances.
 Instead of adding SetXXX() functions here, consider using specialized inherited class.
 */
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_UIDescription: SCR_UIName
 {
 	[Attribute(uiwidget: UIWidgets.LocaleEditBox)]

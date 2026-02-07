@@ -34,6 +34,7 @@ enum EWeaponFeature
 	MAGAZINE_COUNT = 128,
 	INSPECTION = 256,
 	ZOOM = 512,
+	RELOADING = 1024,
 	MISC = 32768
 };
 
@@ -49,30 +50,25 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 	#endif
 	
-	static const float SCALE_DEFAULT = 1;
-	static const float SCALE_FIREMODE = 0.9;
-	static const float SCALE_MAGAZINE = 0.8;
+	const float SCALE_DEFAULT = 0.6;
+	const float SCALE_FIREMODE = 0.4;
+	const float SCALE_MAGAZINE = 0.6;
 	
 	const float UPDATE_INTERVAL = 0.1;	
 	const float FADED_OPACITY = 0.3;
 	
 	const ref Color COLOR_WHITE = Color.FromSRGBA(255, 255, 255, 255);
-	const ref Color COLOR_ORANGE = Color.FromSRGBA(226, 167, 80, 255);
-	const ref Color COLOR_SAGE = Color.FromSRGBA(225, 232, 222, 255);
+	const ref Color COLOR_ORANGE = Color.FromSRGBA(226, 167, 79, 255);
 	
 	protected const float FADEOUT_PANEL_DELAY = 6; // Time until whole panel fades out
 	protected const float FADEOUT_OPTICS_DELAY = 6; // Time until zeroing fades out
 	protected const float FADEOUT_AMMO_TYPE_DELAY = 6; // Time until ammo type fades out
 	
-	protected BaseWeaponManagerComponent m_WeaponManager = null;
-	protected SCR_CharacterControllerComponent m_CharacterController = null;
-	protected SCR_InventoryStorageManagerComponent m_InventoryManager = null;
-	protected EventHandlerManagerComponent m_EventHandlerManager = null;
-	protected CompartmentAccessComponent m_CompartmentAccess = null;
-	protected MenuManager m_MenuManager = null;
+	protected BaseWeaponManagerComponent m_WeaponManager;
+	protected SCR_CharacterControllerComponent m_CharacterController;
+	protected SCR_InventoryStorageManagerComponent m_InventoryManager;
+	protected CompartmentAccessComponent m_CompartmentAccess;
 
-	protected bool m_bMenuOpen = false;
-	
 	// Members for previous states of weapon
 	protected ref SCR_WeaponState m_WeaponState;
 	
@@ -83,11 +79,10 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	protected const ResourceName DEFAULT_MAGAZINE_INDICATOR = "{7C114BA7C59E198D}Configs/WeaponInfo/MagazineIndicators/box.conf";
 		
 	// Widgets
-	ref SCR_WeaponInfoWidgets widgets;
+	ref SCR_WeaponInfoWidgets m_Widgets;
 	
 	protected ref SCR_FadeInOutAnimator m_WeaponInfoPanelAnimator;
 	protected ref SCR_FadeInOutAnimator m_ZeroingAnimator;
-	//protected ref SCR_FadeInOutAnimator m_AmmoTypeAnimator;
 	
 	protected bool m_bFadeInOutActive = false;
 	
@@ -118,24 +113,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			else
 				weapon = null;
 		}
-
-		// Create the layout if needed
-		if (!weapon)
-		{
-			if (m_wRoot)
-				m_wRoot.SetVisible(false);
-			
-			return;
-		}
-		else
-		{
-			if (!m_wRoot)
-				CreateLayout(DEFAULT_WEAPON_INFO_LAYOUT);
-			
-			if (m_wRoot)
-				m_wRoot.SetVisible(true);
-		}		
-						
+		
 		// Initialize weapon state from our current weapon
 		if (!m_WeaponState)
 			m_WeaponState = new SCR_WeaponState();
@@ -153,17 +131,24 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		// Store current weapon		
 		m_WeaponState.m_Weapon = weapon;		
 		
+		// Hide weapon UI if there is no weapon equipped and stop
+		m_bShowLocal = weapon;
+		m_wRoot.SetVisible(m_bShowLocal);
+		
+		if (!m_bShowLocal)
+			return;
+		
 		// Get weapon & grenade UI info
-		m_WeaponState.m_WeaponUi = WeaponUIInfo.Cast(weapon.GetUIInfo());
-		m_WeaponState.m_GrenadeUi = GrenadeUIInfo.Cast(m_WeaponState.m_WeaponUi);
+		m_WeaponState.m_WeaponUI = WeaponUIInfo.Cast(weapon.GetUIInfo());
+		m_WeaponState.m_GrenadeUI = GrenadeUIInfo.Cast(m_WeaponState.m_WeaponUI);
 
 		// If weapon is a grenade, get its type
-		if (m_WeaponState.m_GrenadeUi)
+		if (m_WeaponState.m_GrenadeUI)
 		{
-			m_WeaponState.m_eAmmoTypeFlags = m_WeaponState.m_GrenadeUi.GetAmmoTypeFlags();
+			m_WeaponState.m_eAmmoTypeFlags = m_WeaponState.m_GrenadeUI.GetAmmoTypeFlags();
 			m_WeaponState.m_bHasSpecialAmmo = !(m_WeaponState.m_eAmmoTypeFlags == 0 || m_WeaponState.m_eAmmoTypeFlags & EAmmoType.FMJ);
 			
-			m_WeaponState.m_MagazineConfig = m_WeaponState.m_GrenadeUi.m_MagIndicator;
+			m_WeaponState.m_MagazineConfig = m_WeaponState.m_GrenadeUI.m_MagIndicator;
 		}		
 		
 		// Check if weapon is a grenade
@@ -176,13 +161,14 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 
 		// Check if weapon has scope sights component
 		m_WeaponState.m_Sights = GetSights();
+		m_WeaponState.m_SightsZoomFOVInfo = null;
 		
 		if (m_WeaponState.m_Sights)
 			m_WeaponState.m_SightsZoomFOVInfo = SCR_SightsZoomFOVInfo.Cast(m_WeaponState.m_Sights.GetFOVInfo());
 		
 		if (m_WeaponState.m_SightsZoomFOVInfo)
 			m_WeaponState.m_SightsZoomFOVInfo.GetEventOnZoomChanged().Insert(OnZoomChanged);
-				
+		
 		// Auto-trigger child events
 		#ifndef WEAPON_INFO_BLOCK_WATERFALL_EVENTS
 		OnMuzzleChanged_init(weapon);
@@ -190,6 +176,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		#endif
 	}	
 	
+	//------------------------------------------------------------------------------------------------
 	void OnMuzzleChanged_init(BaseWeaponComponent weapon)
 	{
 		BaseMuzzleComponent muzzle;
@@ -205,10 +192,11 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 		OnMuzzleChanged(weapon, muzzle, null);
 	}
-	
-	//------------------------------------------------------------------------------------------------
 	void OnMuzzleChanged(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle, BaseMuzzleComponent prevMuzzle)
 	{
+		if (!m_WeaponState)
+			return;
+		
 		#ifdef WEAPON_INFO_DEBUG
 		_print("OnMuzzleChanged");
 		_print(string.Format("    weapon:     %1", weapon));
@@ -223,7 +211,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		{
 			// GRENADE
 			
-			m_WeaponState.m_MuzzleUi = null;
+			m_WeaponState.m_MuzzleUI = null;
 			m_WeaponState.m_bBarrelChambered = false;
 			m_WeaponState.m_bBarrelCanBeChambered = false;
 		}
@@ -231,11 +219,14 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		{
 			// NON-GRENADE
 			
-			m_WeaponState.m_MuzzleUi = MuzzleUIInfo.Cast(muzzle.GetUIInfo());
+			m_WeaponState.m_MuzzleUI = MuzzleUIInfo.Cast(muzzle.GetUIInfo());
 			m_WeaponState.m_bBarrelChambered = muzzle.IsBarrelChambered(muzzle.GetCurrentBarrelIndex());
 			m_WeaponState.m_bBarrelCanBeChambered = muzzle.IsChamberingPossible();
 		}
-		
+
+		// Update weapon name & caliber (mostly for vehicle weapons)
+		UpdateWeaponNameAndCaliber(m_WeaponState);		
+				
 		// Auto-trigger child events
 		#ifndef WEAPON_INFO_BLOCK_WATERFALL_EVENTS
 		OnFiremodeChanged_init(weapon, muzzle);
@@ -263,6 +254,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 	void OnMagazineChanged(BaseWeaponComponent weapon, BaseMagazineComponent magazine, BaseMagazineComponent prevMagazine)
 	{
+		if (!m_WeaponState)
+			return;
+		
 		#ifdef WEAPON_INFO_DEBUG
 		_print("OnMagazineChanged");
 		_print(string.Format("    weapon:       %1", weapon));
@@ -275,13 +269,13 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		m_WeaponState.m_Magazine = magazine;
 		
 		if (magazine)
-			m_WeaponState.m_MagazineUi = MagazineUIInfo.Cast(magazine.GetUIInfo());	
+			m_WeaponState.m_MagazineUI = MagazineUIInfo.Cast(magazine.GetUIInfo());	
 		else
-			m_WeaponState.m_MagazineUi = null;
+			m_WeaponState.m_MagazineUI = null;
 
-		if (m_WeaponState.m_MagazineUi)
+		if (m_WeaponState.m_MagazineUI)
 		{
-			m_WeaponState.m_eAmmoTypeFlags = m_WeaponState.m_MagazineUi.GetAmmoTypeFlags();
+			m_WeaponState.m_eAmmoTypeFlags = m_WeaponState.m_MagazineUI.GetAmmoTypeFlags();
 			m_WeaponState.m_bHasSpecialAmmo = !(m_WeaponState.m_eAmmoTypeFlags == 0 || m_WeaponState.m_eAmmoTypeFlags & EAmmoType.FMJ);
 		}		
 
@@ -363,6 +357,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 	void OnMagazineCountChanged(BaseWeaponComponent weapon, int magazineCount, bool isGrenade)
 	{
+		if (!m_WeaponState)
+			return;
+		
 		#ifdef WEAPON_INFO_DEBUG
 		_print("OnMagazineCountChanged");
 		_print(string.Format("    weapon:        %1", weapon));
@@ -419,6 +416,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 	void OnAmmoCountChanged(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle, BaseMagazineComponent magazine, int ammoCount, bool isBarrelChambered)
 	{
+		if (!m_WeaponState)
+			return;
+		
 		#ifdef WEAPON_INFO_DEBUG
 		_print("OnAmmoCountChanged");
 		_print(string.Format("    weapon:            %1", weapon));
@@ -470,6 +470,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	
 	void OnFiremodeChanged(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle, BaseFireMode firemode)
 	{
+		if (!m_WeaponState)
+			return;
+		
 		#ifdef WEAPON_INFO_DEBUG
 		_print("OnFiremodeChanged");
 		_print(string.Format("    weapon:   %1", weapon));
@@ -506,6 +509,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 	void OnZeroingChanged(BaseWeaponComponent weapon, int zeroing)
 	{
+		if (!m_WeaponState)
+			return;
+		
 		#ifdef WEAPON_INFO_DEBUG
 		_print("OnZeroingChanged");
 		_print(string.Format("    weapon:  %1", weapon));
@@ -538,6 +544,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 	void OnADSChanged(BaseWeaponComponent weapon, bool inADS)
 	{
+		if (!m_WeaponState)
+			return;
+		
 		#ifdef WEAPON_INFO_DEBUG
 		_print("OnADSChanged");
 		_print(string.Format("    weapon: %1", weapon));
@@ -559,6 +568,65 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	{
 		float zoom = 0;
 
+		if (m_WeaponState.m_SightsZoomFOVInfo)
+			zoom = m_WeaponState.m_SightsZoomFOVInfo.GetCurrentZoom();
+
+		#ifdef WEAPON_INFO_DEBUG_WATERFALL_EVENTS
+		_print("OnZoomChanged_init");
+		_print(string.Format("    weapon:  %1", weapon));
+		_print(string.Format("    zoom: %1", zoom));
+		#endif		
+				
+		OnZoomChanged(zoom, -1);
+	}	
+	void OnZoomChanged(float zoom, float fov)
+	{
+		if (!m_WeaponState)
+			return;
+		
+		#ifdef WEAPON_INFO_DEBUG
+		_print("OnZoomChanged");
+		_print(string.Format("    zoom: %1", zoom));
+		_print(string.Format("    fov: %1", fov));
+		#endif	
+	
+		// Set weapon state change flag
+		m_eWeaponStateEvent |= EWeaponFeature.ZOOM;			
+		
+		m_WeaponState.m_fZoom = zoom;
+			
+		UpdateZoomIndicator(m_WeaponState);
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	void OnInspectionModeChanged(bool state)
+	{
+		if (!m_WeaponState)
+			return;
+		
+		#ifdef WEAPON_INFO_DEBUG
+		_print("OnInspectionModeChanged");
+		_print(string.Format("    state: %1", state));
+		#endif	
+	
+		// Set weapon state change flag
+		m_eWeaponStateEvent |= EWeaponFeature.INSPECTION;			
+		
+		m_WeaponState.m_bInInspectionMode = state;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnAttachmentChanged(WeaponComponent weapon, bool isAttached, IEntity attachmentEntity)
+	{
+		if (!m_WeaponState)
+			return;
+		
+		#ifdef WEAPON_INFO_DEBUG
+		_print("OnAttachmentChanged");
+		_print(string.Format("    isAttached: %1", isAttached));
+		_print(string.Format("    attachmentEntity: %1", attachmentEntity));
+		#endif	
+		
 		SCR_2DSightsComponent sights = GetSights();
 		
 		// Sights has changed
@@ -578,61 +646,21 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 				m_WeaponState.m_SightsZoomFOVInfo.GetEventOnZoomChanged().Insert(OnZoomChanged);			
 		}
 		
-		if (m_WeaponState.m_SightsZoomFOVInfo)
-			zoom = m_WeaponState.m_SightsZoomFOVInfo.GetCurrentZoom();
-
-		#ifdef WEAPON_INFO_DEBUG_WATERFALL_EVENTS
-		_print("OnZoomChanged_init");
-		_print(string.Format("    weapon:  %1", weapon));
-		_print(string.Format("    zoom: %1", zoom));
-		#endif		
-				
-		OnZoomChanged(zoom, -1);
-	}	
-	void OnZoomChanged(float zoom, float fov)
-	{
-		#ifdef WEAPON_INFO_DEBUG
-		_print("OnZoomChanged");
-		_print(string.Format("    zoom: %1", zoom));
-		_print(string.Format("    fov: %1", fov));
-		#endif	
-	
-		// Set weapon state change flag
-		m_eWeaponStateEvent |= EWeaponFeature.ZOOM;			
-		
-		m_WeaponState.m_fZoom = zoom;
-			
-		UpdateZoomIndicator(m_WeaponState);
-	}	
-	
-	//------------------------------------------------------------------------------------------------
-	void OnInspectionModeChanged(bool state)
-	{
-		#ifdef WEAPON_INFO_DEBUG
-		_print("OnInspectionModeChanged");
-		_print(string.Format("    state: %1", state));
-		#endif	
-	
-		// Set weapon state change flag
-		m_eWeaponStateEvent |= EWeaponFeature.INSPECTION;			
-		
-		m_WeaponState.m_bInInspectionMode = state;
+		if (!sights)
+		{
+			m_WeaponState.m_Sights = null;
+			m_WeaponState.m_SightsZoomFOVInfo = null;		
+		}		
 	}
+	
 
+	
 	//------------------------------------------------------------------------------------------------
 	override void DisplayUpdate(IEntity owner, float timeSlice)
 	{		
-		if (!m_wRoot)
+		if (!m_wRoot || !m_WeaponState || !m_WeaponState.m_Weapon)
 			return;
 
-		bool menuOpen = m_MenuManager.IsAnyMenuOpen();
-		
-		if (menuOpen != m_bMenuOpen)
-		{
-			m_wRoot.SetVisible(!menuOpen);
-			m_bMenuOpen = menuOpen;
-		}
-		
 		if (m_eWeaponStateEvent != EWeaponFeature.NONE)
 		{
 			FadeElements();
@@ -650,14 +678,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		if (m_WeaponInfoPanelAnimator)
 			m_WeaponInfoPanelAnimator.Update(timeSlice);
 		
-		/*
-		if (m_AmmoTypeAnimator)
-			m_AmmoTypeAnimator.Update(timeSlice);
-		*/
+		// Print(string.Format("[ANIM STATES] m_WeaponInfoPanelAnimator: %1 | m_ZeroingAnimator: %2", m_WeaponInfoPanelAnimator.GetState(), m_ZeroingAnimator.GetState()));
 		
-		//Print(string.Format("[ANIM STATES] m_WeaponInfoPanelAnimator: %1 | m_ZeroingAnimator: %2 | m_AmmoTypeAnimator: %3", m_WeaponInfoPanelAnimator.GetState(), m_ZeroingAnimator.GetState(), m_AmmoTypeAnimator.GetState()));
-		
-		m_bFadeInOutActive = m_WeaponInfoPanelAnimator.IsRunning() || m_ZeroingAnimator.IsRunning()/* || m_AmmoTypeAnimator.IsRunning()*/;
+		m_bFadeInOutActive = m_WeaponInfoPanelAnimator.IsRunning() || m_ZeroingAnimator.IsRunning();
 	}
 	
 	
@@ -717,19 +740,11 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			m_WeaponInfoPanelAnimator.FadeIn(!panelVisibleOverride);
 		
 		// Zeroing indicator fadein
-		bool zeroingWidgetHasText = !widgets.m_ZeroingText.GetText().IsEmpty();
+		bool zeroingWidgetHasText = !m_Widgets.m_ZeroingText.GetText().IsEmpty();
 		bool zeroingVisibleEvent = m_eWeaponStateEvent & (EWeaponFeature.ADS | EWeaponFeature.ZEROING | EWeaponFeature.MUZZLE | EWeaponFeature.WEAPON | EWeaponFeature.INSPECTION);
 		bool zeroingVisibleOverride = inADS || inInspection;
 		if (zeroingWidgetHasText && (zeroingVisibleEvent || zeroingVisibleOverride))
 			m_ZeroingAnimator.FadeIn(!zeroingVisibleOverride);			
-		
-		// Ammo type fadein
-		/*
-		bool ammoTypeVisibleEvent = m_eWeaponStateEvent & (EWeaponFeature.ADS | EWeaponFeature.MAGAZINE | EWeaponFeature.MUZZLE | EWeaponFeature.WEAPON | EWeaponFeature.INSPECTION);
-		bool ammoTypeVisibleOverride = isGrenade || inADS || inInspection;
-		if (m_WeaponState.m_bHasSpecialAmmo && (ammoTypeVisibleEvent || ammoTypeVisibleOverride))
-			m_AmmoTypeAnimator.FadeIn(!ammoTypeVisibleOverride);	
-		*/
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -751,10 +766,10 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 		SCR_MagazineIndicatorConfiguration config;
 		
-		if (m_WeaponState.m_Muzzle)
+		if (state.m_Muzzle)
 		{		
 			// WEAPON WITH MUZZLE
-			if (!m_WeaponState.m_MuzzleUi)
+			if (!state.m_MuzzleUI)
 			{
 				// No muzzle UI ?! Just hide it
 				config = null;
@@ -762,29 +777,29 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			else
 			{
 								
-				if (m_WeaponState.m_Magazine)
+				if (state.m_Magazine)
 				{
 					// MAGAZINE IS IN THE GUN
-					config = m_WeaponState.m_MagazineUi.m_MagIndicator;
+					config = state.m_MagazineUI.m_MagIndicator;
 
 					if (!config)
-						config = m_WeaponState.m_MuzzleUi.m_MagIndicator;
+						config = state.m_MuzzleUI.m_MagIndicator;
 				}
 				else
 				{
 					// NO MAGAZINE
 					// Take mag configuration from muzzle
 					
-					config = m_WeaponState.m_MuzzleUi.m_MagIndicator;
+					config = state.m_MuzzleUI.m_MagIndicator;
 				}
 			}
 		}
 		else
 		{
 			// NO MUZZLE, probably weapon must provide icon
-			if (m_WeaponState.m_WeaponUi)
+			if (state.m_WeaponUI)
 			{
-				config = m_WeaponState.m_WeaponUi.m_MagIndicator;
+				config = state.m_WeaponUI.m_MagIndicator;
 			}
 			else
 			{
@@ -798,7 +813,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateMagazineIndicator_Textures(SCR_WeaponState state)
 	{
-		if (!state)
+		if (!state || !m_Widgets)
 			return;
 		
 		if (!state.m_MagazineConfig)
@@ -808,73 +823,71 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 		if (!config)
 		{
-			widgets.m_MagazineIndicator.SetVisible(false);
+			m_Widgets.m_MagazineIndicator.SetVisible(false);
 		}
 		else
 		{
-			widgets.m_MagazineIndicator.SetVisible(true);
+			m_Widgets.m_MagazineIndicator.SetVisible(true);
 			
 			if (config.m_bProgressBar)
 			{
-				SetWidgetImage(widgets.m_MagazineOutline, config.m_sImagesetIcons, config.m_sOutline, SCALE_MAGAZINE);
-				SetWidgetImage(widgets.m_MagazineBackground, config.m_sImagesetIcons, config.m_sBackground, SCALE_MAGAZINE);
-				SetWidgetImage(widgets.m_MagazineGlow, config.m_sImagesetGlows, config.m_sBackground, SCALE_MAGAZINE);			
+				SetWidgetImage(m_Widgets.m_MagazineOutline, config.m_sImagesetIcons, config.m_sOutline, SCALE_MAGAZINE);
+				SetWidgetImage(m_Widgets.m_MagazineBackground, config.m_sImagesetIcons, config.m_sBackground, SCALE_MAGAZINE);
+				SetWidgetImage(m_Widgets.m_MagazineGlow, config.m_sImagesetGlows, config.m_sBackground, SCALE_MAGAZINE);			
 			}
 			else
 			{
-				SetWidgetImage(widgets.m_MagazineOutline, config.m_sImagesetIcons, config.m_sOutline, SCALE_MAGAZINE);
-				SetWidgetImage(widgets.m_MagazineGlow, config.m_sImagesetGlows, config.m_sOutline, SCALE_MAGAZINE);			
+				SetWidgetImage(m_Widgets.m_MagazineOutline, config.m_sImagesetIcons, config.m_sOutline, SCALE_MAGAZINE);
+				//SetWidgetImage(m_Widgets.m_MagazineBackground, config.m_sImagesetIcons, config.m_sOutline, SCALE_MAGAZINE);
+				SetWidgetImage(m_Widgets.m_MagazineGlow, config.m_sImagesetGlows, config.m_sOutline, SCALE_MAGAZINE);			
 			}
 			
+			// Setup textures for reloading indicator
+			SetWidgetImage(m_Widgets.m_ReloadBackground, config.m_sImagesetIcons, config.m_sProgress, SCALE_MAGAZINE);
+			m_Widgets.m_ReloadBackground.SetVisible(false);			
+			SetWidgetImage(m_Widgets.m_ReloadOutline, config.m_sImagesetIcons, config.m_sOutline, SCALE_MAGAZINE);
+			m_Widgets.m_ReloadOutline.SetVisible(false);
+
+			
+			// Setup visibility, keep only Outline texture, if there is no progress indication
+			m_Widgets.m_MagazineProgress.SetVisible(config.m_bProgressBar && state.m_Magazine);
+			m_Widgets.m_MagazineBackground.SetVisible(config.m_bProgressBar);			
+			m_Widgets.m_MagazineOutline.SetOpacity(1);
+						
 			if (state.m_Magazine)
 			{
-				widgets.m_MagazineOutline.SetOpacity(1);
-				
 				if (config.m_bProgressBar)
 				{
-					widgets.m_MagazineProgress.SetVisible(true);
-					widgets.m_MagazineBackground.SetVisible(true);
-					
-					SetWidgetImage(widgets.m_MagazineProgress, config.m_sImagesetIcons, config.m_sProgress, SCALE_MAGAZINE);
-					widgets.m_MagazineProgress.LoadMaskTexture(config.m_sProgressAlphaMask);
-					widgets.m_MagazineProgress.SetMaskMode(ImageMaskMode.REGULAR);
-				}
-				else
-				{
-					widgets.m_MagazineProgress.SetVisible(false);
-					widgets.m_MagazineBackground.SetVisible(false);
+					SetWidgetImage(m_Widgets.m_MagazineProgress, config.m_sImagesetIcons, config.m_sProgress, SCALE_MAGAZINE);
+					m_Widgets.m_MagazineProgress.LoadMaskFromSet(config.m_sImagesetIcons, config.m_sProgressAlphaMask);
+					m_Widgets.m_MagazineProgress.SetMaskMode(ImageMaskMode.REGULAR);
 				}
 			}
 			else
 			{
-				if (state.m_bIsGrenade)
-					widgets.m_MagazineOutline.SetOpacity(1);
-				else
-					widgets.m_MagazineOutline.SetOpacity(FADED_OPACITY);
-				
-				widgets.m_MagazineProgress.SetVisible(false);
-				widgets.m_MagazineBackground.SetVisible(false);
+				if (!state.m_bIsGrenade)
+					m_Widgets.m_MagazineOutline.SetOpacity(FADED_OPACITY);
 			}
 			
-			//AnimateWidget_ColorFlash(widgets.m_MagazineIndicator);
+			//AnimateWidget_ColorFlash(m_Widgets.m_MagazineIndicator);
 		}
 	}	
 	
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateMagazineIndicator_Progress(SCR_WeaponState state)
 	{
-		if (!state)
+		if (!state || !m_Widgets)
 			return;
 		
-		//AnimateWidget_ColorFlash(widgets.m_MagazineIndicator, EWeaponFeature.AMMOCOUNT);
+		//AnimateWidget_ColorFlash(m_Widgets.m_MagazineIndicator, EWeaponFeature.AMMOCOUNT);
 		
-		widgets.m_MagazineProgress.SetMaskProgress(state.m_fMagAmmoPerc);
+		m_Widgets.m_MagazineProgress.SetMaskProgress(state.m_fMagAmmoPerc);
 	}			
 
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateMagazineIndicator_Count(SCR_WeaponState state)
 	{
-		if (!state)
+		if (!state || !m_Widgets)
 			return;
 
 		int count = state.m_iMagCount;
@@ -891,150 +904,178 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		*/
 		
 		if (count > 0)
-			widgets.m_MagCountText.SetOpacity(1);
+			m_Widgets.m_MagCountText.SetOpacity(1);
 		else
-			widgets.m_MagCountText.SetOpacity(FADED_OPACITY);
+			m_Widgets.m_MagCountText.SetOpacity(FADED_OPACITY);
 		
-		if (widgets.m_MagCountText.GetText() == countText) 
+		if (m_Widgets.m_MagCountText.GetText() == countText) 
 			return;
 
-		widgets.m_MagCountText.SetText(countText);		
+		m_Widgets.m_MagCountText.SetText(countText);		
 		
-		AnimateWidget_ColorFlash(widgets.m_MagCountText, EWeaponFeature.MAGAZINE_COUNT);	
-		AnimateWidget_TextPopUp(widgets.m_MagCountText, 36, 54, EWeaponFeature.MAGAZINE_COUNT);
+		AnimateWidget_ColorFlash(m_Widgets.m_MagCountText, EWeaponFeature.MAGAZINE_COUNT);	
+		AnimateWidget_TextPopUp(m_Widgets.m_MagCountText, 36, 54, EWeaponFeature.MAGAZINE_COUNT);
 	}		
 	
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateBulletInChamberIndicator(SCR_WeaponState state)
 	{
-		if (!state)
+		if (!state || !m_Widgets)
 			return;
 
 		if (state.m_bBarrelChambered)
-			widgets.m_FiremodeIcon.SetOpacity(1);
+			m_Widgets.m_FiremodeIcon.SetOpacity(1);
 		else
-			widgets.m_FiremodeIcon.SetOpacity(FADED_OPACITY);
+			m_Widgets.m_FiremodeIcon.SetOpacity(FADED_OPACITY);
 	}		
 	
 	//------------------------------------------------------------------------------------------------
 	void UpdateFireModeIndicator(SCR_WeaponState state)
 	{
-		if (!state)
+		if (!state || !m_Widgets)
 			return;
 
-		widgets.m_FiremodeIcon.SetVisible(false);
-		widgets.m_FiremodeGlow.SetVisible(false);
+		m_Widgets.m_FiremodeIcon.SetVisible(false);
+		m_Widgets.m_FiremodeGlow.SetVisible(false);
 
-		if (state.m_Muzzle && state.m_MuzzleUi && state.m_MuzzleUi.ShowFiremodeIcon())
+		if (state.m_Muzzle && state.m_MuzzleUI && state.m_MuzzleUI.ShowFiremodeIcon())
 		{
 			auto fm = state.m_FireModeType;
 			
-			SetWidgetImage(widgets.m_FiremodeIcon, state.m_MuzzleUi.GetFiremodeIconImageset(), state.m_MuzzleUi.GetFiremodeIconName(fm), SCALE_FIREMODE);
-			SetWidgetImage(widgets.m_FiremodeGlow, state.m_MuzzleUi.GetFiremodeGlowImageset(), state.m_MuzzleUi.GetFiremodeIconName(fm), SCALE_FIREMODE);
+			SetWidgetImage(m_Widgets.m_FiremodeIcon, state.m_MuzzleUI.GetFiremodeIconImageset(), state.m_MuzzleUI.GetFiremodeIconName(fm), SCALE_FIREMODE);
+			SetWidgetImage(m_Widgets.m_FiremodeGlow, state.m_MuzzleUI.GetFiremodeGlowImageset(), state.m_MuzzleUI.GetFiremodeIconName(fm), SCALE_FIREMODE);
 		
-			widgets.m_FiremodeIcon.SetVisible(true);
-			widgets.m_FiremodeGlow.SetVisible(true);
+			m_Widgets.m_FiremodeIcon.SetVisible(true);
+			m_Widgets.m_FiremodeGlow.SetVisible(true);
 			
-			AnimateWidget_ColorFlash(widgets.m_FiremodeIcon, EWeaponFeature.FIREMODE);
+			AnimateWidget_ColorFlash(m_Widgets.m_FiremodeIcon, EWeaponFeature.FIREMODE);
 		}		
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void UpdateZeroingIndicator(SCR_WeaponState state)
 	{
-		if (!state)
+		if (!state || !m_Widgets)
 			return;
 
 		int zeroing = state.m_iZeroing;
 
 		if (zeroing <= 0)
 		{
-			widgets.m_Zeroing.SetVisible(false);
-			widgets.m_ZeroingText.SetText(string.Empty);
+			m_Widgets.m_Zeroing.SetVisible(false);
+			m_Widgets.m_ZeroingText.SetText(string.Empty);
 		}
 		else
 		{
-			widgets.m_Zeroing.SetVisible(true);
+			m_Widgets.m_Zeroing.SetVisible(true);
 			string sZeroing = string.Format("%1 m", zeroing);
-			widgets.m_ZeroingText.SetText(sZeroing);
+			m_Widgets.m_ZeroingText.SetText(sZeroing);
 			
-			AnimateWidget_ColorFlash(widgets.m_Zeroing, EWeaponFeature.ZEROING);
+			AnimateWidget_ColorFlash(m_Widgets.m_Zeroing, EWeaponFeature.ZEROING);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void UpdateZoomIndicator(SCR_WeaponState state)
 	{
-		if (!state)
+		if (!state || !m_Widgets)
 			return;
 
 		float zoom = state.m_fZoom;
 
 		if (zoom <= 0 || !state.m_bInADS)
 		{
-			widgets.m_Optics.SetVisible(false);
-			widgets.m_OpticsText.SetText(string.Empty);
+			m_Widgets.m_Optics.SetVisible(false);
+			m_Widgets.m_OpticsText.SetText(string.Empty);
 		}
 		else
 		{
 			string sZoom = zoom.ToString(-1,1);
 			sZoom = string.Format("%1 ×", sZoom);
 
-			widgets.m_Optics.SetVisible(true);
-			widgets.m_OpticsText.SetText(sZoom);
+			m_Widgets.m_Optics.SetVisible(true);
+			m_Widgets.m_OpticsText.SetText(sZoom);
 			
-			AnimateWidget_ColorFlash(widgets.m_Optics, EWeaponFeature.ZOOM);
+			AnimateWidget_ColorFlash(m_Widgets.m_Optics, EWeaponFeature.ZOOM);
 		}
 	}	
 	
 	//------------------------------------------------------------------------------------------------
 	void UpdateAmmoTypeIndicator(SCR_WeaponState state)
 	{
-		if (!state)
+		if (!state || !m_Widgets)
 			return;
 		
-		if (!state.m_bHasSpecialAmmo || (!state.m_MagazineUi && !state.m_GrenadeUi))
+		if (!state.m_bHasSpecialAmmo || (!state.m_MagazineUI && !state.m_GrenadeUI))
 		{
-			widgets.m_AmmoType.SetVisible(false);
+			m_Widgets.m_AmmoType.SetVisible(false);
 			return;
 		}
 
 		string sAmmoTypeText;
 		bool bShowAmmoTypeText;
 		
-		if (state.m_GrenadeUi)
+		if (state.m_GrenadeUI)
 		{
-			sAmmoTypeText = state.m_GrenadeUi.GetAmmoType();
-			bShowAmmoTypeText = state.m_GrenadeUi.ShowAmmoTypeText();
+			sAmmoTypeText = state.m_GrenadeUI.GetAmmoType();
+			bShowAmmoTypeText = state.m_GrenadeUI.ShowAmmoTypeText();
 		}
 		else
 		{
-			sAmmoTypeText = state.m_MagazineUi.GetAmmoType();
-			bShowAmmoTypeText = state.m_MagazineUi.ShowAmmoTypeText();
+			sAmmoTypeText = state.m_MagazineUI.GetAmmoType();
+			bShowAmmoTypeText = state.m_MagazineUI.ShowAmmoTypeText();
 		}
 		
 		if (!bShowAmmoTypeText)
 			sAmmoTypeText = "";
 		
-		widgets.m_AmmoTypeText.SetText(sAmmoTypeText);
+		m_Widgets.m_AmmoTypeText.SetText(sAmmoTypeText);
 
-		widgets.m_AmmoType.SetVisible(true);
+		m_Widgets.m_AmmoType.SetVisible(true);
 				
-		widgets.m_AmmoType_FMJ.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.FMJ);
-		widgets.m_AmmoType_AP.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.AP);
-		widgets.m_AmmoType_Frag.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.FRAG);
-		widgets.m_AmmoType_Smoke.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.SMOKE);
-		widgets.m_AmmoType_HE.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.HE);
-		widgets.m_AmmoType_HEAT.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.HEAT);
-		widgets.m_AmmoType_Incendiary.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.INCENDIARY);
-		widgets.m_AmmoType_Tracer.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.TRACER);
-		widgets.m_AmmoType_Sniper.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.SNIPER);
+		m_Widgets.m_AmmoType_FMJ.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.FMJ);
+		m_Widgets.m_AmmoType_AP.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.AP);
+		m_Widgets.m_AmmoType_Frag.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.FRAG);
+		m_Widgets.m_AmmoType_Smoke.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.SMOKE);
+		m_Widgets.m_AmmoType_HE.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.HE);
+		m_Widgets.m_AmmoType_HEAT.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.HEAT);
+		m_Widgets.m_AmmoType_Incendiary.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.INCENDIARY);
+		m_Widgets.m_AmmoType_Tracer.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.TRACER);
+		m_Widgets.m_AmmoType_Sniper.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.SNIPER);
 		
-		//AnimateWidget_ColorFlash(widgets.m_AmmoType);
+		//AnimateWidget_ColorFlash(m_Widgets.m_AmmoType);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void AnimateWidget_ColorFlash(Widget w, EWeaponFeature requiredFlag = -1, float speed = WidgetAnimator.FADE_RATE_SLOW)
+	protected void UpdateWeaponNameAndCaliber(SCR_WeaponState state)
+	{
+		if (!state || !m_Widgets)
+			return;
+		
+		// Update weapon name indicator
+		bool showName = state.m_WeaponUI.ShowWeaponName();
+		
+		if (showName)
+			m_Widgets.m_WeaponName.SetText(state.m_WeaponUI.GetName());
+		
+		m_Widgets.m_WeaponName.SetVisible(showName);
+		
+		// Update muzzle caliber indicator
+		bool showCaliber;
+		
+		if (state.m_MuzzleUI)
+		{
+			showCaliber = state.m_MuzzleUI.ShowCaliber();
+			
+			if (showCaliber)
+				m_Widgets.m_Caliber.SetText(state.m_MuzzleUI.GetCaliber());
+		}
+		
+		m_Widgets.m_Caliber.SetVisible(showCaliber);
+	}		
+	
+	//------------------------------------------------------------------------------------------------
+	void AnimateWidget_ColorFlash(Widget w, EWeaponFeature requiredFlag = -1, float speed = UIConstants.FADE_RATE_SLOW)
 	{
 		if (!w)
 			return;
@@ -1043,11 +1084,11 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			return;
 		
 		w.SetColor(COLOR_ORANGE);
-		WidgetAnimator.PlayAnimation(w, WidgetAnimationType.Color, COLOR_WHITE, speed);
+		AnimateWidget.Color(w, COLOR_WHITE, speed);
 	}	
 
 	//------------------------------------------------------------------------------------------------
-	void AnimateWidget_TextPopUp(Widget w, float size, float sizeBoosted, EWeaponFeature requiredFlag = -1, float speed = WidgetAnimator.FADE_RATE_SLOW)
+	void AnimateWidget_TextPopUp(Widget w, float size, float sizeBoosted, EWeaponFeature requiredFlag = -1, float speed = UIConstants.FADE_RATE_SLOW)
 	{
 		if (!w)
 			return;
@@ -1058,7 +1099,8 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		float width = FrameSlot.GetSizeX(w);
 		
 		FrameSlot.SetSize(w, width, sizeBoosted);
-		WidgetAnimator.PlayAnimation(w, WidgetAnimationType.FrameSize, speed, width, size);
+		float widthHeight[2] = {width, size};
+		AnimateWidget.Size(w, widthHeight, speed);
 	}		
 		
 	//------------------------------------------------------------------------------------------------
@@ -1087,27 +1129,75 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		if (!m_MenuManager)
 			return false;
 		
-		m_EventHandlerManager = EventHandlerManagerComponent.Cast(character.FindComponent(EventHandlerManagerComponent));
-		if (m_EventHandlerManager)
-		{
-			m_EventHandlerManager.RegisterScriptHandler("OnWeaponChanged", this, OnWeaponChanged, true);
-			m_EventHandlerManager.RegisterScriptHandler("OnMuzzleChanged", this, OnMuzzleChanged, true);
-			m_EventHandlerManager.RegisterScriptHandler("OnMagazineChanged", this, OnMagazineChanged, true);
-			m_EventHandlerManager.RegisterScriptHandler("OnMagazineCountChanged", this, OnMagazineCountChanged, true);
-			m_EventHandlerManager.RegisterScriptHandler("OnAmmoCountChanged", this, OnAmmoCountChanged, true);
-			m_EventHandlerManager.RegisterScriptHandler("OnFiremodeChanged", this, OnFiremodeChanged, true);
-			m_EventHandlerManager.RegisterScriptHandler("OnZeroingChanged", this, OnZeroingChanged, true);
-			m_EventHandlerManager.RegisterScriptHandler("OnADSChanged", this, OnADSChanged, true);
-			m_EventHandlerManager.RegisterScriptHandler("OnInspectionModeChanged", this, OnInspectionModeChanged, true);
-		}
+		// Register weapon related weapon event handlers
+		AddEventHandlers(owner);
 		
-		OnWeaponChanged(m_WeaponManager.GetCurrentWeapon(), null);
+		// Fallback in case the layout is not provided as an InfoDisplay attribute
+		if (m_LayoutPath == string.Empty)
+			m_LayoutPath = DEFAULT_WEAPON_INFO_LAYOUT;
 		
 		return true;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	override void DisplayStartDraw(IEntity owner)
+	{
+		if (!m_wRoot)
+			return;
+		
+		m_Widgets = new SCR_WeaponInfoWidgets();
+		m_Widgets.Init(m_wRoot);
+		
+		m_Widgets.m_MagazineIndicator.SetVisible(true);
+		
+		if (!m_WeaponInfoPanelAnimator)
+			m_WeaponInfoPanelAnimator = new SCR_FadeInOutAnimator(m_Widgets.m_WeaponInfoPanel, UIConstants.FADE_RATE_FAST, UIConstants.FADE_RATE_SLOW, FADEOUT_PANEL_DELAY, true);
+
+		if (!m_ZeroingAnimator)
+			m_ZeroingAnimator = new SCR_FadeInOutAnimator(m_Widgets.m_Zeroing, UIConstants.FADE_RATE_FAST, UIConstants.FADE_RATE_SLOW, FADEOUT_OPTICS_DELAY, true);	
+		
+		// Initialize the UI based on what weapon character currently has
+		OnWeaponChanged(m_WeaponManager.GetCurrentWeapon(), null);		
+	}	
+		
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStopDraw(IEntity owner)
+	{
+		if (m_WeaponState && m_WeaponState.m_SightsZoomFOVInfo)
+			m_WeaponState.m_SightsZoomFOVInfo.GetEventOnZoomChanged().Remove(OnZoomChanged);
+		
+		m_WeaponState = null;
+		
+		// Un-register weapon related weapon event handlers
+		RemoveEventHandlers(owner);
+		
+		// Destroy the animators
+		m_WeaponInfoPanelAnimator = null;
+		m_ZeroingAnimator = null;
+		
+		m_wRoot = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void AddEventHandlers(IEntity owner)
+	{
+		if (m_EventHandlerManager)
+		{
+			m_EventHandlerManager.RegisterScriptHandler("OnWeaponChanged", this, OnWeaponChanged);
+			m_EventHandlerManager.RegisterScriptHandler("OnMuzzleChanged", this, OnMuzzleChanged);
+			m_EventHandlerManager.RegisterScriptHandler("OnMagazineChanged", this, OnMagazineChanged);
+			m_EventHandlerManager.RegisterScriptHandler("OnMagazineCountChanged", this, OnMagazineCountChanged);
+			m_EventHandlerManager.RegisterScriptHandler("OnAmmoCountChanged", this, OnAmmoCountChanged);
+			m_EventHandlerManager.RegisterScriptHandler("OnFiremodeChanged", this, OnFiremodeChanged);
+			m_EventHandlerManager.RegisterScriptHandler("OnZeroingChanged", this, OnZeroingChanged);
+			m_EventHandlerManager.RegisterScriptHandler("OnADSChanged", this, OnADSChanged);
+			m_EventHandlerManager.RegisterScriptHandler("OnInspectionModeChanged", this, OnInspectionModeChanged);
+			m_EventHandlerManager.RegisterScriptHandler("OnWeaponAttachmentChanged", this, OnAttachmentChanged);
+		}		
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void RemoveEventHandlers(IEntity owner)
 	{
 		if (m_EventHandlerManager)
 		{
@@ -1120,54 +1210,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			m_EventHandlerManager.RemoveScriptHandler("OnZeroingChanged", this, OnZeroingChanged);
 			m_EventHandlerManager.RemoveScriptHandler("OnADSChanged", this, OnADSChanged);
 			m_EventHandlerManager.RemoveScriptHandler("OnInspectionModeChanged", this, OnInspectionModeChanged);
+			m_EventHandlerManager.RemoveScriptHandler("OnWeaponAttachmentChanged", this, OnAttachmentChanged);
 		}
-		m_EventHandlerManager = null;
-		
-		DestroyLayout();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void CreateLayout(string layout)
-	{		
-		// Destroy existing layout
-		DestroyLayout();
-		
-		// Create weapon info layout
-		SCR_HUDManagerComponent manager = SCR_HUDManagerComponent.GetHUDManager();
-		if (manager)
-			m_wRoot = manager.CreateLayout(layout, m_eLayer);
-
-		if (!m_wRoot)
-			return;
-		
-		widgets = new SCR_WeaponInfoWidgets();
-		widgets.Init(m_wRoot);
-		
-		widgets.m_MagazineIndicator.SetVisible(true);
-		
-		if (!m_WeaponInfoPanelAnimator)
-			m_WeaponInfoPanelAnimator = new SCR_FadeInOutAnimator(widgets.m_WeaponInfoPanel, WidgetAnimator.FADE_RATE_FAST, WidgetAnimator.FADE_RATE_SLOW, FADEOUT_PANEL_DELAY, true);
-
-		if (!m_ZeroingAnimator)
-			m_ZeroingAnimator = new SCR_FadeInOutAnimator(widgets.m_Zeroing, WidgetAnimator.FADE_RATE_FAST, WidgetAnimator.FADE_RATE_SLOW, FADEOUT_OPTICS_DELAY, true);
-		
-		/*
-		if (!m_AmmoTypeAnimator)
-			m_AmmoTypeAnimator = new SCR_FadeInOutAnimator(widgets.m_AmmoType, WidgetAnimator.FADE_RATE_FAST, WidgetAnimator.FADE_RATE_SLOW, FADEOUT_AMMO_TYPE_DELAY, true);
-		*/
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void DestroyLayout()
-	{
-		if (m_wRoot)
-			m_wRoot.RemoveFromHierarchy();
-		
-		m_WeaponInfoPanelAnimator = null;
-		m_ZeroingAnimator = null;
-		//m_AmmoTypeAnimator = null;
-		
-		m_wRoot = null;
+		m_EventHandlerManager = null;	
 	}	
 	
 	//------------------------------------------------------------------------------------------------
@@ -1229,7 +1274,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 	//---------------------------------------------------------------------------------------------------------
 	//! Sets widget's image to an image or imageset
-	protected static void SetWidgetImage(ImageWidget w, string imageOrImageset, string imageName = "", float scale = SCALE_DEFAULT)
+	protected void SetWidgetImage(ImageWidget w, string imageOrImageset, string imageName = "", float scale = SCALE_DEFAULT)
 	{
 		if (!imageName.IsEmpty())
 		{

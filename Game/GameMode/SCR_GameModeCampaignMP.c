@@ -18,6 +18,18 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	[Attribute("FIA", UIWidgets.EditBox, "", "")]
 	protected FactionKey m_sINDFORFactionKey;
 	
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "When enabled, bases will keep their present owning factions regardless of randomization.")]
+	protected bool m_bApplyPresetOwners;
+	
+	[Attribute("2", desc: "How many control points does a faction need to win"), RplProp()]
+	protected int m_iControlPointsThreshold;
+	
+	[Attribute("300", desc: "How long does a faction need to hold the control points to win (seconds)"), RplProp()]
+	protected float m_fVictoryTimer;
+	
+	[Attribute("40", desc: "How much supplies it cost to spawn at base by default?")]
+	protected int m_iSpawnCost;
+	
 	[Attribute("8", UIWidgets.Slider, "Starting time of day (hours)", "0 23 1")]
 	protected int m_iStartingHours;
 	
@@ -33,14 +45,11 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	[Attribute("40", UIWidgets.EditBox, "Total maximum of all player and allied AI units.")]
 	int m_iTotalPlayersLimit;
 	
-	[Attribute("1", UIWidgets.CheckBox, "Randomized Main bases", "")]
-	bool m_bRandomizeBases;
-	
 	[Attribute("1", UIWidgets.CheckBox, "Randomized starting supplies in small bases", "")]
 	bool m_bRandomizeSupplies;
 	
-	[Attribute("1", UIWidgets.CheckBox, "Apply starting owner of bases only if Advanced stage param is enabled in mission header", "")]
-	bool m_bCheckAdvancedStageConfig;
+	[Attribute("2", UIWidgets.EditBox, "How many vehicles should spawn at HQ at start.")]
+	protected int m_iStartingHQVehicles;
 	
 	[Attribute("30", UIWidgets.EditBox, "Time in seconds for how long the vehicle is reserved for a player who request it.")] 
 	int m_iSpawnedVehicleTimeProtection;
@@ -72,11 +81,18 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	[Attribute("", UIWidgets.ResourceNamePicker, "Remnants group prefab", "et")]
 	private ResourceName m_RemnantsGroupPrefab;
 	
+	[Attribute("{47864BB47AB0B1F4}UI/layouts/HUD/CampaignMP/CampaignMainHUD.layout", "Campaign main HUD")]
+	protected ResourceName m_sCampaignHud;
+	
+	[Attribute("{D74D24696C4F32F0}UI/layouts/HUD/CampaignMP/CampaignMenuScoreUI.layout", "Campaign MAP HUD")]
+	protected ResourceName m_sCampaignMapHud;
+	
 	//*****************************//
 	//PUBLIC STATIC SCRIPT INVOKERS//
 	//*****************************//
 	
 	static ref ScriptInvoker s_OnBaseCaptured = new ref ScriptInvoker();
+	static ref ScriptInvoker s_OnEnterEnemyBase = new ref ScriptInvoker();
 	static ref ScriptInvoker s_OnFactionAssigned = new ref ScriptInvoker();
 	static ref ScriptInvoker s_OnFactionAssignedLocalPlayer = new ref ScriptInvoker();
 	static ref ScriptInvoker s_OnMobileAssemblyDeployChanged = new ScriptInvoker();
@@ -90,29 +106,25 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	protected static SCR_RespawnSystemComponent s_RespawnSystemComponent = null;
 	protected static SCR_GameModeCampaignMP s_Instance = null;
 	protected static string s_sBackendFilename;
-	protected static const int REINFORCEMENTS_PERIOD_MAIN = 900;	//s: how ofter reinforcements arrive at Main bases
-	protected static const int REINFORCEMENTS_PERIOD_MAJOR = 1200;	//s: how ofter reinforcements arrive at Major bases
+	protected static ref array<SCR_PlayerRadioSpawnPointCampaign> m_aRadioSpawnPoints = {};
 	protected static const int XP_INFO_DURATION = 10000; 
 	protected static const int BACKEND_WRITE_PERIOD = 60000;
 	protected static const int INVALID_BACKEND_ID = 0;
 	protected static const int REMNANTS_SPAWN_RADIUS_MIN = Math.Pow(500, 2);
 	protected static const int REMNANTS_SPAWN_RADIUS_MAX = Math.Pow(1000, 2);
 	protected static const int REMNANTS_DESPAWN_RADIUS_DIFF = Math.Pow(200, 2);
-	protected static int STARTING_SUPPLIES_MIN = 750;
-	protected static int STARTING_SUPPLIES_MAX = 1250;
+	protected static int STARTING_SUPPLIES_MIN = 100;
+	protected static int STARTING_SUPPLIES_MAX = 500;
+	static const int SUPPLY_DEPOT_CAPACITY = 4500;
 	protected static const int STARTING_SUPPLIES_INTERVAL = 25;
-	protected static bool m_bBackendStateLoaded = false;
+	protected static bool m_bScenarioResumed = false;
+	protected static const int HQ_NO_REMNANTS_RADIUS = 300;
+	protected static const int HQ_NO_REMNANTS_PATROL_RADIUS = 600;
 	static const int GARAGE_VEHICLE_SPAWN_INTERVAL = 60000;
 	static const int DAY_IN_SECONDS = 24 * 60 * 60;
 	static const float DAYTIME_START = 5.0;
 	static const float DAYTIME_END = 20.0;
-	static const int RESPAWN_TICKETS_MAX_DEFAULT = 0;				// TODO: Move this and the following to attributes(?)
-	static const int RESPAWN_TICKETS_MAX_BONUS_FUEL = 6;
-	static const int RESPAWN_TICKETS_MAX_BONUS_REPAIR = 6;
-	static const int RESPAWN_TICKETS_MAX_BONUS_ARMORY = 8;
-	static const int RESPAWN_TICKETS_MAX_BONUS_HOSPITAL = 10;
-	static const int RESPAWN_TICKETS_MAX_BONUS_BARRACKS = 15;
-	static const int REINFORCEMENTS_SUPPLIES = 10000;
+	static const int REINFORCEMENTS_SUPPLIES = 10;
 	static const int REINFORCEMENTS_CHECK_PERIOD = 1000;			//ms: how often we should check for reinforcements arrival
 	static const float SUPPLY_TRUCK_UNLOAD_RADIUS = 25;				//m: maximum distance from a supply depot a player can still (un)load their truck
 	static FactionKey FACTION_BLUFOR;
@@ -121,19 +133,19 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	static const int AI_GROUPS_PER_FACTION = 3;
 	static const int REMNANTS_CNT_MIN = 9;
 	static const int REMNANTS_CNT_MAX = 9;
-	static const int RESPAWN_TICKETS_REPLENISH_PERIOD = 60000;
-	static const int RESPAWN_TICKETS_REPLENISH_AMOUNT = 2;
 	static const int BASE_CALLSIGNS_COUNT = 40;
 	static const int ENDING_TIMEOUT = 15000;
 	static const int BUILDING_CONTROLLER_SEARCH_DISTANCE = 7;
 	static const int SKILL_LEVEL_MAX = 10;
 	static const float SKILL_LEVEL_XP_BONUS = 0.1;
 	static const int SKILL_LEVEL_XP_COST = 1000;		// how much XP is needed for new level
+	static const int TIME_TO_HIDE_HUD = 15000;
 	
 	//************************//
 	//RUNTIME MEMBER VARIABLES//
 	//************************//
 	protected ref array<SCR_AIGroup> m_aAIGroups = new ref array<SCR_AIGroup>();
+	protected ref array<SCR_CampaignSuppliesComponent> m_aRemnantSupplyDepots = {};
 	protected ref array<ref SCR_CampaignClientData> m_aRegisteredClients = new array<ref SCR_CampaignClientData>;
 	protected ref array<ref SCR_CampaignRemnantsPresence> m_aRemnantsPresence = new array<ref SCR_CampaignRemnantsPresence>;
 	protected ref array<ref SCR_CampaignXPRewardInfo> m_aXPRewardList;
@@ -143,14 +155,12 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	protected float m_fRemnantForcesTimer = 0;
 	protected int m_iLocationCheckedForPlayerProximity = -1;
 	protected bool m_bAllRemnantsSpawned = false;
-	protected bool m_bFlipBases = false;
 	protected ref Resource m_rRemnants;
 	protected ref Resource m_rAIVehicleWest;
 	protected ref Resource m_rAIVehicleEast;
 	protected int m_iAIGroupSizeWest;
 	protected int m_iAIGroupSizeEast;
 	protected bool m_bAllowRemnantsDespawn = true;
-	protected bool m_bAdvancedStage = false;
 	protected bool m_bIsPlayerInRadioRange = true;
 	protected Faction m_LastPlayerFaction;
 	protected SCR_CampaignBase m_LastVisitedBase;
@@ -183,12 +193,10 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	protected int m_iRegisteredPlayerFaction = -1;
 	protected int m_iRegisteredPlayerXP;
 	protected bool m_bMatchOver;
-	
-	// Interactions component related
-	protected const float INTERACTION_COMPONENTS_UPDATE_TIME = 2;
-	protected ref array<SCR_CampaignInteractionsComponent> m_aInteractionComponents = new ref array<SCR_CampaignInteractionsComponent>();
-	protected int m_iInteractionComponentsIndex = 0;
-	protected float m_fInteractionComponentsTimer = INTERACTION_COMPONENTS_UPDATE_TIME;
+	protected SCR_CampaignSuppliesComponent m_SupplyDepotWithPlayer;
+	protected int m_iHideHud;
+	protected int m_iShowWest;
+	protected int m_iShowEast;
 	
 	// UI-related
 	protected float m_fHideXPInfo = 0;
@@ -199,6 +207,30 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	protected bool m_bNegativeXP = false;
 	ref array<Widget> m_aPlayerList = new ref array<Widget>();
 	protected eCampaignStatusMessage m_iLastStatusMsgShown = -1;
+	protected Widget m_wInfoOverlay;
+	protected Widget m_wCountdownOverlay;
+	protected Widget m_wCountdownOverlayMap;
+	protected ImageWidget m_wLeftFlag;
+	protected ImageWidget m_wRightFlag;
+	protected ImageWidget m_wWinScoreSideLeft;
+	protected ImageWidget m_wWinScoreSideRight;
+	protected RichTextWidget m_wLeftScore;
+	protected RichTextWidget m_wRightScore;
+	protected RichTextWidget m_wWinScore;
+	protected RichTextWidget m_wCountdown;
+	protected RichTextWidget m_wFlavour;
+	protected ImageWidget m_wLeftFlagMap;
+	protected ImageWidget m_wRightFlagMap;
+	protected RichTextWidget m_wLeftScoreMap;
+	protected RichTextWidget m_wRightScoreMap;
+	protected RichTextWidget m_wWinScoreMap;
+	protected RichTextWidget m_wCountdownMap;
+	protected RichTextWidget m_wFlavourMap;
+	protected ImageWidget m_wWinScoreSideLeftMap;
+	protected ImageWidget m_wWinScoreSideRightMap;
+	protected Widget m_wRoot;
+	protected Widget m_wMapRoot;	
+	
 	
 	//********************************//
 	//RUNTIME SYNCHED MEMBER VARIABLES//
@@ -217,6 +249,16 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	protected int m_iActiveRespawnRadiosCntWest;
 	[RplProp()]
 	protected int m_iActiveRespawnRadiosCntEast;
+	[RplProp()]
+	protected float m_fVictoryTimestamp;
+	[RplProp()]
+	protected float m_fVictoryPauseTimestamp;
+	[RplProp()]
+	protected int m_iWinningFactionId = -1;
+	[RplProp()]
+	protected int m_iControlPointsHeldWest;
+	[RplProp()]
+	protected int m_iControlPointsHeldEast;
 	
 	//************************//
 	//PROTECTED STATIC METHODS//
@@ -249,25 +291,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static bool IsBackendStateLoaded()
+	static bool IsScenarioResumed()
 	{
-		return m_bBackendStateLoaded;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Returns the period of reinforcements for given base
-	static float GetReinforcementsPeriod(SCR_CampaignBase base)
-	{
-		if (!base)
-			return -1;
-		
-		switch (base.GetType())
-		{
-			case CampaignBaseType.MAIN: {return REINFORCEMENTS_PERIOD_MAIN;};
-			case CampaignBaseType.MAJOR: {return REINFORCEMENTS_PERIOD_MAJOR;};
-		}
-		
-		return -1;
+		return m_bScenarioResumed;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -292,6 +318,36 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	//*********************//
 	//PUBLIC MEMBER METHODS//
 	//*********************//
+	
+	//------------------------------------------------------------------------------------------------
+	int GetFactionControlPointsCount(FactionKey factionKey)
+	{
+		if (factionKey == FACTION_BLUFOR)
+			return m_iControlPointsHeldWest;
+		
+		if (factionKey == FACTION_OPFOR)
+			return m_iControlPointsHeldEast;
+		
+		return 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetControlPointTreshold()
+	{
+		return m_iControlPointsThreshold;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetStartingVehiclesCount()
+	{
+		return m_iStartingHQVehicles;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetSpawnCost()
+	{
+		return m_iSpawnCost;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	bool CanShowPlayerSpawn()
@@ -461,25 +517,25 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		{
 			case SCR_ERadioMsg.SEIZED_MAIN:
 			{
-				msgName = "SOUND_HQ_MOB";
+				msgName = SCR_SoundEvent.SOUND_HQ_MOB;
 				break;
 			}
 			
 			case SCR_ERadioMsg.SEIZED_MAJOR:
 			{
-				msgName = "SOUND_HQ_FOB";
+				msgName = SCR_SoundEvent.SOUND_HQ_FOB;
 				break;
 			}
 			
 			case SCR_ERadioMsg.SEIZED_SMALL:
 			{
-				msgName = "SOUND_HQ_COP";
+				msgName = SCR_SoundEvent.SOUND_HQ_COP;
 				break;
 			}
 			
 			case SCR_ERadioMsg.DEMOTION_RENEGADE:
 			{
-				msgName = "SOUND_HQ_REN";
+				msgName = SCR_SoundEvent.SOUND_HQ_REN;
 				text = "#AR-Campaign_Demotion-UC";
 				text2 = "#AR-Rank_Renegade";
 				break;
@@ -487,7 +543,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			case SCR_ERadioMsg.DEMOTION:
 			{
-				msgName = "SOUND_HQ_DEM";
+				msgName = SCR_SoundEvent.SOUND_HQ_DEM;
 				text = "#AR-Campaign_Demotion-UC";
 				SCR_CampaignFaction f = SCR_CampaignFaction.Cast(m_LastPlayerFaction);
 				
@@ -499,7 +555,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			case SCR_ERadioMsg.PROMOTION_PRIVATE:
 			{
-				msgName = "SOUND_HQ_POP";
+				msgName = SCR_SoundEvent.SOUND_HQ_POP;
 				text = "#AR-Campaign_Promotion-UC";
 				text2 = "#AR-Rank_WestPrivate";
 				break;
@@ -507,7 +563,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			case SCR_ERadioMsg.PROMOTION_CORPORAL:
 			{
-				msgName = "SOUND_HQ_POC";
+				msgName = SCR_SoundEvent.SOUND_HQ_POC;
 				text = "#AR-Campaign_Promotion-UC";
 				text2 = "#AR-Rank_WestCorporal";
 				break;
@@ -515,7 +571,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			case SCR_ERadioMsg.PROMOTION_SERGEANT:
 			{
-				msgName = "SOUND_HQ_POS";
+				msgName = SCR_SoundEvent.SOUND_HQ_POS;
 				text = "#AR-Campaign_Promotion-UC";
 				text2 = "#AR-Rank_WestSergeant";
 				break;
@@ -523,7 +579,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			case SCR_ERadioMsg.PROMOTION_LIEUTENANT:
 			{
-				msgName = "SOUND_HQ_POL";
+				msgName = SCR_SoundEvent.SOUND_HQ_POL;
 				text = "#AR-Campaign_Promotion-UC";
 				text2 = "#AR-Rank_WestLieutenant";
 				break;
@@ -531,7 +587,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			case SCR_ERadioMsg.PROMOTION_CAPTAIN:
 			{
-				msgName = "SOUND_HQ_PON";
+				msgName = SCR_SoundEvent.SOUND_HQ_PON;
 				text = "#AR-Campaign_Promotion-UC";
 				text2 = "#AR-Rank_WestCaptain";
 				break;
@@ -539,7 +595,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			case SCR_ERadioMsg.PROMOTION_MAJOR:
 			{
-				msgName = "SOUND_HQ_POM";
+				msgName = SCR_SoundEvent.SOUND_HQ_POM;
 				text = "#AR-Campaign_Promotion-UC";
 				text2 = "#AR-Rank_WestMajor";
 				break;
@@ -550,7 +606,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!base)
 					return;
 				
-				msgName = "SOUND_HQ_RIF";
+				msgName = SCR_SoundEvent.SOUND_HQ_RIF;
 				text = "#AR-Campaign_ReinforcementsArrival-UC";
 				text2 = "#AR-Campaign_ReinforcementsArrivalDetails";
 				param1 = base.GetBaseNameUpperCase();
@@ -570,7 +626,19 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!f || f != SCR_RespawnSystemComponent.GetLocalPlayerFaction())
 					return;
 				
-				msgName = "SOUND_HQ_VIC";
+				msgName = SCR_SoundEvent.SOUND_HQ_PMV;
+				break;
+			}
+			
+			case SCR_ERadioMsg.WINNING:
+			{
+				msgName = SCR_SoundEvent.SOUND_HQ_PMC;
+				break;
+			}
+			
+			case SCR_ERadioMsg.LOSING:
+			{
+				msgName = SCR_SoundEvent.SOUND_HQ_PML;
 				break;
 			}
 			
@@ -586,91 +654,91 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!f || f == SCR_RespawnSystemComponent.GetLocalPlayerFaction())
 					return;
 				
-				msgName = "SOUND_HQ_DEF";			
+				msgName = SCR_SoundEvent.SOUND_HQ_PMD;			
 				break;
 			}
 			
 			case SCR_ERadioMsg.RELAY:
 			{
-				msgName = "SOUND_SL_RRD";
+				msgName = SCR_SoundEvent.SOUND_SL_RRD;
 				break;
 			}
 			
 			case SCR_ERadioMsg.REQUEST_EVAC:
 			{
-				msgName = "SOUND_SL_ERT";
+				msgName = SCR_SoundEvent.SOUND_SL_ERT;
 				break;
 			}
 			
 			case SCR_ERadioMsg.REQUEST_FUEL:
 			{
-				msgName = "SOUND_SL_RRT";
+				msgName = SCR_SoundEvent.SOUND_SL_RRT;
 				break;
 			}
 			
 			case SCR_ERadioMsg.SUPPLIES:
 			{
-				msgName = "SOUND_SL_SDD";
+				msgName = SCR_SoundEvent.SOUND_SL_SDD;
 				break;
 			}
 			
 			case SCR_ERadioMsg.REQUEST_REINFORCEMENTS:
 			{
-				msgName = "SOUND_SL_REI";
+				msgName = SCR_SoundEvent.SOUND_SL_REI;
 				break;
 			}
 			
 			case SCR_ERadioMsg.REQUEST_TRANSPORT:
 			{
-				msgName = "SOUND_SL_TRT";
+				msgName = SCR_SoundEvent.SOUND_SL_TRT;
 				break;
 			}
 			
 			case SCR_ERadioMsg.CONFIRM:
 			{
-				msgName = "SOUND_SL_CSR";
+				msgName = SCR_SoundEvent.SOUND_SL_CSR;
 				break;
 			}
 			
 			case SCR_ERadioMsg.TASK_ASSIGN_SEIZE:
 			{
-				msgName = "SOUND_SL_SRT";
+				msgName = SCR_SoundEvent.SOUND_SL_SRT;
 				break;
 			}
 			
 			case SCR_ERadioMsg.TASK_UNASSIGN_REFUEL:
 			{
-				msgName = "SOUND_HQ_RRU";
+				msgName = SCR_SoundEvent.SOUND_HQ_RRU;
 				break;
 			}
 			
 			case SCR_ERadioMsg.TASK_UNASSIGN_TRANSPORT:
 			{
-				msgName = "SOUND_HQ_TRU";
+				msgName = SCR_SoundEvent.SOUND_HQ_TRU;
 				break;
 			}
 			
 			case SCR_ERadioMsg.TASK_UNASSIGN_EVAC:
 			{
-				msgName = "SOUND_HQ_ETU";
+				msgName = SCR_SoundEvent.SOUND_HQ_ETU;
 				break;
 			}
 			
 			case SCR_ERadioMsg.TASK_CANCEL_REQUEST:
 			{
-				msgName = "SOUND_HQ_RCR";
+				msgName = SCR_SoundEvent.SOUND_HQ_RCR;
 				break;
 			}
 			
 			case SCR_ERadioMsg.TASK_ASSIST:
 			{
-				msgName = "SOUND_SL_CHR";
+				msgName = SCR_SoundEvent.SOUND_SL_CHR;
 				break;
 			}
 			
 			case SCR_ERadioMsg.BASE_LOST:
 			{
-				msgName = "SOUND_HQ_BAL";
+				msgName = SCR_SoundEvent.SOUND_HQ_BAL;
 				break;
 			}
 			
@@ -679,14 +747,19 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!base)
 					return;
 				
-				msgName = "SOUND_HQ_BUA";
+				msgName = SCR_SoundEvent.SOUND_HQ_BUA;
 				text = "#AR-Campaign_BaseUnderAttack-UC";
-				text2 = "%1 (%2)";
+				
+				if (base.GetType() == CampaignBaseType.RELAY)
+					text2 = "%1";
+				else
+					text2 = "%1 (%2)";
+				
 				text2param1 = base.GetBaseName();
 				text2param2 = base.GetCallsignDisplayName();
 				
 				if (m_FirstBaseWithPlayer == base)
-					sound = "SOUND_SIREN";
+					sound = SCR_SoundEvent.SOUND_SIREN;
 				
 				prio = SCR_ECampaignPopupPriority.BASE_UNDER_ATTACK;
 				duration = 11;
@@ -698,7 +771,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!base)
 					return;
 				
-				msgName = "SOUND_HQ_BAA";
+				msgName = SCR_SoundEvent.SOUND_HQ_BAA;
 				text = "#AR-Campaign_Building_Available-UC";
 				text2 = base.GetBaseName();
 				param1 = "#AR-Campaign_Building_Armory-UC";
@@ -711,7 +784,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!base)
 					return;
 				
-				msgName = "SOUND_HQ_BFA";
+				msgName = SCR_SoundEvent.SOUND_HQ_BFA;
 				text = "#AR-Campaign_Building_Available-UC";
 				text2 = base.GetBaseName();
 				param1 = "#AR-Campaign_Building_FuelDepot-UC";
@@ -724,10 +797,75 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!base)
 					return;
 				
-				msgName = "SOUND_HQ_BRA";
+				msgName = SCR_SoundEvent.SOUND_HQ_BRA;
 				text = "#AR-Campaign_Building_Available-UC";
 				text2 = base.GetBaseName();
 				param1 = "#AR-Campaign_Building_RepairDepot-UC";
+				duration = 5;
+				break;
+			}
+			
+			case SCR_ERadioMsg.BUILT_SUPPLY:
+			{
+				if (!base)
+					return;
+				
+				msgName = SCR_SoundEvent.SOUND_HQ_SCB;
+				text = "#AR-Campaign_Building_Available-UC";
+				text2 = base.GetBaseName();
+				param1 = "#AR-Campaign_Building_SupplyStorage-UC";
+				duration = 5;
+				break;
+			}
+			
+			case SCR_ERadioMsg.BUILT_VEHICLES_LIGHT:
+			{
+				if (!base)
+					return;
+				
+				msgName = SCR_SoundEvent.SOUND_HQ_LCB;
+				text = "#AR-Campaign_Building_Available-UC";
+				text2 = base.GetBaseName();
+				param1 = "#AR-Campaign_Building_LightVehicleDepot-UC";
+				duration = 5;
+				break;
+			}
+			
+			case SCR_ERadioMsg.BUILT_VEHICLES_HEAVY:
+			{
+				if (!base)
+					return;
+				
+				msgName = SCR_SoundEvent.SOUND_HQ_VCB;
+				text = "#AR-Campaign_Building_Available-UC";
+				text2 = base.GetBaseName();
+				param1 = "#AR-Campaign_Building_HeavyVehicleDepot-UC";
+				duration = 5;
+				break;
+			}
+			
+			case SCR_ERadioMsg.BUILT_BARRACKS:
+			{
+				if (!base)
+					return;
+				
+				msgName = SCR_SoundEvent.SOUND_HQ_BCB;
+				text = "#AR-Campaign_Building_Available-UC";
+				text2 = base.GetBaseName();
+				param1 = "#AR-Campaign_Building_LivingQuarters-UC";
+				duration = 5;
+				break;
+			}
+			
+			case SCR_ERadioMsg.BUILT_ANTENNA:
+			{
+				if (!base)
+					return;
+				
+				msgName = SCR_SoundEvent.SOUND_HQ_ACB;
+				text = "#AR-Campaign_Building_Available-UC";
+				text2 = base.GetBaseName();
+				param1 = "#AR-Campaign_Building_Antenna-UC";
 				duration = 5;
 				break;
 			}
@@ -737,7 +875,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!base)
 					return;
 				
-				msgName = "SOUND_HQ_BAD";
+				msgName = SCR_SoundEvent.SOUND_HQ_BAD;
 				text = "#AR-Campaign_Building_Destroyed-UC";
 				text2 = base.GetBaseName();
 				param1 = "#AR-Campaign_Building_Armory-UC";
@@ -750,7 +888,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!base)
 					return;
 				
-				msgName = "SOUND_HQ_BFD";
+				msgName = SCR_SoundEvent.SOUND_HQ_BFD;
 				text = "#AR-Campaign_Building_Destroyed-UC";
 				text2 = base.GetBaseName();
 				param1 = "#AR-Campaign_Building_FuelDepot-UC";
@@ -763,7 +901,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!base)
 					return;
 				
-				msgName = "SOUND_HQ_BRD";
+				msgName = SCR_SoundEvent.SOUND_HQ_BRD;
 				text = "#AR-Campaign_Building_Destroyed-UC";
 				text2 = base.GetBaseName();
 				param1 = "#AR-Campaign_Building_RepairDepot-UC";
@@ -776,7 +914,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!base)
 					return;
 				
-				msgName = "SOUND_HQ_BAR";
+				msgName = SCR_SoundEvent.SOUND_HQ_BAR;
 				text = "#AR-Campaign_Building_Available-UC";
 				text2 = base.GetBaseName();
 				param1 = "#AR-Campaign_Building_Armory-UC";
@@ -789,7 +927,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!base)
 					return;
 				
-				msgName = "SOUND_HQ_BFR";
+				msgName = SCR_SoundEvent.SOUND_HQ_BFR;
 				text = "#AR-Campaign_Building_Available-UC";
 				text2 = base.GetBaseName();
 				param1 = "#AR-Campaign_Building_FuelDepot-UC";
@@ -802,7 +940,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!base)
 					return;
 				
-				msgName = "SOUND_HQ_BRR";
+				msgName = SCR_SoundEvent.SOUND_HQ_BRR;
 				text = "#AR-Campaign_Building_Available-UC";
 				text2 = base.GetBaseName();
 				param1 = "#AR-Campaign_Building_RepairDepot-UC";
@@ -835,8 +973,11 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_EXECUTE_GAMEMODE))
 			return;
 #endif
-		if (!m_bMatchOver)
+		
+		if (!m_bMatchOver && !IsProxy())
 			EvaluateGame();
+		
+		capturedBase.SendHQMessageBaseCaptured();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -851,13 +992,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	bool CanRequestWithoutRank()
 	{
 		return m_bIgnoreMinimumVehicleRank;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Getter for bases flip
-	bool AreBasesFlipped()
-	{
-		return m_bFlipBases;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -948,9 +1082,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	bool AllowStartingBaseOwners()
+	bool GetApplyPresetOwners()
 	{
-		return ((m_bCheckAdvancedStageConfig && m_bAdvancedStage) || !m_bCheckAdvancedStageConfig);
+		return m_bApplyPresetOwners;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -961,6 +1095,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (!player)
 		{
 			m_FirstBaseWithPlayer = null;
+			m_LastVisitedBase = null;
 			return;
 		}
 		
@@ -969,20 +1104,23 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (!comp || comp.IsDead())
 		{
 			m_FirstBaseWithPlayer = null;
+			m_LastVisitedBase = null;
 			return;
 		}
 		
 		array<SCR_CampaignBase> basesWithPlayer = new array<SCR_CampaignBase>();
-		SCR_CampaignBase closestBase = GetBasePlayerPresence(basesWithPlayer);
+		m_FirstBaseWithPlayer = GetBasePlayerPresence(basesWithPlayer);
 		
-		if (closestBase)
+		if (m_FirstBaseWithPlayer)
 		{
 			foreach (SCR_CampaignBase base: basesWithPlayer)
-				if (!m_FirstBaseWithPlayer || base.GetCapturingFaction())
+				if (base.GetCapturingFaction())
 					m_FirstBaseWithPlayer = base;
 		}
 		else
-			m_FirstBaseWithPlayer = null;
+		{
+			m_LastVisitedBase = null;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1010,7 +1148,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			float dist = vector.DistanceSq(mobileHQPos, base.GetOrigin());
 			
-			if (dist < mobileHQRadioRangeSq && dist < Math.Pow(base.GetSignalRange(), 2))
+			if (dist < mobileHQRadioRangeSq)
 				bases.Insert(base);
 		}
 		
@@ -1235,8 +1373,13 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 					
 					if (XP > 0)	// XP gain
 					{
-						progress.SetCurrent(totalXP - XP);
-						progressDiff.SetCurrent(totalXP);
+						if (rewardID == CampaignXPRewards.ENEMY_KILL || rewardID == CampaignXPRewards.ENEMY_KILL_VEH)
+							progress.SetCurrent(totalXP);
+						else
+						{
+							progress.SetCurrent(totalXP - XP);
+							progressDiff.SetCurrent(totalXP);
+						}
 					}
 					else	// XP loss
 					{
@@ -1370,7 +1513,44 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void RegisterRemnantsPresence(notnull SCR_CampaignRemnantsSpawnPoint spawnpoint, bool defenders = false)
+	void RegisterRemnantSupplyDepot(notnull SCR_CampaignSuppliesComponent comp)
+	{
+		m_aRemnantSupplyDepots.Insert(comp);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void CheckPlayerPresenceInSupplyDepots()
+	{
+		m_SupplyDepotWithPlayer = null;
+		
+		ChimeraCharacter localPlayer = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		
+		if (!localPlayer)
+			return;
+		
+		foreach (SCR_CampaignSuppliesComponent depot : m_aRemnantSupplyDepots)
+		{
+			if (!depot)
+				continue;
+			
+			float maxDistance = Math.Pow(depot.GetOperationalRadius(), 2);
+			
+			if (maxDistance > vector.DistanceSqXZ(localPlayer.GetOrigin(), depot.GetOwner().GetOrigin()))
+			{
+				m_SupplyDepotWithPlayer = depot;
+				return;
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_CampaignSuppliesComponent GetSupplyDepotWithPlayer()
+	{
+		return m_SupplyDepotWithPlayer;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RegisterRemnantsPresence(notnull SCR_CampaignRemnantsSpawnPoint spawnpoint)
 	{
 		SCR_CampaignFaction remnantsFaction = SCR_CampaignFaction.Cast(SCR_CampaignFactionManager.GetInstance().GetFactionByKey(FACTION_INDFOR));
 		
@@ -1379,12 +1559,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		
 		SCR_CampaignRemnantsPresence presence;
 		
-		if (defenders)
-		{
-			presence = new SCR_CampaignRemnantsPresence;
-			presence.SetIsDefendersSpawn(true);
-		}
-		else if (spawnpoint.GetGroupType() == SCR_CampaignRemnantsGroupType.RANDOM)
+		if (spawnpoint.GetGroupType() == SCR_CampaignRemnantsGroupType.RANDOM)
 		{
 			// Randomize group type
 			Math.Randomize(-1);
@@ -1412,6 +1587,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		
 		vector locationCenter;
 		array<SCR_CampaignRemnantsSpawnPoint> spawnpoints = {};
+		array<vector> respawns = {};
 		SCR_CampaignRemnantsSpawnPoint initialSpawnpoint;
 		
 		if (spawnpoint.GetChildren())
@@ -1419,7 +1595,11 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			SCR_CampaignRemnantsSpawnPoint childSpawnPoint = SCR_CampaignRemnantsSpawnPoint.Cast(spawnpoint.GetChildren());
 			while (childSpawnPoint)
 			{
-				spawnpoints.Insert(childSpawnPoint);
+				if (childSpawnPoint.GetIsRespawn())
+					presence.AddRespawn(childSpawnPoint.GetOrigin());
+				else
+					spawnpoints.Insert(childSpawnPoint);
+				
 				childSpawnPoint = SCR_CampaignRemnantsSpawnPoint.Cast(childSpawnPoint.GetSibling());
 			}
 			spawnpoints.Insert(spawnpoint);
@@ -1431,6 +1611,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			locationCenter = spawnpoint.GetOrigin();
 		
 		presence.SetSpawnpoint(locationCenter);
+		presence.SetRespawnPeriod(spawnpoint.GetGroupRespawnPeriod());
 		
 		// Spawn waypoints
 		array<AIWaypoint> patrolWaypoints = {};
@@ -1553,7 +1734,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				continue;
 			
 			// Do not register remnants group if its parent base is pre-owned
-			if (base.GetType() != CampaignBaseType.MAIN && (!AllowStartingBaseOwners() || base.GetStartingBaseOwner().IsEmpty() || base.GetStartingBaseOwner() == FACTION_INDFOR))
+			if (base.GetType() != CampaignBaseType.MAIN && (!GetApplyPresetOwners() || base.GetStartingBaseOwner().IsEmpty() || base.GetStartingBaseOwner() == FACTION_INDFOR))
 			{
 				nearestBase = base;
 				minDistance = dist;
@@ -1573,15 +1754,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			m_iRemnantLocationsCnt++;
 			
 			if (nearestBase)
-			{
 				nearestBase.RegisterRemnants(presence);
-				
-				if (defenders)
-				{
-					presence.SetParentBase(nearestBase);
-					nearestBase.UpdateBaseDefenders(presence);
-				}
-			}
 		}
 	}
 	
@@ -1649,88 +1822,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Add a new waypoint picked from current task list to a specific group
-	//! \param group Group to assign a new waypoint to
-	protected void AddAIWaypoint(SCR_AIGroup group)
-	{
-		if (!group)
-			return;
-
-		AIWaypoint waypoint = group.GetCurrentWaypoint();
-
-		// If the group already has a waypoint assigned, stop - unless it is the depot helper one
-		if (waypoint && waypoint.GetParent() && waypoint.GetParent().Type() != SCR_CampaignDeliveryPoint)
-			return;
-
-		string factionKey = group.m_faction;
-		
-		Faction faction = SCR_CampaignFactionManager.GetInstance().GetFactionByKey(factionKey);
-		
-		SCR_CampaignTaskManager taskManager = SCR_CampaignTaskManager.GetCampaignTaskManagerInstance();
-		if (!taskManager)
-			return;
-
-		array<SCR_BaseTask> availableTasks = new array<SCR_BaseTask>();
-		array<SCR_CampaignTask> usableTasks = new array<SCR_CampaignTask>();	// only tasks that have a waypoint assigned
-		taskManager.GetFilteredTasks(availableTasks, faction);
-		
-		foreach (int currentIndex, SCR_BaseTask taskBase: availableTasks)
-		{
-			SCR_CampaignTask thisTask = SCR_CampaignTask.Cast(taskBase);
-
-			if (thisTask.GetAIWaypoint() && thisTask.GetTaskState() == SCR_TaskState.OPENED)
-			{
-				usableTasks.Insert(thisTask);
-			}
-		};
-
-		if (usableTasks.Count() != 0)
-		{
-			SCR_CampaignTask newTask = usableTasks.GetRandomElement();
-			waypoint = newTask.GetAIWaypoint();
-
-			if (waypoint)
-				group.AddWaypoint(waypoint);
-		};
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Update waypoints for the AIs
-	//! \param baseTask The task whose state just changed
-	//! \param newTaskState New state of the task
-	void RefreshAIWaypoints(SCR_BaseTask baseTask, SCR_TaskState newTaskState)
-	{
-		//Complete waypoints for groups that were doing the completed task, assign a new waypoint for all idle groups
-		foreach (int currentIndex, SCR_AIGroup group: m_aAIGroups)
-		{
-			if (!group)
-				continue;
-			
-			if (baseTask && newTaskState)
-			{
-				SCR_CampaignTask task = SCR_CampaignTask.Cast(baseTask);
-				if (!task)
-					continue;
-
-				string factionKey = task.GetTargetFaction().GetFactionKey();
-				if (newTaskState != 0 && group.m_faction == factionKey)
-				{
-					AIWaypoint waypoint = group.GetCurrentWaypoint();
-					if (waypoint)
-					{
-						if (waypoint == task.GetAIWaypoint())
-						{
-							group.CompleteWaypoint(waypoint);
-						}
-					};
-				};
-			}
-
-			AddAIWaypoint(group);
-		};
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	void GetRequestedVehicles(out notnull array<Vehicle> vehicleList)
 	{
 		vehicleList = m_aRequestedVehicles;
@@ -1745,62 +1836,47 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	// Triggered each time player build a composition. Slot is the slot he used.
 	void OnStructureBuilt(SCR_SiteSlotEntity slot, SCR_CampaignNetworkComponent networkComponent)
 	{
-		SCR_CampaignDeliveryPoint service;
 		SCR_CampaignBase foundBase;
-		ECampaignServicePointType serviceType;
-		int ticketsBonus;
+		array<ECampaignCompositionType> types = {};
 		
-		// Find out if the slot is used for a service structure in some base
-		// If found, raise the cap on respawn tickets
+		SCR_Enum.GetEnumValues(ECampaignCompositionType, types);
+		
 		foreach (SCR_CampaignBase base: SCR_CampaignBaseManager.GetBases())
 		{
 			if (!base)
 				continue;
 			
-			if (base.GetAssignedSlot(ECampaignCompositionType.FUEL) == slot) {foundBase = base; serviceType = ECampaignServicePointType.FUEL_DEPOT; service = base.GetBaseService(serviceType); ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_FUEL; break;};
-			if (base.GetAssignedSlot(ECampaignCompositionType.REPAIR) == slot) {foundBase = base; serviceType = ECampaignServicePointType.REPAIR_DEPOT; service = base.GetBaseService(serviceType); ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_REPAIR; break;};
-			if (base.GetAssignedSlot(ECampaignCompositionType.ARMORY) == slot) {foundBase = base; serviceType = ECampaignServicePointType.ARMORY; service = base.GetBaseService(serviceType); ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_ARMORY; break;};
-			if (base.GetAssignedSlot(ECampaignCompositionType.HOSPITAL) == slot) {foundBase = base; serviceType = ECampaignServicePointType.FIELD_HOSPITAL; service = base.GetBaseService(serviceType); ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_HOSPITAL; break;};
-			if (base.GetAssignedSlot(ECampaignCompositionType.BARRACKS) == slot) {foundBase = base; serviceType = ECampaignServicePointType.BARRACKS; service = base.GetBaseService(serviceType); ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_BARRACKS; break;};
-		}
-		
-		if (foundBase)
-		{
-			foundBase.AddRespawnTicketsMax(ticketsBonus);
-			s_OnServiceBuild.Invoke(foundBase, networkComponent);
-		}
-						
-		if (service)
-		{
-			service.SetIsBuilt(true);
+			foreach (ECampaignCompositionType type : types)
+			{
+				if (base.GetAssignedSlot(type) == slot)
+				{
+					foundBase = base;
+					break;
+				}
+			}
 			
 			if (foundBase)
-			{
-				SCR_CampaignFaction owner = foundBase.GetOwningFaction();
-				
-				if (owner && foundBase.IsBaseInFactionRadioSignal(owner))
-					switch (serviceType)
-					{
-						case ECampaignServicePointType.FUEL_DEPOT: {owner.SendHQMessage(SCR_ERadioMsg.BUILT_FUEL, param: foundBase.GetBaseID()); break;};
-						case ECampaignServicePointType.ARMORY: {owner.SendHQMessage(SCR_ERadioMsg.BUILT_ARMORY, param: foundBase.GetBaseID()); break;};
-						case ECampaignServicePointType.REPAIR_DEPOT: {owner.SendHQMessage(SCR_ERadioMsg.BUILT_REPAIR, param: foundBase.GetBaseID()); break;};
-					}
-			}
+				break;
 		}
 		
-		// Repir depot was built, handle periodic vehicle spawning
-		if (foundBase && service == foundBase.GetBaseService(ECampaignServicePointType.REPAIR_DEPOT))
-		{
-			GetGame().GetCallqueue().CallLater(service.HandleVehicleSpawn, 1000); // Spawn the first vehicle right away
-			GetGame().GetCallqueue().CallLater(service.HandleVehicleSpawn, GARAGE_VEHICLE_SPAWN_INTERVAL, true);
-		}
+		if (!foundBase)
+			return;
+		
+		IEntity structure = slot.GetOccupant();
+		
+		if (!structure)
+			return;
+		
+		SCR_CampaignServiceComponent comp = SCR_CampaignServiceComponent.Cast(structure.FindComponent(SCR_CampaignServiceComponent));
+		
+		foundBase.RegisterAsParentBase(comp);
+		s_OnServiceBuild.Invoke(foundBase, networkComponent);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	// Triggered each time when the strcture status (damaged / repaired) is changed. Base is the base to which the composition belongs to.
-	void OnStructureChanged(notnull SCR_CampaignBase base, SCR_SiteSlotEntity slot, SCR_CampaignDeliveryPoint deliveryPoint, bool add)
+	void OnStructureChanged(notnull SCR_CampaignBase base, SCR_SiteSlotEntity slot, SCR_CampaignServiceComponent service, bool add)
 	{
-		int ticketsBonus;
 		bool found;
 		SCR_BuildingDedicatedSlotData slotData;	
 		ECampaignServicePointType serviceType;	
@@ -1814,51 +1890,41 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			switch (slotData.GetCompositionType())
 	        {
-				case ECampaignCompositionType.FUEL: {serviceType = ECampaignServicePointType.FUEL_DEPOT; ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_FUEL; break;}
-				case ECampaignCompositionType.REPAIR: {serviceType = ECampaignServicePointType.REPAIR_DEPOT; ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_REPAIR; break;}
-				case ECampaignCompositionType.ARMORY: {serviceType = ECampaignServicePointType.ARMORY; ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_ARMORY; break;}
-				case ECampaignCompositionType.HOSPITAL: {serviceType = ECampaignServicePointType.FIELD_HOSPITAL; ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_HOSPITAL; break;}
-				case ECampaignCompositionType.BARRACKS: {serviceType = ECampaignServicePointType.BARRACKS; ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_BARRACKS; break;}
+				//case ECampaignCompositionType.FUEL: {serviceType = ECampaignServicePointType.FUEL_DEPOT; break;}
+				case ECampaignCompositionType.LIGHT_VEHICLE_DEPOT: {serviceType = ECampaignServicePointType.LIGHT_VEHICLE_DEPOT; break;}
+				case ECampaignCompositionType.HEAVY_VEHICLE_DEPOT: {serviceType = ECampaignServicePointType.HEAVY_VEHICLE_DEPOT; break;}
+				case ECampaignCompositionType.ARMORY: {serviceType = ECampaignServicePointType.ARMORY; break;}
+				case ECampaignCompositionType.HOSPITAL: {serviceType = ECampaignServicePointType.FIELD_HOSPITAL; break;}
+				case ECampaignCompositionType.BARRACKS: {serviceType = ECampaignServicePointType.BARRACKS; break;}
 			};
 		}
-		else if (deliveryPoint)
+		else if (service)
 		{
-			serviceType = deliveryPoint.GetServiceType();
-			
-			switch (serviceType)
-			{
-				case ECampaignServicePointType.FUEL_DEPOT: {ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_FUEL; break;}
-				case ECampaignServicePointType.REPAIR_DEPOT: {ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_REPAIR; break;}
-				case ECampaignServicePointType.ARMORY: {ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_ARMORY; break;}
-				case ECampaignServicePointType.FIELD_HOSPITAL: {ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_HOSPITAL; break;}
-				case ECampaignServicePointType.BARRACKS: {ticketsBonus = RESPAWN_TICKETS_MAX_BONUS_BARRACKS; break;}
-			}
+			serviceType = service.GetType();
 		}
 		
 		SCR_CampaignFaction owner = base.GetOwningFaction();
 				
 		if (add)
-		{
-			base.AddRespawnTicketsMax(ticketsBonus);
-			
+		{	
 			if (owner && base.IsBaseInFactionRadioSignal(owner))
 				switch (serviceType)
 				{
-					case ECampaignServicePointType.FUEL_DEPOT: {owner.SendHQMessage(SCR_ERadioMsg.REPAIRED_FUEL, param: base.GetBaseID()); break;};
+					//case ECampaignServicePointType.FUEL_DEPOT: {owner.SendHQMessage(SCR_ERadioMsg.REPAIRED_FUEL, param: base.GetBaseID()); break;};
 					case ECampaignServicePointType.ARMORY: {owner.SendHQMessage(SCR_ERadioMsg.REPAIRED_ARMORY, param: base.GetBaseID()); break;};
-					case ECampaignServicePointType.REPAIR_DEPOT: {owner.SendHQMessage(SCR_ERadioMsg.REPAIRED_REPAIR, param: base.GetBaseID()); break;};
+					case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT: {owner.SendHQMessage(SCR_ERadioMsg.REPAIRED_REPAIR, param: base.GetBaseID()); break;};
+					case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT: {owner.SendHQMessage(SCR_ERadioMsg.REPAIRED_REPAIR, param: base.GetBaseID()); break;};
 				}
 		}
 		else
-		{
-			base.AddRespawnTicketsMax(-ticketsBonus);	
-			
+		{	
 			if (owner && base.IsBaseInFactionRadioSignal(owner))
 				switch (serviceType)
 				{
-					case ECampaignServicePointType.FUEL_DEPOT: {owner.SendHQMessage(SCR_ERadioMsg.DESTROYED_FUEL, param: base.GetBaseID()); break;};
+					//case ECampaignServicePointType.FUEL_DEPOT: {owner.SendHQMessage(SCR_ERadioMsg.DESTROYED_FUEL, param: base.GetBaseID()); break;};
 					case ECampaignServicePointType.ARMORY: {owner.SendHQMessage(SCR_ERadioMsg.DESTROYED_ARMORY, param: base.GetBaseID()); break;};
-					case ECampaignServicePointType.REPAIR_DEPOT: {owner.SendHQMessage(SCR_ERadioMsg.DESTROYED_REPAIR, param: base.GetBaseID()); break;};
+					case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT: {owner.SendHQMessage(SCR_ERadioMsg.DESTROYED_REPAIR, param: base.GetBaseID()); break;};
+					case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT: {owner.SendHQMessage(SCR_ERadioMsg.DESTROYED_REPAIR, param: base.GetBaseID()); break;};
 				}
 		}		
 	}
@@ -1888,27 +1954,16 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_PlayerSpawnPoint GetPlayerSpawnpoint (int playerId)
+	void AddActiveRespawnRadio(FactionKey faction, SCR_PlayerRadioSpawnPointCampaign processedSpawnpoint = null)
 	{
-		array<SCR_SpawnPoint> allSpawnpoints = SCR_SpawnPoint.GetSpawnPoints();
-		
-		foreach (SCR_SpawnPoint sp: allSpawnpoints)
+		if (processedSpawnpoint)
 		{
-			SCR_PlayerSpawnPoint spCast = SCR_PlayerSpawnPoint.Cast(sp);
+			if (m_aRadioSpawnPoints.Contains(processedSpawnpoint))
+				return;
 			
-			if (!spCast)
-				continue;
-			
-			if (spCast.GetPlayerID() == playerId && !spCast.GetFactionKey().IsEmpty())
-				return spCast;
+			m_aRadioSpawnPoints.Insert(processedSpawnpoint);
 		}
 		
-		return null;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void AddActiveRespawnRadio(FactionKey faction)
-	{
 		switch (faction)
 		{
 			case FACTION_BLUFOR: {m_iActiveRespawnRadiosCntWest++; break;};
@@ -1921,10 +1976,17 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	//------------------------------------------------------------------------------------------------
 	void RemoveActiveRespawnRadio(FactionKey faction, SCR_PlayerRadioSpawnPointCampaign processedSpawnpoint = null)
 	{
-		bool reactivate = false;
-		
 		if (processedSpawnpoint)
-			processedSpawnpoint.DeactivateSpawnPointPublic();
+		{
+			int index = m_aRadioSpawnPoints.Find(processedSpawnpoint);
+			
+			if (index == -1)
+				return;
+		
+			m_aRadioSpawnPoints.Remove(index);
+		}
+		
+		bool reactivate = false;
 		
 		switch (faction)
 		{
@@ -1984,16 +2046,19 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				
 				IEntity backpack = loadoutManager.GetClothByArea(ELoadoutArea.ELA_Backpack);
 				
-				if (!backpack)
+				if (!backpack || !backpack.FindComponent(SCR_RadioComponent))
+					continue;
+				
+				SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
+				
+				if (!baseManager || !baseManager.IsEntityInFactionRadioSignal(player, playerFaction))
 					continue;
 				
 				BaseLoadoutClothComponent loadoutCloth = BaseLoadoutClothComponent.Cast(backpack.FindComponent(BaseLoadoutClothComponent));
 				
-				if (loadoutCloth && loadoutCloth.GetArea() == ELoadoutArea.ELA_Backpack && backpack.FindComponent(SCR_RadioComponent))
+				if (loadoutCloth && loadoutCloth.GetArea() == ELoadoutArea.ELA_Backpack)
 				{
-					campaignSpawnpoint.DeactivateSpawnPointPublic();
 					campaignSpawnpoint.ActivateSpawnPointPublic();
-					CheckRadioSpawnpointsSignalCoverage();
 					
 					if (GetActiveRespawnRadiosCount(faction) == GetMaxRespawnRadios())
 						return;
@@ -2054,121 +2119,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnItemAdded(IEntity item, BaseInventoryStorageComponent storageOwner)
-	{
-		BaseLoadoutClothComponent loadoutCloth = BaseLoadoutClothComponent.Cast(item.FindComponent(BaseLoadoutClothComponent));
-		
-		if (loadoutCloth && loadoutCloth.GetArea() == ELoadoutArea.ELA_Backpack && item.FindComponent(SCR_RadioComponent))
-		{
-			SCR_ChimeraCharacter player = SCR_ChimeraCharacter.Cast(item.GetParent());
-			
-			if (!player)
-				return;
-			
-			SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(player.GetFaction());
-		
-			if (!faction)
-				return;
-			
-			// Radio was picked up when the spawnpoint limit has been reached, disable its spawnpoit
-			if (GetActiveRespawnRadiosCount(faction.GetFactionKey()) >= GetMaxRespawnRadios())
-			{
-				PlayerManager pMan = GetGame().GetPlayerManager();
-			
-				if (!pMan)
-					return;
-				
-				if (!storageOwner)
-					return;
-				
-				int playerId = pMan.GetPlayerIdFromControlledEntity(storageOwner.GetOwner());
-				array<SCR_SpawnPoint> allSpawnpoints = SCR_SpawnPoint.GetSpawnPoints();
-				SCR_PlayerRadioSpawnPointCampaign campaignSpawnpoint;
-				
-				foreach (SCR_SpawnPoint spawnpoint: allSpawnpoints)
-				{
-					campaignSpawnpoint = SCR_PlayerRadioSpawnPointCampaign.Cast(spawnpoint);
-					
-					if (!campaignSpawnpoint)
-						continue;
-					
-					if (campaignSpawnpoint.GetPlayerID() != playerId)
-						continue;
-					
-					campaignSpawnpoint.DeactivateSpawnPointPublic();
-					return;
-				}
-			}
-			
-			AddActiveRespawnRadio(faction.GetFactionKey());
-			CheckRadioSpawnpointsSignalCoverage();
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void OnItemRemoved(IEntity item, BaseInventoryStorageComponent storageOwner)
-	{
-		SCR_ChimeraCharacter player = SCR_ChimeraCharacter.Cast(storageOwner.GetOwner());
-		
-		if (!player)
-			return;
-		
-		SCR_PlayerRadioSpawnPointCampaign sp = SCR_PlayerRadioSpawnPointCampaign.Cast(GetPlayerSpawnpoint(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(player)));
-		
-		if (sp)
-			RemoveActiveRespawnRadio(sp.GetFactionKey(), sp);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//Outputs count of owned bases for each faction into the factionsOwnedBasesCount array
-	protected void CountFactionsOwnedBases(array<Faction> factions, out array<int> factionsOwnedBasesCount)
-	{
-		// The array doesn't exist, do nothing
-		if (!factionsOwnedBasesCount)
-			return;
-		
-		// Make sure the array is cleared
-		factionsOwnedBasesCount.Clear();
-		
-		// For each faction
-		for (int i = 0, count = factions.Count(); i < count; i++)
-		{
-			// Add new entry into the factionsOwnedBasesCount array
-			Faction faction = factions[i];
-			factionsOwnedBasesCount.Insert(0);
-			
-			// Check each registered base and increment entry for the current faction in factionsOwnedBasesCount...
-			// ...If the base is owned by this faction
-			foreach (SCR_CampaignBase base : SCR_CampaignBaseManager.GetBases())
-			{
-				switch (base.GetType())
-				{
-					case CampaignBaseType.RELAY:
-					{
-						break;
-					}
-					case CampaignBaseType.SMALL:
-					{
-						break;
-					}
-					case CampaignBaseType.MAJOR:
-					{
-						/*if (faction == base.GetOwningFaction())
-							factionsOwnedBasesCount[i] = factionsOwnedBasesCount[i] + 1;*/
-						break;
-					}
-					case CampaignBaseType.MAIN:
-					{
-						if (faction == base.GetOwningFaction())
-							factionsOwnedBasesCount[i] = factionsOwnedBasesCount[i] + 1;
-						break;
-					}
-				}
-			}
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected void CheckPlayerInsideRadioRange()
 	{
 		SCR_CampaignFactionManager fManager = SCR_CampaignFactionManager.GetInstance();
@@ -2194,7 +2144,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			else
 				SCR_PopUpNotification.GetInstance().PopupMsg("#AR-Campaign_RadioRangeLeft-UC", duration: 3);
 			
-			SCR_UISoundEntity.SoundEvent("SOUND_RADIO_ROGERBEEP");
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RADIO_ROGERBEEP);
 		}
 	}
 	
@@ -2216,6 +2166,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				continue;
 			
 			if (spawnpointC.GetFlags() & EntityFlags.STATIC)
+				continue;
+			
+			if (spawnpointC.GetOrigin() == vector.Zero)
 				continue;
 			
 			Faction faction = spawnpointC.GetCachedFaction();
@@ -2262,7 +2215,8 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			case SCR_ECampaignHints.SERVICES:
 			{
-				SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_ServicesText", "#AR-Campaign_Hint_Services_Title", 30, fieldManualEntry: EFieldManualEntryId.CONFLICT_SERVICES);
+				string hintString = "#AR-Campaign_Hint_ServicesText <h1 align='center' scale='4'><color rgba='0,112,20,255'><image set='{F7E8D4834A3AFF2F}UI/Imagesets/Conflict/conflict-icons-bw.imageset' name='Slot_Supplies'/></color></h1>";
+				SCR_HintManagerComponent.ShowCustomHint(hintString, "#AR-Campaign_Hint_Services_Title", 30, fieldManualEntry: EFieldManualEntryId.CONFLICT_SERVICES);
 				return;
 			}
 			
@@ -2274,8 +2228,14 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			case SCR_ECampaignHints.SEIZING:
 			{
-				SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_EnteringEnemyBase_Text", "#AR-Campaign_EnteringEnemyBase", 15, fieldManualEntry: EFieldManualEntryId.CONFLICT_SEIZING_BASES);
+				SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_EnteringEnemyBase_Presence_Text", "#AR-Campaign_EnteringEnemyBase", 15, fieldManualEntry: EFieldManualEntryId.CONFLICT_SEIZING_BASES);
 				m_iBaseSeizingHintsShown++;
+				return;
+			}
+			
+			case SCR_ECampaignHints.RECONFIGURING:
+			{
+				SCR_HintManagerComponent.ShowCustomHint("#AR-Campaign_Hint_EnteringEnemyRelay_Text", "#AR-EditableEntity_TransmitterTower_01_Name", 15);
 				return;
 			}
 			
@@ -2343,22 +2303,25 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	protected void EnteringNewBase()
 	{
 		SCR_CampaignFaction f = SCR_CampaignFaction.Cast(SCR_RespawnSystemComponent.GetLocalPlayerFaction());
-		if (!f) return;
+		
+		if (!f)
+			return;
 		
 		if (m_FirstBaseWithPlayer && m_FirstBaseWithPlayer != m_LastVisitedBase)
 		{
 			m_LastVisitedBase = m_FirstBaseWithPlayer;
 			
 			// Entering enemy base
-			if (m_iBaseSeizingHintsShown < 5 && m_FirstBaseWithPlayer.GetOwningFaction() != f && m_FirstBaseWithPlayer.IsBaseInFactionRadioSignal(f))
+			if (m_FirstBaseWithPlayer.GetOwningFaction() != f)
 			{
-				ShowHint(SCR_ECampaignHints.SEIZING);
+				s_OnEnterEnemyBase.Invoke();
 				
-				//Play music theme
-				SCR_MusicManager musicManager = SCR_MusicManager.GetInstance();				
-				if (musicManager)
+				if ((m_iBaseSeizingHintsShown < 5 || m_FirstBaseWithPlayer.GetType() == CampaignBaseType.RELAY) && m_FirstBaseWithPlayer.IsBaseInFactionRadioSignal(f))
 				{
-					musicManager.PlayPriorityAmbientOneShot("SOUND_ONENTERINGENEMYBASE", true, false);
+					if (m_FirstBaseWithPlayer.GetType() == CampaignBaseType.RELAY)
+						ShowHint(SCR_ECampaignHints.RECONFIGURING);
+					else
+						ShowHint(SCR_ECampaignHints.SEIZING);
 				}
 			}
 			
@@ -2403,57 +2366,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//Evaluates every factions owned bases count and decides whether there is any winning faction
-	protected Faction GetWinner(array<Faction> factions, array<int> factionsOwnedBasesCount)
-	{
-		// Assume anyone is a winner
-		array<Faction> winners = new array<Faction>();
-		winners.Copy(factions);
-		
-		int losersCount = 0;
-		
-		// Check for loosers
-		for (int i = factions.Count() - 1; i >= 0; i--)
-		{
-			SCR_CampaignFaction fCast = SCR_CampaignFaction.Cast(factions[i]);
-			
-			if (!fCast)
-				continue;
-			
-			if (!fCast.IsPlayable())
-				continue;
-			
-			// Any faction with 0 bases is considered a looser
-			if (factionsOwnedBasesCount[i] <= 0)
-			{
-				losersCount++;
-				
-				// Therefore remove it from the possible winners array
-				winners.Remove(i)
-			}
-		}
-		
-		// Nobody lost, therefore none is winner
-		if (losersCount == 0)
-			return null;
-		else
-		{
-			// There have been some loosers, everyone else is a winner, random pick one
-			// This will most likely never be used, since we assume only 2 factions fighting.
-			int winnersCount = winners.Count();
-			
-			// At least one faction can win
-			if (winnersCount > 0)
-			{
-				int index = Math.RandomInt(0, winnersCount);
-				return winners[index];
-			}
-		}
-		
-		return null;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected void ProcessFactionAssignment(Faction assignedFaction)
 	{
 		m_LastPlayerFaction = assignedFaction;
@@ -2475,74 +2387,416 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//Checks whether some faction won the game
-	protected void EvaluateGame()
+	//Checks whether some faction is winning the game
+	void EvaluateGame()
 	{
-		array<Faction> factions = new array<Faction>();
-		array<int> factionsOwnedBasesCount = new array<int>();
+		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
 		
-		// Get all factions
-		SCR_CampaignFactionManager fManager = SCR_CampaignFactionManager.GetInstance();
-		
-		if (!fManager)
+		if (!baseManager)
 			return;
 		
-		fManager.GetFactionsList(factions);
+		array<SCR_CampaignBase> controlPoints = {};
+		baseManager.GetControlPoints(controlPoints);
+		FactionManager factionManager = GetGame().GetFactionManager();
+		array<Faction> factions = {};
+		factionManager.GetFactionsList(factions);
+		int controlPointsHeld;
+		int controlPointsContested;
+		float currentTime = Replication.Time();
+		float victoryTimestamp;
+		float blockPauseTimestamp;
 		
-		for (int i = 0, cnt = factions.Count(); i < cnt; i++)
+		foreach (Faction faction: factions)
 		{
-			SCR_Faction playable = SCR_Faction.Cast(factions[i]);
+			SCR_CampaignFaction fCast = SCR_CampaignFaction.Cast(faction);
 			
-			if(playable && !playable.IsPlayable())
+			if (!fCast)
+				continue;
+			
+			if (!fCast.IsPlayable())
+				continue;
+			
+			controlPointsHeld = 0;
+			controlPointsContested = 0;
+			
+			foreach (SCR_CampaignBase controlPoint: controlPoints)
 			{
-				factions.Remove(i);
-				cnt--;
-				i--;
+				if (controlPoint.GetOwningFaction() == fCast && controlPoint.IsBaseInFactionRadioSignal(fCast))
+				{
+					controlPointsHeld++;
+					
+					if (controlPoint.GetCapturingFaction() && controlPoint.GetCapturingFaction() != fCast)
+						controlPointsContested++
+				}
+			}
+			
+			if (fCast.GetFactionKey() == FACTION_BLUFOR && controlPointsHeld != m_iControlPointsHeldWest)
+			{
+				m_iControlPointsHeldWest = controlPointsHeld;
+				Replication.BumpMe();
+			}
+			
+			if (fCast.GetFactionKey() == FACTION_OPFOR && controlPointsHeld != m_iControlPointsHeldEast)
+			{
+				m_iControlPointsHeldEast = controlPointsHeld;
+				Replication.BumpMe();
+			}
+			
+			victoryTimestamp = fCast.GetVictoryTimestamp();
+			blockPauseTimestamp = fCast.GetPauseByBlockTimestamp();
+			
+			if (controlPointsHeld >= m_iControlPointsThreshold)
+			{
+				if ((controlPointsHeld - controlPointsContested) < m_iControlPointsThreshold)
+				{
+					if (blockPauseTimestamp == 0)
+						fCast.SetPauseByBlockTimestamp(currentTime);
+				}
+				else if (blockPauseTimestamp != 0)
+				{
+					fCast.SetVictoryTimestamp(currentTime + victoryTimestamp - blockPauseTimestamp);
+					fCast.SetPauseByBlockTimestamp(0);
+				}
+				
+				if (victoryTimestamp == 0)
+					fCast.SetVictoryTimestamp(currentTime + (m_fVictoryTimer * 1000));
+			}
+			else
+			{
+				fCast.SetVictoryTimestamp(0);
+				fCast.SetPauseByBlockTimestamp(0);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void CheckForWinner()
+	{
+		FactionManager factionManager = GetGame().GetFactionManager();
+		array<Faction> factions = {};
+		factionManager.GetFactionsList(factions);
+		float lowestVictoryTimestamp = float.MAX;
+		float blockPauseTimestamp;
+		float actualVictoryTimestamp;
+		SCR_CampaignFaction winner;
+		
+		foreach (Faction faction: factions)
+		{
+			SCR_CampaignFaction fCast = SCR_CampaignFaction.Cast(faction);
+			
+			if (!fCast || !fCast.IsPlayable())
+				continue;
+			
+			blockPauseTimestamp = fCast.GetPauseByBlockTimestamp();
+			
+			if (blockPauseTimestamp == 0)
+				actualVictoryTimestamp = fCast.GetVictoryTimestamp();
+			else
+				actualVictoryTimestamp = Replication.Time() + fCast.GetVictoryTimestamp() - fCast.GetPauseByBlockTimestamp();
+			
+			if (actualVictoryTimestamp != 0 && actualVictoryTimestamp < lowestVictoryTimestamp)
+			{
+				lowestVictoryTimestamp = actualVictoryTimestamp;
+				winner = fCast;
 			}
 		}
 		
-		// Count their bases
-		CountFactionsOwnedBases(factions, factionsOwnedBasesCount);
-		
-		// Check if any faction won based on their owned bases
-		Faction winner = GetWinner(factions, factionsOwnedBasesCount);
-		
-		// Some faction won, show it to everyone
 		if (winner)
 		{
-			m_bMatchOver = true;
-			
-			// Match is over, save it so if "Continue" is selected following this the game is not loaded at an end screen
-			if (!IsProxy())
+			if (lowestVictoryTimestamp <= Replication.Time())
 			{
-				SCR_SaveLoadComponent saveLoadComponent = SCR_SaveLoadComponent.GetInstance();
-				saveLoadComponent.Save();
+				GetGame().GetCallqueue().Remove(CheckForWinner);
+				int winnerId = factionManager.GetFactionIndex(winner);
+				RpcDo_EndMatch(winnerId);
+				Rpc(RpcDo_EndMatch, winnerId);
 			}
-			
-			m_fGameEnd = Replication.Time() + ENDING_TIMEOUT;
-			int factionID = fManager.GetFactionIndex(winner);
-			
+			else if (factionManager.GetFactionIndex(winner) != m_iWinningFactionId || winner.GetVictoryTimestamp() != m_fVictoryTimestamp || winner.GetPauseByBlockTimestamp() != m_fVictoryPauseTimestamp)
+			{
+				m_iWinningFactionId = factionManager.GetFactionIndex(winner);
+				m_fVictoryTimestamp = winner.GetVictoryTimestamp();
+				m_fVictoryPauseTimestamp = winner.GetPauseByBlockTimestamp();
+				Replication.BumpMe();
+			}
+		}
+		else if (m_iWinningFactionId != -1 || m_fVictoryTimestamp != 0)
+		{
+			m_iWinningFactionId = -1;
+			m_fVictoryTimestamp = 0;
+			m_fVictoryPauseTimestamp = 0;
+			Replication.BumpMe();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RpcDo_EndMatch(int winningFactionId)
+	{
+		m_bMatchOver = true;
+		m_fGameEnd = Replication.Time() + ENDING_TIMEOUT;
+		
+		// Match is over, save it so if "Continue" is selected following this the game is not loaded at an end screen
+		if (!IsProxy())
+		{
+			SCR_SaveLoadComponent saveLoadComponent = SCR_SaveLoadComponent.GetInstance();
+			saveLoadComponent.Save();
+		}
+		
+		FactionManager fManager = GetGame().GetFactionManager();
+		array<Faction> factions = {};
+		fManager.GetFactionsList(factions);
+		Faction winningFaction = fManager.GetFactionByIndex(winningFactionId);
+		
+		if (winningFaction)
+		{
 			foreach (Faction faction: factions)
 			{
 				SCR_CampaignFaction f = SCR_CampaignFaction.Cast(faction);
 			
 				if (f)
 				{
-					if (winner == f)
-						f.SendHQMessage(SCR_ERadioMsg.VICTORY, param: factionID);
+					if (winningFaction == f)
+						f.SendHQMessage(SCR_ERadioMsg.VICTORY, param: winningFactionId);
 					else
-						f.SendHQMessage(SCR_ERadioMsg.DEFEAT, param: factionID);
+						f.SendHQMessage(SCR_ERadioMsg.DEFEAT, param: winningFactionId);
 				}
 			}
+		}
+		
+		// For the server end the game, replicate to all clients.
+		// listening components can react to this by e.g. showing end screen
+		if (IsMaster())
+		{
+			SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(SCR_GameModeEndData.ENDREASON_SCORELIMIT, winnerFactionId: winningFactionId);
+			super.EndGameMode(endData);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UpdateHUD()
+	{
+		Faction left;
+		Faction right;
+		Color yellow = Color.FromRGBA(194,100,20,210);
+		Color white = Color.White;
+		
+		if (!m_wRoot || !m_wMapRoot)
+		{
+			HUDManagerComponent hManager = GetGame().GetHUDManager();
+			FactionManager fManager = GetGame().GetFactionManager();
 			
-			// For the server end the game, replicate to all clients.
-			// listening components can react to this by e.g. showing end screen
-			if (IsMaster())
+			if (!hManager)
+				return;
+			
+			if (!fManager)
+				return;
+			
+			m_wRoot = GetGame().GetHUDManager().CreateLayout(m_sCampaignHud, EHudLayers.MEDIUM, 0);
+			m_wMapRoot = GetGame().GetHUDManager().CreateLayout(m_sCampaignMapHud, EHudLayers.ALWAYS_TOP, 0);
+			m_wMapRoot.SetVisible(false);
+			GetGame().GetHUDManager().GetSceneBrightnessChangedInvoker().Insert(UpdateOpacity);
+			
+			m_wInfoOverlay = m_wRoot.FindAnyWidget("Info");
+			m_wCountdownOverlay = m_wRoot.FindAnyWidget("Countdown");
+			m_wLeftFlag = ImageWidget.Cast(m_wRoot.FindAnyWidget("FlagSideBlue"));
+			m_wRightFlag = ImageWidget.Cast(m_wRoot.FindAnyWidget("FlagSideRed"));
+			m_wLeftScore = RichTextWidget.Cast(m_wRoot.FindAnyWidget("ScoreBlue"));
+			m_wRightScore = RichTextWidget.Cast(m_wRoot.FindAnyWidget("ScoreRed"));
+			m_wWinScore = RichTextWidget.Cast(m_wRoot.FindAnyWidget("TargetScore"));
+			m_wCountdown = RichTextWidget.Cast(m_wRoot.FindAnyWidget("CountdownWin"));
+			m_wFlavour = RichTextWidget.Cast(m_wRoot.FindAnyWidget("FlavourText"));
+			m_wWinScoreSideLeft = ImageWidget.Cast(m_wRoot.FindAnyWidget("ObjectiveLeft"));
+			m_wWinScoreSideRight = ImageWidget.Cast(m_wRoot.FindAnyWidget("ObjectiveRight"));
+			
+			m_wCountdownOverlayMap = m_wMapRoot.FindAnyWidget("Countdown");
+			m_wLeftFlagMap = ImageWidget.Cast(m_wMapRoot.FindAnyWidget("FlagSideBlue"));
+			m_wRightFlagMap = ImageWidget.Cast(m_wMapRoot.FindAnyWidget("FlagSideRed"));
+			m_wLeftScoreMap = RichTextWidget.Cast(m_wMapRoot.FindAnyWidget("ScoreBlue"));
+			m_wRightScoreMap = RichTextWidget.Cast(m_wMapRoot.FindAnyWidget("ScoreRed"));
+			m_wWinScoreMap = RichTextWidget.Cast(m_wMapRoot.FindAnyWidget("TargetScore"));
+			m_wCountdownMap = RichTextWidget.Cast(m_wMapRoot.FindAnyWidget("CountdownWin"));
+			m_wFlavourMap = RichTextWidget.Cast(m_wMapRoot.FindAnyWidget("FlavourText"));
+			m_wWinScoreSideLeftMap = ImageWidget.Cast(m_wMapRoot.FindAnyWidget("ObjectiveLeft"));
+			m_wWinScoreSideRightMap = ImageWidget.Cast(m_wMapRoot.FindAnyWidget("ObjectiveRight"));
+			
+			yellow = Color.FromRGBA(194,100,20,210);
+			white = Color.White;
+			
+			if (!m_wInfoOverlay || !m_wCountdownOverlay)
+				return;
+			
+			array<Faction> outFactions = {};
+			fManager.GetFactionsList(outFactions);
+			
+			foreach (Faction faction : outFactions)
 			{
-				SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(SCR_GameModeEndData.ENDREASON_SCORELIMIT, winnerFactionId: factionID);
-				super.EndGameMode(endData);
+				SCR_CampaignFaction f = SCR_CampaignFaction.Cast(faction);
+				if (f.IsPlayable())
+					if (left == null)
+					{
+						left = faction;
+						m_wLeftFlag.LoadImageTexture(0,f.GetFactionFlag());
+						m_wLeftFlagMap.LoadImageTexture(0,f.GetFactionFlag());
+						continue;
+					}
+					else
+						if (right == null)
+						{
+							right = faction;
+							m_wRightFlag.LoadImageTexture(0,f.GetFactionFlag());
+							m_wRightFlagMap.LoadImageTexture(0,f.GetFactionFlag());
+							continue;
+						}
+						else
+							break;
+			}
+			m_iHideHud = Replication.Time();
+		}
+		
+		if (IsTutorial())
+		{
+			m_wInfoOverlay.SetVisible(false);
+			m_wCountdownOverlay.SetVisible(false);
+			m_wFlavour.SetVisible(false);
+		}
+		else
+		{
+			m_wInfoOverlay.SetVisible(true);
+			m_wCountdownOverlay.SetVisible(true);
+		}
+		
+		if (m_bMatchOver)
+		{
+			AnimateWidget.Opacity(m_wInfoOverlay, 0, 1, true);
+			m_wCountdownOverlay.SetVisible(false);
+			m_wFlavour.SetVisible(false);
+		}
+		else
+		{	
+			if (m_iShowEast != m_iControlPointsHeldEast || m_iShowWest != m_iControlPointsHeldWest)
+				m_iHideHud = Replication.Time();
+			m_wLeftScore.SetText(m_iControlPointsHeldWest.ToString());
+			m_wRightScore.SetText(m_iControlPointsHeldEast.ToString());
+			m_wWinScore.SetText(m_iControlPointsThreshold.ToString());
+			m_wLeftScoreMap.SetText(m_iControlPointsHeldWest.ToString());
+			m_wRightScoreMap.SetText(m_iControlPointsHeldEast.ToString());
+			m_wWinScoreMap.SetText(m_iControlPointsThreshold.ToString());
+			m_iShowEast = m_iControlPointsHeldEast;
+			m_iShowWest = m_iControlPointsHeldWest;
+			
+			if (m_iWinningFactionId == -1)
+			{
+				m_wFlavour.SetVisible(false);
+				m_wCountdownOverlay.SetVisible(false);
+				m_wFlavourMap.SetVisible(false);
+				m_wCountdownOverlayMap.SetVisible(false);
+				m_wLeftScore.SetDesiredFontSize(20);
+				m_wLeftScoreMap.SetDesiredFontSize(20);
+				m_wRightScoreMap.SetDesiredFontSize(20);
+				m_wRightScore.SetDesiredFontSize(20);
+			}
+			else
+			{
+				bool isPaused = (m_fVictoryPauseTimestamp != 0);
+				float winCountdown;
+				
+				if (isPaused)
+					winCountdown = m_fVictoryTimestamp - m_fVictoryPauseTimestamp;
+				else
+					winCountdown = m_fVictoryTimestamp - Replication.Time();
+				
+				winCountdown = Math.Max(0, Math.Ceil(winCountdown / 1000));
+				string winner = GetGame().GetFactionManager().GetFactionByIndex(m_iWinningFactionId).GetFactionKey();
+				string shownTime = SCR_Global.GetTimeFormatting(winCountdown, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);
+				
+				if (isPaused)
+				{
+					m_wCountdown.SetTextFormat("<color rgba='170,170,170,175'>%1</color>", shownTime);
+					m_wCountdownMap.SetTextFormat("<color rgba='170,170,170,175'>%1</color>", shownTime);
+				}
+				else
+				{
+					m_wCountdown.SetTextFormat("%1", shownTime);
+					m_wCountdownMap.SetTextFormat("%1", shownTime);
+				}
+				m_wFlavour.SetTextFormat("#AR-ConflictHUD_FlavourText_IsWinning", GetGame().GetFactionManager().GetFactionByIndex(m_iWinningFactionId).GetFactionName());
+				m_wFlavourMap.SetTextFormat("#AR-ConflictHUD_FlavourText_IsWinning", GetGame().GetFactionManager().GetFactionByIndex(m_iWinningFactionId).GetFactionName());
+				
+				m_wWinScore.SetColor(yellow);
+				m_wWinScoreSideRight.SetColor(yellow);
+				m_wWinScoreSideLeft.SetColor(yellow);
+				
+				m_wWinScoreMap.SetColor(yellow);
+				m_wWinScoreSideRightMap.SetColor(yellow);
+				m_wWinScoreSideLeftMap.SetColor(yellow);
+				
+				if (winner.Contains(FACTION_OPFOR))
+				{
+					m_wRightScoreMap.SetColor(yellow);
+					m_wRightScore.SetColor(yellow);
+					m_wLeftScoreMap.SetColor(white);
+					m_wLeftScore.SetColor(white);
+					m_wRightScoreMap.SetDesiredFontSize(24);
+					m_wRightScore.SetDesiredFontSize(24);
+					m_wLeftScore.SetDesiredFontSize(20);
+					m_wLeftScoreMap.SetDesiredFontSize(20);
+				}
+				else
+				{
+					m_wLeftScoreMap.SetColor(yellow);
+					m_wLeftScore.SetColor(yellow);
+					m_wRightScoreMap.SetColor(white);
+					m_wRightScore.SetColor(white);
+					m_wLeftScore.SetDesiredFontSize(24);
+					m_wLeftScoreMap.SetDesiredFontSize(24);
+					m_wRightScoreMap.SetDesiredFontSize(20);
+					m_wRightScore.SetDesiredFontSize(20);
+				}
+				m_wCountdownOverlay.SetVisible(true);
+				m_wFlavour.SetVisible(true);
+				m_wFlavourMap.SetVisible(true);
+				m_wCountdownOverlayMap.SetVisible(true);
+				AnimateWidget.Opacity(m_wInfoOverlay, 1, 1, true);
 			}
 		}
+		
+		if (Replication.Time() <= m_iHideHud + TIME_TO_HIDE_HUD)
+		{
+			if(GetGame().GetInputManager().IsContextActive("MenuContext"))
+				m_iHideHud = Replication.Time();
+		}
+		else
+		{
+			if(m_iWinningFactionId == -1)
+				AnimateWidget.Opacity(m_wInfoOverlay, 0, 1, true);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	Widget GetOverlayWidget()
+	{
+		return m_wRoot;
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	protected void UpdateOpacity(float opacity, float sceneBrightness, float sceneBrightnessRaw)
+    {
+        m_wRoot.SetOpacity(opacity);
+    }
+
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMapOpen()
+	{
+		if (SCR_SelectSpawnPointSubMenu.GetInstance() == null && !IsTutorial())
+			m_wMapRoot.SetVisible(true);
+		else
+			m_wMapRoot.SetVisible(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMapClose()
+	{
+		m_wMapRoot.SetVisible(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2553,10 +2807,10 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (!m_FirstBaseWithPlayer)
 		{
 			if (m_iLastStatusMsgShown == eCampaignStatusMessage.SEIZING_YOU)
-				SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_YOU, false);
+				SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_YOU, false, category: SCR_EPopupMsgFilter.TUTORIAL);
 			
 			if (m_iLastStatusMsgShown == eCampaignStatusMessage.SEIZING_ENEMY)
-				SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_ENEMY, false);
+				SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_ENEMY, false, category: SCR_EPopupMsgFilter.TUTORIAL);
 			
 			m_iLastStatusMsgShown = -1;
 		}
@@ -2567,10 +2821,10 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			if (!baseWithPlayerCapturingFaction)
 			{
 				if (m_iLastStatusMsgShown == eCampaignStatusMessage.SEIZING_YOU)
-					SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_YOU, false);
+					SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_YOU, false, category: SCR_EPopupMsgFilter.TUTORIAL);
 			
 				if (m_iLastStatusMsgShown == eCampaignStatusMessage.SEIZING_ENEMY)
-					SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_ENEMY, false);
+					SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_ENEMY, false, category: SCR_EPopupMsgFilter.TUTORIAL);
 				
 				m_iLastStatusMsgShown = -1;
 			}
@@ -2583,24 +2837,49 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				
 				FactionAffiliationComponent comp = FactionAffiliationComponent.Cast(player.FindComponent(FactionAffiliationComponent));
 				float captureStart = m_FirstBaseWithPlayer.GetCaptureStartTimestamp();
+				float captureEnd = captureStart + SCR_CampaignBase.RADIO_RECONFIGURATION_DURATION * 1000;
+				SCR_CampaignSeizingComponent baseSeizingComp;
+				
+				if (m_FirstBaseWithPlayer.GetType() != CampaignBaseType.RELAY)
+				{
+					baseSeizingComp = SCR_CampaignSeizingComponent.Cast(m_FirstBaseWithPlayer.FindComponent(SCR_CampaignSeizingComponent));
+					
+					if (baseSeizingComp)
+						captureEnd = baseSeizingComp.GetSeizingEndTimestamp();
+				}
 				
 				if (baseWithPlayerCapturingFaction == comp.GetAffiliatedFaction())
 				{
-					if (m_iLastStatusMsgShown != eCampaignStatusMessage.SEIZING_YOU && m_FirstBaseWithPlayer.GetReconfiguredByID() != SCR_PlayerController.GetLocalPlayerId())
-						SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_YOU, true, captureStart, captureStart + (SCR_CampaignBase.RADIO_RECONFIGURATION_DURATION * 1000));
+					if (m_FirstBaseWithPlayer.GetReconfiguredByID() != SCR_PlayerController.GetLocalPlayerId())
+					{
+						if (m_iLastStatusMsgShown != eCampaignStatusMessage.SEIZING_YOU)
+							SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_YOU, true, captureStart, captureEnd, category: SCR_EPopupMsgFilter.TUTORIAL);
+						else if (baseSeizingComp && baseSeizingComp.GetRefreshUI())
+						{
+							baseSeizingComp.SetRefreshUI(false);
+							SCR_PopUpNotification.GetInstance().ChangeProgressBarFinish(captureEnd);
+						}
+					}
 					
 					if (m_iLastStatusMsgShown == eCampaignStatusMessage.SEIZING_ENEMY)
-						SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_ENEMY, false);
+						SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_ENEMY, false, category: SCR_EPopupMsgFilter.TUTORIAL);
 					
 					m_iLastStatusMsgShown = eCampaignStatusMessage.SEIZING_YOU;
 				}
 				else
 				{
 					if (m_iLastStatusMsgShown != eCampaignStatusMessage.SEIZING_ENEMY)
-						SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_ENEMY, true, captureStart, captureStart + (SCR_CampaignBase.RADIO_RECONFIGURATION_DURATION * 1000));
+					{
+						SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_ENEMY, true, captureStart, captureEnd, category: SCR_EPopupMsgFilter.TUTORIAL);
+					}
+					else if (baseSeizingComp && baseSeizingComp.GetRefreshUI())
+					{
+						baseSeizingComp.SetRefreshUI(false);
+						SCR_PopUpNotification.GetInstance().ChangeProgressBarFinish(captureEnd);
+					}
 					
 					if (m_iLastStatusMsgShown == eCampaignStatusMessage.SEIZING_YOU)
-						SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_YOU, false);
+						SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_YOU, false, category: SCR_EPopupMsgFilter.TUTORIAL);
 					
 					m_iLastStatusMsgShown = eCampaignStatusMessage.SEIZING_ENEMY;
 				}
@@ -2637,171 +2916,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 					progressDiff.SetColor(color1);
 				}	
 			}	
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Spawn new group for given faction 
-	//! \param factionKey Valid faction key
-	protected SCR_AIGroup SpawnNewGroup(string factionKey, SCR_AIGroup oldGrp = null)
-	{
-		return null; // disabed for now
-		
-		SCR_CampaignFaction f = SCR_CampaignFaction.Cast(SCR_CampaignFactionManager.GetInstance().GetFactionByKey(factionKey));
-		
-		if (!f)
-			return null;
-		
-		SCR_CampaignBase HQ = f.GetMainBase();
-		
-		if (!HQ)
-			return null;
-		
-		SCR_SpawnPoint baseSpawnPoint = HQ.GetBaseSpawnPoint();
-		
-		if (!baseSpawnPoint)
-			return null;
-		
-		EntitySpawnParams params = EntitySpawnParams();
-		params.TransformMode = ETransformMode.WORLD;
-
-		vector position = baseSpawnPoint.GetOrigin();
-		params.Transform[3] = position;
-		Resource res = Resource.Load(f.GetAIGroupPrefab());
-		
-		if (!res)
-			return null;
-		
-		SCR_AIGroup newGrp = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(res, null, params));
-		
-		if (!newGrp)
-			return null;
-
-		if (factionKey == FACTION_OPFOR)
-			newGrp.SetMaxUnitsToSpawn(m_iAIGroupSizeEast);
-		else
-			newGrp.SetMaxUnitsToSpawn(m_iAIGroupSizeWest);
-
-		newGrp.SpawnUnits();
-		m_aAIGroups.Insert(newGrp);
-		
-		if (GetGame().AreGameFlagsSet( EGameFlags.SpawnVehicles ))
-			SpawnAIGroupVehicle(newGrp, baseSpawnPoint, oldGrp);
-	
-		return newGrp;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Spawn new vehicle for given AI group
-	//! \param group AI group to occupy the vehicle
-	//! \param spawnPoint Spawn point used to spawn the group
-	protected void SpawnAIGroupVehicle(SCR_AIGroup group, IEntity spawnPoint, SCR_AIGroup oldGrp = null)
-	{
-		// Get the base the AI group spawned at
-		IEntity base = spawnPoint;
-		
-		while (base && base.Type() != SCR_CampaignBase)
-		{
-			base = base.GetParent();
-		}
-		
-		if (!base || SCR_CampaignBase.Cast(base).GetType() != CampaignBaseType.MAIN)
-			return;
-
-		// Check if the base has got any AI vehicle spawnpoints
-		SCR_CampaignDeliveryPoint depot = SCR_CampaignBase.Cast(base).GetBaseService(ECampaignServicePointType.VEHICLE_DEPOT);
-		
-		if (!depot)
-			return;
-		
-		IEntity child = depot.GetChildren();
-		BaseGameTriggerEntity trg;
-		SCR_TimedWaypoint wp;
-		
-		while (child)
-		{
-			// If a loiter waypoint is present, save it for later
-			if (child.Type() == SCR_TimedWaypoint)
-				wp = SCR_TimedWaypoint.Cast(child);
-			
-			BaseGameTriggerEntity thisTrg = BaseGameTriggerEntity.Cast(child);
-			
-			if (thisTrg)
-			{
-				auto identifier = thisTrg.FindComponent(SCR_CampaignAIVehicleSpawnComponent);
-				
-				if (identifier)
-				{
-					thisTrg.QueryEntitiesInside();
-					array<IEntity> inside = new array<IEntity>();
-					thisTrg.GetEntitiesInside(inside);
-					
-					if (inside.Count() == 0)
-						trg = thisTrg;
-				}
-			}
-			
-			child = child.GetSibling();
-		}
-		
-		if (!trg)
-			return;
-		
-		// Spawn the vehicle
-		EntitySpawnParams params = EntitySpawnParams();
-		params.TransformMode = ETransformMode.WORLD;
-		trg.GetWorldTransform(params.Transform);
-		Resource res;
-		
-		if (group.GetFactionName() == FACTION_OPFOR)
-		{
-			res = m_rAIVehicleEast;
-		} else {
-			res = m_rAIVehicleWest;
-		};
-		
-		if (!res)
-			return;
-		
-		// Get rid of previously used vehicles if too far
-		bool spawnNewVeh = true;
-		
-		if (oldGrp)
-		{
-			array<IEntity> vehsInUse = new array<IEntity>();
-			oldGrp.GetUsableVehicles(vehsInUse);
-			IEntity leader = group.GetLeaderEntity();
-			
-			if (!leader)
-				return;
-			
-			foreach (IEntity vehOld: vehsInUse)
-			{
-				if (vehOld)
-				{
-					if (vector.DistanceSq(leader.GetOrigin(), vehOld.GetOrigin()) > 250000)		// 500m
-					{
-						oldGrp.RemoveUsableVehicle(vehOld);
-					} else {
-						group.AddUsableVehicle(vehOld);
-						spawnNewVeh = false;
-					}
-				}
-			}
-		}
-		
-		if (spawnNewVeh)
-		{
-			Vehicle veh = Vehicle.Cast(GetGame().SpawnEntityPrefab(res, null, params));
-			veh.GetPhysics().SetVelocity("0 -0.1 0"); // Make the vehicle copy the terrain properly
-			GetInstance().RegisterSpawnedVehicle(veh); // Register for garbage collector etc.
-			
-			// Add loiter waypoint
-			if (wp)
-				group.AddWaypoint(wp);
-			
-			// Assign the vehicle to the group
-			group.AddUsableVehicle(veh);
 		}
 	}
 	
@@ -3126,90 +3240,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Update amount of AIs to be spawned in groups based on current player count
-	protected void UpdateAIGroupSizes()
-	{
-		return; // disabed for now
-		
-		array<int> players = {};
-		int cnt = GetGame().GetPlayerManager().GetPlayers(players);
-		int playersWest = 0;
-		int playersEast = 0;
-		
-		for (int i = 0; i < cnt; i++)
-		{
-			Faction f = GetPlayerFaction(players[i]);
-			
-			if (!f)
-				continue;
-			
-			switch (f.GetFactionKey())
-			{
-				case FACTION_BLUFOR: {playersWest++; break;};
-				case FACTION_OPFOR: {playersEast++; break;};
-			}
-		}
-		
-		int limitPerFaction = m_iTotalPlayersLimit / 2;
-		int sizeOldWest = m_iAIGroupSizeWest;
-		int sizeOldEast = m_iAIGroupSizeEast;
-		
-		// Update limits for future groups
-		m_iAIGroupSizeWest = Math.Round((limitPerFaction - playersWest) / AI_GROUPS_PER_FACTION);
-		m_iAIGroupSizeEast = Math.Round((limitPerFaction - playersEast) / AI_GROUPS_PER_FACTION);
-		
-		// No change, terminate
-		if (sizeOldWest == m_iAIGroupSizeWest && sizeOldEast == m_iAIGroupSizeEast)
-			return;
-
-		// Get rid of current AIs which exceed the limit
-		foreach (SCR_AIGroup group: m_aAIGroups)
-		{
-			if (!group)
-				continue;
-			
-			array<AIAgent> members = new array<AIAgent>();
-			int memberCnt = group.GetAgents(members);
-			int diff;
-			
-			if (group.GetFactionName() == FACTION_BLUFOR)
-				diff = memberCnt - m_iAIGroupSizeWest;
-			else
-				diff = memberCnt - m_iAIGroupSizeEast;
-
-			for (int i = memberCnt - 1; i >= 0 && i < diff; i--)
-			{
-				AIAgent member = members[i];
-				
-				if (!member)
-					continue;
-				
-				IEntity ent = member.GetControlledEntity();
-				
-				if (!ent)
-					continue;
-				
-				group.RemoveAIEntityFromGroup(ent);
-				SCR_Global.DeleteEntityAndChildren(ent);
-			}
-		}
-		
-		// Spawn new groups if they were disabled completely before
-		if ((sizeOldWest == 0 && m_iAIGroupSizeWest != 0) || (sizeOldEast == 0 && m_iAIGroupSizeEast != 0))
-		{
-			foreach (SCR_AIGroup group: m_aAIGroups)
-			{
-				if (group.GetAgentsCount() == 0)
-				{
-					m_aAIGroups.RemoveItem(group);
-					AddAIWaypoint(SpawnNewGroup(group.m_faction, group));
-					delete group;
-				};
-			};
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! Manager for spawning enemies inside bases
 	//! \param timeSlice timeSlice from OnFrame event
 	protected void HandleRemnantForces(float timeSlice)
@@ -3226,7 +3256,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		m_fRemnantForcesTimer = 0;
 		SCR_CampaignRemnantsPresence location = null;
 		
-		while (!location || (location.GetMembersAlive() == 0 && !location.GetIsSpawned()))
+		while (!location || (location.GetMembersAlive() == 0 && !location.GetIsSpawned()) || location.GetRespawnTimestamp() > Replication.Time())
 		{
 			m_iLocationCheckedForPlayerProximity++;
 			
@@ -3241,9 +3271,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			}
 			
 			location = m_aRemnantsPresence[m_iLocationCheckedForPlayerProximity];
-			
-			if (location.GetIsDefendersSpawn() && location.GetSpawnTime() != 0 && location.GetSpawnTime() > Replication.Time())
-				location = null;
 		};
 		
 		array<int> players = {};
@@ -3280,7 +3307,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 
 		if (!location.GetIsSpawned() && playersNear)
 		{
-			SpawnRemnants(location);
+			SpawnRemnants(location, players);
 			return;
 		}
 		
@@ -3302,15 +3329,59 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void SpawnRemnants(notnull SCR_CampaignRemnantsPresence location)
+	protected void SpawnRemnants(notnull SCR_CampaignRemnantsPresence location, notnull array<int> playerIds)
 	{
-		EntitySpawnParams params = EntitySpawnParams();
-		params.TransformMode = ETransformMode.WORLD;
-		params.Transform[3] = location.GetSpawnpoint();
 		Resource res = Resource.Load(location.GetGroupPrefab());
 		
 		if (!res)
 			return;
+		
+		EntitySpawnParams params = EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		
+		// For normal non-respawning remnants, use the default spawnpoint
+		// Otherwise, find a suitable location nearby (without player presence)
+		if (location.GetRespawnTimestamp() == 0)
+		{
+			params.Transform[3] = location.GetSpawnpoint();
+		}
+		else
+		{
+			array<vector> suitableRespawns = {};
+			array<vector> allRespawns = location.GetRespawns();
+			int minDistance = Math.Pow(SCR_CampaignRemnantsPresence.RESPAWN_PLAYER_DISTANCE_THRESHOLD, 2);
+			IEntity playerEntity;
+			bool isSuitable;
+			int playersCount = playerIds.Count();
+			
+			foreach (vector respawn : allRespawns)
+			{
+				isSuitable = true;
+				
+				for (int i = 0; i < playersCount; i++)
+				{
+					playerEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerIds[i]);
+					
+					if (!playerEntity)
+						continue;
+					
+					if (vector.DistanceSqXZ(playerEntity.GetOrigin(), respawn) < minDistance)
+					{
+						isSuitable = false;
+						break;
+					}
+				}
+				
+				if (isSuitable)
+					suitableRespawns.Insert(respawn);
+			}
+			
+			if (suitableRespawns.IsEmpty())
+				return;
+			
+			Math.Randomize(-1);
+			params.Transform[3] = suitableRespawns.GetRandomElement();
+		}
 		
 		SCR_AIGroup grp = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(res, null, params));
 		
@@ -3330,19 +3401,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			grp.AddWaypoint(location.GetWaypoint());
 		
 		location.SetSpawnedGroup(grp);
-		
-		if (location.GetIsDefendersSpawn())
-		{
-			SCR_AIGroupUtilityComponent comp = SCR_AIGroupUtilityComponent.Cast(grp.FindComponent(SCR_AIGroupUtilityComponent));
-			
-			if (comp)
-			{
-				ScriptInvoker onEnemyDetected = comp.GetOnEnemyDetected();
-				
-				if (onEnemyDetected)
-					onEnemyDetected.Insert(OnEnemyDetectedByDefenders);
-			}
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -3352,15 +3410,10 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		location.SetIsSpawned(false);
 		
 		SCR_AIGroup grp = location.GetSpawnedGroup();
-		bool updateDefenders = location.GetIsDefendersSpawn() && location.GetParentBase();
 		
 		if (!grp)
 		{
 			location.SetMembersAlive(0);
-			
-			if (updateDefenders)
-				location.GetParentBase().UpdateBaseDefenders(location);
-			
 			return;
 		}
 		
@@ -3368,9 +3421,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		grp.GetAgents(units);
 		int cnt = grp.GetAgentsCount();
 		location.SetMembersAlive(cnt);
-		
-		if (cnt == 0 && updateDefenders)
-			location.GetParentBase().UpdateBaseDefenders(location);
 		
 		for (int i = 0; i < cnt; i++)
 		{
@@ -3391,32 +3441,18 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (!detectedFaction)
 			return;
 		
-		foreach (SCR_CampaignRemnantsPresence presence: m_aRemnantsPresence)
+		array<SCR_CampaignBase> allBases = SCR_CampaignBaseManager.GetBases();
+		
+		foreach (SCR_CampaignBase base : allBases)
 		{
-			if (!presence || presence.GetSpawnedGroup() != grp)
+			if (!base)
 				continue;
 			
-			SCR_CampaignBase base = presence.GetParentBase();
-			
-			if (!base)
+			if (base.GetDefendersGroup() == grp)
+			{
+				base.NotifyAboutEnemyAttack(detectedFaction);
 				return;
-			
-			SCR_CampaignFaction baseOwner = base.GetOwningFaction();
-			
-			if (!baseOwner)
-				return;
-			
-			if (!base.IsBaseInFactionRadioSignal(baseOwner))
-				return;
-			
-			if (base.GetLastEnemyContactTimestamp() != 0 && base.GetLastEnemyContactTimestamp() > (Replication.Time() - (SCR_CampaignBase.UNDER_ATTACK_WARNING_PERIOD * 1000)))
-				return;
-			
-			baseOwner.SendHQMessage(SCR_ERadioMsg.BASE_UNDER_ATTACK, base.GetCallsign(), param: base.GetBaseID());
-			base.SetLastEnemyContactTimestamp(Replication.Time());
-			base.SetAttackingFaction(GetGame().GetFactionManager().GetFactionIndex(detectedFaction));
-			
-			return;
+			}
 		}
 	}
 	
@@ -3530,10 +3566,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	//------------------------------------------------------------------------------------------------
 	void AfterAllBasesInitialized()
 	{
-#ifdef ENABLE_BUILDING_DEBUG
-		Print("Method AfterAllBasesInitialized() has been executed.");
-#endif	
-		
 		SCR_CampaignFactionManager campaignFactionManager = SCR_CampaignFactionManager.GetInstance();
 		SCR_CampaignFaction west = SCR_CampaignFaction.Cast(campaignFactionManager.GetFactionByKey(FACTION_BLUFOR));
 		SCR_CampaignFaction east = SCR_CampaignFaction.Cast(campaignFactionManager.GetFactionByKey(FACTION_OPFOR));
@@ -3580,14 +3612,20 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		else
 			basesSorted.Copy(bases);
 		
-#ifdef ENABLE_BUILDING_DEBUG
-		PrintFormat("Number of all sorted bases is: %1",basesSorted.Count());
-#endif	
-		
-		if(!IsProxy())
+		if (!IsProxy())
 		{
 			for(int i = 0; i <= BASE_CALLSIGNS_COUNT-1; i++)
 				allIndexes.Insert(i);
+			
+			// Get rid of Remnant patrols too close to HQs
+			SCR_CampaignFaction blufor = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(FACTION_BLUFOR));
+			SCR_CampaignFaction opfor = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(FACTION_OPFOR));
+			
+			if (blufor)
+				GetGame().GetCallqueue().CallLater(ClearRemnantPatrolsAroundHQ, 1000, false, blufor);
+			
+			if (opfor)
+				GetGame().GetCallqueue().CallLater(ClearRemnantPatrolsAroundHQ, 1000, false, opfor);
 		}
 		
 		foreach (SCR_CampaignBase base: basesSorted)
@@ -3598,7 +3636,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			Math.Randomize(-1);
 			baseIndex = allIndexes.GetRandomIndex();
 			
-			if (!IsProxy() && base.GetType() != CampaignBaseType.RELAY && baseIndex < BASE_CALLSIGNS_COUNT)
+			if (!IsProxy() && base.GetType() != CampaignBaseType.RELAY && baseIndex < BASE_CALLSIGNS_COUNT && !IsScenarioResumed())
 			{
 				base.SetCallsignIndex(allIndexes[baseIndex]);
 				allIndexes.Remove(baseIndex);
@@ -3607,16 +3645,11 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			if (RplSession.Mode() != RplMode.Dedicated)
 				base.HideMapLocationLabel();
 
-			if (!IsProxy())
+			if (!IsProxy() && HQWest && HQEast)
 			{
 				base.SpawnAIWaypoints();
-			}
-
-			if (IsProxy() || (HQWest && HQEast))
-			{
-				CampaignBaseType type = base.GetType();
 				
-				if (type != CampaignBaseType.MAIN && !IsProxy())
+				if (!base.GetIsHQ())
 				{
 					SCR_CampaignFaction setFaction = base.GetOwningFaction();
 					
@@ -3625,43 +3658,13 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 						vector pos = base.GetOrigin();
 						float distHQWest = vector.DistanceSq(pos, HQWest.GetOrigin());
 						float distHQEast = vector.DistanceSq(pos, HQEast.GetOrigin());
-						float distMajorWest = float.MAX;
-						float distMajorEast = float.MAX;
-						
-						foreach (SCR_CampaignBase checkedBase: SCR_CampaignBaseManager.GetBases())
-						{
-							SCR_CampaignFaction f = checkedBase.GetOwningFaction();
-							
-							if (checkedBase == base) continue;
-							if (checkedBase.GetType() != CampaignBaseType.MAJOR) continue;
-							if (!f) continue;
-							
-							float dist = vector.DistanceSq(pos, checkedBase.GetOrigin());
-							
-							if (f.GetFactionKey() == FACTION_BLUFOR)
-							{
-								if (dist < distMajorWest)
-									distMajorWest = dist;
-							}
-							else
-							{
-								if (dist < distMajorEast)
-									distMajorEast = dist;
-							}
-						}
-						
 						setFaction = HQWest.GetOwningFaction();
 						
-						if (distMajorWest > distMajorEast)
+						if (distHQWest > distHQEast)
 							setFaction = HQEast.GetOwningFaction();
-						else
-						{
-							if (distMajorEast == distMajorWest && distHQWest > distHQEast)
-								setFaction = HQEast.GetOwningFaction();
-						}
 						
 						// Add random starting supplies to small bases
-						if (!IsProxy() && m_bRandomizeSupplies && setFaction && base.GetType() == CampaignBaseType.SMALL)
+						if (m_bRandomizeSupplies && setFaction && !IsScenarioResumed())
 						{
 							int amount;
 							FactionKey fKey = setFaction.GetFactionKey();
@@ -3696,7 +3699,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				}
 				
 				// Spawn pre-built structures only on server
-				if (!IsProxy() && base.GetBuildingsFaction())
+				if (base.GetBuildingsFaction())
 					GetGame().GetCallqueue().CallLater(base.SpawnBuildings, 500);
 			}
 			
@@ -3711,12 +3714,38 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 					SCR_BuildingDedicatedSlotData slotData = new SCR_BuildingDedicatedSlotData();	
 					slotData.SetData(i, base);
 					m_aDedicatedSlots.Insert(slot, slotData);
-					
-#ifdef ENABLE_BUILDING_DEBUG
-					PrintFormat("Slot: %1 was added to m_aDedicatedSlots",slot);
-#endif	
-					
 				}
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ClearRemnantPatrolsAroundHQ(notnull SCR_CampaignFaction faction)
+	{
+		SCR_CampaignBase hq = faction.GetMainBase();
+		
+		if (!hq)
+			return;
+		
+		int distanceLimit = Math.Pow(HQ_NO_REMNANTS_RADIUS, 2);
+		int patrolDistanceLimit = Math.Pow(HQ_NO_REMNANTS_PATROL_RADIUS, 2);
+		float distance;
+		
+		for (int i = m_aRemnantsPresence.Count() - 1; i >= 0; i--)
+		{
+			distance = vector.DistanceSqXZ(m_aRemnantsPresence[i].GetCenter(), hq.GetOrigin());
+
+			if (distance < distanceLimit)
+			{
+				m_aRemnantsPresence[i].SetMembersAlive(0);
+				continue;
+			}
+			
+			if (distance < patrolDistanceLimit)
+			{
+				AIWaypointCycle waypoint = AIWaypointCycle.Cast(m_aRemnantsPresence[i].GetWaypoint());
+				if (waypoint)
+					m_aRemnantsPresence[i].SetMembersAlive(0);
 			}
 		}
 	}
@@ -3793,36 +3822,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	override void OnWorldPostProcess(World world)
 	{
 		super.OnWorldPostProcess(world);
-		
-		if (NotPlaying())
-			return;
-		
-		if (!IsProxy())
-		{	
-			if (GetGame().AreGameFlagsSet( EGameFlags.SpawnAI ))
-			{		
-				SCR_CampaignFactionManager campaignFactionManager = SCR_CampaignFactionManager.GetInstance();
-				
-				if (!campaignFactionManager)
-					return;
-						
-				//! First time spawn of all AI groups and their waypoints (after tasks were initialized)
-				for (int i = 0; i < AI_GROUPS_PER_FACTION * 2; i++)
-				{
-					string factionKey = FACTION_BLUFOR;
-				
-					if (i >= AI_GROUPS_PER_FACTION)
-						factionKey = FACTION_OPFOR;
-					
-					SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(campaignFactionManager.GetFactionByKey(factionKey));
-					
-					if (faction && faction.GetAIsAllowed())
-						GetGame().GetCallqueue().CallLater(SpawnNewGroup, 250 * (i + 1), false, factionKey);
-				}
-	
-				GetGame().GetCallqueue().CallLater(RefreshAIWaypoints, 2000, false, null, -1);
-			}
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -3905,11 +3904,13 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	override void OnPlayerAuditSuccess(int iPlayerID)
 	{
 		super.OnPlayerAuditSuccess(iPlayerID);
-		
+		/*
+		SCR_PlayerData replaces this, thus this is outdated and we need to remove it
 		SCR_PlayerProfileManagerComponent comp = SCR_PlayerProfileManagerComponent.Cast(FindComponent(SCR_PlayerProfileManagerComponent));
 		
 		if (comp)
 			comp.LoadConnectingPlayerProfile(iPlayerID);
+		*/
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -3920,17 +3921,16 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	
 	//------------------------------------------------------------------------------------------------
 	//! What happens when a player disconnects.
-	override void OnPlayerDisconnected(int playerId)
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause)
 	{
 #ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_EXECUTE_GAMEMODE))
 			return;
 #endif
-		super.OnPlayerDisconnected(playerId);
+		super.OnPlayerDisconnected(playerId, cause);
 		
 		GetTaskManager().OnPlayerDisconnected(playerId);
 		WriteClientData(playerId, true);
-		UpdateAIGroupSizes();
 		
 		// Disconnecting player is currently capturing a base; handle it
 		foreach (SCR_CampaignBase base: SCR_CampaignBaseManager.GetBases())
@@ -4017,15 +4017,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				campaignNetworkComponent.EnableShowingSpawnPosition(true)
 			}
 		}
-		
-		SCR_InventoryStorageManagerComponent inventoryManager = SCR_InventoryStorageManagerComponent.Cast(controlledEntity.FindComponent(SCR_InventoryStorageManagerComponent));
-		
-		if (inventoryManager)
-		{
-			inventoryManager.m_OnItemAddedInvoker.Insert(OnItemAdded);
-			inventoryManager.m_OnItemRemovedInvoker.Insert(OnItemRemoved);
-		}
-		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -4048,8 +4039,8 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (!base)
 			return;
 		
-		if (base.GetType() == CampaignBaseType.SMALL)
-			base.AddRespawnTickets(-1);
+		if (!base.GetIsHQ())			
+			base.AddSupplies(-base.GetBaseSpawnCost());
 		
 		// Location popup for player
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
@@ -4061,6 +4052,48 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			if (campaignNetworkComponent)
 				campaignNetworkComponent.RespawnLocationPopup(base.GetBaseID());
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnSpawnPointFactionAssigned(SCR_SpawnPoint spawnpoint)
+	{
+		SCR_PlayerRadioSpawnPointCampaign spawnpointC = SCR_PlayerRadioSpawnPointCampaign.Cast(spawnpoint);
+		
+		if (!spawnpointC)
+			return;
+		
+		FactionKey faction = spawnpointC.GetFactionKey();
+		
+		if (!faction.IsEmpty())
+		{
+			if (GetActiveRespawnRadiosCount(faction) >= GetMaxRespawnRadios())
+				spawnpointC.DeactivateSpawnPointPublic();
+			else
+				AddActiveRespawnRadio(faction, spawnpointC);
+		}
+		else
+		{
+			Faction previousFaction = spawnpointC.GetCachedFaction();
+			
+			if (previousFaction)
+				RemoveActiveRespawnRadio(previousFaction.GetFactionKey(), spawnpointC);
+		}	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnSpawnPointRemoved(SCR_SpawnPoint spawnpoint)
+	{
+		SCR_PlayerRadioSpawnPointCampaign spawnpointC = SCR_PlayerRadioSpawnPointCampaign.Cast(spawnpoint);
+		
+		if (!spawnpointC)
+			return;
+		
+		FactionKey faction = spawnpointC.GetFactionKey();
+		
+		if (faction.IsEmpty())
+			return;
+		
+		RemoveActiveRespawnRadio(faction, spawnpointC);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -4094,21 +4127,53 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		{
 			m_aBasesWithPlayer.Clear();
 			m_FirstBaseWithPlayer = null;
+			m_SupplyDepotWithPlayer = null;
 			SCR_PopUpNotification.GetInstance().HideCurrentPopupMsg();
 		}
 		
 		if (!IsProxy())
 		{
-			// Handle AI respawn;
-			foreach (SCR_AIGroup group: m_aAIGroups)
+			// Handle remnants respawn
+			AIControlComponent control = AIControlComponent.Cast(character.FindComponent(AIControlComponent));
+			
+			if (control)
 			{
-				if (group.GetAgentsCount() == 0)
+				AIAgent agent = control.GetControlAIAgent();
+				
+				if (agent)
 				{
-					m_aAIGroups.RemoveItem(group);
-					AddAIWaypoint(SpawnNewGroup(group.m_faction, group));
-					delete group;
+					SCR_AIGroup group = SCR_AIGroup.Cast(agent.GetParentGroup());
+					
+					if (group)
+					{
+						int respawnPeriod;
+						
+						foreach (SCR_CampaignRemnantsPresence remnantPresence : m_aRemnantsPresence)
+						{
+							if (group != remnantPresence.GetSpawnedGroup())
+								continue;
+							
+							// If this was not the last member alive, do nothing
+							if (group.GetAgentsCount() > 1)
+								break;
+							
+							respawnPeriod = remnantPresence.GetRespawnPeriod();
+							
+							// Set up respawn timestamp, convert s to ms, reset original group size
+							if (respawnPeriod > 0)
+							{
+								remnantPresence.SetRespawnTimestamp(Replication.Time() + (respawnPeriod * 1000));
+								remnantPresence.SetMembersAlive(-1);
+								remnantPresence.SetIsSpawned(false);
+							}
+							
+							break;
+						}
+					}
 				}
 			}
+	
+			AIAgent agent = control.GetControlAIAgent();
 			
 			SCR_ChimeraCharacter instigatorChar;
 			
@@ -4187,12 +4252,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 					}
 				}
 			}
-			
-			// Killed player currently holds a respawn radio, handle it			
-			SCR_PlayerRadioSpawnPointCampaign sp = SCR_PlayerRadioSpawnPointCampaign.Cast(GetPlayerSpawnpoint(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(character)));
-		
-			if (sp)
-				RemoveActiveRespawnRadio(sp.GetFactionKey(), sp);
 		}
 	}
 
@@ -4207,8 +4266,17 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			m_wXPInfo.SetVisible(visible);
 			return;
 		}
-		int totalXP = 0;
-			
+		
+		SCR_CampaignNetworkComponent networkComp;
+		PlayerController pc = GetGame().GetPlayerController();
+		if (pc)
+			networkComp = SCR_CampaignNetworkComponent.Cast(pc.FindComponent(SCR_CampaignNetworkComponent));
+		
+		if (!networkComp)
+			return;
+		
+		int totalXP = networkComp.GetPlayerXP();
+		
 		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(SCR_RespawnSystemComponent.GetLocalPlayerFaction());		
 		if (!faction)
 			return;
@@ -4237,10 +4305,10 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 		ProgressBarWidget progress = ProgressBarWidget.Cast(m_wXPInfo.FindWidget("Progress"));
 		ProgressBarWidget progressDiff = ProgressBarWidget.Cast(m_wXPInfo.FindWidget("ProgressDiff"));
-			
-		progress.SetMin(0);
-		progress.SetMax(1);
-		progress.SetCurrent(0);
+		
+		progress.SetMin(campaignFactionManager.GetRankXP(curRank));
+		progress.SetMax(campaignFactionManager.GetRankXP(campaignFactionManager.GetRankNext(curRank)));
+		progress.SetCurrent(totalXP);
 		progressDiff.SetMin(0);
 		progressDiff.SetMax(1);
 		progressDiff.SetCurrent(0);
@@ -4285,8 +4353,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			if (clientData && assignedFaction)
 				clientData.SetFaction(SCR_CampaignFaction.Cast(assignedFaction));
-			
-			UpdateAIGroupSizes();
 		}
 		
 		// When a faction is being assigned to the client automatically by server, playerId might not yet be registered
@@ -4327,6 +4393,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		
 		if (!IsProxy())
 		{
+			SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(OnSpawnPointFactionAssigned);
+			SCR_SpawnPoint.Event_SpawnPointRemoved.Insert(OnSpawnPointRemoved);
+			
 			GetGame().GetCallqueue().CallLater(WriteAllClientsData, BACKEND_WRITE_PERIOD, true);
 			
 			if (m_iCustomRadioRange != -1)
@@ -4350,6 +4419,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			GetGame().GetCallqueue().CallLater(SetupDaytime, 500, false, m_iStartingHours, m_iStartingMinutes, 0);		// TODO: Move to init when possible
 			GetGame().GetCallqueue().CallLater(CheckMobileAssemblies, 500, true);
+			GetGame().GetCallqueue().CallLater(CheckForWinner, 1000, true);
 			
 			SCR_PlayerSpawnPointManagerComponent comp = SCR_PlayerSpawnPointManagerComponent.Cast(FindComponent(SCR_PlayerSpawnPointManagerComponent));
 			
@@ -4372,9 +4442,60 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			GetGame().GetCallqueue().CallLater(CheckPlayerInsideRadioRange, 3000, true);
 			GetGame().GetCallqueue().CallLater(EnteringNewBase, 3000, true);
 			GetGame().GetCallqueue().CallLater(CheckForBasesWithPlayer, 500, true);
+			GetGame().GetCallqueue().CallLater(UpdateHUD, 250, true);
+			GetGame().GetCallqueue().CallLater(CheckPlayerPresenceInSupplyDepots, 2000, true);
 			
 			GetGame().GetInputManager().AddActionListener("TasksOpen", EActionTrigger.DOWN, RegisterTasksShown);
 			GetGame().GetInputManager().AddActionListener("GadgetMap", EActionTrigger.DOWN, RegisterTasksShown);
+		}
+		
+		foreach (SCR_CampaignSuppliesComponent comp : m_aRemnantSupplyDepots)
+		{
+			IEntity depot = comp.GetOwner();
+			
+			if (!depot)
+				return;
+			
+			SCR_MapDescriptorComponent desc = SCR_MapDescriptorComponent.Cast(depot.FindComponent(SCR_MapDescriptorComponent));
+			
+			if (desc)
+			{
+				MapItem item = desc.Item();
+				item.SetVisible(true);
+				item.SetImageDef("Slot_Supplies");
+				
+				MapDescriptorProps props = item.GetProps();
+				props.SetIconSize(32, 0.25, 0.25);
+				props.SetFrontColor(GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_INDFOR).GetFactionColor());
+				props.SetTextVisible(false);
+				props.Activate(true);
+			}
+			
+			IEntity child = depot.GetChildren();
+			SCR_SiteSlotEntity slot;
+			
+			while (child && !slot)
+			{
+				slot = SCR_SiteSlotEntity.Cast(child);
+				
+				if (!slot)
+					child = child.GetSibling();
+			}
+			
+			if (!slot)
+				return;
+			
+			SCR_CampaignFaction fia = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_INDFOR));
+			
+			if (!fia)
+				return;
+			
+			Resource res = Resource.Load(fia.GetBuildingPrefab(ECampaignCompositionType.SUPPLIES));
+			
+			if (!res)
+				return;
+			
+			slot.SpawnEntityInSlot(res);
 		}
 		
 		m_MapEntity = SCR_MapEntity.Cast(GetGame().GetMapManager());
@@ -4478,6 +4599,10 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
 		SetFlags(EntityFlags.ACTIVE, true);
 		
+#ifdef TDM_CLI_SELECTION
+		m_bApplyPresetOwners = true;
+#endif
+		
 		if (!IsProxy())
 		{
 			SCR_MissionHeader header = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
@@ -4493,16 +4618,12 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (playersLimitHeader > m_iTotalPlayersLimit)
 					Print("Header value of max players is higher than gamemode entity setting. Using entity setting...", LogLevel.WARNING);
 				
-				if (SCR_SaveLoadComponent.IsLoadOnStart(header))
-					m_bBackendStateLoaded = true;
-				
+				m_bScenarioResumed = SCR_SaveLoadComponent.IsLoadOnStart(header);
 				SCR_MissionHeaderCampaign campaignHeader = SCR_MissionHeaderCampaign.Cast(header);
 	
 				if (campaignHeader)
 				{
-					m_bCheckAdvancedStageConfig = true;	// config was loaded, check it regardless of setting
 					m_bAllowRemnantsDespawn = campaignHeader.m_bDespawnRemnants;
-					m_bAdvancedStage = campaignHeader.m_bAdvancedStage;
 					m_iCustomRadioRange = campaignHeader.m_iCustomRadioRange;
 					m_fXpMultiplier = campaignHeader.m_fXpMultiplier;
 					m_bIgnoreMinimumVehicleRank = campaignHeader.m_bIgnoreMinimumVehicleRank;
@@ -4510,6 +4631,8 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 					int suppliesMax = campaignHeader.m_iMaximumBaseSupplies;
 					int suppliesMin = campaignHeader.m_iMinimumBaseSupplies;
 					int respawnRadiosCnt = campaignHeader.m_iMaximumRespawnRadios;
+					int controlPointsLimit = campaignHeader.m_iControlPointsCap;
+					int victoryTimeout = campaignHeader.m_fVictoryTimeout;
 					
 					if (suppliesMax != -1)
 						STARTING_SUPPLIES_MAX = suppliesMax;
@@ -4519,6 +4642,12 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 					
 					if (respawnRadiosCnt != -1)
 						m_iMaxRespawnRadios = respawnRadiosCnt;
+					
+					if (controlPointsLimit != -1)
+						m_iControlPointsThreshold = controlPointsLimit;
+					
+					if (victoryTimeout != -1)
+						m_fVictoryTimer = victoryTimeout;
 					
 					Replication.BumpMe();
 				}
@@ -4531,22 +4660,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			// Set AI group sizes based on players limit
 			m_iAIGroupSizeWest = Math.Round((m_iTotalPlayersLimit / 2) / AI_GROUPS_PER_FACTION);
 			m_iAIGroupSizeEast = m_iAIGroupSizeWest;
-			
-#ifdef TDM_CLI_SELECTION
-			m_bRandomizeBases = false;
-#endif
-			
-			// Do we want to flip the Main base ownership?
-			if (m_bRandomizeBases)
-			{
-				Math.Randomize(-1);
-				m_bFlipBases = Math.RandomIntInclusive(0, 1);
-				
-				if (m_bFlipBases)
-					Print("HQ locations have been swapped.");
-				else
-					Print("HQ locations at default.");
-			}
 		};
 		
 		//Parse & register XP reward list
@@ -4559,9 +4672,8 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		s_OnBaseCaptured.Insert(OnBaseCaptured);
 		SCR_CampaignBaseManager.s_OnAllBasesInitialized.Insert(AfterAllBasesInitialized);
 		
-#ifdef ENABLE_BUILDING_DEBUG
-		Print("Script invoker AfterAllBasesInitialized has been added");
-#endif	
+		SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
+		SCR_MapEntity.GetOnMapClose().Insert(OnMapClose);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -4584,11 +4696,22 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (m_wPlayersList)
 			m_wPlayersList.RemoveFromHierarchy();
 		
+		if (m_wInfoOverlay)
+			m_wInfoOverlay.RemoveFromHierarchy();
+		
+		if (m_wCountdown)
+			m_wCountdown.RemoveFromHierarchy();
+		
 		delete SCR_CampaignBaseManager.GetInstance();
 		
 		//Unregister from script invokers
 		s_OnBaseCaptured.Remove(OnBaseCaptured);
 		SCR_UITaskManagerComponent.s_OnTaskListVisible.Remove(ShowXP);
+		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Remove(OnSpawnPointFactionAssigned);
+		SCR_SpawnPoint.Event_SpawnPointRemoved.Remove(OnSpawnPointRemoved);
+		
+		SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
+		SCR_MapEntity.GetOnMapClose().Remove(OnMapClose);
 	}
 
 };
@@ -4600,6 +4723,7 @@ enum SCR_ECampaignHints
 	SERVICES,
 	RESPAWN,
 	SEIZING,
+	RECONFIGURING,
 	SUPPLY_RUNS,
 	KILL_XP,
 	MOBILE_ASSEMBLY,

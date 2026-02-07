@@ -14,9 +14,12 @@ class SCR_EvacuateTask : SCR_RequestedTask
 	//------------------------------------------------------------------------------------------------
 	static float GetMinDistanceFromStart()
 	{
-		SCR_EvacuateTaskSupportClass supportClass = SCR_EvacuateTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskBySupportClassType(SCR_EvacuateTaskSupportClass));
-		if (supportClass)
-			return supportClass.GetMinDistanceFromStart();
+		if (!GetTaskManager())
+			return 1000;
+		
+		SCR_EvacuateTaskSupportEntity supportEntity = SCR_EvacuateTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_EvacuateTaskSupportEntity));
+		if (supportEntity)
+			return supportEntity.GetMinDistanceFromStart();
 		
 		return 1000;
 	}
@@ -24,9 +27,12 @@ class SCR_EvacuateTask : SCR_RequestedTask
 	//------------------------------------------------------------------------------------------------
 	static float GetMaxDistanceFromRequester()
 	{
-		SCR_EvacuateTaskSupportClass supportClass = SCR_EvacuateTaskSupportClass.Cast(GetTaskManager().GetSupportedTaskBySupportClassType(SCR_EvacuateTaskSupportClass));
-		if (supportClass)
-			return supportClass.GetMaxDistanceFromRequester();
+		if (!GetTaskManager())
+			return 50;
+		
+		SCR_EvacuateTaskSupportEntity supportEntity = SCR_EvacuateTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_EvacuateTaskSupportEntity));
+		if (supportEntity)
+			return supportEntity.GetMaxDistanceFromRequester();
 		
 		return 50;
 	}
@@ -40,13 +46,20 @@ class SCR_EvacuateTask : SCR_RequestedTask
 	//------------------------------------------------------------------------------------------------
 	void PeriodicalCheck()
 	{
+		if (!GetTaskManager())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
 		bool assigneeCloseEnough = true;
 		bool requesterInBase = false;
 		GenericEntity requesterEntity = GenericEntity.Cast(m_Requester.GetControlledEntity());
 		
 		if (!requesterEntity)
 		{
-			GetTaskManager().FailTask(this);
+			supportEntity.FailTask(this);
 			return;
 		}
 		
@@ -99,9 +112,9 @@ class SCR_EvacuateTask : SCR_RequestedTask
 		if (requesterInBase)
 		{
 			if (assigneeCloseEnough)
-				GetTaskManager().FinishTask(this);
+				supportEntity.FinishTask(this);
 			else
-				GetTaskManager().FailTask(this);
+				supportEntity.FailTask(this);
 		}
 	}
 	
@@ -139,6 +152,16 @@ class SCR_EvacuateTask : SCR_RequestedTask
 		
 		vector startOrigin = GetStartOrigin();
 		writer.WriteVector(startOrigin);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Deserialize(ScriptBitReader reader)
+	{
+		super.Deserialize(reader);
+		
+		vector startOrigin;
+		reader.ReadVector(startOrigin);
+		SetStartOrigin(startOrigin);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -19,7 +19,6 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 	
 	ref SCR_NameTagData m_CurrentPlayerTag;			// nametag data of current player									
 	protected Faction m_CurrentFaction;						
-	protected FactionAffiliationComponent m_FactionComponent;	
 	protected PlayerManager m_PlayerManager;
 	
 	protected static ref SCR_NameTagConfig s_NametagCfg;
@@ -48,21 +47,6 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	// Events
 	//------------------------------------------------------------------------------------------------
-	//! SCR_PlayerController Event
-	//! Reinit curent player tag after new entity is controlled
-	protected void OnControlledEntityChanged(IEntity from, IEntity to)
-	{
-		CleanupAllTags();
-		m_CurrentPlayerTag = null;
-		
-		m_aFilteredEntities.Insert(to);
-		ProcessFiltered();
-		
-		if (to)
-			m_bSleepDisplay = false;
-		else 
-			m_bSleepDisplay = true;
-	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! SCR_GameModeBase event
@@ -266,18 +250,11 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 			gameMode.GetOnControllableDeleted().Insert(OnControllableDeleted);
 		}
 		
-		SCR_PlayerController controller = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		controller.m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
-		
 		SCR_2DOpticsComponent.s_OnSightsADSChanged.Insert(AdjustRange);
 		
 		SCR_AIGroup.GetOnPlayerAdded().Insert(OnGroupJoined);
 		SCR_AIGroup.GetOnPlayerRemoved().Insert(OnGroupLeft);
 		
-		IEntity ent = controller.GetControlledEntity();	// ent might be assigned before we catch the first callback
-		if (ent)
-			OnControlledEntityChanged(null, ent);
-								
 		// init ruleset
 		m_bIsRulesetInit = s_NametagCfg.m_aVisibilityRuleset.Init(this, s_NametagCfg);
 		
@@ -354,21 +331,15 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 			m_aNameTagEntities.Insert(entity, tag);
 			m_aUninitializedTags.Remove(0);
 			
-			// Faction
-			if (m_FactionComponent) 
-				m_CurrentFaction = m_FactionComponent.GetAffiliatedFaction();
-			else 
+			// Init FactionAffiliationComponent, required to detect factions
+			FactionManager factionMgr = GetGame().GetFactionManager();
+			if (factionMgr)
 			{
-				// Init FactionAffiliationComponent, required to detect factions
-				FactionManager factionMgr = GetGame().GetFactionManager();
-				if (factionMgr)
-					m_FactionComponent = FactionAffiliationComponent.Cast( entity.FindComponent(FactionAffiliationComponent) );
-				
-				// Initial faction check
-				if (m_FactionComponent)
-					m_CurrentFaction = m_FactionComponent.GetAffiliatedFaction();
+				FactionAffiliationComponent factionComponent = FactionAffiliationComponent.Cast( entity.FindComponent(FactionAffiliationComponent) );
+				if (factionComponent)
+					m_CurrentFaction = factionComponent.GetAffiliatedFaction();
 			}
-			
+		
 			return;
 		}
 		
@@ -581,6 +552,22 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		{
 			InitNameTags();
 		}
+	
+		//------------------------------------------------------------------------------------------------
+		//! Reinit curent player tag after new entity is controlled
+		override void DisplayControlledEntityChanged(IEntity from, IEntity to)
+		{
+			CleanupAllTags();
+			m_CurrentPlayerTag = null;
+			
+			m_aFilteredEntities.Insert(to);
+			ProcessFiltered();
+			
+			if (to)
+				m_bSleepDisplay = false;
+			else 
+				m_bSleepDisplay = true;
+		}	
 		
 		//------------------------------------------------------------------------------------------------
 		override void DisplayStopDraw(IEntity owner)
@@ -602,10 +589,6 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		
 			if (SCR_AIGroup.GetOnPlayerRemoved())
 				SCR_AIGroup.GetOnPlayerRemoved().Remove(OnGroupLeft);
-		
-			SCR_PlayerController controller = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-			if (controller)
-				controller.m_OnControlledEntityChanged.Remove(OnControlledEntityChanged);
 		
 			m_bIsRulesetInit = false;
 			s_NametagCfg = null;

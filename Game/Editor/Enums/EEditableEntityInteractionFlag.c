@@ -7,5 +7,6 @@ enum EEditableEntityInteractionFlag
 	ALIVE			= 1 << 0, ///< Entity is not destroyed, or cannot be destroyed
 	DELEGATE		= 1 << 1, ///< Hovering over delegate, i.e., icon, not mesh
 	LAYER_EDITING	= 1 << 2, ///< Layer editing is enabled
-	NON_PLAYABLE	= 1 << 3 ///< Entity is not a player
+	NON_PLAYABLE	= 1 << 3, ///< Entity is not a player
+	PLACING			= 1 << 4, ///< Current operation is placing
 };

@@ -23,7 +23,7 @@ enum LightFlags
 	SKY,
 	//! Light has a linear falloff instead of quadratic
 	LINEAR_FALLOFF,
-	//! Is it DynamicLight, instead of StaticLight
+	//! Is it dynamic light
 	DYNAMIC
 };
 

@@ -64,7 +64,6 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 		//--- Save to settings
 		BaseContainerTools.ReadFromInstance(settings, settingsContainer);
 		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 		
 		PlayAnimation(m_WidgetSave);
 		
@@ -153,7 +152,7 @@ class SCR_SaveManualCameraComponent: SCR_BaseManualCameraComponent
 		if (widget)
 		{
 			widget.SetOpacity(1);
-			WidgetAnimator.PlayAnimation(widget, WidgetAnimationType.Opacity, 0, m_fFadeInSpeed);
+			AnimateWidget.Opacity(widget, 0, m_fFadeInSpeed);
 		}
 	}
 	

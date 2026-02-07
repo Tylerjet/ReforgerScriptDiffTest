@@ -8,9 +8,6 @@ class SCR_DestructibleHitzone: ScriptedHitZone
 	//! Audio features
 	protected SoundComponent					m_pSoundComponent;
 	
-	//! Last damage instigator that did damage to this hitzone
-	protected static autoptr map<SCR_DestructibleHitzone, IEntity> m_pLastInstigatorMap = new map<SCR_DestructibleHitzone, IEntity>;
-	
 	[Attribute("0", UIWidgets.EditBox, "Scale of received damage that will be passed to parent vehicle", "0 10 0.01")]
 	private float m_fPassDamageToOwnerParent;
 
@@ -41,7 +38,7 @@ class SCR_DestructibleHitzone: ScriptedHitZone
 			m_ParentDamageManager = DamageManagerComponent.Cast(parent.FindComponent(DamageManagerComponent));
 		
 		// Topmost entity
-		IEntity mainParent = SCR_Global.GetMainParent(pOwnerEntity, true);
+		IEntity mainParent = SCR_EntityHelper.GetMainParent(pOwnerEntity, true);
 		m_pSoundComponent = SoundComponent.Cast(mainParent.FindComponent(SoundComponent));
 		
 		if (m_pDestructionHandler)
@@ -70,8 +67,6 @@ class SCR_DestructibleHitzone: ScriptedHitZone
 		
 		if (IsProxy())
 			return;
-		
-		m_pLastInstigatorMap.Set(this, instigator);
 
 		// Skip delay when hit with strong ammunition and destruction is already scheduled
 		if (damage > GetCriticalDamageThreshold()*GetMaxHealth() && m_pDestructionHandler && m_pDestructionHandler.IsDestructionQueued())
@@ -113,17 +108,26 @@ class SCR_DestructibleHitzone: ScriptedHitZone
 		if (!IsProxy() || GetHitZoneContainer().IsRplReady())
 			StartDestructionSound();
 		
+		SCR_VehicleDamageManagerComponent parentDamageManager = FindParentVehicleDamageManager();
+		
 		// Kill and eject occupants
 		// TODO: Make passengers suffer random fire and bleeding instead, and let them get out if they are conscious.
 		// TODO: Depends on ability to move the occupants to proper positions inside wrecks.
 		if (m_pCompartmentManager && !IsProxy())
-			m_pCompartmentManager.KillOccupants(m_pLastInstigatorMap.Get(this), true);
+		{
+			SCR_DamageManagerComponent damageManager = parentDamageManager;
+			if (!damageManager)
+				damageManager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
+			
+			IEntity instigator;
+			if (damageManager)
+				instigator = damageManager.GetInstigatorEntity();
+			
+			m_pCompartmentManager.KillOccupants(instigator, true);
+		}
 		
 		if (m_pDestructionHandler && !m_pDestructionHandler.IsDestructionQueued())
-		{
-			SCR_VehicleDamageManagerComponent damageManager = FindParentVehicleDamageManager();
-			m_pDestructionHandler.StartDestruction(false, damageManager && damageManager.IsInContact());
-		}
+			m_pDestructionHandler.StartDestruction(false, parentDamageManager && parentDamageManager.IsInContact());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -176,7 +180,7 @@ class SCR_DestructibleHitzone: ScriptedHitZone
 		if (!owner)
 			return;
 		
-		IEntity mainParent = SCR_Global.GetMainParent(owner);
+		IEntity mainParent = SCR_EntityHelper.GetMainParent(owner);
 		if (!mainParent)
 		{
 			// Play destruction sound on own sound source

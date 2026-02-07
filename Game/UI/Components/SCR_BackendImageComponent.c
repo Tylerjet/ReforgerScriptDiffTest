@@ -15,6 +15,24 @@ class SCR_BackendImageComponentBase : ScriptedWidgetComponent
 	protected int m_iPreferedWidth; // Used only for debugging
 	protected int m_iScreenWidth; // Used only for debugging
 	
+	protected ref ScriptInvoker<> Event_OnImageSelected;
+
+	//------------------------------------------------------------------------------------------------
+	protected void InvokeEventOnImageSelected()
+	{
+		if (Event_OnImageSelected)
+			Event_OnImageSelected.Invoke();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetEventOnImageSelected()
+	{
+		if (!Event_OnImageSelected)
+			Event_OnImageSelected = new ScriptInvoker();
+
+		return Event_OnImageSelected;
+	}
+	
 	//----------------------------------------------------------------------------------
 	//! image can be null
 	void SetImage(BackendImage image)
@@ -203,6 +221,9 @@ class SCR_BackendImageComponent : SCR_BackendImageComponentBase
 	[Attribute("", UIWidgets.EditBox, "Widget from which we will be reading size of image widget. It can be detached from image widget, since its reported size can be different when wrapped into a scale widget.")]
 	protected string m_sImageSizeWidgetName;
 	
+	[Attribute("1")]
+	protected bool m_bShowLoadingImage;
+	
 	[Attribute("")]
 	protected string m_sLoadingOverlayName;
 	
@@ -249,6 +270,8 @@ class SCR_BackendImageComponent : SCR_BackendImageComponentBase
 		
 		if (m_LoadingOverlay)
 			m_LoadingOverlay.SetShown(false);
+		
+		InvokeEventOnImageSelected();
 	}
 	
 	//----------------------------------------------------------------------------------
@@ -267,6 +290,8 @@ class SCR_BackendImageComponent : SCR_BackendImageComponentBase
 		
 		if (m_LoadingOverlay)
 			m_LoadingOverlay.SetShown(false);
+		
+		InvokeEventOnImageSelected();
 	}
 	
 	//----------------------------------------------------------------------------------

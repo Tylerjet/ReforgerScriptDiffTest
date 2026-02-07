@@ -143,27 +143,16 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	
 	protected void OnLeaderIdChanged()
 	{
-		OnLeaderIdChangedAttempt();
-	}
-	protected void OnLeaderIdChangedAttempt(int attempt = 0)
-	{
 		//--- Retrieve new leader from RplID
-		m_Leader = SCR_EditableEntityComponent.Cast(Replication.FindItem(m_LeaderId));
-		if (m_Leader)
+		SetLeader(SCR_EditableEntityComponent.Cast(Replication.FindItem(m_LeaderId)));
+	}
+	protected void SetLeader(SCR_EditableEntityComponent leader)
+	{
+		if (leader)
 		{
-			Refresh(); //--- Make the icon appear instantly
-			return;
+			m_Leader = leader;
+			Refresh();
 		}
-		
-		//--- Tried too many times, stop attempts
-		if (attempt > 10)
-		{
-			Print(string.Format("Unable to assign group leader with replication ID = %1!", m_LeaderId), LogLevel.WARNING);
-			return;
-		}
-		
-		//--- When the soldier was just created, it may not be possible to find it by RplID on client. Try again the next frame.
-		GetGame().GetCallqueue().CallLater(OnLeaderIdChangedAttempt, 1, false, attempt + 1);
 	}
 	
 	protected void OnFactionChanged(Faction faction)
@@ -335,7 +324,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		return super.CanSetParent(parentEntity) || type == EEditableEntityType.CHARACTER || type == EEditableEntityType.GROUP || type == EEditableEntityType.VEHICLE;             
 	}
 	*/
-	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev)
+	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser)
 	{
 		EEditableEntityType parentType;
 		if (parentEntity) parentType = parentEntity.GetEntityType();
@@ -348,12 +337,13 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 			{
 				if (!IsServer()) break;
 				
+				
 				set<SCR_EditableEntityComponent> children = new set<SCR_EditableEntityComponent>;
 				GetChildren(children, true);
 				if (children.IsEmpty() && !parentEntityPrev)
 				{
 					//--- Group is still empty after placing. Wait a bit before attempting to move soldiers under another parent (to prevent endless loop, do it only once by overriding parentEntityPrev)
-					GetGame().GetCallqueue().CallLater(OnParentEntityChanged, 1, false, parentEntity, parentEntity);
+					GetGame().GetCallqueue().CallLater(OnParentEntityChanged, 1, false, parentEntity, parentEntity, changedByUser);
 				}
 				else
 				{
@@ -367,7 +357,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 			}
 			default:
 			{
-				super.OnParentEntityChanged(parentEntity, parentEntityPrev);
+				super.OnParentEntityChanged(parentEntity, parentEntityPrev, changedByUser);
 				break;
 			}
 		}
@@ -377,10 +367,8 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		if (!IsServer())
 		{
 			if (isAdded && Replication.FindId(child) == m_LeaderId)
-			{
-				m_Leader = child;
-				Refresh();
-			}
+				SetLeader(child);
+			
 			return;
 		}
 		

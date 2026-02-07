@@ -66,12 +66,12 @@ class StanceIndicator : SCR_InfoDisplay
 			if (stance == ECharacterStance.STAND)
 			{
 				if (m_wRoot.GetOpacity() > 0 || m_wRoot.IsVisible())
-					WidgetAnimator.PlayAnimation(m_wRoot,WidgetAnimationType.Opacity,0,WidgetAnimator.FADE_RATE_SLOW);
+					AnimateWidget.Opacity(m_wRoot, 0, UIConstants.FADE_RATE_SLOW);
 			}
 			else
 			{
 				if (m_wRoot.GetOpacity() < 1 || !m_wRoot.IsVisible())
-					WidgetAnimator.PlayAnimation(m_wRoot,WidgetAnimationType.Opacity,1,WidgetAnimator.FADE_RATE_DEFAULT);
+					AnimateWidget.Opacity(m_wRoot, 1, UIConstants.FADE_RATE_DEFAULT);
 			}
 		}
 	}

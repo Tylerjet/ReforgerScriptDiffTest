@@ -23,7 +23,8 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external CharacterControllerComponent GetControllerComponent();
 	//! gets some basic info about movement
 	proto external void GetMovementState(out notnull CharacterMovementState pMovementState);
-	proto external bool IsWeaponADSAllowed();
+	proto external bool IsWeaponADSAllowed(bool allowSprint);
+	proto external bool IsProneStanceTransition();
 	proto external bool WasMovement();
 	proto external bool WasRotation();
 	proto external CharacterCommandFall		StartCommand_Fall(float pYVelocity);
@@ -34,6 +35,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external CharacterCommandVehicle	StartCommand_Vehicle(BaseCompartmentSlot pCompartment);
 	proto external CharacterCommandDeath	StartCommand_Death(float direction);
 	proto external CharacterCommandSwim		StartCommand_Swim();
+	proto external CharacterCommandUnconscious	StartCommand_Unconscious();
 	proto external CharacterCommandDamageFullBody StartCommand_DamageFullBody(float direction, int pType);
 	proto external CharacterCommandSlide	StartCommand_Slide();
 	//----------------------------------------------------------------------------
@@ -46,6 +48,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external CharacterCommandVehicle	GetCommandVehicle();
 	proto external CharacterCommandLadder	GetCommandLadder();
 	proto external CharacterCommandDeath	GetCommandDeath();
+	proto external CharacterCommandUnconscious	GetCommandUnconscious();
 	proto external CharacterCommandMelee	GetCommandModifier_Melee();
 	proto external CharacterCommandSwim		GetCommandSwim();
 	proto external CharacterCommandSlide	GetCommandSlide();
@@ -67,9 +70,11 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external LadderComponent GetTargetLadder();
 	//! Returns the current ladder. Use carefully, you should use GetTargetLadder when it's possible.
 	proto external LadderComponent FindTargetLadder();
+	proto external bool IsMovingInProne();
 	//! default full body handlers
 	proto external bool HandleFinishedCommandsDefault(bool pCurrentCommandFinished);
 	proto external bool HandleDeathDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID, bool pCurrentCommandFinished);
+	proto external bool HandleUnconsciousDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	proto external bool HandleVehicleDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	proto external bool HandleSwimmingDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	proto external bool HandleLaddersDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);

@@ -41,13 +41,9 @@ enum EntityFlags
 	STATIC,
 	//!Flags for custom usage and filterings.
 	USER1,
-	//!Flags for custom usage and filterings.
 	USER2,
-	//!Flags for custom usage and filterings.
 	USER3,
-	//!Flags for custom usage and filterings.
 	USER4,
-	//!Flags for custom usage and filterings.
 	USER5,
 	//!Do not include this entity into BSP tree building, because it's too huge, or off scene (like env-cube probes)
 	NO_TREE,

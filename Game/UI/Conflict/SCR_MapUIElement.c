@@ -15,11 +15,13 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 	protected SCR_MapCampaignUI m_Par;
 	protected MapItem m_MapItem;
 	protected Widget m_wRoot;
-	protected ButtonWidget m_wButton;
+	protected Widget m_wBaseFrame;
 	protected ImageWidget m_wImage;
 	protected Widget m_wBaseIcon;
+	protected ImageWidget m_wGradient;
 	protected ImageWidget m_wSelectImg;
 	protected ImageWidget m_wHighlightImg;
+	protected Widget m_wAntennaImg;
 	protected bool m_bIsSelected;
 	protected bool m_bIsHovering;
 	protected const float ANIM_SPEED = 20;
@@ -35,15 +37,18 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 	[Attribute("{27F2439D610D02B3}UI/Imagesets/MilitarySymbol/ICO_Land.imageset")]
 	protected ResourceName m_sImageSetSpecial;
 
-	[Attribute("SOUND_MAP_HOVER_BASE")]
+	[Attribute("1")]
+	protected bool m_bUseBackgroundGradient;
+
+	[Attribute(SCR_SoundEvent.SOUND_MAP_HOVER_BASE)]
 	protected string m_sSoundBase;
-	[Attribute("SOUND_MAP_HOVER_ENEMY")]
+	[Attribute(SCR_SoundEvent.SOUND_MAP_HOVER_ENEMY)]
 	protected string m_sSoundEnemyBase;
-	[Attribute("SOUND_MAP_HOVER_TRANS_TOWER")]
+	[Attribute(SCR_SoundEvent.SOUND_MAP_HOVER_TRANS_TOWER)]
 	protected string m_sSoundRelay;
-	[Attribute("SOUND_FE_BUTTON_HOVER")]
+	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_HOVER)]
 	protected string m_sSoundTask;	
-	[Attribute("SOUND_FE_BUTTON_HOVER")]
+	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_HOVER)]
 	protected string m_sSoundService;	
 	[Attribute()]
 	ref Color m_UnknownFactionColor;
@@ -62,6 +67,13 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 	{
 		return m_sName;
 	}
+	
+	//------------------------------------------------------------------------------
+	bool GetIconVisible()
+	{
+		return m_bVisible;
+	}
+
 
 	//------------------------------------------------------------------------------
 	void ShowName(bool visible)
@@ -95,7 +107,7 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------
 	vector GetIconSize()
 	{
-		return FrameSlot.GetSize(m_wButton);
+		return FrameSlot.GetSize(m_wBaseFrame);
 	}
 
 	//------------------------------------------------------------------------------
@@ -103,11 +115,14 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 	{
 		m_wRoot = w;
 
-		m_wButton = ButtonWidget.Cast(w.FindAnyWidget("Button"));
+		m_wBaseFrame = w.FindAnyWidget("BaseFrame");
 		m_wBaseIcon = Widget.Cast(w.FindAnyWidget("SideSymbol"));
 		m_wImage = ImageWidget.Cast(w.FindAnyWidget("Image"));
 		m_wSelectImg = ImageWidget.Cast(w.FindAnyWidget("Corners"));
 		m_wHighlightImg = ImageWidget.Cast(w.FindAnyWidget("Highlight"));
+		m_wAntennaImg = w.FindAnyWidget("AntenaOff");
+		if (m_bUseBackgroundGradient)
+			m_wGradient = ImageWidget.Cast(w.FindAnyWidget("BackgroundGradient"));
 	}
 
 	//------------------------------------------------------------------------------
@@ -136,7 +151,7 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 	}
 
 	// ------------------------------------------------------------------------------
-	void SelectIcon()
+	sealed void SelectIcon()
 	{
 		if (!m_wSelectImg)
 			return;
@@ -144,16 +159,18 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 		if (s_SelectedElement && s_SelectedElement != this)
 			s_SelectedElement.Select(false);
 
-		Select(!m_bIsSelected);
+		Select();
 
-		m_wSelectImg.SetVisible(m_bIsSelected);
+		m_wSelectImg.SetVisible(true);
+		if (m_wGradient)
+			m_wGradient.SetVisible(true);
 
 		if (m_bIsSelected)
 			Event_OnPointSelected.Invoke(m_MapItem);
 	}
 
 	// ------------------------------------------------------------------------------
-	void Select(bool select)
+	void Select(bool select = true)
 	{
 		s_SelectedElement = this;
 		m_bIsSelected = select;
@@ -166,9 +183,10 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 		}
 		else
 		{
-			s_SelectedElement = null;
 			AnimCollapse();
 		}
+		if (m_wGradient)
+			m_wGradient.SetVisible(select);
 	}
 
 	//------------------------------------------------------------------------------

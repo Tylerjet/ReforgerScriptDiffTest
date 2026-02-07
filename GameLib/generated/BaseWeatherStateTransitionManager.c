@@ -81,6 +81,10 @@ class BaseWeatherStateTransitionManager
 	*/
 	proto external float GetTimeLeftUntilNextState();;
 	/*!
+	Retrieves in-game remaining time until next state's variant is completely set.
+	*/
+	proto external float GetTimeLeftUntilNextVariant();;
+	/*!
 	Get total number of state transitions
 	*/
 	proto external int GetStateTransitionsCount();

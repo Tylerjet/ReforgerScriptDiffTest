@@ -18,6 +18,18 @@ class SCR_CampaignServiceMapDescriptorComponent : SCR_MapDescriptorComponent
 	protected SCR_CampaignBase m_Base;
 	
 	//------------------------------------------------------------------------------------------------
+	void SetParentBase(SCR_CampaignBase base)
+	{
+		m_Base = base;
+		
+		if (!m_Base)
+			return;
+		
+		if (m_Base.GetOwningFaction() != SCR_RespawnSystemComponent.GetLocalPlayerFaction())
+			SetServiceMarker(visible: false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetServiceMarker(SCR_CampaignFaction faction = null, bool visible = true)
 	{
 		MapItem item = Item();
@@ -71,12 +83,13 @@ class SCR_CampaignServiceMapDescriptorComponent : SCR_MapDescriptorComponent
 		
 		item.SetImageDef(marker);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	void SetVisible(int layer)
 	{
 		if (!m_Base)
 			return;
+		
 		MapItem item = Item();
 		MapDescriptorProps props = item.GetProps();
 		
@@ -110,7 +123,6 @@ class SCR_CampaignServiceMapDescriptorComponent : SCR_MapDescriptorComponent
 	void SCR_CampaignServiceMapDescriptorComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		SCR_MapEntity.GetOnLayerChanged().Insert(SetVisible);
-		m_Base = SCR_CampaignBase.Cast(parent);
 	}
 
 	//------------------------------------------------------------------------------------------------

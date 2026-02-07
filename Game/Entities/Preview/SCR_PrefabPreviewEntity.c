@@ -115,6 +115,10 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 						listEntry = SCR_BasePreviewEntry.Cast(BaseContainerTools.CreateInstanceFromContainer(entryList.Get(e)));
 						if (listEntry.m_iParentID == -1)
 						{
+							//--- Apply custom icon offset (only if the entity is root)
+							if (parentID == 0)
+								entryLocal.m_vPosition == listEntry.m_vPosition;
+							
 							entryLocal.m_Mesh = listEntry.m_Mesh;
 							entryLocal.m_Shape = listEntry.m_Shape;
 							entryLocal.m_Flags = listEntry.m_Flags;
@@ -205,6 +209,11 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 					
 					if (SCR_Enum.HasFlag(editableFlags, EEditableEntityFlag.ORIENT_CHILDREN))
 						entryLocal.m_Flags |= EPreviewEntityFlag.ORIENT_CHILDREN;
+					
+					vector iconPos;
+					componentSource.Get("m_vIconPos", iconPos);
+					if (iconPos != vector.Zero)
+						entryLocal.m_vPosition -= iconPos;
 					
 					break;
 				}

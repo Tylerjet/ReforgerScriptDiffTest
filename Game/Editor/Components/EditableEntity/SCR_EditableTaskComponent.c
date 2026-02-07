@@ -16,42 +16,16 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 	protected int m_iTextIndex;
 	
 	/*!
-	Initialize task on all machines.
-	Tasks are not replicated by default; instead SCR_BaseTaskManager takes care of that.
-	However, editor task entities are replicated, so we need to handle it here.
-	*/
-	void InitTask()
-	{
-		if (!m_Task)
-			return;
-		
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
-			return;
-		
-		int taskID = m_Task.GetTaskID();
-		if (taskID == -1)
-			return;
-		
-		SCR_BaseTaskData taskData = taskManager.CreateTaskData(m_Task);
-		taskData.LoadDataFromTask(m_Task);
-		
-		InitTaskBroadcast(taskID, taskData);
-		Rpc(InitTaskBroadcast, taskID, taskData);
-	}
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void InitTaskBroadcast(int taskID, SCR_BaseTaskData taskData) //--- Rpc function receives SCR_BaseTaskData, not matter what the original was. ToDo: Improve
-	{
-		m_Task.SetTaskID(taskID);
-		taskData.SetupTask(m_Task);
-	}
-	
-	/*!
 	Reveal the task to all players.
 	*/
 	void ActivateTask()
 	{
-		GetTaskManager().SetTaskFaction(m_Task, m_TargetFaction);
+		if (!GetTaskManager())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
+		if (supportEntity)
+			supportEntity.SetTargetFaction(m_Task, m_TargetFaction);
 	}
 	/*!
 	Check if the task is actived, i.e., shown to players.
@@ -139,9 +113,9 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		return m_TargetFaction;
 	}
 	
-	override void SetTransform(vector transform[4])
+	override void SetTransform(vector transform[4], bool changedByUser = false)
 	{	
-		super.SetTransform(transform);
+		super.SetTransform(transform, changedByUser);
 		UpdateNearestLocation();
 	}
 	
@@ -179,13 +153,8 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		reader.ReadInt(m_iTextIndex);
 		m_Task.SetTextIndex(m_iTextIndex);
 		
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (taskManager && m_Task)
-		{
-			SCR_BaseTaskData taskData = taskManager.CreateTaskData(m_Task);
-			taskData.Deserialize(reader);
-			taskData.SetupTask(m_Task);
-		}
+		m_Task.Deserialize(reader);
+		
 		UpdateText();
 		
 		return true;
@@ -202,8 +171,6 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 					m_Task.SetTargetFaction(m_TargetFaction);
 				
 				UpdateNearestLocation();
-				
-				InitTask();
 			}
 		}
 		return this;
@@ -214,7 +181,7 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 	}
 	
 	
-	override bool Delete(bool updateNavmesh = true)
+	override bool Delete(bool changedByUser = false, bool updateNavmesh = true)
 	{
 		if (m_Task)
 			m_Task.ShowTaskNotification(ENotification.EDITOR_TASK_DELETED, true);

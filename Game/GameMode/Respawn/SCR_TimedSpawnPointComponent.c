@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Handles respawn timers for timed spawn points.", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Handles respawn timers for timed spawn points.")]
 class SCR_TimedSpawnPointComponentClass : SCR_RespawnTimerComponentClass
 {
 };

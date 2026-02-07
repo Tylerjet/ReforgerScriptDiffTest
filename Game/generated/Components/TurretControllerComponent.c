@@ -9,10 +9,6 @@ Do not modify, this script is generated
 * @{
 */
 
-class TurretControllerComponentClass: CompartmentControllerComponentClass
-{
-};
-
 class TurretControllerComponent: CompartmentControllerComponent
 {
 	proto external BaseCompartmentSlot GetCompartmentSlot();
@@ -22,6 +18,7 @@ class TurretControllerComponent: CompartmentControllerComponent
 	proto external bool IsFreeLookEnabled();
 	//! Returns true if the weapon is in ADS.
 	proto external bool IsWeaponADS();
+	proto external ETurretReloadState GetReloadingState();
 	//! Returns the time to ADS in seconds.
 	proto external float GetADSTime();
 	proto external BaseSightsComponent GetCurrentSights();
@@ -51,6 +48,8 @@ class TurretControllerComponent: CompartmentControllerComponent
 	proto external float GetReloadDuration();
 	// Returns the current reloading time, it goes from reload duration to 0.
 	proto external float GetReloadTime();
+	// Instantly reloads weapon with magazine
+	proto external bool DoReloadWeaponWith(IEntity ammunitionEntity);
 };
 
 /** @}*/

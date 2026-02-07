@@ -15,21 +15,30 @@ class BaseSightsComponentClass: GameComponentClass
 
 class BaseSightsComponent: GameComponent
 {
+	proto external IEntity GetOwner();
 	proto external bool IsSightADSActive();
 	/*!
 	Returns additional sights position used for calculating zeroing
 	A vector is calculated from start position to end position and used as direction for calculating zeroing offsets
 	Start position should be the one closer to eye position than end position
-	\param local Whether returned position should be in local space or world space
+	\param localSpace Whether returned position should be in local space or world space
 	*/
 	proto external vector GetSightsRearPosition(bool localSpace = false);
 	/*!
 	Returns additional sights position used for calculating zeroing
 	A vector is calculated from start position to end position and used as direction for calculating zeroing offsets
 	End position should be the one further from eye position than start position
-	\param local Whether returned position should be in local space or world space
+	\param localSpace Whether returned position should be in local space or world space
 	*/
 	proto external vector GetSightsFrontPosition(bool localSpace = false);
+	/*!
+	Returns a direction vector from the rear sight position to the front sight position
+	A vector is calculated from the rear sight to the front sight in such a way that
+	GetSightsRearPosition() + GetSightsDirection() == GetSightsFrontPosition()
+	\param localSpce Wether returned vector is in local or world space
+	\param normalize Wether returned vector is normalized or not, independent of the weapon sight geometry
+	*/
+	proto external vector GetSightsDirection(bool localSpace = false, bool normalize = true);
 	/*!
 	Returns the local sights reference point offset.
 	This corresponds to the set point info in base sights component.
@@ -56,6 +65,10 @@ class BaseSightsComponent: GameComponent
 	proto external SightsFOVInfo GetFOVInfo();
 	//! Percentage 0...1 of recoil that should be applied to camera when using this sights component.
 	proto external float GetCameraRecoilAmount();
+	//! Boolean indicating whether this sight component is prioritized
+	proto external bool GetSightsPriority();
+	//! Return true if the sights can be switched to.
+	proto external bool GetSightsSkipSwitch();
 	
 	// callbacks
 	

@@ -38,7 +38,7 @@ class SCR_RotationEditorAttribute : SCR_ValidTypeBaseValueListEditorAttribute
 		vector angles = Math3D.MatrixToAngles(mat);
 		angles[0] = var.GetFloat() - 180;
 		Math3D.AnglesToMatrix(angles, mat);
-		editableEntity.SetTransform(mat);
+		editableEntity.SetTransform(mat, true);
 		
 		//Print("UPDATE CHILDREN!");
 	}

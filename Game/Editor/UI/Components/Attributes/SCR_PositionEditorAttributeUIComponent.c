@@ -29,7 +29,7 @@ class SCR_PositionEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 	override void Init(Widget w, SCR_BaseEditorAttribute attribute)
 	{
 		m_root = w;
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		m_World = GetGame().GetWorld();
 		if (!m_World)
@@ -85,7 +85,7 @@ class SCR_PositionEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 			m_vStartingValue = var.GetVector();
 
 		//Hide if gamepad
-		OnInputDeviceUserChanged();		
+		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 		super.Init(w, attribute);
 	}
 	
@@ -106,14 +106,10 @@ class SCR_PositionEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		
 		OnChange(null, 1, 0, false);
 	}
-	
-	protected void OnInputDeviceUserChanged()
-	{		
-		InputManager inputManager = GetGame().GetInputManager();
-		if (!inputManager) 
-			return;
-		
-		SetVisible(inputManager.IsUsingMouseAndKeyboard());
+
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
+	{
+		SetVisible(!isGamepad);
 	}
 	
 	protected void SetVisible(bool newVisible)
@@ -254,7 +250,7 @@ class SCR_PositionEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 	
 	override void HandlerDeattached(Widget w)
 	{
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		
 		if (m_AttributeManager && m_EditBoxY)
 		{

@@ -158,8 +158,8 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		typename linkedOverrideAttributeType = typename.Empty;		
 		
 		if (attribute.GetHasConflictingValues() && !GetAttribute().GetInitCalled())
-		{		
-			GetGame().OnInputDeviceUserChangedInvoker().Insert(SetGamepadLockSelectorActive);
+		{
+			GetGame().OnInputDeviceIsGamepadInvoker().Insert(SetGamepadLockSelectorActive);
 		}
 
 		//Multiselect
@@ -439,7 +439,7 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		m_bEnabledByTickbox = toggle;
 		ToggleEnable(toggle);
 		
-		SetGamepadLockSelectorActive(-1, -1);
+		SetGamepadLockSelectorActive(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 
 		if (toggle)
 			AttributeValueChanged();
@@ -519,13 +519,10 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	}
 	
 	//For tickbox
-	protected void SetGamepadLockSelectorActive(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void SetGamepadLockSelectorActive(bool isGamepad)
 	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
-		m_GamePadLockedSelector.SetVisible(!m_InputManager.IsUsingMouseAndKeyboard() && !m_TickBoxAttribute.GetToggled());
-	}	
+		m_GamePadLockedSelector.SetVisible(isGamepad && !m_TickBoxAttribute.GetToggled());
+	}
 	
 	//============================ On Destroy ============================\\
 	override void HandlerDeattached(Widget w)
@@ -543,7 +540,7 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 				m_Attribute.GetOnSetAsSubAttribute().Remove(SetAsSubAttribute);
 			
 			if (m_Attribute.GetHasConflictingValues())
-				GetGame().OnInputDeviceUserChangedInvoker().Remove(SetGamepadLockSelectorActive);
+				GetGame().OnInputDeviceIsGamepadInvoker().Remove(SetGamepadLockSelectorActive);
 		} 
 		
 		if (m_TickBoxAttribute)

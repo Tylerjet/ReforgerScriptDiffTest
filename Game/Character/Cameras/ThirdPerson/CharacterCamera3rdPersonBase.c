@@ -22,41 +22,22 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		super.OnActivate(pPrevCamera, pPrevCameraResult);
 		if (pPrevCamera)
 		{
-			vector f = pPrevCamera.GetBaseAngles();
-			m_fLeftRightAngle	= f[1]; 
-			if (!pPrevCamera.IsInherited(CharacterCamera3rdPersonClimb) && !this.IsInherited(CharacterCamera3rdPersonClimb))
-			{
-				m_fUpDownAngle = m_ControllerComponent.GetAimingAngles()[1];
-			}
-			else
-			{
-				m_fUpDownAngle = 0;
-			}
 			// Use last shoulder state
 			m_fShoulderLRPrefered = GetShoulderLastActive();
 		}
-		m_fTransformUDAngle = 0;
 		m_fFOVFilter = pPrevCameraResult.m_fFOV;
 	}
 
 	//-----------------------------------------------------------------------------
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
-		//! update angles
-		float udAngle = UpdateUDAngle(m_fUpDownAngle, CONST_UD_MIN, CONST_UD_MAX, pDt);
-		m_fLeftRightAngle = UpdateLRAngle(m_fLeftRightAngle, CONST_LR_MIN, CONST_LR_MAX, pDt);
-		
 		pOutResult.m_vBaseAngles = GetBaseAngles();
 		
 		//! update fov
 		m_fFOV = GetBaseFOV();
 
 		//! yaw pitch roll vector
-		vector lookAngles;
-		lookAngles[0] = m_fLeftRightAngle;
-		lookAngles[1] = Math.Clamp(udAngle + GetInterpolatedUDTransformAngle(pDt), CONST_UD_MIN, CONST_UD_MAX);
-		lookAngles[2] = 0;
-		
+		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
 		//! apply to rotation matrix
 		Math3D.AnglesToMatrix(lookAngles, pOutResult.m_CameraTM);
 								
@@ -82,7 +63,7 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		m_fShoulderLROffset = Math.SmoothCD(m_fShoulderLROffset, m_fShoulderLRPrefered, m_fCameraLRShoulderVel, 0.14, 1000, pDt);
 		
 		m_fLeaningOffset = m_ControllerComponent.GetCurrentLeanAmount();
-		float shoulderDist = m_fShoulderLROffset * m_fShoulderWidth + m_fLeanDistance * m_fLeaningOffset;
+		float shoulderDist = GetShoulderDistance();
 		
 		//! apply shoulder dist
 		vector msOffset = m_CameraOffsetMS;
@@ -137,6 +118,7 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		pOutResult.m_fDistance 				= m_fDistance;
 		pOutResult.m_iDirectBoneMode		= EDirectBoneMode.None;
 		pOutResult.m_fUseHeading 			= 1.0;
+		pOutResult.m_fShoulderDist			= m_fShoulderLROffset;
 		pOutResult.m_fNearPlane	 			= 0.04;
 		pOutResult.m_fPositionModelSpace 	= 1.0;
 		pOutResult.m_pWSAttachmentReference = null;
@@ -160,6 +142,11 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		return m_fShoulderLRPrefered;
 	}
 	
+	//-----------------------------------------------------------------------------
+	override float GetShoulderDistance()
+	{
+		return m_fShoulderLROffset * m_fShoulderWidth + m_fLeanDistance * m_fLeaningOffset;
+	}
 	//-----------------------------------------------------------------------------
 	//! runtime config
 	protected	int 	m_iBoneIndex = -1;	//!< main bone 

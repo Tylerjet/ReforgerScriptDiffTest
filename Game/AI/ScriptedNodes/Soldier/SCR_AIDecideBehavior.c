@@ -15,11 +15,12 @@ class SCR_AIDecideBehavior: AITaskScripted
 			return ENodeResult.FAIL;
 		
 		SCR_AITargetInfo enemyTarget, unknownTarget;		
-		SCR_AIMessageBase commandMessage;
+		SCR_AIMessageBase commandMessage, infoMessage;
+		GetVariableIn("InfoMessage", infoMessage);
 		GetVariableIn("CommandMessage", commandMessage);
 		GetVariableIn("UnknownTarget", unknownTarget);
 
-		m_CurrentBehavior = m_UtilityComponent.EvaluateBehavior(unknownTarget, commandMessage);
+		m_CurrentBehavior = m_UtilityComponent.EvaluateBehavior(unknownTarget, commandMessage, infoMessage);
 		if (!m_CurrentBehavior || m_CurrentBehavior.m_sBehaviorTree == ResourceName.Empty)
 		{
 			Print("AI: Missing behavior tree in " + m_CurrentBehavior.ToString(), LogLevel.WARNING);
@@ -49,8 +50,8 @@ class SCR_AIDecideBehavior: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
 		"CommandMessage",
-		"UnknownTarget",
-		"EnemyTarget"
+		"InfoMessage",
+		"UnknownTarget"
 	};
 	override TStringArray GetVariablesIn()
     {

@@ -57,7 +57,17 @@ class SCR_SightsZoomFOVInfo : SCR_BaseVariableSightsFOVInfo
 			m_fCurrentFOV = m_aFOVs[0];
 		}
 		else
-			m_fCurrentFOV = 40 / m_fBaseZoom;
+		{
+			// Get reference 1x FOV
+			float referenceFOV;
+			PlayerController pc = GetGame().GetPlayerController();
+			if (pc && pc.GetPlayerCamera())
+				referenceFOV = pc.GetPlayerCamera().GetFocusFOV();
+			else
+				referenceFOV = 38;
+			
+			m_fCurrentFOV = referenceFOV / m_fBaseZoom;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

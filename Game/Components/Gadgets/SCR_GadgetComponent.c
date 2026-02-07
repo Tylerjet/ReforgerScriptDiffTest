@@ -265,6 +265,18 @@ class SCR_GadgetComponent : ScriptGameComponent
 		else
 			m_bFocused = false;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get prefab resource name
+	//! \return returns prefab ResourceName
+	ResourceName GetPrefabResource()
+	{		
+		EntityPrefabData prefabData = GetOwner().GetPrefabData();		
+		if (!prefabData)
+			return string.Empty;
+			
+		return prefabData.GetPrefabName();
+	}
 				
 	//------------------------------------------------------------------------------------------------
 	//! Get gadget type
@@ -313,15 +325,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 	{
 		return false;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Whether the gadget needs one or two hands to be held
-	//! \return Returns true if single handed
-	bool IsSingleHanded()
-	{
-		return true;
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	//! Visible when attached to character gear, further condition may determine visibility, such as if the equipment slot is obstructed by something else
 	//! \return Returns true if visible in equipment slot

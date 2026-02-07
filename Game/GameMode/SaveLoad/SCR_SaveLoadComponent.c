@@ -24,8 +24,7 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	protected string m_sFileName;
 	protected float m_fTimer;
 	
-	protected static string m_sFileNameToLoad;
-	
+	protected static const string GAME_SESSION_STORAGE_NAME = "SCR_SaveLoadComponent_FileNameToLoad";
 	protected static const int MINIMUM_AUTOSAVE_PERIOD = 60;
 	
 	/////////////////////////////////////////////////////////////////////////////
@@ -47,9 +46,9 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	static void LoadOnStart(SCR_MissionHeader missionHeader = null)
 	{
 		if (missionHeader)
-			m_sFileNameToLoad = missionHeader.GetSaveFileName();
+			GameSessionStorage.s_Data.Insert(GAME_SESSION_STORAGE_NAME, missionHeader.GetSaveFileName());
 		else
-			m_sFileNameToLoad = string.Empty;
+			GameSessionStorage.s_Data.Remove(GAME_SESSION_STORAGE_NAME)
 	}
 	/*!
 	Check if the mission should be loaded from a save file upon start.
@@ -57,11 +56,33 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	*/
 	static bool IsLoadOnStart(SCR_MissionHeader missionHeader)
 	{
-		// TODO: Solve for Listen servers
-		if (RplSession.Mode() == RplMode.Dedicated)
-			return !System.IsCLIParam("backendFreshSession");
-		else
-			return missionHeader && missionHeader.GetSaveFileName() == m_sFileNameToLoad;
+		string saveFileName = GetSaveFileName(missionHeader);
+		if (!saveFileName)
+			return false;
+		
+		//--- Load from CLI param
+		string fileNameCLI;
+		if (System.GetCLIParam("loadSaveFile", fileNameCLI))
+		{
+			array<string> fileNamesCLI = {};
+			fileNameCLI.Split(",", fileNamesCLI, false);
+			if (fileNamesCLI.Contains(saveFileName))
+				return true;
+		}
+		
+		string fileNameToLoad;
+		return GameSessionStorage.s_Data.Find(GAME_SESSION_STORAGE_NAME, fileNameToLoad) && fileNameToLoad == saveFileName;
+	}
+	
+	protected static string GetSaveFileName(SCR_MissionHeader missionHeader)
+	{
+		if (missionHeader)
+			return missionHeader.GetSaveFileName();
+		
+#ifdef WORKBENCH
+		return "WB_" + FilePath.StripPath(FilePath.StripExtension(GetGame().GetWorldFile()));
+#endif
+		return string.Empty;
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////
@@ -86,6 +107,11 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	{
 		if (m_Callback != null)
 			m_Callback.SaveSession(m_sFileName);
+	}
+	protected void Load()
+	{
+		if (m_Callback != null)
+			m_Callback.LoadSession(m_sFileName);
 	}
 	/*!
 	Restart the world and load saved state afterwards.
@@ -128,18 +154,23 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 		{
 			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_SAVE))
 			{
-				Save();
 				DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_SAVELOAD_SAVE, false);
+				Save();
 			}
 			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOAD))
 			{
-				RestartAndLoad();
 				DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOAD, false);
+				Load();
+			}
+			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_RESTART_AND_LOAD))
+			{
+				DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_SAVELOAD_RESTART_AND_LOAD, false);
+				RestartAndLoad();
 			}
 			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOG))
 			{
-				Log();
 				DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOG, false);
+				Log();
 			}
 		}
 		
@@ -166,22 +197,11 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	{
 		if (Replication.IsServer())
 		{
-			SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());		
-			if (missionHeader)
-			{
-				m_sFileName = missionHeader.GetSaveFileName();
+			SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
+			if (missionHeader && !missionHeader.IsSavingEnabled())
+				return;
 			
-				//--- Saving is disabled, terminate
-				if (!missionHeader.IsSavingEnabled())
-					return;
-			}
-#ifdef WORKBENCH
-			else
-			{
-				m_sFileName = "WB_" + FilePath.StripPath(FilePath.StripExtension(GetGame().GetWorldFile()));
-			}
-#endif
-			
+			m_sFileName = GetSaveFileName(missionHeader);
 			if (m_sFileName)
 			{			
 				m_Callback = new SCR_DSSessionCallback(m_Struct);
@@ -209,7 +229,8 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 		{
 			DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_SAVELOAD, "Save/Load", "Game");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_SAVE, "", "Save Session", "Save/Load");
-			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOAD, "", "Restart and Load Session", "Save/Load");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOAD, "", "Load Session", "Save/Load");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_RESTART_AND_LOAD, "", "Restart and Load Session", "Save/Load");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOG, "", "Log Session Save", "Save/Load");
 		}
 	}

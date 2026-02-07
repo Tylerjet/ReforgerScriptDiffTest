@@ -65,8 +65,9 @@ class ServerBrowserMenuUI: MenuRootBase
 	//ref OnSearchServers m_SearchCallback = new OnSearchServers;
 	protected ref array<ref ServerBrowserCallback> m_aSearchCallbacks = {};
 	protected ref ServerBrowserCallback m_CallbackLastSearch = null;
-	protected ref ServerBrowserCallback m_CallbackScroll = new ServerBrowserCallback();
+	protected ref SCR_BackendCallback m_CallbackScroll = new SCR_BackendCallback();
 	protected ref ServerBrowserCallback m_CallbackPing = new ServerBrowserCallback();
+	protected ref SCR_RoomCallback m_CallbackFavorite = new SCR_RoomCallback();
 	
 	protected ref OnDirectJoinCallback m_CallbackSearchTarget = new OnDirectJoinCallback();
 	
@@ -80,6 +81,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected ref SCR_ServerBrowserDialogManager m_Dialogs = new SCR_ServerBrowserDialogManager();
 	
 	protected ref OnJoinRoomSB m_CallbackPasswordCheck = new OnJoinRoomSB();
+	protected ref RoomPasswordJoinParam m_passwordStruct = new RoomPasswordJoinParam();
 
 	// Filter parameters 
 	protected ref FilteredServerParams m_ParamsFilter = new FilteredServerParams();
@@ -103,6 +105,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected bool m_bServerBrowserReopened = false;
 	protected bool m_bIsScenarioLoaded = false;
 	protected bool m_bPingReceived = false;
+	protected bool m_bDialogFail = false;
 	
 	protected bool m_bIsWaitingForBackend = true;
 	
@@ -151,7 +154,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		SetupCallbacks();
 		
 		SetupParams(m_Lobby);
-		CheckPing();
 		
 		m_iFocusedWidgetState = ESBWidgetFocus.SERVER_LIST;
 		
@@ -200,6 +202,9 @@ class ServerBrowserMenuUI: MenuRootBase
 		m_CallbackAutoRefresh.m_OnSuccess.Clear();
 		
 		ClearConnectionTimeoutWaiting();
+		
+		// Save filter 
+		m_FilterPanel.Save();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -246,8 +251,10 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Is there last server and reconnect is enabled
 		bool reconnectEnabled = IsKickReconnectEnabled(m_Dialogs.GetCurrentKickDialog());
 			
-		if (m_Lobby.IsPingAvailable())
-			OnActionRefresh();
+		if (!m_Lobby.IsPingAvailable())
+			return;
+		
+		OnActionRefresh();
 		
 		// Join to invited server 
 		Room invited = m_Lobby.GetInviteRoom();
@@ -296,41 +303,16 @@ class ServerBrowserMenuUI: MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Request ping sites check 
-	protected void CheckPing()
-	{
-		m_CallbackPing.event_OnResponse.Insert(OnCheckPingResponse);
-		m_Lobby.MeasureLatency(m_CallbackPing);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Handle ping check callback response
-	protected void OnCheckPingResponse(ServerBrowserCallback callback)
-	{
-		m_CallbackPing.event_OnResponse.Remove(OnCheckPingResponse);
-		
-		// Success 
-		if (callback.GetResultType() == EServerBrowserRequestResult.SUCCESS)
-		{
-			if (!m_bIsWaitingForBackend)
- 				OnActionRefresh();
-			
-			return;
-		}
-		
-		// Repeat ping check 
-		CheckPing();
-	}
-	
-	
-	
-	//------------------------------------------------------------------------------------------------
 	//! Call this on receiving filtered rooms from search 
 	//! Setting up server list - TODO@wernerjak - can be partialy moved in server list comp
 	protected void OnRoomsFound(array<Room> rooms = null)
 	{	
 		// Allow rooms loading 
 		m_bRoomsLoaded = true;
+		
+		// Clear cached last mods
+		m_LastLoadedRoom = null;
+		m_ServerEntryLastFocused = null;
 		
 		// Load rooms 
 		ClientLobbyApi lobby = GetGame().GetBackendApi().GetClientLobby();
@@ -344,9 +326,15 @@ class ServerBrowserMenuUI: MenuRootBase
 		{
 			// Room from search
 			lobby.Rooms(m_aRooms);
+			
+			if (m_aRooms.IsEmpty())
+			{
+				PrintDebug("No room found", "OnRoomsFound");
+			}
+			
 			m_CallbackAutoRefresh.m_OnSuccess.Insert(OnRoomAutoRefresh);
 		}
-		
+
 		DisplayRooms(m_aRooms);
 		
 		// Move to top in list 
@@ -357,14 +345,6 @@ class ServerBrowserMenuUI: MenuRootBase
 				m_ScrollableList.FocusFirstAvailableEntry();
 			}
 		}
-		
-		// Favorite filter is active? 
-		/*if (m_ParamsFilter.GetFavoriteFilter())
-			OnSearchFoundFavorite();
-		
-		// Recently played filter is active? 
-		if (m_ParamsFilter.GetRecentlyPlayedFilter())
-			OnSearchFoundFavorite();*/
 			
 		if (m_bFirstRoomLoad)
 		{
@@ -484,7 +464,9 @@ class ServerBrowserMenuUI: MenuRootBase
 	//! Call this once new room data are fetched 
 	protected void OnRoomAutoRefresh(ServerBrowserCallback callback)
 	{
-		//DisplayRooms(m_aRooms);
+		if (m_Dialogs.IsOpen())
+			return;
+		
 		m_Lobby.SetRefreshRate(ROOM_REFRESH_RATE);
 		DisplayRooms(m_aRooms);
 		
@@ -541,8 +523,9 @@ class ServerBrowserMenuUI: MenuRootBase
 		}
 		
 		// Clear list 
-		m_CallbackScroll.m_OnSuccess.Remove(OnScrollSuccess);
-			
+		//m_CallbackScroll.m_OnSuccess.Remove(OnScrollSuccess);
+		m_CallbackScroll.GetEventOnResponse().Remove(OnScrollResponse);	
+		
 		//  Setup list loading
 		if (m_ScrollableList)
 		{
@@ -614,6 +597,7 @@ class ServerBrowserMenuUI: MenuRootBase
 			return;
 		
 		m_EntryInteractible.OnFavoriteClicked(null);
+		DisplayFavoriteAction(m_EntryInteractible.GetRoomInfo().IsFavorite());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -854,6 +838,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		m_OnEntryFocus.Invoke(true, canJoin, true);
 		RoomHandlingButtonsEnabling(canJoin, true);
 		RoomHandlingFavoriteEnable(true);
+		DisplayFavoriteAction(m_EntryInteractible.GetRoomInfo().IsFavorite());
 		
 		m_LastFocusedRoom = room;
 		ReceiveRoomContent(m_LastFocusedRoom, true, serverEntry);
@@ -874,7 +859,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		// Check restriction 
 		bool canJoin = CanJoinRoom(room);
-		canJoin = true;
 		
 		m_OnEntryFocus.Invoke(true, canJoin, true);
 		RoomHandlingButtonsEnabling(canJoin, true);
@@ -918,6 +902,7 @@ class ServerBrowserMenuUI: MenuRootBase
 				}
 				
 				// Load mods after short delay - to prevent spamming mods receive requiest with fast server selecting
+				//PrintDebug("Call later room receive for: " + room.Name(), "ReceiveRoomContent");
 				callQueue.CallLater(ReceiveRoomContent_Mods, ROOM_CONTENT_LOAD_DELAY, false, room);
 			}
 		}
@@ -990,6 +975,12 @@ class ServerBrowserMenuUI: MenuRootBase
 			
 			ReceiveRoomContent(entry.GetRoomInfo(), false, entry);
 		}
+
+		bool canJoin  = CanJoinRoom(entry.GetRoomInfo());
+		
+		RoomHandlingButtonsEnabling(canJoin, true);
+		RoomHandlingFavoriteEnable(true);
+		DisplayFavoriteAction(m_EntryInteractible.GetRoomInfo().IsFavorite());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1041,7 +1032,7 @@ class ServerBrowserMenuUI: MenuRootBase
 			
 			// Initial sort
 			// todo move default sorting values out of here, it can be set in layout file now
-			m_SortBar.SetCurrentSortElement(4, ESortOrder.ASCENDING);
+			m_SortBar.SetCurrentSortElement(3, ESortOrder.DESCENDING);
 		}
 		 
 		// Search edit box
@@ -1265,10 +1256,10 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		switch (id)
 		{
-			// Official
+			// All
 			case 0:
 			{
-				m_ParamsFilter.SetOfficialFilter(true, true);
+				m_ParamsFilter.SetOfficialFilter(false, false);
 				break;
 			}
 			
@@ -1279,8 +1270,15 @@ class ServerBrowserMenuUI: MenuRootBase
 				break;
 			}
 			
-			// Favorite servers 
+			// Official
 			case 2:
+			{
+				m_ParamsFilter.SetOfficialFilter(true, true);
+				break;
+			}
+			
+			// Favorite servers 
+			case 3:
 			{
 				m_ParamsFilter.SetFavoriteFilter(true);
 				m_ParamsFilter.SetOfficialFilter(false, false);
@@ -1288,7 +1286,7 @@ class ServerBrowserMenuUI: MenuRootBase
 			}
 			
 			// Recently played 
-			case 3:
+			case 4:
 			{
 				m_ParamsFilter.SetRecentlyPlayedFilter(true); 
 				m_ParamsFilter.SetOfficialFilter(false, false);
@@ -1337,9 +1335,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Set filter and refresh		
 		m_ParamsFilter.SetFilters(m_FilterPanel.GetFilter());
 		OnActionRefresh(); 
-		
-		// Save filter 
-		m_FilterPanel.Save();
 		
 		m_bWasFilterChanged = true;
 		
@@ -1395,8 +1390,9 @@ class ServerBrowserMenuUI: MenuRootBase
 		int pos = entriesC * page;
 
 		// Setup scroll callback 
-		m_CallbackScroll.m_OnSuccess.Insert(OnScrollSuccess);
-
+		//m_CallbackScroll.m_OnSuccess.Insert(OnScrollSuccess);
+		m_CallbackScroll.GetEventOnResponse().Insert(OnScrollResponse);
+		
 		if (!m_bFirstRoomLoad)
 		{
 			array<Room> rooms = {};
@@ -1406,7 +1402,33 @@ class ServerBrowserMenuUI: MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnScrollSuccess(ServerBrowserCallback callback)
+	//! Call this when scroll returns server response to handle actions
+	protected void OnScrollResponse(SCR_BackendCallback callback)
+	{
+		switch (callback.GetResponseType())
+		{
+			case EBackendCallbackResponse.SUCCESS:
+			{
+				OnScrollSuccess(callback);
+				break;
+			}
+			
+			case EBackendCallbackResponse.ERROR:
+			{
+				PrintDebug("Scroll error!", "OnScrollResponse");
+				break;
+			}
+			
+			case EBackendCallbackResponse.TIMEOUT:
+			{
+				PrintDebug("Scroll timeout!", "OnScrollResponse");
+				break;
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnScrollSuccess(SCR_BackendCallback callback)
 	{
 		// Check if loaded room should display details
 		bool loadedRoomFocused = false;
@@ -1415,12 +1437,27 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		// Update rooms
 		m_Lobby.Rooms(m_aRooms);
+		
+		if (m_aRooms.IsEmpty())
+		{
+			PrintDebug("No room found", "OnScrollSuccess");
+			
+			if (m_Lobby.TotalRoomCount() > 0)
+			{
+				if (m_ScrollableList)
+					CallOnServerListSetPage(m_ScrollableList.GetCurrentPage());
+				else
+					OnActionRefresh();
+			}
+		}
+		
 		m_ScrollableList.UpdateLoadedPage();
 		
 		DisplayRooms(m_aRooms);
 		 
 		// Clear callback 
-		m_CallbackScroll.m_OnSuccess.Remove(OnScrollSuccess);
+		//m_CallbackScroll.m_OnSuccess.Remove(OnScrollSuccess);
+		//m_CallbackScroll.GetEventOnResponse().Remove();
 		
 		
 		// Focus on new room 
@@ -1562,9 +1599,35 @@ class ServerBrowserMenuUI: MenuRootBase
 			return;
 		
 		int roomId = m_aRooms.Find(roomClicked);	
+		if (roomId == -1)
+			return;
 		
-		if (roomId != -1)
-			m_aRooms[roomId].SetFavorite(favorite, null);
+		// Setup callback 
+		m_CallbackFavorite.SetRoom(roomClicked);
+		m_CallbackFavorite.GetEventOnResponse().Insert(OnRoomSetFavoriteResponse);
+		
+		m_aRooms[roomId].SetFavorite(favorite, m_CallbackFavorite);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnRoomSetFavoriteResponse(SCR_RoomCallback callback)
+	{
+		switch (callback.GetResponseType())
+		{
+			case EBackendCallbackResponse.SUCCESS:
+			{
+				if (callback.GetRoom())
+					DisplayFavoriteAction(callback.GetRoom().IsFavorite());
+				break;
+			}
+			
+			case EBackendCallbackResponse.ERROR: PrintDebug("Error!", "OnRoomSetFavoriteResponse"); break;
+			case EBackendCallbackResponse.TIMEOUT: PrintDebug("Timeout!", "OnRoomSetFavoriteResponse"); break;
+		}
+		
+		// Clear 
+		m_CallbackFavorite.SetRoom(null);
+		m_CallbackFavorite.GetEventOnResponse().Remove(OnRoomSetFavoriteResponse);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1693,7 +1756,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		if (!roomInfo)
 			return;
-		
 		// Get scenario item 
 		MissionWorkshopItem scenarioItem = roomInfo.HostScenario();
 		SCR_AddonManager mgr = SCR_AddonManager.GetInstance(); 
@@ -1709,15 +1771,52 @@ class ServerBrowserMenuUI: MenuRootBase
 			m_ServerScenarioDetails.SetHideScenarioImg(hideScenario);
 			
 			if (scenarioItem) // Vanilla 
+			{
 				m_ServerScenarioDetails.SetScenario(scenarioItem);
+			}
 			else // Modded  
-				m_ServerScenarioDetails.SetScenario(scenarioItem);
+			{
+				scenarioItem = MissionFromMod(scenario);
+				
+				if (scenarioItem)
+					m_ServerScenarioDetails.SetScenario(scenarioItem);
+				else
+					m_ServerScenarioDetails.DisplayDefaultScenarioImage();
+			}
 		}
 		
 		m_RoomScenario = scenarioItem;
 		m_bIsScenarioLoaded = true;
 		
 		m_OnScenarioLoad.Invoke(m_RoomScenario);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected MissionWorkshopItem MissionFromMod(Dependency scenario)
+	{
+		if (!scenario)
+			return null;
+		
+		WorkshopItem item = scenario.GetCachedItem();
+		if (!item)
+			return null;
+		
+		Revision rev = item.GetActiveRevision();
+		if (!rev)
+			return null;
+		
+		array<MissionWorkshopItem> scenarios = {};
+		rev.GetScenarios(scenarios);
+		if (scenarios.IsEmpty())
+			return null;
+		
+		for (int i = 0, count = scenarios.Count(); i < count; i++)
+		{
+			if (scenarios[i].GetOwner() == item)
+				return scenarios[i];
+		}
+		
+		return null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1832,7 +1931,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		//TODO@wernerjak - check platform restriction 
 		
-		return versionMatch;
+		return versionMatch && room.Joinable();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1992,6 +2091,19 @@ class ServerBrowserMenuUI: MenuRootBase
 		m_sErrorMessage = "";
 		m_sErrorMessageGroup = "";
 		m_sErrorMessageDetail = "";
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Based on given boolean favorite nav button is displaying eather add or remove favorite 
+	protected void DisplayFavoriteAction(bool favorited)
+	{
+		if (m_BtnFavorite && m_EntryInteractible)
+		{
+			if (favorited)
+				m_BtnFavorite.SetLabel("#AR-Workshop_ButtonRemoveFavourites");
+			else
+				m_BtnFavorite.SetLabel("#AR-Workshop_ButtonAddToFavourites");
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2267,6 +2379,31 @@ class ServerBrowserMenuUI: MenuRootBase
 		{
 			PrintDebug("Server browser is joining to invited server!", "JoinProcess_Init");
 		}
+		
+		m_Dialogs.m_OnCancel.Insert(OnJoinDialogsClose);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Call this to kill joining process at any stage
+	protected void OnJoinDialogsClose()
+	{
+		// Clear joining callbacks 
+		m_CallbackJoin.m_OnSuccess.Clear();
+		m_CallbackJoin.m_OnFail.Clear();
+		m_CallbackJoin.m_OnTimeOut.Clear();
+		
+		// Clear mods manager callbacks 
+		m_ModsManager.m_OnGettingAllDependecies.Clear();
+		m_ModsManager.m_OnModsFail.Clear();
+		m_ModsManager.m_OnGettingScenario.Clear();
+		m_ModsManager.m_OnModDownload.Clear();
+		
+		// Clear dialog 
+		m_Dialogs.m_OnConfirm.Clear();
+		m_Dialogs.m_OnCancel.Clear();
+		m_Dialogs.m_OnDialogClose.Clear();
+		m_Dialogs.m_OnDownloadComplete.Clear();
+		m_Dialogs.m_OnJoinRoomDemand.Clear();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2291,6 +2428,11 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Chekc match
 		bool versionsMatch = ClientRoomVersionMatch(roomToJoin);
 
+		
+		#ifdef SB_DEBUG
+
+		#else
+		
 		// Stop join process with error dialog with wrong version
 		if (!versionsMatch)
 		{
@@ -2298,6 +2440,8 @@ class ServerBrowserMenuUI: MenuRootBase
 			m_Dialogs.DisplayDialog(EJoinDialogState.VERSION_MISMATCH);
 			return;
 		}
+		
+		#endif
 		
 		// Check room password protection - TODO@wernerjak - add password validation before content check
 		//JoinProcess_CheckRoomPasswordProtected(roomToJoin);
@@ -2351,8 +2495,6 @@ class ServerBrowserMenuUI: MenuRootBase
 			editDialog.SetWarningMessage(errorMessage);
 		}
 	}
-	
-	protected ref RoomPasswordJoinParam m_passwordStruct = new RoomPasswordJoinParam;
 	
 	//------------------------------------------------------------------------------------------------
 	protected void JoinProcess_OnPasswordConfirm()
@@ -2470,6 +2612,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected void JoinProcess_CheckModContent()
 	{
 		Room roomToJoin = m_RoomToJoin;
+		m_Dialogs.SetJoinRoom(roomToJoin);
 		
 		// Remove mods check actions 
 		m_ModsManager.m_OnGettingAllDependecies.Remove(JoinProcess_CheckModContent);
@@ -2500,7 +2643,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		}	
 		
 		// Setup dialog with list of mods to update
-		m_Dialogs.SetJoinRoom(roomToJoin);
 		m_Dialogs.DisplayDialog(EJoinDialogState.MODS_TO_UPDATE);
 		
 	}
@@ -2581,7 +2723,17 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		// Try password again 
 		if (m_RoomToJoin.PasswordProtected())
-			JoinProcess_OnPasswordWrong(callback, code, restCode, apiCode);
+		{
+			if (m_Lobby.GetInviteRoom() ||(m_RejoinRoom && !m_bDialogFail))
+			{
+				JoinProcess_PasswordDialogOpen();
+				m_bDialogFail = true;
+			}
+			else
+			{
+				JoinProcess_OnPasswordWrong(callback, code, restCode, apiCode);
+			}
+		}
 		
 		JoinProcess_CleanJoinCallback();	
 	}
@@ -2609,6 +2761,12 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		// Dialogs 
 		m_Dialogs.m_OnJoinRoomDemand.Remove(JoinProcess_Join);
+		m_Dialogs.GetOnCloseAll().Remove(JoinProcess_CleanJoinCallback);
+		
+		m_Dialogs.m_OnCancel.Remove(OnJoinDialogsClose);
+		
+		if (m_Lobby.GetInviteRoom())
+			m_Lobby.ClearInviteRoom();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2626,6 +2784,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Invokers 
 		m_Dialogs.m_OnDownloadComplete.Clear();
 		m_Dialogs.m_OnDownloadComplete.Insert(OnDialogsHandlerDownloadComplete);
+		m_Dialogs.GetOnCloseAll().Insert(JoinProcess_CleanJoinCallback);
 
 		m_aSearchCallbacks.Clear();
 	}

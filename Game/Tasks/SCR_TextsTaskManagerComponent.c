@@ -4,10 +4,7 @@ class SCR_TextsTaskManagerComponentClass: ScriptComponentClass
 	[Attribute()]
 	protected ref array<ref SCR_TextsTaskManagerEntry> m_aEntries;
 	
-	[Attribute()]
-	protected ref SCR_UIInfo m_Placeholder;
-	
-	int GetTexts(ETaskTextType type, out notnull array<ref SCR_UIInfo> outInfos)
+	int GetTexts(ETaskTextType type, out notnull array<ref SCR_UIDescription> outInfos)
 	{
 		foreach (SCR_TextsTaskManagerEntry entry: m_aEntries)
 		{
@@ -23,7 +20,7 @@ class SCR_TextsTaskManagerComponentClass: ScriptComponentClass
 		}
 		return 0;
 	}
-	SCR_UIInfo GetText(ETaskTextType type, int index)
+	SCR_UIDescription GetText(ETaskTextType type, int index)
 	{
 		foreach (SCR_TextsTaskManagerEntry entry: m_aEntries)
 		{
@@ -54,7 +51,7 @@ class SCR_TextsTaskManagerComponent: ScriptComponent
 	\param type Text type
 	\param[out] outInfos Array to be filled with UI infos
 	*/
-	int GetTexts(ETaskTextType type, out notnull array<ref SCR_UIInfo> outInfos)
+	int GetTexts(ETaskTextType type, out notnull array<ref SCR_UIDescription> outInfos)
 	{
 		SCR_TextsTaskManagerComponentClass prefabData = SCR_TextsTaskManagerComponentClass.Cast(GetComponentData(GetOwner()));
 		if (prefabData)
@@ -68,7 +65,7 @@ class SCR_TextsTaskManagerComponent: ScriptComponent
 	\param index Index of text entry
 	\return UI info
 	*/
-	SCR_UIInfo GetText(ETaskTextType type, int index)
+	SCR_UIDescription GetText(ETaskTextType type, int index)
 	{
 		SCR_TextsTaskManagerComponentClass prefabData = SCR_TextsTaskManagerComponentClass.Cast(GetComponentData(GetOwner()));
 		if (prefabData)
@@ -85,7 +82,7 @@ class SCR_TextsTaskManagerEntry
 	ETaskTextType m_TextType;
 	
 	[Attribute()]
-	ref array<ref SCR_UIInfo> m_aTexts;
+	ref array<ref SCR_UIDescription> m_aTexts;
 };
 
 enum ETaskTextType

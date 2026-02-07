@@ -26,10 +26,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	ref map<SCR_BaseTask, TextWidget> m_mTasksTimers = new map<SCR_BaseTask, TextWidget>();
 
 	protected bool m_bVisible;
-	protected bool m_bMapVisible;
 	protected bool m_bDetailVisible;
 	protected bool m_bPickAssigneeVisible;
-	protected bool m_bInitialVisibleForce;
 	protected bool m_bCurrentTaskVisible;
 	protected bool m_bTaskContextEnabled;
 	protected float m_fCurrentTaskTime;
@@ -96,7 +94,10 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		}
 
 		vector taskPos = task.GetOrigin();
-		mapEntity.ZoomPanSmooth(mapEntity.GetCurrentZoom(), taskPos[0], taskPos[2]);
+		float screenX, screenY;
+		mapEntity.WorldToScreen(taskPos[0], taskPos[2], screenX, screenY);
+		mapEntity.PanSmooth(screenX, screenY);
+
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -218,10 +219,21 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 		assigneeNames.SetText(namesText);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	protected void GenerateUI(SCR_BaseTask taskToFocus = null)
+	void GenerateUI(Widget rootWidget ,SCR_BaseTask taskToFocus = null)
 	{
+		if (!GetTaskManager())
+			return;
+			
+		if (!rootWidget)
+			return;
+		
+		SCR_BaseTask locallyRequestedTask;
+		SCR_RequestedTaskSupportEntity supportEntity = SCR_RequestedTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_RequestedTaskSupportEntity));
+		if (supportEntity)
+			locallyRequestedTask = supportEntity.GetLocallyRequestedTask();
+		
 		SCR_BaseTaskExecutor localTaskExecutor = SCR_BaseTaskExecutor.GetLocalExecutor();
 		if (!localTaskExecutor)
 			return;
@@ -231,13 +243,12 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		array<SCR_BaseTask> tasks = {};
 		GetTaskManager().GetFilteredTasks(tasks, faction);
 
-		SCR_BaseTask locallyRequestedTask = GetTaskManager().GetLocallyRequestedTask();
 		if (locallyRequestedTask)
 		{
 			if (!m_wWidgetToFocus)
-				m_wWidgetToFocus = locallyRequestedTask.GenerateTaskDescriptionUI(this, m_aWidgets);
+				m_wWidgetToFocus = locallyRequestedTask.GenerateTaskDescriptionUI(rootWidget, m_aWidgets);
 			else
-				locallyRequestedTask.GenerateTaskDescriptionUI(this, m_aWidgets);
+				locallyRequestedTask.GenerateTaskDescriptionUI(rootWidget, m_aWidgets);
 		}
 
 		SCR_BaseTask locallyAssignedTask = SCR_BaseTaskExecutor.GetLocalExecutor().GetAssignedTask();
@@ -256,7 +267,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			if (task == locallyRequestedTask)
 				continue;
 
-			currentTaskUI = task.GenerateTaskDescriptionUI(this, m_aWidgets);
+			currentTaskUI = task.GenerateTaskDescriptionUI(rootWidget, m_aWidgets);
 
 			if (!m_wWidgetToFocus)
 				m_wWidgetToFocus = currentTaskUI;
@@ -276,7 +287,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			}
 		}
 		
-		SCR_UISoundEntity.SoundEvent("SOUND_HUD_TASK_MENU_OPEN");
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_HUD_TASK_MENU_OPEN);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -284,7 +295,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	{
 		// note: turned off now
 		return;
-		array<ref SCR_BaseTaskSupportClass> supportedTasks = GetTaskManager().GetSupportedTasks();
+		array<SCR_BaseTaskSupportEntity> supportedTasks = GetTaskManager().GetSupportedTasks();
 		if (!supportedTasks)
 			return;
 
@@ -369,6 +380,14 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	bool HasLocallyAssignedTask()
 	{
+		if (!GetTaskManager())
+			return false;
+		
+		SCR_BaseTask locallyRequestedTask;
+		SCR_RequestedTaskSupportEntity supportEntity = SCR_RequestedTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_RequestedTaskSupportEntity));
+		if (supportEntity)
+			locallyRequestedTask = supportEntity.GetLocallyRequestedTask();
+		
 		SCR_BaseTaskExecutor localTaskExecutor = SCR_BaseTaskExecutor.GetLocalExecutor();
 		if (!localTaskExecutor || !localTaskExecutor.GetAssignedTask())
 			return false;
@@ -397,10 +416,6 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			{
 				TextWidget textWidget = TextWidget.Cast(m_wCurrentTask.FindAnyWidget("TaskTitle"));
 
-				//HUD Icon
-				/*assignedTask.ToggleHUDIcon(true);
-				m_aHUDIconUpdatedTasks.Insert(assignedTask);*/
-
 				if (assignedTask)
 					assignedTask.SetTitleWidgetText(textWidget, assignedTask.GetTaskListTaskTitle());
 				else
@@ -421,19 +436,16 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		}
 		else
 		{
-			//HUD Icon
-			/*assignedTask.ToggleHUDIcon(false);
-			m_aHUDIconUpdatedTasks.RemoveItem(assignedTask);*/
 			targetOpacity = 0;
 		}
 
 		if (fade)
 		{
-			WidgetAnimator.PlayAnimation(m_wCurrentTask, WidgetAnimationType.Opacity, targetOpacity, speed);
+			AnimateWidget.Opacity(m_wCurrentTask, targetOpacity, speed);
 		}
 		else
 		{
-			WidgetAnimator.StopAnimation(m_wCurrentTask, WidgetAnimationType.Opacity);
+			AnimateWidget.StopAnimation(m_wCurrentTask, WidgetAnimationOpacity);
 			m_wCurrentTask.SetOpacity(targetOpacity);
 		}
 
@@ -621,12 +633,12 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 		if (curTask && curTask == m_SelectedTask)
 		{
-			SCR_UISoundEntity.SoundEvent(UISounds.CLICK_CANCEL);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.CLICK_CANCEL);
 			taskNetworkComp.AbandonTask(taskId);
 		}
 		else
 		{
-			SCR_UISoundEntity.SoundEvent(UISounds.CLICK);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.CLICK);
 			taskNetworkComp.RequestAssignment(taskId);
 		}
 	}
@@ -690,26 +702,15 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		
 		if (!SCR_PlayerController.GetLocalControlledEntity() || !m_bOpenTaskListOnMapOpen || SCR_SelectSpawnPointSubMenu.GetInstance())
 			return;
-		
-		if (!m_bInitialVisibleForce)
-		{
-			m_bInitialVisibleForce = true;
-			Action_ShowTasks();
-			return;
-		}
-
-		if (m_bShowSelectedTaskOnMap && m_SelectedTask)
-			GetGame().GetCallqueue().CallLater(PanMapToTask, 250, false, -1, m_SelectedTask);
-
-		if (m_bMapVisible)
-			Action_ShowTasks();
+			
+		if (m_bShowSelectedTaskOnMap && m_LastSelectedTask)
+			PanMapToTask(-1, m_LastSelectedTask);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void OnMapClose()
 	{
 		m_bTaskContextEnabled = false;
-		m_bMapVisible = m_bVisible;
 		Action_HideTasks();
 	}
 
@@ -729,7 +730,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		ClearUI();
 		m_bVisible = true;
 		
-		GenerateUI(taskToFocus);
+		GenerateUI(GetRootWidget(), taskToFocus);
 		m_wUI.SetVisible(true);
 		s_OnTaskListVisible.Invoke(true);
 		
@@ -744,7 +745,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		//HideAllHUDIcons(false);
 		m_bVisible = false;
 		ClearUI();
-		m_wUI.SetVisible(false);
+		if (m_wUI)
+			m_wUI.SetVisible(false);
 		s_OnTaskListVisible.Invoke(false);
 	}
 	
@@ -815,12 +817,12 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		if (m_wExpandButton)
 		{
-			m_wExpandButton.SetVisible(newDevice == EInputDeviceType.GAMEPAD);
-			m_wExpandButton.SetEnabled(newDevice == EInputDeviceType.GAMEPAD);
+			m_wExpandButton.SetVisible(isGamepad);
+			m_wExpandButton.SetEnabled(isGamepad);
 		}
 	}
 
@@ -830,11 +832,44 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
 		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddActionListeners()
+	{
+		GetGame().GetInputManager().AddActionListener("TasksOpen", EActionTrigger.DOWN, Action_TasksOpen);
+		GetGame().GetInputManager().AddActionListener("TasksClose", EActionTrigger.DOWN, Action_TasksClose);
+		GetGame().GetInputManager().AddActionListener("TasksShowHint", EActionTrigger.DOWN, Action_ShowHint);
+		GetGame().GetInputManager().AddActionListener("TasksExpand", EActionTrigger.DOWN, Action_Expand);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveActionListeners()
+	{
+		GetGame().GetInputManager().RemoveActionListener("TasksOpen", EActionTrigger.DOWN, Action_TasksOpen);
+		GetGame().GetInputManager().RemoveActionListener("TasksClose", EActionTrigger.DOWN, Action_TasksClose);
+		GetGame().GetInputManager().RemoveActionListener("TasksShowHint", EActionTrigger.DOWN, Action_ShowHint);
+		GetGame().GetInputManager().RemoveActionListener("TasksExpand", EActionTrigger.DOWN, Action_Expand);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		m_wUI = GetGame().GetWorkspace().CreateWidgets(m_UIResource);
+		CreateTaskList();
+		AddActionListeners();
+		
+		SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
+		SCR_MapEntity.GetOnMapClose().Insert(OnMapClose);
+		SCR_RespawnSuperMenu.Event_OnMenuOpen.Insert(OnMapClose);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	Widget CreateTaskList(Widget w = null)
+	{
+		if (w)
+			m_wUI = GetGame().GetWorkspace().CreateWidgets(m_UIResource, w);
+		else
+			m_wUI = GetGame().GetWorkspace().CreateWidgets(m_UIResource);
+		
 		if (m_wUI)
 		{
 			m_wTasksUI = m_wUI.FindAnyWidget("Tasks");
@@ -842,22 +877,24 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			m_wExpandButton = m_wUI.FindAnyWidget("ExpandTaskButton");
 		}
 
-		GetGame().GetInputManager().AddActionListener("TasksOpen", EActionTrigger.DOWN, Action_TasksOpen);
-		GetGame().GetInputManager().AddActionListener("TasksClose", EActionTrigger.DOWN, Action_TasksClose);
-		GetGame().GetInputManager().AddActionListener("TasksShowHint", EActionTrigger.DOWN, Action_ShowHint);
-		GetGame().GetInputManager().AddActionListener("TasksExpand", EActionTrigger.DOWN, Action_Expand);
 
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 
 		SCR_NavigationButtonComponent hideTasks = SCR_NavigationButtonComponent.GetNavigationButtonComponent("HideTasksButton", m_wUI);
 		if (hideTasks)
 			hideTasks.m_OnActivated.Insert(Action_TasksClose);
 
 		SCR_BaseTaskManager.s_OnTaskDeleted.Insert(RemoveTaskFromList);
-
-		SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
-		SCR_MapEntity.GetOnMapClose().Insert(OnMapClose);
-		SCR_RespawnSuperMenu.Event_OnMenuOpen.Insert(OnMapClose);
+		
+		return m_wUI;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ClearWidget()
+	{
+		if (m_wUI)
+			m_wUI.RemoveFromHierarchy();
 	}
 
 	//------------------------------------------------------------------------------------------------

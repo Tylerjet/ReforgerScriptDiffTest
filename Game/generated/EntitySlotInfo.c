@@ -97,14 +97,12 @@ class EntitySlotInfo: PointInfo
 	/*!
 	Detaches entity from this slot info (if any)
 	\param physicalChange Do update hierarchy?
-	\return Returns previously attached entity or null if none
 	*/
 	proto external void DetachEntity(bool physicalChange = true);
 	/*!
 	Attaches provided entity to this slot info
 	Deletes previously attached entity (if any)
-	\param entity The entity to attach
-	\return Returns true when successful, false otherwise
+	\param childEntity The entity to attach
 	*/
-	proto external bool AttachEntity(IEntity entity);
+	proto external void AttachEntity(IEntity entity);
 };

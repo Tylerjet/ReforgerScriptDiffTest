@@ -155,7 +155,7 @@ class SCR_FiringRangeController : GenericEntity
 		#endif
 		
 		if (m_SoundComponent)
-			m_SoundComponent.SoundEvent("SOUND_RANGECP_STARTBUTTON");
+			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_RANGECP_STARTBUTTON);
 		
 		// Gets all child targets in the fire line
 		if (!pOwnerEntity)
@@ -198,7 +198,7 @@ class SCR_FiringRangeController : GenericEntity
 		
 		// Sound of starting round
 		if (m_SoundComponent)
-			m_SoundComponent.SoundEvent("SOUND_RANGECP_ROUNDSTART");
+			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_RANGECP_ROUNDSTART);
 		
 		GetGame().GetCallqueue().CallLater(ResetCountPopUpTargets, RESET_COUNTER_TIME, false); 
 		GetGame().GetCallqueue().CallLater(ErectRandomTarget, m_iErectTargetTime * 1000, true, targetArray, m_aAllTargetsArray); 
@@ -314,7 +314,7 @@ class SCR_FiringRangeController : GenericEntity
 		
 		// Sound of presed button
 		if (m_SoundComponent)
-			m_SoundComponent.SoundEvent("SOUND_RANGECP_ROUNDABORT");
+			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_RANGECP_ROUNDABORT);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -417,7 +417,7 @@ class SCR_FiringRangeController : GenericEntity
 		
 		// Sound of presed button
 		if (m_SoundComponent)
-			m_SoundComponent.SoundEvent("SOUND_RANGECP_CHANGEDISTANCE");
+			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_RANGECP_CHANGEDISTANCE);
 
 		return m_iTargetSetDistance;
 		
@@ -442,7 +442,7 @@ class SCR_FiringRangeController : GenericEntity
 		
 		// Sound of presed button
 		if (m_SoundComponent)
-			m_SoundComponent.SoundEvent("SOUND_RANGECP_CHANGETARGET");
+			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_RANGECP_CHANGETARGET);
 			
 	}
 	

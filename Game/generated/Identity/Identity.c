@@ -13,10 +13,13 @@ class Identity: ScriptAndConfig
 {
 	//! Get Character name
 	proto external string GetName();
+	proto external void SetName(string name);
 	//! Get Charactger alias
 	proto external string GetAlias();
+	proto external void SetAlias(string alias);
 	//! Get Character surname
 	proto external string GetSurname();
+	proto external void SetSurname(string surname);
 	//! Get Character Name "Alias" Surname in on string
 	proto external string GetFullName();
 	//! Get Char head prefab

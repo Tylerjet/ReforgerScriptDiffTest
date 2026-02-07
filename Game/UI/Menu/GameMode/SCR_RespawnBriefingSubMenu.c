@@ -53,11 +53,8 @@ class SCR_RespawnBriefingSubMenu : SCR_RespawnSubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
 		RefreshBriefing();
 	}
 
@@ -222,7 +219,7 @@ class SCR_RespawnBriefingSubMenu : SCR_RespawnSubMenuBase
 
 		m_BriefingComponent.GetOnBriefingChanged().Insert(RefreshBriefing);
 
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 
 	}
 
@@ -234,7 +231,7 @@ class SCR_RespawnBriefingSubMenu : SCR_RespawnSubMenuBase
 		if (m_BriefingComponent)
 			m_BriefingComponent.GetOnBriefingChanged().Remove(RefreshBriefing);
 
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
 	
 	//------------------------------------------------------------------------------------------------

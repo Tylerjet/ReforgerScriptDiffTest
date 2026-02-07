@@ -10,12 +10,34 @@ class SCR_AISelectFireMode: AITaskScripted
 		if (!controlledEntity)
 			return ENodeResult.FAIL;
 		
-		CharacterControllerComponent controller = CharacterControllerComponent.Cast(controlledEntity.FindComponent(CharacterControllerComponent));
-		if (!controller)
+		// Resolve which weapon manager to use
+		
+		BaseWeaponManagerComponent wpnManagerComponent;
+		CharacterControllerComponent controller;
+		
+		
+		CompartmentAccessComponent compAccess = CompartmentAccessComponent.Cast(controlledEntity.FindComponent(CompartmentAccessComponent));
+		if (!compAccess)
 			return ENodeResult.FAIL;
 		
-		BaseWeaponManagerComponent wpnManagerComponent = controller.GetWeaponManagerComponent();
-		if (!wpnManagerComponent)
+		BaseCompartmentSlot compartment = compAccess.GetCompartment();
+		if (compartment)
+		{
+			wpnManagerComponent = BaseWeaponManagerComponent.Cast(compartment.GetOwner().FindComponent(BaseWeaponManagerComponent));
+			if (wpnManagerComponent)
+			{
+				// Return success if in turret. Turret weapons have no fire modes anyway.
+				return ENodeResult.SUCCESS;
+			}
+		}
+		else
+		{
+			controller = CharacterControllerComponent.Cast(controlledEntity.FindComponent(CharacterControllerComponent));
+			if (controller)
+				wpnManagerComponent = controller.GetWeaponManagerComponent();
+		}
+		
+		if (!wpnManagerComponent || !controller)
 			return ENodeResult.FAIL;
 		
 		BaseWeaponComponent wpnComponent = wpnManagerComponent.GetCurrent();
@@ -26,6 +48,11 @@ class SCR_AISelectFireMode: AITaskScripted
 			return ENodeResult.SUCCESS;
 		
 		BaseMuzzleComponent muzzle = wpnComponent.GetCurrentMuzzle();
+		
+		// Fail if there is no muzzle, it is probably a grenade
+		if (!muzzle)
+			return ENodeResult.FAIL;
+		
 		array<BaseFireMode> fireModes = {};
 		muzzle.GetFireModesList(fireModes);
 		

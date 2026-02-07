@@ -127,12 +127,9 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 	}
 	
 	//~ On mouse and keyboard changed
-	protected void OnInputDeviceChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{	
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
-		m_bIsUsingKeyboardAndMouse = (newDevice == EInputDeviceType.KEYBOARD || newDevice == EInputDeviceType.MOUSE);
+		m_bIsUsingKeyboardAndMouse = !isGamepad;
 	}
 	
 	/*!
@@ -167,7 +164,7 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 	override void EOnCameraFrame(SCR_ManualCameraParam param)
 	{
 		//~ If there is no light do check the distance from the camera to ground
-		if (!m_bIsLightOn)
+		if (!m_bIsLightOn || !m_CameraLight)
 			return;
 		
 		//~ Update camera light intensity depending on distance to ground
@@ -182,9 +179,9 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 	
 	//~ Updates the camera light intensity depending on how far the camera is from the ground
 	protected void CameraLightIntensityUpdate(vector cameraTransform[4])
-	{
+	{		
 		//~ Get light intensity using distance from ground and max distance intensity and using that value as alpha in the m_cCameraLightIntensityCurve
-		float lightIntensity =  Math.Lerp(m_fCameraLightIntesityMin, m_fCameraLightIntesityMax, Math3D.Curve(ECurveType.CurveProperty2D, Math.Clamp(SCR_Global.GetHeightAboveTerrain(cameraTransform[3], m_World, true) / m_fCameraLightIntensityMaxHeight, 0, 1), m_cCameraLightIntensityCurve)[1]);
+		float lightIntensity =  Math.Lerp(m_fCameraLightIntesityMin, m_fCameraLightIntesityMax, Math3D.Curve(ECurveType.CurveProperty2D, Math.Clamp(SCR_TerrainHelper.GetHeightAboveTerrain(cameraTransform[3], m_World, true) / m_fCameraLightIntensityMaxHeight, 0, 1), m_cCameraLightIntensityCurve)[1]);
 		m_CameraLight.SetColor(m_cCameraLightColor, Math.Clamp(lightIntensity, m_fLightMinLV, m_fLightMaxLV));
 	}
 	
@@ -220,7 +217,7 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 			if (distanceSq >= lightDetachDistanceSq)
 			{
 				//~ Check Camera is higher then start detach hight
-				float cameraHeightAboveTerrain = SCR_Global.GetHeightAboveTerrain(cameraTransform[3], m_World, true);
+				float cameraHeightAboveTerrain = SCR_TerrainHelper.GetHeightAboveTerrain(cameraTransform[3], m_World, true);
 				if (cameraHeightAboveTerrain >= cameraHeightBeforeDeatach)
 					showPointingLight = true;
 			}
@@ -342,7 +339,7 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 		m_fShowPointingLightDistance_gamepad = Math.Pow(m_fShowPointingLightDistance_gamepad, 2);
 		m_fPointingLightIntensityMaxDistance = Math.Pow(m_fPointingLightIntensityMaxDistance, 2);
 		
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceChanged);	
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		if (m_LightPrefab.IsEmpty())
 		{
@@ -366,7 +363,7 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 			delete m_PointingLight;
 		
 		if (m_World && m_WorkSpace)
-			GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceChanged);	
+			GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		
 		InputManager inputManager = GetInputManager();
 		if (!inputManager) return;

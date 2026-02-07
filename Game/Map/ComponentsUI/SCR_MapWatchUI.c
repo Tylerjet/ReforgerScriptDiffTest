@@ -1,6 +1,8 @@
 //------------------------------------------------------------------------------------------------
 class SCR_MapWatchUI : SCR_MapRTWBaseUI
 {
+	const string ICON_NAME = "watch";
+	
 	protected SCR_WristwatchComponent m_WristwatchComp;
 			
 	//------------------------------------------------------------------------------------------------
@@ -41,38 +43,18 @@ class SCR_MapWatchUI : SCR_MapRTWBaseUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetPrefabResource()
-	{
-		ResourceName prefabName = string.Empty;
-		
-		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(SCR_PlayerController.GetLocalControlledEntity());
-		if (gadgetManager)
-		{
-			IEntity watch = gadgetManager.GetGadgetByType(EGadgetType.WRISTWATCH);
-			
-			SCR_WristwatchComponent watchComp = SCR_WristwatchComponent.Cast( watch.FindComponent(SCR_GadgetComponent) );
-			if (watchComp)
-				prefabName = watchComp.GetWatchPrefab();
-		}
-		
-		return prefabName;
-	}
-	
-
-	//------------------------------------------------------------------------------------------------
 	//! Set compass visibility
 	//! \param visible is true/false switch
 	override void SetVisible(bool visible)
 	{
 		if (visible)
-		{
-			SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(SCR_PlayerController.GetLocalControlledEntity());
-			if (!gadgetManager)
-				return;
-			
+		{			
 			// No wristwatch equipped
-			if (!gadgetManager.GetGadgetByType(EGadgetType.WRISTWATCH))
+			if (!FindRelatedGadget())
+			{
+				super.SetVisible(false);
 				return;
+			}
 			
 			super.SetVisible(visible);
 					
@@ -90,45 +72,22 @@ class SCR_MapWatchUI : SCR_MapRTWBaseUI
 			super.SetVisible(visible);
 		}
 	}
-			
-	//------------------------------------------------------------------------------------------------
-	override void OnMapOpen(MapConfiguration config)
-	{
-		super.OnMapOpen(config);
-		
-		if (m_bWantedVisible)
-		{
-			SetVisible(true);
-			
-			if (m_ToolMenuEntry) 
-				m_ToolMenuEntry.SetColor(UIColors.CONTRAST_COLOR);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnMapClose(MapConfiguration config)
-	{
-		m_bWantedVisible = m_bIsVisible;
-		SetVisible(false);
-		
-		super.OnMapClose(config);
-	}
-	
+				
 	//------------------------------------------------------------------------------------------------
 	override void Init()
 	{
-		SCR_MapToolMenuModule toolMenu = SCR_MapToolMenuModule.Cast(m_MapEntity.GetMapModule(SCR_MapToolMenuModule));
+		SCR_MapToolMenuUI toolMenu = SCR_MapToolMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolMenuUI));
 		if (toolMenu)
 		{
-			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuModule.ICONS_IMAGESET, "watch", m_bIsVisible, 2); // add to menu
+			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 2); // add to menu
 			m_ToolMenuEntry.m_OnClick.Insert(ToggleVisible);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Update()
+	override void Update(float timeSlice)
 	{		
-		// Drag compass
+		// Drag watch
 		if (m_bIsVisible && m_bIsDragged)
 		{
 			// save position for map reopen
@@ -137,5 +96,11 @@ class SCR_MapWatchUI : SCR_MapRTWBaseUI
 			m_fPosX = workspace.DPIUnscale(m_fPosX);
 			m_fPosY = workspace.DPIUnscale(m_fPosY);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_MapWatchUI()
+	{
+		m_eGadgetType = EGadgetType.WRISTWATCH;
 	}
 };

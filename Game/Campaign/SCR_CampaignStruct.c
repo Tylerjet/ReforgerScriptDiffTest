@@ -163,18 +163,35 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 {
-	protected int m_BaseID;
+	protected int m_iBaseID;
+	protected bool m_bIsHQ;
+	protected int m_iCallsignIndex;
 	protected int m_iOwningFaction;
 	protected int m_iBuildingsFaction;
 	protected int m_iSupplies;
 	protected bool m_bVehicleDepotBuilt;
 	protected bool m_bArmoryBuilt;
-	protected int m_iRespawnTickets;
+	protected bool m_bHeavyVehicleDepotBuilt;
+	protected bool m_bSupplyDepotBuilt;
+	protected bool m_bAntennaBuilt;
+	protected bool m_bBarracksBuilt;
 	
 	//------------------------------------------------------------------------------------------------
 	int GetBaseID()
 	{
-		return m_BaseID;
+		return m_iBaseID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetIsHQ()
+	{
+		return m_bIsHQ;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetCallsignIndex()
+	{
+		return m_iCallsignIndex;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -208,15 +225,45 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetRespawnTickets()
+	bool GetHeavyVehicleDepotBuilt()
 	{
-		return m_iRespawnTickets;
+		return m_bHeavyVehicleDepotBuilt;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetSupplyDepotBuilt()
+	{
+		return m_bSupplyDepotBuilt;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetAntennaBuilt()
+	{
+		return m_bAntennaBuilt;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetBarracksBuilt()
+	{
+		return m_bBarracksBuilt;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetBaseID(int baseID)
 	{
-		m_BaseID = baseID;
+		m_iBaseID = baseID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetIsHQ(bool hq)
+	{
+		m_bIsHQ = hq;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCallsignIndex(int callsign)
+	{
+		m_iCallsignIndex = callsign;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -250,9 +297,27 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetRespawnTickets(int tickets)
+	void SetHeavyVehicleDepotBuilt(bool built)
 	{
-		m_iRespawnTickets = tickets;
+		m_bHeavyVehicleDepotBuilt = built;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetSupplyDepotBuilt(bool built)
+	{
+		m_bSupplyDepotBuilt = built;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetAntennaBuilt(bool built)
+	{
+		m_bAntennaBuilt = built;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetBarracksBuilt(bool built)
+	{
+		m_bBarracksBuilt = built;
 	}
 	
 	//****************//
@@ -308,13 +373,18 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	//------------------------------------------------------------------------------------------------
 	void SCR_CampaignBaseStruct()
 	{
-		RegV("m_BaseID");
+		RegV("m_iBaseID");
+		RegV("m_bIsHQ");
+		RegV("m_iCallsignIndex");
 		RegV("m_iOwningFaction");
 		RegV("m_iBuildingsFaction");
 		RegV("m_iSupplies");
 		RegV("m_bVehicleDepotBuilt");
 		RegV("m_bArmoryBuilt");
-		RegV("m_iRespawnTickets");
+		RegV("m_bHeavyVehicleDepotBuilt");
+		RegV("m_bSupplyDepotBuilt");
+		RegV("m_bAntennaBuilt");
+		RegV("m_bBarracksBuilt");
 	}
 	
 	//------------------------------------------------------------------------------------------------

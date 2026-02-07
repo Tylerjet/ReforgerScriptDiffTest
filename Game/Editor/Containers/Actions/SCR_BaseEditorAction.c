@@ -49,6 +49,19 @@ class SCR_BaseEditorAction
 	protected SCR_BaseActionsEditorComponent m_ActionsManager;
 	protected string m_sShortcutRef;
 	
+	[Attribute("0", desc: "Cooldown to prevent spamming of action. Leave zero or less to ignore, time in seconds.", params: "0, inf, 0.05")]
+	protected float m_fCooldownTime;
+	
+	protected float m_fCurrentCooldownTime;
+	
+	//~ In mili seconds what is the update freq for the cooldown update. If changed updated the step param for m_fCooldownTime (m_fCooldownUpdateFreq / 1000)
+	protected float m_fCooldownUpdateFreq = 50; 
+	
+	[Attribute("1", desc: "If true will show notification if trying to perform the action if the cooldown is active.")]
+	protected bool m_bShowOnCooldownNotification;
+	
+	protected bool m_bIsOnCooldown; 
+	
 	/*!
 	\return True if the action is enabled
 	*/
@@ -188,6 +201,78 @@ class SCR_BaseEditorAction
 		
 		m_ActionsManager = null;
 		GetGame().GetInputManager().RemoveActionListener(m_sShortcut, EActionTrigger.DOWN, OnShortcut);
+	}
+	
+	/*!
+	Check if action is on cooldown and if not set action on cooldown
+	The cooldown will never be set if cooldownTime is equal or less than 0
+	\return Returns true if currently on cooldown
+	*/
+	bool CheckAndSetCooldown()
+	{
+		//~ No Cooldown
+		if (m_fCooldownTime <= 0)
+			return false;
+		
+		//~ Is On Cooldown
+		if (IsOnCooldown())
+		{
+			//~ Send cooldown notification
+			if (m_bShowOnCooldownNotification)
+				SCR_NotificationsComponent.SendLocal(ENotification.ACTION_ON_COOLDOWN, m_fCurrentCooldownTime * 100);
+			
+			return true;
+		}
+			
+		//~ Activate cooldown
+		ActivateCooldown();
+		return false;
+	}
+	
+	/*!
+	Check if action is on cooldown
+	\return Returns true if currently on cooldown
+	*/
+	bool IsOnCooldown()
+	{
+		return m_bIsOnCooldown;
+	}
+	
+	//~ Start Cooldown
+	protected void ActivateCooldown()
+	{
+		if (m_fCooldownTime <= 0)
+			return;
+		
+		m_fCurrentCooldownTime = m_fCooldownTime;
+		
+		m_bIsOnCooldown = true;
+		
+		//~ Add to callqueue to remove cooldown
+		GetGame().GetCallqueue().CallLater(UpdateCooldown, m_fCooldownUpdateFreq, true);
+	}
+	
+	//~ Update current cooldown
+	protected void UpdateCooldown()
+	{
+		m_fCurrentCooldownTime -= m_fCooldownUpdateFreq / 1000; 
+		
+		if (m_fCurrentCooldownTime <= 0)
+			OnCooldownDone();
+	}
+	
+	//~ Cooldown done
+	protected void OnCooldownDone()
+	{
+		GetGame().GetCallqueue().Remove(UpdateCooldown);
+		m_bIsOnCooldown = false;
+	}
+	
+	void ~SCR_BaseEditorAction()
+	{
+		//~ Remove cooldown from Call Queue
+		if (m_bIsOnCooldown)
+			OnCooldownDone();
 	}
 };
 

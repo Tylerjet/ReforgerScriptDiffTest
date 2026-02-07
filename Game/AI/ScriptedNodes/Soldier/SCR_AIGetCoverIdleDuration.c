@@ -43,4 +43,4 @@ class SCR_AIGetCoverIdleDuration : AITaskScripted
 		SetVariableOut(PORT_IDLE_DURATION, duration);
 		return ENodeResult.SUCCESS;
 	}
-}
+};

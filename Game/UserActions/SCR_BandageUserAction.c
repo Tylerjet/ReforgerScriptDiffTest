@@ -93,6 +93,6 @@ class SCR_BandageUserAction : ScriptedUserAction
 	{
 		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(pUserEntity);
 		if (consumableComponent)
-			consumableComponent.ApplyItemEffect(pOwnerEntity);
+			consumableComponent.ApplyItemEffect(pOwnerEntity, new SCR_ConsumableEffectAnimationParameters(EConsumableType.Bandage, 0.0, 0, 0.0, false));
 	}
 };

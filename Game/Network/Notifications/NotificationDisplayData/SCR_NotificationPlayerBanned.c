@@ -12,7 +12,7 @@ class SCR_NotificationPlayerBanned : SCR_NotificationPlayer
 		data.GetParams(playerID, duration);
 		
 		int days, hours, minutes, seconds;
-		SCR_Global.ConvertSecondsToDaysHoursMinutesSeconds(duration, days, hours, minutes, seconds);
+		SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds(duration, days, hours, minutes, seconds);
 		
 		data.SetNotificationTextEntries(GetPlayerName(playerID), days.ToString(),  hours.ToString(),  minutes.ToString(),  seconds.ToString());
 		return super.GetText(data);

@@ -21,8 +21,9 @@ class ScriptedSightsFOVInfo: SightsFOVInfo
 	event protected void OnUpdate(IEntity owner, BaseSightsComponent sights, float timeSlice);
 	/*!
 	Return current field of view of this info.
+	If 0 or less is returned, first person perspective FOV will be used instead.
 	Value can be accessed via SightsFOVInfo.GetFOV();
 	\return Returns field of view in degrees.
 	*/
-	event protected float GetCurrentFOV() { return 60.0; };
+	event protected float GetCurrentFOV() { return 0.0; };
 };

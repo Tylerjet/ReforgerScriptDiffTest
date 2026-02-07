@@ -8,8 +8,12 @@ class SCR_RequestReinforcementsMessage : ScriptedRadioMessage
 	//------------------------------------------------------------------------------------------------
 	override void OnDelivery(BaseRadioComponent radio, int freq, float quality, int transcvIdx)
 	{
-		if (m_TargetBase && m_TargetFaction && radio && radio.GetOwner() == m_TargetFaction.GetMainBase())
-			SCR_CampaignDefendTask.CreateTask(m_TargetBase, m_TargetFaction);
+		if (m_TargetBase && m_TargetFaction && radio && radio.GetOwner() == m_TargetFaction.GetMainBase() && GetTaskManager())
+		{
+			SCR_CampaignDefendTaskSupportEntity supportEntity = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
+			if (supportEntity)
+				supportEntity.CreateCampaignDefendTask(m_TargetBase, m_TargetFaction);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

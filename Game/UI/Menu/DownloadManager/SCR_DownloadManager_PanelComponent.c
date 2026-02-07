@@ -28,7 +28,7 @@ class SCR_DownloadManager_PanelComponent : ScriptedWidgetComponent
 		
 		m_Widgets.m_OpenButtonComponent.m_OnActivated.Insert(OnOpenButton);
 		
-		m_Animator = new SCR_FadeInOutAnimator(m_wRoot, WidgetAnimator.FADE_RATE_FAST, WidgetAnimator.FADE_RATE_SLOW, FADE_OUT_WAIT_TIME, fadeOutSetVisibleFalse: true);
+		m_Animator = new SCR_FadeInOutAnimator(m_wRoot, UIConstants.FADE_RATE_FAST, UIConstants.FADE_RATE_SLOW, FADE_OUT_WAIT_TIME, fadeOutSetVisibleFalse: true);
 		m_Animator.FadeOutInstantly();
 		
 		Update();

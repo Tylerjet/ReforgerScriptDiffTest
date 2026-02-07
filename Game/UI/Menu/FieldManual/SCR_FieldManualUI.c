@@ -675,17 +675,17 @@ class SCR_FieldManualUI : MenuRootBase
 
 		CloseReadingPanel();
 
-		if (search.Contains("ArmA") && !m_bArmaWarning)
+		if (!m_bArmaWarning && search.Contains("ArmA"))
 		{
 			m_bArmaWarning = true;
 
 			if (m_BreadCrumbsComponent)
-				m_BreadCrumbsComponent.Set("Arma - not Armed Assault, not ArmA, Arma");
+				m_BreadCrumbsComponent.Set("#AR-FieldManual_Page_EasterEgg_ArmA_BreadCrumbs");
 
 			SCR_FieldManualConfigEntry_Standard ArmaEntry = new SCR_FieldManualConfigEntry_Standard();
-			ArmaEntry.m_sTitle = "Arma!!";
+			ArmaEntry.m_sTitle = "#AR-FieldManual_Page_EasterEgg_ArmA_Title";
 			SCR_FieldManualPiece_Text ArmaPiece = new SCR_FieldManualPiece_Text();
-			ArmaPiece.m_sText = "It is written <i>\"Arma\"</i>, <b>not</b> <i>\"ArmA\"</i> ! FTFY";
+			ArmaPiece.m_sText = "#AR-FieldManual_Page_EasterEgg_ArmA_Text";
 			ArmaEntry.m_aContent.Insert(ArmaPiece);
 			SetCurrentEntry(ArmaEntry);
 

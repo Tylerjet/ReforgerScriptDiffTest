@@ -5,24 +5,20 @@ class SCR_CampaignCloseBuildingPreviewUserAction : ScriptedUserAction
 	protected SCR_CampaignSuppliesComponent m_SuppliesComponent;
 	protected SCR_CampaignBuildingComponent m_BuildingComponent;
 	protected SCR_SiteSlotEntity m_Slot;
-	
-	private const string SOUND_CANCLELBUILDING = "SOUND_CANCLELBUILDING";
-	
+		
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent) 
 	{		
-			m_SuppliesComponent = SCR_CampaignSuppliesComponent.Cast(GetOwner().FindComponent(SCR_CampaignSuppliesComponent));	
+		m_SuppliesComponent = SCR_CampaignSuppliesComponent.Cast(GetOwner().FindComponent(SCR_CampaignSuppliesComponent));	
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected bool ProcessTracedEntity(IEntity ent)
 	{
-		SCR_CampaignDeliveryPoint depot = SCR_CampaignDeliveryPoint.Cast(ent);
+		m_Base = SCR_CampaignBase.Cast(ent);
 		
-		if (depot && depot.GetServiceType() == ECampaignServicePointType.SUPPLY_DEPOT && depot.GetParentBase())
+		if (m_Base)
 		{
-			m_Base = depot.GetParentBase();
-		
 			// Base was found, stop query
 			return false;
 		}
@@ -67,7 +63,7 @@ class SCR_CampaignCloseBuildingPreviewUserAction : ScriptedUserAction
 		m_BuildingComponent.RemoveHandlers();
 		m_BuildingComponent.SetBuilding(false);
 		
-		SCR_UISoundEntity.SoundEvent(SOUND_CANCLELBUILDING);		
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_CANCLELBUILDING);		
 	}
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
@@ -80,10 +76,6 @@ class SCR_CampaignCloseBuildingPreviewUserAction : ScriptedUserAction
 			return true;
 		
 		if (!m_SuppliesComponent && !m_Base)
-			return false;
-			
-		// Building is availaible only in small bases
-		if (m_Base && m_Base.GetType() != CampaignBaseType.SMALL)
 			return false;
 		
 		// get the player faction

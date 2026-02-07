@@ -20,7 +20,7 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 	private float								m_fEngineLoad; // How much load is the engine being pushed through
 	private float								m_fPreviousLoad = -1; // Previous load state to detect necessary change
 	private float								m_fLifetimeScale; // Lifetime of the exhaust particles
-	private int									m_iEngineLoadSignalIdx; // EngineLoad signal index
+	private int									m_iIsExhaustUnderWaterSignalIdx; // IsExhaustUnderWater signal index
 
 	// There are some heavy calculations with particles going on per frame. The following variables solve the performance impact by calling them less often when they happen far away from the camera.
 	private float								m_fUpdateDelay; // Desired delay between each particle calculations in seconds. 0 means per frame.
@@ -29,8 +29,10 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 	private const float							TICK_DELAY_RANGE_START = 15; // Starting range at which the delay begins to increase (from 0 to TICK_TIME_DELAY_MAX)
 	private const float							TICK_DELAY_RANGE_END = 100; // End range at which delay reaches its maximum (TICK_TIME_DELAY_MAX)
 
-	private int									m_fExhaustStagesCount; // Number of exhaust particle stages
-	private int									m_fDamageStagesCount; // Number of damage particle stages
+	// Arrays of arrays of emitter indices (one array of indices per stage).
+	// E.g. m_aExhaustStageEmitters[1][0] gets emitter index of the emitter #0 of stage #1
+	private ref array<ref array<int>>			m_aExhaustStagesEmitters;
+	private ref array<ref array<int>>			m_aDamageStagesEmitters;
 	
 	private float								m_fStartupTimeLeft; // Remaining time to keep playing the damaged particle effect after startup
 
@@ -52,17 +54,66 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 				
 		m_pSignalsManagerComponent = SignalsManagerComponent.Cast(m_pOwner.FindComponent(SignalsManagerComponent));
 		if (m_pSignalsManagerComponent)
-			m_iEngineLoadSignalIdx = m_pSignalsManagerComponent.AddOrFindSignal("EngineLoad");
+		{
+			m_iIsExhaustUnderWaterSignalIdx = m_pSignalsManagerComponent.AddOrFindSignal("IsExhaustUnderWater");
+		}
 		
 		BaseVehicleNodeComponent node = BaseVehicleNodeComponent.Cast(m_pOwner.FindComponent(BaseVehicleNodeComponent));
 		if (node)
 			m_pCarController = SCR_CarControllerComponent.Cast(node.FindComponent(SCR_CarControllerComponent));
 	}
+	
+	// Parses an emitter name and returns a number of a stage the emitter belongs to.
+	// Returns -1 if the emitter's name does not meet the stage naming WeatherWindPattern
+	// (s<X>_<name> where <X> is a number of a stage and <name> is any string, e.g. s0_smoke, s1_smoke, s10_debris etc.)
+	private static int GetStageNumber(string emitterName)
+	{
+		static const string EMITTER_STAGE_PREFIX = "s";
+		static const string EMITTER_STAGE_SUFIX  = "_";
+		
+		int offset = EMITTER_STAGE_PREFIX.Length();
+		if (!emitterName.StartsWith(EMITTER_STAGE_PREFIX) || !emitterName.IsDigitAt(offset))
+			return -1;
+		
+		int numberLen;
+		int stageNo = emitterName.ToInt(offset: offset, parsed: numberLen);
+		offset += numberLen;
+		if (!emitterName.ContainsAt(EMITTER_STAGE_SUFIX, offset))
+			return -1;
+		
+		return stageNo;
+	}
 
+	// Creates an index of emitters in effect stages,
+	// i.e. array of arrays of emitter indices - one array of emitter indices for each stage.
+	// E.g. for stageEmitters = CreateStageIndex(effect),
+	// at stageEmitters[2] there is a an array of indices of emitters belonging to the the stage #2.
+	private array<ref array<int>> CreateStageIndex(Particles effect)
+	{		
+		array<ref array<int>> ret = new array<ref array<int>>;
+
+		array<string> emitterNames = new array<string>;
+		effect.GetEmitterNames(emitterNames);
+				
+		for (int i=0; i<emitterNames.Count(); i++)
+		{
+			int stageNo = GetStageNumber(emitterNames[i]);
+			if (stageNo < 0)
+				continue;
+			if (stageNo >= ret.Count())
+				ret.Resize(stageNo+1);
+			if (ret[stageNo] == null)
+				ret[stageNo] = new array<int>;
+			ret[stageNo].Insert(i);
+		}
+		
+		return ret;
+	}
+	
 	//! Called once when the particle effects are spawned
 	void InitializeExhaustEffect()
 	{
-		m_fExhaustStagesCount = SCR_ParticleAPI.GetStagesCount(m_pExhaustEffect); // We need to know the amount of stages our exhaust particle has, if any.
+		m_aExhaustStagesEmitters = CreateStageIndex(m_pExhaustEffect.GetParticles());
 	}
 
 	//! Initialize damaged exhaust particles
@@ -72,11 +123,11 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 		auto effectPosition = GetEffectPosition();
 		if (effectPosition)
 			nodeId = effectPosition.GetNodeId();
-		m_pDmgParticleEmitter = SCR_ParticleAPI.PlayOnObjectPTC(m_pOwner, m_DamagedParticle, vector.Zero, vector.Zero, nodeId);
+		m_pDmgParticleEmitter = SCR_ParticleEmitter.CreateAsChild(m_DamagedParticle, m_pOwner, vector.Zero, vector.Zero, nodeId);
 		if (m_pDmgParticleEmitter)
 		{
 			m_pDmgParticleEmitter.Pause();
-			m_fDamageStagesCount = SCR_ParticleAPI.GetStagesCount(m_pDmgParticleEmitter);
+			m_aDamageStagesEmitters = CreateStageIndex(m_pDmgParticleEmitter.GetParticles());
 		}
 	}
 
@@ -138,10 +189,6 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 				m_fLifetimeScale = 0.01;
 
 			m_fLifetimeScale = m_fLifetimeScale + m_fEngineLoad;
-			
-			// Set EngineLoad signal
-			if (m_pSignalsManagerComponent)
-				m_pSignalsManagerComponent.SetSignalValue(m_iEngineLoadSignalIdx, m_fEngineLoad);
 		}
 
 		OnUpdateEffect(owner, m_fCurrentUpdateDelay);
@@ -157,10 +204,14 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 		if (m_bIsUnderwater != isUnderwater)
 		{
 			m_bIsUnderwater = isUnderwater;
-			SCR_ParticleAPI.LerpAllEmitters(m_pExhaustEffect, 0, EmitterParam.BIRTH_RATE);
-			SCR_ParticleAPI.LerpAllEmitters(m_pExhaustEffect, 0, EmitterParam.BIRTH_RATE_RND);
+			Particles particles = m_pExhaustEffect.GetParticles();
+			particles.SetParam(-1, EmitterParam.BIRTH_RATE, 0);
+			particles.SetParam(-1, EmitterParam.BIRTH_RATE_RND, 0);
 			if (m_pDmgParticleEmitter)
 				m_pDmgParticleEmitter.Pause();
+			
+			if (m_pSignalsManagerComponent)
+				m_pSignalsManagerComponent.SetSignalValue(m_iIsExhaustUnderWaterSignalIdx, isUnderwater);
 		}
 
 		if (isUnderwater)
@@ -200,49 +251,53 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 		m_fPreviousLoad = m_fEngineLoad;
 
 		if (isDefective)
-			LerpEngineEffects(m_pDmgParticleEmitter, m_fDamageStagesCount);
+			AdjustEngineEffects(m_pDmgParticleEmitter, m_aDamageStagesEmitters);
 		else
-			LerpEngineEffects(m_pExhaustEffect, m_fExhaustStagesCount);
+			AdjustEngineEffects(m_pExhaustEffect, m_aExhaustStagesEmitters);
 	}
 
-	void LerpEngineEffects(IEntity particleEffect, int stageCount = 0)
+	void AdjustEngineEffects(IEntity particleEffectEnt, array<ref array<int>> stageIndex)
 	{
-		if (!particleEffect) return;
+		if (!particleEffectEnt) return;
+		
+		Particles particles = particleEffectEnt.GetParticles();
+		
+		int iMaxStage = stageIndex.Count() - 1;
 
-		if (stageCount > 0) // Check if the assigned particle effect supports staging (Staging divides effect's emittors into groups which are selectively enabled/disabled according to our needs)
+		if (stageIndex && stageIndex.Count()) // Check if the assigned particle effect supports staging (Staging divides effect's emittors into groups which are selectively enabled/disabled according to our needs)
 		{
 			// Staging is supported, so disable all emittors...
-			SCR_ParticleAPI.LerpAllEmitters(particleEffect, 0, EmitterParam.BIRTH_RATE );
-			SCR_ParticleAPI.LerpAllEmitters(particleEffect, 0, EmitterParam.BIRTH_RATE_RND );
+			particles.SetParam(-1, EmitterParam.BIRTH_RATE, 0);
+			particles.SetParam(-1, EmitterParam.BIRTH_RATE_RND, 0);
 
 			// ... now enable only the relevant emittors and work with them
-			int current_stage = Math.ClampInt( Math.Round(stageCount * m_fEngineLoad)  , 0, stageCount);
-			array<int> relevant_emitters_ids = SCR_ParticleAPI.FindEmittersByString(particleEffect, SCR_ParticleAPI.EMITTER_STAGE_PREFIX + current_stage.ToString() + SCR_ParticleAPI.EMITTER_STAGE_SUFIX);
+			int current_stage = Math.ClampInt(Math.Round(iMaxStage * m_fEngineLoad), 0, iMaxStage);
+			array<int> relevant_emitters_ids = stageIndex[current_stage];
 
 			// Now we work only with the relevant stage (group) of emitters
 			for (int i = 0; i < relevant_emitters_ids.Count(); i++)
 			{
-				SCR_ParticleAPI.LerpEmitter(particleEffect, relevant_emitters_ids[i], m_fRPMScaled*0.5 + 0.5, EmitterParam.BIRTH_RATE );
-				SCR_ParticleAPI.LerpEmitter(particleEffect, relevant_emitters_ids[i], m_fRPMScaled*0.5 + 0.5, EmitterParam.BIRTH_RATE_RND );
-				SCR_ParticleAPI.LerpEmitter(particleEffect, relevant_emitters_ids[i],  m_fLifetimeScale, EmitterParam.LIFETIME );
-				SCR_ParticleAPI.LerpEmitter(particleEffect, relevant_emitters_ids[i],  m_fLifetimeScale, EmitterParam.LIFETIME_RND );
-				SCR_ParticleAPI.LerpEmitter(particleEffect, relevant_emitters_ids[i],  ( m_fRPMScaled*3 ), EmitterParam.VELOCITY );
-				SCR_ParticleAPI.LerpEmitter(particleEffect, relevant_emitters_ids[i],  ( m_fRPMScaled*3 ), EmitterParam.VELOCITY_RND );
-				SCR_ParticleAPI.LerpEmitter(particleEffect, relevant_emitters_ids[i],  m_fRPMScaled, EmitterParam.AIR_RESISTANCE );
-				SCR_ParticleAPI.LerpEmitter(particleEffect, relevant_emitters_ids[i],  m_fRPMScaled, EmitterParam.AIR_RESISTANCE_RND );
+				particles.MultParam(relevant_emitters_ids[i], EmitterParam.BIRTH_RATE,         m_fRPMScaled*0.5 + 0.5);
+				particles.MultParam(relevant_emitters_ids[i], EmitterParam.BIRTH_RATE_RND,     m_fRPMScaled*0.5 + 0.5);
+				particles.MultParam(relevant_emitters_ids[i], EmitterParam.LIFETIME,           m_fLifetimeScale);
+				particles.MultParam(relevant_emitters_ids[i], EmitterParam.LIFETIME_RND,       m_fLifetimeScale);
+				particles.MultParam(relevant_emitters_ids[i], EmitterParam.VELOCITY,           ( m_fRPMScaled*3 ));
+				particles.MultParam(relevant_emitters_ids[i], EmitterParam.VELOCITY_RND,       ( m_fRPMScaled*3 ));
+				particles.MultParam(relevant_emitters_ids[i], EmitterParam.AIR_RESISTANCE,     m_fRPMScaled);
+				particles.MultParam(relevant_emitters_ids[i], EmitterParam.AIR_RESISTANCE_RND, m_fRPMScaled); 
 			}
 		}
 		else
 		{
 			// Staging is not supported so apply changes to all emittors.
-			SCR_ParticleAPI.LerpAllEmitters(particleEffect,  m_fRPMScaled*1, EmitterParam.BIRTH_RATE );
-			SCR_ParticleAPI.LerpAllEmitters(particleEffect,  m_fRPMScaled*1, EmitterParam.BIRTH_RATE_RND );
-			SCR_ParticleAPI.LerpAllEmitters(particleEffect, m_fLifetimeScale, EmitterParam.LIFETIME );
-			SCR_ParticleAPI.LerpAllEmitters(particleEffect, m_fLifetimeScale, EmitterParam.LIFETIME_RND );
-			SCR_ParticleAPI.LerpAllEmitters(particleEffect,  ( m_fRPMScaled*7 ), EmitterParam.VELOCITY );
-			SCR_ParticleAPI.LerpAllEmitters(particleEffect,  ( m_fRPMScaled*7 ), EmitterParam.VELOCITY_RND );
-			SCR_ParticleAPI.LerpAllEmitters(particleEffect,  m_fRPMScaled, EmitterParam.AIR_RESISTANCE );
-			SCR_ParticleAPI.LerpAllEmitters(particleEffect,  m_fRPMScaled, EmitterParam.AIR_RESISTANCE_RND );
+			particles.MultParam(-1, EmitterParam.BIRTH_RATE,         m_fRPMScaled*1);
+			particles.MultParam(-1, EmitterParam.BIRTH_RATE_RND,     m_fRPMScaled*1);
+			particles.MultParam(-1, EmitterParam.LIFETIME,           m_fLifetimeScale);
+			particles.MultParam(-1, EmitterParam.LIFETIME_RND,       m_fLifetimeScale);
+			particles.MultParam(-1, EmitterParam.VELOCITY,           ( m_fRPMScaled*7 ));
+			particles.MultParam(-1, EmitterParam.VELOCITY_RND,       ( m_fRPMScaled*7 ));
+			particles.MultParam(-1, EmitterParam.AIR_RESISTANCE,     m_fRPMScaled);
+			particles.MultParam(-1, EmitterParam.AIR_RESISTANCE_RND, m_fRPMScaled);
 		}
 	}
 	

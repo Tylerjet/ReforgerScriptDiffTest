@@ -31,17 +31,11 @@ class SCR_ScoreInfo
 	*/
     bool RplLoad(ScriptBitReader reader)
     {
-		if (!reader.ReadInt(m_iKills))
-			return false;
-		if (!reader.ReadInt(m_iTeamKills))
-			return false;
-		if (!reader.ReadInt(m_iDeaths))
-			return false;
-		if (!reader.ReadInt(m_iSuicides))
-			return false;
-		if (!reader.ReadInt(m_iObjectives))
-			return false;
-		
+		reader.ReadInt(m_iKills);
+		reader.ReadInt(m_iTeamKills);
+		reader.ReadInt(m_iDeaths);
+		reader.ReadInt(m_iSuicides);
+		reader.ReadInt(m_iObjectives);
         return true;
     }
 	

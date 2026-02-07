@@ -80,8 +80,6 @@ class SCR_AIGetTarget: AITaskScripted
 				m_targetInfo.m_Target = target.GetTargetEntity();
 				m_targetInfo.m_LastSeenPosition = target.GetLastSeenPosition();
 				m_targetInfo.m_LastSeenTime = target.GetTimeSinceSeen();
-				if (m_targetType == ETargetCategory.ENEMY && !m_CombatComponent.m_Enemies.Contains(target))
-					m_CombatComponent.m_Enemies.Insert(target);
 			}
 			else
 			{

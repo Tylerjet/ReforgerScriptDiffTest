@@ -1,398 +1,284 @@
-enum WidgetAnimationType
+//------------------------------------------------------------------------------------------------
+enum EAnimationCurve
 {
-	Opacity,
-	Color,
-	AlphaMask,
-	LayoutFill,
-	FrameSize,
-	PaddingGrid,
-	PaddingLayout,
-	PaddingOverlay,
-	PaddingButton,
-	PaddingAlignable,
-	Position,
-	ImageRotation,
-	ImageSaturation
-};
+	LINEAR,
+	EASE_IN_SINE,
+	EASE_IN_QUAD,
+	EASE_IN_CUBIC,
+	EASE_IN_QUART,
+	EASE_IN_EXPO,
+	EASE_IN_BACK,
+	EASE_IN_CIRC,
+	EASE_IN_ELASTIC,
+	EASE_IN_BOUNCE,
+	EASE_OUT_SINE,
+	EASE_OUT_QUAD,
+	EASE_OUT_CUBIC,
+	EASE_OUT_QUART,
+	EASE_OUT_EXPO,
+	EASE_OUT_BACK,
+	EASE_OUT_CIRC,
+	EASE_OUT_ELASTIC,
+	EASE_OUT_BOUNCE,
+	EASE_IN_OUT_SINE,
+	EASE_IN_OUT_QUAD,
+	EASE_IN_OUT_CUBIC,
+	EASE_IN_OUT_QUART,
+	EASE_IN_OUT_EXPO,
+	EASE_IN_OUT_BACK,
+	EASE_IN_OUT_CIRC,
+	EASE_IN_OUT_ELASTIC,
+	EASE_IN_OUT_BOUNCE,
+}
 
 //------------------------------------------------------------------------------------------------
 class WidgetAnimationBase
 {
-	Widget m_wWidget;
-	WidgetAnimationType m_eAnimationType;
-	
+	// Constants for easing calculations
+	protected static const float C1 = 1.70158;
+	protected static const float C2 = C1 * 1.525;
+	protected static const float C3 = C1 + 1;
+	protected static const float C4 = (2 * Math.PI) / 3;
+	protected static const float C5 = (2 * Math.PI) / 4.5;
+	protected static const float N1 = 7.5625;
+	protected static const float D1 = 2.75;
+
 	protected bool m_bRepeat;
 	protected float m_fSpeed;
-	protected float m_fCurrentProgress = 0;
+	protected float m_fCurrentProgress;
+	protected float m_fValue;
+
+	protected Widget m_wWidget;
+	protected EAnimationCurve m_eCurve;
+	
+	protected ref ScriptInvoker m_OnStopped;
+	protected ref ScriptInvoker m_OnCompleted;
+
+	//------------------------------------------------------------------------------------------------
+	float GetProgressValue(float t)
+	{
+		switch (m_eCurve)
+		{
+			case EAnimationCurve.LINEAR:
+				return t;
+			case EAnimationCurve.EASE_IN_SINE:
+				return 1 - Math.Cos((t * Math.PI) / 2);
+			case EAnimationCurve.EASE_IN_QUAD:
+				return t * t;
+			case EAnimationCurve.EASE_IN_CUBIC:
+				return t * t * t;
+			case EAnimationCurve.EASE_IN_QUART:
+				return t * t * t * t;
+			case EAnimationCurve.EASE_IN_EXPO:
+				if (t == 0)
+					return 0;
+				return Math.Pow(2, 10 * t - 10);
+			case EAnimationCurve.EASE_IN_BACK:
+				return C3 * t * t * t - C1 * t * t;
+			case EAnimationCurve.EASE_IN_CIRC:
+				return 1 - Math.Sqrt(1 - Math.Pow(t, 2));
+			case EAnimationCurve.EASE_IN_ELASTIC:
+				if (t == 0)
+					return 0;
+				if (t == 1)
+					return 1;
+				return -Math.Pow(2, 10 * t - 10) * Math.Sin((t * 10 - 10.75) * C4);
+			case EAnimationCurve.EASE_IN_BOUNCE:
+    			return Math.Pow(2, 6 * (t - 1)) * Math.AbsFloat(Math.Sin( t * Math.PI * 3.5 ));
+			case EAnimationCurve.EASE_OUT_SINE:
+				return Math.Sin((t * Math.PI) / 2);
+			case EAnimationCurve.EASE_OUT_QUAD:
+				return 1 - (1 - t) * (1 - t);
+			case EAnimationCurve.EASE_OUT_CUBIC:
+				return 1 - Math.Pow(1 - t, 3);
+			case EAnimationCurve.EASE_OUT_QUART:
+				return 1 - Math.Pow(1 - t, 4);
+			case EAnimationCurve.EASE_OUT_EXPO:
+				if (t == 1)
+					return 1;
+				return 1 - Math.Pow(2, -10 * t);
+			case EAnimationCurve.EASE_OUT_BACK:
+				return 1 + C3 * Math.Pow(t - 1, 3) + C1 * Math.Pow(t - 1, 2);
+			case EAnimationCurve.EASE_OUT_CIRC:
+				return Math.Sqrt(1 - Math.Pow(t - 1, 2));
+			case EAnimationCurve.EASE_OUT_ELASTIC:
+				if (t == 0)
+					return 0;
+				if (t == 1)
+					return 1;
+				return Math.Pow(2, -10 * t) * Math.Sin((t * 10 - 0.75) * C4) + 1;
+			case EAnimationCurve.EASE_OUT_BOUNCE:
+    			return 1 - Math.Pow(2, -6 * t) * Math.AbsFloat(Math.Cos(t * Math.PI * 3.5));
+			case EAnimationCurve.EASE_IN_OUT_SINE:
+				return -(Math.Cos(Math.PI * t) - 1) / 2;
+			case EAnimationCurve.EASE_IN_OUT_QUAD:
+				if (t < 0.5)
+					return 2 * t * t;
+				return 1 - Math.Pow(-2 * t + 2, 2) / 2;
+			case EAnimationCurve.EASE_IN_OUT_CUBIC:
+				if (t < 0.5)
+					return 4 * t * t * t;
+				return 1 - Math.Pow(-2 * t + 2, 3) / 2;
+			case EAnimationCurve.EASE_IN_OUT_QUART:
+				if (t < 0.5)
+					return 8 * t * t * t * t;
+				return 1 - Math.Pow(-2 * t + 2, 4) / 2;
+			case EAnimationCurve.EASE_IN_OUT_EXPO:
+				if (t == 0)
+					return 0;
+				if (t == 1)
+					return 1;
+				if (t < 0.5)
+					return Math.Pow(2, 20 * t - 10) / 2;
+				return (2 - Math.Pow(2, -20 * t + 10)) / 2;
+			case EAnimationCurve.EASE_IN_OUT_BACK:
+				if (t < 0.5)
+					return (Math.Pow(2 * t, 2) * ((C2 + 1) * 2 * t - C2)) / 2;
+				return (Math.Pow(2 * t - 2, 2) * ((C2 + 1) * (t * 2 - 2) + C2) + 2) / 2;
+			case EAnimationCurve.EASE_IN_OUT_CIRC:
+				if (t < 0.5)
+					return (1 - Math.Sqrt(1 - Math.Pow(2 * t, 2))) / 2;
+				return (Math.Sqrt(1 - Math.Pow(-2 * t + 2, 2)) + 1) / 2;
+			case EAnimationCurve.EASE_IN_OUT_ELASTIC:
+				if (t == 0)
+					return 0;
+				if (t == 1)
+					return 1;
+				if (t < 0.5)
+					return -(Math.Pow(2, 20 * t - 10) * Math.Sin((20 * t - 11.125) * C5)) / 2;
+				return (Math.Pow(2, -20 * t + 10) * Math.Sin((20 * t - 11.125) * C5)) / 2 + 1;
+			case EAnimationCurve.EASE_IN_OUT_BOUNCE:
+				if (t < 0.5)
+			        return 8 * Math.Pow(2, 8 * (t - 1)) * Math.AbsFloat(Math.Sin(t * Math.PI * 7));
+				else
+					return 1 - 8 * Math.Pow(2, -8 * t) * Math.AbsFloat(Math.Sin(t * Math.PI * 7));
+		}
+		return t;
+	}
+	
+	// Overriden by other animations
+	//------------------------------------------------------------------------------------------------
+	protected void ReverseDirection();
+
+	// Public API
+
+	//------------------------------------------------------------------------------------------------
+	void SetRepeat(bool repeat)
+	{
+		m_bRepeat = repeat;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsRepeating()
+	{
+		return m_bRepeat;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void Stop()
+	{
+		if (m_OnStopped)
+			m_OnStopped.Invoke();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetValue()
+	{
+		return m_fValue;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnStopped()
+	{
+		if (!m_OnStopped)
+			m_OnStopped = new ScriptInvoker();
+		return m_OnStopped;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnCompleted()
+	{
+		if (!m_OnCompleted)
+			m_OnCompleted = new ScriptInvoker();
+		return m_OnCompleted;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetCurve(EAnimationCurve curve)
+	{
+		m_eCurve = curve;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetDelay(float delay)
+	{
+		m_fCurrentProgress -= delay * m_fSpeed;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetDelay()
+	{
+		if (m_fCurrentProgress >= 0)
+			return 0;
+		
+		return m_fCurrentProgress / m_fSpeed;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetSpeed(float speed)
+	{
+		if (speed > 0)
+			m_fSpeed = speed;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetSpeed()
+	{
+		return m_fSpeed;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	Widget GetWidget()
+	{
+		return m_wWidget;
+	}
+	
+	// Events
 	//------------------------------------------------------------------------------------------------
 	bool OnUpdate(float timeSlice)
 	{
 		m_fCurrentProgress += timeSlice * m_fSpeed;
-
-		if (m_fCurrentProgress >= 1)
-		{
+		if (m_fCurrentProgress > 1)
 			m_fCurrentProgress = 1;
-			return true;
+		
+		if (m_fCurrentProgress < 0)
+			return false;
+
+		m_fValue = GetProgressValue(m_fCurrentProgress);
+		
+		if (m_fCurrentProgress < 1)
+			return false;
+
+		if (m_bRepeat)
+		{
+			m_fCurrentProgress = 0;
+			ReverseDirection();
+			return false;
 		}
-		return false;
+		
+		// Invoke subscribed changes
+		if (m_OnCompleted)
+			m_OnCompleted.Invoke();
+		if (m_OnStopped)
+			m_OnStopped.Invoke();
+
+		return true;
 	}
-	
-	
-	//------------------------------------------------------------------------------------------------
-	bool Repeat()
-	{
-		m_fCurrentProgress = 0;
-		return m_bRepeat;
-	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void WidgetAnimationBase(Widget w, float speed)
 	{
 		m_wWidget = w;
 		m_fSpeed = speed;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-class WidgetAnimationPadding : WidgetAnimationBase
-{
-	protected float m_fLeftTarget;
-	protected float m_fTopTarget;
-	protected float m_fRightTarget;
-	protected float m_fBottomTarget;
-	
-	protected float m_fLeftDefault;
-	protected float m_fTopDefault;
-	protected float m_fRightDefault;
-	protected float m_fBottomDefault;
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
-	{
-		if (!m_wWidget)
-			return true;
-		
-		bool finished = super.OnUpdate(timeSlice);
-		
-		float left = Math.Lerp(m_fLeftDefault, m_fLeftTarget, m_fCurrentProgress);
-		float top = Math.Lerp(m_fTopDefault, m_fTopTarget, m_fCurrentProgress);
-		float right = Math.Lerp(m_fRightDefault, m_fRightTarget, m_fCurrentProgress);
-		float bottom = Math.Lerp(m_fBottomDefault, m_fBottomTarget, m_fCurrentProgress);
-		
-		if (m_eAnimationType == WidgetAnimationType.PaddingGrid)
-			GridSlot.SetPadding(m_wWidget, left, top, right, bottom);
-		else if (m_eAnimationType == WidgetAnimationType.PaddingLayout)
-			AlignableSlot.SetPadding(m_wWidget, left, top, right, bottom);
-		else if (m_eAnimationType == WidgetAnimationType.PaddingOverlay)
-			AlignableSlot.SetPadding(m_wWidget, left, top, right, bottom);
-		else if (m_eAnimationType == WidgetAnimationType.PaddingButton)
-			AlignableSlot.SetPadding(m_wWidget, left, top, right, bottom);
-		else if (m_eAnimationType == WidgetAnimationType.PaddingAlignable)
-			AlignableSlot.SetPadding(m_wWidget, left, top, right, bottom);
-		return finished;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void WidgetAnimationPadding(Widget w, float speed, WidgetAnimationType animationType, float left, float top, float right, float bottom, bool repeat = false)
-	{
-		m_eAnimationType = animationType;
-		m_fLeftTarget = left;
-		m_fTopTarget = top;
-		m_fRightTarget = right;
-		m_fBottomTarget = bottom;
-
-		if (m_eAnimationType == WidgetAnimationType.PaddingGrid)
-			GridSlot.GetPadding(w, m_fLeftDefault, m_fTopDefault, m_fRightDefault, m_fBottomDefault);
-		else if (m_eAnimationType == WidgetAnimationType.PaddingLayout)
-			AlignableSlot.GetPadding(w, m_fLeftDefault, m_fTopDefault, m_fRightDefault, m_fBottomDefault);
-		else if (m_eAnimationType == WidgetAnimationType.PaddingOverlay)
-			AlignableSlot.GetPadding(w, m_fLeftDefault, m_fTopDefault, m_fRightDefault, m_fBottomDefault);
-		else if (m_eAnimationType == WidgetAnimationType.PaddingAlignable)
-			AlignableSlot.GetPadding(w, m_fLeftDefault, m_fTopDefault, m_fRightDefault, m_fBottomDefault);
-		
-		m_bRepeat = repeat;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-class WidgetAnimationLayoutFill : WidgetAnimationBase
-{
-	float m_fValueDefault;
-	float m_fValueTarget;
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
-	{
-		if (!m_wWidget)
-			return true;
-		
-		bool finished = super.OnUpdate(timeSlice);
-		float currentValue = Math.Lerp(m_fValueDefault, m_fValueTarget, m_fCurrentProgress);
-		LayoutSlot.SetFillWeight(m_wWidget, currentValue);
-		
-		return finished;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void WidgetAnimationLayoutFill(Widget w, float speed, float targetValue, bool repeat = false)
-	{
-		m_eAnimationType = WidgetAnimationType.LayoutFill;
-		m_fValueTarget = targetValue;
-		m_fValueDefault = LayoutSlot.GetFillWeight(w);
-		
-		m_bRepeat = repeat;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-class WidgetAnimationOpacity : WidgetAnimationBase
-{
-	float m_fValueDefault;
-	float m_fValueTarget;
-	bool m_bChangeVisibileFlag;
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
-	{
-		if (!m_wWidget)
-			return true;
-		
-		bool finished = super.OnUpdate(timeSlice);
-		float currentValue = Math.Lerp(m_fValueDefault, m_fValueTarget, m_fCurrentProgress);
-		m_wWidget.SetOpacity(currentValue);
-		
-		if (finished && m_bChangeVisibileFlag)
-			m_wWidget.SetVisible(currentValue != 0);
-		
-		return finished;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void WidgetAnimationOpacity(Widget w, float speed, float targetValue, bool repeat = false, bool setVisibility = false)
-	{
-		m_eAnimationType = WidgetAnimationType.Opacity;
-		m_fValueTarget = targetValue;
-		m_fValueDefault = w.GetOpacity();
-		
-		m_bChangeVisibileFlag = setVisibility;
-		m_bRepeat = repeat;
-		
-		if (setVisibility)
-			w.SetVisible(true);
-	}
-};
-
-
-//------------------------------------------------------------------------------------------------
-class WidgetAnimationAlphaMask : WidgetAnimationBase
-{
-	float m_fValueDefault;
-	float m_fValueTarget;
-	float m_fValueCurrent;
-	ImageWidget m_wImage;
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
-	{
-		if (!m_wImage)
-			return true;
-		
-		bool finished = super.OnUpdate(timeSlice);
-		m_fValueCurrent = Math.Lerp(m_fValueDefault, m_fValueTarget, m_fCurrentProgress);
-		m_wImage.SetMaskProgress(m_fValueCurrent);
-		
-		return finished;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void WidgetAnimationAlphaMask(Widget w, float speed, float targetValue, bool repeat = false)
-	{
-		m_wImage = ImageWidget.Cast(w);
-		if (!m_wImage)
-			return;
-		
-		m_eAnimationType = WidgetAnimationType.AlphaMask;
-		m_fValueTarget = targetValue;
-		m_fValueDefault = m_wImage.GetMaskProgress();
-		
-		m_bRepeat = repeat;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-class WidgetAnimationImageRotation : WidgetAnimationBase
-{
-	float m_fValueDefault;
-	float m_fValueTarget;
-	float m_fValueCurrent;
-	ImageWidget m_wImage;
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
-	{
-		if (!m_wImage)
-			return true;
-		
-		bool finished = super.OnUpdate(timeSlice);
-		m_fValueCurrent = Math.Lerp(m_fValueDefault, m_fValueTarget, m_fCurrentProgress);
-		m_wImage.SetRotation(m_fValueCurrent);
-		
-		return finished;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void WidgetAnimationImageRotation(Widget w, float speed, float targetValue, bool repeat = false)
-	{
-		m_wImage = ImageWidget.Cast(w);
-		if (!m_wImage)
-			return;
-		
-		m_eAnimationType = WidgetAnimationType.ImageRotation;
-		m_fValueTarget = targetValue;
-		m_fValueDefault = m_wImage.GetRotation();
-		
-		m_bRepeat = repeat;
-	}
-};
-
-
-//------------------------------------------------------------------------------------------------
-class WidgetAnimationColor : WidgetAnimationBase
-{
-	ref Color m_ColorDefault;
-	ref Color m_ColorTarget;
-	ref Color m_ColorCurrent;
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
-	{
-		if (!m_wWidget)
-			return true;
-		
-		bool finished = super.OnUpdate(timeSlice);
-		m_ColorCurrent = m_ColorDefault.LerpNew(m_ColorTarget, m_fCurrentProgress);
-		m_wWidget.SetColor(m_ColorCurrent);
-		
-		return finished;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void WidgetAnimationColor(Widget w, float speed, Color targetColor, bool repeat = false)
-	{
-		m_eAnimationType = WidgetAnimationType.Color;
-		m_ColorTarget = targetColor;
-		m_ColorDefault = w.GetColor();
-		
-		m_bRepeat = repeat;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-class WidgetAnimationFrameSize : WidgetAnimationBase
-{
-	float m_fWidthDefault;
-	float m_fHeightDefault;
-	float m_fWidthTarget;
-	float m_fHeightTarget;
-	float m_fWidthCurrent;
-	float m_fHeightCurrent;
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
-	{
-		if (!m_wWidget)
-			return true;
-		
-		bool finished = super.OnUpdate(timeSlice);
-		
-		m_fWidthCurrent = Math.Lerp(m_fWidthDefault, m_fWidthTarget, m_fCurrentProgress);
-		m_fHeightCurrent = Math.Lerp(m_fHeightDefault, m_fHeightTarget, m_fCurrentProgress);
-		FrameSlot.SetSize(m_wWidget, m_fWidthCurrent, m_fHeightCurrent);
-		return finished;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void WidgetAnimationFrameSize(Widget w, float speed, float width, float height, bool repeat = false)
-	{
-		m_eAnimationType = WidgetAnimationType.FrameSize;
-		m_fWidthTarget = width;
-		m_fHeightTarget = height;
-		
-		m_fWidthDefault = FrameSlot.GetSizeX(w);
-		m_fHeightDefault = FrameSlot.GetSizeY(w);
-		
-		m_bRepeat = repeat;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-class WidgetAnimationPosition : WidgetAnimationBase
-{
-	float m_fXDefault;
-	float m_fYDefault;
-	float m_fXTarget;
-	float m_fYTarget;
-	float m_fXCurrent;
-	float m_fYCurrent;
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
-	{
-		if (!m_wWidget)
-			return true;
-		
-		bool finished = super.OnUpdate(timeSlice);
-		m_fXCurrent = Math.Lerp(m_fXDefault, m_fXTarget, m_fCurrentProgress);
-		m_fYCurrent = Math.Lerp(m_fYDefault, m_fYTarget, m_fCurrentProgress);
-		FrameSlot.SetPos(m_wWidget, m_fXCurrent, m_fYCurrent);
-		return finished;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void WidgetAnimationPosition(Widget w, float speed, float x, float y, bool repeat = false)
-	{
-		m_eAnimationType = WidgetAnimationType.Position;
-		m_fXTarget = x;
-		m_fYTarget = y;
-		
-		m_fXDefault = FrameSlot.GetPosX(w);
-		m_fYDefault = FrameSlot.GetPosY(w);
-		
-		m_bRepeat = repeat;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-class WidgetAnimationImageSaturation : WidgetAnimationBase
-{
-	float m_fValueDefault;
-	float m_fValueTarget;
-	float m_fValueCurrent;
-	ImageWidget m_wImage;
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
-	{
-		if (!m_wImage)
-			return true;
-		
-		bool finished = super.OnUpdate(timeSlice);
-		m_fValueCurrent = Math.Lerp(m_fValueDefault, m_fValueTarget, m_fCurrentProgress);
-		m_wImage.SetSaturation(m_fValueCurrent);
-		return finished;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void WidgetAnimationImageSaturation(Widget w, float speed, float targetValue, bool repeat = false)
-	{
-		m_wImage = ImageWidget.Cast(w);
-		if (!m_wImage)
-			return;
-		
-		m_eAnimationType = WidgetAnimationType.ImageSaturation;
-		m_fValueTarget = targetValue;
-		m_fValueDefault = m_wImage.GetSaturation();
-		
-		m_bRepeat = repeat;
 	}
 };

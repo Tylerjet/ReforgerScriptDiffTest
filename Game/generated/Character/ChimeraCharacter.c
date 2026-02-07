@@ -17,6 +17,8 @@ class ChimeraCharacter: GameEntity
 {
 	// Returns HUD display for this character
 	proto external BaseInfoDisplay GetInfoDisplay();
+	//! Returns component which has animations controlling logic
+	proto external CharacterAnimationComponent GetAnimationComponent();
 	//! Returns component which stores information about compartment used by character
 	proto external CompartmentAccessComponent GetCompartmentAccessComponent();
 	//! Returns component which has character controlling logic

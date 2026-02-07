@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Character", description: "Stamina component for character.", color: "0 0 255 255", icon: HYBRID_COMPONENT_ICON)]
+[ComponentEditorProps(category: "GameScripted/Character", description: "Stamina component for character.", icon: HYBRID_COMPONENT_ICON)]
 class SCR_CharacterStaminaComponentClass: CharacterStaminaComponentClass
 {
 };

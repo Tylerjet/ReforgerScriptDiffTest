@@ -1,5 +1,4 @@
-//! Final Reforger button. Supported states: disabled, hovered, focused, clicked - each with their own visualization
-//! Works with WLib_Button widget prefab
+//! Deprecated button component. Still used in many prefabs, so it works, it's just stripped of most of the functionality
 
 //------------------------------------------------------------------------------------------------
 class SCR_ButtonComponent : SCR_ButtonBaseComponent
@@ -148,8 +147,8 @@ class SCR_ButtonComponent : SCR_ButtonBaseComponent
 		if (speed < 0)
 			speed = m_fAnimationRate;
 
-		WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, colorBackground, speed);
-		WidgetAnimator.PlayAnimation(m_wOverlay, WidgetAnimationType.Color, colorContent, speed);
+		AnimateWidget.Color(m_wBackground, colorBackground, speed);
+		AnimateWidget.Color(m_wOverlay, colorContent, speed);
 	}
 
 	//------------------------------------------------------------------------------------------------

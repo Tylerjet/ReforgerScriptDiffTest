@@ -68,7 +68,6 @@ class MultiplayerDialogUI: DialogUI
 			{
 				gameplaySettings.Set("m_sLastIP", sAddr);
 				GetGame().UserSettingsChanged();
-				GetGame().SaveUserSettings();
 			}
 		}
 		
@@ -76,7 +75,6 @@ class MultiplayerDialogUI: DialogUI
 		{
 			gameplaySettings.Set("m_sLastPort", sPort);
 			GetGame().UserSettingsChanged();
-			GetGame().SaveUserSettings();
 		}
 		
 		// Results 

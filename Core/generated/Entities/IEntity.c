@@ -486,11 +486,12 @@ class IEntity: Managed
 	//!Add Entity to hierarchy. Pivot is pivot index, or -1 for center of parent.
 	proto external int AddChild(notnull IEntity child, TNodeId pivot, EAddChildFlags flags = EAddChildFlags.AUTO_TRANSFORM);
 	//!Remove Entity from hierarchy
-	proto external void RemoveChild(notnull IEntity child);
+	proto external void RemoveChild(notnull IEntity child, bool keepTransform = false);
 	proto external void SetName(string name);
 	//!Sets visibility mask for cameras, where Entity will be rendered
 	proto external int SetCameraMask(int mask);
 	proto external Physics GetPhysics();
+	proto external Particles GetParticles();
 	//!Updates animation (either xob, or particle, whatever)
 	proto external int Animate(float speed, int loop);
 	//!Updates animation (either xob, or particle, whatever)
@@ -502,32 +503,19 @@ class IEntity: Managed
 	proto external TNodeId	GetBoneIndex(string boneName);
 	proto external void	GetBoneNames(out notnull array<string> boneNames);
 	proto external bool	GetBoneLocalMatrix(TNodeId bone, vector mat[4]);
-	/**
-	\brief Force-changes particle emitter position to the current one. Used for sudden changes of particle position to avoid spreading emitted. Particles between previous and the new one position
-	*/
+	[Obsolete("Use GetParticles().OverridePrevPos() instead")]
 	proto external void ResetParticlePosition();
-	/**
-	\brief Restart particle effect to its default state. This means no particles, timer reset and so on. Usefull for implementing particle cache.
-	*/
-	proto external void RestartParticle();
-	//! return total count of active particles in all emitters
+	[Obsolete("Use GetParticles().Restart() instead")]
+	proto external void RestartParticle(bool invalidatePrevPos = false);
+	[Obsolete("Use GetParticles.GetNumParticles() instead")]
 	proto external int GetParticleCount();
-	/**
-	\brief Sets a parametr of the particle emitter. If the emitter == - 1, it sets the parameter for all emitters
-	*/
+	[Obsolete("Use GetParticles().SetParam() instead")]
 	proto external void SetParticleParm(int emitter, EmitterParam parameter, void value);
-	/**
-	\brief Gets parameter of particle emitter
-	*/
+	[Obsolete("Use GetParticles().GetParam() instead")]
 	proto external void GetParticleParm(int emitter, EmitterParam parameter, out void value);
-	/**
-	\brief Gets original parameter of particle emitter
-	*/
+	[Obsolete("Use GetParticles().GetParamOrig() instead")]
 	proto external void GetParticleParmOriginal(int emitter, EmitterParam parameter, out void value);
-	/**
-	\brief Gets name of defined emitters in a particle effect
-	\return number of emitters and their names in an array (max defines max. emitters to return)
-	*/
+	[Obsolete("Use GetParticles().GetEmitterNames() or GetParticles().GetNumEmitters() instead")]
 	proto external int GetParticleEmitters(out string emitters[], int max);
 	/*!
 	Finds first occurance of the coresponding component.

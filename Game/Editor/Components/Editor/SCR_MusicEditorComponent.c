@@ -6,7 +6,7 @@ class SCR_MusicEditorComponent: SCR_BaseEditorComponent
 {
 	SCR_EditorManagerEntity m_EditorManager;
 	protected bool m_bMusicWasMutedByEditor;
-	protected SCR_MusicManager m_MusicManager;
+	protected MusicManager m_MusicManager;
 	
 	protected void OnEditorOpened()
 	{
@@ -20,27 +20,21 @@ class SCR_MusicEditorComponent: SCR_BaseEditorComponent
 			return;
 		
 		m_bMusicWasMutedByEditor = true;
-		m_MusicManager.TerminateOneShot();
-		m_MusicManager.DisableLocalAmbientMusic();
+		m_MusicManager.MuteCategory(MusicCategory.Ambient, true, true);
+		m_MusicManager.MuteCategory(MusicCategory.Menu, true, true);
+		m_MusicManager.MuteCategory(MusicCategory.Misc, true, true);
 	}
 	
 	protected void OnEditorClosed()
 	{
-		bool playerInHQ = false;
-		
-		//~ Make sure to check if player is in HQ and not enable abmient music again
-		SCR_GameModeCampaignMP GameModeCampaign = SCR_GameModeCampaignMP.GetInstance();
-		if (GameModeCampaign)
-		{
-			SCR_CampaignFaction pFaction = SCR_CampaignFaction.Cast(GameModeCampaign.GetLastPlayerFaction());
-		
-			if (pFaction)
-				playerInHQ = pFaction.GetMainBase() && GameModeCampaign.IsPlayerInBase(pFaction.GetMainBase());
-		}
-		
 		//Checks this in cause the limited mode changed
-		if (m_bMusicWasMutedByEditor && !playerInHQ)
-			m_MusicManager.EnableLocalAmbientMusic();
+		if (m_bMusicWasMutedByEditor)
+		{
+			m_MusicManager.MuteCategory(MusicCategory.Ambient, false, false);
+			m_MusicManager.MuteCategory(MusicCategory.Menu, false, false);
+			m_MusicManager.MuteCategory(MusicCategory.Misc, false, false);
+		}
+			
 		
 		m_bMusicWasMutedByEditor = false;
 	}
@@ -52,7 +46,12 @@ class SCR_MusicEditorComponent: SCR_BaseEditorComponent
 		
 		super.EOnEditorInit();
 		
-		m_MusicManager = SCR_MusicManager.GetInstance();
+		ChimeraWorld world = GetGame().GetWorld();
+
+		if (!world)
+			return;
+		
+		m_MusicManager = world.GetMusicManager();
 		if (!m_MusicManager)
 			return;
 		

@@ -20,41 +20,42 @@ class BaseChatComponent: GameComponent
 	proto external IEntity GetOwner();
 	/*!
 	Enables/disables chat-channel. System channel (channelId = 0) is enabled by default
-	\param channelId: Defined by BaseChatEntity. Indexed from 0.
-	\param enabled: Enable/disable receiving of messages in channel
+	\param channelId Defined by BaseChatEntity. Indexed from 0.
+	\param enabled Enable/disable receiving of messages in channel
 	*/
 	proto external void SetChannel(int channelId, bool enabled);
 	/*!
-	\param channelId: Defined by BaseChatEntity. Indexed from 0.
+	\param channelId Defined by BaseChatEntity. Indexed from 0.
 	\return true for enabled channel, false otherwise
 	*/
 	proto external bool GetChannelState(int channelId);
 	/*!
 	Send message to specified channel
-	\param msgStr: Message to be sent
+	\param msgStr Message to be sent
+	\param channelId Defined by BaseChatEntity. Indexed from 0.
 	*/
-	proto external void SendMessage(string msgStr, int channelIdx);
+	proto external void SendMessage(string msgStr, int channelId);
 	/*!
 	Send message to specific player
-	\param msgStr: Message to be sent
-	\param recipient: Recipient playerId
+	\param msgStr Message to be sent
+	\param receiverId Receiver PlayerID
 	*/
-	proto external void SendPrivateMessage(string msgStr, int recipient);
+	proto external void SendPrivateMessage(string msgStr, int receiverId);
 	
 	// callbacks
 	
 	/*!
-	Event rised on every message delivered to BaseChatComponent
-	\param msg: Payload
-	\param channel: Defined by BaseChatEntity. Indexed from 0.
-	\param playerId: Senders Players ID compatible with lobby
+	Event triggered on every message delivered to BaseChatComponent
+	\param msg Payload
+	\param channelId Defined by BaseChatEntity. Indexed from 0.
+	\param senderId Sender PlayerID compatible with lobby
 	*/
-	event protected void OnNewMessage(string msg, int channel, int senderId);
+	event protected void OnNewMessage(string msg, int channelId, int senderId);
 	/*!
-	Event rised on every private message delivered to BaseChatComponent
-	\param msg: Payload
-	\param sender: Senders playerId
-	\param receiver: Receiver playerId
+	Event triggered on every private message delivered to BaseChatComponent
+	\param msg Payload
+	\param senderId Sender PlayerID
+	\param receiverId Receiver PlayerID
 	*/
 	event protected void OnNewPrivateMessage(string msg, int senderId, int receiverId);
 	event protected void ShowMessage(string msg);

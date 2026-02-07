@@ -230,7 +230,7 @@ class SCR_GridSpawnerEntity: GenericEntity
 				// Delete dummy object
 				// NOTE: If children don't have Hierarchy component,
 				// they will "leak" into the world and never get removed
-				SCR_Global.DeleteEntityAndChildren(dummyObject);
+				SCR_EntityHelper.DeleteEntityAndChildren(dummyObject);
 				dummyObject = null;
 			}
 		}
@@ -306,7 +306,7 @@ class SCR_GridSpawnerEntity: GenericEntity
 			{
 				if (m_aSpawnedEntities[i])
 				{
-					SCR_Global.DeleteEntityAndChildren( m_aSpawnedEntities[i] );
+					SCR_EntityHelper.DeleteEntityAndChildren( m_aSpawnedEntities[i] );
 					
 					delete m_aSpawnedEntities[i];
 					m_aSpawnedEntities[i] = null;

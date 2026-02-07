@@ -1,5 +1,8 @@
 class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 {	
+	[Attribute("TabView")]
+	protected string m_sTabViewName;
+	
 	[Attribute("Base_ContentHolder")]
 	protected string m_sContentHolderName;
 	
@@ -33,55 +36,73 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	[Attribute("2")]
 	protected float m_fContentFadeInSpeed;
 	
+	[Attribute("0", desc: "Which tab will show the end screen content eg: Victory, Defeat, etc.")]
+	protected float m_iContentTabIndex;
+	
 	protected Widget m_wRoot;
+	protected Widget m_wEndscreenContent;
+	protected SCR_TabViewComponent m_TabViewComponent;
 	protected SCR_FadeUIComponent m_OverlayBackgroundColorFadeUIComponent;
 	protected SCR_FadeUIComponent m_ContentFadeComponent;
+	protected SCR_FadeUIComponent m_TabViewFadeComponent;
 	protected SCR_FadeUIComponent m_BackButtonFadeComponent;
 	protected SCR_FadeUIComponent m_ChatButtonFadeComponent;
 	
+	//~ On tab changed
+	protected void OnTabChanged(SCR_TabViewComponent tabView, Widget w, int tabIndex)
+	{
+		OnEndScreenContentShow(tabIndex == m_iContentTabIndex);
+	}
+	
+	//~ When tabview fade is done
+	protected void OnTabViewFadeDone()
+	{
+		if (m_TabViewComponent)
+			m_TabViewComponent.EnableAllTabs(true);
+	}
+	
+	//~ Show end screen content eg: Victory, defeat, etc.
+	protected void OnEndScreenContentShow(bool show)
+	{
+		if (m_wEndscreenContent)
+			m_wEndscreenContent.SetVisible(show);
+	}
+	
 	/*!
 	Create the gameover screen, spawn the layout and fading it in
-	\param gameOverLayout layout that will be spawned which contains the specific endscreen widget
-	\param endGameData send to the gameOverLayout to access any additional data
-	\param title title of game over screen
-	\param subtitle subtitle of game over screen
-	\param debriefing debriefing text of game over screen
-	\param imageTexture Image shown in game over screen
-	\param vignetteColor Color of background overlay. If null will not be set
-	\param titleParam title param %1
-	\param subtitleParam subtitle param %1
-	\param debriefingParam debriefing param %1
-	\return Widget endscreen widget
+	\param endScreenUIContent contains the layout and any neccessary information for the endscreen content widget
 	*/
-	void InitGameOverScreen(ResourceName gameOverLayout, SCR_GameModeEndData endGameData, LocalizedString title = string.Empty, LocalizedString subtitle = string.Empty, LocalizedString debriefing = string.Empty, ResourceName imageTexture = ResourceName.Empty, Color vignetteColor = null, string titleParam = string.Empty, string subtitleParam = string.Empty, string debriefingParam = string.Empty)
-	{
+	void InitGameOverScreen(SCR_GameOverScreenUIContentData endScreenUIContent)
+	{		
 		Widget contentHolder = m_wRoot.FindAnyWidget(m_sContentHolderName);
 		if (!contentHolder)
 			return;
 		
 		//Spawn gameover layout content
-		if (!gameOverLayout.IsEmpty())
+		if (!endScreenUIContent.m_sGameOverLayout.IsEmpty())
 		{
-			Widget gameOverContent = GetGame().GetWorkspace().CreateWidgets(gameOverLayout, contentHolder);
+			m_wEndscreenContent = GetGame().GetWorkspace().CreateWidgets(endScreenUIContent.m_sGameOverLayout, contentHolder);
 			
-			if (gameOverContent)
+			if (m_wEndscreenContent)
 			{
-				SCR_GameOverScreenContentUIComponent gameOverWidgetContent = SCR_GameOverScreenContentUIComponent.Cast(gameOverContent.FindHandler(SCR_GameOverScreenContentUIComponent));
+				SCR_GameOverScreenContentUIComponent gameOverWidgetContent = SCR_GameOverScreenContentUIComponent.Cast(m_wEndscreenContent.FindHandler(SCR_GameOverScreenContentUIComponent));
 			
 				if (gameOverWidgetContent)
-					gameOverWidgetContent.InitContent(endGameData, title, subtitle, debriefing, imageTexture, titleParam, subtitleParam, debriefingParam);
+					gameOverWidgetContent.InitContent(endScreenUIContent);
 			}
 		}
 		
-		if (vignetteColor)
+		if (endScreenUIContent.m_cVignetteColor)
 		{
 			ImageWidget colorOverlay =  ImageWidget.Cast(m_wRoot.FindAnyWidget(m_sBackgroundColorOverlayName));
 			if (colorOverlay)
-				colorOverlay.SetColor(vignetteColor);
+				colorOverlay.SetColor(endScreenUIContent.m_cVignetteColor);
 		}
 		
 		if (m_ContentFadeComponent)
 			m_ContentFadeComponent.FadeIn();
+		//if (m_TabViewFadeComponent) //~ Todo: Post 0.9.6 fix
+		//	m_TabViewFadeComponent.FadeIn();
 		if (m_BackButtonFadeComponent)
 			m_BackButtonFadeComponent.FadeIn();
 		if (m_ChatButtonFadeComponent)
@@ -164,6 +185,27 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());	
 		if (gameMode)
 			gameMode.GetOnGameEnd().Insert(OnGameEnd);
+		
+		Widget tabView = w.FindAnyWidget(m_sTabViewName);
+		if (tabView)
+		{
+			m_TabViewComponent = SCR_TabViewComponent.Cast(tabView.FindHandler(SCR_TabViewComponent));
+			m_TabViewFadeComponent = SCR_FadeUIComponent.Cast(tabView.FindHandler(SCR_FadeUIComponent));
+			
+			if (m_TabViewFadeComponent)
+			{
+				m_TabViewFadeComponent.SetFadeInSpeed(m_fContentFadeInSpeed);
+				tabView.SetVisible(false);
+				m_TabViewFadeComponent.GetOnFadeDone().Insert(OnTabViewFadeDone);
+			}
+		}
+			
+		if (m_TabViewComponent)
+		{
+			if (m_TabViewFadeComponent)
+				m_TabViewComponent.EnableAllTabs(false);
+			m_TabViewComponent.m_OnChanged.Insert(OnTabChanged);
+		}
 	}
 	
 	override void HandlerDeattached(Widget w)
@@ -173,5 +215,8 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 			gameMode.GetOnGameEnd().Remove(OnGameEnd);
 	}
 };
+
+
+
 
 

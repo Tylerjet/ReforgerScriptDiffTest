@@ -358,7 +358,14 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 			foreach (Managed item: m_aEditedItems)
 			{
 				if (attribute.ReadVariable(item, this))
+				{
 					attribute.WriteVariable(item, var, this, PlayerID);
+					
+					//--- Mark editable entities for serialization if their attributes were modified
+					SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
+					if (editableEntity)
+						editableEntity.SetHierarchyAsDirtyInParents();
+				}
 			}
 		}
 		Event_OnAttributesConfirm.Invoke(m_aEditedAttributes);

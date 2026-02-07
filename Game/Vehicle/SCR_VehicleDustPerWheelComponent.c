@@ -1,6 +1,6 @@
 // Spawns dust particle effect that drags with the vehicle during ride
 
-[ComponentEditorProps(category: "GameScripted/Test", description:"SCR_VehicleDustPerWheel", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Test", description:"SCR_VehicleDustPerWheel")]
 class SCR_VehicleDustPerWheelClass: MultiEffectComponentClass
 {
 	[Attribute("0", UIWidgets.Auto, "Vehicle index in ParticleEffectInfo")]
@@ -115,6 +115,10 @@ class SCR_VehicleDustPerWheel : MultiEffectComponent
 	{
 		IEntity effectEntity = effect.GetEntity();
 		effect.Continue();
+		
+		if (!effectEntity)
+			return;
+		
 		UpdatePosition(effectEntity, index, owner);
 		UpdateVehicleDustEffect(effectEntity, speed, m_pComponentData.m_fDustTopSpeed, index, owner);
 		effect.Update(timeSlice);
@@ -240,7 +244,7 @@ class SCR_VehicleDustPerWheel : MultiEffectComponent
 					effect.Pause();
 				}
 				
-				if (effectEntity != null)	//update current effect
+				if (effectEntity)	//update current effect
 				{
 					UpdatePosition(effectEntity, index, owner);
 					UpdateVehicleDustEffect(effectEntity, speed, m_pComponentData.m_fDustTopSpeed, index, owner);
@@ -326,9 +330,10 @@ class SCR_VehicleDustPerWheel : MultiEffectComponent
 		}
 #endif
 		
-		SCR_ParticleAPI.LerpAllEmitters(effectEntity, birth_coef, EmitterParam.BIRTH_RATE);		
-		SCR_ParticleAPI.LerpAllEmitters(effectEntity, gravity_coef, EmitterParam.GRAVITY_SCALE_RND);
-		SCR_ParticleAPI.LerpAllEmitters(effectEntity, speed_coef, EmitterParam.VELOCITY);
-		SCR_ParticleAPI.LerpAllEmitters(effectEntity, speed_coef, EmitterParam.VELOCITY_RND);
+		Particles particles = effectEntity.GetParticles();
+		particles.MultParam(-1, EmitterParam.BIRTH_RATE,        birth_coef);	
+		particles.MultParam(-1, EmitterParam.GRAVITY_SCALE_RND, gravity_coef);
+		particles.MultParam(-1, EmitterParam.VELOCITY,          speed_coef);
+		particles.MultParam(-1, EmitterParam.VELOCITY_RND,      speed_coef);
 	}
 };

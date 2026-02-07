@@ -200,19 +200,17 @@ class SCR_NameTagData : Managed
 			animate = false;
 		
 		if (animate)
-			WidgetAnimator.PlayAnimation( widget, WidgetAnimationType.Opacity, targetVal, m_fTagFadeSpeed );
+			AnimateWidget.Opacity(widget, targetVal, m_fTagFadeSpeed);
 		else 
-		{
-			if ( WidgetAnimator.IsAnimating(widget) )
-				WidgetAnimator.StopAnimation(widget, WidgetAnimationType.Opacity);
-		}
+			AnimateWidget.StopAnimation(widget, WidgetAnimationOpacity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Resize nametag element
 	void ResizeElement(Widget widget, float targetVal)
 	{
-		WidgetAnimator.PlayAnimation( widget, WidgetAnimationType.FrameSize, m_fTagFadeSpeed, targetVal, targetVal );
+		float size[2] = {targetVal, targetVal};
+		AnimateWidget.Size(widget, size, m_fTagFadeSpeed);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -304,7 +302,9 @@ class SCR_NameTagData : Managed
 	//! SCR_CompartmentAccessComponent event
 	void OnVehicleEntered( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
 	{	
-		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID);
+		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
+		if (!compSlot)
+			return;
 	
 		while (vehicle)		// compartments such as turrets have vehicles as parents
 		{
@@ -323,7 +323,7 @@ class SCR_NameTagData : Managed
 	//! SCR_CompartmentAccessComponent event
 	void OnVehicleLeft( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
 	{		
-		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID);
+		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
 		
 		while (vehicle)
 		{

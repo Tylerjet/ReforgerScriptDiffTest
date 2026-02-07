@@ -27,7 +27,7 @@ class Game
 	*/
 	proto external void UserSettingsChanged();
 	/**
-	\brief Save Engine User Settings
+	\brief Save Engine User Settings to permanent storage
 	*/
 	proto external void SaveUserSettings();
 	/**
@@ -158,6 +158,10 @@ class Game
 	*/
 	event void OnInputDeviceUserChangedEvent(EInputDeviceType oldDevice, EInputDeviceType newDevice);
 	/**
+	\brief Event which is called when input device binded to user changes between gamepad and keyboard/mouse, ignoring Joystick and TrackIR.
+	*/
+	event void OnInputDeviceIsGamepadEvent(bool isGamepad);
+	/**
 	\brief Event called once loading of all entities of the world have been finished. (still within the loading)
 	*/
 	event void OnWorldPostProcess(World world);
@@ -167,10 +171,18 @@ class Game
 	*/
 	event void OnWorldSimulatePhysics(float timeSlice);
 	/**
+	\brief Event which is called when window size of fullscreen state changed
+	@param w new width of window in screen pixels
+	@param h new height of window in screen pixels
+	@param windowed true when is windowed, false then fullscreen
+	*/
+	event void OnWindowResize(int w, int h, bool windowed);
+	/**
 	\brief Called after reload to host a modded scenario.
 	@param sResource ResourceName of a mission config
 	*/
-	event void HostGameConfig(string sResource);
-	event void PlayGameConfig(string sResource);
+	event void HostGameConfig(ResourceName sResource);
+	event void PlayGameConfig(ResourceName sResource);
 	event ref array<ResourceName> GetDefaultGameConfigs();
+	event Managed ReadGameConfig(string sResource);
 };

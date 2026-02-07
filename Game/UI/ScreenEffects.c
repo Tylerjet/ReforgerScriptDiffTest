@@ -111,6 +111,10 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 	private ImageWidget 							m_wFadeInOut;
 	private int m_iEffectNo 						= 1;
 
+	// Adaptive opacity widgets 
+	protected Widget 							m_wAdaptiveOpacitySupression;
+	protected Widget								m_wAdaptiveOpacityBlood;	
+	
 	// Owner data
 	protected ChimeraCharacter 						m_pCharacterEntity;
 	protected SignalsManagerComponent 				m_pSignalsManager;
@@ -130,10 +134,6 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 	protected int m_iStaminaSignal 					= -1;
 	protected bool m_bStaminaEffectActive;
 
-	//Sound effects
-	protected const string SOUND_DEATH_SLOW 		= "SOUND_DEATH_SLOW";
-	protected const string SOUND_DEATH_FAST 		= "SOUND_DEATH_FAST";
-
 	// Enabling/Disabling of PP fx
 	private static bool s_bNearDofEffect;
 	private static bool s_bEnableDOFBokeh;
@@ -142,12 +142,15 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 	private static bool s_bEnableSaturation;
 
 	//------------------------------------------------------------------------------------------------
+	static SCR_ScreenEffects GetScreenEffectsDisplay()
+	{
+		return s_pScreenEffects;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void DisplayStartDraw(IEntity owner)
 	{
-		super.DisplayStartDraw(owner);
-
 		SettingsChanged();
-		CharacterChanged();
 
 		m_wDeath = ImageWidget.Cast(m_wRoot.FindAnyWidget("DeathOverlay"));
 		m_wSupression = ImageWidget.Cast(m_wRoot.FindAnyWidget("SuppressionVignette"));
@@ -155,6 +158,7 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		m_wBloodEffect2 = ImageWidget.Cast(m_wRoot.FindAnyWidget("BloodVignette2"));
 		m_wBlackOut = ImageWidget.Cast(m_wRoot.FindAnyWidget("BlackOut"));
 		m_wDOFOut = ImageWidget.Cast(m_wRoot.FindAnyWidget("DOFOut"));
+		m_wFadeInOut = ImageWidget.Cast(m_wRoot.FindAnyWidget("FadeOut"));
 		
 		GetGame().OnUserSettingsChangedInvoker().Insert(SettingsChanged);
 
@@ -165,14 +169,14 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		if (!playerController)
 			return;
 
-		playerController.m_OnControlledEntityChanged.Insert(CharacterChanged);
-
 		// Register to debug menu
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_SCREEN_EFFECTS,"","Hit Effect Debug","Character");
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_CHARACTER_SCREEN_EFFECTS,0);
 
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_POSTPROCESSING_EFFECTS,"","Postprocessing Effect Debug","Character");
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_CHARACTER_POSTPROCESSING_EFFECTS,0);
+		
+		s_pScreenEffects = this;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -212,7 +216,7 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
- 	void CharacterChanged(IEntity from = null, IEntity to = null)
+ 	override void DisplayControlledEntityChanged(IEntity from, IEntity to)
 	{
 		UnregisterEffects();
 
@@ -220,10 +224,10 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		if (!m_wRoot)
 			return;
 
+		m_pCharacterEntity = null;
+		
 		if (to)
 			m_pCharacterEntity = ChimeraCharacter.Cast(to);
-		else if (GetGame().GetPlayerController())
-			m_pCharacterEntity = ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
 
 		if (!m_pCharacterEntity)
 			return;
@@ -309,6 +313,22 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void UpdateOpacity(float opacity, float sceneBrightness, float sceneBrightnessRaw)
+	{
+		if (!m_wAdaptiveOpacityBlood)
+			m_wAdaptiveOpacityBlood = m_wRoot.FindAnyWidget("AdaptiveOpacity-Blood");
+		
+		if (!m_wAdaptiveOpacitySupression)
+			m_wAdaptiveOpacitySupression = m_wRoot.FindAnyWidget("AdaptiveOpacity-Suppression");
+		
+		//PrintFormat("<Adaptive Opacity - m_wAdaptiveOpacityBlood> %1 | Updating opacity %2 -> %3", this, m_wAdaptiveOpacityBlood.GetOpacity(), opacity);
+		//PrintFormat("<Adaptive Opacity - m_wAdaptiveOpacitySupression> %1 | Updating opacity %2 -> %3", this, m_wAdaptiveOpacitySupression.GetOpacity(), opacity);
+		
+		m_wAdaptiveOpacityBlood.SetOpacity(opacity);
+		m_wAdaptiveOpacitySupression.SetOpacity(opacity);
+	}	
+	
+	//------------------------------------------------------------------------------------------------
 	bool IsNearDOFAllowed()
 	{
 		if (!s_bNearDofEffect || !m_pCharacterEntity)
@@ -316,7 +336,7 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 
 		CharacterControllerComponent controller = m_pCharacterEntity.GetCharacterController();
 
-		if (!controller.IsWeaponRaised() || controller.IsGadgetInHands() || controller.GetIsInspectionMode())
+		if (!controller.IsWeaponRaised() || controller.IsGadgetInHands() || controller.GetInspect())
 			return false;
 
 		if (!controller.IsWeaponADS())
@@ -433,11 +453,11 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		if (effectStrength > 0)
 		{
 			effectStrength = effectStrength * BLACKOUT_OPACITY_MULTIPLIER;
-			WidgetAnimator.PlayAnimation(m_wBlackOut, WidgetAnimationType.AlphaMask, effectStrength, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
+			AnimateWidget.AlphaMask(m_wBlackOut, effectStrength, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
 		}
 		else
 		{
-			WidgetAnimator.PlayAnimation(m_wBlackOut, WidgetAnimationType.AlphaMask, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_1_DURATION);
+			AnimateWidget.AlphaMask(m_wBlackOut, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_1_DURATION);
 		}
 	}
 
@@ -454,17 +474,17 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		
 		if (m_iEffectNo == 1)
 		{
-			WidgetAnimator.PlayAnimation(m_wBloodEffect2, WidgetAnimationType.Opacity, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_2_DURATION);
-			WidgetAnimator.PlayAnimation(m_wBloodEffect2, WidgetAnimationType.AlphaMask, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_2_DURATION);
-			WidgetAnimator.PlayAnimation(m_wBloodEffect1, WidgetAnimationType.Opacity, effectStrength1 , BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION);
-			WidgetAnimator.PlayAnimation(m_wBloodEffect1, WidgetAnimationType.AlphaMask, effectStrength1 * 0.5, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
+			AnimateWidget.Opacity(m_wBloodEffect1, effectStrength1, BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION);
+			AnimateWidget.AlphaMask(m_wBloodEffect1, effectStrength1 * 0.5, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
+			AnimateWidget.Opacity(m_wBloodEffect2, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_2_DURATION);
+			AnimateWidget.AlphaMask(m_wBloodEffect2, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_2_DURATION);
 		}
 		else if (m_iEffectNo == 2)
 		{
-			WidgetAnimator.PlayAnimation(m_wBloodEffect1, WidgetAnimationType.Opacity, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_2_DURATION);
-			WidgetAnimator.PlayAnimation(m_wBloodEffect1, WidgetAnimationType.AlphaMask, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_2_DURATION);
-			WidgetAnimator.PlayAnimation(m_wBloodEffect2, WidgetAnimationType.Opacity, effectStrength1  , BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION);
-			WidgetAnimator.PlayAnimation(m_wBloodEffect2, WidgetAnimationType.AlphaMask, effectStrength1 * 0.5, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
+			AnimateWidget.Opacity(m_wBloodEffect1, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_2_DURATION);
+			AnimateWidget.AlphaMask(m_wBloodEffect1, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_2_DURATION);
+			AnimateWidget.Opacity(m_wBloodEffect2, effectStrength1, BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION);
+			AnimateWidget.AlphaMask(m_wBloodEffect2, effectStrength1 * 0.5, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
 		}
 
 		BlackoutEffect(1);
@@ -473,7 +493,7 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		if (!m_bPlayerOutsideCharacter)
 		{
 			SCR_UISoundEntity.SetSignalValueStr("BloodLoss", 1 - m_pBloodHZ.GetHealthScaled());
-			SCR_UISoundEntity.SoundEvent("SOUND_INJURED_PLAYERCHARACTER");
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INJURED_PLAYERCHARACTER);
 		}
 
 		GetGame().GetCallqueue().CallLater(ClearEffectOverTime, 1000, false, repeat, m_iEffectNo);
@@ -496,10 +516,10 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 			w = m_wBloodEffect2;
 		}
 
-		WidgetAnimator.PlayAnimation(m_wBloodEffect1, WidgetAnimationType.Opacity, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_1_DURATION);
-		WidgetAnimator.PlayAnimation(m_wBloodEffect1, WidgetAnimationType.AlphaMask, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_1_DURATION);
-		WidgetAnimator.PlayAnimation(m_wBloodEffect2, WidgetAnimationType.Opacity, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_1_DURATION);
-		WidgetAnimator.PlayAnimation(m_wBloodEffect2, WidgetAnimationType.AlphaMask, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_1_DURATION);
+		AnimateWidget.Opacity(m_wBloodEffect1, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_1_DURATION);
+		AnimateWidget.AlphaMask(m_wBloodEffect1, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_1_DURATION);
+		AnimateWidget.Opacity(m_wBloodEffect2, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_1_DURATION);
+		AnimateWidget.AlphaMask(m_wBloodEffect2, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_1_DURATION);
 		
 		BlackoutEffect(0);
 
@@ -591,14 +611,11 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		if (!m_wDeath || (m_wDeath.GetOpacity() > 0))
 			return;
 
-		WidgetAnimator.StopAnimation(m_wDeath);
-		m_wDeath.SetMaskProgress(0);
-
-		SCR_UISoundEntity.SoundEvent(SOUND_DEATH_SLOW);
-
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_DEATH_SLOW);
 		m_wDeath.SetOpacity(DEATHEFFECT_START_OPACITY);
-		WidgetAnimator.PlayAnimation(m_wDeath,WidgetAnimationType.AlphaMask, DEATHEFFECT_FADEIN_PROGRESSION_TARGET, DEATHEFFECT_FADEIN_PROGRESSION_DURACTION);
-		WidgetAnimator.PlayAnimation(m_wDeath,WidgetAnimationType.Opacity, DEATHEFFECT_FADEIN_OPACITY_TARGET, DEATHEFFECT_FADEIN_OPACITY_DURATION);
+		m_wDeath.SetMaskProgress(0);
+		AnimateWidget.Opacity(m_wDeath, DEATHEFFECT_FADEIN_OPACITY_TARGET, DEATHEFFECT_FADEIN_OPACITY_DURATION);
+		AnimateWidget.AlphaMask(m_wDeath, DEATHEFFECT_FADEIN_PROGRESSION_TARGET, DEATHEFFECT_FADEIN_PROGRESSION_DURACTION);
 	}
 
 	void InstaDeathEffect()
@@ -606,14 +623,33 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		if (m_wDeath.GetOpacity() >= 0.99 || m_pHeadHitZone.GetDamageState() != EDamageState.DESTROYED || m_pHealthHitZone.GetDamageState() != EDamageState.DESTROYED)
 			return;
 
-		SCR_UISoundEntity.SoundEvent(SOUND_DEATH_FAST);
-		
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_DEATH_FAST);
 		m_wDeath.SetMaskProgress(INSTADEATHEFFECT_START_PROGRESSION);
 		m_wDeath.SetOpacity(INSTADEATHEFFECT_START_OPACITY);
-		WidgetAnimator.PlayAnimation(m_wDeath,WidgetAnimationType.AlphaMask, INSTADEATHEFFECT_FADEIN_PROGRESSION_TARGET, INSTADEATHEFFECT_FADEIN_PROGRESSION_DURACTION);
-		WidgetAnimator.PlayAnimation(m_wDeath,WidgetAnimationType.Opacity, INSTADEATHEFFECT_FADEIN_OPACITY_TARGET, INSTADEATHEFFECT_FADEIN_OPACITY_DURATION);
+		AnimateWidget.Opacity(m_wDeath, INSTADEATHEFFECT_FADEIN_OPACITY_TARGET, INSTADEATHEFFECT_FADEIN_OPACITY_DURATION);
+		AnimateWidget.AlphaMask(m_wDeath, INSTADEATHEFFECT_FADEIN_PROGRESSION_TARGET, INSTADEATHEFFECT_FADEIN_PROGRESSION_DURACTION);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Fade the screen in/out
+	//! \param fadeDirection fades out if true, in if false 
+	void FadeOutEffect(bool fadeDirection, float seconds = 0.35)
+	{
+		if (seconds == 0)
+			return;
+		
+		float targetVal;
+		if (fadeDirection)
+		{
+			m_wFadeInOut.SetOpacity(0);
+			targetVal = 1;
+		}
+		else 
+			m_wFadeInOut.SetOpacity(1);
+		
+		AnimateWidget.Opacity(m_wFadeInOut, targetVal, 1/seconds, true);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void StaminaEffects(bool repeat)
 	{
@@ -622,7 +658,7 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 
 		m_bStaminaEffectActive = true;
 		m_wSupression.SetOpacity(STAMINAEFFECT_INITIAL_OPACITY_TARGET);
-		WidgetAnimator.PlayAnimation(m_wSupression, WidgetAnimationType.AlphaMask, STAMINAEFFECT_FADEIN_PROGRESSION_TARGET, STAMINAEFFECT_FADEIN_PROGRESSION_DURATION);
+		AnimateWidget.AlphaMask(m_wSupression, STAMINAEFFECT_FADEIN_PROGRESSION_TARGET, STAMINAEFFECT_FADEIN_PROGRESSION_DURATION);
 		GetGame().GetCallqueue().CallLater(ClearStaminaEffect, STAMINA_CLEAREFFECT_DELAY, false, true);
 	}
 
@@ -631,8 +667,7 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		if (!m_wSupression)
 			return;
 
-		WidgetAnimator.StopAnimation(m_wSupression);
-		WidgetAnimator.PlayAnimation(m_wSupression, WidgetAnimationType.AlphaMask, 0, 1);
+		AnimateWidget.AlphaMask(m_wSupression, 0, 1);
 		if (repeat && m_bStaminaEffectActive && m_wSupression && !m_wSupression.GetOpacity() == 0)
 			GetGame().GetCallqueue().CallLater(StaminaEffects, STAMINA_CLEAREFFECT_DELAY, false, repeat);
 	}
@@ -646,40 +681,35 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 
 		if (m_wBloodEffect1)
 		{
-			if (WidgetAnimator.IsAnimating(m_wBloodEffect1))
-				WidgetAnimator.StopAnimation(m_wBloodEffect1);
+			AnimateWidget.StopAllAnimations(m_wBloodEffect1);
 			m_wBloodEffect1.SetOpacity(0);
 			m_wBloodEffect1.SetMaskProgress(0);
 		}
 
 		if (m_wBloodEffect2)
 		{
-			if (WidgetAnimator.IsAnimating(m_wBloodEffect2))
-				WidgetAnimator.StopAnimation(m_wBloodEffect2);
+			AnimateWidget.StopAllAnimations(m_wBloodEffect2);
 			m_wBloodEffect2.SetOpacity(0);
 			m_wBloodEffect2.SetMaskProgress(0);
 		}
 
 		if (m_wBlackOut)
 		{
-			if (WidgetAnimator.IsAnimating(m_wBlackOut))
-				WidgetAnimator.StopAnimation(m_wBlackOut);
+			AnimateWidget.StopAllAnimations(m_wBlackOut);
 			m_wBlackOut.SetOpacity(0);
 			m_wBlackOut.SetMaskProgress(0);
 		}
 
 		if (m_wDeath)
 		{
-			if (WidgetAnimator.IsAnimating(m_wDeath))
-				WidgetAnimator.StopAnimation(m_wDeath);
+			AnimateWidget.StopAllAnimations(m_wDeath);
 			m_wDeath.SetOpacity(0);
 			m_wDeath.SetMaskProgress(0);
 		}
 
 		if (m_wSupression)
 		{
-			if (WidgetAnimator.IsAnimating(m_wDeath))
-				WidgetAnimator.StopAnimation(m_wDeath);
+			AnimateWidget.StopAllAnimations(m_wSupression);
 			m_wSupression.SetOpacity(0);
 			m_wSupression.SetMaskProgress(0);
 		}
@@ -794,9 +824,8 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 	{
 		ClearEffects();
 		UnregisterEffects();
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		if (playerController)
-			playerController.m_OnControlledEntityChanged.Remove(CharacterChanged);
 		GetGame().OnUserSettingsChangedInvoker().Remove(SettingsChanged);
+		
+		s_pScreenEffects = null;
 	}
 };

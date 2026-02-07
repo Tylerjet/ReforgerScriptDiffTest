@@ -51,6 +51,10 @@ class ChimeraGame: Game
 	proto external int GetMaximumGrassDistance();
 	//! Returns absolute minimum grass distance
 	proto external int GetMinimumGrassDistance();
+	//! Returns true if the VON UI is disabled by the server
+	proto external bool IsVONUIDisabledByServer();
+	//! Returns true if the VON direct speech UI is disabled by the server
+	proto external bool IsVONDirectSpeechUIDisabledByServer();
 	//! Returns currently active mission or null if none
 	proto external MissionHeader GetMissionHeader();
 	//! Returns the AI World

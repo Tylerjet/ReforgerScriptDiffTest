@@ -150,12 +150,6 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void RestartSession()
-	{
-		GameStateTransitions.RequestMissionChangeTransition(GetGame().GetMissionHeader());
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	void SetSwapSides(bool swapSides)
 	{
 		m_bSwapSides = swapSides;
@@ -253,7 +247,7 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 			}
 		}
 		
-		WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, 1, 1);
+		AnimateWidget.Opacity(m_wRoot, 1, 1);
 		
 		ScriptCallQueue queue = GetGame().GetCallqueue(); 
 		queue.CallLater(this.HideHint, showTime * 1000);
@@ -263,7 +257,7 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 	void HideHint()
 	{
 		if (m_wRoot)
-			WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, 0, 1);
+			AnimateWidget.Opacity(m_wRoot, 0, 1);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -486,9 +480,9 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerDisconnected(int playerId)
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause)
 	{
-		super.OnPlayerDisconnected(playerId);
+		super.OnPlayerDisconnected(playerId, cause);
 		
 		Replication.BumpMe();
 		if (areaID != INVALID_AREA_INDEX || m_iGameMasterID != playerId)

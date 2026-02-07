@@ -39,7 +39,6 @@ class SCR_WindSpeedEditorAttribute : SCR_BaseValueListEditorAttribute
 			
 			float maxValue = m_baseValues.GetMaxValue();
 			array<ref WeatherVariant> variants = {};
-			WeatherWindPattern windPattern = new WeatherWindPattern();
 			float newMax;
 			
 			foreach(WeatherState state: weatherStates)
@@ -48,7 +47,7 @@ class SCR_WindSpeedEditorAttribute : SCR_BaseValueListEditorAttribute
 				
 				foreach(WeatherVariant variant: variants)
 				{
-					variant.GetWindPattern(windPattern);
+					WeatherWindPattern windPattern = variant.GetWindPattern();
 					
 					if (!windPattern)
 					 continue;

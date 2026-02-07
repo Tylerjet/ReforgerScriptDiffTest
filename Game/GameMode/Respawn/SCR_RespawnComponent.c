@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/GameMode", description: "Communicator for RespawnSystemComponent. Should be attached to PlayerController.", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/GameMode", description: "Communicator for RespawnSystemComponent. Should be attached to PlayerController.")]
 class SCR_RespawnComponentClass: RespawnComponentClass
 {
 };
@@ -13,9 +13,9 @@ class SCR_RespawnComponentClass: RespawnComponentClass
 	which can be especially useful when debugging a dedicated server or so.
 */
 
-#define RESPAWN_COMPONENT_DIAG
-//#define RESPAWN_COMPONENT_VERBOSE
-#define RESPAWN_COMPONENT_LOCKS_VERBOSE
+// #define RESPAWN_COMPONENT_DIAG
+// #define RESPAWN_COMPONENT_VERBOSE
+// #define RESPAWN_COMPONENT_LOCKS_VERBOSE
 
 //! Result code for request/assign response
 enum ERespawnSelectionResult
@@ -650,6 +650,49 @@ class SCR_RespawnComponent : RespawnComponent
 	{
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		gameMode.GetRespawnHandlerComponent().OnLocalPlayerDequeued();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void RequestQuickRespawn()
+	{
+		Rpc(Rpc_RequestPlayerQuickRespawn);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void Rpc_RequestPlayerQuickRespawn()
+	{
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gameMode)
+			return;
+
+		SCR_RespawnMenuHandlerComponent menuHandler = SCR_RespawnMenuHandlerComponent.Cast(gameMode.GetRespawnHandlerComponent());
+		if (!menuHandler)
+			return;
+
+		menuHandler.RequestQuickRespawn(m_PlayerController.GetPlayerId());
+	}
+
+
+	//------------------------------------------------------------------------------------------------
+	void RequestRespawn()
+	{
+		Rpc(Rpc_RequestPlayerRespawn);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void Rpc_RequestPlayerRespawn()
+	{
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gameMode)
+			return;
+
+		SCR_RespawnMenuHandlerComponent menuHandler = SCR_RespawnMenuHandlerComponent.Cast(gameMode.GetRespawnHandlerComponent());
+		if (!menuHandler)
+			return;
+
+		menuHandler.RequestRespawn(m_PlayerController.GetPlayerId());
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -26,6 +26,5 @@ class SCR_WorkshopSettings : ModuleGameSettings
 		BaseContainer container = GetGame().GetGameUserSettings().GetModule("SCR_WorkshopSettings");
 		BaseContainerTools.ReadFromInstance(settings, container);
 		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 	}
 };

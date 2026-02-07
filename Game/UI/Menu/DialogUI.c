@@ -13,7 +13,7 @@ class DialogUI : ChimeraMenuBase
 	protected TextWidget m_wContent;
 	ref ScriptInvoker m_OnConfirm = new ScriptInvoker();
 	ref ScriptInvoker m_OnCancel = new ScriptInvoker();
-	protected float m_fAnimationRate = WidgetAnimator.FADE_RATE_FAST;
+	protected float m_fAnimationRate = UIConstants.FADE_RATE_FAST;
 
 	protected EDialogType m_iDialogType;
 
@@ -43,7 +43,7 @@ class DialogUI : ChimeraMenuBase
 
 		// Play animation
 		w.SetOpacity(0);
-		WidgetAnimator.PlayAnimation(w, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
+		AnimateWidget.Opacity(w, 1, m_fAnimationRate);
 
 		// Find dialog component
 		m_DialogData = SCR_DialogDataComponent.Cast( w.FindHandler(SCR_DialogDataComponent));
@@ -176,7 +176,7 @@ class DialogUI : ChimeraMenuBase
 	//! animates dialog closure
 	void CloseAnimated()
 	{
-		WidgetAnimator.PlayAnimation(GetRootWidget(), WidgetAnimationType.Opacity, 0, m_fAnimationRate);
+		AnimateWidget.Opacity(GetRootWidget(), 0, m_fAnimationRate);
 		int delay;
 		if (m_fAnimationRate > 0)
 			delay = 1 / m_fAnimationRate * 1000;

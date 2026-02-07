@@ -13,6 +13,13 @@ class AttachmentOpticsDovetail : AttachmentOptics
 {
 };
 
+class AttachmentOpticsDovetailRPG7Class {}
+AttachmentOpticsDovetailRPG7Class AttachmentOpticsDovetailRPG7Source;
+
+class AttachmentOpticsDovetailRPG7 : AttachmentOptics
+{
+};
+
 class AttachmentOpticsM21Class {}
 AttachmentOpticsM21Class AttachmentOpticsM21Source;
 

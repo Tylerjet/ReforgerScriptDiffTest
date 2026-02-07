@@ -112,6 +112,7 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 			comp.SetAction(entry.m_sAction);
 			comp.SetLabel(LOCALIZATION_PREFIX + entry.m_sAction);
 			comp.m_OnActivated.Insert(OnNavigation);
+			comp.SetClickedSound("");
 		}
 	}
 };

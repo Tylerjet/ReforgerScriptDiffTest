@@ -72,7 +72,7 @@ class SCR_GameModeLastStand : SCR_BaseGameMode
 			return;
 		
 		m_wText.SetText(text);
-		WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, 1, 1);
+		AnimateWidget.Opacity(m_wRoot, 1, 1);
 		
 		ScriptCallQueue queue = GetGame().GetCallqueue(); 
 		queue.CallLater(this.HideHint, showTime * 1000);
@@ -82,7 +82,7 @@ class SCR_GameModeLastStand : SCR_BaseGameMode
 	void HideHint()
 	{
 		if (m_wRoot)
-			WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, 0, 1);
+			AnimateWidget.Opacity(m_wRoot, 0, 1);
 	}
 	
 	//------------------------------------------------------------------------------------------------

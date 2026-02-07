@@ -37,6 +37,7 @@ class SCR_AccountWidgetComponent : ScriptedWidgetComponent
 	protected TextWidget m_wLoginText;
 	protected SCR_ButtonImageComponent m_News;
 	protected SCR_ButtonImageComponent m_Profile;
+	protected SCR_ButtonImageComponent m_Career;
 
 	protected bool m_bLinked = true;
 	protected bool m_bLoggedIn;
@@ -58,6 +59,10 @@ class SCR_AccountWidgetComponent : ScriptedWidgetComponent
 		m_News = SCR_ButtonImageComponent.GetButtonImage("News", w);
 		if (m_News)
 			m_News.m_OnClicked.Insert(OnNews);
+		
+		/*m_Career = SCR_ButtonImageComponent.GetButtonImage("Career", w);
+		if (m_Career)
+			m_Career.m_OnClicked.Insert(OnCareer);*/
 
 		m_Profile = SCR_ButtonImageComponent.GetButtonImage("Profile", w);
 		if (m_Profile)
@@ -163,7 +168,14 @@ class SCR_AccountWidgetComponent : ScriptedWidgetComponent
 	protected void OnNews()
 	{
 		OpenProfileMenu(0);
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnCareer()
+	{
+		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.CareerProfileMenu);
 	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnCommunity()
@@ -239,7 +251,7 @@ class SCR_AccountWidgetComponent : ScriptedWidgetComponent
 
 		text.SetText(number.ToString());
 		if (animate)
-			WidgetAnimator.PlayAnimation(text.GetParent(), WidgetAnimationType.Opacity, number > 0, WidgetAnimator.FADE_RATE_FAST);
+			AnimateWidget.Opacity(text.GetParent(), number > 0, UIConstants.FADE_RATE_FAST);
 		else
 			text.GetParent().SetVisible(number > 0);
 	}
@@ -260,14 +272,14 @@ class SCR_AccountWidgetComponent : ScriptedWidgetComponent
 	protected void OnProfileMouseOver(Widget button)
 	{
 		if (m_BackendApi.IsBIAccountLinked())
-			WidgetAnimator.PlayAnimation(m_wConnectImage, WidgetAnimationType.Opacity, 1, WidgetAnimator.FADE_RATE_FAST);
+			AnimateWidget.Opacity(m_wConnectImage, 1, UIConstants.FADE_RATE_FAST);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnProfileMouseLeave(Widget button)
 	{
 		if (m_BackendApi.IsBIAccountLinked())
-			WidgetAnimator.PlayAnimation(m_wConnectImage, WidgetAnimationType.Opacity, 0, WidgetAnimator.FADE_RATE_FAST);
+			AnimateWidget.Opacity(m_wConnectImage, 0, UIConstants.FADE_RATE_FAST);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -280,6 +292,6 @@ class SCR_AccountWidgetComponent : ScriptedWidgetComponent
 		SetConnectionIcon(!linked);
 		
 		if (!linked || GetGame().GetWorkspace().GetFocusedWidget() != m_Profile.GetRootWidget())
-			WidgetAnimator.PlayAnimation(m_wConnectImage, WidgetAnimationType.Opacity, !linked, WidgetAnimator.FADE_RATE_FAST);
+			AnimateWidget.Opacity(m_wConnectImage, !linked, UIConstants.FADE_RATE_FAST);
 	}
 };

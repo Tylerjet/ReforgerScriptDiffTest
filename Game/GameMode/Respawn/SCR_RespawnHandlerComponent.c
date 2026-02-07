@@ -314,6 +314,29 @@ class SCR_RespawnHandlerComponent : SCR_BaseGameModeComponent
 		return true;
 	}
 
+	/*
+		Randomize group for given player - server-only.
+		\param PlayerId PlayerId of player to randomize group for.
+	*/
+	protected bool RandomizePlayerGroup(int playerId)
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetPlayerControllerComponent(playerId);
+		Faction playerFaction = SCR_RespawnSystemComponent.GetInstance().GetPlayerFaction(playerId);
+		if (!playerFaction)
+			return false;
+		if (groupsManager && playerGroupController && !groupsManager.IsPlayerInAnyGroup(playerId))
+		{
+			SCR_AIGroup group = groupsManager.GetFirstNotFullForFaction(playerFaction, null, true);
+			if (!group)
+				playerGroupController.RequestCreateGroup();
+			else
+				playerGroupController.RequestJoinGroup(group.GetGroupID());
+		}
+
+		return true;
+	}
+
 	/*!
 		Ticks every frame. Handle enqueued players as necessary.
 	*/
@@ -433,10 +456,17 @@ class SCR_RespawnHandlerComponent : SCR_BaseGameModeComponent
 			return false;
 		}
 
-		SCR_SpawnPoint spawnPoint = SCR_SpawnPoint.GetSpawnPointsForFaction(faction.GetFactionKey()).GetRandomElement();
+		array<SCR_SpawnPoint> spawnPoints = SCR_SpawnPoint.GetSpawnPointsForFaction(faction.GetFactionKey());
+		if (spawnPoints.IsEmpty())
+		{
+			Print(string.Format("Cannot request spawn with loadout: %1 and faction: %2 because no spawn points exist!", loadoutId, factionId), LogLevel.ERROR);
+			return false;
+		}
+		
+		SCR_SpawnPoint spawnPoint = spawnPoints.GetRandomElement();
 		if (!spawnPoint)
 		{
-			Print("Cannot request spawn with loadout: " + loadoutId + " and faction: " + factionId + " because no valid spawn pointe exists!", LogLevel.ERROR);
+			Print("Cannot request spawn with loadout: " + loadoutId + " and faction: " + factionId + " because no valid spawn point exists!", LogLevel.ERROR);
 			return false;
 		}
 		

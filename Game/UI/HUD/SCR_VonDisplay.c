@@ -69,6 +69,8 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	const float FADEIN_SPEED = 10;
 	const float FADEOUT_SPEED = 5;	
 	
+	protected bool m_bIsVONUIDisabled;
+	protected bool m_bIsVONDirectDisabled;
 	protected bool m_bIsDirectToggled;			// direct speech toggle state
 	protected bool m_bIsChannelToggled;			// channel toggle EFireState
 	
@@ -104,7 +106,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	//! VONComponent event
 	event void OnReceive(int playerId, BaseRadioComponent radio, int frequency, float quality, int transceiverIdx)
 	{
-		if (!m_wRoot)
+		if (!m_wRoot || m_bIsVONUIDisabled) // ignore receiving transmissions if VON UI is off
 			return;
 		
 		// Check if there is an active transmission from given player 		
@@ -113,6 +115,9 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		// Active transmission from the player not found, create it
 		if (!pTransmission)
 		{
+			if (!radio && m_bIsVONDirectDisabled)	// direct UI off
+				return;
+			
 			Widget baseWidget;
 			int iWidgetIdx = 0;
 			bool bWidgetAvailable = false;
@@ -159,9 +164,12 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	//! \param IsReceiving is true when receiving transmission, false when transmitting
 	//! \return false if the transimission is filtered out to not be visible
 	protected bool UpdateTransmission(TransmissionData data, BaseRadioComponent radioComp, int frequency, bool IsReceiving)
-	{	
+	{			
 		data.m_RadioComp = radioComp;
 		data.m_bForceUpdate = false;
+		
+		if (!radioComp && m_bIsVONDirectDisabled && IsReceiving)	// can happen when existing RADIO transmission switches to direct
+			return false;
 		
 		PlayerManager playerMgr = GetGame().GetPlayerManager();
 		if (playerMgr)
@@ -317,20 +325,6 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_PlayerController Event
-	protected void OnControlledEntityChanged(IEntity from, IEntity to)
-	{
-		if (m_OutTransmission)
-			m_OutTransmission.HideTransmission();
-		
-		int count = m_aTransmissions.Count();
-		for (int i = 0; i < count; i++)
-		{
-			m_aTransmissions[i].HideTransmission();
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! SCR_PlayerController Event
 	protected void OnDestroyed(IEntity killer)
 	{
 		if (m_OutTransmission)
@@ -358,12 +352,13 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	//! Initialize
 	protected void InitDisplay()
-	{			
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		playerController.m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
-		playerController.m_OnDestroyed.Insert(OnDestroyed);
+	{	
+		m_bIsVONUIDisabled = GetGame().IsVONUIDisabledByServer();
+		m_bIsVONDirectDisabled = GetGame().IsVONDirectSpeechUIDisabledByServer();
+				
+		m_PlayerController.m_OnDestroyed.Insert(OnDestroyed);
 		
-		m_VONController = SCR_VONController.Cast(playerController.FindComponent(SCR_VONController));
+		m_VONController = SCR_VONController.Cast(m_PlayerController.FindComponent(SCR_VONController));
 		m_VONController.m_OnVONActiveToggled.Insert(OnVONActiveToggled);
 		m_VONController.SetDisplay(this);	// we set this from here instead of the other way around to avoid load order issues
 							
@@ -385,8 +380,8 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	// Overrides
 	//------------------------------------------------------------------------------------------------
-	override event void DisplayUpdate(IEntity owner, float timeSlice)
-	{
+	override void DisplayUpdate(IEntity owner, float timeSlice)
+	{		
 		// update visibility timer
 		if (m_OutTransmission.m_bIsActive)
 		{
@@ -451,7 +446,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	}		
 	
 	//------------------------------------------------------------------------------------------------
-	override event void DisplayStartDraw(IEntity owner)
+	override void DisplayStartDraw(IEntity owner)
 	{
 		if (!m_wRoot)
 			return;
@@ -460,14 +455,23 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override event void DisplayStopDraw(IEntity owner)
+	override void DisplayControlledEntityChanged(IEntity from, IEntity to)
 	{
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		if (playerController)
+		if (m_OutTransmission)
+			m_OutTransmission.HideTransmission();
+		
+		int count = m_aTransmissions.Count();
+		for (int i = 0; i < count; i++)
 		{
-			playerController.m_OnControlledEntityChanged.Remove(OnControlledEntityChanged);
-			playerController.m_OnDestroyed.Remove(OnDestroyed);
+			m_aTransmissions[i].HideTransmission();
 		}
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	override void DisplayStopDraw(IEntity owner)
+	{
+		if (m_PlayerController)
+			m_PlayerController.m_OnDestroyed.Remove(OnDestroyed);
 		
 		if (m_VONController)
 			m_VONController.m_OnVONActiveToggled.Remove(OnVONActiveToggled);

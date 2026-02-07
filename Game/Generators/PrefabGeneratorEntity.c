@@ -586,14 +586,14 @@ class PrefabGeneratorEntity : SCR_GeneratorBaseEntity
 			}
 		
 			int index;
-			index = Math.Clamp(SCR_Global.GetWeighedElement(m_Weights, Math.RandomFloat01()),0, m_PrefabNames.Count() - 1);
+			index = Math.Clamp(SCR_ArrayHelper.GetWeightedIndex(m_Weights, Math.RandomFloat01()),0, m_PrefabNames.Count() - 1);
 		
 			if (m_bPerlinAssetDistribution)
 			{
 				float value = Math.Clamp(p.m_fPerlinWeight, m_fPerlinThreshold, 1);
 				float invValue = Math.InverseLerp(m_fPerlinThreshold, 1, value);
 				
-				index = Math.Clamp(SCR_Global.GetWeighedElement(m_Weights, invValue),0, m_PrefabNames.Count() - 1);
+				index = Math.Clamp(SCR_ArrayHelper.GetWeightedIndex(m_Weights, invValue),0, m_PrefabNames.Count() - 1);
 			}
 			
 			string asset = m_PrefabNames[index];

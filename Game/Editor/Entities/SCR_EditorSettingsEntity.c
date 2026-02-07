@@ -17,6 +17,9 @@ class SCR_EditorSettingsEntity : SCR_EditorBaseEntity
 	[Attribute(desc: "True to disable the editor completely.\nFOR DEVELOPMENT PURPOSES ONLY!", category: "Editor Settings")]
 	protected bool m_bDisableEditor;
 	
+	[Attribute(desc: "When enabled, using the editor in this scenario is a legal operation, part of game rules.\nFor example this is enabled in Game Master scenarios which are about GM building the gameplay,\nbut it's disabled in Conflict where only admin can access the editor.", category: "Editor Settings")]
+	protected bool m_bIsUnlimitedEditorLegal;
+	
 	[Attribute(desc: "When enabled, each player will receive editor modes defined by 'Base Modes' attribute instead of the modes defined in core config.", category: "Editor Settings")]
 	protected bool m_bOverrideBaseModes;
 	
@@ -42,6 +45,17 @@ class SCR_EditorSettingsEntity : SCR_EditorBaseEntity
 	bool IsEditorDisabled()
 	{
 		return m_bDisableEditor;
+	}
+	
+	/*!
+	Check if unlimited editor (e.g, Game Master) is legal in this scenario, i.e., part of game rules.
+	For example this is enabled in Game Master scenarios which are about GM building the gameplay,
+	but it's disabled in Conflict where only admin can access the editor.
+	\return True when legal
+	*/
+	bool IsUnlimitedEditorLegal()
+	{
+		return m_bIsUnlimitedEditorLegal;
 	}
 	
 	/*!

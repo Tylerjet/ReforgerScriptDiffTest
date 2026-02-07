@@ -78,7 +78,7 @@ class SCR_VehicleSoundComponent : VehicleSoundComponent
 			if (rainIntensity >= RAIN_RAIN_THRESHOLD)
 			{
 				if (IsFinishedPlaying(m_RainSound))
-					m_RainSound = SoundEvent("SOUND_VEHICLE_RAIN");
+					m_RainSound = SoundEvent(SCR_SoundEvent.SOUND_VEHICLE_RAIN);
 			}	
 			else
 			{

@@ -74,6 +74,19 @@ class SCR_HitZoneContainerComponent: HitZoneContainerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Return hitzones with colliders assigned
+	void GetPhysicalHitZones(out notnull array<HitZone> physicalHitZones)
+	{
+		array<HitZone> hitZones = {};
+		GetAllHitZones(hitZones);
+		foreach (HitZone hitZone: hitZones)
+		{
+			if (hitZone && hitZone.HasColliderNodes())
+				physicalHitZones.Insert(hitZone);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Set fire rate of a flammable hitzone
 	\param hitZoneIndex Index of the hitzone to set fire rate for

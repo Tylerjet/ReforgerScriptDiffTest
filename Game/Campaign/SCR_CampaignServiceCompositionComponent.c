@@ -18,7 +18,7 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 	protected IEntity m_Owner;
 	protected SCR_CampaignBase m_Base;
 	protected ECampaignCompositionType m_CompositionType;
-	protected IEntity m_DeliveryPoint;
+	protected SCR_CampaignServiceComponent m_Service;
 	
 	ref ScriptInvoker Event_EOnServiceDisabled = new ref ScriptInvoker();	
 	ref ScriptInvoker Event_EOnServiceRepaired = new ref ScriptInvoker();
@@ -73,7 +73,6 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 		// Check if the Service was disabled.
 		if (!IsServiceOperable() && isOperableBeforeChange)
 		{
-			ReduceRespawnTickets();
 			if (desc)
 				desc.SetServiceMarkerActive(UNAVAILABLE);
 			
@@ -91,31 +90,15 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void ReduceRespawnTickets()
-	{		
-		// Find local player controller
-		PlayerController playerController = GetGame().GetPlayerController();
-		if (!playerController)
-			return;
-		
-		// Find campaign network component to send RPC to server
-		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
-		if (!campaignNetworkComponent)
-			return;
-
-		campaignNetworkComponent.ReduceRespawnTickets(m_Base, m_Slot, m_CompositionType);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	void SetCompositionType(ECampaignCompositionType type)
 	{
 		m_CompositionType = type;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetDeliveryPoint(IEntity deliveryPoint)
+	void SetService(SCR_CampaignServiceComponent service)
 	{
-		m_DeliveryPoint = deliveryPoint;
+		m_Service = service;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -125,9 +108,9 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	IEntity GetDeliveryPoint()
+	SCR_CampaignServiceComponent GetService()
 	{
-		return m_DeliveryPoint;
+		return m_Service;
 	}
 	
 	//------------------------------------------------------------------------------------------------

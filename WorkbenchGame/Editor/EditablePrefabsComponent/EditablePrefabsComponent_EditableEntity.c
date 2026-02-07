@@ -451,6 +451,14 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 	{		
 		SetEntityFlags(config, api, prefab, targetPath, entitySource, componentSource, componentCurrent);
 		SetUIInfo(config, api, prefab, targetPath, entitySource, instanceEntitySource, componentSource, componentCurrent);
+		
+		//--- Preserve custom icon pos
+		if (componentCurrent && componentCurrent.IsVariableSetDirectly("m_vIconPos"))
+		{
+			vector iconPos;
+			componentCurrent.Get("m_vIconPos", iconPos);
+			componentSource.Set("m_vIconPos", iconPos.ToString(false));
+		}
 	}
 	override void EOnDelete(EditablePrefabsConfig config, WorldEditorAPI api, string prefabPath)
 	{

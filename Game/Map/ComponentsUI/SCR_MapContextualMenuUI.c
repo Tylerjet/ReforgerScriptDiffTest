@@ -1,10 +1,10 @@
 //------------------------------------------------------------------------------------------------
 class SCR_MapContextualMenuRequestedTaskEntry : SCR_MapContextualMenuEntry
 {
-	SCR_RequestedTaskSupportClass m_SupportClass;
+	SCR_RequestedTaskSupportEntity m_SupportClass;
 	
 	//------------------------------------------------------------------------------------------------
-	void SetSupportClass(SCR_RequestedTaskSupportClass supportClass)
+	void SetSupportClass(SCR_RequestedTaskSupportEntity supportClass)
 	{
 		m_SupportClass = supportClass;
 	}
@@ -168,7 +168,7 @@ class SCR_MapContextualMenuUI: SCR_MapUIBaseComponent
 			m_CtxMenuWidget.SetVisible(false);	
 		
 		m_Workspace.RemoveModal(m_CtxMenuWidget);
-		m_Workspace.SetFocusedWidget(m_RootWidget);
+		m_Workspace.SetFocusedWidget(null);
 		
 		RemoveWidgets();
 	}

@@ -9,7 +9,11 @@ class SCR_InfoDisplay : GroupInfoDisplay
 	[Attribute("0", UIWidgets.EditBox, "Override the hierarchy to show display in front or behind other displays.")]
 	int m_iOverrideZOrder;
 	[Attribute("", UIWidgets.EditBox, "Name of slot in parent widget, the UI element is going to be placed in. Used when InfoDisplay is nested under another InfoDisplay.")]
-	protected string  m_sParentSlot;	
+	protected string  m_sParentSlot;
+	
+	// Attributes for dynamic opacity feature
+	[Attribute("0", UIWidgets.CheckBox, "Adjusts opacity of the widget based on level of ambient light.")]
+	protected bool m_bAdaptiveOpacity;		
 	
 	protected Widget m_wRoot;
 	protected bool m_bShown = false;
@@ -21,6 +25,10 @@ class SCR_InfoDisplay : GroupInfoDisplay
 	protected ref array<BaseInfoDisplay> m_aChildDisplays = new ref array<BaseInfoDisplay>;
 	protected SCR_InfoDisplay m_pParentDisplay = null;
 	protected bool m_bRegistered = false;
+	
+	#ifdef WORKBENCH
+	protected float m_fAdaptiveOpacityValue = -1;
+	#endif
 	
 	//------------------------------------------------------------------------------------------------
 	void RemoveForcedShow(bool removeAll = false)
@@ -35,7 +43,7 @@ class SCR_InfoDisplay : GroupInfoDisplay
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Show(bool show, float speed = WidgetAnimator.FADE_RATE_DEFAULT, bool force = false)
+	void Show(bool show, float speed = UIConstants.FADE_RATE_DEFAULT, bool force = false)
 	{
 		if (!m_wRoot)
 			return;
@@ -52,7 +60,7 @@ class SCR_InfoDisplay : GroupInfoDisplay
 		if (show != m_bShown)
 		{
 			m_bShown = show;
-			WidgetAnimator.PlayAnimation(m_wRoot,WidgetAnimationType.Opacity,show,speed);
+			AnimateWidget.Opacity(m_wRoot, show, speed);
 		}
 	}
 	
@@ -101,7 +109,9 @@ class SCR_InfoDisplay : GroupInfoDisplay
 			m_pParentDisplay = null;
 			m_sParentSlot = "";
 			
-			m_HUDManager = SCR_HUDManagerComponent.GetHUDManager();
+			if (!m_HUDManager)
+				m_HUDManager = SCR_HUDManagerComponent.GetHUDManager();
+			
 			if (!m_HUDManager)
 				return;
 	
@@ -110,11 +120,40 @@ class SCR_InfoDisplay : GroupInfoDisplay
 			m_bRegistered = true;
 			m_wRoot = m_HUDManager.CreateLayout(m_LayoutPath, m_eLayer, m_iOverrideZOrder);
 		}
+		
+		// Adaptive opacity initialization
+		if (m_wRoot && m_HUDManager && m_bAdaptiveOpacity)
+		{
+			m_HUDManager.GetSceneBrightnessChangedInvoker().Insert(UpdateOpacity);
+			
+			UpdateOpacity(m_HUDManager.GetAdaptiveOpacity(), m_HUDManager.GetSceneBrightness(), m_HUDManager.GetSceneBrightnessRaw())
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UpdateOpacity(float opacity, float sceneBrightness, float sceneBrightnessRaw)
+	{
+		//PrintFormat("<Adaptive Opacity> %1 | Updating opacity %2 -> %3", this, m_wRoot.GetOpacity(), opacity);
+		
+		#ifdef WORKBENCH
+		float currentOpacity = m_wRoot.GetOpacity();
+		
+		if (m_fAdaptiveOpacityValue != -1 && m_fAdaptiveOpacityValue != currentOpacity)
+			Print(string.Format("%1 adaptive opacity value was overriden from %2 to %3 by some ill means!", this, m_fAdaptiveOpacityValue, currentOpacity), LogLevel.WARNING);
+		
+		m_fAdaptiveOpacityValue = opacity;
+		#endif
+		
+		m_wRoot.SetOpacity(opacity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override event void OnStopDraw(IEntity owner)
 	{
+		// Adaptive opacity initialization
+		if (m_wRoot && m_HUDManager && m_bAdaptiveOpacity)
+			m_HUDManager.GetSceneBrightnessChangedInvoker().Remove(UpdateOpacity);
+		
 		if (m_wRoot)
 			m_wRoot.RemoveFromHierarchy();
 

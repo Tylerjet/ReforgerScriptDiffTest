@@ -91,7 +91,7 @@ class SCR_ButtonEffectPadding : SCR_ButtonEffectWidgetBase
 	// Called when effect is disabled. Here you should stop all running effects.
 	override void OnDisabled()
 	{
-		WidgetAnimator.StopAnimation(m_wTarget, WidgetAnimationType.PaddingLayout);
+		AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationPadding);
 	}
 	
 	protected void Apply(float value, bool instant)
@@ -99,10 +99,13 @@ class SCR_ButtonEffectPadding : SCR_ButtonEffectWidgetBase
 		if (m_wTarget)
 		{
 			if (!instant && m_fAnimationTime != 0)
-				WidgetAnimator.PlayAnimation(m_wTarget, WidgetAnimationType.PaddingLayout, 1/m_fAnimationTime, value, value, value, value, false);
+			{
+				float padding[4] = {value, value, value, value};
+				AnimateWidget.Padding(m_wTarget, padding, 1/m_fAnimationTime);
+			}
 			else
 			{
-				WidgetAnimator.StopAnimation(m_wTarget, WidgetAnimationType.PaddingLayout);
+				AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationPadding);
 				AlignableSlot.SetPadding(m_wTarget, value, value, value, value);
 			}
 		}

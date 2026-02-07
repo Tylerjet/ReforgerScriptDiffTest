@@ -14,10 +14,10 @@ class SCR_MouseAreaEditorUIComponent: SCR_BaseEditorUIComponent
 		return m_bIsMouseOn || !m_bIsUsingMouseAndKeyboard;
 	}
 	
-	protected void OnInputDeviceUserChanged()
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
 		//--- Cache the value
-		m_bIsUsingMouseAndKeyboard = GetGame().GetInputManager().IsUsingMouseAndKeyboard();
+		m_bIsUsingMouseAndKeyboard = !isGamepad;
 	}
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
@@ -31,11 +31,11 @@ class SCR_MouseAreaEditorUIComponent: SCR_BaseEditorUIComponent
 	}
 	override void HandlerAttachedScripted(Widget w)
 	{
-		OnInputDeviceUserChanged();
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 	}
 	override void HandlerDeattached(Widget w)
 	{
-		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
 };

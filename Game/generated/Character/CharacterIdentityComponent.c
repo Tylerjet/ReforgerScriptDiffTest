@@ -67,7 +67,7 @@ class CharacterIdentityComponent: GameComponent
 	proto external bool SetCovered(string bodyPart, bool visible);
 	/*!
 	Check if bodypart is covered
-	\param name of bodypart
+	\param bodyPart name of bodypart
 	*/
 	proto external bool IsCovered(string bodyPart);
 	/*

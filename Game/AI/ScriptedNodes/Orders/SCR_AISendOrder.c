@@ -1,4 +1,4 @@
-class SCR_AISendOrder: SCR_AISendMessage
+class SCR_AISendOrder: SCR_AISendMessageGeneric
 {
 	static const string ORDER_TYPE = "OrderTypeIn";
 	static const string ORDER_VALUE = "OrderValueIn";
@@ -23,7 +23,7 @@ class SCR_AISendOrder: SCR_AISendMessage
 						
 		if ( !msg )
 		{
-			Print("Unable to create valid message!");
+			Print("Unable to create valid message!", LogLevel.ERROR);
 			return ENodeResult.FAIL;
 		}	
 		

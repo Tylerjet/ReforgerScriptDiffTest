@@ -91,6 +91,10 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 		TurretComponent turret = m_TurretController.GetTurretComponent();
 		vector aimingTranslationWeaponLS = turret.GetRawAimingTranslation();
 		
+		//! sights transformation and FOV get
+		vector sightWSMat[4];
+		m_TurretController.GetCurrentSightsCameraTransform(sightWSMat, pOutResult.m_fFOV);
+		
 		PointInfo cameraSlot = turret.GetCameraAttachmentSlot();
 		if (cameraSlot)
 		{
@@ -111,11 +115,6 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 				m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
 			return;
 		}
-		
-		//! sights transformation
-		vector sightWSMat[4];
-		if(m_TurretController)
-			m_TurretController.GetCurrentSightsCameraTransform(sightWSMat, pOutResult.m_fFOV);
 		
 		// character matrix
 		vector charMat[4];

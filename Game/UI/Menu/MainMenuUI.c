@@ -8,17 +8,21 @@ class MainMenuUI : ChimeraMenuBase
 	protected static ref array<ref SCR_NewsEntry> m_aNews = {};
 	protected static ref array<ref SCR_NewsEntry> m_aNotifications = {};
 
+	protected static bool s_bDidCheckNetwork;
+	protected static const int SERVICES_STATUS_CHECK_DELAY = 2000; // needed for backend API to prepare
+
 	protected static const int DEFAULT_XBOX_SERIES_S_PRESET = 5;
 	protected static const int DEFAULT_XBOX_SERIES_X_PRESET = 4;
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen()
+	protected override void OnMenuOpen()
 	{
 		super.OnMenuOpen();
 
 #ifdef PLATFORM_CONSOLE
 		SetupXboxDefaultVideoSettings();
 #endif
+
 		// Init common Workshop UI
 		SCR_WorkshopUiCommon.OnGameStart();
 
@@ -50,6 +54,7 @@ class MainMenuUI : ChimeraMenuBase
 		if (back)
 			back.m_OnActivated.Insert(OnBack);
 
+		// Services Status button
 		SCR_NavigationButtonComponent servicesStatus = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ServicesStatus", footer);
 		if (servicesStatus)
 			servicesStatus.m_OnActivated.Insert(OnServicesStatus);
@@ -57,18 +62,25 @@ class MainMenuUI : ChimeraMenuBase
 		SCR_NavigationButtonComponent feedback = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Feedback", footer);
 		if (feedback)
 			feedback.m_OnActivated.Insert(OnFeedback);
-		
+
 		SCR_NavigationButtonComponent credits = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Credits", footer);
 		if (credits)
 			credits.m_OnActivated.Insert(OnCredits);
-		
-#ifdef WORKBENCH		
+
+#ifdef WORKBENCH
 		GetGame().GetInputManager().AddActionListener("MenuBackWB", EActionTrigger.DOWN, OnBack);
 #endif
 
 		// Get the entries for the first time
 		GetNewsEntries(null);
 		GetNotificationEntries(null);
+
+		// Check Service Statuses
+		if (!s_bDidCheckNetwork)
+		{
+			s_bDidCheckNetwork = true;
+			GetGame().GetCallqueue().CallLater(CheckServicesStatusIfFocused, SERVICES_STATUS_CHECK_DELAY);
+		}
 
 		// Activate account widget
 		Widget account = w.FindAnyWidget("AccountWidget");
@@ -84,12 +96,12 @@ class MainMenuUI : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpened()
+	protected override void OnMenuOpened()
 	{
 		// Opening Last menu
 		SCR_MenuLoadingComponent.LoadLastMenu();
 		SCR_MenuLoadingComponent.ClearLastMenu();
-		
+
 		// Check playing for the first time, do not show to devs
 		if (Game.IsDev())
 			return;
@@ -102,7 +114,7 @@ class MainMenuUI : ChimeraMenuBase
 		if (!firstLoad)
 			return;
 
-		// Complete the first load, show welcome screen
+		// Complete the first load, show welcome screen, save into settings
 		cont.Set("m_bFirstTimePlay", false);
 		GetGame().UserSettingsChanged();
 		GetGame().SaveUserSettings();
@@ -110,14 +122,14 @@ class MainMenuUI : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuFocusLost()
+	protected override void OnMenuFocusLost()
 	{
 		GetRootWidget().SetEnabled(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! add all input listeners
-	override void OnMenuFocusGained()
+	protected override void OnMenuFocusGained()
 	{
 		GetRootWidget().SetEnabled(true);
 
@@ -129,22 +141,22 @@ class MainMenuUI : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnBack()
+	protected void OnBack()
 	{
 		if (!IsFocused())
 			return;
-				
+
 		TryExitGame();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void OnCredits()
+	protected void OnCredits()
 	{
 		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.CreditsMenu);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnTileClick(notnull SCR_MenuTileComponent comp)
+	protected void OnTileClick(notnull SCR_MenuTileComponent comp)
 	{
 		if (!IsFocused())
 			return;
@@ -159,7 +171,7 @@ class MainMenuUI : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnTileFocus(SCR_MenuTileComponent comp)
+	protected void OnTileFocus(SCR_MenuTileComponent comp)
 	{
 		if (!IsFocused())
 			return;
@@ -168,7 +180,7 @@ class MainMenuUI : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnButtonSelect()
+	protected void OnButtonSelect()
 	{
 		if (!IsFocused())
 			return;
@@ -187,7 +199,7 @@ class MainMenuUI : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnFeedback()
+	protected void OnFeedback()
 	{
 		if (!IsFocused())
 			return;
@@ -202,7 +214,7 @@ class MainMenuUI : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void RestoreFocus()
+	protected void RestoreFocus()
 	{
 		if (m_FocusedTile)
 			GetGame().GetWorkspace().SetFocusedWidget(m_FocusedTile.GetRootWidget());
@@ -239,7 +251,7 @@ class MainMenuUI : ChimeraMenuBase
 		m_aNotifications.Clear();
 
 		//Print( "NOTIFICATIONS: Count - " + GetGame().GetBackendApi().GetNotifyCount() );
-		for(int i, cnt = GetGame().GetBackendApi().GetNotifyCount(); i < cnt; i++)
+		for (int i, cnt = GetGame().GetBackendApi().GetNotifyCount(); i < cnt; i++)
 		{
 			NewsFeedItem item = GetGame().GetBackendApi().GetNotifyItem(i);
 			if (item)
@@ -279,7 +291,7 @@ class MainMenuUI : ChimeraMenuBase
 	//---------------------------------------------------------------------------------------------
 	//! Shows exit game dialog, or some other dialog if something should
 	//! prevent user from exiting the game through the main menu
-	static void TryExitGame()
+	protected static void TryExitGame()
 	{
 		int nCompleted, nTotal;
 		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
@@ -291,34 +303,52 @@ class MainMenuUI : ChimeraMenuBase
 		else
 			new SCR_ExitGameDialog();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Check Services Status only if the main menu is still focused (given the check is delayed by SERVICES_STATUS_CHECK_DELAY)
+	protected void CheckServicesStatusIfFocused()
+	{
+		if (!IsFocused())
+			return;
+
+		SCR_ServicesStatusDialogUI.OpenIfServicesAreNotOK();
+	}
+
 	//---------------------------------------------------------------------------------------------
 	//solution to different presets for series X and S, since we don't have different defaults for them in WB so far
-	static void SetupXboxDefaultVideoSettings()
+	protected static void SetupXboxDefaultVideoSettings()
 	{
+		int maxFPS = 30;	// this is defined in method because it's just a temporary solution before we have different configurations for S and X
+							// so it's better to keep all the hotfixes together rather than make a mess in mainmenu
+
 		BaseContainer display = GetGame().GetEngineUserSettings().GetModule("DisplayUserSettings");
 		UserSettings video = GetGame().GetEngineUserSettings().GetModule("VideoUserSettings");
 		BaseContainer videoSettings = GetGame().GetGameUserSettings().GetModule("SCR_VideoSettings");
+
 		if (!display || !video || !videoSettings)
 			return;
+
 		if (System.GetPlatform() == EPlatform.XBOX_SERIES_S)
 		{
 			display.Set("OverallQuality", DEFAULT_XBOX_SERIES_S_PRESET);
 			video.Set("ResolutionScale", 0.6);
 			videoSettings.Set("m_bNearDofEffect", false);
 			videoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
+			video.Set("MaxFps", maxFPS);
 			video.Set("Vsynch", true);
 		}
+
 		if (System.GetPlatform() == EPlatform.XBOX_SERIES_X)
 		{
 			display.Set("OverallQuality", DEFAULT_XBOX_SERIES_X_PRESET);
 			video.Set("ResolutionScale", 0.9);
 			videoSettings.Set("m_bNearDofEffect", false);
 			videoSettings.Set("m_iDofType", DepthOfFieldTypes.BOKEH);
+			video.Set("MaxFps", maxFPS);
 			video.Set("Vsynch", true);
 		}
+
 		GetGame().ApplySettingsPreset();
 		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 	}
-}
+};

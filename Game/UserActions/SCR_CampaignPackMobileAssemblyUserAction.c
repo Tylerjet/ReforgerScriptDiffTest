@@ -30,4 +30,20 @@ class SCR_CampaignPackMobileAssemblyUserAction : SCR_CampaignDeployMobileAssembl
 		
 		campaignNetworkComponent.DeployMobileAsembly(m_AssemblyComponent, false);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool GetActionNameScript(out string outName)
+	{
+		if (!m_AssemblyComponent)
+			return false;
+		
+		int basesCovered = m_AssemblyComponent.GetCountOfExclusivelyLinkedBases();
+		
+		if (basesCovered == 0)
+			return false;
+		
+		ActionNameParams[0] = basesCovered.ToString();
+		outName = "#AR-Campaign_Action_Dismantle_BasesInfo-UC";
+		return true;
+	}
 };

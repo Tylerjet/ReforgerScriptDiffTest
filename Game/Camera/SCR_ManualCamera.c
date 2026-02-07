@@ -62,7 +62,8 @@ class SCR_ManualCamera: SCR_CameraBase
 		//--- Get camera components
 		foreach (SCR_BaseManualCameraComponent cameraComponent: m_aComponents)
 		{
-			m_aComponentsSorted.Insert(cameraComponent.GetPriority(), cameraComponent);
+			if (cameraComponent.IsEnabled())
+				m_aComponentsSorted.Insert(cameraComponent.GetPriority(), cameraComponent);
 		}
 		m_iComponentsCount = m_aComponentsSorted.Count();
 	}
@@ -88,6 +89,10 @@ class SCR_ManualCamera: SCR_CameraBase
 		//--- External influence
 		m_Param.isDirtyExternal = m_bIsDirtyExternal;//!SCR_Math3D.MatrixEqual(transform, m_vTransformPrev);
 		m_bIsDirtyExternal = false;
+		
+		//--- Mark first call as dirty to make sure that all features refresh
+		if (timeSlice == 0)
+			m_Param.isDirty = true;
 		
 		//--- Activate context
 		if (inputEnabled)
@@ -122,7 +127,7 @@ class SCR_ManualCamera: SCR_CameraBase
 		m_Param.velocityOriginal = m_Param.transform[3] - m_Param.transformOriginal[3];
 	}
 	void SaveComponents(notnull array<ref SCR_ManualCameraComponentSave> outData)
-	{
+	{		
 		SCR_ManualCameraComponentSave save;
 		for (int i = m_iComponentsCount - 1; i >= 0; i--)
 		{
@@ -134,8 +139,22 @@ class SCR_ManualCamera: SCR_CameraBase
 			
 			if (save.m_aValues && !save.m_aValues.IsEmpty())
 			{
-				save.m_sTypeName = m_aComponentsSorted[i].Type().ToString();
-				outData.Insert(save);
+				save.m_sTypeName = m_aComponentsSorted[i].Type().ToString();				
+				
+				int d = 0;
+				int dataCount = outData.Count();
+				while (d < dataCount)
+				{
+					//~ Check if data already exists. If it does, replace it. If not insert it at the end
+					if (outData[d].m_sTypeName == save.m_sTypeName)
+					{
+						outData.RemoveOrdered(d);
+						break;
+					}
+					d++;
+				}
+
+				outData.InsertAt(save, d);
 			}
 		}
 	}
@@ -420,7 +439,12 @@ class SCR_ManualCamera: SCR_CameraBase
 		
 		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.INIT | EntityEvent.POSTFRAME);
-		SetName("ManualCamera");
+		
+		// TODO@AS: Due to one of the storages in CameraManager being name-based,
+		// multiple cameras of the same name can get mixed up and register/unregister incorrectly.
+		// For now just name each camera uniquely until the underlying issue is resolved.
+		// SetName("ManualCamera");
+		SetName(GetID().ToString());
 	}
 	void ~SCR_ManualCamera()
 	{

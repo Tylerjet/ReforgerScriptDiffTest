@@ -94,16 +94,16 @@ class SCR_SlotCompositionComponent : ScriptComponent
 		else
 		{
 			//--- Maintain existing height ATL
-			height = SCR_Global.GetHeightAboveTerrain(owner.GetOrigin(), world);
+			height = SCR_TerrainHelper.GetHeightAboveTerrain(owner.GetOrigin(), world);
 		}
 		
 		//--- Apply transformation
 		vector transform[4];
 		owner.GetWorldTransform(transform);
 		if (owner == m_Owner)
-			SCR_Global.SnapToTerrain(transform, world); //--- Don't rotate root entity. Its transformation is broadcasted to clients, who would then think the rotated state is default
+			SCR_TerrainHelper.SnapToTerrain(transform, world); //--- Don't rotate root entity. Its transformation is broadcasted to clients, who would then think the rotated state is default
 		else
-			SCR_Global.SnapAndOrientToTerrain(transform, world);
+			SCR_TerrainHelper.SnapAndOrientToTerrain(transform, world);
 		transform[3] = transform[3] + Vector(0, height, 0);
 		
 		//If entity should be horizontally aligned rather then aligned to terrain

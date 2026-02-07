@@ -177,7 +177,7 @@ class SCR_ModesEditorUIComponent: SCR_DialogEditorUIComponent
 	}
 	
 
-	override void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	override void OnInputDeviceIsGamepad(bool isGamepad)
 	{		
 		if (m_bIsInDialog)
 			CloseDialog();

@@ -59,7 +59,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 				if (m_TargetBase)
 					baseName = GetBaseNameWithCallsign();
 				
-				SCR_PopUpNotification.GetInstance().PopupMsg(text, prio: SCR_ECampaignPopupPriority.TASK_AVAILABLE, param1: baseName, text2: TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT, sound: UISounds.TASK_CREATED);
+				SCR_PopUpNotification.GetInstance().PopupMsg(text, prio: SCR_ECampaignPopupPriority.TASK_AVAILABLE, param1: baseName, text2: TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT, sound: SCR_SoundEvent.TASK_CREATED);
 			}
 		}
 	}
@@ -152,11 +152,11 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 				{
 					if (DoneByAssignee())
 					{
-						SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
+						SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: SCR_SoundEvent.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
 					}
 					else
 					{
-						SCR_PopUpNotification.GetInstance().PopupMsg(TASK_FAILED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_FAILED);
+						SCR_PopUpNotification.GetInstance().PopupMsg(TASK_FAILED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: SCR_SoundEvent.TASK_FAILED);
 					}
 				}
 				else
@@ -170,14 +170,14 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 						string par4;
 						string par5;
 						GetFinishTextData(text, par1, par2, par3, par4, par5);
-						SCR_PopUpNotification.GetInstance().PopupMsg(text, prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: par1, param2: par2, param3: par3, param4: par4, param5: par5, sound: UISounds.TASK_SUCCEED);
+						SCR_PopUpNotification.GetInstance().PopupMsg(text, prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: par1, param2: par2, param3: par3, param4: par4, param5: par5, sound: SCR_SoundEvent.TASK_SUCCEED);
 					}
 					else
-						SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
+						SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: SCR_SoundEvent.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
 				}
 			}
 			else
-				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
+				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: SCR_SoundEvent.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
 		}
 	}
 	
@@ -196,7 +196,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 			if (m_TargetBase)
 				baseName = GetBaseNameWithCallsign();
 			
-			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_FAILED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_FAILED);
+			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_FAILED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: SCR_SoundEvent.TASK_FAILED);
 		}*/
 	}
 	
@@ -315,16 +315,20 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	//***************************//
 	
 	//------------------------------------------------------------------------------------------------
+	override void Deserialize(ScriptBitReader reader)
+	{
+		super.Deserialize(reader);
+		
+		SCR_CampaignTaskType type;
+		reader.ReadIntRange(type, 0, SCR_CampaignTaskType.LAST-1);
+		SetType(type);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void Serialize(ScriptBitWriter writer)
 	{
 		super.Serialize(writer);
 		
-		int baseID = -1;
-		SCR_CampaignBase base = GetTargetBase();
-		if (base)
-			baseID = base.GetBaseID();
-		
-		writer.WriteInt(baseID);
 		writer.WriteIntRange(GetType(), 0, SCR_CampaignTaskType.LAST-1);
 	}
 	
@@ -337,13 +341,20 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 		
 		SCR_CampaignFaction castFaction = SCR_CampaignFaction.Cast(m_TargetFaction);
 		
+		if (!GetTaskManager())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
 		if (capturedBase != m_TargetBase)
 		{
 			if (!castFaction)
 				return;
 			
 			if (!m_TargetBase.IsBaseInFactionRadioSignal(castFaction))
-				GetTaskManager().FailTask(this);
+				supportEntity.FailTask(this);
 			
 			return;
 		}
@@ -351,11 +362,11 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 		if (castFaction && !m_TargetBase.IsBaseInFactionRadioSignal(castFaction))
 		{
 			if (capturedBase.GetType() != CampaignBaseType.RELAY)
-				GetTaskManager().FailTask(this);
+				supportEntity.FailTask(this);
 		}
 		
 		if (capturedBase.GetOwningFaction() == m_TargetFaction)
-			GetTaskManager().FinishTask(this);
+			supportEntity.FinishTask(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------

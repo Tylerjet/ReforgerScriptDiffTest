@@ -11,6 +11,15 @@ enum EInventoryRetCode
 	RETCODE_DEFAULT_STATE = 0xFFFF
 };
 
+enum ECallbackState
+{
+	DROP = 0,
+	INSERT = 1,
+	MOVE = 2,
+	DELETE = 3,
+	FINAL = 4
+};
+
 class SCR_HoldableItemPredicate: InventorySearchPredicate
 {
     ECommonItemType wanted;
@@ -88,6 +97,171 @@ class SCR_PrefabDataPredicate: InventorySearchPredicate
 	}
 };
 
+class DropAndMoveOperationCallback: ScriptedInventoryOperationCallback
+{
+	InventoryItemComponent m_ItemBefore;
+	InventoryItemComponent m_ItemAfter;
+	InventoryStorageSlot m_TargetSlot;
+	SCR_InventoryStorageManagerComponent m_Manager;
+	SCR_InvCallBack m_FinalCB;
+	bool m_bIstakenFromArsenal;
+	ref array<IEntity> m_aItemsToMove = {};
+	ECallbackState m_ECurrentState = 0; // 0 - drop, 1 - insert, 2 - move, 3 - delete, 4 - final
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void OnComplete()
+	{
+		switch (m_ECurrentState)
+		{
+			case ECallbackState.DROP:
+			{
+				OnDropComplete();
+			}
+			break;
+			case ECallbackState.INSERT:
+			{
+				OnInsertComplete();
+			}
+			break;
+			case ECallbackState.MOVE:
+			{
+				OnMoveComplete();
+			}
+			break;
+			case ECallbackState.DELETE:
+			{
+				OnDeleteComplete();
+			}
+			break;
+			case ECallbackState.FINAL:
+			{
+				OnFinalState();
+			}
+			break;
+		}
+	} 
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnDropComplete()
+	{
+		m_ECurrentState += 1;
+		m_Manager.TryMoveItemToStorage(m_ItemAfter.GetOwner(), m_TargetSlot.GetStorage(), m_TargetSlot.GetID(), this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnInsertComplete()
+	{
+		if (!m_bIstakenFromArsenal)
+		{
+			m_ECurrentState = ECallbackState.FINAL;
+			OnFinalState();
+			return;
+		} 
+		
+		m_ECurrentState++;
+		//BaseInventoryStorageComponent itemIsStorage = BaseInventoryStorageComponent.Cast(m_ItemBefore);
+		//m_Manager.GetAllItems(m_aItemsToMove, itemIsStorage);
+		OnMoveComplete();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnMoveComplete()
+	{
+		/* Temporarily disabled for performance reasons. Once it gets fixed the transfer of items can be reenabled.
+		if (m_aItemsToMove.Count() == 0)
+		{
+			m_ECurrentState++;
+			OnDeleteComplete();
+			return;
+		}
+		IEntity item = m_aItemsToMove[m_aItemsToMove.Count() - 1];
+		m_aItemsToMove.Resize(m_aItemsToMove.Count() - 1);
+		BaseInventoryStorageComponent storage = m_Manager.FindStorageForItem(item, EStoragePurpose.PURPOSE_ANY);
+		if (!m_Manager.TryMoveItemToStorage(item, storage, -1, this))
+		{
+			OnMoveComplete();
+		}
+		*/
+		
+		m_ECurrentState++;
+		OnDeleteComplete();
+		return;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDeleteComplete()
+	{			
+		m_aItemsToMove.Clear();
+		BaseInventoryStorageComponent itemIsStorage = BaseInventoryStorageComponent.Cast(m_ItemBefore);
+		m_Manager.GetAllItems(m_aItemsToMove, itemIsStorage);
+			
+		if (m_aItemsToMove.IsEmpty())
+		{
+			m_Manager.AskServerToDeleteEntity(m_ItemBefore.GetOwner());
+		}
+		
+		OnFinalState();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnFinalState()	
+	{
+		if (m_FinalCB)
+			m_FinalCB.InternalComplete();
+	}
+};
+class SCR_ResupplyMagazinesCallback: ScriptedInventoryOperationCallback
+{
+	protected SCR_InventoryStorageManagerComponent m_Manager;
+	protected ref map<ResourceName, int> m_MagazinesToSpawn = new map<ResourceName, int>();
+	
+	void Insert(ResourceName prefab, int count)
+	{
+		int currentCount;
+		m_MagazinesToSpawn.Find(prefab, currentCount);
+		m_MagazinesToSpawn.Insert(prefab, currentCount + count);
+	}
+	void Start()
+	{
+		OnComplete();
+	}
+	
+	override protected void OnComplete()
+	{
+		if (!m_Manager)
+			return;
+		
+		if (!m_MagazinesToSpawn.IsEmpty())
+		{
+			//--- Next item to process
+			ResourceName prefab = m_MagazinesToSpawn.GetKey(0);
+			int count = m_MagazinesToSpawn.GetElement(0);
+			count--;
+			
+			if (count == 0)
+				m_MagazinesToSpawn.Remove(prefab);
+			else
+				m_MagazinesToSpawn.Set(prefab, count);
+			
+			m_Manager.TrySpawnPrefabToStorage(prefab, cb: this);
+		}
+		else
+		{
+			//--- All processed
+			OnFailed();
+		}
+	}
+	override protected void OnFailed()
+	{
+		//--- Delete itself (after a delay - can't delete itself at this frame)
+		GetGame().GetCallqueue().CallLater(m_Manager.EndResupplyMagazines, 1, false);
+	}
+	void SCR_ResupplyMagazinesCallback(SCR_InventoryStorageManagerComponent manager)
+	{
+		m_Manager = manager;
+	}
+};
+
 class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 {
 	private SCR_CharacterInventoryStorageComponent				m_pStorage;
@@ -99,9 +273,10 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 	protected ref SCR_WeaponSwitchingBaseUI						m_pWeaponSwitchingUI;
 	private bool												m_bWasRaised;
 	private IEntity 											m_pStorageToOpen;
+	protected ref SCR_ResupplyMagazinesCallback						m_ResupplyMagazineCallback;
 	
-	ref ScriptInvoker<IEntity, BaseInventoryStorageComponent>	m_OnItemAddedInvoker		= new ref ScriptInvoker<IEntity, BaseInventoryStorage>();
-	ref ScriptInvoker<IEntity, BaseInventoryStorageComponent>	m_OnItemRemovedInvoker		= new ref ScriptInvoker<IEntity, BaseInventoryStorage>();
+	ref ScriptInvoker<IEntity, BaseInventoryStorageComponent>	m_OnItemAddedInvoker		= new ref ScriptInvoker<IEntity, BaseInventoryStorageComponent>();
+	ref ScriptInvoker<IEntity, BaseInventoryStorageComponent>	m_OnItemRemovedInvoker		= new ref ScriptInvoker<IEntity, BaseInventoryStorageComponent>();
 
 	ref ScriptInvoker<bool> 									m_OnInventoryOpenInvoker	= new ref ScriptInvoker<bool>();
 	ref ScriptInvoker<bool> 									m_OnQuickBarOpenInvoker		= new ref ScriptInvoker<bool>();
@@ -143,6 +318,13 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 				garbageManager.Insert(item);
 		}
 	}
+	//------------------------------------------------------------------------------------------------
+	override protected bool ShouldForbidRemoveByInstigator(InventoryStorageManagerComponent instigatorManager, BaseInventoryStorageComponent fromStorage, IEntity item)
+	{
+		if (m_pCharacterController && !m_pCharacterController.IsUnconscious())
+			return true;
+		return false;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	void PlayItemSound(IEntity entity, string soundEvent)
@@ -152,14 +334,41 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 			Rpc(RpcAsk_PlaySound, rplComp.Id(), soundEvent);
 		else
 		{
-			SimpleSoundComponent soundComp = SimpleSoundComponent.Cast(entity.FindComponent(SimpleSoundComponent));
+			SoundComponent soundComp = SoundComponent.Cast(entity.FindComponent(SoundComponent));
 			if (!soundComp)
 				return;
 			
-			vector transformation[4];
-			entity.GetTransform(transformation);
-			soundComp.SetTransformation(transformation);
-			soundComp.PlayStr(soundEvent);
+			// Activate entity, if not active		
+			if (entity.GetFlags() & EntityFlags.ACTIVE)
+			{
+				// Play sound event				
+				soundComp.SoundEvent(soundEvent);
+			}
+			else
+			{	
+				GenericEntity genEntity = GenericEntity.Cast(entity);
+				if (genEntity)
+					genEntity.Activate();
+									
+				// Play sound event				
+				soundComp.SoundEvent(soundEvent);
+				
+				// Deactivate after sound finishes
+				GetGame().GetCallqueue().CallLater(DeactivateSoundComponent, 2000, false, entity, soundComp);			
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void DeactivateSoundComponent(IEntity entity, SoundComponent soundComp)
+	{
+		if (soundComp.IsPlaying())
+			GetGame().GetCallqueue().CallLater(DeactivateSoundComponent, 2000, false, entity, soundComp);
+		else
+		{
+			GenericEntity genEntity = GenericEntity.Cast(entity);
+			if (genEntity)
+				genEntity.Deactivate();
 		}
 	}
 	
@@ -183,14 +392,29 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		if (!entity)
 			return;
 		
-		SimpleSoundComponent soundComp = SimpleSoundComponent.Cast(entity.FindComponent(SimpleSoundComponent));
+		SoundComponent soundComp = SoundComponent.Cast(entity.FindComponent(SoundComponent));
 		if (!soundComp)
 			return;
-		
-		vector transformation[4];
-		entity.GetTransform(transformation);
-		soundComp.SetTransformation(transformation);
-		soundComp.PlayStr(soundAction);
+							
+		// Activate entity, if not active		
+		if (entity.GetFlags() & EntityFlags.ACTIVE)
+		{
+			// Play sound event				
+			soundComp.SoundEvent(soundAction);
+		}
+		else
+		{	
+			// Activate entity so SoundComponent is active
+			GenericEntity genEntity = GenericEntity.Cast(entity);
+			if (genEntity)
+				genEntity.Activate();
+								
+			// Play sound event				
+			soundComp.SoundEvent(soundAction);
+			
+			// Deactivate after sound finishes
+			GetGame().GetCallqueue().CallLater(DeactivateSoundComponent, 2000, false, entity, soundComp);			
+		}				
 	}
 	
 #ifndef DISABLE_INVENTORY
@@ -277,11 +501,25 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		bool canInsert = true;
 		if ( !pStorageTo ) // no storage selected, put it into best fitting storage
 		{
+			string soundEvent = SCR_SoundEvent.SOUND_EQUIP;
 			//TryInsertItem( pItem, EStoragePurpose.PURPOSE_DEPOSIT);	// works for the owned storages ( not for the vicinity storages )
 			if ( !TryInsertItem( pItem, EStoragePurpose.PURPOSE_WEAPON_PROXY, cb ) )
+			{
 				if ( !TryInsertItem( pItem, EStoragePurpose.PURPOSE_DEPOSIT, cb ) )
+				{
 					if ( !TryMoveItemToStorage( pItem, FindStorageForItem( pItem, EStoragePurpose.PURPOSE_ANY ), -1, cb ) )
 						canInsert = TryMoveItemToStorage( pItem, m_pStorage, -1, cb ); 				// clothes from storage in vicinity
+					else
+						soundEvent = SCR_SoundEvent.SOUND_PICK_UP;	// play pick up sound for everything else
+				
+					SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CONFIRM);
+				}
+				else
+					soundEvent = SCR_SoundEvent.SOUND_PICK_UP;
+			}
+			
+			if (canInsert)
+				PlayItemSound(pItem, soundEvent);
 		}
 		else
 		{
@@ -292,6 +530,8 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 					SetInventoryLocked(false);
 					return;
 				}
+				else
+					SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
 			}
 			if ( FindStorageForInsert( pItem, pStorageTo, EStoragePurpose.PURPOSE_ANY ) )
 				pStorageTo = FindStorageForInsert( pItem, pStorageTo, EStoragePurpose.PURPOSE_ANY );
@@ -301,9 +541,14 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 				TryInsertItemInStorage( pItem, pStorageTo, -1, cb );	// if we move item from ground to opened storage
 			}
 			else
-				TryMoveItemToStorage( pItem, pStorageTo, -1, cb );		// if we move item between storages
+				canInsert = TryMoveItemToStorage( pItem, pStorageTo, -1, cb );		// if we move item between storages
 		}
-
+		
+		if (!canInsert)
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
+		else
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
+		
 		if (m_pCharacterController && canInsert)
 		{
 			m_pCharacterController.TryPlayItemGesture(EItemGesture.EItemGesturePickUp);
@@ -375,7 +620,7 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		else
 			return TryMoveItemToStorage( pOwnerEntity, pStorageTo, slot.GetID(), cb );
 
-		return false;				
+		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -384,7 +629,11 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 	{
 		if ( !bFromVicinity )
 		{
-			TrySwapItems( pOwnerEntity, m_pStorage.GetWeaponStorage(), cb );
+			if (!TrySwapItems( pOwnerEntity, m_pStorage.GetWeaponStorage(), cb ))
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
+			else
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
+			
 			return;
 		}
 		
@@ -401,10 +650,16 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		if ( slot )
 			prefered = slot.GetWeaponSlotIndex();
 		
-		EquipAny( m_pStorage.GetWeaponStorage(), pOwnerEntity, prefered, cb );
-			
+		if (!EquipAny( m_pStorage.GetWeaponStorage(), pOwnerEntity, prefered, cb ))
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
+		
+		if (cb.m_pStorageFrom != cb.m_pStorageTo)
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
+			else
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_SAME_DROP);
+		
 		// Play sound
-		PlayItemSound(pOwnerEntity, "SOUND_EQUIP");
+		PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -427,7 +682,7 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		EquipAny(storage, pOwnerEntity, -1, cb );
 		
 		// Play sound
-		PlayItemSound(pOwnerEntity, "SOUND_EQUIP");
+		PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -438,10 +693,10 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		BaseInventoryStorageComponent storageComp = FindStorageForItem(pOwnerEntity, EStoragePurpose.PURPOSE_EQUIPMENT_ATTACHMENT);
 		if (storageComp)
 		{
-			EquipAny( storageComp, pOwnerEntity, 0, cb );
+			EquipAny( storageComp, pOwnerEntity, -1, cb );
 			
 			// Play sound
-			PlayItemSound(pOwnerEntity, "SOUND_EQUIP");
+			PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
 		}
 	}
 	
@@ -453,42 +708,92 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		EquipAny(m_pStorage, pOwnerEntity);
 		
 		// Play sound
-		PlayItemSound(pOwnerEntity, "SOUND_EQUIP");
+		PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
 	}
 	//------------------------------------------------------------------------------------------------
 	//! try equip the item into the storage at provided slot
-	bool EquipAny(BaseInventoryStorageComponent storage, IEntity item, int prefered = 0, SCR_InvCallBack cb = null )
+	bool EquipAny(BaseInventoryStorageComponent storage, IEntity item, int prefered = -1, SCR_InvCallBack cb = null)
 	{
-		if (!storage)
+		if (!storage || !item)
+			return false;
+		InventoryItemComponent itemComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (!itemComp)
 			return false;
 		
-		bool canEquip = false;
-		// If there are available slots at storage - equip there
-		if ( CanInsertItemInStorage( item, storage, -1) )
+		InventoryStorageSlot m_TargetSlot = storage.FindSuitableSlotForItem(item);
+		// Storage doesn't have suitable slot for item (therefore any future opearation would fail)
+		if (!m_TargetSlot)
+			return false;
+
+		if (prefered > 0 && prefered < storage.GetSlotsCount())
 		{
-			// There are empty suitable slots at storage
-			canEquip = TryInsertItemInStorage(item, storage, -1, cb);
+			m_TargetSlot = storage.GetSlot(prefered);
 		}
 		else
 		{
-			canEquip = TryMoveItemToStorage(item, storage, -1, cb);
+			prefered = m_TargetSlot.GetID();
 		}
-
-		canEquip = TryReplaceItem(storage, item, prefered, cb);
 		
-		array<BaseInventoryStorageComponent> aOwnedStorages = {};
-		storage.GetOwnedStorages( aOwnedStorages, 0, false );
-		foreach ( BaseInventoryStorageComponent pStorage : aOwnedStorages )
+
+		InventoryStorageSlot sourceSlot = itemComp.GetParentSlot();
+		// Item is on the ground as it does not belong to any storage (eg is not in the slot)
+		if (!sourceSlot || !sourceSlot.GetStorage())
 		{
-			if ( !pStorage )
-				continue;
-			canEquip = EquipAny( pStorage, item, 0, cb );
+			// we are picking up item from ground
+			// if target slot is not empty return the result of replace operation
+			if (m_TargetSlot.GetAttachedEntity())
+				return TryReplaceItem(item, storage, prefered, cb);
+			// we are picking up item from ground into empty slot, simply return result of the insert operation
+			return TryInsertItemInStorage(item, storage, prefered, cb);
 		}
 
-		if (m_pCharacterController && canEquip)
-			m_pCharacterController.TryPlayItemGesture(EItemGesture.EItemGesturePickUp);
+		// our target slot is empty and we moving item from another storage
+		// simply return the result of move operation
+		if (!m_TargetSlot.GetAttachedEntity())
+			return TryMoveItemToStorage(item, storage, prefered, cb);
 
-		return canEquip;
+		BaseInventoryStorageComponent sourceStorage = sourceSlot.GetStorage();
+		bool istakenFromArsenal = sourceStorage.GetOwner().FindComponent(SCR_ArsenalComponent);
+		bool isTakenFromBody = false;
+		
+		ChimeraCharacter lootedBodyCharacter = ChimeraCharacter.Cast(sourceStorage.GetOwner());
+		DamageManagerComponent lootedBodyDamageManager;
+		
+		if (lootedBodyCharacter)
+			lootedBodyDamageManager = lootedBodyCharacter.GetDamageManager();
+		
+		if (lootedBodyDamageManager)
+			isTakenFromBody = lootedBodyDamageManager.GetState() == EDamageState.DESTROYED;
+		
+		bool performDropOfOriginalItem = isTakenFromBody || istakenFromArsenal || sourceStorage.GetOwner().FindComponent(SCR_CampaignArmoryStorageComponent) ;
+		
+		// If we don't want to drop item
+		if (performDropOfOriginalItem)
+		{
+			// if we want to drop originally equipped item
+			// here sequence would be as follows:
+			// 1 - drop original item
+			// 2 - insert item to target storage
+			// 3 - try move as many items as possible from dropped item back to inventory
+			// 4 - delete dropped item
+	
+			// At first - let's validate if this is even possible
+			if (!CanSwapItemStorages(item, m_TargetSlot.GetAttachedEntity()))
+				return false;
+	
+			DropAndMoveOperationCallback chainedCallback = new DropAndMoveOperationCallback();
+			chainedCallback.m_Manager = this;
+			chainedCallback.m_ItemAfter = itemComp;
+			chainedCallback.m_ItemBefore = InventoryItemComponent.Cast(m_TargetSlot.GetAttachedEntity().FindComponent(InventoryItemComponent));
+			chainedCallback.m_TargetSlot = m_TargetSlot;
+			chainedCallback.m_FinalCB = cb;
+			chainedCallback.m_bIstakenFromArsenal = istakenFromArsenal;
+	
+			return TryRemoveItemFromStorage(m_TargetSlot.GetAttachedEntity(), m_TargetSlot.GetStorage(), chainedCallback);
+		}
+		
+		// we return the result of swap opoeration were item from slotA will be transfered to slotB and item from slotB to slotA
+		return TrySwapItemStorages(item, m_TargetSlot.GetAttachedEntity(), cb);
 	} 
 	
 	//------------------------------------------------------------------------------------------------
@@ -507,7 +812,7 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 			}
 		}
 		return false;
-	}
+	} 
 	
 	//------------------------------------------------------------------------------------------------
 	//! try equip the item into the slot (weapon)
@@ -542,29 +847,51 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void ResupplyItems(array<RplId> resupplyItemIds)
+	/*!
+	Resupply all weapons so they have given number of magazines.
+	/param maxMagazineCount Desired number of magazines
+	*/
+	void ResupplyMagazines(int maxMagazineCount = 4)
 	{
-		Rpc(ResupplyItemsOwner, resupplyItemIds);
+		Rpc(ResupplyMagazinesOwner, maxMagazineCount);
 	}
-	
-	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	void ResupplyItemsOwner(array<RplId> resupplyItemIds)
+	protected void ResupplyMagazinesOwner(int maxMagazineCount)
 	{
-		for (int i=0; i<resupplyItemIds.Count();i++)
+		BaseWeaponManagerComponent weaponsManager = BaseWeaponManagerComponent.Cast(GetOwner().FindComponent(BaseWeaponManagerComponent));
+		
+		array<IEntity> weaponList = {};
+		weaponsManager.GetWeaponsList(weaponList);
+		
+		if (!m_ResupplyMagazineCallback)
+			m_ResupplyMagazineCallback = new SCR_ResupplyMagazinesCallback(this);
+		
+		foreach (IEntity weapon: weaponList)
 		{
-			RplComponent itemRplComponent = RplComponent.Cast(Replication.FindItem(resupplyItemIds[i]));
-			if (!itemRplComponent) continue;
+			BaseWeaponComponent comp = BaseWeaponComponent.Cast(weapon.FindComponent(BaseWeaponComponent));
+			string weaponSlotType = comp.GetWeaponSlotType();
 			
-			IEntity itemEntity = itemRplComponent.GetEntity();
-			if (!itemEntity) continue;
+			// Only refill primary and secondary weapons
+			if (!(weaponSlotType == "primary" || weaponSlotType == "secondary"))
+				continue;
 			
-			BaseInventoryStorageComponent weaponStorage = FindStorageForItem(itemEntity, EStoragePurpose.PURPOSE_WEAPON_PROXY);
-			if (!TryInsertItemInStorage(itemEntity, weaponStorage) && !TryInsertItem(itemEntity))
-			{
-				RplComponent.DeleteRplEntity(itemEntity, false);
-			}
+			int resupplyCount = maxMagazineCount - GetMagazineCountByWeapon(comp);
+			if (resupplyCount <= 0)
+				continue;
+			
+			MuzzleComponent muzzleComponent = MuzzleComponent.Cast(comp.GetCurrentMuzzle());
+			if (!muzzleComponent)
+				continue;
+			
+			ResourceName magazinePrefab = muzzleComponent.GetDefaultMagazinePrefab().GetResourceName();
+			m_ResupplyMagazineCallback.Insert(magazinePrefab, resupplyCount);
 		}
+		
+		m_ResupplyMagazineCallback.Start();
+	}
+	void EndResupplyMagazines()
+	{
+		delete m_ResupplyMagazineCallback;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -592,6 +919,7 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		
 		// Quit ADS
 		m_pCharacterController.SetWeaponADS(false);
+		m_pCharacterController.SetGadgetRaisedModeWanted(false);
 		
 		// Pin grenade
 		if(m_pCharacterController.GetInputContext() && m_pCharacterController.GetInputContext().GetThrow())
@@ -677,6 +1005,32 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RpcAsk_ServerToDeleteEntity(RplId targetRplId)
+	{
+	    RplComponent rplComp = RplComponent.Cast(Replication.FindItem(targetRplId));
+        if (!rplComp)
+            return;
+        IEntity entity = rplComp.GetEntity();
+        if (!entity)
+            return;
+      	RplComponent.DeleteRplEntity(entity, false);	
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	void AskServerToDeleteEntity(IEntity ent)
+	{
+		RplComponent rplComp = RplComponent.Cast(ent.FindComponent(RplComponent));
+		
+		if (!rplComp)
+			return;
+			
+		RplId rplId = rplComp.Id();
+		Rpc(RpcAsk_ServerToDeleteEntity, rplId);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Enable/disable post frame event
 	void EnablePostFrame(bool enable)
 	{
@@ -732,6 +1086,107 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 	void SetInventoryLocked(bool isLocked)
 	{
 		m_bIsInventoryLocked = isLocked;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetAllItems(inout array<IEntity> items, BaseInventoryStorageComponent storage)
+	{
+		if (!storage || !items)
+			return 0;
+			
+		int count = 0;
+		
+		if (!ClothNodeStorageComponent.Cast(storage))
+		{
+			count = storage.GetAll(items);
+		}
+		array<BaseInventoryStorageComponent> itemToReplaceAttachedStorages = {};
+		storage.GetOwnedStorages(itemToReplaceAttachedStorages, 1, false);
+		foreach (BaseInventoryStorageComponent attachedStorage : itemToReplaceAttachedStorages)
+		{			
+			if (ClothNodeStorageComponent.Cast(attachedStorage))
+			{
+				attachedStorage.GetOwnedStorages(itemToReplaceAttachedStorages, 1, false);
+			}
+			else
+			{
+				count += attachedStorage.GetAll(items);
+			}
+		}
+			
+		return count;
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	//! Get available prefabs of weapons of specified types
+	void GetWeaponPrefabsOfType(notnull array<IEntity> weapons, EWeaponType weaponType, notnull out array<EntityPrefabData> prefabs)
+	{
+		BaseWeaponComponent weapon;
+		EntityPrefabData prefabData;
+		foreach (IEntity item: weapons)
+		{
+			weapon = BaseWeaponComponent.Cast(item.FindComponent(BaseWeaponComponent));
+			if (weapon.GetWeaponType() != weaponType)
+				continue;
+			
+			// Ignore currently selected items
+			prefabData = item.GetPrefabData();
+			if (prefabData && !prefabs.Contains(prefabData))
+				prefabs.Insert(prefabData);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	//! Find next weapon of specified types, excluding currentItem, but including it in sorting
+	IEntity FindNextWeaponOfType(EWeaponType weaponType, IEntity currentItem = null)
+	{
+		array<EntityPrefabData> prefabs = {};
+		
+		// Currently selected weapon may be outside of inventory and it has to be considered for sorting
+		EntityPrefabData currentPrefab;
+		BaseWeaponComponent currentWeapon;
+		if (currentItem)
+		{
+			currentPrefab = currentItem.GetPrefabData();
+			currentWeapon = BaseWeaponComponent.Cast(currentItem.FindComponent(BaseWeaponComponent));
+			
+			if (currentPrefab && currentWeapon.GetWeaponType() == weaponType)
+				prefabs.Insert(currentPrefab);
+		}
+		
+		// Collect all the matching prefabs
+		array<IEntity> items = {};
+		FindItemsWithComponents(items, {BaseWeaponComponent});
+		GetWeaponPrefabsOfType(items, weaponType, prefabs);
+		
+		// No valid prefabs
+		if (prefabs.IsEmpty())
+			return null;
+		
+		// TODO: better sorting, perhaps by name
+		prefabs.Sort();
+		
+		/*
+		foreach (EntityPrefabData prefab: prefabs)
+			Print(prefab.GetPrefabName(), LogLevel.WARNING);
+		*/
+		
+		// Select next prefab
+		int nextPrefabID = (prefabs.Find(currentPrefab) + 1) % prefabs.Count();
+		EntityPrefabData nextPrefab = prefabs[nextPrefabID];
+		
+		// Return nothing if prefab is unchanged
+		if (nextPrefab == currentPrefab)
+			return null;
+		
+		// Select the weapon that matches the type to be selected
+		foreach (IEntity item: items)
+		{
+			if (item && item.GetPrefabData() == nextPrefab)
+				return item;
+		}
+		
+		return null;
 	}
 
 #else

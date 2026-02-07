@@ -4,7 +4,6 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 	protected InputManager m_InputManager;
 	
 	protected SCR_ManualCamera m_EditorCamera;
-	protected CanvasWidget m_CameraLineCanvas;
 	
 	protected SCR_EditorManagerCore m_EditorCore;
 	protected SCR_EditorManagerEntity m_EditorManager;
@@ -15,8 +14,6 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 	
 	protected ResourceName m_EditorMapConfigPrefab;
 	protected ref MapConfiguration m_MapConfigEditor;
-	protected ref MapItem m_CameraIcon;
-	protected ref array<ref CanvasWidgetCommand> m_MapDrawCommands = {};
 	protected bool m_bIsFirstTimeOpened = true;
 	
 	void ToggleMap(bool show, ResourceName mapConfigPrefab)
@@ -119,14 +116,6 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 		{
 			m_CameraIconColor = m_EditorCore.GetDefaultModeInfo(EEditorMode.EDIT).GetModeColor();
 		}
-		
-		if (m_CameraIcon)
-		{
-			MapDescriptorProps cameraIconProps = m_CameraIcon.GetProps();
-			cameraIconProps.SetFrontColor(m_CameraIconColor);
-			cameraIconProps.Activate(true);
-			m_CameraIcon.SetProps(cameraIconProps);
-		}
 	}
 	
 	protected void OnEditorCameraCreate(SCR_ManualCamera editorCamera)
@@ -142,52 +131,12 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 		{
 			m_EditorCamera.SetInputEnabled(!IsEditorMapOpen());
 		}
-		
-		//=== Hide editor camera in map until proper implementation
-		/* 
-		if (!m_CameraIcon)
-		{
-			m_CameraIcon = m_MapEntity.CreateCustomMapItem();
-			m_CameraIcon.SetBaseType(EMapDescriptorType.MDT_ICON);
-			m_CameraIcon.SetImageDef("editor-camera");
-			m_CameraIcon.SetVisible(false);
-			m_CameraIcon.SetFactionIndex(0);
-			
-			MapDescriptorProps props = m_CameraIcon.GetProps();
-			props.SetFrontColor(m_CameraIconColor);
-			props.SetIconSize(32, 0.5, 0.5);
-			m_CameraIcon.SetProps(props);
-			props.Activate(true);
-			m_CameraIcon.SetProps(props);
-		}
-		*/
 	}
 	
 	protected void OnMenuUpdate()
 	{
 		if (IsEditorMapOpen())
-		{
-			//! Camera icon
-			if(m_EditorCamera && m_CameraIcon)
-			{
-				vector cameraMatrix[4];
-				m_EditorCamera.GetTransform(cameraMatrix);
-				m_CameraIcon.SetVisible(true);
-				m_CameraIcon.SetPos(cameraMatrix[3][0], cameraMatrix[3][2]);
-				vector angles = Math3D.MatrixToAngles(cameraMatrix);
-				m_CameraIcon.SetAngle(angles[0]);
-				m_CameraIcon.SetEditor(true);
-				
-				float fov = m_EditorCamera.GetVerticalFOV();
-				DrawCameraLines(cameraMatrix, angles, fov);
-			}
-			else if (m_CameraIcon && m_CameraIcon.IsVisible())
-			{
-				m_CameraIcon.SetVisible(false);
-			}
-			
 			m_InputManager.ActivateContext("MapContext");
-		}
 	}
 	
 	override void HandlerAttachedScripted(Widget w)
@@ -225,9 +174,6 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 		GetMenu().GetOnMenuUpdate().Insert(OnMenuUpdate);
 		
 		m_MapWidget = w;
-		
-		m_CameraLineCanvas = CanvasWidget.Cast(m_MapWidget.FindWidget("EditorCameraLines"));
-		
 		OnEditorModeChange(m_EditorManager.GetCurrentModeEntity(), null);
 	}
 	
@@ -242,24 +188,9 @@ class SCR_MapEditorUIComponent : SCR_BaseEditorUIComponent
 			ToggleMap(false, m_EditorMapConfigPrefab);
 		}
 		
-		if (m_CameraIcon)
-		{
-			m_CameraIcon.Recycle();
-		}
-		
 		if (GetMenu())
 		{
 			GetMenu().GetOnMenuUpdate().Remove(OnMenuUpdate);
 		}
-	}
-	
-	protected void DrawCameraLines(vector cameraMatrix[], vector angles, float fov)
-	{
-		if (!m_CameraLineCanvas)
-		{
-			return;
-		}
-		
-		//TODO trace and draw lines based on screen edges
 	}
 };

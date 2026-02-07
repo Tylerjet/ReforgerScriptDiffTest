@@ -7,6 +7,7 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 	// Member variables
 	protected SCR_CampaignSuppliesComponent m_SuppliesComponent;
 	protected SCR_CampaignBase m_Base;
+	protected SCR_CampaignSuppliesComponent m_StandaloneDepot;
 	protected IEntity m_Box;
 	protected int m_iCanLoadSuppliesResult = SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 	protected float m_fNextConditionCheck;
@@ -111,9 +112,6 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
 	{
-		if (!m_Base)
-			return;
-		
 		// Find local player controller
 		PlayerController playerController = GetGame().GetPlayerController();
 		if (!playerController)
@@ -126,6 +124,12 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 		
 		// Find the truck's supplies component ID
 		RplId suppliesComponentID = Replication.FindId(m_SuppliesComponent);
+		int suppliesInSource;
+		
+		if (m_Base)
+			suppliesInSource = m_Base.GetSupplies();
+		else if (m_StandaloneDepot)
+			suppliesInSource = m_StandaloneDepot.GetSupplies();
 		
 		if (suppliesComponentID != -1)
 		{
@@ -134,9 +138,12 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 			if (m_iSuppliesToLoad != m_SuppliesComponent.GetSuppliesMax())
 				suppliesToLoad = m_iSuppliesToLoad;
 			else
-				suppliesToLoad = Math.Min(m_SuppliesComponent.GetSuppliesMax() - m_SuppliesComponent.GetSupplies(), m_Base.GetSupplies());
+				suppliesToLoad = Math.Min(m_SuppliesComponent.GetSuppliesMax() - m_SuppliesComponent.GetSupplies(), suppliesInSource);
 			
-			campaignNetworkComponent.LoadSupplies(suppliesComponentID, pUserEntity, m_Base, suppliesToLoad);
+			if (m_Base)
+				campaignNetworkComponent.LoadSupplies(suppliesComponentID, pUserEntity, m_Base, suppliesToLoad);
+			else if (m_StandaloneDepot)
+				campaignNetworkComponent.LoadSuppliesStandalone(suppliesComponentID, pUserEntity, m_StandaloneDepot, suppliesToLoad);
 		}
 	}
 
@@ -149,15 +156,21 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool GetActionNameScript(out string outName)
 	{
-		if (!m_Base)
+		if (!m_Base && !m_StandaloneDepot)
 			return false;
+		
+		int suppliesInBase;
+		
+		if (m_StandaloneDepot)
+			suppliesInBase = m_StandaloneDepot.GetSupplies();
+		else
+			suppliesInBase = m_Base.GetSupplies();
 		
 		outName = "#AR-Campaign_Action_LoadSupplies-UC";
 		
 		if (m_iSuppliesToLoad == m_SuppliesComponent.GetSuppliesMax())
 		{
 			int canFitInTruck = m_SuppliesComponent.GetSuppliesMax() - m_SuppliesComponent.GetSupplies();
-			int suppliesInBase = m_Base.GetSupplies();
 			ActionNameParams[0] = Math.Min(canFitInTruck, suppliesInBase).ToString();
 		}
 		else
@@ -178,30 +191,37 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 		if (!campaign || !player || !m_SuppliesComponent)
 			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 		
+		m_StandaloneDepot = campaign.GetSupplyDepotWithPlayer();
 		m_Base = campaign.GetBasePlayerPresence();
 		
-		if (!m_Base) 
+		if (!m_Base && !m_StandaloneDepot)
 			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 		
-		Faction playerFaction = SCR_RespawnSystemComponent.GetLocalPlayerFaction();
-		
-		if (!playerFaction)
-			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
-		
-		SCR_CampaignDeliveryPoint depotDeliveryPoint = m_Base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
-		if (!depotDeliveryPoint)
-			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
-		
-		SCR_CampaignSuppliesComponent baseSuppliesComponent = SCR_CampaignSuppliesComponent.Cast(depotDeliveryPoint.FindComponent(SCR_CampaignSuppliesComponent));
-		if (!baseSuppliesComponent)	
-			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
-		
-		if (vector.DistanceSq(m_Box.GetOrigin(), depotDeliveryPoint.GetOrigin()) > Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2))
-			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
-		
-		// Player can load supplies only in bases owned by his faction
-		if (m_Base.GetOwningFaction() != playerFaction)
-			return SCR_CampaignSuppliesInteractionFeedback.BASE_ENEMY;
+		if (m_Base)
+		{
+			Faction playerFaction = SCR_RespawnSystemComponent.GetLocalPlayerFaction();
+			
+			if (!playerFaction)
+				return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
+			
+			SCR_CampaignSuppliesComponent baseSuppliesComponent = SCR_CampaignSuppliesComponent.Cast(m_Base.FindComponent(SCR_CampaignSuppliesComponent));
+			if (!baseSuppliesComponent)	
+				return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
+			
+			if (vector.DistanceSq(m_Box.GetOrigin(), m_Base.GetOrigin()) > Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2))
+			{
+				SCR_CampaignServiceComponent service = m_Base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
+				if (!service)
+					return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
+			
+				if (vector.DistanceSq(m_Box.GetOrigin(), service.GetOwner().GetOrigin()) > Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2))
+					return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
+			}
+			
+			// Player can load supplies only in bases owned by his faction
+			if (m_Base.GetOwningFaction() != playerFaction)
+				return SCR_CampaignSuppliesInteractionFeedback.BASE_ENEMY;
+		}
 		
 		int suppliesToLoad;
 		int canFitInTruck = m_SuppliesComponent.GetSuppliesMax() - m_SuppliesComponent.GetSupplies();
@@ -225,7 +245,12 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 					return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 		}
 		
-		int suppliesInBase = m_Base.GetSupplies();
+		int suppliesInBase;
+		
+		if (m_Base)
+			suppliesInBase = m_Base.GetSupplies();
+		else
+			suppliesInBase = m_StandaloneDepot.GetSupplies();
 		
 		// Hide batches larger than or equal to supplies stored in the base
 		if (suppliesInBase != 0)

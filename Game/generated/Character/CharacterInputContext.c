@@ -44,6 +44,8 @@ class CharacterInputContext
 	//! is there a free look ?
 	proto external bool CameraIsFreeLook();
 	proto external void SetFreelook(bool pFreelook);
+	proto external void SetTransferFreeaimAfterFreelookRequest(bool val);
+	proto external bool ShouldTransferFreeaimAfterFreelook();
 	//! is weapon raised
 	proto external bool WeaponIsRaisedOrADS();
 	proto external bool WeaponIsRaised();

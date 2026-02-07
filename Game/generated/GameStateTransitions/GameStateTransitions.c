@@ -22,7 +22,7 @@ sealed class GameStateTransitions
 	//! Request transition from main menu to hosted multiplayer session (registered in server browser).
 	static proto bool RequestPublicServerTransition(MissionHeader mission, ServerBrowserParams sbp);
 	//! Request transition from main menu to gameplay as client connected to server in multiplayer session.
-	static proto bool RequestServerConnectTransition(RplSessionClientParams params);
+	static proto bool RequestServerConnectTransition(string IPAddr);
 	//! Request change of mission
 	static proto bool RequestMissionChangeTransition(MissionHeader mission);
 	//! Request change of world, keeping other properties of the game session.

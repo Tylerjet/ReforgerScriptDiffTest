@@ -31,10 +31,52 @@ class RandomGenerator: Managed
 	\return Vector2 XZ set, Y = 0
 	*/
 	proto external vector GenerateRandomPointInRadius(float minRadius, float maxRadius, vector center, bool uniform = true);
-	//! Generates random float in [0, 1] range
+	/*! Generates random float in [0, 1] range
+	\param min \p float Range starts[inclusive]
+	\param max \p float Range ends[inclusive]
+	*/
 	proto external float RandFloat01();
-	//! Generates random float in [X, Y] range
+	/*! Generates random float in [X, Y] range
+	\param min \p float Range starts[inclusive]
+	\param max \p float Range ends[inclusive]
+	*/
 	proto external float RandFloatXY(float x, float y);
+	/*!
+	\brief Returns random number with Gauss distribution (http://en.wikipedia.org/wiki/File:Normal_Distribution_PDF.svg)
+	\param mean
+	\param sigma
+	*/
+	proto external float RandGaussFloat(float sigma, float mean);
+	/**
+	\brief Returns a random \p int number between and min [inclusive] and max [exclusive].
+	\param min \p int Range starts [inclusive]
+	\param max \p int Range ends [exclusive]
+	\return \p int - Random number in range
+	@code
+	RandomGenerator gen = new RandomGenerator();
+	Print( gen.RandInt(0, 1) );	// only 0
+	Print( gen.RandInt(0, 2) );	// 0 or 1
+	
+	>> 0
+	>> 1
+	@endcode
+	*/
+	proto external int RandInt(int min, int max);
+	/**
+	\brief Returns a random \p int number between and min [inclusive] and max [inclusive].
+	\param min \p int Range starts [inclusive]
+	\param max \p int Range ends [inclusive]
+	\return \p int - Random number in range
+	@code
+	RandomGenerator gen = new RandomGenerator();
+	Print( gen.RandIntInclusive(0, 1) );	// 0 or 1
+	Print( gen.RandIntInclusive(0, 2) );	// 0, 1, 2
+	
+	>> 1
+	>> 2
+	@endcode
+	*/
+	proto external int RandIntInclusive(int min, int max);
 };
 
 /** @}*/

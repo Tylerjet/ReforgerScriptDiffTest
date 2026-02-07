@@ -30,6 +30,7 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	private ref map<EEditableEntityLabel, SCR_EditableEntityCoreLabelSetting> m_LabelSettingsMap = new map<EEditableEntityLabel, SCR_EditableEntityCoreLabelSetting>;
 	
 	private ref set<SCR_EditableEntityComponent> m_Entities;
+	ref map<RplId, ref array<RplId>> m_OrphanEntityIds = new map<RplId, ref array<RplId>>();
 	private SCR_EditableEntityComponent m_CurrentLayer;
 	private bool m_UpdateBudgets;
 	
@@ -90,6 +91,57 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	{
 		UpdateBudgets(entity, false, false, owner);
 		Event_OnEntityUnregistered.Invoke(entity);
+	}
+	
+	/*
+	Add orphaned entity.
+	Than can happen when an entity is intialized, but its parent was not yet streamed in.
+	In such case the entity is added to the list of orphans. Once the parent is initialized, it will be added to it.
+	\param parentId Replication ID of the parent entity
+	\param parentId Replication ID of the orphan entity
+	*/
+	void AddOrphan(RplId parentId, RplId orphanId)
+	{
+		array<RplId> orphanIds;
+		if (!m_OrphanEntityIds.Find(parentId, orphanIds))
+			orphanIds = {};
+		
+		orphanIds.Insert(orphanId);
+		m_OrphanEntityIds.Insert(parentId, orphanIds);
+	}
+	/*
+	Remove orphaned entities belonging to given parent.
+	\param parentId Replication ID of the parent entity
+	\param[out] outOrphans Array to be filled with orphaned entities
+	\return Number of orphans
+	*/
+	int RemoveOrphans(RplId parentId, out notnull array<SCR_EditableEntityComponent> outOrphans)
+	{
+		if (!parentId.IsValid())
+			return 0;
+		
+		//--- Check if there are some orphans for given parent. If not, terminate
+		array<RplId> orphanIds = {};
+		if (!m_OrphanEntityIds.Find(parentId, orphanIds))
+			return 0;
+		
+		//--- Find all editable orphans
+		SCR_EditableEntityComponent orphan;
+		for (int i = orphanIds.Count() - 1; i >= 0; i--)
+		{
+			orphan = SCR_EditableEntityComponent.Cast(Replication.FindItem(orphanIds[i]));
+			if (orphan)
+			{
+				outOrphans.Insert(orphan);
+				orphanIds.Remove(i);
+			}
+		}
+		
+		//--- No orphans left, unregister the parent
+		if (orphanIds.IsEmpty())
+			m_OrphanEntityIds.Remove(parentId);
+		
+		return outOrphans.Count();
 	}
 	
 	/*!
@@ -252,6 +304,22 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		}
 	}
 	
+	/*!
+	Get the order of the given group type
+	\param groupLabel given group type
+	\return order
+	*/
+	int GetLabelGroupOrder(EEditableEntityLabelGroup groupLabel)
+	{
+		foreach ( SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
+		{
+			if (labelGroup.GetLabelGroupType() == groupLabel)
+				return labelGroup.GetOrder();
+		}
+		
+		return -1;
+	}
+	
 	bool GetLabelGroupType(EEditableEntityLabel label, out EEditableEntityLabelGroup labelGroup)
 	{
 		SCR_EditableEntityCoreLabelSetting labelSettings;
@@ -284,11 +352,136 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	*/
 	int GetLabelOrder(EEditableEntityLabel entityLabel)
 	{
-		SCR_EditableEntityCoreLabelSetting labelSetting = m_LabelSettingsMap.Get(entityLabel);
-		if (labelSetting)
-			return labelSetting.GetOrder();
-		else 
+		//~ Labels do not use order so get array index
+		array<SCR_EditableEntityCoreLabelSetting> labels = {};
+		EEditableEntityLabelGroup groupLabel;
+		GetLabelGroupType(entityLabel, groupLabel);
+		
+		if (!GetLabelsOfGroup(groupLabel, labels))
 			return -1;
+		
+		int count = labels.Count();
+		
+		for(int i = 0; i < count; i++)
+        {
+            if (labels[i].GetLabelType() == entityLabel)
+				return i;
+        }
+		
+		return -1;
+	}
+	
+	/*!
+	Get a label array and order it according to group and label index
+	\return[inout] labels that will be ordered
+	*/
+	void OrderLabels(inout notnull array<EEditableEntityLabel> labels)
+	{
+		if (labels.IsEmpty())
+			return;
+		
+		array<EEditableEntityLabelGroup> orderedGroups = {};
+		map<EEditableEntityLabelGroup, ref array<EEditableEntityLabel>> groupsWithLabels = new map<EEditableEntityLabelGroup, ref array<EEditableEntityLabel>>();
+		
+		int groupLabelCount = 0;
+		bool groupAdded = false;
+		EEditableEntityLabelGroup groupLabel;
+
+		//~ Get label groups of the given label and get order of the group
+		foreach(EEditableEntityLabel label: labels)
+		{
+			GetLabelGroupType(label, groupLabel);
+			
+			if (!groupsWithLabels.Contains(groupLabel))
+				groupsWithLabels.Insert(groupLabel, new ref array<EEditableEntityLabel>());
+				
+			groupsWithLabels[groupLabel].Insert(label);
+
+			//~ New list so add it and continue
+			if (orderedGroups.IsEmpty())
+			{
+				orderedGroups.Insert(groupLabel);
+				groupLabelCount++;
+				continue;
+			}
+			
+			//~ Already in list so continue
+			if (orderedGroups.Contains(groupLabel))
+				continue;
+			
+			groupAdded = false;
+			//~ Check existing and place it in the correct order
+			for(int i = 0; i < groupLabelCount; i++)
+	        {
+				//~ Group Label is higher order so add it to the list and break loop
+				if (GetLabelGroupOrder(groupLabel) <= GetLabelGroupOrder(orderedGroups[i]))
+				{
+					orderedGroups.InsertAt(groupLabel, i);
+					groupLabelCount++;
+					groupAdded = true;
+					break;
+				}
+	        }
+			
+			if (groupAdded)
+				continue;
+			
+			orderedGroups.Insert(groupLabel);
+			groupLabelCount++;
+		}
+		
+		array<EEditableEntityLabel> orderedLabels = {};
+		int orderedLabelCount;
+		bool labelAdded = false;
+		array<EEditableEntityLabel> allOrderedLabels = {};
+		
+		array<EEditableEntityLabel> labelsTest = {};
+		
+		//~ For each ordered group get the labels and order those as well
+		foreach(EEditableEntityLabelGroup group: orderedGroups)
+		{			
+			orderedLabelCount = 0;
+			orderedLabels.Clear();
+			
+			//~ Go over each label in the group and order them from highest to lowest
+			foreach(EEditableEntityLabel label: groupsWithLabels[group])
+			{
+				//~ New list so add it and continue
+				if (orderedLabels.IsEmpty())
+				{
+					orderedLabels.Insert(label);
+					orderedLabelCount++;
+					continue;
+				}
+				
+				labelAdded = false;
+				//~ Check existing and place it in the correct order
+				for(int i = 0; i < orderedLabelCount; i++)
+		        {
+					//~ Label is higher order so add it to the list and break loop
+					if (GetLabelOrder(label) <= GetLabelOrder(orderedLabels[i]))
+					{
+						orderedLabels.InsertAt(label, i);
+						orderedLabelCount++;
+						labelAdded = true;
+						break;
+					}
+		        }
+				
+				if (labelAdded)
+					continue;
+				
+				//~ Lowest order so add it there
+				orderedLabels.Insert(label);
+				orderedLabelCount++;
+			}
+			
+			//~ Add the ordered labels to the overal ordered list
+			allOrderedLabels.InsertAll(orderedLabels);
+		}
+		
+		//~ Set out labels to ordered labels
+		labels.Copy(allOrderedLabels);
 	}
 	
 	/*!

@@ -142,12 +142,12 @@ class SCR_AddonDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		int timeSinceLastPlay = m_Item.GetTimeSinceLastPlay();
 		m_Widgets.m_LastPlayedOverlay.SetVisible(timeSinceLastPlay >= 0);
 		if (timeSinceLastPlay >= 0)
-			m_Widgets.m_LastPlayedText.SetText(SCR_Global.GetTimeSinceEventImprecise(timeSinceLastPlay));
+			m_Widgets.m_LastPlayedText.SetText(SCR_FormatHelper.GetTimeSinceEventImprecise(timeSinceLastPlay));
 		
 		int timeSinceDownload = m_Item.GetTimeSinceFirstDownload();
 		m_Widgets.m_DownloadedOverlay.SetVisible(timeSinceDownload >= 0);
 		if (timeSinceDownload >= 0)
-			m_Widgets.m_DownloadedText.SetText(SCR_Global.GetTimeSinceEventImprecise(timeSinceDownload));
+			m_Widgets.m_DownloadedText.SetText(SCR_FormatHelper.GetTimeSinceEventImprecise(timeSinceDownload));
 		
 		
 		// Type - show a list of images associated with tags

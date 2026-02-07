@@ -5,22 +5,68 @@ class SCR_DamageManagerComponentClass: DamageManagerComponentClass
 
 class SCR_DamageManagerComponent: DamageManagerComponent
 {
-	//------------------------------------------------------------------------------------------------
-	//! Return hitzones with colliders assigned
-	void GetPhysicalHitZones(out notnull array<HitZone> physicalHitZones)
+	private int m_iInstigatorID;
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Set instigator and his player ID using entity
+	//! Checks for turret gunner if instigator is not a character, until drivers and gunners are properly tracked in gamecode
+	void SetInstigatorEntity(IEntity instigator)
 	{
-		array<HitZone> hitZones = {}; GetAllHitZones(hitZones);
-		foreach (HitZone hitZone: hitZones)
+		// Find turret gunners to give them credit for kills
+		// Please remove this block when gamecode instigator detection properly accounts for turrets and drivers
+		if (instigator && !ChimeraCharacter.Cast(instigator))
 		{
-			if (hitZone && hitZone.HasColliderNodes())
-				physicalHitZones.Insert(hitZone);
+			array<IEntity> occupants = {};
+			SCR_BaseCompartmentManagerComponent compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(instigator.FindComponent(SCR_BaseCompartmentManagerComponent));
+			if (compartmentManager)
+				compartmentManager.GetOccupantsOfType(occupants, ECompartmentType.Turret);
+			
+			if (!occupants.IsEmpty())
+				instigator = occupants[0];
 		}
+		
+		m_iInstigatorID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(instigator);
+		
+		SetInstigator(instigator);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Read instigator from player ID if set previously
+	IEntity GetInstigatorEntity()
+	{
+		IEntity instigator;
+		if (m_iInstigatorID != 0)
+			instigator = GetGame().GetPlayerManager().GetPlayerControlledEntity(m_iInstigatorID);
+		
+		if (!instigator)
+			instigator = GetInstigator();
+		
+		return instigator;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Set instigator and his player ID using player ID
+	void SetInstigatorID(int instigatorID)
+	{
+		m_iInstigatorID = instigatorID;
+		
+		IEntity instigator;
+		if (instigatorID != 0)
+			instigator = GetGame().GetPlayerManager().GetPlayerControlledEntity(instigatorID);
+		
+		SetInstigator(instigator);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Read instigator player ID if set previously
+	int GetInstigatorID()
+	{
+		return m_iInstigatorID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	/*! Neutralize the entity with a specific damage type, registering the killer entity.
 	\param instigator Source of the damage
-	\param damageType Damage type
 	*/
 	void Kill(IEntity instigator = null)
 	{

@@ -107,6 +107,24 @@ class SCR_EntityHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	static IEntity GetPlayer()
+	{
+		return EntityUtils.GetPlayer();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static bool IsPlayer(IEntity entity)
+	{
+		return entity == EntityUtils.GetPlayer();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static bool IsAPlayer(IEntity entity)
+	{
+		return EntityUtils.IsPlayer(entity);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Set transform for whole hierarchy
 	static void SetHierarchyTransform(notnull IEntity ent, vector newTransform[4])
 	{
@@ -149,4 +167,4 @@ class SCR_EntityHelper
 			child = child.GetSibling();
 		}
 	}
-}
+};

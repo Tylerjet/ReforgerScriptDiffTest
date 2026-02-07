@@ -56,10 +56,15 @@ class GarbageManager: GenericEntity
 	*/
 	proto external bool Bump(IEntity ent, float additionalLifetime);
 	/*!
+	Returns the lifetime of an instance or -1 if not inserted.
+	\return Lifetime duration in seconds or -1 if none.
+	*/
+	proto external float GetLifetime(IEntity ent);
+	/*!
 	Returns the remaining lifetime of an instance or -1 if not inserted.
 	\return Remaining lifetime in seconds or -1 if none.
 	*/
-	proto external float GetLifetime(IEntity ent);
+	proto external float GetRemainingLifetime(IEntity ent);
 	/*!
 	Forcefully disposes of all enqueued garbage instances in a single pass.
 	*/

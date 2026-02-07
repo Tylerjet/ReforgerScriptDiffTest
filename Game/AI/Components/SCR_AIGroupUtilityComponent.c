@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system for groups", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system for groups")]
 class SCR_AIGroupUtilityComponentClass: SCR_AIBaseUtilityComponentClass
 {
 };
@@ -22,6 +22,9 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	
 	protected ref ScriptInvoker Event_OnEnemyDetected = new ScriptInvoker;
 	protected ref ScriptInvoker Event_OnNoEnemy = new ScriptInvoker;
+	
+	// Used by SCR_AIGetMemberByGoal nodes
+	int m_iGetMemberByGoalNextIndex = 0;
 	
 	//---------------------------------------------------------------------------------------------------
 	SCR_AIActivityBase EvaluateActivity(SCR_AIMessageGoal goalMessage,SCR_AIMessageInfo infoMessage, out bool restartActivity)
@@ -52,10 +55,26 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 			
 		if (infoMessage)
 		{
+			bool overrideReaction = false;
+			foreach (SCR_AIActionBase action : m_aActions)
+				overrideReaction = overrideReaction || action.OnInfoMessage(infoMessage);
+			
+			if (!overrideReaction)
+			{
+				#ifdef AI_DEBUG
+				AddDebugMessage(string.Format("PerformInfoReaction: %1", infoMessage));
+				#endif
+				
+				m_ConfigComponent.PerformInfoReaction(this, infoMessage);
+			}
 			#ifdef AI_DEBUG
-			AddDebugMessage(string.Format("PerformInfoReaction: %1", infoMessage));
+			else
+			{
+				#ifdef AI_DEBUG
+				AddDebugMessage(string.Format("InfoMessage consumed by action: %1", infoMessage));
+				#endif
+			}
 			#endif
-			m_ConfigComponent.PerformInfoReaction(this, infoMessage);
 		}
 			
 		RemoveObsoleteActions();
@@ -105,6 +124,28 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	{
 		if (!m_Owner)
 			return;
+		
+		bool anyEnemyRemoved = false;
+		for (int i = m_aListOfKnownEnemies.Count() - 1; i >= 0; i--)
+		{
+			IEntity enemyEnt = m_aListOfKnownEnemies[i];
+			
+			if (SCR_AIIsAlive.IsAlive(enemyEnt))
+				continue;
+			
+			RemoveKnownEnemy(enemyEnt);
+			anyEnemyRemoved = true;
+		}
+		
+		if (anyEnemyRemoved)
+		{
+			if (!IsSomeEnemyKnown())
+				SetStateAllActionsOfType(EAIActionType.ATTACK,EAIActionState.COMPLETED);
+		}
+		
+		
+		/*
+		// Temporary disabled the code below beccause it could flood the group inbox
 		AICommunicationComponent mailbox = m_Owner.GetCommunicationComponent();
 		if (mailbox)
 		{
@@ -121,6 +162,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 				}
 			}
 		}
+		*/
 	}
 	
 	//---------------------------------------------------------------------------------------------------

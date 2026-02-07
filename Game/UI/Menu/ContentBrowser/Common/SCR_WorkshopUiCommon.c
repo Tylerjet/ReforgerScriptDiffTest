@@ -639,6 +639,10 @@ class SCR_DeleteAddonDialog : SCR_ConfigurableDialogUi
 	//------------------------------------------------------------------------------------------------
 	override void OnConfirm()
 	{
+		// Clear preset name
+		if (m_Item.GetEnabled())
+			SCR_AddonManager.GetInstance().GetPresetStorage().ClearUsedPreset();
+		
 		if (m_Item.GetSubscribed())
 			m_Item.SetSubscribed(false);
 		
@@ -821,7 +825,13 @@ class SCR_WorkshopUiCommon_DownloadSequence
 		if (nRestricted > 0)
 		{
 			auto restrictedDependencies = SCR_AddonManager.SelectItemsBasic(m_aDependencies, EWorkshopItemQuery.RESTRICTED);
-			SCR_AddonListDialog.CreateRestrictedAddonsDownload(restrictedDependencies);
+			SCR_AddonListDialog addonsDialog = SCR_AddonListDialog.CreateRestrictedAddonsDownload(restrictedDependencies);
+		
+			// Handle cancel reports done 
+			SCR_ReportedAddonsDialog reportedDialog = SCR_ReportedAddonsDialog.Cast(addonsDialog);
+			if (reportedDialog)
+				reportedDialog.GetOnAllReportsCanceled().Insert(OnAllReportsCanceled);
+			
 			return;
 		}
 		
@@ -850,7 +860,7 @@ class SCR_WorkshopUiCommon_DownloadSequence
 			
 		// If size above threshold, open a confirmation dialog
 		float smallDownloadThreshold = ContentBrowserUI.GetSmallDownloadThreshold();
-		bool showConfirmation = totalDownloadSize > smallDownloadThreshold || !dependencies.IsEmpty();
+		bool showConfirmation = !dependencies.IsEmpty(); // Show confirmation only if there are dependencies
 		//showConfirmation = true; // debug always show confirmation
 		if (showConfirmation)
 		{
@@ -871,6 +881,14 @@ class SCR_WorkshopUiCommon_DownloadSequence
 					i.SetSubscribed(true);
 			}
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Call this when all reports from dialog are cancled to clear invoker actions and display download dialog 
+	protected void OnAllReportsCanceled(SCR_ReportedAddonsDialog dialog)
+	{
+		dialog.GetOnAllReportsCanceled().Remove(OnAllReportsCanceled);
+		OnAllDependenciesDetailsLoaded();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1112,7 +1130,8 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 			
 		if (m_bSubscribeToAddons)
 		{
-			m_Item.SetSubscribed(true);
+			if (m_Item)
+				m_Item.SetSubscribed(true);
 			
 			foreach (auto i : m_aDependencies)
 				i.SetSubscribed(true);
@@ -1245,6 +1264,7 @@ class SCR_BannedAddonsDetectedDialog : SCR_ConfigurableDialogUi
 class SCR_AddonListDialog : SCR_ConfigurableDialogUi
 {
 	ref array<ref SCR_WorkshopItem> m_aItems = {};
+	protected ref array<SCR_DownloadManager_AddonDownloadLine> m_aDownloadLines = {};
 	
 	protected ResourceName ADDON_LINE_LAYOUT = "{BB5AEDDA3C4134FD}UI/layouts/Menus/ContentBrowser/DownloadManager/DownloadManager_AddonDownloadLineConfirmation.layout";
 	
@@ -1255,7 +1275,8 @@ class SCR_AddonListDialog : SCR_ConfigurableDialogUi
 		foreach (auto i : items)
 			m_aItems.Insert(i);
 		
-		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, preset, this);
+		if (!preset.IsEmpty())
+			SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, preset, this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1267,23 +1288,52 @@ class SCR_AddonListDialog : SCR_ConfigurableDialogUi
 		foreach (SCR_WorkshopItem item : m_aItems)
 		{
 			Widget w = GetGame().GetWorkspace().CreateWidgets(ADDON_LINE_LAYOUT, layout);
+			
 			SCR_DownloadManager_AddonDownloadLine comp = SCR_DownloadManager_AddonDownloadLine.Cast(w.FindHandler(SCR_DownloadManager_AddonDownloadLine));
 			comp.InitForWorkshopItem(item, string.Empty, false);
+			
+			m_aDownloadLines.Insert(comp);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_AddonListDialog CreateItemsList(array<ref SCR_WorkshopItem> items, string preset, ResourceName dialogsConfig = "")
+	{
+		if (dialogsConfig == "")
+			dialogsConfig = SCR_WorkshopUiCommon.DIALOGS_CONFIG;
+						
+		SCR_AddonListDialog addonListDialog = new SCR_AddonListDialog(items, "");
+		SCR_ConfigurableDialogUi.CreateFromPreset(dialogsConfig, preset, addonListDialog);
+		return addonListDialog;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Dialog when downloading restricted addons
 	static SCR_AddonListDialog CreateRestrictedAddonsDownload(array<ref SCR_WorkshopItem> items)
 	{
-		return new SCR_AddonListDialog(items, "error_restricted_dependencies_download");
+		return DisplayRestrictedAddonsList(items, "error_restricted_dependencies_download", "error_reported_dependencies_download");
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Dialog when trying to connect to a server with restricted addons
 	static SCR_AddonListDialog CreateRestrictedAddonsJoinServer(array<ref SCR_WorkshopItem> items)
 	{
-		return new SCR_AddonListDialog(items, "error_restricted_addons_join_server");
+		return DisplayRestrictedAddonsList(items, "error_restricted_addons_join_server", "error_reported_addons_join_server");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Display dialogs for reported and blocked (banned) mods
+	static SCR_AddonListDialog DisplayRestrictedAddonsList(array<ref SCR_WorkshopItem> items, string tagBlocked, string tagReported)
+	{
+		// Banned specific
+		array <ref SCR_WorkshopItem> banned = SCR_AddonManager.SelectItemsOr(items, EWorkshopItemQuery.BLOCKED); 
+		
+		if (!banned.IsEmpty())
+			return new SCR_AddonListDialog(banned, tagBlocked);
+		
+		// Reported
+		array <ref SCR_WorkshopItem> reported = SCR_AddonManager.SelectItemsOr(items, EWorkshopItemQuery.REPORTED_BY_ME | EWorkshopItemQuery.AUTHOR_BLOCKED);
+		return new SCR_ReportedAddonsDialog(reported, tagReported);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1291,6 +1341,12 @@ class SCR_AddonListDialog : SCR_ConfigurableDialogUi
 	static SCR_AddonListDialog CreaateFailedToStartWithMods(array<ref SCR_WorkshopItem> items)
 	{
 		return new SCR_AddonListDialog(items, "error_failed_to_start_with_mods");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<SCR_DownloadManager_AddonDownloadLine> GetDonwloadLines()
+	{
+		return m_aDownloadLines;
 	}
 };
 
@@ -1360,32 +1416,49 @@ class SCR_DisableDependentAddonsDialog : SCR_SetAddonsEnabledDialog
 //! Dialog which sends a request to delete user's report.
 class SCR_CancelMyReportDialog : SCR_ConfigurableDialogUi
 {
+	// Widget names 
+	protected const string WIDGET_TXT_TYPE_MSG = "TxtTypeMsg";
+	protected const string WIDGET_TXT_COMMENT = "TxtComment";
+	
+	// Widgets 
+	protected TextWidget m_wTxtTypeMsg;
+	protected TextWidget m_wTxtComment;
+
 	protected ref SCR_WorkshopItem m_Item;
+	protected bool m_bAuthorReport = false;
 	protected ref SCR_WorkshopItemActionCancelReport m_Action;
 	protected SCR_LoadingOverlayDialog m_LoadingOverlayDlg;
 	
-	
 	//------------------------------------------------------------------------------------------------
-	void SCR_CancelMyReportDialog(SCR_WorkshopItem item)
+	void SCR_CancelMyReportDialog(SCR_WorkshopItem item, bool authorReport = false)
 	{
 		m_Item = item;
+		m_bAuthorReport = authorReport;
 		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, "cancel_report", this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
+		// Get reports 
 		string reportDescription;
 		EWorkshopReportType reportType;
-		m_Item.GetReport(reportType, reportDescription);
+		
+		if (!m_bAuthorReport)
+			m_Item.GetReport(reportType, reportDescription);
+		
 		string reportTypeStr = SCR_WorkshopUiCommon.GetReportTypeString(reportType);
 		
-		string dialogText = "#AR-Workshop_CancelReportDescription\n\n";
-		dialogText += string.Format("#AR-Workshop_ReportReason %1\n\n", reportTypeStr);
-		dialogText += string.Format("#AR-Workshop_ReportOptionalComment\n");
-		dialogText += reportDescription;
+		// Find widgets 
+		m_wTxtTypeMsg = TextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_TXT_TYPE_MSG));
+		m_wTxtComment = TextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_TXT_COMMENT));
 		
-		SetMessage(dialogText);
+		// Display report details
+		if (!m_bAuthorReport)
+			SetMessage("#AR-Workshop_CancelReportDescription");
+		
+		m_wTxtTypeMsg.SetText(reportTypeStr);
+		m_wTxtComment.SetText(reportDescription);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1397,6 +1470,8 @@ class SCR_CancelMyReportDialog : SCR_ConfigurableDialogUi
 		m_Action.m_OnCompleted.Insert(Callback_OnSuccess);
 		m_Action.m_OnFailed.Insert(Callback_OnFailed);
 		m_Action.Activate();
+		
+		m_OnConfirm.Invoke(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1412,6 +1487,12 @@ class SCR_CancelMyReportDialog : SCR_ConfigurableDialogUi
 		m_LoadingOverlayDlg.CloseAnimated();
 		Close();
 		SCR_CommonDialogs.CreateTimeoutOkDialog();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_WorkshopItemActionCancelReport GetWorkshopItemAction()
+	{
+		return m_Action;
 	}
 };
 
@@ -1539,7 +1620,8 @@ class SCR_ScenarioBackendImageComponent : SCR_BackendImageComponent
 		{
 			// Custom behavior when there is no fallback image
 			// Show custom image
-			ShowImage(LOADING_BACKGROUND_IMAGE);
+			if (m_bShowLoadingImage)
+				ShowImage(LOADING_BACKGROUND_IMAGE);
 			
 			if (m_LoadingOverlay)
 				m_LoadingOverlay.SetShown(true);

@@ -35,9 +35,9 @@ class SCR_CampaignRepairEntityUserAction : ScriptedUserAction
 			if (serviceCompositionComp)
 			{
 				m_CompType = serviceCompositionComp.GetCompositionType();
-				SCR_CampaignDeliveryPoint deliveryPoint = SCR_CampaignDeliveryPoint.Cast(serviceCompositionComp.GetDeliveryPoint());
-				if (deliveryPoint)
-					m_CampaignBase = deliveryPoint.GetParentBase();
+				SCR_CampaignServiceComponent service = serviceCompositionComp.GetService();
+				if (service)
+					m_CampaignBase = service.GetParentBase();
 			}
 		}
 		
@@ -62,7 +62,7 @@ class SCR_CampaignRepairEntityUserAction : ScriptedUserAction
 		if (!destructionManager)
 			return;
 		
-		IEntity compositionParent = SCR_Global.GetMainParent(pOwnerEntity);
+		IEntity compositionParent = SCR_EntityHelper.GetMainParent(pOwnerEntity);
 		if (!compositionParent)
 			return;
 

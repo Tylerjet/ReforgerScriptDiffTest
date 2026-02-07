@@ -3,11 +3,11 @@
 [BaseContainerProps()]
 class SCR_DaytimeCondition : SCR_AvailableActionCondition 
 {	
-	[Attribute("3", UIWidgets.ComboBox, "Cond operator", "", ParamEnumArray.FromEnum(SCR_ComparerOperator) )]
+	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_ComparerOperator.GREATER_THAN_OR_EQUAL), UIWidgets.ComboBox, "Cond operator", "", ParamEnumArray.FromEnum(SCR_ComparerOperator) )]
 	private SCR_ComparerOperator m_eOperator;
 	
-	[Attribute("2", UIWidgets.EditBox, "Time of day", "")]
-	private float m_fValue;
+	[Attribute(defvalue: SCR_Enum.GetDefault(EDayTimeEnums.DAYTIME_DUSK), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EDayTimeEnums))]
+	EDayTimeEnums m_TimeOfDay;
 	
 	//------------------------------------------------------------------------------------------------
 	override bool IsAvailable(SCR_AvailableActionsConditionData data)
@@ -19,11 +19,10 @@ class SCR_DaytimeCondition : SCR_AvailableActionCondition
 		if (!timeManager) 
 			return false;
 
-		bool current = (int)timeManager.GetTimeOfTheDay();
+		SCR_UIInfo uiInfo;
+		EDayTimeEnums currentTimeOfDay = timeManager.GetCurrentDayTimeUIInfoAndPhase(uiInfo);
 		
-		bool result = false;
-		
-		result = SCR_Comparer<int>.Compare(m_eOperator, current, (int)m_fValue);
+		bool result = SCR_Comparer<int>.Compare(m_eOperator, (int)currentTimeOfDay, (int)m_TimeOfDay);
 		return GetReturnResult(result);
 	}
 };

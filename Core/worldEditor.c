@@ -207,6 +207,26 @@ class WorldEditorAPI
 	proto native external bool SetVariableValue(notnull BaseContainer topLevel, array<ref ContainerIdPathEntry> containerIdPath, string key, string value);
 
 	/*!
+	Clear value of potentially nested variable. The whole path must exist, this function is just to clear the value.
+
+	\param topLevel Container from which the search is started
+	\param containerIdPath Path to the variable we want to clear
+	\param variable The actual variable to clear
+	\return True if successful, false otherwise
+	*/
+	proto native external bool ClearVariableValue(notnull BaseContainer topLevel, array<ref ContainerIdPathEntry> containerIdPath, string key);
+
+	/*!
+	Creates a new container in object property
+	\param topLevel Container from which the search is started
+	\param containerIdPath Path to the variable we want to set
+	\param key How is the object property in `container` called
+	\param baseClassName What type of object should be created to the property
+	\return True if successful, false otherwise
+	*/
+	proto native external bool CreateObjectVariableMember(notnull BaseContainer topLevel, array<ref ContainerIdPathEntry> containerIdPath, string key, string baseClassName);
+	
+	/*!
 	Creates a new element in array of objects property in `container`
 	\param topLevel Container from which the search is started
 	\param containerIdPath Path to the variable we want to set

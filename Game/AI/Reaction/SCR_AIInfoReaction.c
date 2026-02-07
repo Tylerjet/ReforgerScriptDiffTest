@@ -54,6 +54,37 @@ class SCR_AIInfoReaction_TargetLost : SCR_AIInfoReaction_Contact
 			//SetStateAllActionsOfType(EAIActionType.MOVE_COMBAT,EAIActionState.COMPLETED);
 		}		
 	}
+	
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		auto msg = SCR_AIMessage_TargetLost.Cast(message);
+		if (!msg)
+			return;
+		
+		vector targetPos = msg.m_LastSeenPosition;
+		
+		// We either investigate or find a fire position at this target, depending on our weapons
+		
+		bool investigate = false;
+		
+		if (utility.m_CombatComponent.HasWeaponOfType(EWeaponType.WT_SNIPERRIFLE))
+		{
+			auto behavior = new SCR_AIFindFirePositionBehavior(utility, false, null, targetPos,
+				minDistance: SCR_AIFindFirePositionBehavior.SNIPER_MIN_DISTANCE, maxDistance: SCR_AIFindFirePositionBehavior.SNIPER_MAX_DISTANCE,
+				targetUnitType: EAIUnitType.UnitType_Infantry, duration: SCR_AIFindFirePositionBehavior.SNIPER_DURATION_S);
+			utility.AddAction(behavior);
+		}
+		else if (utility.IsInvestigationAllowed(targetPos))
+		{
+			if (utility.IsInvestigationRelevant(targetPos))
+			{
+				auto behavior = new SCR_AIMoveAndInvestigateBehavior(utility, false, null, targetPos,
+					isDangerous: true, targetUnitType: EAIUnitType.UnitType_Infantry);
+		
+				utility.AddAction(behavior);
+			}
+		}
+	}
 };
 
 [BaseContainerProps()]
@@ -104,10 +135,25 @@ class SCR_AIInfoReaction_Wounded : SCR_AIInfoReaction
 		AIAgent aiAgent = msg.GetSender();
 		if (aiAgent)
 		{
+			IEntity woundedEntity = aiAgent.GetControlledEntity();
+			
+			// Ignore message if we already have an activity to heal this soldier
+			foreach (SCR_AIActionBase action : utility.m_aActions)
+			{
+				SCR_AIHealActivity healActivity = SCR_AIHealActivity.Cast(action);
+				
+				if (!healActivity)
+					continue;
+				
+				// Return if we are already healing this soldier
+				if (healActivity.m_EntityToHeal.m_Value == woundedEntity)
+					return;
+			}
+			
 			auto activity = new SCR_AIHealActivity(utility, false, false, aiAgent.GetControlledEntity());
 			utility.AddAction(activity);
 		}		
-	}	
+	}
 };
 
 [BaseContainerProps()]

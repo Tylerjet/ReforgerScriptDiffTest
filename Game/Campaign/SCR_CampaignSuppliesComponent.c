@@ -12,6 +12,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	protected SCR_CampaignBase m_LastUnloadedAt;
 	protected SCR_CampaignBase m_LastXPAwardedAt;
 	protected bool m_bAwardUnloadXP = true;
+	protected bool m_bIsPlayerInRange;
 	
 	[RplProp()]
 	protected ref array<int> m_aLoadingPlayerIDs = {};
@@ -28,11 +29,14 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	protected int m_iSupplies;
 	
 	// Synced variables
-	[Attribute("0", desc: "Maximum supplies this component can hold.")]
+	[Attribute("0", desc: "Maximum supplies this component can hold."), RplProp()]
 	protected int m_iSuppliesMax;
 	
 	[Attribute("0", desc: "Maximum distance from a supply depot a player can still (un)load their truck")]
 	protected float m_fOperationalRadius;
+	
+	[Attribute("0", UIWidgets.CheckBox, "This component belongs to a supply depot without a parent base.", "")]
+	bool m_bIsStandaloneDepot;
 	
 	//------------------------------------------------------------------------------------------------
 	// Returns first player from loading/unloading arrays 
@@ -104,21 +108,11 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 		
 		SCR_CampaignBase base = SCR_CampaignBase.Cast(GetOwner().GetParent());
 		
-		if (base)
-		{
-			if (RplSession.Mode() != RplMode.Dedicated)
-				base.HandleMapInfo();
-			
-			RplComponent rplC = RplComponent.Cast(base.FindComponent(RplComponent));
-			
-			if (rplC && !rplC.IsProxy())
-			{
-				SCR_CampaignDeliveryPoint servicePoint = SCR_CampaignDeliveryPoint.Cast(GetOwner());
-				
-				if (servicePoint)
-					servicePoint.UpdateCompositionPrefab();
-			}
-		}
+		if (!base)
+			return;
+		
+		if (RplSession.Mode() != RplMode.Dedicated)
+			base.HandleMapInfo();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -134,6 +128,13 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetSuppliesMax(int suppliesMax)
+	{
+		m_iSuppliesMax = suppliesMax;
+		Replication.BumpMe();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// Get the load / unload radius. If set custom use this. if it's set to zero, use default.
 	float GetOperationalRadius()
 	{
@@ -141,6 +142,18 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 			return m_fOperationalRadius;
 		
 		return SCR_GameModeCampaignMP.SUPPLY_TRUCK_UNLOAD_RADIUS;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetIsPlayerInRange(bool status)
+	{
+		m_bIsPlayerInRange = status;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetIsPlayerInRange()
+	{
+		return m_bIsPlayerInRange;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -180,6 +193,12 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	bool GetIsStandaloneDepot()
+	{
+		return m_bIsStandaloneDepot;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
@@ -188,6 +207,14 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 		{
 			string err = string.Format("SCR_CampaignSuppliesComponent on %1 carries more supplies (%2) than its maximum (%3)!", owner, m_iSupplies, m_iSuppliesMax);
 			Print(err, LogLevel.ERROR);
+		}
+		
+		if (m_bIsStandaloneDepot)
+		{
+			SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+			
+			if (campaign)
+				campaign.RegisterRemnantSupplyDepot(this);
 		}
 	}
 	

@@ -11,6 +11,13 @@ Do not modify, this script is generated
 
 class PlayerManager
 {
+	/*!
+	Kicks player from the game with option to specify timeout for reconnection (temporary ban).
+	\param playerId Player to be kicked
+	\param reason Reason for kick
+	\param timeout Time in seconds, default 0, -1 means infinite
+	*/
+	proto external void KickPlayer(int iPlayerId, PlayerManagerKickReason reason, int timeout = 0);
 	//! Returns the number of connected players
 	proto external int GetPlayerCount();
 	//! Returns the number of all players (both connected and disconnected)
@@ -42,11 +49,6 @@ class PlayerManager
 	proto external PlatformKind GetPlatformKind(int iPlayerId);
 	//! Returns true if a given player is connected.
 	proto external bool IsPlayerConnected(int iPlayerId);
-	/*!
-	Disconnects a given player with provided reason.
-	Note: Can be executed only by authority.
-	*/
-	proto external void KickPlayer(int iPlayerId, PlayerManagerKickReason reason);
 	//! Returns True if the provided player have given role
 	proto external bool HasPlayerRole(int iPlayerId, EPlayerRole role);
 	//! Returns player's roles as flags

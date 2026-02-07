@@ -8,10 +8,10 @@ class SCR_WeaponState
 	SCR_2DSightsComponent m_Sights;
 	SCR_SightsZoomFOVInfo m_SightsZoomFOVInfo;
 	
-	WeaponUIInfo m_WeaponUi;
-	MagazineUIInfo m_MagazineUi;
-	MuzzleUIInfo m_MuzzleUi;
-	GrenadeUIInfo m_GrenadeUi;
+	WeaponUIInfo m_WeaponUI;
+	MagazineUIInfo m_MagazineUI;
+	MuzzleUIInfo m_MuzzleUI;
+	GrenadeUIInfo m_GrenadeUI;
 	
 	SCR_MagazineIndicatorConfiguration m_MagazineConfig;
 	
@@ -30,6 +30,7 @@ class SCR_WeaponState
 	bool m_bInInspectionMode;
 	bool m_bIsGrenade;
 	bool m_bHasSpecialAmmo;
+	bool m_bReloading;
 	
 	void Init()
 	{
@@ -40,10 +41,10 @@ class SCR_WeaponState
 		m_Sights = null;
 		m_SightsZoomFOVInfo = null;
 		
-		m_WeaponUi = null;
-		m_MagazineUi = null;
-		m_MuzzleUi = null;
-		m_GrenadeUi = null;
+		m_WeaponUI = null;
+		m_MagazineUI = null;
+		m_MuzzleUI = null;
+		m_GrenadeUI = null;
 		
 		m_MagazineConfig = null;
 		
@@ -62,5 +63,6 @@ class SCR_WeaponState
 		m_bBarrelChambered = false;
 		m_bBarrelCanBeChambered = false;
 		m_bHasSpecialAmmo = false;
+		m_bReloading = false;
 	}
 };

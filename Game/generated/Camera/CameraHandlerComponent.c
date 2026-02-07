@@ -35,12 +35,6 @@ class CameraHandlerComponent: ScriptComponent
 	\param userSetName user name of the lens flare set (used only when type is set to User)
 	*/
 	proto external void SetLensFlareSet(CameraLensFlareSetType type, string lensFlareSetUserName);
-	//! If character is being aligned with camera, don't align camera with character.
-	proto external bool IsAligningCharacter();
-	//! Will start aligning the character to camera.
-	proto external void RequestAlignCharacter();
-	//! Stop aligning character.
-	proto external void FinishAligningCharacter();
 	
 	// callbacks
 	
@@ -57,7 +51,7 @@ class CameraHandlerComponent: ScriptComponent
 	//! after camera update
 	event void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4], inout vector transformWS[4]);
 	//! collision solver
-	event void CollisionSolver(float pDt, inout ScriptedCameraItemResult pOutResult);
+	event void CollisionSolver(float pDt, inout ScriptedCameraItemResult pOutResult, inout vector resCamTM[4], bool isKeyframe);
 	//! when we switch between FPP and TPP
 	event void OnThirdPersonSwitch(bool isInThirdPerson);
 	//! get how long should transition between given cameras be

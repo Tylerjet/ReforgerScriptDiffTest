@@ -27,6 +27,14 @@ class SCR_ButtonTextComponent : SCR_ButtonBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetTextWithParam(string text, string param1, string param2)
+	{
+		m_sText = text;
+		if (m_wText)
+			m_wText.SetTextFormat(text, param1, param2);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	string GetText()
 	{
 		return m_sText;

@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Physics", description: "Component that automatically handles switching of between static and dynamic physics of the object", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Physics", description: "Component that automatically handles switching of between static and dynamic physics of the object")]
 class SCR_HybridPhysicsComponentClass: ScriptComponentClass
 {
 };

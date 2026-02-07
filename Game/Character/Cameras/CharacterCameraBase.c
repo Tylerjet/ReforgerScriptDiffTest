@@ -47,6 +47,7 @@ class CharacterCameraBase extends ScriptedCameraItem
 		m_CharacterHeadAimingComponent = CharacterHeadAimingComponent.Cast(m_OwnerCharacter.FindComponent(CharacterHeadAimingComponent));
 		m_CommandWeapons = cmdHandler.GetCommandModifier_Weapon();
 		m_CompartmentAccessComponent = m_OwnerCharacter.GetCompartmentAccessComponent();
+		m_CmdHandler = cmdHandler;
 	}
 
 	float UpdateUDAngle(out float pAngle, float pMin, float pMax, float pDt)
@@ -133,6 +134,11 @@ class CharacterCameraBase extends ScriptedCameraItem
 		return m_fShoulderLastActive;
 	}
 	
+	float GetShoulderDistance()
+	{
+		return 0.0;
+	}
+	
 	float GetInterpolatedUDTransformAngle(float pDt)
 	{
 		vector physTransform[4];
@@ -202,10 +208,7 @@ class CharacterCameraBase extends ScriptedCameraItem
 	//-----------------------------------------------------------------------------
 	override vector GetBaseAngles()
 	{
-		vector a;
-		a[0] = m_fUpDownAngle;
-		a[1] = m_fLeftRightAngle;
-		return a;
+		return m_CharacterHeadAimingComponent.GetLookAngles();
 	}
 	//! Since camera bone is animated only in certain situations we want to provide camera bone whenever it is requested by animation
 	//! otherwise we provide head bone to reduce amount of work animators need to do in order to make camera bone following head bone
@@ -248,6 +251,7 @@ class CharacterCameraBase extends ScriptedCameraItem
 	protected CharacterHeadAimingComponent m_CharacterHeadAimingComponent;
 	protected CharacterCommandWeapon				m_CommandWeapons;
 	protected CompartmentAccessComponent			m_CompartmentAccessComponent;
+	protected CharacterCommandHandlerComponent m_CmdHandler;
 	protected float 								m_fShakeProgress;
 	protected float									m_fShakeVelocity;
 	private static TNodeId sm_iCameraBoneIndex = -1;

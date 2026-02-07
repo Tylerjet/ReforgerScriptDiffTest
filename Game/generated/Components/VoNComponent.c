@@ -29,18 +29,17 @@ class VoNComponent: GameComponent
 	// callbacks
 	
 	/*!
-	Event rised on when VoN is capturing
-	\param radio: Radio component used. NULL if direct.
-	TODO: Probably better to provide transceiver
+	Event triggered when VoN is capturing
+	\param radio Radio component used. Null for direct.
 	*/
 	event protected void OnCapture(BaseRadioComponent radio);
 	/*!
 	Event called when VoNComponent receives
-	\param playerId: Player id from lobby
-	\param radio: Receiving radio
-	\param frequency: Frequency in kHz, on which the transmission came from
-	\param quality: Value in range <0,1> of how close to transmitter the radio is (linear scale)
-	\param transceiverIdx: Index of the radio transceiver (physical channel if you want)
+	\param playerId Player id from lobby
+	\param radio Receiving radio
+	\param frequency Frequency in kHz, on which the transmission came from
+	\param quality Value in range <0,1> of how close to transmitter the radio is (linear scale)
+	\param transceiverIdx Index of the radio transceiver (physical channel if you want)
 	*/
 	event protected void OnReceive(int playerId, BaseRadioComponent radio, int frequency, float quality, int transceiverIdx);
 };

@@ -26,7 +26,7 @@ class SCR_TaskTextEditorAttribute: SCR_BaseEditorAttribute
 		if (!textsComponent)
 			return 0;
 		
-		array<ref SCR_UIInfo> infos = {};
+		array<ref SCR_UIDescription> infos = {};
 		int count = textsComponent.GetTexts(m_TextType, infos);
 		string text;
 		for (int i; i < count; i++)

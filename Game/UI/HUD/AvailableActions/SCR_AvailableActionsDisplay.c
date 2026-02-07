@@ -8,12 +8,10 @@ class SCR_AvailableActionsWidget
 	//------------------------------------------------------------------------------------------------
 	void SetText(string text, string name)
 	{
-		string shadow = "<shadow color='0,0,0' size='10' offset='5,5' opacity='1'>";
-		shadow += "<shadow color='0,0,0' size='1' offset='1,1' opacity='0.75' mode='image'>%1</shadow></shadow>";
-		
 		if (m_wRichTextWidget)
-			m_wRichTextWidget.SetTextFormat(shadow, text);
-		
+			m_wRichTextWidget.SetText(text);
+
+				
 		if (m_hintText)
 			m_hintText.SetText(name);
 	}
@@ -126,7 +124,6 @@ class SCR_AvailableActionContext
 	[Attribute("", UIWidgets.EditBox, "Name of the action in to be displayed in UI")]
 	protected string m_sName;
 	
-	//protected const string MARKUP_FORMAT = "<action name=\"%1\" %2/>";
 	protected const string MARKUP_FORMAT = "<action name=\"%1\"/>";
 	
 	protected bool m_bActivated = false;
@@ -202,7 +199,7 @@ class SCR_AvailableActionContext
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void CountHideTime(SCR_AvailableActionContext context)
+	protected void CountHideTime()
 	{
 		m_bHideTimeOver = true;
 	}
@@ -228,7 +225,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 	protected float m_fAdditionalOffsetY = 0;
 	
 	[Attribute("", UIWidgets.Object, "")]
-	protected ref array<ref AvailableActionLayoutBehavior> m_aBehaviors;
+	protected ref array<ref AvailableActionLayoutBehaviorBase> m_aBehaviors;
 	
 	//! Count of maximum elements that will be pre-cached
 	protected const int PRELOADED_WIDGETS_COUNT = 16;
@@ -358,7 +355,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 					break;
 				
 				if (m_aWidgets[i])
-					DisplayHint(m_aWidgets[i].GetRootWidget(), WidgetAnimator.FADE_RATE_SUPER_FAST,  WidgetAnimator.FADE_RATE_SUPER_FAST);
+					DisplayHint(m_aWidgets[i].GetRootWidget(), UIConstants.FADE_RATE_SUPER_FAST,  UIConstants.FADE_RATE_SUPER_FAST);
 			}
 		}
 		// Or hide previously shown
@@ -373,7 +370,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 				/*if (m_aWidgets[i])
 					m_aWidgets[i].SetVisible(false);*/
 				if (m_aWidgets[i])
-					HintFadeOut(m_aWidgets[i].GetRootWidget(), WidgetAnimator.FADE_RATE_DEFAULT,  WidgetAnimator.FADE_RATE_FAST);
+					HintFadeOut(m_aWidgets[i].GetRootWidget(), UIConstants.FADE_RATE_DEFAULT,  UIConstants.FADE_RATE_FAST);
 			}				
 		}
 
@@ -403,14 +400,13 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 		widget.SetVisible(true);
 		
 		// Clear hiding 
-		WidgetAnimator.StopAnimation(widget, WidgetAnimationType.Opacity);
-		WidgetAnimator.StopAnimation(widget, WidgetAnimationType.PaddingLayout);
 		GetGame().GetCallqueue().Remove(HintShrink);
 		GetGame().GetCallqueue().Remove(HintHide);
 		
 		// Animations 
-		WidgetAnimator.PlayAnimation(widget, WidgetAnimationType.Opacity, 1, delayFade);
-		WidgetAnimator.PlayAnimation(widget, WidgetAnimationType.PaddingLayout, delayShrink, 0, 0, 0, 0);
+		float padding[4] = {0, 0, 0, 0};
+		AnimateWidget.Padding(widget, padding, delayShrink);
+		AnimateWidget.Opacity(widget, 1, delayFade);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -420,7 +416,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 		/*GetGame().GetCallqueue().Remove(HintShrink);
 		GetGame().GetCallqueue().Remove(HintHide);*/
 		
-		WidgetAnimator.PlayAnimation(widget, WidgetAnimationType.Opacity, 0, delayFade);
+		AnimateWidget.Opacity(widget, 0, delayFade);
 		GetGame().GetCallqueue().CallLater(HintShrink, 1000 / delayFade, false, widget, delayShrink);
 		//HintShrink(widget, delayShrink);
 	}
@@ -429,7 +425,8 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 	//! Hide hint with fadeout 
 	protected void HintShrink(Widget widget, float delayShrink)
 	{
-		WidgetAnimator.PlayAnimation(widget, WidgetAnimationType.PaddingLayout, delayShrink, 0, -HINT_SIZE_Y, 0, 0);
+		float padding[4] = {0, -HINT_SIZE_Y, 0, 0};
+		AnimateWidget.Padding(widget, padding, delayShrink);
 		GetGame().GetCallqueue().CallLater(HintHide, 1000 / delayShrink, false, widget);
 	}
 	
@@ -442,7 +439,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set available actions layout y position 
-	protected void SetOffsetY(float offset = -1)
+	void SetOffsetY(float offset = -1)
 	{
 		// Default position
 		if (offset == -1)
@@ -518,66 +515,91 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	protected void ApplyLayoutBehavior()
 	{
+		AvailableActionLayoutBehaviorBase selectedBehavior;
+		
 		// Go through each behavior  
-		foreach (AvailableActionLayoutBehavior beh : m_aBehaviors)
+		foreach (AvailableActionLayoutBehaviorBase beh : m_aBehaviors)
 		{
-			if (ApplyBehavior(beh))
-				return;
+			if (beh.ConditionsChecked(this))
+			{
+				// Default
+				if (!selectedBehavior)
+				{
+					selectedBehavior = beh;
+					continue;
+				}
+				
+				// Select this behavior if it has bigger priority
+				if (selectedBehavior.m_iPriority >= beh.m_iPriority)
+					selectedBehavior = beh;
+			}
 		}
 		
-		// Default behavior 
-		SetOffsetY();
+		if (selectedBehavior)
+			selectedBehavior.ApplyBehavior(this);
+		else
+			SetOffsetY();
+	}
+};
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
+class AvailableActionLayoutBehaviorBase
+{
+	[Attribute("")]
+	float m_fOffsetY;
+	
+	[Attribute("0")]
+	int m_iPriority;
+	
+	//------------------------------------------------------------------------------------------------
+	bool ConditionsChecked(SCR_AvailableActionsDisplay display)
+	{
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected bool ApplyBehavior(AvailableActionLayoutBehavior behavior)
+	void ApplyBehavior(notnull SCR_AvailableActionsDisplay display)
 	{
-		// Editor behavior
-		AvailableActionEditorLayoutBehavior editorBehavior = AvailableActionEditorLayoutBehavior.Cast(behavior);
-		
-		if (editorBehavior)
-		{
-			SCR_EditorManagerEntity editorManagerEntity = SCR_EditorManagerEntity.GetInstance();
-			if (!editorManagerEntity)
-				return false;
-				
-			EEditorMode mode = editorManagerEntity.GetCurrentMode();
-			
-			if (SCR_EditorManagerEntity.IsOpenedInstance() && mode == editorBehavior.m_eEditorMode)
-			{
-				SetOffsetY(behavior.m_fOffsetY);
-				return true;
-			}
-
-			return false;
-		}
-		
-		// HUD behavior 
-		if (!m_HUDManager)
-			return false;
-		
-		Widget hud = m_HUDManager.FindLayoutByResourceName(behavior.m_sCheckHUD);
-				
-		if (!SCR_EditorManagerEntity.IsOpenedInstance() && hud && hud.IsEnabled())
-		{
-			SetOffsetY(behavior.m_fOffsetY); 
-			return true;
-		}
-		
-		return false;
+		display.SetOffsetY(m_fOffsetY);
 	}
 };
 
 //------------------------------------------------------------------------------------------------
 //! Variables that should be applied on available actions layout whenever given HUD is active
 [BaseContainerProps()]
-class AvailableActionLayoutBehavior
+class AvailableActionLayoutBehavior : AvailableActionLayoutBehaviorBase
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, "Layout", "layout")]
 	ResourceName m_sCheckHUD;
+	
+	//------------------------------------------------------------------------------------------------
+	override bool ConditionsChecked(SCR_AvailableActionsDisplay display)
+	{
+		SCR_HUDManagerComponent HUDManager = SCR_HUDManagerComponent.GetHUDManager();
+		if (!HUDManager)
+			return false;
+		
+		Widget hud = HUDManager.FindLayoutByResourceName(m_sCheckHUD);
+		if (!hud)
+			return false;
+				
+		return (!SCR_EditorManagerEntity.IsOpenedInstance() && hud && hud.IsEnabled());
+	}
+};
 
-	[Attribute("")]
-	float m_fOffsetY;
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
+class AvailableActionMenuLayoutBehavior : AvailableActionLayoutBehaviorBase
+{
+	[Attribute("0", UIWidgets.ComboBox, "Is this menu active", "", ParamEnumArray.FromEnum(ChimeraMenuPreset))]
+	ChimeraMenuPreset m_ActiveMenu;
+	
+	//------------------------------------------------------------------------------------------------
+	override bool ConditionsChecked(SCR_AvailableActionsDisplay display)
+	{
+		return (GetGame().GetMenuManager().FindMenuByPreset(m_ActiveMenu) != null);
+	}
 };
 
 //------------------------------------------------------------------------------------------------
@@ -586,4 +608,16 @@ class AvailableActionEditorLayoutBehavior : AvailableActionLayoutBehavior
 {
 	[Attribute("1", UIWidgets.ComboBox, "In which mode should be this behavior applied", "", ParamEnumArray.FromEnum(EEditorMode))]
 	EEditorMode m_eEditorMode;
+	
+	//------------------------------------------------------------------------------------------------
+	override bool ConditionsChecked(SCR_AvailableActionsDisplay display)
+	{
+		SCR_EditorManagerEntity editorManagerEntity = SCR_EditorManagerEntity.GetInstance();
+		if (!editorManagerEntity)
+			return false;
+			
+		EEditorMode mode = editorManagerEntity.GetCurrentMode();
+		
+		return (SCR_EditorManagerEntity.IsOpenedInstance() && mode == m_eEditorMode);
+	}
 };

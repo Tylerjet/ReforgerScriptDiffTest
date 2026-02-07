@@ -57,7 +57,9 @@ enum WidgetFlags
 	//!Text will be right aligned
 	RALIGN,
 	//!Text will be wrapped on horizontal overflow
-	WRAP_TEXT
+	WRAP_TEXT,
+	//!Text will not be parsed for string IDs
+	NO_LOCALIZATION
 };
 
 /** @}*/

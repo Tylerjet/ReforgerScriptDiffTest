@@ -25,9 +25,3 @@ class ServerBrowserParams
 	}
 	int GetHostPort() { return 2001; }
 };
-
-//------------------------------------------------------------------------------------------------
-class RplSessionClientParams
-{
-	string GetAddress() { return ""; }
-};

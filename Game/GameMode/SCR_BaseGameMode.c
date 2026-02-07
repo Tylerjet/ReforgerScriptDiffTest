@@ -1,3 +1,6 @@
+void SCR_BaseGameMode_OnPlayerDisconnected(int playerId, KickCauseCode cause = KickCauseCode.NONE);
+typedef func SCR_BaseGameMode_OnPlayerDisconnected;
+
 /**
 @defgroup GameMode Game Mode
 Game modes.
@@ -60,24 +63,20 @@ Important:
 	C. Game State
 		There are three game states in total that you can use, two of which are optional.
 			1. Pre-game:
-				This is a state that can be enabled before the game mode itself starts, to for example await connecting players,
-				have a warmup period, etc. See: m_fPreGamePeriod
+				This state is automatically skipped unless a
+					SCR_BaseGameModeStateComponent that has SCR_EGameModeState.PREGAME as its affiliated state
+				is attached to the game mode.
 
-				Setting m_fPreGamePeriod to -1 allows you to automatically check for
-				SCR_BaseGameMode.CanStartGameMode() periodically, thus allowing to implement custom logic. (e.g. min player count)
-
-				Setting m_fPreGamePeriod to 0 makes the game start in the pre-game period
-				and await for the authority to call SCR_BaseGameMode.StartGameMode() manually.
-
-				Setting m_fPreGamePeriod above n>0 makes the game mode await n seconds before starting automatically.
+				The SCR_PreGameGameModeStateComponent can be used to allow a time-based pre-game duration.
 
 			2. Game
 				This is the core game loop.
 
-				Setting m_fTimeLimit to 0 disables time limit and the game can only be terminated manually
-				from the authority via SCR_BaseGameMode.EndGameMode().
+				By default this state is infinite, unless a
+					SCR_BaseGameModeStateComponent that has SCR_EGameModeState.GAME as its affiliated state
+				is attached to the game mode with a duration set.
 
-				Setting m_fTimeLimit to n>n enables automatic time limit, ending the game automatically in n seconds.
+				The SCR_GameGameModeStateComponent can be used to allow a time-based pre-game duration.
 
 			3. Post-game
 				This is your game-over state, you can automatically transition into new world, restart the session,
@@ -86,6 +85,13 @@ Important:
 				In addition this transition carries along SCR_GameModeEndData, providing the authority and all
 				clients with additional data that can notify the gamemode about e.g. win condition, or end reason
 				as implemented per game mode.
+
+				This state can also have its logic expanded similarly to the Pre-game by using
+					SCR_BaseGameModeStateComponent that has SCR_EGameModeState.POSTGAME as its affiliated state
+				attached to the game mode.
+
+				The SCR_PostGameGameModeStateComponent can be used for this.
+
 
 		You can always retrieve current game state by calling GetState() (see SCR_GameModeState)
 		or IsRunning() if you're interested in the core game loop only.
@@ -112,7 +118,7 @@ class SCR_BaseGameMode : BaseGameMode
 	protected ref ScriptInvoker Event_OnPlayerAuditFail = new ScriptInvoker();
 	protected ref ScriptInvoker Event_OnPlayerConnected = new ScriptInvoker();
 	protected ref ScriptInvoker Event_OnPlayerRegistered = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnPlayerDisconnected = new ScriptInvoker();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> Event_OnPlayerDisconnected = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected>();
 	protected ref ScriptInvoker Event_OnPlayerSpawned = new ScriptInvoker();
 	protected ref ScriptInvoker Event_OnPlayerKilled = new ScriptInvoker();
 	protected ref ScriptInvoker Event_OnPlayerDeleted = new ScriptInvoker();
@@ -133,7 +139,11 @@ class SCR_BaseGameMode : BaseGameMode
 	[Attribute("1", uiwidget: UIWidgets.CheckBox, "When false, then Game mode need to handle its very own spawning. If true, then simple default logic is used to spawn and respawn automatically.", category: WB_GAME_MODE_CATEGORY)]
 	protected bool m_bAutoPlayerRespawn;
 	[Attribute("1", UIWidgets.Auto, desc: "Character bleeding rate multiplier", category: WB_GAME_MODE_CATEGORY)]
-	private float m_fBleedingRateScale;
+	private float m_fBleedingRateScale;	
+	
+	[Attribute("0", UIWidgets.Slider, params: "0 300 0.1", desc: "Time in seconds after which session is restarted upon completion or 0 if none.", category: WB_GAME_MODE_CATEGORY)]
+	private float m_fAutoReloadTime;
+	
 	//-----------------------------------------
 	//
 	// Game End Screen States info
@@ -147,11 +157,8 @@ class SCR_BaseGameMode : BaseGameMode
 	[RplProp()]
 	private ref SCR_GameModeEndData m_pGameEndData = new SCR_GameModeEndData();
 
-	[Attribute("0", uiwidget: UIWidgets.Slider, "Time limit of game mode in seconds or 0 if none.", params: "0 864000 1", category: WB_GAME_MODE_CATEGORY)]
-	protected float m_fTimeLimit;
-
-	[Attribute("-1", uiwidget: UIWidgets.Slider, "Duration in seconds before the game mode launches. 0 = authority needs to manually start the gamemode, -1 = gamemode is started automatically and immediately!", params: "-1 864000 1", category: WB_GAME_MODE_CATEGORY)]
-	protected float m_fPreGamePeriod;
+	[Attribute("1", uiwidget: UIWidgets.CheckBox, "If checked the elapsed time will only advance if at least one player is present on the server.", category: WB_GAME_MODE_CATEGORY)]
+	protected bool m_bAdvanceTimeRequiresPlayers;
 
 	/*!
 		Elapsed time from the beginning of the game mode in seconds.
@@ -160,14 +167,15 @@ class SCR_BaseGameMode : BaseGameMode
 	[RplProp(condition: RplCondition.NoOwner)]
 	protected float m_fTimeElapsed;
 
+	//! If false, controls are disable for the time being.
+	[RplProp()]
+	protected bool m_bAllowControls = true;
+
 	//! Interval of time synchronization in seconds
 	protected float m_fTimeCorrectionInterval = 10.0;
 
 	//! Last timestamp of sent time correction for the server.
 	protected float m_fLastTimeCorrection;
-
-	[Attribute("1", uiwidget: UIWidgets.CheckBox, "Disable player controls on PRE and POST game states.", category: WB_GAME_MODE_CATEGORY)]
-	protected bool m_bAutoDisabledControls;
 
 	//-----------------------------------------
 	//
@@ -187,35 +195,8 @@ class SCR_BaseGameMode : BaseGameMode
 	//! Used on server to respawn player on their original position after reconnecting.
 	protected ref map<int, vector> m_mPlayerSpawnPosition = new ref map<int, vector>();
 
-	/*!
-		Returns whether pregame state is set to automatic.
-		If so it means that the game will start automatically once elapsed time > m_fPreGamePeriod by default
-		or automatically once CanStartGameMode() returns true - this can be implemented in derived modes.
-		\return True in case pregame mode is automatic.
-	*/
-	protected bool IsAutomaticPregameSet()
-	{
-		return m_fPreGamePeriod <= -1.0;
-	}
-
-	/*!
-		Returns whether pregame state is set to manual.
-		If so it meansa that the game will remain in pregame state indefinitely, until the server
-		decides to call StartGameMode(), which then propagates to all connected clients.
-		\return True in case pregame mode is manual.
-	*/
-	protected bool IsManualPregameSet()
-		{
-		return m_fPreGamePeriod > -1.0 && m_fPreGamePeriod <= 0.0;
-		}
-
-	/*!
-		\return Returns true if any pregame mode is set (automatic or manual), false otherwise.
-	*/
-	protected bool IsPregameSet()
-	{
-		return IsAutomaticPregameSet() || IsManualPregameSet();
-	}
+	//! Map of components per state.
+	protected ref map<SCR_EGameModeState, SCR_BaseGameModeStateComponent> m_mStateComponents = new map<SCR_EGameModeState, SCR_BaseGameModeStateComponent>();
 
 	/*!
 		Returns whether current game mode is running its game loop.
@@ -258,7 +239,11 @@ class SCR_BaseGameMode : BaseGameMode
 	*/
 	float GetTimeLimit()
 	{
-		return m_fTimeLimit;
+		SCR_BaseGameModeStateComponent stateComponent = GetStateComponent(SCR_EGameModeState.GAME);
+		if (stateComponent)
+			return stateComponent.GetDuration();
+
+		return 0.0;
 	}
 
 	/*!
@@ -286,7 +271,7 @@ class SCR_BaseGameMode : BaseGameMode
 	protected void OnGameStateChanged()
 	{
 		SCR_EGameModeState newState = GetState();
-		Print("SCR_BaseGameMode::OnGameStateChanged= " + newState.ToString());
+		Print("SCR_BaseGameMode::OnGameStateChanged = " + SCR_Enum.GetEnumName(SCR_EGameModeState, newState));
 
 		switch (newState)
 		{
@@ -345,7 +330,7 @@ class SCR_BaseGameMode : BaseGameMode
 	void OnSpawnPointUsed(SCR_SpawnPoint spawnPoint, int playerId)
 	{
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Server-only call that starts current session.
@@ -373,8 +358,8 @@ class SCR_BaseGameMode : BaseGameMode
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Server-only logic that implements whether we can transition from pre-game (if enabled)
-		to game loop.  Only applicable when IsAutomaticPregameSet().
-		Can be overriden to implement custom logic, e.g. minimum player count for each side.
+		to game loop. Requires an attached SCR_BaseGameModeStateComponent affiliated to the
+		SCR_EGameModeState.PREGAME state.
 
 		Does not apply to manual StartGameMode() call from the authority!
 
@@ -382,7 +367,11 @@ class SCR_BaseGameMode : BaseGameMode
 	*/
 	protected bool CanStartGameMode()
 	{
-		return m_fTimeElapsed >= m_fPreGamePeriod;
+		SCR_BaseGameModeStateComponent pregame = GetStateComponent(SCR_EGameModeState.PREGAME);
+		if (!pregame)
+			return true;
+
+		return pregame.CanAdvanceState(SCR_EGameModeState.GAME);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -415,7 +404,7 @@ class SCR_BaseGameMode : BaseGameMode
 		// Raise event for authority
 		OnGameStateChanged();
 	}
-	
+
 	/*!
 		Get end game data will return null if game has not ended
 		\return SCR_GameModeEndData m_pGameEndData the data this game mode ends with
@@ -452,7 +441,7 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		return Event_OnPlayerRegistered;
 	}
-	ScriptInvoker GetOnPlayerDisconnected()
+	ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> GetOnPlayerDisconnected()
 	{
 		return Event_OnPlayerDisconnected;
 	}
@@ -532,6 +521,61 @@ class SCR_BaseGameMode : BaseGameMode
 				SCR_GameModeStatistics.StopRecording();
 		}
 		#endif
+		
+		// Automatically restart the session on game mode end if enabled
+		if (IsAutoReload())
+		{
+			float delay = GetAutoReloadDelay();
+			GetGame().GetCallqueue().CallLater(RestartSession, delay * 1000.0, false);
+		}
+	}
+	
+	/*!
+		Returns delay of restart (if enabled) in seconds.
+	*/
+	protected float GetAutoReloadDelay()
+	{
+		if (System.IsCLIParam("autoreload"))
+		{
+			string sdur;
+			if (System.GetCLIParam("autoreload", sdur))
+			{
+				float fdur = sdur.ToFloat();
+				if (fdur > 0.0)
+					return fdur;
+			}
+		}
+		
+		return m_fAutoReloadTime;
+	}
+	
+	/*!
+		Returns true if session should automatically be restarted when finished.
+	*/
+	protected bool IsAutoReload()
+	{
+		if (m_fAutoReloadTime > 0.0)
+			return true;
+		
+		if (System.IsCLIParam("autoreload"))
+			return true;
+		
+		return false;
+	}
+	
+	/*!
+		Reloads current session (authority only).
+	*/
+	protected void RestartSession()
+	{
+		if (!IsMaster())
+			return;
+		
+		Print("SCR_BaseGameMode::RestartSession()");
+		if (GameStateTransitions.RequestServerReload())
+		{
+			Print("SCR_BaseGameMode::RestartSession() successfull server reload requested!");
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -588,8 +632,8 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		super.OnPlayerConnected(playerId);
 		Event_OnPlayerConnected.Invoke(playerId);
-
-		// TODO@LITERALLYANYONE: REMOVE THIS CRAP FOR THE LOVE OF GOD, THANKS
+		
+		// TODO: Please revisit and adjust this, this check results in some nasty branching and possible oversights/errors
 		// Wait for backend response if dedicated server is used and is not run without backend functionality
 		if (m_pRespawnSystemComponent && (RplSession.Mode() != RplMode.Dedicated || System.IsCLIParam("nobackend")))
 		{
@@ -621,22 +665,30 @@ class SCR_BaseGameMode : BaseGameMode
 		Called after a player is disconnected.
 		\param playerId PlayerId of disconnected player.
 	*/
-	protected override void OnPlayerDisconnected(int playerId)
+	protected override void OnPlayerDisconnected(int playerId, KickCauseCode cause)
 	{
-		super.OnPlayerDisconnected(playerId);
-		Event_OnPlayerDisconnected.Invoke(playerId);
+		super.OnPlayerDisconnected(playerId, cause);
+		Event_OnPlayerDisconnected.Invoke(playerId, cause);
 
 		if (m_pRespawnSystemComponent)
 			m_pRespawnSystemComponent.OnPlayerDisconnected(playerId);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 			comp.OnPlayerDisconnected(playerId);
-		
+
 		if (IsMaster())
 		{
 			IEntity controlledEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
 			if (controlledEntity)
+			{
+				if (SCR_ReconnectComponent.GetInstance() && SCR_ReconnectComponent.GetInstance().IsReconnectEnabled())
+				{
+					if (SCR_ReconnectComponent.GetInstance().OnPlayerDC(playerId, cause))	// if conditions to allow reconnect pass, skip the entity delete  
+						return;
+				}
+				
 				RplComponent.DeleteRplEntity(controlledEntity, false);
+			}
 		}
 	}
 
@@ -652,7 +704,7 @@ class SCR_BaseGameMode : BaseGameMode
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 			comp.OnPlayerRegistered(playerId);
-		
+
 		#ifdef GMSTATS
 		if (IsGameModeStatisticsEnabled())
 			SCR_GameModeStatistics.RecordConnection(playerId, GetGame().GetPlayerManager().GetPlayerName(playerId));
@@ -672,7 +724,7 @@ class SCR_BaseGameMode : BaseGameMode
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 			comp.OnPlayerSpawned(playerId, controlledEntity);
-				
+
 		#ifdef GMSTATS
 		if (IsGameModeStatisticsEnabled())
 		{
@@ -708,7 +760,7 @@ class SCR_BaseGameMode : BaseGameMode
 		// Dispatch events to children components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 			comp.OnPlayerKilled(playerId, player, killer);
-		
+
 		#ifdef GMSTATS
 		if (IsGameModeStatisticsEnabled())
 			SCR_GameModeStatistics.RecordDeath(player, killer);
@@ -756,7 +808,7 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		super.OnWorldPostProcess(world);
 		Event_OnWorldPostProcess.Invoke(world);
-		
+
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 			comp.OnWorldPostProcess(world);
 	};
@@ -796,7 +848,7 @@ class SCR_BaseGameMode : BaseGameMode
 		ChimeraCharacter character = ChimeraCharacter.Cast(entity);
 		if (character)
 			HandleOnCharacterDeath(character.GetCharacterController(), instigator);
-		
+
 		//--- If the entity is player, call OnPlayerKilled (only when it wasn't player to begin with, in which case OnPlayerKilled is called by game code)
 		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity);
 		if (playerID == 0)
@@ -812,7 +864,7 @@ class SCR_BaseGameMode : BaseGameMode
 			}
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	/*
 		Prior to a controllable entity being DELETED, this event is raised.
@@ -824,10 +876,10 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		super.OnControllableDeleted(entity);
 		Event_OnControllableDeleted.Invoke(entity);
-		
+
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 			comp.OnControllableDeleted(entity);
-		
+
 		//--- If the entity is player, call OnPlayerDeleted
 		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity);
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
@@ -879,7 +931,7 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		// Handler has prio in spawn logic
 		if (m_pRespawnHandlerComponent && !m_pRespawnHandlerComponent.CanPlayerSpawn(playerID))
-				return false;
+			return false;
 
 		// Respawn timers
 		if (m_RespawnTimerComponent)
@@ -931,6 +983,7 @@ class SCR_BaseGameMode : BaseGameMode
 	#ifdef GAME_MODE_DEBUG
 	static bool s_bDrawPlayerInfo = false;
 	static bool s_bDrawSelectionInfo = false;
+	static bool s_bDrawComponents = false;
 	static int s_iLoadout;
 	static int s_iFaction;
 	//------------------------------------------------------------------------------------------------
@@ -1048,33 +1101,53 @@ class SCR_BaseGameMode : BaseGameMode
 				break;
 		}
 
-		const string GAME_STATE_STR = "GameState: %!";
+		const string GAME_STATE_STR = "GameState: %1!";
 		DbgUI.Text(string.Format(IS_RUNNING_STR, gameState));
 
 		// Draw what flags are set for this game mode
 		const string DEBUG_FLAGS_SET = "ETestFlags: %1";
 		DbgUI.Text(string.Format(DEBUG_FLAGS_SET, m_eTestGameFlags.ToString()));
-
+		
 		// :)
 		DbgUI.Check("Draw RespawnSystemComponent Info", s_bDrawPlayerInfo);
 		DbgUI.Check("Draw RespawnSelection Info", s_bDrawSelectionInfo);
-
-		// Draw info about additional components
-		const string DEBUG_ADDITIONAL_GAMEMODE_COMPONENTS = "GameModeComponent Count: %1";
-		int compCount = 0;
-		if (m_aAdditionalGamemodeComponents)
-			compCount = m_aAdditionalGamemodeComponents.Count();
-
-		DbgUI.Text(string.Format(DEBUG_ADDITIONAL_GAMEMODE_COMPONENTS, compCount.ToString()));
-		if (compCount != 0)
+		DbgUI.Check("Draw Components Info", s_bDrawComponents);
+		
+		
+		if (s_bDrawComponents)
 		{
-			const string DEBUG_ADDITIONAL_COMPONENT = "GameModeComponent: %1";
-			foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+			// Draw info about additional components
+			const string DEBUG_ADDITIONAL_GAMEMODE_COMPONENTS = "GameModeComponent Count: %1";
+			int compCount = 0;
+			if (m_aAdditionalGamemodeComponents)
+				compCount = m_aAdditionalGamemodeComponents.Count();
+			
+			DbgUI.Text(string.Format(DEBUG_ADDITIONAL_GAMEMODE_COMPONENTS, compCount.ToString()));
+			if (compCount != 0)
 			{
-				DbgUI.Text(string.Format(DEBUG_ADDITIONAL_COMPONENT, comp));
+				const string DEBUG_ADDITIONAL_COMPONENT = "GameModeComponent: %1";
+				foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+				{
+					DbgUI.Text(string.Format(DEBUG_ADDITIONAL_COMPONENT, comp));
+				}
 			}
 		}
 
+		
+		if (IsMaster())
+		{
+			const string DEBUG_AUTO_RESTART = "AutoReload: %1";
+			DbgUI.Text(string.Format(DEBUG_AUTO_RESTART, IsAutoReload()));
+			
+			const string DEBUG_AUTO_RESTART_DELAY = "AutoReload Duration: %1";
+			DbgUI.Text(string.Format(DEBUG_AUTO_RESTART_DELAY, GetAutoReloadDelay()));
+			
+			if (DbgUI.Button("End Session"))
+				EndGameMode(SCR_GameModeEndData.CreateSimple(SCR_GameModeEndData.ENDREASON_EDITOR_FACTION_DRAW));
+			
+			if (DbgUI.Button("Restart Session"))
+				RestartSession();
+		}
 
 
 		// End
@@ -1084,7 +1157,7 @@ class SCR_BaseGameMode : BaseGameMode
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnPostFrame(IEntity owner, float timeSlice)
-	{
+	{		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1130,10 +1203,10 @@ class SCR_BaseGameMode : BaseGameMode
 			}
 		}
 	}
-	
+
 	#ifdef GMSTATS
 	private float m_fLastRecordTime;
-	
+
 	private float m_fLastFlushTime;
 	private float m_fFlushRecordInterval = 2500; // 2.5s
 	private void UpdateStatistics(IEntity owner)
@@ -1143,17 +1216,17 @@ class SCR_BaseGameMode : BaseGameMode
 		if (timeStamp > m_fLastRecordTime + SCR_GameModeStatistics.RECORD_INTERVAL_MS)
 		{
 			m_fLastRecordTime = timeStamp;
-			
+
 			PlayerManager pm = GetGame().GetPlayerManager();
 			array<int> players = {};
 			pm.GetPlayers(players);
-			
+
 			foreach (int pid : players)
 			{
 				IEntity ctrlEnt = pm.GetPlayerControlledEntity(pid);
 				if (!ctrlEnt)
 					continue;
-				
+
 				SCR_GameModeStatistics.RecordMovement(ctrlEnt, pid);
 			}
 		}
@@ -1171,29 +1244,70 @@ class SCR_BaseGameMode : BaseGameMode
 	}
 	#endif
 
+	/*!
+		Returns true if controls for local player should be disabled.
+	*/
+	bool GetAllowControls()
+	{
+		return m_bAllowControls;
+	}
+
+	/*!
+		Returns the desired target for the authority of whether controls should
+		be disabled or not, based on the current state, if any.
+	*/
+	protected bool GetAllowControlsTarget()
+	{
+		SCR_BaseGameModeStateComponent stateComponent = GetStateComponent(GetState());
+		if (stateComponent)
+			return stateComponent.GetAllowControls();
+
+		return true;
+	}
+
+	/*!
+		Returns state component for provided state or null if none.
+	*/
+	SCR_BaseGameModeStateComponent GetStateComponent(SCR_EGameModeState state)
+	{
+		if (!m_mStateComponents.Contains(state))
+			return null;
+
+		return m_mStateComponents[state];
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// TODO@AS: Small thing, but get rid of m_fTimeElapsed and use
 	// some sort of m_fStartTime and Replication.Time() instead!
 	override void EOnFrame(IEntity owner, float timeSlice)
-	{
+	{		
 		#ifdef GMSTATS
 		if (IsGameModeStatisticsEnabled())
 			UpdateStatistics(owner);
 		#endif
-		
+
 		// Allow to accumulate time in pre-game too.
-		bool isPregame = IsPregameSet() && GetState() == SCR_EGameModeState.PREGAME;
+ 		SCR_BaseGameModeStateComponent pregameComponent = GetStateComponent(SCR_EGameModeState.PREGAME);
+		bool isPregame = GetState() == SCR_EGameModeState.PREGAME;
 		// Increment elapsed time on every machine
 		bool isRunning = IsRunning();
 		if (isRunning || isPregame)
-			m_fTimeElapsed += timeSlice;
-
-		// Disable player controls if desired
-		// TODO@AS: This should be handled server-side and replicated to clients
-		// to prevent breaking this functionality, potential flaw
-		if (m_bAutoDisabledControls)
 		{
-			SetLocalControls(isRunning);
+			bool canAdvanceTime = true;
+
+			// Check if any players are present; if using "advance time requires players"
+			// we will only advance the time if at least one player is present;
+			// this is fairly easy to do, because dedicated (headless) server does not
+			// count as a player in the PlayerManager
+			if (m_bAdvanceTimeRequiresPlayers)
+			{
+				int playerCount = GetGame().GetPlayerManager().GetPlayerCount();
+				if (playerCount == 0)
+					canAdvanceTime = false;
+			}
+
+			if (canAdvanceTime)
+				m_fTimeElapsed += timeSlice;
 		}
 
 		// As the authority make corrections as needed
@@ -1205,23 +1319,46 @@ class SCR_BaseGameMode : BaseGameMode
 				m_fLastTimeCorrection = m_fTimeElapsed;
 			}
 
-			// Make sure to start the game when pre-game preiod is enabled
-			if (isPregame && !IsManualPregameSet())
+			// Transition from pre-game to game if possible
+			// Either fully automatic transition (no component)
+			// or state-driven transition based on component logic
+			if (isPregame && (!pregameComponent || pregameComponent.CanAdvanceState(SCR_EGameModeState.GAME)))
 			{
-				// Automatic handling checks condition
 				if (CanStartGameMode())
 					StartGameMode();
 			}
-			// Otherwise if game is bound by time limit, make sure to end on time limit
-			else if (isRunning && m_fTimeLimit > 0 && m_fTimeElapsed >= m_fTimeLimit)
+			else
 			{
-				// Clamp elapsed time to time limit
-				m_fTimeElapsed = Math.Clamp(m_fTimeElapsed, 0, m_fTimeLimit);
+				// Time limit end game transition to post-game if possible
+				if (IsRunning())
+				{
+					SCR_BaseGameModeStateComponent gameState = GetStateComponent(SCR_EGameModeState.GAME);
+					if (gameState && gameState.CanAdvanceState(SCR_EGameModeState.POSTGAME))
+					{
+						// Clamp time to maximum
+						m_fTimeElapsed = Math.Clamp(m_fTimeElapsed, 0, gameState.GetDuration());
 
-				SCR_GameModeEndData data = SCR_GameModeEndData.CreateSimple(EGameOverTypes.EDITOR_FACTION_DRAW); // TODO: Once FACTION_DRAW or TIME_LIMIT works..
-				EndGameMode(data);
+						// Terminate session
+						SCR_GameModeEndData data = SCR_GameModeEndData.CreateSimple(EGameOverTypes.EDITOR_FACTION_DRAW); // TODO: Once FACTION_DRAW or TIME_LIMIT works..
+						EndGameMode(data);
+					}
+				}
+			}
+
+			// Update controls state
+			bool shouldAllowControls = GetAllowControlsTarget();
+			if (shouldAllowControls != m_bAllowControls)
+			{
+				m_bAllowControls = shouldAllowControls;
+				Replication.BumpMe();
 			}
 		}
+
+
+		// Should we disable local player controls?
+		bool allowControls = GetAllowControls();
+		SetLocalControls(allowControls);
+
 		#ifdef GAME_MODE_DEBUG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_GAME_MODE))
 		{
@@ -1271,6 +1408,30 @@ class SCR_BaseGameMode : BaseGameMode
 			SCR_BaseGameModeComponent comp = SCR_BaseGameModeComponent.Cast(additionalComponents[i]);
 			m_aAdditionalGamemodeComponents.Insert(comp);
 		}
+
+		// Find and sort state components
+		array<Managed> stateComponents = new array<Managed>();
+		int stateCount = owner.FindComponents(SCR_BaseGameModeStateComponent, stateComponents);
+		for (int i = 0; i < stateCount; i++)
+		{
+			SCR_BaseGameModeStateComponent stateComponent = SCR_BaseGameModeStateComponent.Cast(stateComponents[i]);
+			SCR_EGameModeState state = stateComponent.GetAffiliatedState();
+			// Invalid state
+			if (state < 0)
+			{
+				Print("Skipping one of SCR_BaseGameStateComponent(s), invalid affiliated state!", LogLevel.ERROR);
+				continue;
+			}
+
+			if (m_mStateComponents.Contains(state))
+			{
+				string stateName = SCR_Enum.GetEnumName(SCR_EGameModeState, state);
+				Print("Skipping one of SCR_BaseGameStateComponent(s), duplicate component for state: " + stateName + "!", LogLevel.ERROR);
+				continue;
+			}
+
+			m_mStateComponents.Insert(state, stateComponent);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1307,13 +1468,13 @@ class SCR_BaseGameMode : BaseGameMode
 			DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_GAME_MODE);
 			s_DebugRegistered = false;
 		#endif
-		
+
 		#ifdef GMSTATS
 		if (SCR_GameModeStatistics.IsRecording())
 			SCR_GameModeStatistics.StopRecording();
 		#endif
 	}
-	
+
 	#ifdef GMSTATS
 	//! Should gamemode diagnostic statistics be enabled?
 	private bool IsGameModeStatisticsEnabled()
@@ -1321,9 +1482,9 @@ class SCR_BaseGameMode : BaseGameMode
 		// not authority
 		if (m_RplComponent && !m_RplComponent.IsMaster())
 			return false;
-		
+
 		return GetGame().InPlayMode();
 	}
 	#endif
-	
+
 };

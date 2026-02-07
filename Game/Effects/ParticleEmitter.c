@@ -7,10 +7,10 @@ class SCR_ParticleEmitterClass: GenericEntityClass
 	const int PLAYSTATE_FINISHED = 3;
 };
 
+
 class SCR_ParticleEmitter : GenericEntity
-{
-	static const int EMITTERS_MAX = SCR_ParticleAPI.EMITTERS_MAX;//This magic trick is necesarry to avoid compilation errors related to the usage of EMITTERS_MAX in this script
-	
+{	
+
 	//! Path to the particle effect file
 	[Attribute("", UIWidgets.ResourceNamePicker, "Path to the particle effect file", "ptc")]
 	private ResourceName m_EffectPath;
@@ -29,6 +29,187 @@ class SCR_ParticleEmitter : GenericEntity
 	
 	private int m_PlayState = SCR_ParticleEmitterClass.PLAYSTATE_STOPPED;
 	
+	
+	
+	
+	
+	//-----------------------------------------------------------------------------------------------------------------
+	//
+	//                                   Static methods for particle FX spawning
+	//
+	//-----------------------------------------------------------------------------------------------------------------
+	
+	/*!
+	Spawns an SCR_ParticleEmitter entity instance with a given particle effect at a given position.
+	
+	\param name     ResourceName of a particle effect (ptc file)
+	\param pos      Position of the entity to spawn (relative to the given parent, world position when parent is null)
+	\param rot      Optional euler angles of the entity to spawn
+	                (relative to the given parent, i.e. world position when parent is null)
+	\param parent   Optional parent entity, may be null.
+	                If not null, the new entity will be spawned in its hiearchy with auto-transform enabled.
+	\param boneID   Optional ID of a bone to attach the entity to. -1 for no bone. Only used when parent is not null.
+	\param play     Optional - true (default) to play the effect immediately after creation.
+	
+	\return The spawned entity, null if something went wrong.
+	*/
+	static SCR_ParticleEmitter Create(
+		ResourceName name, vector pos,
+		vector rot = "0 0 0", IEntity parent = null, int boneID = -1, bool play = true)
+	{
+		return CreateEx(SCR_ParticleEmitter, name, pos, rot, parent, boneID, play);
+	}
+	
+	/*!
+	Spawns an SCR_ParticleEmitter entity instance with a given particle effect as a child of given parent entity.
+	Convenience alternative for Create().
+	
+	\param name     ResourceName of a particle effect (ptc file)
+	\param parent   Parent entity
+	\param localPos Optional position of the entity to spawn (relative to the parent)
+	\param localRot Optional euler angles of the entity to spawn (relative to the given parent)
+	\param boneID   Optional ID of a bone to attach the entity to. -1 for no bone.
+	\param play     Optional - true (default) to play the effect immediately after creation.
+	
+	\return The spawned entity, null if something went wrong.
+	*/
+	static SCR_ParticleEmitter CreateAsChild(
+		ResourceName name, IEntity parent,
+		vector localPos = "0 0 0", vector localRot = "0 0 0", int boneID = -1, bool play = true)
+	{
+		return CreateAsChildEx(SCR_ParticleEmitter, name, parent, localPos, localRot, boneID, play);
+	}
+		
+	/*!
+	Spawns an SCR_ParticleEmitter entity instance with a given particle effect and transformation matrix.
+	The same as Create() but with transform param instead of position and rotation.
+	
+	\param name         ResourceName of a particle effect (ptc file)
+	\param transform    Entity transformation
+	                    (relative to the given parent, i.e. it's a world transform when parent is null)
+	\param parent       Optional parent entity, may be null.
+	                    If not null, the new entity will be spawned in its hiearchy with auto-transform enabled.
+	\param boneID       Optional ID of a bone to attach the entity to. -1 for none. Only used when parent is not null.
+	\param play         Optional - true (default) to play the effect immediately after creation.
+	
+	\return The spawned entity, null if something went wrong.
+	*/
+	static SCR_ParticleEmitter CreateWithTransform(
+		ResourceName name, vector transform[4],
+		IEntity parent = null, int boneID = -1, bool play = true)
+	{
+		return CreateWithTransformEx(SCR_ParticleEmitter, name, transform, parent, boneID, play);
+	}
+	
+	/*!
+	Spawns an SCR_ParticleEmitter entity instance with a given particle effect and transformation matrix as a child of
+	given parent entity.
+	Convenience alternative for CreateWithTransform() / the same as CreateAsChild() but with transformation matrix
+	instad of position and rotation.
+	
+	\param name         ResourceName of a particle effect (ptc file)
+	\param parent       Parent entity
+	\param transform    Local entity transformation matrix (transform relative to the parent)
+	\param boneID       Optional ID of a bone to attach the entity to. -1 for no bone.
+	\param play         Optional - true (default) to play the effect immediately after creation.
+	
+	\return The spawned entity, null if something went wrong.
+	*/
+	static SCR_ParticleEmitter CreateWithTransformAsChild(
+		ResourceName name, IEntity parent, vector transform[4],
+		int boneID = -1, bool play = true)
+	{
+		return CreateWithTransformAsChildEx(SCR_ParticleEmitter, name, parent, transform, boneID, play);
+	}
+	
+	/*!
+	The same as Create() but this one can spawn entities of different types.
+	\param type Type of the entity to spawn. Must be inherited from SCR_ParticleEmitter.
+	*/
+	static SCR_ParticleEmitter CreateEx(
+		typename type, ResourceName name, vector pos,
+		vector rot = "0 0 0", IEntity parent = null, int boneID = -1, bool play = true)
+	{
+		SCR_ParticleEmitter ent = SCR_ParticleEmitter.Cast(GetGame().SpawnEntity(type));
+		
+		if (!ent)
+		{
+			Debug.Error("Unable to spawn a particle effect. " + type + " does not inherit SCR_ParticleEmitter.");
+			return null;
+		}
+		
+		ent.m_DeleteOnFinish = true;
+		ent.SetPathToPTC(name);
+		ent.SetOrigin(pos);
+		ent.SetAngles(rot);
+		
+		if (parent)
+			parent.AddChild(ent, boneID);
+		
+		if (play)
+			ent.Play();
+		
+		return ent;
+	}
+	
+	/*!
+	The same as CreateAsChild() but this one can spawn entities of different types.
+	\param type Type of the entity to spawn. Must be inherited from SCR_ParticleEmitter.
+	*/
+	static SCR_ParticleEmitter CreateAsChildEx(
+		typename type, ResourceName name, IEntity parent,
+		vector localPos = "0 0 0", vector localRot = "0 0 0", int boneID = -1, bool play = true)
+	{
+		return CreateEx(type, name, localPos, localRot, parent, boneID, play);
+	}
+	
+	/*!
+	The same as CreateWithTransform() but this one can spawn entities of different types.
+	\param type Type of the entity to spawn. Must be inherited from SCR_ParticleEmitter.
+	*/
+	static SCR_ParticleEmitter CreateWithTransformEx(
+		typename type, ResourceName name, vector transform[4],
+		IEntity parent = null, int boneID = -1, bool play = true)
+	{
+		SCR_ParticleEmitter ent = SCR_ParticleEmitter.Cast(GetGame().SpawnEntity(type));
+		
+		if (!ent)
+		{
+			Debug.Error("Unable to spawn a particle effect. " + type + " does not inherit SCR_ParticleEmitter.");
+			return null;
+		}
+		
+		ent.m_DeleteOnFinish = true;
+		ent.SetPathToPTC(name);
+		ent.SetTransform(transform);
+		
+		if (parent)
+			parent.AddChild(ent, boneID);
+		
+		if (play)
+			ent.Play();
+		
+		return ent;
+	}
+	
+	/*!
+	The same as CreateWithTransformAsChild() but this one can spawn entities of different types.
+	\param type Type of the entity to spawn. Must be inherited from SCR_ParticleEmitter.
+	*/
+	static SCR_ParticleEmitter CreateWithTransformAsChildEx(
+		typename type, ResourceName name, IEntity parent, vector localTransform[4],
+		int boneID = -1, bool play = true)
+	{
+		return CreateWithTransformEx(type, name, localTransform, parent, boneID, play);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------------
+	
+	
+	
+	
+	
+	//-----------------------------------------------------------------------------------------------------------------	
 	void SetPathToPTC(ResourceName path)
 	{
 		m_EffectPath = path;
@@ -39,7 +220,7 @@ class SCR_ParticleEmitter : GenericEntity
 		return m_EffectPath;
 	}
 	
-	//------------------------------------------------------------------------------------------------
+	//-----------------------------------------------------------------------------------------------------------------
 	//! Returns whether the particle effect is playing
 	bool GetIsPlaying()
 	{
@@ -49,7 +230,7 @@ class SCR_ParticleEmitter : GenericEntity
 			return false;
 	}
 	
-	//------------------------------------------------------------------------------------------------
+	//-----------------------------------------------------------------------------------------------------------------
 	//! Returns whether the particle effect is paused
 	bool GetIsPaused()
 	{
@@ -59,10 +240,10 @@ class SCR_ParticleEmitter : GenericEntity
 			return false;
 	}
 	
-	//------------------------------------------------------------------------------------------------
+	//-----------------------------------------------------------------------------------------------------------------
 	//! Plays the particle effect
 	void Play()
-	{
+	{		
 		if (m_EffectPath == "")
 			return;
 		
@@ -88,33 +269,35 @@ class SCR_ParticleEmitter : GenericEntity
 		}
 	}
 	
-	//------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------
 	//! Pauses the playing particle effect
 	void Pause()
 	{
 		if (m_PlayState != SCR_ParticleEmitterClass.PLAYSTATE_PLAYING)
 			return;
 		
-		SCR_ParticleAPI.LerpAllEmitters(this, 0, EmitterParam.BIRTH_RATE);
-		SCR_ParticleAPI.LerpAllEmitters(this, 0, EmitterParam.BIRTH_RATE_RND);
+		Particles particles = GetParticles();
+		particles.SetParam(-1, EmitterParam.BIRTH_RATE, 0);
+		particles.SetParam(-1, EmitterParam.BIRTH_RATE_RND, 0);
 		
 		m_PlayState = SCR_ParticleEmitterClass.PLAYSTATE_PAUSED;
 	}
 	
-	//------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------
 	//! Unpauses the paused particle effect
 	void UnPause()
 	{
 		if (m_PlayState != SCR_ParticleEmitterClass.PLAYSTATE_PAUSED)
 			return;
 		
-		SCR_ParticleAPI.LerpAllEmitters(this, 1, EmitterParam.BIRTH_RATE);
-		SCR_ParticleAPI.LerpAllEmitters(this, 1, EmitterParam.BIRTH_RATE_RND);
+		Particles particles = GetParticles();
+		particles.MultParam(-1, EmitterParam.BIRTH_RATE, 1);
+		particles.MultParam(-1, EmitterParam.BIRTH_RATE_RND, 1);
 		
 		m_PlayState = SCR_ParticleEmitterClass.PLAYSTATE_PLAYING;
 	}
 	
-	//------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------
 	//! Stops the playing particle effect
 	void Stop()
 	{
@@ -122,7 +305,7 @@ class SCR_ParticleEmitter : GenericEntity
 		m_PlayState = SCR_ParticleEmitterClass.PLAYSTATE_STOPPED;
 	}
 	
-	//------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------
 	//! Called when the particle should be updated
 	//! \param timeSlice The amount of time that has passed since the last update
 	private void Update(float timeSlice)
@@ -141,7 +324,7 @@ class SCR_ParticleEmitter : GenericEntity
 						delete this;
 				}
 				else
-					RestartParticle();
+					GetParticles().Restart();
 			#else
 				m_PlayState = SCR_ParticleEmitterClass.PLAYSTATE_FINISHED;
 				if (m_DeleteOnFinish)
@@ -150,9 +333,9 @@ class SCR_ParticleEmitter : GenericEntity
 		}
 	}
 	
-	//------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------
 	#ifdef WORKBENCH
-		//------------------------------------------------------------------------------------------------
+		//------------------------------------------------------------------------------------------------------------
 		override void _WB_AfterWorldUpdate(float timeSlice)
 		{
 			if( m_EffectPath.Length() > 0 )
@@ -169,14 +352,14 @@ class SCR_ParticleEmitter : GenericEntity
 		}
 	#endif
 	
-	//------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------
 	//! Called every frame to update the particle effect
 	override void EOnFrame(IEntity owner, float timeSlice) //!EntityEvent.FRAME
 	{
 		Update(timeSlice);
 	}
 	
-	//------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------
 	//! Called when the particle emitter entity is initialized
 	override event void EOnInit(IEntity owner) //!EntityEvent.INIT
 	{
@@ -184,14 +367,14 @@ class SCR_ParticleEmitter : GenericEntity
 			Play();
 	}
 
-	//------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------
 	void SCR_ParticleEmitter(IEntitySource src, IEntity parent)
 	{
 		SetFlags(EntityFlags.ACTIVE | EntityFlags.VISIBLE, false);
 		SetEventMask(EntityEvent.FRAME | EntityEvent.INIT);
 	}
 	
-	//------------------------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------------------------------------
 	void ~SCR_ParticleEmitter()
 	{
 		SetObject(null, "");

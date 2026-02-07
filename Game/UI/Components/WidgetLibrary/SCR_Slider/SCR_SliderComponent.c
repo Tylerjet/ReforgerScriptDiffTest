@@ -19,7 +19,7 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 	[Attribute("1", UIWidgets.EditBox, "Multiplies the internal value in the text. With 100 and percentage format, value 1 is visualized as 100%")]
 	protected float m_fShownValueMultiplier;
 
-	[Attribute("SOUND_FE_ITEM_CHANGE")]
+	[Attribute(SCR_SoundEvent.SOUND_FE_ITEM_CHANGE)]
 	protected string m_sChangeSound;
 
 	protected TextWidget m_wText;

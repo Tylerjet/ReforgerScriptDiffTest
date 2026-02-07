@@ -41,6 +41,12 @@ class SCR_ButtonEffectOpacity : SCR_ButtonEffectWidgetBase
 	[Attribute()]
 	float m_fToggledOff;
 	
+	[Attribute()]
+	float m_fMouseEnter;
+	
+	[Attribute()]
+	float m_fMouseLeave;
+	
 	override void OnStateDefault(bool instant)
 	{
 		Apply(m_fDefault, instant);
@@ -96,10 +102,20 @@ class SCR_ButtonEffectOpacity : SCR_ButtonEffectWidgetBase
 		Apply(m_fToggledOff, instant);
 	}
 	
+	override void OnMouseEnter(bool instant)
+	{
+		Apply(m_fMouseEnter, instant);
+	}
+	
+	override void OnMouseLeave(bool instant)
+	{
+		Apply(m_fMouseLeave, instant);
+	}
+	
 	// Called when effect is disabled. Here you should stop all running effects.
 	override void OnDisabled()
 	{
-		WidgetAnimator.StopAnimation(m_wTarget, WidgetAnimationType.Opacity);
+		AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationOpacity);
 	}
 	
 	protected void Apply(float value, bool instant)
@@ -107,10 +123,12 @@ class SCR_ButtonEffectOpacity : SCR_ButtonEffectWidgetBase
 		if (m_wTarget)
 		{
 			if (!instant && m_fAnimationTime != 0)
-				WidgetAnimator.PlayAnimation(m_wTarget, WidgetAnimationType.Opacity, value, 1/m_fAnimationTime);
+			{
+				AnimateWidget.Opacity(m_wTarget, value, 1 / m_fAnimationTime);
+			}
 			else
 			{
-				WidgetAnimator.StopAnimation(m_wTarget, WidgetAnimationType.Opacity);
+				AnimateWidget.StopAnimation(m_wTarget, WidgetAnimationOpacity);
 				m_wTarget.SetOpacity(value);
 			}
 		}

@@ -30,6 +30,9 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	[Attribute("true")]
 	bool m_bShowBorderOnFocus;
 	
+	[Attribute("false")]
+	bool m_bNoBorderAnimation;
+	
 	[Attribute()]
 	bool m_bShowBorderOnHover;
 
@@ -43,7 +46,8 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	
 	// TODO: Rewrite - do not pass widget 
 	ref ScriptInvoker m_OnFocus = new ref ScriptInvoker();
-	
+	ref ScriptInvoker<Widget> m_OnFocusLost = new ref ScriptInvoker();
+		
 	// Arguments passed: SCR_ButtonBaseComponent, bool border shown
 	ref ScriptInvoker m_OnShowBorder = new ref ScriptInvoker();
 	
@@ -82,44 +86,33 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 		
 		return false;
 	}
-
-	// This coloring is unreliable. Disabled until events are fixed
-	/*
-	//------------------------------------------------------------------------------------------------
-	override bool OnMouseButtonDown(Widget w, int x, int y, int button)
-	{
-		if (!m_bCanBeToggled)
-			WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, m_BackgroundClicked, m_fAnimationRate);
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnMouseButtonUp(Widget w, int x, int y, int button)
-	{
-		if (!m_bCanBeToggled)
-			WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, m_BackgroundHovered, m_fAnimationRate);
-		
-		return false;
-	}
-	*/
 	
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		super.OnMouseEnter(w, x, y);
+				
 		if (m_bMouseOverToFocus)
 			return false;
 		
 		if (m_bShowBorderOnHover)
-			WidgetAnimator.PlayAnimation(m_wBorder, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
+		{
+			if (m_bNoBorderAnimation)
+				m_wBorder.SetOpacity(1);
+			else
+				AnimateWidget.Opacity(m_wBorder, 1, m_fAnimationRate, true);
+		}
 
 		if (!m_bUseColorization)
 			return false;
-				
+			
+		if (!m_wBackground)
+			return false;
+		
 		if (m_bIsToggled)
-			WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, m_BackgroundSelectedHovered, m_fAnimationRate);
+			AnimateWidget.Color(m_wBackground, m_BackgroundSelectedHovered, m_fAnimationRate);
 		else
-			WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, m_BackgroundHovered, m_fAnimationRate);
+			AnimateWidget.Color(m_wBackground, m_BackgroundHovered, m_fAnimationRate);
 		
 		return false;
 	}
@@ -128,21 +121,25 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
 		super.OnMouseLeave(w, enterW, x, y);
+				
 		if (m_bMouseOverToFocus)
 			return false;
 		
-		if (m_bUseColorization)
+		if (m_bUseColorization && m_wBackground)
 		{
 			if (m_bIsToggled)
-				WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, m_BackgroundSelected, m_fAnimationRate);
+				AnimateWidget.Color(m_wBackground, m_BackgroundSelected, m_fAnimationRate);
 			else
-				WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, m_BackgroundDefault, m_fAnimationRate);
+				AnimateWidget.Color(m_wBackground, m_BackgroundDefault, m_fAnimationRate);
 		}
 		
 		if (!m_bShowBorderOnHover || (m_bShowBorderOnFocus && GetGame().GetWorkspace().GetFocusedWidget() == m_wRoot))
 			return false;
 		
-		WidgetAnimator.PlayAnimation(m_wBorder, WidgetAnimationType.Opacity, 0, m_fAnimationRate);
+		if (m_bNoBorderAnimation)
+			m_wBorder.SetOpacity(0);
+		else
+			AnimateWidget.Opacity(m_wBorder, 0, m_fAnimationRate, true);
 		return false;
 	}
 	
@@ -151,7 +148,12 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	{
 		super.OnFocus(w, x, y);
 		if (m_bShowBorderOnFocus)
-			WidgetAnimator.PlayAnimation(m_wBorder, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
+		{
+			if (m_bNoBorderAnimation)
+				m_wBorder.SetOpacity(1);
+			else
+				AnimateWidget.Opacity(m_wBorder, 1, m_fAnimationRate, true);
+		}
 		
 		m_OnFocus.Invoke(m_wRoot);
 		
@@ -163,10 +165,15 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	{
 		super.OnFocusLost(w, x, y);
 		
+		m_OnFocusLost.Invoke(w);
+		
 		if (!m_bShowBorderOnFocus || (m_bShowBorderOnHover && WidgetManager.GetWidgetUnderCursor() == m_wRoot))
 			return false;
 		
-		WidgetAnimator.PlayAnimation(m_wBorder, WidgetAnimationType.Opacity, 0, m_fAnimationRate);
+		if (m_bNoBorderAnimation)
+			m_wBorder.SetOpacity(0);
+		else
+			AnimateWidget.Opacity(m_wBorder, 0, m_fAnimationRate, true);
 		return false;
 	}
 	
@@ -182,7 +189,7 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 		}
 		else if (m_bUseColorization)
 		{
-			WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, m_BackgroundClicked, m_fAnimationRate);
+			AnimateWidget.Color(m_wBackground, m_BackgroundClicked, m_fAnimationRate);
 			GetGame().GetCallqueue().CallLater(ColorizeBackground, m_fAnimationTime * 500 + 1, false, true);
 		}
 		m_OnClicked.Invoke(this);
@@ -224,7 +231,7 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	void ShowBorder(bool show, bool animate = true)
 	{		
 		if (animate)
-			WidgetAnimator.PlayAnimation(m_wBorder, WidgetAnimationType.Opacity, show, m_fAnimationRate);
+			AnimateWidget.Opacity(m_wBorder, show, m_fAnimationRate, true);
 		else if (m_wBorder)
 			m_wBorder.SetOpacity(show);
 		
@@ -263,10 +270,10 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 		}
 		
 		if (animate)
-			WidgetAnimator.PlayAnimation(m_wBackground, WidgetAnimationType.Color, color, m_fAnimationRate);
+			AnimateWidget.Color(m_wBackground, color, m_fAnimationRate);
 		else
 		{
-			WidgetAnimator.StopAnimation(m_wBackground, WidgetAnimationType.Color);
+			AnimateWidget.StopAnimation(m_wBackground, WidgetAnimationColor);
 			m_wBackground.SetColor(color);
 		}
 	}

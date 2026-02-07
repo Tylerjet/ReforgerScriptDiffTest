@@ -20,7 +20,7 @@ class BaseBuilding: GenericEntity
 	\param damage Damage value.
 	\param type Damage type.
 	\param pHitEntity Damaged entity.
-	\param outMat Hit position/direction/normal.
+	\param hitDirNorm Hit position/direction/normal.
 	\param damageSource Projectile entity.
 	\param damageSourceParent Damage source parent entity (soldier / vehicle).
 	\param colliderID Collider ID if exists otherwise enf::BAD_INDEX.

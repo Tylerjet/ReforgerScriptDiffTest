@@ -3,80 +3,87 @@ enum WizardScriptType
 {
 	Object = 0,
 	Entity = 1,
-	Component = 2
+	Component = 2,
 };
 
 //------------------------------------------------------------------------------------------------
 [WorkbenchPluginAttribute("Script Wizard", "Wizard for generating script files the easy way!", "CTRL+N", "", {"ScriptEditor"},"",0xf1c9)]
-class ScriptWizard: WorkbenchPlugin
+class ScriptWizard : WorkbenchPlugin
 {
 	// Generic options
-	const string SPLITTER = "//------------------------------------------------------------------------------------------------";
-	const string TAB = "\t";
-	const string SCRIPT_SCR_PREFIX = "SCR_";
-	const string PATH_ENTITIES = "scripts/Game/entities/";
-	const string PATH_COMPONENTS = "scripts/Game/components/";
-	const string PATH_OBJECTS = "scripts/Game/";
-	const string PATH_SCRIPTS_ROOT = "scripts/Game/";
-	const string DEFAULT_PARENT_ENTITY = "GenericEntity";
-	const string DEFAULT_PARENT_COMPONENT = "ScriptComponent";
-	const string DEFAULT_CATEGORY = "GameScripted/ScriptWizard";
-	const string DEFAULT_DESCRIPTION = "ScriptWizard generated script file.";
+	protected const string SPLITTER = "//------------------------------------------------------------------------------------------------";
+	protected const string TAB = "\t";
+	protected const string SCRIPT_SCR_PREFIX = "SCR_";
+	protected const string PATH_ENTITIES = "scripts/Game/entities/";
+	protected const string PATH_COMPONENTS = "scripts/Game/components/";
+	protected const string PATH_OBJECTS = "scripts/Game/";
+	protected const string PATH_SCRIPTS_ROOT = "scripts/Game/";
+	protected const string DEFAULT_PARENT_ENTITY = "GenericEntity";
+	protected const string DEFAULT_PARENT_COMPONENT = "ScriptComponent";
+	protected const string DEFAULT_CATEGORY = "GameScripted/ScriptWizard";
+	protected const string DEFAULT_DESCRIPTION = "ScriptWizard generated script file.";
 
 	// Documentation
-	const string DOXY_BEGIN = "/*!";
-	const string DOXY_END = "*/";
+	protected const string DOXY_BEGIN = "/*!";
+	protected const string DOXY_END = "*/";
 
 	// Init, Frame
-	const string FUNCTION_FRAME = "override void EOnFrame(IEntity owner, float timeSlice)";
-	const string FUNCTION_INIT = "override void EOnInit(IEntity owner)";
-	const string FUNCTION_POSTINIT = "override void OnPostInit(IEntity owner)";
+	protected const string FUNCTION_FRAME = "override void EOnFrame(IEntity owner, float timeSlice)";
+	protected const string FUNCTION_INIT = "override void EOnInit(IEntity owner)";
+	protected const string FUNCTION_POSTINIT = "override void OnPostInit(IEntity owner)";
 
 	// Constructors
-	const string FUNCTION_OBJECT_CONSTRUCTOR = "void %1()";
-	const string FUNCTION_COMPONENT_CONSTRUCTOR = "void %1(IEntityComponentSource src, IEntity ent, IEntity parent)";
-	const string FUNCTION_ENTITY_CONSTRUCTOR = "void %1(IEntitySource src, IEntity parent)";
+	protected const string FUNCTION_OBJECT_CONSTRUCTOR = "void %1()";
+	protected const string FUNCTION_COMPONENT_CONSTRUCTOR = "void %1(IEntityComponentSource src, IEntity ent, IEntity parent)";
+	protected const string FUNCTION_ENTITY_CONSTRUCTOR = "void %1(IEntitySource src, IEntity parent)";
 
 	// Entity EventMask/Flags
-	const string FUNCTION_ENTITY_EVENTMASK = "SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);";
-	const string FUNCTION_ENTITY_EVENTFLAGS = "SetFlags(EntityFlags.ACTIVE, true);";
+	protected const string FUNCTION_ENTITY_EVENTMASK = "SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);";
+	protected const string FUNCTION_ENTITY_EVENTFLAGS = "SetFlags(EntityFlags.ACTIVE, true);";
 
 	// Component EventMask/Flags
-	const string FUNCTION_COMPONENT_EVENTMASK = "SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);";
-	const string FUNCTION_COMPONENT_EVENTFLAGS = "owner.SetFlags(EntityFlags.ACTIVE, true);";
+	protected const string FUNCTION_COMPONENT_EVENTMASK = "SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);";
+	protected const string FUNCTION_COMPONENT_EVENTFLAGS = "owner.SetFlags(EntityFlags.ACTIVE, true);";
 
 	// Destructor
-	const string FUNCTION_DESTRUCTOR = "void ~%1()";
+	protected const string FUNCTION_DESTRUCTOR = "void ~%1()";
 
 	// Script file extension
-	const string SCRIPT_EXTENSION = ".c";
+	protected const string SCRIPT_EXTENSION = ".c";
 
 	// Line 0, 1...
-	const string SCRIPT_ATTRIBUTE = "[EntityEditorProps(category: \"%1\", description: \"%2\")]";
-	const string SCRIPT_CLASSCLASS = "class %1Class : %2Class";
-	const string SCRIPT_CLASSCLASS_NOINH = "class %1Class";
-	const string SCRIPT_CLASSINH = "class %1 : %2";
-	const string SCRIPT_CLASS_NOINH = "class %1";
+	protected const string SCRIPT_ATTRIBUTE = "[EntityEditorProps(category: \"%1\", description: \"%2\")]";
+	protected const string SCRIPT_CLASSCLASS = "class %1Class : %2Class";
+	protected const string SCRIPT_CLASSCLASS_NOINH = "class %1Class";
+	protected const string SCRIPT_CLASSINH = "class %1 : %2";
+	protected const string SCRIPT_CLASS_NOINH = "class %1";
 
 	// TODO: WizardScriptType instead of ParamEnum
 	[Attribute("0", UIWidgets.ComboBox, "Type of script. Object = empty class, Entity inherits from GenericEntity by default, Component inherits from ScriptComponent by default.", "", ParamEnumArray.FromEnum(WizardScriptType))]
-	int ScriptType;
-	[Attribute("MyClass", UIWidgets.EditBox, "Name of class to create (No extension, no prefixes! Example: CommonEntity, SuperComponent, MyFancyThing, ...)" )]
-	string ScriptName;
-	[Attribute("", UIWidgets.EditBox, "Parent class of this script. If empty, automatically selects by specified class type. (Valid examples: GenericEntity, ScriptComponent, ...)" )]
-	string ScriptParent;
-	[Attribute("", UIWidgets.EditBox, "If specified, script file will be created in scripts/Game/<ScriptPath/OfYourDesire/>. Leave empty for default placement.", "")]
-	string ScriptPath;
-	[Attribute("$ArmaReforger:", UIWidgets.EditBox, "File system in which new script will be created.", "")]
-	string ScriptAddon;
-	[Attribute("1", UIWidgets.CheckBox, "Should the \'_SCR\' prefix be used? If true, it's automatically added to the name.", "")]
-	bool UseSCRPrefix;
-	[Attribute("1", UIWidgets.CheckBox, "Should constructor, destructor, EOnInit and EOnFrame be automatically generated? Not valid for ScriptType of value Object.", "")]
-	bool GenerateFunctions;
-	[Attribute("0", UIWidgets.CheckBox, "Should this class be set as active by default? Only works when GenerateFunctions is set to true.", "")]
-	bool GenerateActiveFlag;
+	protected int ScriptType;
 
-	private ScriptEditor scriptEditor = null;
+	[Attribute("MyClass", UIWidgets.EditBox, "Name of class to create (No extension, no prefixes! Example: CommonEntity, SuperComponent, MyFancyThing, ...)" )]
+	protected string ScriptName;
+
+	[Attribute("", UIWidgets.EditBox, "Parent class of this script. If empty, automatically selects by specified class type. (Valid examples: GenericEntity, ScriptComponent, ...)" )]
+	protected string ScriptParent;
+
+	[Attribute("", UIWidgets.EditBox, "If specified, script file will be created in scripts/Game/<ScriptPath/OfYourDesire/>. Leave empty for default placement.", "")]
+	protected string ScriptPath;
+
+	[Attribute("$ArmaReforger:", UIWidgets.EditBox, "File system in which new script will be created.", "")]
+	protected string ScriptAddon;
+
+	[Attribute("1", UIWidgets.CheckBox, "Should the \'_SCR\' prefix be used? If true, it's automatically added to the name.", "")]
+	protected bool UseSCRPrefix;
+
+	[Attribute("1", UIWidgets.CheckBox, "Should constructor, destructor, EOnInit and EOnFrame be automatically generated? Not valid for ScriptType of value Object.", "")]
+	protected bool GenerateFunctions;
+
+	[Attribute("0", UIWidgets.CheckBox, "Should this class be set as active by default? Only works when GenerateFunctions is set to true.", "")]
+	protected bool GenerateActiveFlag;
+
+	protected ScriptEditor scriptEditor;
 
 
 	//------------------------------------------------------------------------------------------------
@@ -116,17 +123,19 @@ class ScriptWizard: WorkbenchPlugin
 
 			if (ScriptPath != string.Empty)
 			{
-				path = PATH_SCRIPTS_ROOT+ScriptPath;
+				path = PATH_SCRIPTS_ROOT + ScriptPath;
 				array<string> folders = new array<string>();
 				ScriptPath.Split("/", folders, true);
 
 				int foldersCount = folders.Count();
-				string currentFolderPath = ScriptAddon+PATH_SCRIPTS_ROOT;
+				string currentFolderPath = ScriptAddon + PATH_SCRIPTS_ROOT;
 				for (int i = 0; i < foldersCount; i++)
 				{
 					currentFolderPath += folders[i];
+
 					if (!FileIO.FileExist(currentFolderPath))
 						FileIO.MakeDirectory(currentFolderPath);
+
 					if (!currentFolderPath.EndsWith("/"))
 						currentFolderPath += "/";
 				}
@@ -134,8 +143,9 @@ class ScriptWizard: WorkbenchPlugin
 			}
 
 			if (!path.EndsWith("/"))
-					path += "/";
-			path = string.Format("%1%2%3%4", ScriptAddon ,path, name, SCRIPT_EXTENSION);
+				path += "/";
+
+			path = string.Format("%1%2%3%4", ScriptAddon, path, name, SCRIPT_EXTENSION);
 
 			// Already exists
 			if (FileIO.FileExist(path))
@@ -165,9 +175,7 @@ class ScriptWizard: WorkbenchPlugin
 		FileHandle file = FileIO.OpenFile(path, FileMode.WRITE);
 
 		if (!file)
-		{
 			return -1;
-		}
 
 		// Only entites and components need the ClassClass
 		if (type != WizardScriptType.Object)
@@ -177,7 +185,7 @@ class ScriptWizard: WorkbenchPlugin
 			file.FPrintln(attribute);
 
 			// class MyClass : MyClassClass
-			string classClassLine= "";
+			string classClassLine;
 			if (!classParent.IsEmpty())
 				classClassLine = string.Format(SCRIPT_CLASSCLASS, className, classParent);
 			else
@@ -186,8 +194,8 @@ class ScriptWizard: WorkbenchPlugin
 			file.FPrintln(classClassLine);
 			// {}
 			file.FPrintln("{");
-			file.FPrintln("\t// prefab properties here");
-			file.FPrintln("}");
+			file.FPrintln(TAB + "// prefab properties here");
+			file.FPrintln("};");
 
 			// Empty line
 			file.FPrintln("");
@@ -220,47 +228,47 @@ class ScriptWizard: WorkbenchPlugin
 
 			if (type != WizardScriptType.Object)
 			{
-				file.FPrintln(TAB+SPLITTER);
+				file.FPrintln(TAB + SPLITTER);
 				// frame function
-				string frame = TAB+FUNCTION_FRAME;
+				string frame = TAB + FUNCTION_FRAME;
 				file.FPrintln(frame);
 
 				// {}
-				file.FPrintln(TAB+"{");
-				file.FPrintln(TAB+"}");
+				file.FPrintln(TAB + "{");
+				file.FPrintln(TAB + "}");
 
 				// postInit function in components
 				if (ScriptType == WizardScriptType.Component)
 				{
 					// empty line
 					file.FPrintln("");
-					file.FPrintln(TAB+SPLITTER);
+					file.FPrintln(TAB + SPLITTER);
 
 					// method header
-					string postInit = TAB+FUNCTION_POSTINIT;
+					string postInit = TAB + FUNCTION_POSTINIT;
 					file.FPrintln(postInit);
 					//{
-					file.FPrintln(TAB+"{");
+					file.FPrintln(TAB + "{");
 
 					// SetEventMask and SetFlags
-					file.FPrintln(TAB+TAB+FUNCTION_COMPONENT_EVENTMASK);
+					file.FPrintln(TAB + TAB + FUNCTION_COMPONENT_EVENTMASK);
 					if (GenerateActiveFlag)
-						file.FPrintln(TAB+TAB+FUNCTION_COMPONENT_EVENTFLAGS);
+						file.FPrintln(TAB + TAB + FUNCTION_COMPONENT_EVENTFLAGS);
 
 					//}
-					file.FPrintln(TAB+"}");
+					file.FPrintln(TAB + "}");
 				}
 
 				// empty line
 				file.FPrintln("");
-				file.FPrintln(TAB+SPLITTER);
+				file.FPrintln(TAB + SPLITTER);
 				// init function
-				string init = TAB+FUNCTION_INIT;
+				string init = TAB + FUNCTION_INIT;
 				file.FPrintln(init);
 
 				// {}
-				file.FPrintln(TAB+"{");
-				file.FPrintln(TAB+"}");
+				file.FPrintln(TAB + "{");
+				file.FPrintln(TAB + "}");
 
 			}
 
@@ -271,20 +279,20 @@ class ScriptWizard: WorkbenchPlugin
 
 					// empty line
 					file.FPrintln("");
-					file.FPrintln(TAB+SPLITTER);
+					file.FPrintln(TAB + SPLITTER);
 					// constructor
-					string constructor = string.Format(TAB+FUNCTION_ENTITY_CONSTRUCTOR, className);
+					string constructor = string.Format(TAB + FUNCTION_ENTITY_CONSTRUCTOR, className);
 					file.FPrintln(constructor);
 
 					// {}
-					file.FPrintln(TAB+"{");
+					file.FPrintln(TAB + "{");
 
 					// SetEventMask and SetFlags
-					file.FPrintln(TAB+TAB+FUNCTION_ENTITY_EVENTMASK);
+					file.FPrintln(TAB + TAB + FUNCTION_ENTITY_EVENTMASK);
 					if (GenerateActiveFlag)
-						file.FPrintln(TAB+TAB+FUNCTION_ENTITY_EVENTFLAGS);
+						file.FPrintln(TAB + TAB + FUNCTION_ENTITY_EVENTFLAGS);
 
-					file.FPrintln(TAB+"}");
+					file.FPrintln(TAB + "}");
 
 					break;
 
@@ -293,28 +301,28 @@ class ScriptWizard: WorkbenchPlugin
 
 					// empty line
 					file.FPrintln("");
-					file.FPrintln(TAB+SPLITTER);
+					file.FPrintln(TAB + SPLITTER);
 					// constructor
-					string constructor = string.Format(TAB+FUNCTION_COMPONENT_CONSTRUCTOR, className);
+					string constructor = string.Format(TAB + FUNCTION_COMPONENT_CONSTRUCTOR, className);
 					file.FPrintln(constructor);
 
 					// {}
-					file.FPrintln(TAB+"{");
-					file.FPrintln(TAB+"}");
+					file.FPrintln(TAB + "{");
+					file.FPrintln(TAB + "}");
 
 					break;
 
 				case WizardScriptType.Object:
 
 					// empty line
-					file.FPrintln(TAB+SPLITTER);
+					file.FPrintln(TAB + SPLITTER);
 					// constructor
-					string constructor = string.Format(TAB+FUNCTION_OBJECT_CONSTRUCTOR, className);
+					string constructor = string.Format(TAB + FUNCTION_OBJECT_CONSTRUCTOR, className);
 					file.FPrintln(constructor);
 
 					// {}
-					file.FPrintln(TAB+"{");
-					file.FPrintln(TAB+"}");
+					file.FPrintln(TAB + "{");
+					file.FPrintln(TAB + "}");
 
 					break;
 
@@ -324,20 +332,20 @@ class ScriptWizard: WorkbenchPlugin
 
 			// empty line
 			file.FPrintln("");
-			file.FPrintln(TAB+SPLITTER);
+			file.FPrintln(TAB + SPLITTER);
 			// destructor
-			string destructor = string.Format(TAB+FUNCTION_DESTRUCTOR, className);
+			string destructor = string.Format(TAB + FUNCTION_DESTRUCTOR, className);
 			file.FPrintln(destructor);
 
 			// {}
-			file.FPrintln(TAB+"{");
-			file.FPrintln(TAB+"}");
+			file.FPrintln(TAB + "{");
+			file.FPrintln(TAB + "}");
 		}
 
 		// Empty line
 		file.FPrintln("");
 
-		file.FPrintln("}");
+		file.FPrintln("};");
 
 		file.CloseFile();
 
@@ -345,7 +353,7 @@ class ScriptWizard: WorkbenchPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private void ResetValues()
+	protected void ResetValues()
 	{
 		ScriptType = 0;
 		ScriptName = "MyClass";
@@ -359,4 +367,3 @@ class ScriptWizard: WorkbenchPlugin
 	{
 	}
 };
-

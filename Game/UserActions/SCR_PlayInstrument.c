@@ -9,17 +9,15 @@ class SCR_PlayInstrument : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
 	{		
-		if (!AudioSystem.IsSoundPlayed(m_AudioHandle))
-			AudioSystem.TerminateSound(m_AudioHandle);
-				
-		// Play sound
-		ref array<string> signalName = new array<string>;
-		ref array<float> signalValue = new array<float>;
-		vector mat[4];
+		SoundComponent soundComponent = SoundComponent.Cast(pOwnerEntity.FindComponent(SoundComponent));
 		
-		mat[3] = pOwnerEntity.GetOrigin();
+		if (!soundComponent)
+			return;
 		
-		m_AudioHandle = AudioSystem.PlayEvent(m_SoundProject, "SOUND_PLAY_INSTRUMENT", mat, signalName, signalValue);
+		if (!soundComponent.IsFinishedPlaying(m_AudioHandle))
+			soundComponent.Terminate(m_AudioHandle);
+						
+		m_AudioHandle = soundComponent.SoundEvent(SCR_SoundEvent.SOUND_PLAY_INSTRUMENT);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -31,7 +29,7 @@ class SCR_PlayInstrument : ScriptedUserAction
 	
 	void ~SCR_PlayInstrument()
 	{
-		// Tesminate sound
+		// Terminate sound
 		AudioSystem.TerminateSound(m_AudioHandle);
 	}
 };

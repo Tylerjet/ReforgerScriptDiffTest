@@ -82,6 +82,13 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 			array<BaseInventoryStorageComponent> pStorages = new array<BaseInventoryStorageComponent>();
 			array<IEntity> pItems = new array<IEntity>();
 			pStorage.GetOwnedStorages( pStorages, 1, false );
+
+			if (!ClothNodeStorageComponent.Cast(pStorage) || pStorages.IsEmpty())
+			{
+				pStorage.GetAll(pItemsInStorage);
+				return;
+			}
+			
 			foreach ( BaseInventoryStorageComponent pStor : pStorages )
 			{
 				if (! pStor )
@@ -93,10 +100,18 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_InventoryStorageLootUI( BaseInventoryStorageComponent storage, ELoadoutArea slotID = ELoadoutArea.ELA_None, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null, GenericEntity character = null )
+	void SCR_InventoryStorageLootUI(
+		BaseInventoryStorageComponent storage,
+		ELoadoutArea slotID = ELoadoutArea.ELA_None,
+		SCR_InventoryMenuUI menuManager = null,
+		int iPage = 0,
+		array<BaseInventoryStorageComponent> aTraverseStorage = null,
+		GenericEntity character = null,
+		int rows = 6,
+		int cols = 6)
 	{
-		m_iMaxRows = 6;
-		m_iMaxColumns = 6;
+		m_iMaxRows = rows;
+		m_iMaxColumns = cols;
 		m_iMatrix = new SCR_Matrix( m_iMaxColumns, m_iMaxRows );
 		SetSlotAreaID( slotID );
 		m_Character = character;

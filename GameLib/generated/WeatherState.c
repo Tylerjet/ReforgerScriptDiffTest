@@ -4,7 +4,7 @@ Do not modify, this script is generated
 ===========================================
 */
 
-class WeatherState
+class WeatherState: ScriptAndConfig
 {
 	/*!
 	Gets state ID (index inside states array)
@@ -18,6 +18,7 @@ class WeatherState
 	Get start variant name ID
 	*/
 	proto external string GetStartVariantName();
+	proto external int GetStartVariantIndex();
 	/*!
 	Get duration min range (in-game hours)
 	*/
@@ -46,4 +47,5 @@ class WeatherState
 	Gets UI icon resourcename path.
 	*/
 	proto external ResourceName GetIconPath();
+	proto external int GetNumTransitions();
 };

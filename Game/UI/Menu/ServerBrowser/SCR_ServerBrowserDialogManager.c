@@ -316,10 +316,33 @@ class SCR_ServerBrowserDialogManager
 		m_OnCancel.Invoke();
 	}
 	
+	protected ref ScriptInvoker Event_OnCloseAll = new ScriptInvoker();
+	
 	//------------------------------------------------------------------------------------------------
-	protected void OnDialogClose()
+	protected void InvokeOnCloseAll()
+	{
+		if (!Event_OnCloseAll)
+			Event_OnCloseAll = new ScriptInvoker();
+		
+		Event_OnCloseAll.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnCloseAll()
+	{
+		if (!Event_OnCloseAll)
+			Event_OnCloseAll = new ScriptInvoker();
+		
+		return Event_OnCloseAll;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDialogClose(SCR_ConfigurableDialogUi dialog)
 	{
 		m_OnDialogClose.Invoke();
+		
+		if (m_CurrentDialog == dialog)
+			InvokeOnCloseAll();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -413,11 +436,21 @@ class SCR_ServerBrowserDialogManager
 	protected void DisplayRestricetedModList()
 	{
 		array<ref SCR_WorkshopItem> items = m_ModManager.GetRoomItemsScripted(); 
-				
-		array <ref SCR_WorkshopItem> restrictedMods = SCR_AddonManager.SelectItemsOr(items, EWorkshopItemQuery.RESTRICTED);
+		m_CurrentDialog = SCR_AddonListDialog.CreateRestrictedAddonsJoinServer(items);
 		
-		SCR_AddonListDialog addonDialog = SCR_AddonListDialog.CreateRestrictedAddonsJoinServer(restrictedMods);
-		addonDialog.SetMessage("");
+		SCR_ReportedAddonsDialog reportedDialog = SCR_ReportedAddonsDialog.Cast(m_CurrentDialog);
+		
+		// Handle cancel reports done 
+		if (reportedDialog)
+			reportedDialog.GetOnAllReportsCanceled().Insert(OnAllReportsCanceled);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Call this when all reports from dialog are cancled to clear invoker actions and display download dialog 
+	protected void OnAllReportsCanceled(SCR_ReportedAddonsDialog dialog)
+	{
+		dialog.GetOnAllReportsCanceled().Remove(OnAllReportsCanceled);
+		DisplayModsToUpdate();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -432,7 +465,7 @@ class SCR_ServerBrowserDialogManager
 			act.m_OnChanged.Insert(OnDownloadActionChange);
 			act.m_OnCompleted.Insert(OnModDownloaded);
 			
-			// Insert download action 
+			// Insert download action OnReportedModsFix
 			SCR_WorkshopItemActionDownload downloadAction = SCR_WorkshopItemActionDownload.Cast(act);
 			if (downloadAction)
 				downloads.Insert(downloadAction);

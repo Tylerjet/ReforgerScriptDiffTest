@@ -14,28 +14,42 @@ class SCR_TriggerTask: SCR_EditorTask
 	
 	protected void OnTriggerActivate()
 	{
+		if (!GetTaskManager())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
 		if (m_iTaskCompletionType != EEditorTaskCompletionType.AUTOMATIC)
 			return;
 		
 		if (!m_bOnTriggerDeactivate)
 		{
 			if (m_bToFail)
-				GetTaskManager().FailTask(this);
+				supportEntity.FailTask(this);
 			else
-				GetTaskManager().FinishTask(this);
+				supportEntity.FinishTask(this);
 		}
 	}
 	protected void OnTriggerDeactivate()
 	{
+		if (!GetTaskManager())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		if (!supportEntity)
+			return;
+		
 		if (m_iTaskCompletionType != EEditorTaskCompletionType.AUTOMATIC)
 			return;
 		
 		if (m_bOnTriggerDeactivate)
 		{
 			if (m_bToFail)
-				GetTaskManager().FailTask(this);
+				supportEntity.FailTask(this);
 			else
-				GetTaskManager().FinishTask(this);
+				supportEntity.FinishTask(this);
 		}
 	}
 	

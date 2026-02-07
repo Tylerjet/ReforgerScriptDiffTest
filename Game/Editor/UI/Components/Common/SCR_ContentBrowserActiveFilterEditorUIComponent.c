@@ -37,13 +37,13 @@ class SCR_ContentBrowserActiveFilterEditorUIComponent: ScriptedWidgetComponent
 	
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
-		WidgetAnimator.PlayAnimation(m_wBorder, WidgetAnimationType.Opacity, 1, 5);
+		AnimateWidget.Opacity(m_wBorder, 1, 5);
 		return false;
 	}
 	
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
-		WidgetAnimator.PlayAnimation(m_wBorder, WidgetAnimationType.Opacity, 0, 5);
+		AnimateWidget.Opacity(m_wBorder, 0, 5);
 		return false;
 	}
 	

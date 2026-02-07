@@ -239,7 +239,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		if (character.IsInVehicle())
 			return true;
 
-		if (character.GetCharacterController().GetIsInspectionMode())
+		if (character.GetCharacterController().GetInspect())
 			return true;
 
 		return false;
@@ -264,6 +264,22 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	protected override event bool CanContextChange(UserActionContext currentContext, UserActionContext newContext)
 	{
+		// Setting null context might be desirable in certain cases when state should be cleared, see below:
+		if (!newContext)
+		{
+			// Allow clearing if no entity is controlled, to prevent leaking of contexts
+			if (!m_pControlledEntity)
+				return true;
+		
+			// Allow clearing of context if controlled entity is destroyed, at this point interaction should begone
+			DamageManagerComponent dmg = DamageManagerComponent.Cast(m_pControlledEntity.FindComponent(DamageManagerComponent));
+			if (dmg && dmg.IsDestroyed())
+				return true;
+			
+			// Otherwise continue with the usual
+		}
+		
+		
 		// Check whether we are still in range
 		if (currentContext && m_pControlledEntity)
 		{
@@ -294,6 +310,57 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	/*!
+		Returns true if nearby action contexts should be shown when
+		display mode is set to automatic freelook mode.
+	*/
+	protected bool ShouldBeEnabledInFreelook(ChimeraCharacter character)
+	{
+		if (!character)
+			return false;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return false;
+		
+		// When freelook is enabled manually, enable the display
+		if (!controller.IsFreeLookEnforced() && controller.IsFreeLookEnabled())
+			return true;
+		
+		
+		// Inspection is priority
+		if (controller.GetInspect())
+			return true;
+		
+		// When forced, avoid displaying in certain cases
+		
+		// Suppress display when getting in our out
+		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
+		if (compartmentAccess)
+		{
+			if (compartmentAccess.IsGettingIn() || compartmentAccess.IsGettingOut())
+				return false;
+		}
+		
+		// Supress display when in a vehicle while in 3rd person
+		if (character.IsInVehicle())
+		{
+			if (controller.IsInThirdPersonView())
+				return false;
+		}
+		
+		// Supress display when falling
+		if (controller.IsFalling())
+			return false;
+		
+		// Or climbing
+		if (controller.IsClimbing())
+			return false;
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected bool ShouldBeEnabled(SCR_NearbyContextDisplayMode displayMode, ChimeraCharacter character, bool playerCameraOnly = true)
 	{
 		// Disallow when character is none
@@ -308,6 +375,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 				return false;
 		}
 		
+		// Handle different display mode cases
 		switch (displayMode)
 		{
 			// Always off
@@ -334,6 +402,9 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			// When in freelook
 			case SCR_NearbyContextDisplayMode.ON_FREELOOK:
 			{
+				if (!ShouldBeEnabledInFreelook(character))
+					return false;
+				
 				return character.GetCharacterController().IsFreeLookEnabled();
 			}
 		}
@@ -346,7 +417,29 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 	override array<IEntity> GetManualOverrideList(IEntity owner, out vector referencePoint)
 	{
 		CameraBase camera = GetGame().GetCameraManager().CurrentCamera();
-		referencePoint = camera.GetOrigin() + camera.GetWorldTransformAxis(2);
+		vector rayDir = camera.GetWorldTransformAxis(2);
+		vector rayStart = camera.GetOrigin();
+		referencePoint = rayStart + rayDir;
+		
+		// Inspection correction
+		ChimeraCharacter character = ChimeraCharacter.Cast(m_pControlledEntity);
+		if (character)
+		{
+			// During inspection (of a weapon)
+			CharacterControllerComponent controller = character.GetCharacterController();
+			if (controller.GetInspect() && controller.GetInspectCurrentWeapon())
+			{
+				// Assume that while in inspection, weapon is tilted and its
+				// left side is pointed towards the player camera
+				IEntity inspectedEntity = controller.GetInspectEntity();
+				
+				vector origin = inspectedEntity.GetOrigin();
+				vector normal = -inspectedEntity.GetWorldTransformAxis(0);
+				
+				referencePoint = SCR_Math3D.IntersectPlane(rayStart, rayDir, origin, normal);
+				// Shape.CreateSphere(COLOR_RED, ShapeFlags.ONCE, referencePoint, 0.01);
+			}
+		}
 
 		return m_aInspectedEntities;
 	}
@@ -354,19 +447,48 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	protected void HandleInspection(notnull ChimeraCharacter character, float timeSlice)
 	{
-		if (character.GetCharacterController().GetIsInspectionMode())
+		if (character.GetCharacterController().GetInspect())
 		{
 			SetManualCollectionOverride(true);
 			m_aInspectedEntities.Clear();
-
-			// Insert all items we can be interested in
-			// TODO@AS: Include sights and other attachments
-			BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(character.FindComponent(BaseWeaponManagerComponent));
-			if (weaponManager)
+			
+			// Weapon is the priority if inspected, including all attachements
+			CharacterControllerComponent ctrlComp = character.GetCharacterController();
+			if (ctrlComp.GetInspectCurrentWeapon())
 			{
-				BaseWeaponComponent weapon = weaponManager.GetCurrentWeapon();
-				if (weapon)
-					m_aInspectedEntities.Insert(weapon.GetOwner());
+				// Insert all items we can be interested in
+				BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(character.FindComponent(BaseWeaponManagerComponent));
+				if (weaponManager)
+				{
+					BaseWeaponComponent weapon = weaponManager.GetCurrentWeapon();
+					if (weapon)
+					{
+						m_aInspectedEntities.Insert(weapon.GetOwner());
+						
+						array<AttachmentSlotComponent> attachments = {};
+						weapon.GetAttachments(attachments);
+						
+						foreach(AttachmentSlotComponent attachment : attachments)
+						{
+							IEntity attachedEntity = attachment.GetAttachedEntity();
+							if (attachedEntity)
+								m_aInspectedEntities.Insert(attachedEntity);
+						}
+						
+						BaseMagazineComponent magazineComp = weapon.GetCurrentMagazine();
+						if (magazineComp)
+							m_aInspectedEntities.Insert(magazineComp.GetOwner());
+					}
+				}
+			}
+			else
+			{
+				// Whatever else is inspected kicks in
+				IEntity inspectedItem = ctrlComp.GetInspectEntity();
+				if (inspectedItem)
+				{
+					m_aInspectedEntities.Insert(inspectedItem);
+				}
 			}
 		}
 		else
@@ -540,9 +662,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 					m_fCurrentProgress = 0.0;
 					
 					// Interruption event
-					ScriptedUserAction scriptedAction = ScriptedUserAction.Cast(m_pLastUserAction);
-					if (scriptedAction)
-						scriptedAction.CancelAction(character);
+					character.DoCancelObjectAction(m_pLastUserAction);
 				}
 				
 				// Reset state

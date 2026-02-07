@@ -18,17 +18,29 @@ class SCR_AIInspectWeapon: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{				
-		if (!m_Controller || !m_Controller.CanSetInspectionMode())
+		if (!m_Controller)
+			return ENodeResult.FAIL;
+		
+		BaseWeaponManagerComponent pWpnManager = m_Controller.GetWeaponManagerComponent();
+		if (!pWpnManager)
+			return ENodeResult.FAIL;
+		
+		BaseWeaponComponent pWpn = pWpnManager.GetCurrent();
+		if (!pWpn)
+			return ENodeResult.FAIL;
+		
+		IEntity pWpnEnt = pWpn.GetOwner();
+		if (!m_Controller.CanInspect(pWpnEnt))
 			return ENodeResult.FAIL;
 		
 		if (!m_bStopInspecting)
 		{
-			m_Controller.SetInspectionMode(true);
-			m_Controller.SetInspectionState(m_fInspectionState);
+			m_Controller.SetInspect(pWpnEnt);
+			m_Controller.SetInspectState(m_fInspectionState);
 		}
 		else
 		{
-			m_Controller.SetInspectionMode(false);
+			m_Controller.SetInspect(null);
 		}
 		
 		return ENodeResult.SUCCESS;
@@ -58,9 +70,9 @@ class SCR_AIInspectWeapon: AITaskScripted
 		
 		m_bAborted = true;
 		
-		if (!m_Controller || !m_Controller.CanSetInspectionMode())
+		if (!m_Controller || !m_Controller.GetInspect())
 			return;
 		
-		m_Controller.SetInspectionMode(false);
+		m_Controller.SetInspect(null);
 	}
 };

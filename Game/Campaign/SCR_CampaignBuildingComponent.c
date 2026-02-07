@@ -271,7 +271,7 @@ class SCR_CampaignBuildingComponent : ScriptComponent
 			// Step 1. Get slot information about the slot
 			// ----------------------------------------------------
 			ResourceName resName = m_aSlotEntities[i].GetPrefabData().GetPrefabName();
-						
+			
 			// Get slot data
 			array<ref SCR_CampaignSlotComposition> slotDataArray = faction.GetSlotResource(GetCompositionType(resName));
 			if (slotDataArray.IsEmpty())
@@ -548,7 +548,7 @@ class SCR_CampaignBuildingComponent : ScriptComponent
 	// Get the composition build at the slot.
 	protected bool FindComposition(notnull IEntity ent)
 	{					
-		IEntity parent = SCR_Global.GetMainParent(ent, true);
+		IEntity parent = SCR_EntityHelper.GetMainParent(ent, true);
 			
 		if (!parent.FindComponent(SCR_SlotCompositionComponent))
 		    return true;

@@ -7,23 +7,20 @@ enum EServiceStatus
 
 class SCR_ServicesStatusDialogUI : DialogUI
 {
-	// STATIC to prevent close/open and allow for another update
-	protected static int s_iLastUpdateTick;
-	protected static const ref map<string, ServiceStatusItem> SERVICE_STATUSES = new map<string, ServiceStatusItem>();
-
 	protected TextWidget m_wLastUpdate;
 	protected string m_sLastUpdate;
 	protected Widget m_wLegend;
 
 	protected SCR_ServicesStatusDialogComponent m_ServicesStatusDialogComponent;
 
-	protected static const int S_REFRESH_TIMEOUT = 5000;
+	protected static const int REFRESH_TIMEOUT = 5000;
+	protected static const int LAST_UPDATED_REFRESH_RATE = 5000;
+	protected static const int PING_REFRESH_RATE = 100;
+	protected static const int PING_EXPIRE_DATE = 60000;
+	protected static const int BACKEND_READY_REFRESH_RATE = 1000;
 
-	protected static const string S_SERVICE_MAIN = "MAIN_SERVICE";
-	// all these values MUST be lowercase
-	protected static const string S_SERVICE_PROFILE = "game-identity";
-	protected static const string S_SERVICE_MULTIPLAYER = "game-api";
-	protected static const string S_SERVICE_WORKSHOP = "reforger-workshop-api";
+	protected static const string OK_STATUS = "ok";
+	protected static const string ERROR_STATUS = "error";
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -51,7 +48,7 @@ class SCR_ServicesStatusDialogUI : DialogUI
 		if (m_Cancel)
 		{
 			m_Cancel.m_OnActivated.Remove(OnCancel);
-			m_Cancel.m_OnActivated.Insert(RefreshServicesStatus);
+			m_Cancel.m_OnActivated.Insert(OnRefresh);
 		}
 
 		InputManager inputManager = GetGame().GetInputManager();
@@ -68,14 +65,14 @@ class SCR_ServicesStatusDialogUI : DialogUI
 			Print("No SCR_ServicesStatusDialogComponent component found | " + __FILE__ + ": " + __LINE__, LogLevel.WARNING);
 
 		SetLegend();
-		RefreshServicesStatus();
+		OnRefresh();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuHide()
 	{
 		if (m_Cancel && m_Cancel.m_OnActivated)
-			m_Cancel.m_OnActivated.Remove(RefreshServicesStatus);
+			m_Cancel.m_OnActivated.Remove(OnRefresh);
 
 		InputManager inputManager = GetGame().GetInputManager();
 		if (inputManager)
@@ -103,51 +100,70 @@ class SCR_ServicesStatusDialogUI : DialogUI
 
 			ImageWidget iconWidget = ImageWidget.Cast(legendWidget.FindAnyWidget("Icon"));
 			if (iconWidget)
-				m_ServicesStatusDialogComponent.SetStatusImage(iconWidget, legendStatuses[i]);
+				m_ServicesStatusDialogComponent.SetStatusImageAndColor(iconWidget, legendStatuses[i]);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void RefreshServicesStatus()
+	//! refresh service statuses
+	//! refresh UI through ServicesStatusDialogComponent
+	protected void OnRefresh()
 	{
 		if (!m_ServicesStatusDialogComponent)
+		{
+			m_Cancel.SetVisible(false, false);
 			return;
-
-		RefreshServiceStatusItems();
-		array<EServiceStatus> statuses = {};
-		statuses.Insert(GetEnumStatus(S_SERVICE_PROFILE));
-		statuses.Insert(GetEnumStatus(S_SERVICE_MULTIPLAYER));
-		statuses.Insert(GetEnumStatus(S_SERVICE_WORKSHOP));
-
-		int i;
-		m_ServicesStatusDialogComponent.SetServiceState("Profile", statuses[i++]);
-		m_ServicesStatusDialogComponent.SetServiceState("Multiplayer", statuses[i++]);
-		m_ServicesStatusDialogComponent.SetServiceState("Workshop", statuses[i++]);
+		}
 
 		EServiceStatus generalStatus = EServiceStatus.RUNNING; // General Status reporting! o7
-		if (statuses.Contains(EServiceStatus.ERROR))
-			generalStatus = EServiceStatus.ERROR;
-		else if (statuses.Contains(EServiceStatus.WARNING))
-			generalStatus = EServiceStatus.WARNING;
+		string motd;
 
-		// Main Status & MOTD
-		ServiceStatusItem mainStatus = SERVICE_STATUSES.Get(S_SERVICE_MAIN);
-		if (mainStatus)
+		if (CanRefresh())
 		{
-			if (mainStatus.Status().IsEmpty())
-				generalStatus = EServiceStatus.WARNING;
+			SCR_ServicesStatusHelper.RefreshPing();
+			m_ServicesStatusDialogComponent.SetPing(0); // sets the " ... " value to indicate value refresh
+			RefreshPingAndItsUI();
 
-			m_ServicesStatusDialogComponent.SetMOTD(mainStatus.Message());
+			SCR_ServicesStatusHelper.RefreshStatuses();
 		}
 		else
 		{
-			m_ServicesStatusDialogComponent.SetMOTD();
+			m_ServicesStatusDialogComponent.SetPing(SCR_ServicesStatusHelper.GetPingValue());
 		}
+
+		// Main Status & MOTD
+		ServiceStatusItem mainStatus = SCR_ServicesStatusHelper.GetMainStatus();
+		if (!mainStatus || mainStatus.Status().IsEmpty())
+		{
+			generalStatus = EServiceStatus.ERROR;
+			m_ServicesStatusDialogComponent.SetAllServicesState(generalStatus);
+		}
+		else
+		{
+			motd = mainStatus.Message();
+
+			EServiceStatus status;
+			array<EServiceStatus> statuses = {};
+			foreach (SCR_ServicesStatusDialogComponent_Service serviceInfo : m_ServicesStatusDialogComponent.GetAllServices())
+			{
+				status = GetEnumStatus(serviceInfo.m_sServiceId);
+				m_ServicesStatusDialogComponent.SetServiceState(serviceInfo.m_sId, status);
+				statuses.Insert(status);
+			}
+
+			if (statuses.Contains(EServiceStatus.ERROR))
+				generalStatus = EServiceStatus.ERROR;
+			else if (statuses.Contains(EServiceStatus.WARNING))
+				generalStatus = EServiceStatus.WARNING;
+		}
+
+		m_ServicesStatusDialogComponent.SetMOTD(motd);
 
 		if (m_wImgTopLine)
 			m_ServicesStatusDialogComponent.SetStatusImageColor(m_wImgTopLine, generalStatus);
+
 		if (m_wImgTitleIcon)
-			m_ServicesStatusDialogComponent.SetStatusImage(m_wImgTitleIcon, generalStatus);
+			m_ServicesStatusDialogComponent.SetStatusImageAndColor(m_wImgTitleIcon, generalStatus);
 
 		if (m_Cancel)
 			m_Cancel.SetEnabled(false);
@@ -156,10 +172,24 @@ class SCR_ServicesStatusDialogUI : DialogUI
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void RefreshPingAndItsUI()
+	{
+		if (SCR_ServicesStatusHelper.IsPingReady())
+		{
+			m_ServicesStatusDialogComponent.SetPing(SCR_ServicesStatusHelper.GetPingValue());
+			return;
+		}
+
+		if (!SCR_ServicesStatusHelper.IsPinging())
+			SCR_ServicesStatusHelper.RefreshPing();
+
+		GetGame().GetCallqueue().CallLater(RefreshPingAndItsUI, PING_REFRESH_RATE, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void RefreshLastUpdated()
 	{
-		int secondsSinceUpdate;
-		if (CanRefresh(secondsSinceUpdate) && m_Cancel && !m_Cancel.IsEnabled())
+		if (CanRefresh() && m_Cancel && !m_Cancel.IsEnabled())
 		{
 			m_Cancel.SetEnabled(true);
 		}
@@ -167,54 +197,32 @@ class SCR_ServicesStatusDialogUI : DialogUI
 		GetGame().GetCallqueue().Remove(RefreshLastUpdated);
 		if (m_wLastUpdate)
 		{
-			m_wLastUpdate.SetTextFormat(m_sLastUpdate, (secondsSinceUpdate / 60));
-			GetGame().GetCallqueue().CallLater(RefreshLastUpdated, 1000);
+			m_wLastUpdate.SetTextFormat(m_sLastUpdate, SCR_ServicesStatusHelper.GetPingAge() / 60000);
+			GetGame().GetCallqueue().CallLater(RefreshLastUpdated, LAST_UPDATED_REFRESH_RATE);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \param secondsSinceUpdate optional
 	//! \return true if enough time has passed
-	protected bool CanRefresh(out int secondsSinceUpdate = 0)
+	protected static bool CanRefresh()
 	{
-		secondsSinceUpdate = Math.Round((float)(System.GetTickCount() - s_iLastUpdateTick) / 1000);
-		return secondsSinceUpdate * 1000 >= S_REFRESH_TIMEOUT;
-	}
+		if (!SCR_ServicesStatusHelper.IsBackendReady())
+			return false;
 
-	//------------------------------------------------------------------------------------------------
-	protected void RefreshServiceStatusItems()
-	{
-		if (!CanRefresh())
-			return;
+		if (!SCR_ServicesStatusHelper.DidPingHappen())
+			return true;
 
-		BackendApi backendAPI = GetGame().GetBackendApi();
-		if (!backendAPI)
-			return;
+		if (SCR_ServicesStatusHelper.IsPinging())
+			return false;
 
-		SERVICE_STATUSES.Clear();
-		SERVICE_STATUSES.Insert(S_SERVICE_MAIN, backendAPI.GetMainStatus());
-
-		string nameLC;
-		ServiceStatusItem item;
-		for (int i, cnt = backendAPI.GetStatusCount(); i < cnt; i++)
-		{
-			item = backendAPI.GetStatusItem(i);
-			if (!item)
-				continue;
-
-			nameLC = item.Name();
-			nameLC.ToLower();
-			SERVICE_STATUSES.Set(nameLC, item);
-		}
-
-		s_iLastUpdateTick = System.GetTickCount();
+		return SCR_ServicesStatusHelper.GetPingAge() >= REFRESH_TIMEOUT;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected EServiceStatus GetEnumStatus(string wantedItemName)
 	{
-		wantedItemName.ToLower();
-		ServiceStatusItem serviceItem = SERVICE_STATUSES.Get(wantedItemName);
+		ServiceStatusItem serviceItem = SCR_ServicesStatusHelper.GetStatusByName(wantedItemName);
 		if (!serviceItem)
 			return EServiceStatus.WARNING;
 
@@ -226,12 +234,69 @@ class SCR_ServicesStatusDialogUI : DialogUI
 	{
 		status.ToLower();
 
-		if (status == "ok")
+		if (status == OK_STATUS)
 			return EServiceStatus.RUNNING;
 
-		if (status == "error")
+		if (status == ERROR_STATUS)
 			return EServiceStatus.ERROR;
 
 		return EServiceStatus.WARNING;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// the waiting-for-display logic should happen in MainMenuUI, the refresh logic in here
+	static void OpenIfServicesAreNotOK()
+	{
+		// returns false even if enabled but without internet connection for now
+		if (!SCR_ServicesStatusHelper.IsBackendEnabled())
+		{
+			// GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ServicesStatusDialog);
+			return;
+		}
+
+		if (SCR_ServicesStatusHelper.IsPinging())
+		{
+			GetGame().GetCallqueue().CallLater(OpenIfServicesAreNotOK, PING_REFRESH_RATE); // waiting for the ping to be done
+			return;
+		}
+
+		if (!SCR_ServicesStatusHelper.DidPingHappen() || SCR_ServicesStatusHelper.GetPingAge() > PING_EXPIRE_DATE)
+		{
+			if (!SCR_ServicesStatusHelper.IsBackendReady())
+			{
+				GetGame().GetCallqueue().CallLater(OpenIfServicesAreNotOK, BACKEND_READY_REFRESH_RATE); // check later if backend is ready
+				return;
+			}
+
+			SCR_ServicesStatusHelper.RefreshPing();
+			GetGame().GetCallqueue().CallLater(OpenIfServicesAreNotOK, PING_REFRESH_RATE);
+			return;
+		}
+
+		SCR_ServicesStatusHelper.RefreshStatuses();
+		bool isOK = true;
+		ServiceStatusItem mainStatus = SCR_ServicesStatusHelper.GetMainStatus();
+
+		if (!mainStatus || mainStatus.Status() != OK_STATUS)
+		{
+			isOK = false;
+		}
+		else
+		{
+			array<ServiceStatusItem> statusItems = {};
+			SCR_ServicesStatusHelper.GetStatuses(statusItems);
+
+			foreach (ServiceStatusItem statusItem : statusItems)
+			{
+				if (statusItem.Status() != OK_STATUS)
+				{
+					isOK = false;
+					break;
+				}
+			}
+		}
+
+		if (!isOK)
+			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ServicesStatusDialog);
 	}
 };

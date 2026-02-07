@@ -72,19 +72,7 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 		
 		m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalDay, m_iDay);
 	}
-		
-	//------------------------------------------------------------------------------------------------
-	//! Get wristwatch prefab name 
-	//! \return returns wristwatch prefab ResourceName
-	ResourceName GetWatchPrefab()
-	{		
-		EntityPrefabData prefabData = GetOwner().GetPrefabData();		
-		if (!prefabData)
-			return string.Empty;
 			
-		return prefabData.GetPrefabName();
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	//! Update state of wristwatch -> active/inactive
 	protected void UpdateWristwatchState()
@@ -132,15 +120,7 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 			
 		super.ModeClear(mode);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void ActivateAction()
-	{
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast( m_CharacterOwner.FindComponent(SCR_CharacterControllerComponent) );	
-		if (controller)		
-			controller.SetGadgetRaisedModeWanted(!m_bFocused); 
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	override EGadgetType GetType()
 	{
@@ -149,6 +129,12 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeRaised()
+	{
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool IsUsingADSControls()
 	{
 		return true;
 	}

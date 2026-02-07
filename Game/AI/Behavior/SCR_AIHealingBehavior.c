@@ -18,27 +18,26 @@ class SCR_AIHealBehavior : SCR_AIBehaviorBase
 	//-------------------------------------------------------------------
 	
 	//priority should be between normal Move and AttackMove and replaced by enum later, maybe evaluated dynamicly
-	void SCR_AIHealBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, IEntity entityToHeal, bool allowHealMove, float priority = PRIORITY_BEHAVIOR_HEAL)
+	void SCR_AIHealBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, IEntity entityToHeal, bool allowHealMove, float priority = PRIORITY_BEHAVIOR_HEAL)
     {
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Heal.bt";
         m_eType = EAIActionType.HEAL;	
 		m_EntityToHeal = entityToHeal;
 		m_fPriority = priority;
+		m_fTimeCreated_ms = GetGame().GetWorld().GetWorldTime();
+		m_fPriorityDelay_ms = Math.RandomFloat(PRIORITY_DELAY_MIN_MS, PRIORITY_DELAY_MAX_MS);
 		
 		SCR_AIUtilityComponent aiUtilComp = SCR_AIUtilityComponent.Cast(utility);
-		if (aiUtilComp)
+		if (!aiUtilComp)
+			return;
+		IEntity owner =	aiUtilComp.m_OwnerEntity;
+		if (owner)
 		{
-			m_DamageManager = aiUtilComp.m_DamageManager;
+			m_DamageManager = ScriptedDamageManagerComponent.Cast(owner.FindComponent(ScriptedDamageManagerComponent));
 		}
 		
 		if (m_DamageManager)
 			m_DamageManager.GetOnDamageOverTimeRemoved().Insert(OnDamageOverTimeRemoved);
-		
-		if (!utility)
-			return;
-		
-		m_fTimeCreated_ms = GetGame().GetWorld().GetWorldTime();
-		m_fPriorityDelay_ms = Math.RandomFloat(PRIORITY_DELAY_MIN_MS, PRIORITY_DELAY_MAX_MS);
 	}
 	
 	void ~SCR_AIHealBehavior()

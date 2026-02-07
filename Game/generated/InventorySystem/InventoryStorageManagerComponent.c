@@ -101,18 +101,20 @@ class InventoryStorageManagerComponent: GameComponent
 	
 	// callbacks
 	
-	// Callback when item is added (will be performed locally after server completed the Insert/Move operation)
+	//! Callback when item is added (will be performed locally after server completed the Insert/Move operation)
 	event protected void OnItemAdded(BaseInventoryStorageComponent storageOwner, IEntity item);
-	// Callback when item is removed (will be performed locally after server completed the Remove/Move operation)
+	//! Callback when item is removed (will be performed locally after server completed the Remove/Move operation)
 	event protected void OnItemRemoved(BaseInventoryStorageComponent storageOwner, IEntity item);
-	// Will be called when new storage is registered at manager
+	//! Will be called when new storage is registered at manager
 	event protected void OnStorageAdded(BaseInventoryStorageComponent storage);
-	// Will be called when storage is unregistered from manager
+	//! Will be called when storage is unregistered from manager
 	event protected void OnStorageRemoved(BaseInventoryStorageComponent storage);
-	// Override this method and fill in storagesToAdd array if you have some storages you'd like to register to manager as owned at initialization time
+	//! Override this method and fill in storagesToAdd array if you have some storages you'd like to register to manager as owned at initialization time
 	event protected void FillInitialStorages(out array<BaseInventoryStorageComponent> storagesToAdd);
-	// Override this method and fill in prefabsToSpawn array if you have some items you'd like to store in inventory at initialization time
+	//! Override this method and fill in prefabsToSpawn array if you have some items you'd like to store in inventory at initialization time
 	event protected void FillInitialPrefabsToStore(out array<ResourceName> prefabsToSpawn);
+	//! Virtual method that allows verification of item removal as a result of move operation on inventory level
+	event protected bool ShouldForbidRemoveByInstigator(InventoryStorageManagerComponent instigatorManager, BaseInventoryStorageComponent fromStorage, IEntity item);
 };
 
 /** @}*/

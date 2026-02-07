@@ -23,7 +23,7 @@ class SnapAndOrientToTerrainPlugin: WorkbenchPlugin
 		{
 			IEntity entity = api.GetSelectedEntity(i);
 			entity.GetWorldTransform(transform);
-			if (SCR_Global.SnapAndOrientToTerrain(transform, world))
+			if (SCR_TerrainHelper.SnapAndOrientToTerrain(transform, world))
 			{
 				parent = api.SourceToEntity(api.EntityToSource(entity).GetParent());
 				if (parent)

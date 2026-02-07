@@ -25,9 +25,9 @@ class SCR_PowerPoleSlot : SCR_PowerPoleSlotBase
 	//------------------------------------------------------------------------------------------------
 	override void DrawDebugShapes(inout array<ref Shape> debugShapes, IEntity parent) 
 	{
-		Shape shape = Shape.CreateSphere(ARGB(255, 0, 255, 0), ShapeFlags.NOOUTLINE, parent.CoordToParent(m_vSlotA), 0.05);
+		Shape shape = Shape.CreateSphere(ARGB(128, 0, 255, 0), ShapeFlags.TRANSP, parent.CoordToParent(m_vSlotA), 0.04);
 		debugShapes.Insert(shape);
-		shape = Shape.CreateSphere(ARGB(255, 255, 0, 0), ShapeFlags.NOOUTLINE, parent.CoordToParent(m_vSlotB), 0.05);
+		shape = Shape.CreateSphere(ARGB(128, 255, 0, 0), ShapeFlags.TRANSP, parent.CoordToParent(m_vSlotB), 0.04);
 		debugShapes.Insert(shape);
 	}
 };
@@ -64,7 +64,7 @@ class SCR_PowerPoleSlotSingle : SCR_PowerPoleSlotBase
 	//------------------------------------------------------------------------------------------------
 	override void DrawDebugShapes(inout array<ref Shape> debugShapes, IEntity parent) 
 	{
-		Shape shape = Shape.CreateSphere(ARGB(255, 0, 255, 0), ShapeFlags.NOOUTLINE, parent.CoordToParent(m_vSlotA), 0.1);
+		Shape shape = Shape.CreateSphere(ARGB(128, 0, 255, 0), ShapeFlags.TRANSP, parent.CoordToParent(m_vSlotA), 0.04);
 		debugShapes.Insert(shape);
 	}
 };

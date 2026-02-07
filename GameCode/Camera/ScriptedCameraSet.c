@@ -105,9 +105,10 @@ class ScriptedCameraItemResult
 	vector		m_CameraTM[4];			//!< transformation matrix - pos + orient of the camera
 	float 		m_fFOV;					//!< fov absolute value override
 	float		m_fNearPlane;			//!< nearplane distance
-	float 		m_fPositionModelSpace;  //!< 0.0 position is in heading space, 1.0 position is in model space
+	float 		m_fPositionModelSpace;  //!< 0.0 position is in heading space, 1.0 position is in model space, 2.0 position is in world space
 	float 		m_fDistance;			//!< camera distance (external cameras only)
 	float 		m_fUseHeading;			//!< 0..1 (0 uses direct dir returned, 1 uses heading from player)
+	float		m_fShoulderDist;		//!< -1..1 (-1 or 1 when shoulder transition is finished, inbetween when transitioning)
 	
 	int 		m_iDirectBone;			//!< -1 no bone, >= 0 - bone index camera is bound to, m_CameraTM is offset to the bone 
 	EDirectBoneMode m_iDirectBoneMode;

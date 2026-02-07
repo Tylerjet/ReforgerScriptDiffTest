@@ -12,8 +12,7 @@ Do not modify, this script is generated
 enum EMapAreaType
 {
 	AT_TREE,
-	AT_OTHER,
-	AT_COUNT
+	AT_OTHER
 };
 
 /** @}*/

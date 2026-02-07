@@ -151,20 +151,6 @@ class TestHarness : Managed
 	proto native static void Begin();
 	//! Finalizes the testing process.
 	proto native static void End();
-	//! Attempts to start up a process with given CLI command. Returns process
-	//! handle.
-	proto native static ProcessHandle ProcRun(string cmd);
-	/*!
-	Attempts to kill the process of given handle. Closes the handle. Returns true
-	when the process really transitioned from running to closed state.
-	*/
-	proto native static bool ProcKill(ProcessHandle handle);
-	//! Queries the active flag on the process handle.
-	proto native static int ProcWait(ProcessHandle handle, int to);
-	//! Waits for the process to complete. Takes timeout value in milliseconds.
-	proto native static bool ProcActive(ProcessHandle handle);
-	//! Closes the process handle.
-	proto native static void ProcFinish(ProcessHandle handle);
 }
 
 //-----------------------------------------------------------------------------

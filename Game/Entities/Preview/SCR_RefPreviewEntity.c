@@ -10,6 +10,7 @@ Reference entity used to position edited entities according to preview.
 class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 {
 	protected ref set<SCR_EditableEntityComponent> m_aEditedEntities;
+	protected bool m_bIsInstant;
 	
 	/*!
 	Create and apply reference entity used for entity placement once transformation is confirmed.
@@ -23,7 +24,7 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 		param.GetWorldTransform(transformRef);
 		if (param.m_VerticalMode == EEditorTransformVertical.TERRAIN)
 		{
-			float surfaceY = SCR_Global.GetTerrainY(transformRef[3], null, !param.m_bIsUnderwater);
+			float surfaceY = SCR_TerrainHelper.GetTerrainY(transformRef[3], null, !param.m_bIsUnderwater);
 			transformRef[3][1] = surfaceY + (transformRef[3][1] - surfaceY) / 2;
 		}
 		
@@ -34,6 +35,7 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 		EPreviewEntityFlag flags = EPreviewEntityFlag.IGNORE_TERRAIN | EPreviewEntityFlag.IGNORE_PREFAB | EPreviewEntityFlag.ONLY_EDITABLE;
 		
 		SCR_RefPreviewEntity refEntity = SCR_RefPreviewEntity.Cast(SCR_RefPreviewEntity.SpawnPreviewFromEditableEntity(entity, "SCR_RefPreviewEntity", GetGame().GetWorld(), null, material, flags));
+		refEntity.SetAsInstant();
 		refEntity.ApplyReference(param);
 		
 #ifndef PREVIEW_ENTITY_SHOW_REFERENCE
@@ -75,7 +77,7 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 					childRef = SCR_RefPreviewEntity.Cast(child);
 					if (childRef)
 					{
-						childRef.ApplyChild(param, true, m_aEditedEntities);
+						childRef.ApplyChild(param, true, m_aEditedEntities, m_bIsInstant);
 						if (child.m_Entity)
 							aiWorld.GetNavmeshRebuildAreas(child.m_Entity, areas);
 					}
@@ -91,12 +93,19 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 				{
 					childRef = SCR_RefPreviewEntity.Cast(child);
 					if (childRef)
-						childRef.ApplyChild(param, true, m_aEditedEntities);
+						childRef.ApplyChild(param, true, m_aEditedEntities, m_bIsInstant);
 				}
 			}
 		}
 	}
-	protected void ApplyChild(SCR_EditorPreviewParams param, bool isDirectChild, set<SCR_EditableEntityComponent> editedEntities)
+	/*!
+	Mark the reference entity as applied at the same time as it's created.
+	*/
+	void SetAsInstant()
+	{
+		m_bIsInstant = true;
+	}
+	protected void ApplyChild(SCR_EditorPreviewParams param, bool isDirectChild, set<SCR_EditableEntityComponent> editedEntities, bool isInstant)
 	{
 		if (!m_EditableEntity)
 			return;
@@ -142,7 +151,13 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 			SCR_EditableEntityComponent editableVehicle = m_EditableEntity.GetVehicle();
 			if (!editableVehicle || editedEntities.Find(editableVehicle) == -1)
 			{
-				m_EditableEntity.SetTransform(transform);
+				 if (isInstant)
+				{
+					vector localPos = m_EditableEntity.GetOwner().CoordToLocal(transform[3]);
+					localPos -= m_EditableEntity.GetIconPos();
+					transform[3] = m_EditableEntity.GetOwner().CoordToParent(localPos);
+				}
+				m_EditableEntity.SetTransform(transform, isDirectChild && !isInstant);
 			}
 			
 			if (m_aChildren)
@@ -152,7 +167,7 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 				{
 					childRef = SCR_RefPreviewEntity.Cast(child);
 					if (childRef)
-						childRef.ApplyChild(param, false, editedEntities);
+						childRef.ApplyChild(param, false, editedEntities, isInstant);
 				}
 			}
 		}
@@ -163,9 +178,9 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 		if (!SCR_Enum.HasFlag(m_Flags, EPreviewEntityFlag.IGNORE_TERRAIN))
 		{
 			vector currentPos = GetWorldTransformAxis(3);
-			currentHeight = currentPos[1] - SCR_Global.GetTerrainY(currentPos, GetWorld(), !SCR_Enum.HasFlag(m_Flags, EPreviewEntityFlag.UNDERWATER));
+			currentHeight = currentPos[1] - SCR_TerrainHelper.GetTerrainY(currentPos, GetWorld(), !SCR_Enum.HasFlag(m_Flags, EPreviewEntityFlag.UNDERWATER));
 		}
-		float height = transform[3][1] - SCR_Global.GetTerrainY(transform[3], GetWorld(), !isUnderwater);
+		float height = transform[3][1] - SCR_TerrainHelper.GetTerrainY(transform[3], GetWorld(), !isUnderwater);
 		
 		m_fHeightTerrain = 0;
 		SetPreviewTransform(transform, verticalMode, height - currentHeight, isUnderwater);

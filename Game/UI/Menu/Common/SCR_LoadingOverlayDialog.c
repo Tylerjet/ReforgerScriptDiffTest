@@ -34,8 +34,8 @@ class SCR_LoadingOverlayDialog : ChimeraMenuBase
 			m_OnCloseStarted.Invoke();
 		
 		// Play fade-out animation
-		WidgetAnimator.PlayAnimation(GetRootWidget(), WidgetAnimationType.Opacity, 0, WidgetAnimator.FADE_RATE_FAST);
-		GetGame().GetCallqueue().CallLater(Close, 1000.0 / WidgetAnimator.FADE_RATE_FAST);
+		AnimateWidget.Opacity(GetRootWidget(), 0, UIConstants.FADE_RATE_FAST);
+		GetGame().GetCallqueue().CallLater(Close, 1000.0 / UIConstants.FADE_RATE_FAST);
 	}
 	
 	
@@ -58,7 +58,7 @@ class SCR_LoadingOverlayDialog : ChimeraMenuBase
 		
 		// Play fade-in animation
 		GetRootWidget().SetOpacity(0);
-		WidgetAnimator.PlayAnimation(GetRootWidget(), WidgetAnimationType.Opacity, 1, WidgetAnimator.FADE_RATE_FAST);
+		AnimateWidget.Opacity(GetRootWidget(), 1, UIConstants.FADE_RATE_FAST);
 	}
 	
 	

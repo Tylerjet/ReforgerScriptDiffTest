@@ -36,12 +36,12 @@ class SCR_FieldManualPiece_KeybindList : SCR_FieldManualPiece
 
 		m_KeybindsLayout = keybindsLayout;
 
-		CreateKeybinds();
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(CreateKeybinds);
+		CreateKeybinds(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(CreateKeybinds);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void CreateKeybinds()
+	protected void CreateKeybinds(bool isGamepad)
 	{
 		SCR_WidgetHelper.RemoveAllChildren(m_KeybindsLayout);
 
@@ -51,13 +51,13 @@ class SCR_FieldManualPiece_KeybindList : SCR_FieldManualPiece
 
 		array<SCR_EInputTypeCondition> conditions = { SCR_EInputTypeCondition.ALL_INPUTS };
 
-		if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
+		if (isGamepad)
 		{
-			conditions.Insert(SCR_EInputTypeCondition.KEYBOARD_ONLY);
+			conditions.Insert(SCR_EInputTypeCondition.GAMEPAD_ONLY);
 		}
 		else
 		{
-			conditions.Insert(SCR_EInputTypeCondition.GAMEPAD_ONLY);
+			conditions.Insert(SCR_EInputTypeCondition.KEYBOARD_ONLY);
 		}
 
 		array<ref SCR_FieldManualPiece_Keybind> arrayCopy = {};
@@ -84,7 +84,7 @@ class SCR_FieldManualPiece_KeybindList : SCR_FieldManualPiece
 	// destructor
 	void ~SCR_FieldManualPiece_KeybindList()
 	{
-		if (GetGame().OnInputDeviceUserChangedInvoker())
-			GetGame().OnInputDeviceUserChangedInvoker().Remove(CreateKeybinds);
+		if (GetGame().OnInputDeviceIsGamepadInvoker())
+			GetGame().OnInputDeviceIsGamepadInvoker().Remove(CreateKeybinds);
 	}
 };

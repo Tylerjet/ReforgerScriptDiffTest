@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Weapon", description:"Keeps settings for melee weapon", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Weapon", description:"Keeps settings for melee weapon")]
 class SCR_MeleeWeaponPropertiesClass: ScriptComponentClass
 {
 };

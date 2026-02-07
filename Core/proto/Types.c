@@ -99,7 +99,7 @@ class Managed
 {
 };
 
-//! Base class for classes which combine enf::Class and enf::BaseClass (in C++), all its ancestors present in script will be automatically registered as config classes
+//! Base class for classes which combine enf::Class and enf::BaseClass (in C++), all its inherited classes present in script will be automatically registered as config classes
 class ScriptAndConfig: Managed
 {
 }
@@ -254,6 +254,12 @@ class array<Class T>: Managed
 	If the `newSize` is higher than current Count missing elements are initialized to zero (null).
 	*/
 	proto native void Resize(int newSize);
+	
+	/*!
+	Reserve memory for given number of elements.
+	Is used for optimization purposes when the approx. size is known beforehand
+	*/
+	proto native void Reserve(int newSize);
 
 	/*!
 	Swaps the contents of this and `other` arrays.
@@ -265,6 +271,11 @@ class array<Class T>: Managed
 	Sorts elements of array, depends on underlaying type.
 	*/
 	proto native void Sort(bool reverse = false);
+	
+	/*!
+	Returns whether provided element index of array is valid.
+	*/
+	proto native bool IsIndexValid(int index);
 	
 	/*!
 	Copes contents of `from` array to this array.
@@ -396,6 +407,11 @@ class set<Class T>: Managed
 	*/
 	proto native void Compact();
 	/*!
+	Reserve memory for given number of elements.
+	Is used for optimization purposes when the approx. size is known beforehand
+	*/
+	proto native void Reserve(int newSize);
+	/*!
 	Tries to find the first occurance of given value in the array.
 	\return Index of the first occurance of `value` if found, -1 otherwise
 	\note
@@ -423,6 +439,11 @@ class set<Class T>: Managed
 	Index of element to be removed
 	*/
 	proto native void Remove(int index);
+	/*!
+	Returns whether provided element index of set is valid.
+	*/
+	proto native bool IsIndexValid(int index);
+	
 	proto int Copy(set<T> from);
 	proto native void Swap(set<T> other);
 	proto int Init(T init[]);

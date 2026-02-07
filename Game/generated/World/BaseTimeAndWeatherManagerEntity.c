@@ -19,6 +19,8 @@ providing the script and gamecode with usable in-game API.
 */
 class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 {
+	proto external ref WeatherState GetCurrentWeatherState();
+	
 	//Returns true if the hour is inside the nighttime.
 	proto external bool IsNightHour(float hour24);
 	//Returns true if the hour is inside the daytime.
@@ -54,7 +56,6 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	\return Returns true when command is issued successfully and date is VALID, false otherwise.
 	*/
 	proto external bool SetDate(int year, int month, int day, bool immediateChange = false);
-	proto external bool MakeLightning(vector lightningPos);
 	/*!
 	Sets the current time of the day.
 	Only issuable by the authority.
@@ -100,6 +101,11 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	*/
 	proto external float GetTimeOfTheDay();
 	/*!
+	Retrieves the current engine time (synchronized between clients),
+	this value is not affected by time multiplier nor automatic time advancement attributes.
+	*/
+	proto external float GetEngineTime();
+	/*!
 	Returns current in-game year
 	*/
 	proto external int GetYear();
@@ -111,6 +117,20 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	Returns current in-game day of the month (Range 1-31)
 	*/
 	proto external int GetDay();
+	/*!
+	Returns current in-game week day in range [0-6], starts at Monday=0.
+	\return positive integer 0-6 representing each day of the week, starting at Monday.  -1 if current date is invalid.
+	*/
+	proto external int GetWeekDay();
+	/*!
+	Returns week day in range [0-6], starts at Monday=0, for the supplied date.
+	\return positive integer 0-6 representing each day of the week, starting at Monday.  -1 if supplied date is invalid.
+	
+	\param year Year.
+	\param month Month in range <1, 12>
+	\param day Day in range <1, 31>
+	*/
+	proto external int GetWeekDayForDate(int year, int month, int day);
 	/*!
 	Returns time zone offset (in hours)
 	*/
@@ -283,16 +303,6 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	\return Transition manager, null if client is not master.
 	*/
 	proto ref WeatherStateTransitionManager GetTransitionManager();
-	/*!
-	Gets a reference to current weather state
-	\return True if valid current weather state
-	*/
-	proto external bool GetCurrentWeatherState(out notnull WeatherState state);
-	/*!
-	Gets a reference to current weather variant
-	\return True if valid current weather variant
-	*/
-	proto external bool GetCurrentWeatherVariant(out notnull WeatherVariant variant);
 	/*
 	Converts hours, minutes and seconds to in-game time of the day.
 	\return Returns time of the day as a fraction of day <0.0, 24.0>
@@ -360,6 +370,7 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	Gets current water accumulation in puddles (in <0,1>)
 	*/
 	proto external float GetCurrentWaterAccumulationPuddles();
+	proto external void AddLightning(WeatherLightning lightning);
 };
 
 /** @}*/

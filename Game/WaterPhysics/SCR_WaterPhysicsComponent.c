@@ -367,11 +367,11 @@ class SCR_WaterPhysicsComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		vector parentSize = SCR_Global.GetEntitySize(owner);
+		vector parentSize = SCR_EntityHelper.GetEntitySize(owner);
 		m_fAveragedRadius = (Math.AbsFloat(parentSize[0]) + Math.AbsFloat(parentSize[1]) + Math.AbsFloat(parentSize[2])) / 3;
 		m_fAveragedRadius = Math.Clamp(m_fAveragedRadius, 0.1, 20);
 		
-		m_fSmallObjectScale = 1 - Math.Clamp((SCR_Global.GetEntityRadius(owner) - 1) / 5, 0, 1);
+		m_fSmallObjectScale = 1 - Math.Clamp((SCR_EntityHelper.GetEntityRadius(owner) - 1) / 5, 0, 1);
 		
 		if (m_bUseBoundingBox)
 			CreateBuoyancyPointsFromBound();

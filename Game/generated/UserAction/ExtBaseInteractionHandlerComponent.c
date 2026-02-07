@@ -109,6 +109,7 @@ class ExtBaseInteractionHandlerComponent: BaseInteractionHandlerComponent
 	event protected BaseUserAction GetSelectedActionScript();
 	/*!
 	Callback whem manual collection override is enabled. See SetManualCollectionOverride.
+	It may return nullptrs inside array if this is called between deletion of instance inside the array and updating of the array.
 	\param owner Parent entity
 	\param referencePoint Point in world space used to calculate distance and sort contexts by
 	*/

@@ -1,24 +1,26 @@
-// Example: Custom replicated class signature
 /*
+// Example: Custom codec functions.
+// This allows using CustomClass instances as arguments of RPCs or as replicated properties marked with
+// RplProp attribute.
 class CustomClass
 {
-	//! From snapshot to packet.
+	//! Takes snapshot and encodes it into packet using as few bits as possible.
 	static void Encode(SSnapSerializerBase snapshot, ScriptCtx ctx, ScriptBitSerializer packet);
 
-	//! From packet to snapshot.
+	//! Takes packet and decodes it into snapshot. Returns true on success or false when an error occurs.
 	static bool Decode(ScriptBitSerializer packet, ScriptCtx ctx, SSnapSerializerBase snapshot);
 
-	//! Snapshot to snapshot comparison.
+	//! Compares two snapshots. Returns true when they match or false otherwise.
 	static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs, ScriptCtx ctx);
 
-	//! Property mem to snapshot comparison.
-	static bool PropCompare(RplTestPropType prop, SSnapSerializerBase snapshot, ScriptCtx ctx);
+	//! Compares instance against snapshot. Returns true when they match or false otherwise.
+	static bool PropCompare(CustomClass instance, SSnapSerializerBase snapshot, ScriptCtx ctx);
 
-	//! Property mem to snapshot extraction.
-	static bool Extract(RplTestPropType prop, ScriptCtx ctx, SSnapSerializerBase snapshot);
+	//! Writes data from an instance into snapshot. Opposite of Inject().
+	static bool Extract(CustomClass instance, ScriptCtx ctx, SSnapSerializerBase snapshot);
 
-	//! Snapshot to property memory injection.
-	static bool Inject(SSnapSerializerBase snapshot, ScriptCtx ctx, RplTestPropType prop);
+	//! Writes data from snapshot into instance. Opposite of Extract().
+	static bool Inject(SSnapSerializerBase snapshot, ScriptCtx ctx, CustomClass instance);
 }
 */
 typedef int RplIdentity;
@@ -329,6 +331,15 @@ class ScriptBitWriter : Managed
 	*/
 	proto void WriteQuaternion(float val[4]);
 	/*!
+	Writes a ResourceName to internal storage.
+	The resulting data is 8 byte in size.
+	*/
+	proto void WriteResourceName(ResourceName val);
+	/*!
+	Writes a string to internal storage.
+	*/
+	proto void WriteString(string val);
+	/*!
 	Returns the current position in internal storage in bits.
 	*/
 	proto native int Tell();
@@ -385,6 +396,14 @@ class ScriptBitReader : Managed
 	*/
 	proto bool ReadQuaternion(out float val[4]);
 	/*!
+	Reads and returns a ResourceName from internal storage.
+	*/
+	proto bool ReadResourceName(out ResourceName val);
+	/*!
+	Reads a string from internal storage.
+	*/
+	proto bool ReadString(out string val);
+	/*!
 	Returns the current position in internal storage in bits.
 	*/
 	proto native int Tell();
@@ -405,15 +424,17 @@ class ScriptBitReader : Managed
 class ScriptBitSerializer : Managed
 {
 	//! Serializes the data pointer. The size is the amount of bits serialized.
-	proto void Serialize(inout void data, int sizeInBits);
-	proto void SerializeRplId(inout RplId val);
-	proto void SerializeEntityId(inout EntityID val);
-	proto void SerializeInt(inout int val);
-	proto void SerializeIntRange(inout int val, int min, int max);
-	proto void SerializeHalf(inout float val);
-	proto void SerializeFloat01(inout float val);
-	proto void SerializeRadian(inout float val);
-	proto void SerializeQuaternion(inout float val[4]);
+	proto bool Serialize(inout void data, int sizeInBits);
+	proto bool SerializeRplId(inout RplId val);
+	proto bool SerializeEntityId(inout EntityID val);
+	proto bool SerializeInt(inout int val);
+	proto bool SerializeIntRange(inout int val, int min, int max);
+	proto bool SerializeHalf(inout float val);
+	proto bool SerializeFloat01(inout float val);
+	proto bool SerializeRadian(inout float val);
+	proto bool SerializeQuaternion(inout float val[4]);
+	proto bool SerializeResourceName(inout ResourceName val);
+	proto bool SerializeString(inout string val);
 	//! Returns the current position in the buffer with bit precision.
 	proto native int Tell();
 
@@ -421,12 +442,12 @@ class ScriptBitSerializer : Managed
 	// Helper functions for built-in types.
 	// They are safe defaults but they might use more bits than necessary.
 
-	void SerializeBool(inout bool val) { Serialize(val, 1); }
-	void SerializeFloat(inout float val) { Serialize(val, 32); }
-	void SerializeVector(inout vector val)
+	bool SerializeBool(inout bool val) { return Serialize(val, 1); }
+	bool SerializeFloat(inout float val) { return Serialize(val, 32); }
+	bool SerializeVector(inout vector val)
 	{
 		// 3 values * 32-bits each = 96
-		Serialize(val, 96);
+		return Serialize(val, 96);
 	}
 }
 

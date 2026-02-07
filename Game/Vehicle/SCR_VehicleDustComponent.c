@@ -1,6 +1,6 @@
 // Spawns dust particle effect that drags with the vehicle during ride
 
-[ComponentEditorProps(category: "GameScripted/Test", description:"SCR_VehicleDust", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Test", description:"SCR_VehicleDust")]
 class SCR_VehicleDustClass: ScriptComponentClass
 {
 };
@@ -190,7 +190,7 @@ class SCR_VehicleDust : ScriptComponent
 				
 				
 				// get and set surface material
-				string surface_type = m_Default;
+				ResourceName surface_type = m_Default;
 				m_iCurrentSurfaceID = m_iCurrentSurfaceID/100;
 				if (m_iCurrentSurfaceID >= 0 && surface_particles.Contains(m_iCurrentSurfaceID))
 					surface_type = surface_particles.Get(m_iCurrentSurfaceID);
@@ -215,9 +215,7 @@ class SCR_VehicleDust : ScriptComponent
 					
 					if (surface_type.Length() > 0)
 					{
-						m_Effect = VehicleBodyEffectBase.Cast(  SCR_ParticleAPI.PlayOnObject(owner, VehicleBodyEffectBase, m_vLocalOffset, m_vLocalOrientation)  );
-						m_Effect.SetPathToPTC(  surface_type  );
-						m_Effect.Play();
+						m_Effect = VehicleBodyEffectBase.Cast(SCR_ParticleEmitter.CreateAsChildEx(VehicleBodyEffectBase, surface_type, owner, m_vLocalOffset, m_vLocalOrientation));
 						m_Effect.UpdateVehicleDustEffect(speed, m_fDustStartSpeed*3.6, m_fDustTopSpeed);
 					}
 				}

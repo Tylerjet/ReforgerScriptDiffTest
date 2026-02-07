@@ -49,7 +49,7 @@ class SCR_DestructionCommon
 		if (particlePath == ResourceName.Empty)
 			return null;
 		
-		SCR_ParticleEmitter ptc = SCR_ParticleAPI.PlayOnPositionPTC(particlePath, hitPos);
+		SCR_ParticleEmitter ptc =SCR_ParticleEmitter.Create(particlePath, hitPos);
 		if (!ptc)
 			return null;
 		
@@ -69,8 +69,9 @@ class SCR_DestructionCommon
 		ptc.SetTransform(ptcMat);
 		
 		float velocityScale = GetPTCImpulseScale(type);
-		SCR_ParticleAPI.LerpAllEmitters(ptc, velocityScale, EmitterParam.VELOCITY);
-		SCR_ParticleAPI.LerpAllEmitters(ptc, velocityScale, EmitterParam.VELOCITY_RND);
+		Particles particles = ptc.GetParticles();
+		particles.MultParam(-1, EmitterParam.VELOCITY,     velocityScale);
+		particles.MultParam(-1, EmitterParam.VELOCITY_RND, velocityScale);
 		
 		return ptc;
 	}
@@ -91,16 +92,17 @@ class SCR_DestructionCommon
 			vector mins, maxs;
 			entity.GetBounds(mins, maxs);
 			vector center = (maxs - mins) * 0.5 + mins;
-			ptc = SCR_ParticleAPI.PlayOnPositionPTC(particlePath, entity.CoordToParent(center), entity.GetAngles());
+			ptc = SCR_ParticleEmitter.Create(particlePath, entity.CoordToParent(center), entity.GetAngles());
 		}
 		else
-			ptc = SCR_ParticleAPI.PlayOnPositionPTC(particlePath, entity.GetOrigin(), entity.GetAngles());
+			ptc = SCR_ParticleEmitter.Create(particlePath, entity.GetOrigin(), entity.GetAngles());
 		if (!ptc)
 			return null;
 		
 		float velocityScale = GetPTCImpulseScale(damageType);
-		SCR_ParticleAPI.LerpAllEmitters(ptc, velocityScale, EmitterParam.VELOCITY);
-		SCR_ParticleAPI.LerpAllEmitters(ptc, velocityScale, EmitterParam.VELOCITY_RND);
+		Particles particles = ptc.GetParticles();
+		particles.MultParam(-1, EmitterParam.VELOCITY,     velocityScale);
+		particles.MultParam(-1, EmitterParam.VELOCITY_RND, velocityScale);
 		
 		return ptc;
 	}
@@ -112,13 +114,14 @@ class SCR_DestructionCommon
 		if (particlePath == ResourceName.Empty)
 			return null;
 		
-		SCR_ParticleEmitter ptc = SCR_ParticleAPI.PlayOnTransformPTC(particlePath, mat);
+		SCR_ParticleEmitter ptc = SCR_ParticleEmitter.CreateWithTransform(particlePath, mat);
 		if (!ptc)
 			return null;
 		
 		float velocityScale = GetPTCImpulseScale(damageType);
-		SCR_ParticleAPI.LerpAllEmitters(ptc, velocityScale, EmitterParam.VELOCITY);
-		SCR_ParticleAPI.LerpAllEmitters(ptc, velocityScale, EmitterParam.VELOCITY_RND);
+		Particles particles = ptc.GetParticles();
+		particles.MultParam(-1, EmitterParam.VELOCITY,     velocityScale);
+		particles.MultParam(-1, EmitterParam.VELOCITY_RND, velocityScale);
 		
 		return ptc;
 	}

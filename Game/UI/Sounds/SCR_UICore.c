@@ -17,8 +17,8 @@ class SCR_UICore: SCR_GameCoreBase
 		if (!s_Instance)
 			s_Instance = this;
 		
-		if (!WidgetAnimator.GetInstance())
-			WidgetAnimator.Cast(GetGame().SpawnEntity(WidgetAnimator));
+		if (!AnimateWidgetEntity.GetInstance())
+			GetGame().SpawnEntity(AnimateWidgetEntity);
 
 		if (!SCR_UISoundEntity.GetInstance())
 			GetGame().SpawnEntityPrefab(Resource.Load(m_UISoundEntityPrefab));

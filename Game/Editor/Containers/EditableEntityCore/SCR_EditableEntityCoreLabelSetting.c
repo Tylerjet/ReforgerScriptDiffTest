@@ -7,10 +7,10 @@ class SCR_EditableEntityCoreLabelSetting
 	[Attribute("0")]
 	private int m_Order;
 	
-	[Attribute("0", UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
+	[Attribute("0", UIWidgets.SearchComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
 	private EEditableEntityLabel m_LabelType;
 	
-	[Attribute("0", UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityLabelGroup))]
+	[Attribute("0", UIWidgets.SearchComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityLabelGroup))]
 	private EEditableEntityLabelGroup m_LabelGroupType;
 	
 	[Attribute("1")]

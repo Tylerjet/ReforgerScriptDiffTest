@@ -96,7 +96,7 @@ class SCR_WidgetExportRuleRoot : ScriptedWidgetComponent
 {
 //#ifdef WORKBENCH
 	
-	[Attribute(defvalue: "", uiwidget: UIWidgets.FileNamePicker, desc: "Folder where the file will be saved", params: "unregFolders", enums: NULL, category: "")]
+	[Attribute(defvalue: "", desc: "Folder where the file will be saved", params: "unregFolders", enums: NULL, category: "")]
 	ResourceName DestinationPath;
 	
 	[Attribute("$ArmaReforger:", UIWidgets.EditBox, "File system in which new script will be created.", "")]

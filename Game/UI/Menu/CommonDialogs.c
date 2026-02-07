@@ -40,6 +40,7 @@ class SCR_ExitGameDialog : SCR_ConfigurableDialogUi
 	override void OnConfirm()
 	{		
 		GetGame().RequestClose();
+		SCR_AllFilterSetsStorage.ResetAllToDefault();
 	}
 };
 
@@ -66,6 +67,7 @@ class SCR_ExitGameWhileDownloadingDialog : SCR_ConfigurableDialogUi
 		
 		// Exit the game
 		GetGame().RequestClose();
+		SCR_AllFilterSetsStorage.ResetAllToDefault();
 	}
 };
 

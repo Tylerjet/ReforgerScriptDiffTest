@@ -16,6 +16,9 @@ class SCR_Faction : ScriptedFaction
 	[Attribute()]
 	protected ref SCR_ArsenalItemListConfig m_ArsenalConfig;
 	
+	[Attribute(desc: "List of vehicles related to this faction.")]
+	protected ref SCR_EntityAssetList m_aVehicleList;
+	
 	protected ref array<string>> m_aAncestors;
 	protected ref ScriptInvoker Event_OnFactionPlayableChanged = new ref ScriptInvoker; //Gives Faction and Bool enabled
 	
@@ -239,8 +242,37 @@ class SCR_Faction : ScriptedFaction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void ~SCR_Faction()
+	/*!
+	Get the vehicle list assigned to this faction
+	\return SCR_EntityAssetList Vehicle List
+	*/
+	SCR_EntityAssetList GetVehicleList()
 	{
-		m_mArsenalItemsByType.Clear();
+		return m_aVehicleList;
+	}
+
+	/*!
+	Get the number of players assigned to this faction
+	*/
+	int GetPlayerCount()
+	{
+		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
+		if (!respawnSystem)
+			return -1;
+
+		array<int> players = {};
+		int playerCount = 0;
+
+		PlayerManager pm = GetGame().GetPlayerManager();
+		pm.GetPlayers(players);
+
+		foreach (int playerId : players)
+		{
+			Faction playerFaction = respawnSystem.GetPlayerFaction(playerId);
+			if (playerFaction == this)
+				playerCount++;
+		}
+
+		return playerCount;
 	}
 };

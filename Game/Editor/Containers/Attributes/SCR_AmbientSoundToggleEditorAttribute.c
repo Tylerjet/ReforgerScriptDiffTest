@@ -10,21 +10,37 @@ class SCR_AmbientSoundToggleEditorAttribute : SCR_BaseEditorAttribute
 		if (!IsGameMode(item)) 
 			return null;
 		
-		SCR_MusicManager musicManager = SCR_MusicManager.GetInstance();
-		if (!musicManager)
+		ChimeraWorld world = GetGame().GetWorld();
+
+		if (!world)
 			return null;
-	
-		return SCR_BaseEditorAttributeVar.CreateBool(musicManager.IsAmbientMusicAuthorizedByServer());
+		
+		MusicManager musicManager = world.GetMusicManager();
+		if (!musicManager) 
+			return null;
+		
+		return SCR_BaseEditorAttributeVar.CreateBool(!musicManager.ServerIsCategoryMuted(MusicCategory.Ambient));
+
 	}	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
 		if (!var) 
 			return;
 		
-		SCR_MusicManager musicManager = SCR_MusicManager.GetInstance();
+		ChimeraWorld world = GetGame().GetWorld();
+
+		if (!world)
+			return;
+		
+		MusicManager musicManager = world.GetMusicManager();
 		if (!musicManager) 
 			return;
 		
-		musicManager.AuthorizeAmbientMusicForClients(var.GetBool(), playerID);
+		if (var.GetBool())
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_ENABLED_AMBIENT_MUSIC, playerID);
+		else 
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_DISABLED_AMBIENT_MUSIC, playerID);
+		
+		musicManager.RequestServerMuteCategory(MusicCategory.Ambient, !var.GetBool());
 	}
 };

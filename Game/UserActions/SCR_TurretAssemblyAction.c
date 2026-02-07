@@ -165,7 +165,7 @@ class SCR_TurretAssemblyAction : ScriptedUserAction
 				if (soundComponent)
 				{
 					soundComponent.SetTransformation(itemTransform);
-					soundComponent.PlayStr("SOUND_PICK_UP");
+					soundComponent.PlayStr(SCR_SoundEvent.SOUND_PICK_UP);
 				}
 
 				// Turret Sights
@@ -175,7 +175,7 @@ class SCR_TurretAssemblyAction : ScriptedUserAction
 				if (soundComponent)
 				{
 					soundComponent.SetTransformation(itemTransform);
-					soundComponent.PlayStr("SOUND_PICK_UP");
+					soundComponent.PlayStr(SCR_SoundEvent.SOUND_PICK_UP);
 				}
 
 				// Turret Base
@@ -186,7 +186,7 @@ class SCR_TurretAssemblyAction : ScriptedUserAction
 				if (soundComponent)
 				{
 					soundComponent.SetTransformation(itemTransform);
-					soundComponent.PlayStr("SOUND_PICK_UP");
+					soundComponent.PlayStr(SCR_SoundEvent.SOUND_PICK_UP);
 				}
 			}
 		}

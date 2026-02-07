@@ -15,6 +15,7 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 	
 	protected ref SCR_DownloadManager_AddonDownloadLineBaseWidgets m_Widgets = new SCR_DownloadManager_AddonDownloadLineBaseWidgets();
 	protected ref SCR_WorkshopItemActionDownload m_Action;
+	protected ref SCR_WorkshopItem m_Item;
 	
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Imageset resource for icons", "imageset")]
 	protected ResourceName m_IconImageSet;
@@ -22,9 +23,13 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 	bool m_bHideButtons;
 	protected bool m_bVersionChange = false;
 	
+	protected Widget m_wRoot;
+	
 	//------------------------------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
+		m_wRoot = w;
+		
 		m_Widgets.Init(w);
 		
 		m_Widgets.m_PauseResumeButtonComponent.m_OnClicked.Insert(OnPauseButton);
@@ -70,6 +75,8 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 	//! Initializes the line in passive mode. It will just show basic information once
 	void InitForWorkshopItem(SCR_WorkshopItem item, string overrideTargetVersion = string.Empty, bool showVersionAndSize = true)
 	{
+		m_Item = item;
+		
 		string addonName = item.GetName();
 		m_Widgets.m_AddonNameText.SetText(addonName);
 		
@@ -114,6 +121,30 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------------------------------
+	//! Display error massage, based on positivity message is green or red
+	void DisplayError(string msg, bool positive = false)
+	{
+		m_Widgets.m_ErrorText.SetText(msg);
+		m_Widgets.m_ErrorText.SetColor(ICON_COLOR_DOWN);
+		m_Widgets.m_ErrorText.SetVisible(true);
+		
+		// Green for positive 
+		if (positive)
+			m_Widgets.m_ErrorText.SetColor(ICON_COLOR_UP);
+	}
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	SCR_WorkshopItem GetItem()
+	{
+		return m_Item;
+	}
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	Widget GetRootWidget()
+	{
+		return m_wRoot;
+	}
 	
 	//------------------------------------------------------------------------------------------------------------------------
 	SCR_WorkshopItemActionDownload GetDownloadAction()

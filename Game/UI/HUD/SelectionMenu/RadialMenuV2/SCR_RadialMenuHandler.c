@@ -44,10 +44,10 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 	[Attribute("0.45", UIWidgets.EditBox, "Minimal amout to point in direction to select item. Anything less will reuslt in null selectiom.")]
 	protected float m_fSelectInputRadiusMin;
 	
-	[Attribute(UISounds.FOCUS, UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.FOCUS, UIWidgets.EditBox)]
 	protected string m_sSoundOnOpen;
 	
-	[Attribute("SOUND_E_TRAN_CANCEL", UIWidgets.EditBox)]
+	[Attribute(SCR_SoundEvent.SOUND_E_TRAN_CANCEL, UIWidgets.EditBox)]
 	protected string m_sSoundOnClose;
 
 	protected IEntity m_pOwner;
@@ -495,7 +495,7 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 			m_OnActionPerformed.Invoke(m_pCurrentSelection, i);
 			
 			// Audio
-			SCR_UISoundEntity.SoundEvent(UISounds.ITEM_CONFIRMED);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.ITEM_CONFIRMED);
 		}
 	}
 	
@@ -626,7 +626,7 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 		if(m_pCurrentSelection != selectedElement)
 		{
 			m_pCurrentSelection = selectedElement;
-			SCR_UISoundEntity.SoundEvent(UISounds.ITEM_SELECTED);	
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.ITEM_SELECTED);	
 		}
 	}
 	

@@ -1,7 +1,8 @@
 class SCR_EditableFactionStruct: JsonApiStruct
 {
-	protected string m_sFactionKey;
-	protected ref array<ref SCR_EditorAttributeStruct> m_aAttributes = {};
+	//--- Serialized (names shortened to save memory)
+	protected string fk; //--- Faction key
+	protected ref array<ref SCR_EditorAttributeStruct> at = {};
 	
 	static void SerializeFactions(out notnull array<ref SCR_EditableFactionStruct> outEntries, SCR_EditorAttributeList attributeList)
 	{
@@ -21,10 +22,10 @@ class SCR_EditableFactionStruct: JsonApiStruct
 	protected static void SerializeFaction(SCR_EditableFactionComponent faction, out notnull array<ref SCR_EditableFactionStruct> outEntries, SCR_EditorAttributeList attributeList)
 	{
 		SCR_EditableFactionStruct entry = new SCR_EditableFactionStruct();
-		entry.m_sFactionKey = faction.GetFaction().GetFactionKey();
+		entry.fk = faction.GetFaction().GetFactionKey();
 		outEntries.Insert(entry);
 		
-		SCR_EditorAttributeStruct.SerializeAttributes(entry.m_aAttributes, attributeList, faction);
+		SCR_EditorAttributeStruct.SerializeAttributes(entry.at, attributeList, faction);
 	}
 	static void DeserializeFactions(notnull array<ref SCR_EditableFactionStruct> entries, SCR_EditorAttributeList attributeList = null)
 	{
@@ -40,15 +41,15 @@ class SCR_EditableFactionStruct: JsonApiStruct
 		SCR_EditableFactionComponent factionDelegate;
 		foreach (int id, SCR_EditableFactionStruct entry: entries)
 		{
-			faction = factionManager.GetFactionByKey(entry.m_sFactionKey);
+			faction = factionManager.GetFactionByKey(entry.fk);
 			factionDelegate = delegateManager.GetFactionDelegate(faction);
 			if (factionDelegate)
 			{
-				SCR_EditorAttributeStruct.DeserializeAttributes(entry.m_aAttributes, attributeList, factionDelegate);
+				SCR_EditorAttributeStruct.DeserializeAttributes(entry.at, attributeList, factionDelegate);
 			}
 			else
 			{
-				Print(string.Format("SCR_EditableFactionStruct: Cannot load faction '%1', it's not configured in FactionManager!", entry.m_sFactionKey), LogLevel.WARNING);
+				Print(string.Format("SCR_EditableFactionStruct: Cannot load faction '%1', it's not configured in FactionManager!", entry.fk), LogLevel.WARNING);
 			}
 		}
 		
@@ -62,9 +63,14 @@ class SCR_EditableFactionStruct: JsonApiStruct
 		Print("  SCR_EditableFactionStruct: " + entries.Count());
 		foreach (int id, SCR_EditableFactionStruct entry: entries)
 		{
-			PrintFormat("    %1", entry.m_sFactionKey);
+			PrintFormat("    %1", entry.fk);
 			
-			SCR_EditorAttributeStruct.LogAttributes(entry.m_aAttributes, attributeList, "    ");
+			SCR_EditorAttributeStruct.LogAttributes(entry.at, attributeList, "    ");
 		}
+	}
+	void SCR_EditableFactionStruct()
+	{
+		RegV("fk");
+		RegV("at");
 	}
 };

@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Spectating", description: "Entity that this is attached to becomes selectable by the Spectator Camera.", color: "0 0 255 255")]
+[ComponentEditorProps(category: "GameScripted/Spectating", description: "Entity that this is attached to becomes selectable by the Spectator Camera.")]
 class SCR_SpectateTargetComponentClass: ScriptComponentClass
 {
 };

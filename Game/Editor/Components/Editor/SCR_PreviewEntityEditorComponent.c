@@ -17,8 +17,11 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	[Attribute(category: "Preview", params: "et", desc: "Ghost preview used when waiting for server callback.")]
 	private ResourceName m_WaitingEntityPrefab;
 	
-	[Attribute(category: "Preview", params: "emat", uiwidget: UIWidgets.ResourcePickerThumbnail)]
+	[Attribute(category: "Preview", params: "emat", uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Preview entity material when confirmation is allowed.")]
 	private ResourceName m_PreviewMaterial;
+	
+	[Attribute(category: "Preview", params: "emat", uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Preview entity material when confirmation is not allowed.")]
+	private ResourceName m_DisabledPreviewMaterial;
 	
 	[Attribute(category: "Preview", params: "emat", uiwidget: UIWidgets.ResourcePickerThumbnail)]
 	private ResourceName m_WaitingPreviewMaterial;
@@ -28,6 +31,9 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	
 	[Attribute(category: "Preview", defvalue: "0.05")]
 	private float m_fPreviewRotationInertia;
+	
+	[Attribute(category: "Preview", defvalue: "1 1 1 0.2", desc: "Color of height indicator helper object.")]
+	protected ref Color m_HeightIndicatorColor;
 
 	[Attribute(category: "Settings", defvalue: typename.EnumToString(EEditorTransformVertical, EEditorTransformVertical.TERRAIN), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditorTransformVertical))]
 	private EEditorTransformVertical m_VerticalMode;
@@ -63,8 +69,11 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	private bool m_bIsMovingVertically;
 	private bool m_bHasSpecialInteraction;
 	private bool m_bIsUnderwater;
+	private int m_iHeightIndicatorColor;
+	private bool m_bPreviewDisabled;
 	
 	protected SCR_LayersEditorComponent m_LayerManager;
+	protected SCR_StatesEditorComponent m_StateManager;
 	protected SCR_BasePreviewEntity m_PreviewEntity;
 	private ResourceName m_SlotPrefab;
 	private vector m_vLocalOffset;
@@ -172,7 +181,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		if (!m_bIsHeightSet) SetPreviewHeight(transform[3]);
 		
 		//--- Placeholder vertical indicator. ToDo: Replace
-		Shape.CreateCylinder(0x33ffffff, ShapeFlags.TRANSP | ShapeFlags.ONCE | ShapeFlags.NOOUTLINE, transform[3] - Vector(0, 50, 0), 0.05, 100);
+		Shape.CreateCylinder(m_iHeightIndicatorColor, ShapeFlags.TRANSP | ShapeFlags.ONCE | ShapeFlags.NOOUTLINE, transform[3] - Vector(0, 50, 0), 0.05, 100);
 	}
 	/*!
 	Reset transformation of the preview entity back to its original coordinates.
@@ -221,7 +230,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		if (!m_PreviewEntity || !m_World) return;
 		m_fHeightSea = pos[1];
 		if (m_bHasTerrain)
-			m_fHeightTerrain = pos[1] - SCR_Global.GetTerrainY(pos, m_World, !m_bIsUnderwater);
+			m_fHeightTerrain = pos[1] - SCR_TerrainHelper.GetTerrainY(pos, m_World, !m_bIsUnderwater);
 		else
 			m_fHeightTerrain = m_fHeightSea;
 		m_bIsHeightSet = true;
@@ -311,7 +320,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		if (m_PreviewEntity && GetVerticalSnap() == EEditorTransformSnap.TERRAIN)
 		{
 			float snapOffsetHeight = m_vLocalOffset[1];
-			float surfaceY = SCR_Global.GetTerrainY(pos, m_World, !m_bIsUnderwater);
+			float surfaceY = SCR_TerrainHelper.GetTerrainY(pos, m_World, !m_bIsUnderwater);
 			
 			//if (Math.AbsFloat(pos[1] - snapOffsetHeight - surfaceY) < m_fVerticalSnapLimit) //--- This allows to move the entity below terrain
 			if (pos[1] - snapOffsetHeight - surfaceY < m_fVerticalSnapLimit)
@@ -329,7 +338,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		if (!m_PreviewEntity)
 			return 0;
 		
-		return -pos[1] + SCR_Global.GetTerrainY(pos, m_World, !m_bIsUnderwater) + m_vLocalOffset[1];
+		return -pos[1] + SCR_TerrainHelper.GetTerrainY(pos, m_World, !m_bIsUnderwater) + m_vLocalOffset[1];
 	}
 	/*!
 	Checked if preview entity is snapped according to currently active snapping rules
@@ -345,7 +354,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 			//--- ToDo: One function to get snap offset used in here and in SnapVertically()
 			vector pos = m_PreviewEntity.GetTransformAxis(3);
 			float snapOffsetHeight = m_vLocalOffset[1];
-			float surfaceY = SCR_Global.GetTerrainY(pos, m_World, !m_bIsUnderwater);
+			float surfaceY = SCR_TerrainHelper.GetTerrainY(pos, m_World, !m_bIsUnderwater);
 			return Math.AbsFloat(pos[1] - snapOffsetHeight - surfaceY) < m_fVerticalSnapLimit;
 		}
 		return false;
@@ -364,6 +373,23 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 			return verticalDelta > 0; //--- Cannot go below terrain
 		}
 		return false;
+	}
+	/*!
+	Show preview entity as disabled.
+	\param disable True to show as disabled, false to show in normal state
+	*/
+	void ShowAsDisabled(bool disable = true)
+	{
+		if (disable == m_bPreviewDisabled)
+			return;
+		
+		m_bPreviewDisabled = disable;
+		
+		ResourceName material = m_PreviewMaterial;
+		if (disable)
+			material = m_DisabledPreviewMaterial;
+		
+		SCR_Global.SetMaterial(m_PreviewEntity, material);
 	}
 
 	/*!
@@ -477,6 +503,9 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 					if (!editableChild || editableChild.GetPlayerID() == 0)
 						interactionFlags |= EEditableEntityInteractionFlag.NON_PLAYABLE;
 					
+					if (m_StateManager && m_StateManager.GetState() == EEditorState.PLACING)
+						interactionFlags |= EEditableEntityInteractionFlag.PLACING;
+					
 					if (core.CanSetParent(m_EntityType, target, interactionFlags))
 					{
 						interaction = EEditableEntityInteraction.LAYER;
@@ -500,6 +529,9 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 					
 					if (!editableChild || editableChild.GetPlayerID() == 0)
 						interactionFlags |= EEditableEntityInteractionFlag.NON_PLAYABLE;
+					
+					if (m_StateManager && m_StateManager.GetState() == EEditorState.PLACING)
+						interactionFlags |= EEditableEntityInteractionFlag.PLACING;
 					
 					if (!core.CanSetParent(m_EntityType, target, interactionFlags))
 						return false;
@@ -823,8 +855,10 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		m_bIsHeightSet = false;
 		m_bIsFixedPosition = false;
 		m_bIsRotating = false;
+		m_bPreviewDisabled = false;
 		m_Target = null;
 		m_TargetInteraction = 0;
+		m_vLocalOffset = vector.Zero;
 		m_Entity = null;
 	}
 	/*!
@@ -903,6 +937,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		
 		m_World = game.GetWorld();
 		m_LayerManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent));
+		m_StateManager = SCR_StatesEditorComponent.Cast(SCR_StatesEditorComponent.GetInstance(SCR_StatesEditorComponent));
 		
 		#ifdef ENABLE_DIAG
 		typename enumVerticalMode = EEditorTransformVertical;
@@ -940,6 +975,8 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 			OnUserSettingsChanged();
 			GetGame().OnUserSettingsChangedInvoker().Insert(OnUserSettingsChanged);
 		}
+		
+		m_iHeightIndicatorColor = m_HeightIndicatorColor.PackToInt();
 	}
 	
 	override void OnDelete(IEntity owner)

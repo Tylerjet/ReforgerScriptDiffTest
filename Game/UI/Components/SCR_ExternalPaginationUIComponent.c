@@ -3,10 +3,16 @@ class SCR_ExternalPaginationUIComponent: SCR_BasePaginationUIComponent
 	protected int m_iEntryCount;
 	protected ref ScriptInvoker m_OnShowEntries = new ScriptInvoker();
 	
+	void SetPageIndex(int index)
+	{
+		m_iCurrentPage = index;
+	}
+	
 	void SetEntryCount(int count)
 	{
 		m_iEntryCount = count;
 	}
+	
 	ScriptInvoker GetOnShowEntries()
 	{
 		return m_OnShowEntries;

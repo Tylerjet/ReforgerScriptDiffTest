@@ -9,15 +9,12 @@ Do not modify, this script is generated
 * @{
 */
 
-sealed class MultilineEditBoxWidget: UIWidget
+sealed class MultilineEditBoxWidget: TextWidget
 {
-	proto external int GetLinesCount();
-	proto external int GetCarriageLine();
-	proto external int GetCarriagePos();
-	proto external void SetText(string text);
-	proto external void SetLine(int line, string text);
-	proto string GetText();
-	proto string GetLine(int line);
+	proto external void ActivateWriteMode();
+	proto external void SetVirtualKeyboardTitle(string str);
+	proto external void SetVirtualKeyboardDesc(string str);
+	proto external bool IsInWriteMode();
 };
 
 /** @}*/

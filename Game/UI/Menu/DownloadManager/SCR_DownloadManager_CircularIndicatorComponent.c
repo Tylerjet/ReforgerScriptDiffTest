@@ -19,14 +19,14 @@ class SCR_DownloadManager_CircularIndicatorComponent : ScriptedWidgetComponent
 		m_wRoot = w;
 		m_Widgets.Init(w);
 		
-		m_Animator = new SCR_FadeInOutAnimator(m_wRoot, WidgetAnimator.FADE_RATE_FAST, WidgetAnimator.FADE_RATE_SLOW, FADE_OUT_WAIT_TIME, fadeOutSetVisibleFalse: true);
+		m_Animator = new SCR_FadeInOutAnimator(m_wRoot, UIConstants.FADE_RATE_FAST, UIConstants.FADE_RATE_SLOW, FADE_OUT_WAIT_TIME, fadeOutSetVisibleFalse: true);
 		if (!SCR_Global.IsEditMode())
 			m_Animator.FadeOutInstantly();
 		
 		// I can't use MenuManager.GetOwnerMenu because it can't find the menu on HandlerAttached, so we use call queue instead.
 		GetGame().GetCallqueue().CallLater(OnFrame, 1, true);
 		
-		m_Widgets.m_ButtonComponent.m_OnClicked.Insert(OnButtonClick);
+		m_Widgets.m_DownloadButtonComponent.m_OnClicked.Insert(OnButtonClick);
 	}
 	
 	

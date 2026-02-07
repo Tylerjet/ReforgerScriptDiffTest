@@ -39,9 +39,9 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		
 		// TODO sound temp here until moved to radio level
 		if ( (modifier > 0  && m_iFrequency == maxFreq) || (modifier < 0 && m_iFrequency == minFreq) )
-			SCR_UISoundEntity.SoundEvent("SOUND_RADIO_CHANGEFREQUENCY_ERROR");
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RADIO_CHANGEFREQUENCY_ERROR);
 		else if (modifier != 0)
-			SCR_UISoundEntity.SoundEvent("SOUND_RADIO_CHANGEFREQUENCY");
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RADIO_CHANGEFREQUENCY);
 		
 		m_iFrequency = m_iFrequency + (modifier * m_RadioComp.GetFrequencyResolution());
 		m_iFrequency = Math.ClampInt(m_iFrequency, minFreq, maxFreq);
@@ -49,8 +49,70 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		m_RadioComp.SetFrequency(m_iFrequency); // Set new frequency
 
 		float fFrequency = Math.Round(m_iFrequency / 10); // Format the frequency text
-		fFrequency = fFrequency / 100;				
-		m_sText = fFrequency.ToString() + " " + LABEL_FREQUENCY_UNITS;		
+		fFrequency = fFrequency / 100;			
+		m_sText = fFrequency.ToString(3, 1) + " " + LABEL_FREQUENCY_UNITS;		
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	override void AdjustEntryModif(int modifier)
+	{
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_GroupsManagerComponent));
+		SCR_MilitaryFaction playerFaction = SCR_MilitaryFaction.Cast(SCR_RespawnSystemComponent.GetInstance().GetPlayerFaction(GetGame().GetPlayerController().GetPlayerId()));
+		
+		if (!groupManager || !playerFaction)
+			return;
+		
+		int factionFreq = playerFaction.GetFactionRadioFrequency();
+		int currentFreq = m_RadioComp.GetFrequency();
+		
+		array<SCR_AIGroup> groups = groupManager.GetPlayableGroupsByFaction(playerFaction);
+
+		int newFreq;
+		
+		if (currentFreq == factionFreq)		// if platoon frequency
+		{
+			if (modifier == -1)
+				newFreq = groups[0].GetGroupFrequency();	// go to first squad freq
+			else 
+				newFreq = groups[groups.Count() - 1].GetGroupFrequency();	// go to last squad freq
+		}
+		else 
+		{
+			int count = groups.Count();
+			if (modifier == 1 && currentFreq == groups[0].GetGroupFrequency())
+				newFreq = factionFreq;
+			else if (modifier == -1 && currentFreq == groups[groups.Count() - 1].GetGroupFrequency())
+				newFreq = factionFreq;
+			else 
+			{
+				bool isMatched;
+				
+				for (int i = 0; i < count; i++)
+				{
+					if (currentFreq == groups[i].GetGroupFrequency())
+					{
+						if (modifier == 1)
+							newFreq = groups[i-1].GetGroupFrequency();
+						else 
+							newFreq = groups[i+1].GetGroupFrequency();
+						
+						isMatched = true;
+						break;
+					}
+				}	
+				
+				if (!isMatched)
+					newFreq = groups[0].GetGroupFrequency();
+			}
+		}
+		
+		m_iFrequency = newFreq;
+		m_RadioComp.SetFrequency(m_iFrequency);
+		
+		float fFrequency = Math.Round(m_iFrequency / 10); // Format the frequency text
+		fFrequency = fFrequency / 100;			
+		m_sText = fFrequency.ToString(3, 1) + " " + LABEL_FREQUENCY_UNITS;		
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------ 

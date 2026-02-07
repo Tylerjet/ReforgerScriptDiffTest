@@ -18,6 +18,12 @@ class AttachmentSlotComponent: BaseAttachmentSlotComponent
 	proto external void SetAttachment(IEntity attachmentEntity);
 	proto external IEntity GetAttachedEntity();
 	proto external BaseAttachmentType GetAttachmentSlotType();
+	/*!
+	Does this slot obstruct others? This is for example relevant if an optic slot obstructs the weapons
+	iron sights (either built-in or attached). Example: PSO-1 scope on AK pattern rifles, or the P90 tri-rail
+	are not obstructed by mounting an optic, while most M4-type rifles are.
+	*/
+	proto external bool IsObstructing();
 };
 
 /** @}*/

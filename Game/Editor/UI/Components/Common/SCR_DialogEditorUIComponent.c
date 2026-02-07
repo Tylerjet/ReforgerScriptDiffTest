@@ -75,11 +75,8 @@ class SCR_DialogEditorUIComponent: SCR_BaseEditorUIComponent
 			if (menu) menu.CloseSelf();
 		}
 	}
-	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
-		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
-			return;
-		
 		CloseDialog();
 	}
 	protected void OnMenuUpdate(float timeSlice)
@@ -129,7 +126,7 @@ class SCR_DialogEditorUIComponent: SCR_BaseEditorUIComponent
 				inputManager.AddActionListener("MenuBack", EActionTrigger.DOWN, CloseDialog);
 		}
 		
-		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		if (m_bIsInDialog && m_EditorMenu)
 			menu.GetOnMenuUpdate().Insert(OnMenuUpdate);
@@ -138,8 +135,8 @@ class SCR_DialogEditorUIComponent: SCR_BaseEditorUIComponent
 	{
 		super.HandlerDeattached(w);
 		
-		if (GetGame().OnInputDeviceUserChangedInvoker())
-			GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputDeviceUserChanged);
+		if (GetGame().OnInputDeviceIsGamepadInvoker())
+			GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		
 		if (m_bIsInDialog)
 		{

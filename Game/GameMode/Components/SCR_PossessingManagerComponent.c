@@ -339,13 +339,10 @@ class SCR_PossessingManagerComponent: SCR_BaseGameModeComponent
 		int mainEntityCount = m_MainEntities.Count();
 		writer.WriteInt(mainEntityCount);
 		
-		IEntity entity;
-		RplComponent rpl;
-		RplId rplId;
 		for (int i = 0; i < mainEntityCount; i++)
 		{
 			writer.WriteInt(m_MainEntities.GetKey(i));
-			writer.WriteInt(m_MainEntities.GetElement(i));
+			writer.WriteRplId(m_MainEntities.GetElement(i));
 		}
 		
 		return true;
@@ -356,13 +353,11 @@ class SCR_PossessingManagerComponent: SCR_BaseGameModeComponent
 		reader.ReadInt(mainEntityCount);
 		
 		int playerID;
-		IEntity entity;
-		RplComponent rpl;
 		RplId rplID;
 		for (int i = 0; i < mainEntityCount; i++)
 		{
 			reader.ReadInt(playerID);
-			reader.ReadInt(rplID);
+			reader.ReadRplId(rplID);
 			
 			m_MainEntities.Insert(playerID, rplID);
 		}

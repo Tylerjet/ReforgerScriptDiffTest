@@ -19,14 +19,12 @@ class SCR_InventoryAvailableCondition : SCR_AvailableActionsGroupCondition
 		s_iShowCounter++;
 		GetGame().GetGameUserSettings().GetModule("SCR_InventoryHintSettings").Set("m_iInventoryOpenCount", s_iShowCounter);
 		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 	}
 
 	void Reset()
 	{
 		GetGame().GetGameUserSettings().GetModule("SCR_InventoryHintSettings").Set("m_iInventoryOpenCount", 0);
 		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
 	}
 
 	void SCR_InventoryAvailableCondition()

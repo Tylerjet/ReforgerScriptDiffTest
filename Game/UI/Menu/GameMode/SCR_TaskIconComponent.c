@@ -2,31 +2,31 @@ class SCR_TaskIconComponent : ScriptedWidgetComponent
 {
 	[Attribute("1", UIWidgets.ComboBox, "Icon type", "", ParamEnumArray.FromEnum(ETaskIconType) )]
 	protected ETaskIconType m_TaskIconType;
-	
+
 	[Attribute("0.898 0.541 0.184 1", UIWidgets.ColorPicker)]
 	protected ref Color m_BackgroundColor;
-	
+
 	[Attribute("0 0 0 1", UIWidgets.ColorPicker)]
 	protected ref Color m_IconColor;
-	
+
 	[Attribute("0 0 0 1", UIWidgets.ColorPicker)]
 	protected ref Color m_OutlineColor;
-	
+
 	[Attribute("0 0 0 1", UIWidgets.ColorPicker)]
 	protected ref Color m_HoverColor;
-	
+
 	[Attribute("1", UIWidgets.CheckBox)]
 	protected bool m_BackgroundShown;
-	
+
 	[Attribute("1", UIWidgets.CheckBox)]
 	protected bool m_IconShown;
-	
+
 	[Attribute("1", UIWidgets.CheckBox)]
 	protected bool m_OutlineShown;
-	
+
 	[Attribute("0", UIWidgets.CheckBox)]
 	protected bool m_HoverShown;
-	
+
 	protected const string TASK_ICON_IMAGESET = "{10C0A9A305E8B3A4}UI/Imagesets/Tasks/Task_Icons.imageset";
 
 	protected Widget m_wRoot;
@@ -44,7 +44,7 @@ class SCR_TaskIconComponent : ScriptedWidgetComponent
 		HoverShown(m_HoverShown);
 		SetIconType(m_TaskIconType);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetBackgroundColor(Color color)
 	{
@@ -53,7 +53,7 @@ class SCR_TaskIconComponent : ScriptedWidgetComponent
 			return;
 		background.SetColor(color);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetIconColor(Color color)
 	{
@@ -62,7 +62,7 @@ class SCR_TaskIconComponent : ScriptedWidgetComponent
 			return;
 		icon.SetColor(color);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetOutlineColor(Color color)
 	{
@@ -71,7 +71,7 @@ class SCR_TaskIconComponent : ScriptedWidgetComponent
 			return;
 		outline.SetColor(color);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetHoverColor(Color color)
 	{
@@ -80,7 +80,7 @@ class SCR_TaskIconComponent : ScriptedWidgetComponent
 			return;
 		hover.SetColor(color);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void BackgroundShown(bool shown)
 	{
@@ -92,7 +92,7 @@ class SCR_TaskIconComponent : ScriptedWidgetComponent
 		else
 			background.SetOpacity(0);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void IconShown(bool shown)
 	{
@@ -104,7 +104,7 @@ class SCR_TaskIconComponent : ScriptedWidgetComponent
 		else
 			icon.SetOpacity(0);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OutlineShown(bool shown)
 	{
@@ -116,7 +116,7 @@ class SCR_TaskIconComponent : ScriptedWidgetComponent
 		else
 			outline.SetOpacity(0);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void HoverShown(bool shown)
 	{
@@ -128,7 +128,7 @@ class SCR_TaskIconComponent : ScriptedWidgetComponent
 		else
 			hover.SetOpacity(0);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetIconType(ETaskIconType type)
 	{
@@ -168,7 +168,7 @@ class SCR_TaskIconComponent : ScriptedWidgetComponent
 		icon.GetImageSize(0, x, y);
 		icon.SetSize(x, y);
 	}
-}
+};
 
 enum ETaskIconType
 {

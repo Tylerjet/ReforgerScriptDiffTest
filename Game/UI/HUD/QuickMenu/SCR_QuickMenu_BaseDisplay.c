@@ -16,11 +16,14 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 	
 	const float DISABLED_ALPHA = 0.75;							// percent
 	const float AUTO_CLOSE_TIMEOUT = 2.0;						// seconds
+	const float ADJUST_COOLDOWN = 0.175;						// seconds
 	const ref Color ICON_ORANGE = Color.FromSRGBA(255, 182, 95, 255);
 	
 	protected bool m_bIsMenuOpen;
-	protected int m_iSelected; 									// selected entry index
-	protected float m_fInputTimer = 0;							// selection timeout counter
+	protected bool m_bIsModifierActive;
+	protected int m_iSelected; 			// selected entry index
+	protected float m_fInputTimer;		// selection timeout counter
+	protected float m_AdjustCooldown;	// cooldown before you can cycle up/down by holding a button
 
 	protected InputManager m_InputManager;
 	protected SCR_VONController m_VONController;
@@ -119,15 +122,15 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 			{
 				m_pElementSelected = pElement;
 				m_pElementSelected.Update(true);
-				SCR_UISoundEntity.SoundEvent(UISounds.ITEM_SELECTED);
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.ITEM_SELECTED);
 			}
 			else
 				pElement.Update(false);
 		}
 		
 		// Show the menu
-		WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, 1, WidgetAnimator.FADE_RATE_DEFAULT, false, true);
-		
+		AnimateWidget.Opacity(m_wRoot, 1, UIConstants.FADE_RATE_DEFAULT, true);
+		m_bShowLocal = true;
 		m_bIsMenuOpen = true;
 	}
 	
@@ -203,7 +206,7 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Menu entry was changed, update entry
+	//! Menu entry was adjusted, update entry
 	//! \param input is any integer which is interepreted later in AdjustEntry according to its needs
 	void OnAdjust(int input)
 	{
@@ -214,6 +217,16 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 		m_pElementSelected.SetText(m_pEntrySelected.GetDisplayText());
 		UpdateGroupHints();
 	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//! Menu entry was adjusted with modifier, update entry
+	//! \param input is any integer which is interepreted later in AdjustEntry according to its needs
+	void OnAdjustModif(int input)
+	{
+		m_pEntrySelected.AdjustEntryModif(input);
+		m_pElementSelected.SetText(m_pEntrySelected.GetDisplayText());
+		UpdateGroupHints();
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Menu entry was toggled
@@ -252,7 +265,7 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 		m_pEntrySelected = m_aEntries[m_iSelected];
 		m_VONController.SetEntryActive(m_pEntrySelected);
 
-		SCR_UISoundEntity.SoundEvent(UISounds.ITEM_SELECTED);
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.ITEM_SELECTED);
 		
 		UpdateHints();
 		UpdateGroupHints();
@@ -265,7 +278,9 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 		if (m_pElementSelected)
 			m_pElementSelected.Update(false);
 		
-		WidgetAnimator.PlayAnimation(m_wRoot, WidgetAnimationType.Opacity, 0, WidgetAnimator.FADE_RATE_DEFAULT, false, true); // fade out
+		AnimateWidget.Opacity(m_wRoot, 0, UIConstants.FADE_RATE_DEFAULT, true);
+		m_bShowLocal = false;
+
 		m_bIsMenuOpen = false;
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupManager)
@@ -274,16 +289,6 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 		groupManager.GetOnPlayableGroupCreated().Remove(UpdateGroupHints);
 	}
 		
-	//------------------------------------------------------------------------------------------------
-	//! SCR_PlayerController Event
-	protected void OnControlledEntityChanged(IEntity from, IEntity to)
-	{
-		if (m_bIsMenuOpen)
-			OnMenuClose(0,0);
-		
-		Cleanup();
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_PlayerController Event
 	protected void OnDestroyed(IEntity killer)
@@ -309,7 +314,11 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 	void OnMenuAdjustUp(float value, EActionTrigger reason)
 	{
 		m_fInputTimer = 0;
-		OnAdjust(1);
+		
+		if (m_bIsModifierActive)
+			OnAdjustModif(1);
+		else 
+			OnAdjust(1);
 	}	
 	
 	//------------------------------------------------------------------------------------------------
@@ -317,14 +326,33 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 	void OnMenuAdjustDown(float value, EActionTrigger reason)
 	{
 		m_fInputTimer = 0;
-		OnAdjust(-1);
-	}	
+		
+		if (m_bIsModifierActive)
+			OnAdjustModif(-1);
+		else 
+			OnAdjust(-1);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Menu modifier input callback
+	protected void OnMenuModifier(float value, EActionTrigger reason)
+	{
+		if (reason == EActionTrigger.DOWN)
+			m_bIsModifierActive = true;
+		else 
+			m_bIsModifierActive = false;
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! Menu item configuration callback: 1 = up / 2 = down
 	protected void OnMenuAdjust(float value, EActionTrigger reason)
 	{
 		m_fInputTimer = 0;
+		
+		if (m_AdjustCooldown > 0)
+			return;
+		else 
+			m_AdjustCooldown = ADJUST_COOLDOWN;
 		
 		if (value == 1)
 			OnAdjust(1);
@@ -382,19 +410,18 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 		m_InputManager.AddActionListener("QuickMenuPrev", EActionTrigger.DOWN, OnMenuCycle);				
 		m_InputManager.AddActionListener("QuickMenuWheelUp", EActionTrigger.DOWN, OnMenuAdjustUp);	
 		m_InputManager.AddActionListener("QuickMenuWheelDown", EActionTrigger.DOWN, OnMenuAdjustDown);
-		m_InputManager.AddActionListener("QuickMenuUp", EActionTrigger.DOWN, OnMenuAdjust);				
-		m_InputManager.AddActionListener("QuickMenuDown", EActionTrigger.DOWN, OnMenuAdjust);			
+		m_InputManager.AddActionListener("QuickMenuModifier", EActionTrigger.DOWN, OnMenuModifier);
+		m_InputManager.AddActionListener("QuickMenuModifier", EActionTrigger.UP, OnMenuModifier);
+		m_InputManager.AddActionListener("QuickMenuUp", EActionTrigger.PRESSED, OnMenuAdjust);				
+		m_InputManager.AddActionListener("QuickMenuDown", EActionTrigger.PRESSED, OnMenuAdjust);			
 		m_InputManager.AddActionListener("QuickMenuAction", EActionTrigger.DOWN, OnMenuToggle);
-		
 		m_InputManager.AddActionListener("QuickMenuClose", EActionTrigger.DOWN, OnMenuClose);	// QuickMenuContext (non-exclusive)
 		m_InputManager.AddActionListener("VONMenu", EActionTrigger.DOWN, OnMenuOpen); 			// VONContext
 		
 		// events
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		playerController.m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);	
-		playerController.m_OnDestroyed.Insert(OnDestroyed);
+		m_PlayerController.m_OnDestroyed.Insert(OnDestroyed);
 		
-		m_VONController = SCR_VONController.Cast(playerController.FindComponent(SCR_VONController));
+		m_VONController = SCR_VONController.Cast(m_PlayerController.FindComponent(SCR_VONController));
 		m_VONController.m_OnEntriesChanged.Insert(OnVONEntriesChanged);
 	}
 	
@@ -409,20 +436,18 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 		m_InputManager.RemoveActionListener("QuickMenuPrev", EActionTrigger.DOWN, OnMenuCycle);
 		m_InputManager.RemoveActionListener("QuickMenuWheelUp", EActionTrigger.DOWN, OnMenuAdjustUp);
 		m_InputManager.RemoveActionListener("QuickMenuWheelDown", EActionTrigger.DOWN, OnMenuAdjustDown);
-		m_InputManager.RemoveActionListener("QuickMenuUp", EActionTrigger.DOWN, OnMenuAdjust);
-		m_InputManager.RemoveActionListener("QuickMenuDown", EActionTrigger.DOWN, OnMenuAdjust);
+		m_InputManager.RemoveActionListener("QuickMenuModifier", EActionTrigger.DOWN, OnMenuModifier);
+		m_InputManager.RemoveActionListener("QuickMenuModifier", EActionTrigger.UP, OnMenuModifier);
+		m_InputManager.RemoveActionListener("QuickMenuUp", EActionTrigger.PRESSED, OnMenuAdjust);
+		m_InputManager.RemoveActionListener("QuickMenuDown", EActionTrigger.PRESSED, OnMenuAdjust);
 		m_InputManager.RemoveActionListener("QuickMenuAction", EActionTrigger.DOWN, OnMenuToggle);
 					
 		m_InputManager.RemoveActionListener("QuickMenuClose", EActionTrigger.DOWN, OnMenuClose);	// QuickMenuContext (non-exclusive)
 		m_InputManager.RemoveActionListener("VONMenu", EActionTrigger.DOWN, OnMenuOpen);			// VONContext
 		
 		// events
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		if (playerController)
-		{
-			playerController.m_OnControlledEntityChanged.Remove(OnControlledEntityChanged);
-			playerController.m_OnDestroyed.Remove(OnDestroyed);
-		}
+		if (m_PlayerController)
+			m_PlayerController.m_OnDestroyed.Remove(OnDestroyed);
 		
 		if (m_VONController)
 			m_VONController.m_OnEntriesChanged.Remove(OnVONEntriesChanged);
@@ -448,6 +473,9 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 			m_fInputTimer += timeSlice;
 			if (m_fInputTimer > AUTO_CLOSE_TIMEOUT)		// auto-close		
 				OnMenuClose(0,0);	
+			
+			if (m_AdjustCooldown > 0)
+				m_AdjustCooldown -= timeSlice;
 		}
 	}
 	
@@ -464,8 +492,19 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 	{
 		m_wRoot.SetVisible(false); // Make menu invisible at start
 		m_wRoot.SetOpacity(0);
+		
+		m_bShowLocal = false;	// Flag as not-to-show by the core GUI visibility mechanic
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override void DisplayControlledEntityChanged(IEntity from, IEntity to)
+	{
+		if (m_bIsMenuOpen)
+			OnMenuClose(0,0);
+		
+		Cleanup();
+	}	
+	
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStopDraw(IEntity owner)
 	{

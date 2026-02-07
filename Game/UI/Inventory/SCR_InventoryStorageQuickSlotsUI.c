@@ -6,8 +6,10 @@
 class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 {
 	protected ChimeraCharacter							m_pPlayerCharacter;
-	protected int 										m_iLastSelectedSlotIndex = 0;
-	protected SCR_InventorySlotUI						m_pLastSelectedSlot;	
+	protected SCR_InventorySlotUI						m_pLastSelectedSlot;
+	protected static int 								s_iLastSelectedSlotIndex = 0;
+	protected static int 								s_iInitSelectedSlotIndex = 0;
+	protected static bool 								s_bQuickBarClosed;
 	
 	protected ResourceName m_sGamepadIcons = "{F7FD1672FECA05E8}UI/Textures/Icons/icons_gamepad_64.imageset";
 	//------------------------------------------- USER METHODS  -----------------------------------------------------
@@ -33,7 +35,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 		m_pSelectedSlot = m_aSlots.Get( iSlotIndex );
  		if ( !m_pSelectedSlot )
 			return;	
-		
+
 		m_pSelectedSlot.SetSelectedQuickSlot( bHighlight );
 		CheckIfQuickSlotActionsAvailable(m_Player);
 	}
@@ -51,40 +53,42 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 		if ( fWheelValue == 1 )
 			fWheelValue = -1;			//in case it's controler dpad uses
 				
-		if ( m_iLastSelectedSlotIndex < 0 )
+		if ( s_iLastSelectedSlotIndex < 0 )
 		{
 			if (fWheelValue > 0)
-				m_iLastSelectedSlotIndex = m_aSlots.Count() - 1;
+				s_iLastSelectedSlotIndex = m_aSlots.Count() - 1;
 			else
-				m_iLastSelectedSlotIndex = 0;
+				s_iLastSelectedSlotIndex = 0;
 				
 		}
 		else
 		{
-			if (m_pInputManager.IsUsingMouseAndKeyboard() && m_iLastSelectedSlotIndex < 0)
-				m_iLastSelectedSlotIndex = m_aSlots.Count()-1;
-			//PrintFormat( "INV: index to deselect: %1 | m_aSlotsCount: %2", m_iLastSelectedSlotIndex, m_aSlots.Count() );
-			HighlightSlot( m_iLastSelectedSlotIndex, false );	
+			if (m_pInputManager.IsUsingMouseAndKeyboard() && s_iLastSelectedSlotIndex < 0)
+				s_iLastSelectedSlotIndex = m_aSlots.Count()-1;
+			//PrintFormat( "INV: index to deselect: %1 | m_aSlotsCount: %2", s_iLastSelectedSlotIndex, m_aSlots.Count() );
+			HighlightSlot( s_iLastSelectedSlotIndex, false );
 			if (fWheelValue > 0)
 			{
 				if (m_pInputManager.IsUsingMouseAndKeyboard())
-					m_iLastSelectedSlotIndex = Math.Max( ( m_iLastSelectedSlotIndex - 1 ), 0 );
+					s_iLastSelectedSlotIndex = Math.Max( ( s_iLastSelectedSlotIndex - 1 ), 0 );
 				else
-					m_iLastSelectedSlotIndex = ( m_iLastSelectedSlotIndex - 1 ) % ( m_aSlots.Count() );			//version for cyclic rotation through the items in slots
+					s_iLastSelectedSlotIndex = ( s_iLastSelectedSlotIndex - 1 ) % ( m_aSlots.Count() );			//version for cyclic rotation through the items in slots
 			}
 			else
 			{
 				if (m_pInputManager.IsUsingMouseAndKeyboard())
-					m_iLastSelectedSlotIndex = Math.Min( ( m_iLastSelectedSlotIndex + 1 ), m_aSlots.Count()-1 );
+					s_iLastSelectedSlotIndex = Math.Min( ( s_iLastSelectedSlotIndex + 1 ), m_aSlots.Count()-1 );
 				else
-					m_iLastSelectedSlotIndex = ( m_iLastSelectedSlotIndex + 1 ) % ( m_aSlots.Count() );			//version for cyclic rotation through the items in slots
+					s_iLastSelectedSlotIndex = ( s_iLastSelectedSlotIndex + 1 ) % ( m_aSlots.Count() );			//version for cyclic rotation through the items in slots
 			}
 
 
 			//if ( )																//version for cyclic rotation through the items in slots
-			//PrintFormat( "INV: index to select: %1 | m_aSlotsCount: %2", m_iLastSelectedSlotIndex, m_aSlots.Count() );
+			//PrintFormat( "INV: index to select: %1 | m_aSlotsCount: %2", s_iLastSelectedSlotIndex, m_aSlots.Count() );
+			
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_SCROLL);
 		}	
-		HighlightSlot( m_iLastSelectedSlotIndex, true );
+		HighlightSlot( s_iLastSelectedSlotIndex, true );
 	}
 		
 		
@@ -93,6 +97,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	void SelectSlot( int iSlotIndex )
 	{
 		HighlightSlot( iSlotIndex, true );
+		s_iLastSelectedSlotIndex = iSlotIndex;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -281,18 +286,41 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	//------------------------------------------------------------------------------------------------
 	bool UseItemInSlot()
 	{
-		if ( !m_pSelectedSlot )
+		if (!m_pSelectedSlot)
 			return false;
 		FilterOutSlots();
-		m_pSelectedSlot.Use( m_Player );
+
+		bool useItem = true;
+		if (s_bQuickBarClosed)
+		{
+			useItem = (s_iInitSelectedSlotIndex != s_iLastSelectedSlotIndex);
+			s_bQuickBarClosed = false;
+		}
+
+		if (useItem)
+			m_pSelectedSlot.Use(m_Player);
+
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CONFIRM);
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	static void SetInitialQuickSlot()
+	{
+		s_iInitSelectedSlotIndex = s_iLastSelectedSlotIndex;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static void SetQuickBarClosed()
+	{
+		s_bQuickBarClosed = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void Init()
 	{
 		super.Init();
-		m_iLastSelectedSlotIndex = -1;
+		// s_iLastSelectedSlotIndex = -1;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -367,6 +395,21 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	ResourceName GetGamepadIcons()
 	{
 		return m_sGamepadIcons;
+	}
+
+	InventoryItemComponent GetCurrentSlotItem()
+	{
+		SCR_InventorySlotUI slot = m_aSlots.Get(s_iLastSelectedSlotIndex);
+		if (!slot.GetInventoryItemComponent())
+			return null;
+
+		return slot.GetInventoryItemComponent();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void HighlightLastSelectedSlot()
+	{
+		SelectSlot(s_iLastSelectedSlotIndex);
 	}
 
 	//------------------------------------------- COMMON METHODS  -----------------------------------------------------

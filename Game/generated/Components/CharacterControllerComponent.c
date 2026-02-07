@@ -15,6 +15,7 @@ class CharacterControllerComponentClass: PrimaryControllerComponentClass
 
 class CharacterControllerComponent: PrimaryControllerComponent
 {
+	proto external CharacterHeadAimingComponent GetHeadAimingComponent();
 	proto external CharacterAnimationComponent GetAnimationComponent();
 	proto external BaseWeaponManagerComponent GetWeaponManagerComponent();
 	proto external CameraHandlerComponent GetCameraHandlerComponent();
@@ -47,6 +48,9 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! Set the current play gesture state.
 	proto external void SetPlayGesture(bool val);
 	proto external void SetFreeLook(bool val);
+	//! Force character to stay in freelook
+	proto external void SetForcedFreeLook(bool enabled);
+	proto external bool IsFreeLookForced();
 	proto external void ResetPersistentStates(bool resetADSState = true, bool resetGadgetState = true);
 	/*!
 	Sets dynamic speed of this character.
@@ -76,29 +80,44 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external float GetDynamicStance();
 	/*!
 	Enables or disables inspection mode.
-	\param state Desired state true=enabled, disabled otherwise.
+	\param targetItem Item to enable the inspection mode on.
 	*/
-	proto external void SetInspectionMode(bool state);
+	proto external void SetInspect(IEntity targetItem);
 	/*!
 	Returns whether inspection mode can be set.
 	\return True in case inspection mode can be set, false otherwise.
 	*/
-	proto external bool CanSetInspectionMode();
+	proto external bool CanInspect(IEntity targetItem);
 	/*!
 	Returns whether character is in inspection mode.
 	\return True in case character is in inspection mode, false otherwise.
 	*/
-	proto external bool GetIsInspectionMode();
+	proto external bool GetInspect();
+	/*!
+	Returns whether inspected item (if any) is currently equipped weapon or not.
+	\return True in case inspected weapon is valid and is current weapon.
+	*/
+	proto external bool GetInspectCurrentWeapon();
+	/*!
+	Returns entity that is currently inspected or null if none.
+	*/
+	proto external IEntity GetInspectEntity();
 	/*!
 	Sets inspection state if inspection state is enabled.
 	\param state Desired state.
 	*/
-	proto external void SetInspectionState(float state);
+	proto external void SetInspectState(float state);
 	/*!
 	Returns inspection state if inspection state is enabled.
 	\return Returns desired state.
 	*/
-	proto external float GetInspectionState();
+	proto external float GetInspectState();
+	/*!
+	Returns true if weapon is deployed and stabilized.
+	
+	This can for example occur when a character is prone using a weapon that has deployed bipod.
+	*/
+	proto external bool GetIsWeaponDeployed();
 	//! CharacterStanceChange STANCECHANGE_NONE = 0, STANCECHANGE_TOERECTED = 1, STANCECHANGE_TOCROUCH = 2, STANCECHANGE_TOPRONE = 3
 	proto external void SetStanceChange(int stance);
 	//! CharacterStanceChange STANCECHANGE_NONE = 0, STANCECHANGE_TOERECTED = 1, STANCECHANGE_TOCROUCH = 2, STANCECHANGE_TOPRONE = 3
@@ -107,6 +126,9 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external void ForceStanceUp(int stance);
 	//! 2 - right, 1 - left
 	proto external void SetRoll(int val);
+	proto external bool IsRoll();
+	proto external bool ShouldHoldInputForRoll();
+	proto external void EnableHoldInputForRoll(bool enable);
 	proto external void SetJump(float val);
 	proto external void SetWantedLeaning(float val);
 	proto external void SetBanking(float val);
@@ -160,6 +182,9 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool ReloadWeapon();
 	// mag or projectile
 	proto external bool ReloadWeaponWith(IEntity ammunitionEntity);
+	//------------------------------------------------------------------------
+	proto external void SetUnconscious(bool enabled);
+	proto external bool IsUnconscious();
 	//! Dying
 	proto external void Ragdoll();
 	//! Kills the character. Skips invincibility checks.
@@ -203,6 +228,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	\return Returns true if the equipped item has been used.
 	*/
 	proto external bool TryUseEquippedItem();
+	proto external bool TryUseEquippedItemOverrideParams(int cmdId, float animLength, int intParam, float floatParam, bool boolParam);
 	/*!
 	Try to use the specified item.
 	\param item The item which should be used.
@@ -228,10 +254,10 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool CanPlayItemGesture();
 	//! Returns true if the character can use provided ladder.
 	//! if optional maxTestDistance or maxEntryAngle is below 0, distance for test will be taken from character's ladder auto detection settings
-	proto external bool CanUseLadder(LadderComponent pLadder, float maxTestDistance = -1.0, float maxEntryAngle = -1.0, bool performTraceCheck = false);
+	proto external bool CanUseLadder(IEntity pLadderOwner, int ladderComponentIndex = 0, float maxTestDistance = -1.0, float maxEntryAngle = -1.0, bool performTraceCheck = false);
 	//! Start climbing provided ladder.
 	//! Returns true if request was successful.
-	proto external bool TryUseLadder(LadderComponent pLadder, float maxTestDistance = -1.0, float maxEntryAngle = -1.0);
+	proto external bool TryUseLadder(IEntity pLadderOwner, int ladderComponentIndex = 0, float maxTestDistance = -1.0, float maxEntryAngle = -1.0);
 	// Script
 	proto external void RequestActionByID(int actionID, float value);
 	//! Returns true if the character is partially lowered.
@@ -244,8 +270,6 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external vector GetCameraWeaponAngles();
 	//------------------------------------------------------------------------
 	proto external vector GetCameraWeaponOffset();
-	//! Returns the angular velocity in degrees/s
-	proto external vector GetLookAtAngularVelocity();
 	//------------------------------------------------------------------------
 	proto external bool GetDisableMovementControls();
 	//------------------------------------------------------------------------
@@ -257,7 +281,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//------------------------------------------------------------------------
 	proto external void SetAimingSensitivity(float mouse, float gamepad, float ads);
 	//------------------------------------------------------------------------
-	proto external void GetAimingSensivity(out float mouse, out float gamepad, out float ads);
+	proto external void GetAimingSensitivity(out float mouse, out float gamepad, out float ads);
 	// Sets gadget handling into persistent mode
 	proto external void SetStickyGadget(bool enable);
 	// Sets ads and gadget focus into persistent mode
@@ -295,6 +319,10 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external float GetStanceChangeDelayTime();
 	proto external float GetJumpSpeed();
 	proto external bool GetMeleeAttackInput();
+	//! Returns true if freelook is enforced by game logic.
+	proto external bool IsFreeLookEnforced();
+	//! Returns true if freelook is enabled by game logic or user, or if it is indirectly forced by disabled view controls.
+	proto external bool IsInFreeLook();
 	/*! Returns whether a position is in the character's view
 	\param pos World Position to check is within view
 	\param angMax Maximum(exclusive) angular offset in Degrees to consider the position within view
@@ -348,7 +376,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! Will be called when item use action is started
 	event protected void OnItemUseBegan(IEntity item);
 	//! Will be called when item use action is complete
-	event protected void OnItemUseComplete(IEntity item);
+	event protected void OnItemUseComplete(IEntity item, int actionType, int intParam, float floatParam, bool boolParam);
 	event protected void OnAnimationEvent(AnimationEventID animEventType, AnimationEventID animUserString, int intParam, float timeFromStart, float timeToEnd);
 	//! Called when a player has been assigned to this controller
 	event protected void OnControlledByPlayer(IEntity owner, bool controlled);

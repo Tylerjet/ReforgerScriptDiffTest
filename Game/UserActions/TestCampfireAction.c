@@ -31,7 +31,7 @@ class TestCampfireAction : ScriptedUserAction
 	{
 		if (!m_FireEntity)
 		{
-			m_FireEntity = SCR_ParticleAPI.PlayOnObjectPTC(m_Owner, m_sParticle, m_vParticleOffset);
+			m_FireEntity = SCR_ParticleEmitter.CreateAsChild(m_sParticle, m_Owner, m_vParticleOffset);
 		}	
 	}
 	

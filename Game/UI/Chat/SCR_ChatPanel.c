@@ -155,14 +155,13 @@ class SCR_ChatPanel : ScriptedWidgetComponent
 			m_OnChatOpen.Invoke();
 		
 		//m_Widgets.m_EditOverlay.SetOpacity(0);
-		WidgetAnimator.PlayAnimation(m_Widgets.m_EditOverlay, WidgetAnimationType.Opacity, 1, WidgetAnimator.FADE_RATE_DEFAULT);
-		
+		AnimateWidget.Opacity(m_Widgets.m_EditOverlay, 1, UIConstants.FADE_RATE_DEFAULT);
+
 		// Animate the edit background color
 		Color colorStart = Color.FromSRGBA(226, 167, 79, 255); // Orange
 		Color colorEnd = Color.FromSRGBA(0, 0, 0, 140); // Black
 		m_Widgets.m_EditBackgroundImage.SetColor(colorStart);
-		WidgetAnimator.PlayAnimation(m_Widgets.m_EditBackgroundImage, WidgetAnimationType.Color, colorEnd, WidgetAnimator.FADE_RATE_SLOW);
-
+		AnimateWidget.Color(m_Widgets.m_EditBackgroundImage, colorEnd, UIConstants.FADE_RATE_SLOW);
 		
 		m_Widgets.m_MessageEditBox.SetEnabled(true);
 		
@@ -279,7 +278,7 @@ class SCR_ChatPanel : ScriptedWidgetComponent
 		m_Widgets.m_MessageEditBoxComponent1.GetOnChange().Insert(Callback_OnEditBoxChange);
 		
 		// Init the widgets in the history layout
-		m_MessageHistoryAnimator = new SCR_FadeInOutAnimator(m_Widgets.m_MessageHistory, WidgetAnimator.FADE_RATE_FAST, WidgetAnimator.FADE_RATE_SLOW, m_fFadeOutThreshold_s);
+		m_MessageHistoryAnimator = new SCR_FadeInOutAnimator(m_Widgets.m_MessageHistory, UIConstants.FADE_RATE_FAST, UIConstants.FADE_RATE_SLOW, m_fFadeOutThreshold_s);
 		for(int i = 0; i < m_iMessageLineCount; i++)
 		{
 			Widget lineWidget = GetGame().GetWorkspace().CreateWidgets(m_sChatMessageLineLayout, m_Widgets.m_MessageHistory);
@@ -441,11 +440,7 @@ class SCR_ChatPanel : ScriptedWidgetComponent
 			SCR_ChatPanelManager.GetInstance().ShowHelpMessage(STR_CHANNEL_DISABLED);
 		}
 		else
-		{
-			// Replace rich text tags
-			// todo find a better way to solve this
-			message.Replace(">", " ");
-			
+		{	
 			if (PrivateMessageChannel.Cast(m_ActiveChannel))
 			{
 				// Get whisper receiver ID

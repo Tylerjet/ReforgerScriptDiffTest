@@ -22,6 +22,22 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	private ref map<EHudLayers, Widget> m_aLayerWidgets = new ref map<EHudLayers, Widget>;
 	private Widget m_wRoot;
 	private Widget m_wRootTop;
+
+	protected BaseWorld m_World;	
+	
+	private bool m_MenuOpen;
+	
+	protected ref ScriptInvoker<float, float, float> m_OnSceneBrightnessChanged = new ScriptInvoker();
+
+	protected float m_fUpdateTime = -1;		
+	const float UPDATE_DELAY = 100;
+	
+	const float ADAPTIVE_OPACITY_MIN = 0.6;
+	const float ADAPTIVE_OPACITY_MAX = 0.9;
+	
+	protected float m_fSceneBrightnessRaw = -1;
+	protected float m_fSceneBrightness = -1;
+	protected float m_fOpacity = -1;
 	
 	#ifndef DISABLE_HUD_MANAGER
 	
@@ -37,6 +53,78 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 			game.SetHUDManager(this);
 			CreateHUDLayers();
 		}
+		
+		m_World = GetGame().GetWorld();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void OnUpdate(IEntity owner)
+	{
+		if (!m_World)
+			return;
+		
+		float time = m_World.GetWorldTime();
+		
+		if (time < m_fUpdateTime)
+			return;
+		
+		m_fUpdateTime = time + UPDATE_DELAY;
+
+		//--------------------------------------------------------------------------------------------
+		// Adaptive opacity		
+		//--------------------------------------------------------------------------------------------
+		float sceneBrightnessRaw = m_World.GetCameraSceneMiddleBrightness(0);
+		
+		// Throttle the opacity update if brightness change is not bigger than n%
+		if (Math.AbsFloat(m_fSceneBrightnessRaw - sceneBrightnessRaw) < 0.02)
+			return;
+		
+		// We are interested mostly about the lower spectrum of brightness levels; formulae is subject to change
+		float sceneBrightness = Math.Clamp(sceneBrightnessRaw * 3, 0, 1);
+		
+		// Throttle the opacity update if brightness change is not bigger than n%
+		if (Math.AbsFloat(m_fSceneBrightness - sceneBrightness) < 0.02)			
+			return;		
+		
+		// Linear opacity interpolation based on scene brightness
+		float opacity = Math.Round(100 * ((ADAPTIVE_OPACITY_MAX - ADAPTIVE_OPACITY_MIN) * sceneBrightness + ADAPTIVE_OPACITY_MIN)) * 0.01;
+		
+		// Invoke the opacity update only if change is greater than n%
+		if (Math.AbsFloat(m_fOpacity - opacity) >= 0.05)
+		{
+			//PrintFormat("'Adaptive Opacity' recalculated %1 -> %2", m_fOpacity, opacity);
+			
+			m_fSceneBrightnessRaw = sceneBrightnessRaw;
+			m_fSceneBrightness = sceneBrightness;
+			m_fOpacity = opacity;
+			
+			if (m_OnSceneBrightnessChanged)
+				m_OnSceneBrightnessChanged.Invoke(opacity, sceneBrightness, sceneBrightnessRaw);				
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetAdaptiveOpacity()
+	{
+			return m_fOpacity;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetSceneBrightness()
+	{
+			return m_fSceneBrightness;
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	float GetSceneBrightnessRaw()
+	{
+			return m_fSceneBrightnessRaw;
+	}	
+		
+	//------------------------------------------------------------------------------------------------\
+	ScriptInvoker GetSceneBrightnessChangedInvoker()
+	{
+		return m_OnSceneBrightnessChanged;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -83,7 +171,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Return hud compoenent of given type
+	//! Return hud component of given type
 	SCR_InfoDisplay FindInfoDisplay(typename type)
 	{
 		foreach (SCR_InfoDisplay display : m_aHUDElements)

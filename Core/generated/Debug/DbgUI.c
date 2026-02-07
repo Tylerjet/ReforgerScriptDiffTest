@@ -18,7 +18,7 @@ Per frame usage example:
 bool m_ShowDbgUI = false;
 int m_DbgListSelection = 0;
 float m_DbgSliderValue = 0.0;
-autoptr array<string> m_DbgOptions = {"jedna", "dva", "tri"};
+array<string> m_DbgOptions = {"jedna", "dva", "tri"};
 
 void OnUpdate(float timeslice)
 {
