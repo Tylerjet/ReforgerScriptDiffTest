@@ -84,7 +84,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	#endif
 
 	protected ref SCR_InvEquipCB 						m_pCallback = new SCR_InvEquipCB();
-	
+
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------
 	void UpdateReferencedComponent( InventoryItemComponent pComponent )
@@ -95,8 +95,9 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		
 		if( m_pItem )
 			m_Attributes = SCR_ItemAttributeCollection.Cast( m_pItem.GetAttributes() );			//set the slot attributes (size) based on the information stored in the item 
-		
-		if(! m_Attributes )
+		if(! m_Attributes)
+			return;
+		if (m_pItem && !m_Attributes.IsVisible())
 			return;
 
 		auto vehicleAttributes = SCR_InventoryVehicleVisibilityAttribute.Cast(m_Attributes.FindAttribute(SCR_InventoryVehicleVisibilityAttribute));

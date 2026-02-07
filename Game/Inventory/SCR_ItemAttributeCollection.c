@@ -9,6 +9,9 @@ class SCR_ItemAttributeCollection: ItemAttributeCollection
 	[Attribute("1", UIWidgets.CheckBox, "Sets item movable by drag'n'drop")]
 	protected bool m_bDraggable;
 
+	[Attribute("1", UIWidgets.CheckBox, "Sets item visible in inventory")]
+	protected bool m_bVisible;
+
 	private ItemPhysicalAttributes m_PhysAttributes;
 	
 	//------------------------------------------------------------------------------------------------
@@ -38,6 +41,12 @@ class SCR_ItemAttributeCollection: ItemAttributeCollection
 		return m_bDraggable;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	bool IsVisible()
+	{
+		return m_bVisible;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	void SetSlotSize( ESlotSize slotSize ) 	
 	{
