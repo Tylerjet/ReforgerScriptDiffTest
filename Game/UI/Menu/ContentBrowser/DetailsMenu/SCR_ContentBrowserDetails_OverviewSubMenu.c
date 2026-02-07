@@ -882,7 +882,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		if (!m_Item)
 			return;
 
-		int nDependent = Math.ClampInt(m_Item.GetDependentAddons().Count(), 0, SCR_WorkshopUiCommon.MAX_DEPENDENCIES_SHOWN);
+		int nDependent = Math.ClampInt(SCR_WorkshopUiCommon.GetDownloadedDependentAddons(m_Item).Count(), 0, SCR_WorkshopUiCommon.MAX_DEPENDENCIES_SHOWN);
 		int nDependencies = Math.ClampInt(m_Item.GetLatestDependencies().Count(), 0, SCR_WorkshopUiCommon.MAX_DEPENDENCIES_SHOWN);
 
 		// Displays
@@ -1152,7 +1152,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 			return;
 		
 		if (m_Tooltip.IsValid("Dependent", m_Widgets.m_wDependent))
-			comp.Init(m_Item.GetDependentAddons());
+			comp.Init(SCR_WorkshopUiCommon.GetDownloadedDependentAddons(m_Item));
 		else if (m_Tooltip.IsValid("Dependencies", m_Widgets.m_wDependencies))
 			comp.Init(m_Item.GetLatestDependencies());
 	}

@@ -708,11 +708,17 @@ class SCR_WorkshopItem
 	float GetSizeBytes()
 	{
 		if (m_Item && m_Item.GetLatestRevision())
-			return m_Item.GetLatestRevision().GetSizeBytes();
-		else if(m_Dependency)
+		{
+			float size = m_Item.GetLatestRevision().GetSizeBytes();
+			
+			if (size != 0)
+				return size;
+		}
+		
+		if(m_Dependency)
 			return m_Dependency.TotalFileSize();
-		else
-			return 0;
+		
+		return 0;
 	}
 	
 	//-----------------------------------------------------------------------------------------------

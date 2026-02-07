@@ -317,10 +317,7 @@ class SCR_MapToolMenuUI : SCR_MapUIBaseComponent
 	override event bool OnMouseEnter(Widget w, int x, int y)
 	{		
 		if (m_wToolMenuRoot && w == m_wToolMenuRoot && !m_wToolMenuBar.IsEnabled())	 // menu is disabled
-		{
-			if (m_CursorModule.HandleSubMenu(true))
-				m_wToolMenuBar.SetEnabled(true);
-		}
+			SetToolMenuFocused(true);
 		
 		GetGame().GetWorkspace().SetFocusedWidget(w);
 		
@@ -330,13 +327,17 @@ class SCR_MapToolMenuUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	override event bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
-		if (RenderTargetWidget.Cast(enterW) && w.IsEnabled())	// disable menu
+		Widget parent = enterW;
+		while (parent)
 		{
-			m_wToolMenuBar.SetEnabled(false);
-			m_CursorModule.HandleSubMenu(false);
-			
-			GetGame().GetWorkspace().SetFocusedWidget(null);
+			if (parent == m_wToolMenuRoot)
+				break;
+
+			parent = parent.GetParent();
 		}
+
+		if (parent != m_wToolMenuRoot && w.IsEnabled())	// disable menu
+			SetToolMenuFocused(false);
 		
 		return true;
 	}

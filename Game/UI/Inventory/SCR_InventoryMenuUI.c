@@ -2992,7 +2992,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return;
 
 		IEntity pItem = pComp.GetOwner();
-		if (!m_InventoryManager.CanMoveItem(pItem))
+		if (!m_InventoryManager.CanMoveItem(pItem) || !m_pFocusedSlotUI.IsCompatible())
 			return;
 		
 		m_pCallBack.m_pItem = pItem;
@@ -3053,7 +3053,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return;
 		
 		IEntity pItem = pComp.GetOwner();
-		if (!m_InventoryManager.CanMoveItem(pItem))
+		if (!m_InventoryManager.CanMoveItem(pItem) || !m_pFocusedSlotUI.IsCompatible())
 			return;
 		
 		m_pCallBack.m_pItem = pItem;
@@ -3231,7 +3231,24 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			if ( m_pCallBack.m_pStorageFrom == m_pStorageLootUI )
 				MoveFromVicinity();
 			else
+			{
+				// disallow reload for unequipped weapons
+				if (pItem.FindComponent(BaseMagazineComponent))
+				{
+					if (m_pActiveHoveredStorageUI.GetCurrentNavigationStorage().IsInherited(SCR_WeaponAttachmentsStorageComponent))
+					{
+						if (!IsWeaponEquipped(m_pActiveHoveredStorageUI.GetStorage().GetOwner()))
+							return;
+					}
+					else if (m_pCallBack.m_pStorageFrom.GetStorage().IsInherited(SCR_WeaponAttachmentsStorageComponent))
+					{
+						if (!IsWeaponEquipped(m_pCallBack.m_pStorageFrom.GetStorage().GetOwner()))
+							return;
+					}
+				}
+
 				m_InventoryManager.InsertItem( pItem, m_pActiveHoveredStorageUI.GetCurrentNavigationStorage(), m_pCallBack.m_pStorageFrom.GetStorage(), m_pCallBack );
+			}
 		}
 	}
 	//---- REFACTOR NOTE END ----
@@ -3260,6 +3277,12 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!m_InventoryManager.CanMoveItem(pItem))
 			return;
 		
+		if (pItem.FindComponent(BaseMagazineComponent) && pStorageFrom.IsInherited(SCR_WeaponAttachmentsStorageComponent))
+		{
+			if (!IsWeaponEquipped(pStorageFrom.GetOwner()))
+				return;
+		}
+
 		m_pCallBack.m_pStorageFrom = GetStorageUIByBaseStorageComponent(pStorageFrom);
 		if (!m_pCallBack.m_pStorageFrom)
 			m_pCallBack.m_pStorageFrom = m_pSelectedSlotUI.GetStorageUI();
@@ -3320,6 +3343,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (m_pActiveHoveredStorageUI.GetCurrentNavigationStorage() &&
 			m_pActiveHoveredStorageUI.GetCurrentNavigationStorage().IsInherited(SCR_WeaponAttachmentsStorageComponent))
 		{
+			if (pItem.FindComponent(BaseMagazineComponent))
+			{
+				if (!IsWeaponEquipped(m_pActiveHoveredStorageUI.GetCurrentNavigationStorage().GetOwner()))
+					return;
+			}
 			m_pCallBack.m_pStorageMan = GetInventoryStorageManager();
 			m_pCallBack.m_eAttachAction = EAttachAction.ATTACH;
 		}

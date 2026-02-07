@@ -303,10 +303,17 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			//filter out 1-4 quickslots as they are in fact storages :harold:
 			if (SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT <= m_iQuickSlotIndex && m_iQuickSlotIndex < 10)
 			{
-
-				SCR_QuickslotBaseContainer container = GetCharacterStorage(SCR_PlayerController.GetLocalControlledEntity()).GetContainerFromQuickslot(m_iQuickSlotIndex);
-				if (container)
-					container.HandleVisualization(iconImage, m_wPreviewImage, iconText, quickslotNumber);
+				IEntity controlled = SCR_PlayerController.GetLocalControlledEntity();
+				if (controlled)
+				{
+					SCR_CharacterInventoryStorageComponent storage = GetCharacterStorage(controlled);
+					if (storage)
+					{
+						SCR_QuickslotBaseContainer container = storage.GetContainerFromQuickslot(m_iQuickSlotIndex);
+						if (container)
+							container.HandleVisualization(iconImage, m_wPreviewImage, iconText, quickslotNumber);
+					}
+				}
 			}
 			
 			ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
@@ -1081,7 +1088,69 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------		
-	void CheckCompatibility(SCR_InventorySlotUI slot);
+	void CheckCompatibility(SCR_InventorySlotUI slot)
+	{
+		SCR_InventoryMenuUI menu = SCR_InventoryMenuUI.Cast(GetGame().GetMenuManager().FindMenuByPreset(ChimeraMenuPreset.Inventory20Menu));
+		if (!menu)
+			return;
+
+		Widget incompatible = m_widget.FindAnyWidget("Incompatible");
+		if (!incompatible)
+			return;
+
+		if (!slot)
+		{
+			incompatible.SetVisible(false);
+			return;
+		}
+
+		if (slot == this)
+			return;
+
+		if (slot.GetSlotedItemFunction() == ESlotFunction.TYPE_MAGAZINE)
+		{
+			if (!m_pItem)
+				return;
+
+			BaseWeaponComponent weapon = BaseWeaponComponent.Cast(m_pItem.GetOwner().FindComponent(BaseWeaponComponent));
+			if (!weapon)
+				return;
+
+			InventoryItemComponent itemComp = slot.GetInventoryItemComponent();
+			if (!itemComp)
+				return;
+
+			MagazineComponent magComp = MagazineComponent.Cast(itemComp.GetOwner().FindComponent(MagazineComponent));
+			if (!magComp)
+				return;
+
+			BaseMagazineWell well = magComp.GetMagazineWell();
+			if (!well)
+				return;
+
+			BaseMuzzleComponent muzzle = weapon.GetCurrentMuzzle();
+			if (!muzzle || !muzzle.GetMagazineWell())
+				return;
+
+			if (!menu.IsWeaponEquipped(m_pItem.GetOwner()) || slot.IsInherited(SCR_ArsenalInventorySlotUI))
+			{
+				incompatible.SetVisible(true);
+				return;
+			}
+
+			incompatible.SetVisible(!well.Type().IsInherited(muzzle.GetMagazineWell().Type()));
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsCompatible()
+	{
+		Widget incompatible = m_widget.FindAnyWidget("Incompatible");
+		if (!incompatible)
+			return false;
+
+		return !incompatible.IsVisible();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_InventorySlotUI( InventoryItemComponent pComponent = null, SCR_InventoryStorageBaseUI pStorageUI = null, bool bVisible = true, int iSlotIndex = -1, SCR_ItemAttributeCollection pAttributes = null )

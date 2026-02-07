@@ -4,16 +4,15 @@ class MapLine
 	protected static const ref Color BUTTON_RED = Color.FromSRGBA(197, 75, 75, 255);
 	
 	bool m_bIsLineDrawn;		// if line is drawn when closing the map, redraw it on reopen
-	bool m_bIsDrawMode;
-	float m_fStartPointX, m_fStartPointY;
-	float m_fEndPointX, m_fEndPointY;
-	Widget m_wRootW;
-	Widget m_wLine;
-	ImageWidget m_wLineImage;
-	Widget m_wDeleteButton;
-	SCR_ButtonImageComponent m_DeleteButtonComp;
-	SCR_MapEntity m_MapEntity;
-	SCR_MapDrawingUI m_OwnerComponent;
+	protected bool m_bIsInFocus;
+	protected float m_fStartPointX, m_fStartPointY;
+	protected float m_fEndPointX, m_fEndPointY;
+	protected Widget m_wLine;
+	protected ImageWidget m_wLineImage;
+	protected ButtonWidget m_wDeleteButton;
+	protected SCR_ButtonImageComponent m_DeleteButtonComp;
+	protected SCR_MapEntity m_MapEntity;
+	protected SCR_MapDrawingUI m_OwnerComponent;
 	
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -21,8 +20,6 @@ class MapLine
 	//! \param[in] drawStart
 	void CreateLine(notnull Widget rootW, bool drawStart = false)
 	{
-		m_wRootW = rootW;
-		
 		Widget mapFrame = m_MapEntity.GetMapMenuRoot().FindAnyWidget(SCR_MapConstants.MAP_FRAME_NAME);
 		if (!mapFrame)
 			return;
@@ -35,8 +32,15 @@ class MapLine
 		m_wLine = GetGame().GetWorkspace().CreateWidgets("{E8850FCD9219C411}UI/layouts/Map/MapDrawLine.layout", mapFrame);
 		m_wLineImage = ImageWidget.Cast(m_wLine.FindAnyWidget("DrawLineImage"));
 			
-		m_wDeleteButton = GetGame().GetWorkspace().CreateWidgets("{F486FAEEA00A5218}UI/layouts/Map/MapLineDeleteButton.layout", mapFrame);
-		m_DeleteButtonComp = SCR_ButtonImageComponent.Cast(m_wDeleteButton.FindAnyWidget("DelButton").FindHandler(SCR_ButtonImageComponent));
+		Widget deleteButtonFrame = GetGame().GetWorkspace().CreateWidgets("{F486FAEEA00A5218}UI/layouts/Map/MapLineDeleteButton.layout", mapFrame);
+		if (!deleteButtonFrame)
+			return;
+
+		m_wDeleteButton = ButtonWidget.Cast(deleteButtonFrame.FindAnyWidget("DelButton"));
+		if (!m_wDeleteButton)
+			return;
+
+		m_DeleteButtonComp = SCR_ButtonImageComponent.Cast(m_wDeleteButton.FindHandler(SCR_ButtonImageComponent));
 		m_DeleteButtonComp.m_OnClicked.Insert(OnButtonClick);
 		m_DeleteButtonComp.m_OnFocus.Insert(OnButtonFocus);
 		m_DeleteButtonComp.m_OnFocusLost.Insert(OnButtonFocusLost);
@@ -53,7 +57,10 @@ class MapLine
 	{
 		if (m_OwnerComponent.m_bIsLineBeingDrawn)
 			return;
-		
+
+		if (m_OwnerComponent.IsUsingGamepad() && !m_bIsInFocus)
+			return;
+
 		DestroyLine(false);
 		m_OwnerComponent.m_bActivationThrottle = true;
 	}
@@ -61,12 +68,33 @@ class MapLine
 	//------------------------------------------------------------------------------------------------
 	protected void OnButtonFocus()
 	{
+		if (m_OwnerComponent.m_bIsLineBeingDrawn)
+			return;
+
+		if (m_OwnerComponent.IsUsingGamepad())
+		{
+			m_bIsInFocus = false;
+			array<Widget> tracedW = SCR_MapCursorModule.GetMapWidgetsUnderCursor();
+			foreach (Widget w : tracedW)
+			{
+				if (w == m_wDeleteButton)
+				{
+					m_bIsInFocus = true;
+					break;
+				}
+			}
+
+			if (!m_bIsInFocus)
+				return;
+		}
+
 		m_DeleteButtonComp.GetImageWidget().SetColor(Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()));
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnButtonFocusLost(Widget w)
 	{
+		m_bIsInFocus = false;
 		m_DeleteButtonComp.GetImageWidget().SetColor(BUTTON_RED);
 	}
 	
@@ -74,12 +102,14 @@ class MapLine
 	protected void OnMouseEnter(Widget w)
 	{
 		GetGame().GetWorkspace().SetFocusedWidget(w);
+		OnButtonFocus();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnMouseLeave(Widget w)
 	{
 		GetGame().GetWorkspace().SetFocusedWidget(null);
+		OnButtonFocusLost(w);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -112,18 +142,22 @@ class MapLine
 	//!
 	//! \param[in] updateEndPos
 	void UpdateLine(bool updateEndPos)
-	{			
+	{
 		if (!m_wLine)	// can happen due to callater used for update
 			return;
-				
+
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		if (!workspace)
+			return;
+
 		if (updateEndPos)
 			m_MapEntity.GetMapCursorWorldPosition(m_fEndPointX, m_fEndPointY);	
-		
+
 		int screenX, screenY, endX, endY;
 
 		m_MapEntity.WorldToScreen(m_fStartPointX, m_fStartPointY, screenX, screenY, true);
 		m_MapEntity.WorldToScreen(m_fEndPointX, m_fEndPointY, endX, endY, true);
-		
+
 		vector lineVector = vector.Zero;
 		lineVector[0] = m_fStartPointX - m_fEndPointX;
 		lineVector[1] = m_fStartPointY - m_fEndPointY;
@@ -133,19 +167,19 @@ class MapLine
 			angles[1] =  180 - angles[1]; 	// reverse angles when passing vertical axis
 		else if (angles[0] == 0)
 			angles[1] =  180 + angles[1];	// fix for case for when line is vertically straight
-		
+
 		m_wLineImage.SetRotation(angles[1]);
-		
-		lineVector = m_MapEntity.GetMapWidget().SizeToPixels(lineVector);
-		m_wLineImage.SetSize( GetGame().GetWorkspace().DPIUnscale(lineVector.Length()), 50);
-		
-		FrameSlot.SetPos(m_wLine, GetGame().GetWorkspace().DPIUnscale(screenX), GetGame().GetWorkspace().DPIUnscale(screenY));	// needs unscaled coords
-		
-		lineVector = {
-			GetGame().GetWorkspace().DPIUnscale((screenX + endX) * 0.5),
-			GetGame().GetWorkspace().DPIUnscale((screenY + endY) * 0.5),
-			0
-		};
+
+		lineVector = lineVector * m_MapEntity.GetCurrentZoom();
+
+		float length = workspace.DPIUnscale(lineVector.Length());
+
+		m_wLineImage.SetSize(length, 50);
+
+		FrameSlot.SetPos(m_wLine, workspace.DPIUnscale(screenX), workspace.DPIUnscale(screenY));	// needs unscaled coords
+
+		lineVector[0] = workspace.DPIUnscale((screenX + endX) * 0.5);
+		lineVector[1] = workspace.DPIUnscale((screenY + endY) * 0.5);
 		FrameSlot.SetPos(m_wDeleteButton, lineVector[0], lineVector[1]);	//del button
 
 	}
@@ -165,13 +199,13 @@ class MapLine
 class SCR_MapDrawingUI : SCR_MapUIBaseComponent
 {	
 	[Attribute("editor", UIWidgets.EditBox, desc: "Toolmenu imageset quad name")]
-	string m_sToolMenuIconName;
+	protected string m_sToolMenuIconName;
 	
 	[Attribute("9", UIWidgets.EditBox, desc: "Max line count")]
-	int m_iLineCount;
+	protected int m_iLineCount;
 	
 	bool m_bActivationThrottle; 	// onclick will be called same frame draw mode activates/ delete button is clicked, this bool is used to ignore it
-	bool m_bIsDrawModeActive;
+	protected bool m_bIsDrawModeActive;
 	bool m_bIsLineBeingDrawn;
 	int m_iLinesDrawn; 				// count of currently drawn lines
 	protected int m_iLineID;		// active line id
@@ -181,9 +215,20 @@ class SCR_MapDrawingUI : SCR_MapUIBaseComponent
 	protected SCR_MapCursorModule 	m_CursorModule;
 	protected SCR_MapToolEntry m_ToolMenuEntry;
 	protected ref array<ref MapLine> m_aLines = new array <ref MapLine>();
-	
-	protected const string m_aDrawableElements[1] = {"RulerFrame"}; // widgets we are allow to draw over
-	
+
+	//------------------------------------------------------------------------------------------------
+	bool IsUsingGamepad()
+	{
+		if (!m_CursorModule)
+			return false;
+
+		SCR_MapCursorInfo cursorInfo = m_CursorModule.GetCursorInfo();
+		if (!cursorInfo)
+			return false;
+
+		return cursorInfo && cursorInfo.isGamepad;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Toggle draw mode
 	protected void ToggleDrawMode()
@@ -200,10 +245,11 @@ class SCR_MapDrawingUI : SCR_MapUIBaseComponent
 	//! \param[in] cacheDrawn
 	protected void SetDrawMode(bool state, bool cacheDrawn = false)
 	{
-		m_bIsDrawModeActive = state;
-		
 		if (state)
 		{
+			if (!m_CursorModule.HandleDraw(true))	// draw restricted, return here
+				return;
+
 			GetGame().GetInputManager().AddActionListener("MapSelect", EActionTrigger.UP, OnMapClick);
 			m_bActivationThrottle = true;
 			
@@ -216,6 +262,7 @@ class SCR_MapDrawingUI : SCR_MapUIBaseComponent
 		else 
 		{
 			GetGame().GetInputManager().RemoveActionListener("MapSelect", EActionTrigger.UP, OnMapClick);
+			GetGame().GetInputManager().RemoveActionListener("MapContextualMenu", EActionTrigger.UP, OnMapModifierClick);
 			
 			m_CursorModule.HandleDraw(false); // in case drawing was in progress
 			
@@ -237,7 +284,8 @@ class SCR_MapDrawingUI : SCR_MapUIBaseComponent
 				}
 			}
 		}
-		
+
+		m_bIsDrawModeActive = state;
 		m_ToolMenuEntry.SetActive(state);
 		m_ToolMenuEntry.m_ButtonComp.SetTextVisible(state);
 		UpdateLineCount();
@@ -259,31 +307,9 @@ class SCR_MapDrawingUI : SCR_MapUIBaseComponent
 			return;
 		}
 		
-		array<Widget> tracedW = SCR_MapCursorModule.GetMapWidgetsUnderCursor(); // check if the line isnt being drawn over buttons or other elements
 		EMapEntityMode mode = m_MapEntity.GetMapConfig().MapEntityMode;
-		
-		bool allowed = true;
-		int expectedCount;
-		
+
 		if (mode == EMapEntityMode.SPAWNSCREEN)
-			expectedCount = 1;
-		else
-			expectedCount = 0;
-			
-		if (tracedW.Count() != expectedCount)
-		{	
-			allowed = false;
-			foreach(string widgetName : m_aDrawableElements)
-			{
-				if (tracedW.IsIndexValid(0) && tracedW[0].GetName() == widgetName)
-				{
-					allowed = true;
-					break;
-				}
-			}
-		}
-		
-		if (!allowed)
 		{
 			SetDrawMode(false);
 			return;
@@ -294,9 +320,9 @@ class SCR_MapDrawingUI : SCR_MapUIBaseComponent
 			m_bIsLineBeingDrawn = false;
 			m_aLines[m_iLineID].m_bIsLineDrawn = true;
 			m_iLineID = -1;
-			
-			m_CursorModule.HandleDraw(false);
+
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_MARKER_DRAW_STOP);
+			GetGame().GetInputManager().RemoveActionListener("MapContextualMenu", EActionTrigger.UP, OnMapModifierClick);
 			
 			return;
 		}
@@ -304,7 +330,7 @@ class SCR_MapDrawingUI : SCR_MapUIBaseComponent
 		if (m_iLinesDrawn >= m_iLineCount)
 			return;
 		
-		if (!m_CursorModule.HandleDraw(true))	// draw restricted, return here
+		if (m_CursorModule.GetCursorState() & SCR_MapCursorModule.STATE_DRAW_RESTRICTED)	// draw restricted, return here
 			return;
 		
 		for (int i; i < m_iLineCount; i++)	// state 1, start drawing line
@@ -315,11 +341,28 @@ class SCR_MapDrawingUI : SCR_MapUIBaseComponent
 				m_bIsLineBeingDrawn = true;
 				m_iLineID = i;
 				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_MARKER_DRAW_START);
+				GetGame().GetInputManager().AddActionListener("MapContextualMenu", EActionTrigger.UP, OnMapModifierClick);
 				
 				return;
 			}
 				
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Callback method that is used to cancel line drawing and remove line that wasnt finished
+	//! \param[in] value
+	//! \param[in] reason
+	protected void OnMapModifierClick(float value, EActionTrigger reason)
+	{
+		GetGame().GetInputManager().RemoveActionListener("MapContextualMenu", EActionTrigger.UP, OnMapModifierClick);
+		if (!m_bIsLineBeingDrawn || m_iLineID < 0)
+			return;
+
+		m_bIsLineBeingDrawn = false;
+		m_aLines[m_iLineID].DestroyLine();
+		m_iLineID = -1;
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_MARKER_DRAW_STOP);
 	}
 	
 	//------------------------------------------------------------------------------------------------

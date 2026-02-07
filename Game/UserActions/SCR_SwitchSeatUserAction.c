@@ -20,6 +20,9 @@ class SCR_SwitchSeatAction : SCR_GetInUserAction
 		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
 		if (!compartmentAccess)
 			return false;
+		
+		if (compartmentAccess.IsSwitchingSeatsAnim())
+			return false;
 
 		BaseCompartmentSlot characterCompartment = compartmentAccess.GetCompartment();
 		if (!characterCompartment)

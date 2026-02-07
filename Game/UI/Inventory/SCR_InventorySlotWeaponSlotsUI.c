@@ -113,7 +113,7 @@ class SCR_InventorySlotWeaponSlotsUI : SCR_InventorySlotUI
 				return;
 
 			BaseMuzzleComponent muzzle = weapon.GetCurrentMuzzle();
-			if (!muzzle.GetMagazineWell())
+			if (!muzzle || !muzzle.GetMagazineWell())
 			{
 				incompatible.SetVisible(true);
 				return;

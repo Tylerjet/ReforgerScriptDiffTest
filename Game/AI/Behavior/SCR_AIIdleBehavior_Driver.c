@@ -51,7 +51,8 @@ class SCR_AIIdleBehavior_Driver : SCR_AIIdleBehavior
 	{
 		super.OnFail();
 		// Disable lights when exiting
-		SetLightsState(false);
+		if (m_Utility.GetOwner().IsAIActivated())
+			SetLightsState(false);
 	}
 		
 	//------------------------------------------------------------------------------------------------

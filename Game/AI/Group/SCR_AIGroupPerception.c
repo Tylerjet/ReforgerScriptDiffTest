@@ -199,7 +199,7 @@ class SCR_AIGroupPerception : Managed
 			
 			// Ignore aircrafts. Fix to prevent suppression of aircrafts,
 			// but also there is no reason to track aircrafts in group perception.
-			if (perceivable.GetUnitType() == EAIUnitType.UnitType_Aircraft)
+			if (perceivable && perceivable.GetUnitType() == EAIUnitType.UnitType_Aircraft)
 				return;
 			
 			SCR_AITargetInfo targetInfo = new SCR_AITargetInfo();

@@ -59,6 +59,88 @@ class SCR_AIVehicleCombatActivity : SCR_AIActivityBase
 	}
 	
 	//------------------------------------------------------------------------------------
+	// Checks if vehicle gunner should take over the driver seat and retreat
+	void GunnerRetreatLogic(AIAgent agent, IEntity vehicle)
+	{	
+		// !!!
+		// Temporarly disabled this until retreat mechanic is available
+		// !!!
+		return;
+		
+		SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(agent);
+		if (!chimeraAgent || !vehicle)
+			return;
+		
+		if (ShouldGunnerRetreatInVehicle(chimeraAgent, vehicle))
+		{
+			AICommunicationComponent myComms = m_Utility.m_Owner.GetCommunicationComponent();
+			if (!myComms)
+				return;
+			
+			// Send message to take over driver seat
+			SCR_AIMessageHandling.SendGetInMessage(agent, vehicle, EAICompartmentType.Pilot, this, myComms, ACTIVITY_NAME);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------
+	// Checks if vehicle gunner should take over the driver seat and retreat
+	bool ShouldGunnerRetreatInVehicle(SCR_ChimeraAIAgent chimeraAgent, IEntity vehicleEntity)
+	{			
+		vector dangerPos;
+		float dangerDistance;
+		
+		BaseTarget target = chimeraAgent.m_UtilityComponent.m_CombatComponent.GetCurrentTarget();
+		if (!target)
+			target = chimeraAgent.m_UtilityComponent.m_CombatComponent.GetLastSeenEnemy();
+		
+		SCR_AIGroupTargetCluster cluster = m_Utility.m_Perception.m_MostDangerousCluster;
+		
+		/*
+			TODO: Consider firepower difference and threat/suppression
+			cluster.m_State.m_iCountIdentified + cluster.m_State.m_iCountDetected
+		*/
+		
+		if (target)
+		{
+			dangerPos = target.GetLastSeenPosition();
+			dangerDistance = target.GetDistance();
+		}
+		else
+		{
+			// No targets & clusters, can safely retreat
+			if (!cluster)
+				return true;
+				
+			dangerPos = cluster.m_State.GetCenterPosition();
+			dangerDistance = cluster.GetMinDistance();
+		}
+		
+		// If enemy is far, don't sweat, can retreat
+		if (dangerDistance > 300)
+			return true;
+		
+		// If enemy is upclose, don't retreat (agent will either shoot target or dismount and engage)
+		if (dangerDistance < 40)
+			return false;		
+		
+		/*
+		To consider: vehicle movement and gunner rotation capability
+		
+		vector mat[3];
+		vehicleEntity.GetTransform(mat);
+		vector vehicleDir = mat[2];
+		
+		vector dirToTarget = vector.Direction(vehicleEntity.GetOrigin(), dangerPos).Normalized();
+		float dangerDot = Math.AbsFloat(vector.Dot(vehicleDir, dirToTarget));	
+		
+		if (dangerDot < 0.6)
+			return true;
+		*/
+		
+		return false;	
+	}
+	
+	//------------------------------------------------------------------------------------
 	void VehicleUsageLogic(SCR_AIGroupVehicle vehicle)
 	{
 		AICommunicationComponent myComms = m_Utility.m_Owner.GetCommunicationComponent();
@@ -123,8 +205,8 @@ class SCR_AIVehicleCombatActivity : SCR_AIActivityBase
 							newDriversFireTeam.RemoveMember(newDriver);
 							SCR_AIMessageHandling.SendGetInMessage(newDriver, vehicleEntity, EAICompartmentType.Pilot, this, myComms, ACTIVITY_NAME);
 						}
-						else // we are alone in vehicle on gunner pos, we must take driver seat
-							SCR_AIMessageHandling.SendGetInMessage(agent, vehicleEntity, EAICompartmentType.Pilot, this, myComms, ACTIVITY_NAME);
+						else
+							GunnerRetreatLogic(agent, vehicleEntity);
 					} 
 				}
 			}
@@ -246,8 +328,10 @@ class SCR_AIVehicleCombatActivity : SCR_AIActivityBase
 						break;
 					}
 				}
+				
 				if (newDriverAgent)
-					SCR_AIMessageHandling.SendGetInMessage(newDriverAgent, vehicle, EAICompartmentType.Pilot, this, myComms, ACTIVITY_NAME);
+					GunnerRetreatLogic(newDriverAgent, vehicle);
+				
 				if (newGunnerAgent)
 				{
 					SCR_AIMessageHandling.SendGetInMessage(newGunnerAgent, vehicle, EAICompartmentType.Turret, this, myComms, ACTIVITY_NAME);

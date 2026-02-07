@@ -71,7 +71,15 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 	{
 		if (button != 0)	// LMB only
 			return true;
-		
+
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		SCR_MapCursorModule cursorModule;
+		if (mapEntity)
+			cursorModule = SCR_MapCursorModule.Cast(mapEntity.GetMapModule(SCR_MapCursorModule));
+
+		if (cursorModule && cursorModule.GetCursorState() & SCR_MapCursorModule.STATE_POPUP_RESTRICTED)
+			return true;
+
 		GetGame().OpenGroupMenu();
 		
 		return true;

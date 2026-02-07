@@ -53,8 +53,8 @@ class SCR_WorkshopUiCommon
 	static const string LABEL_CANCEL_REPORT =			"#AR-Workshop_CancelReportTitle";
 	static const string LABEL_DEPENDENCIES_NUMBER_ONE =	"#AR-Workshop_Details_ModDependencies_Short_One_LC";
 	static const string LABEL_DEPENDENCIES_NUMBER =		"#AR-Workshop_Details_ModDependencies_Short_LC";
-	static const string LABEL_DEPENDENT_NUMBER_ONE =	"#AR-Workshop_Details_DependentMods_Short_One_LC";
-	static const string LABEL_DEPENDENT_NUMBER =		"#AR-Workshop_Details_DependentMods_Short_LC";
+	static const string LABEL_DEPENDENT_NUMBER_ONE =	"#AR-Workshop_Details_DependentMods_Short_One_LC_Downloaded";
+	static const string LABEL_DEPENDENT_NUMBER =		"#AR-Workshop_Details_DependentMods_Short_LC_Downloaded";
 	
 	// --- ICONS ---
 	static const string ICON_DOWNLOAD = 		"download";
@@ -171,7 +171,7 @@ class SCR_WorkshopUiCommon
 	static void OnDeleteAddonButton(SCR_WorkshopItem item)
 	{
 		// Check if some addons depend on this
-		array<ref SCR_WorkshopItem> offlineAndDependent = SCR_AddonManager.SelectItemsAnd(item.GetDependentAddons(), EWorkshopItemQuery.OFFLINE);
+		array<ref SCR_WorkshopItem> offlineAndDependent = GetDownloadedDependentAddons(item);
 
 		if (!offlineAndDependent.IsEmpty())
 		{
@@ -591,6 +591,12 @@ class SCR_WorkshopUiCommon
 			enableButtonMode = "problems";
 
 		button.SetEffectsWithAnyTagEnabled({"all", enableButtonMode});
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static array<ref SCR_WorkshopItem> GetDownloadedDependentAddons(notnull SCR_WorkshopItem item)
+	{
+		return SCR_AddonManager.SelectItemsAnd(item.GetDependentAddons(), EWorkshopItemQuery.OFFLINE);
 	}
 	
 	// --- UNIFIED ROUNDING ---

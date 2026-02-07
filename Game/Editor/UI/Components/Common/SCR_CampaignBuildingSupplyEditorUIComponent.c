@@ -192,15 +192,27 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 		if (!providerComponent)
 			return;
 		
-		m_ProviderCallsign.SetText(providerComponent.GetProviderDisplayName());
+		string providerName = providerComponent.GetProviderDisplayName();
 		
 		SCR_MilitaryBaseComponent targetBase = providerComponent.GetMilitaryBaseComponent();
+		string callsignName;
+		
 		if (targetBase)
 		{
-			m_ProviderCallsign.SetText(targetBase.GetCallsignDisplayName());
-			return;
+			callsignName = targetBase.GetCallsignDisplayName();
+			
+			// Campaign behavior 
+			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+			
+			if (campaign)
+			{
+				int baseCallsign = targetBase.GetCallsign();
+				SCR_CampaignMilitaryBaseComponent base = campaign.GetBaseManager().FindBaseByCallsign(baseCallsign);
+				providerName = base.GetBaseName();
+			}
 		}
-
-		m_ProviderName.SetText("");
+		
+		m_ProviderCallsign.SetText(callsignName);
+		m_ProviderName.SetText(providerName);
 	}
 }

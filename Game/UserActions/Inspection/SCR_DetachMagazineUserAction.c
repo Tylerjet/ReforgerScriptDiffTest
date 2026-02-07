@@ -61,6 +61,9 @@ class SCR_DetachMagazineUserAction : SCR_InspectionUserAction
 		if (!m_WeaponComponent)
 			return false;
 
+		if (!m_WeaponComponent.GetCurrentMagazine())
+			return false;
+
 		IEntity currentMag = m_WeaponComponent.GetCurrentMagazine().GetOwner();
 		if (!currentMag)
 			return false;

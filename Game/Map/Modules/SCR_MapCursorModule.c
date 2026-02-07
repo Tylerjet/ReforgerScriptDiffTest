@@ -39,34 +39,34 @@ class SCR_MapCursorInfo
 class SCR_MapCursorModule: SCR_MapModuleBase
 {	
 	[Attribute(defvalue: "1.5", uiwidget: UIWidgets.EditBox, desc: "Panning: multiplier of keyboard panning speed", params: "0.1 10")]
-	float m_fPanKBMMultiplier;
+	protected float m_fPanKBMMultiplier;
 	
 	[Attribute(defvalue: "1.5", uiwidget: UIWidgets.EditBox, desc: "Panning: multiplier of thubmstick panning speed", params: "0.1 10")]
-	float m_fPanStickMultiplier;
+	protected float m_fPanStickMultiplier;
 	
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enables panning by moving cursor to the screen edges")]
-	bool m_bEnableCursorEdgePan;
+	protected bool m_bEnableCursorEdgePan;
 	
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Center KBM cursor on map open")]
-	bool m_bIsCursorCenteredOnOpen;
+	protected bool m_bIsCursorCenteredOnOpen;
 				
 	[Attribute(defvalue: "0.1", uiwidget: UIWidgets.EditBox, desc: "Time it takes to perform zooming of a single step", params: "0.01 10")]
-	float m_fZoomAnimTime;
+	protected float m_fZoomAnimTime;
 	
 	[Attribute(defvalue: "2", uiwidget: UIWidgets.EditBox, desc: "Each zoom step is increased/decreased by the currentZoom/thisVariable, lower number means faster steps", params: "0.1 10")]
-	float m_fZoomStrength;
+	protected float m_fZoomStrength;
 	
 	[Attribute(defvalue: "100", uiwidget: UIWidgets.EditBox, desc: "This is multiplier of average frame time resulting in a rotation degree value", params: "100 1000")]
-	int m_iRotateSpeedMouse;
+	protected int m_iRotateSpeedMouse;
 	
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enables custom map crosshair visuals")]
-	bool m_bEnableMapCrosshairVisuals;
+	protected bool m_bEnableMapCrosshairVisuals;
 	
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "Enables crosshair grid coordinate display")]
-	bool m_bEnableCrosshairCoords;
+	protected bool m_bEnableCrosshairCoords;
 	
 	[Attribute("0 0 0 1", UIWidgets.ColorPicker, desc: "Cursor grid/guide lines color")]
-	ref Color m_GuidelineColor;
+	protected ref Color m_GuidelineColor;
 	
 	[Attribute("", UIWidgets.Object, "Cursor state configuration")]
 	protected ref array<ref SCR_CursorVisualState> m_aCursorStatesConfig;
@@ -78,26 +78,27 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	protected static ref array<Widget> s_aTracedWidgets = {};
 	
 	// const
-	const int CURSOR_CAPTURE_OFFSET = 10;		// hardcoded(code) screen edges in pixels for cursor capture
-	const int GUILDING_LINE_WIDTH = 16;
-	const float PAN_DEFAULT_COUNTDOWN = 0.1;
-	const float SINGLE_SELECTION_RANGE = 50.0;	// range in world pos
-	const float CIRCLE_SELECTION_RANGE = 500.0;	// range in world pos
-	const float FREE_CURSOR_RESET = 3.0;		// seconds, time before free cursor resets to locked mode on controller
+	protected const int CURSOR_CAPTURE_OFFSET = 10;		// hardcoded(code) screen edges in pixels for cursor capture
+	protected const int GUILDING_LINE_WIDTH = 16;
+	protected const float PAN_DEFAULT_COUNTDOWN = 0.1;
+	protected const float SINGLE_SELECTION_RANGE = 50.0;	// range in world pos
+	protected const float CIRCLE_SELECTION_RANGE = 500.0;	// range in world pos
+	protected const float FREE_CURSOR_RESET = 3.0;		// seconds, time before free cursor resets to locked mode on controller
 	
-	const EMapCursorState CUSTOM_CURSOR_LOCKED = EMapCursorState.CS_DISABLE;
-	const EMapCursorState STATE_PAN_RESTRICTED	= EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DIALOG;
-	const EMapCursorState STATE_ZOOM_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
-	const EMapCursorState STATE_HOVER_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_MULTI_SELECTION 
+	static const EMapCursorState CUSTOM_CURSOR_LOCKED = EMapCursorState.CS_DISABLE;
+	static const EMapCursorState STATE_PAN_RESTRICTED	= EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DIALOG;
+	static const EMapCursorState STATE_ZOOM_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_CONTEXTUAL_MENU;
+	static const EMapCursorState STATE_HOVER_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_MULTI_SELECTION 
 												 | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
-	const EMapCursorState STATE_SELECT_RESTRICTED = EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW;
-	const EMapCursorState STATE_MULTISELECT_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MODIFIER;
-	const EMapCursorState STATE_DRAG_RESTRICTED	= EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_ROTATE | EMapCursorState.CS_DRAW;
-	const EMapCursorState STATE_ROTATE_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
-	const EMapCursorState STATE_DRAW_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
-	const EMapCursorState STATE_SUBMENU_RESTRICTED = EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DIALOG;
-	const EMapCursorState STATE_CTXMENU_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_ROTATE;
-	const EMapCursorState STATE_RESET_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_ROTATE;
+	static const EMapCursorState STATE_SELECT_RESTRICTED = EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW;
+	static const EMapCursorState STATE_MULTISELECT_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MODIFIER;
+	static const EMapCursorState STATE_DRAG_RESTRICTED	= EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_ROTATE;
+	static const EMapCursorState STATE_ROTATE_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
+	static const EMapCursorState STATE_DRAW_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DIALOG;
+	static const EMapCursorState STATE_SUBMENU_RESTRICTED = EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DIALOG;
+	static const EMapCursorState STATE_CTXMENU_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_ROTATE;
+	static const EMapCursorState STATE_RESET_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_ROTATE;
+	static const EMapCursorState STATE_POPUP_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_DRAW | EMapCursorState.CS_ROTATE;
 	
 	// timers
 	protected float m_fPanCountdown;		// used to stop panning cursor state and refresh start position for next drag panning
@@ -261,6 +262,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		//begin move
 		if (m_CursorInfo.lastX != m_CursorInfo.x || m_CursorInfo.lastY != m_CursorInfo.y)
 		{
+			if (m_CursorInfo.isGamepad)
+				m_InputManager.SetCursorPosition(m_CursorInfo.x, m_CursorInfo.y);
+
 			if ( ~m_CursorState & EMapCursorState.CS_MOVE )
 			{
 				SetCursorState(EMapCursorState.CS_MOVE);
@@ -1303,7 +1307,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		HandleHover(timeSlice);
 		HandlePan(timeSlice);
 		HandleZoom();
-		
+
 		// crosshair grid lines
 		if (m_bEnableMapCrosshairVisuals && (m_CursorState & CUSTOM_CURSOR_LOCKED) == 0)
 			UpdateCrosshairUI();

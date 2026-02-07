@@ -384,7 +384,10 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	override void Update(float timeSlice)
 	{
 		if (!m_CharController)
+		{
 			DeactivateGadgetUpdate();
+			return;
+		}
 
 		// adjust angle of the flashlight to provide usable angle within various poses
 		GetOwner().GetTransform(m_ItemMat);

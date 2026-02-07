@@ -61,6 +61,9 @@ class SCR_CloseVehicleDoorUserAction : VehicleDoorUserAction
 		if (!managerComponent)
 			return false;
 		
+		if (compartmentAccess.AreDoorsFromDifferentVehicle(GetOwner(), GetDoorIndex()))
+			return false;
+		
 		Vehicle vehicle = Vehicle.Cast(SCR_EntityHelper.GetMainParent(GetOwner(), true));
 		if (vehicle)
 		{
@@ -105,6 +108,9 @@ class SCR_CloseVehicleDoorUserAction : VehicleDoorUserAction
 		
 		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
 		if (!compartmentAccess)
+			return false;
+		
+		if (compartmentAccess.AreDoorsFromDifferentVehicle(GetOwner(), GetDoorIndex()))
 			return false;
 		
 		if (compartmentAccess.IsGettingIn() || compartmentAccess.IsGettingOut())

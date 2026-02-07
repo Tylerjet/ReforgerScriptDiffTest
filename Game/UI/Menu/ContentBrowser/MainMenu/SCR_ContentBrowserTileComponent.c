@@ -212,7 +212,7 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 			return;
 
 		int nDependencies = m_Item.GetLatestDependencies().Count();
-		int nDependent = m_Item.GetDependentAddons().Count();
+		int nDependent = SCR_WorkshopUiCommon.GetDownloadedDependentAddons(m_Item).Count();
 
 		// Displays
 		m_Widgets.m_wDependent.SetVisible(nDependent > 0);
@@ -527,7 +527,7 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 			return;
 		
 		if (m_Tooltip.IsValid("Dependent", m_Widgets.m_wDependent))
-			comp.Init(m_Item.GetDependentAddons());
+			comp.Init(SCR_WorkshopUiCommon.GetDownloadedDependentAddons(m_Item));
 		else if (m_Tooltip.IsValid("Dependencies", m_Widgets.m_wDependencies))
 			comp.Init(m_Item.GetLatestDependencies());
 	}

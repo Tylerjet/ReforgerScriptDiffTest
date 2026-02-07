@@ -68,7 +68,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 				return;
 			}
 
-			if (m_bAlternativeModelOnAction)
+			if (item && !item.IsDeleted() && m_bAlternativeModelOnAction)
 				SetAlternativeModel(false);
 
 			return;	

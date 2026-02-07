@@ -680,11 +680,8 @@ class SCR_CampaignMilitaryBaseManager
 	//! Determine the radio coverage of all bases (no coverage / can be reached / can respond / both ways)
 	void RecalculateRadioCoverage(notnull SCR_CampaignFaction faction)
 	{
-		bool newSettingsDetected = SCR_RadioCoverageSystem.UpdateAll();
-
-		if (newSettingsDetected)
-			EvaluateControlPoints();
-		
+		SCR_RadioCoverageSystem.UpdateAll();
+		EvaluateControlPoints();
 		SelectPrimaryTarget(faction);
 	}
 

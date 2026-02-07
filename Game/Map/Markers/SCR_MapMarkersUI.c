@@ -984,6 +984,9 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	//! Marker select
 	protected void OnInputMapSelect(float value, EActionTrigger reason)
 	{
+		if ((m_CursorModule.GetCursorState() & SCR_MapCursorModule.STATE_POPUP_RESTRICTED) != 0)
+			return;
+
 		array<Widget> widgets = SCR_MapCursorModule.GetMapWidgetsUnderCursor();
 		
 		SCR_MapMarkerWidgetComponent markerComp;

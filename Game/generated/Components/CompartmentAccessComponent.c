@@ -15,6 +15,7 @@ class CompartmentAccessComponentClass: GameComponentClass
 
 class CompartmentAccessComponent: GameComponent
 {
+	proto external IEntity GetVehicleCompartmentManagerOwner();
 	//! Returns the compartent we're in
 	proto external BaseCompartmentSlot GetCompartment();
 	//! Returns the first free compartment of a given type on \param targetEntity
@@ -36,6 +37,7 @@ class CompartmentAccessComponent: GameComponent
 	proto external void KickFromVehicle(int doorInfoIndex);
 	// Open door only
 	proto external bool OpenDoor(IEntity vehicle, ECharacterDoorAnimType doorAnimType, int doorInfoIndex);
+	proto external bool AreDoorsFromDifferentVehicle(IEntity vehicle, int doorIndex);
 	// Close door only
 	proto external bool CloseDoor(IEntity vehicle, ECharacterDoorAnimType doorAnimType, int doorInfoIndex);
 	// Interrupt the get in/get out process
@@ -56,6 +58,8 @@ class CompartmentAccessComponent: GameComponent
 	proto external bool CanGetOutVehicle();
 	//! Returns true if compartment can be gotten out of via the door with index \param doorIndex
 	proto external bool CanGetOutVehicleViaDoor(int doorIndex);
+	//! Returns true if character is in the switching animation
+	proto external bool IsSwitchingSeatsAnim();
 	proto external bool FindSuitableTeleportLocation(vector TR[4]);
 	//! Returns true if current compartment can be jumped from
 	proto external bool CanJumpOutVehicle();

@@ -140,7 +140,7 @@ class SCR_AddonDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		if (!m_Item)
 			return;
 		
-		array<ref SCR_WorkshopItem> dependentAddons = m_Item.GetDependentAddons();
+		array<ref SCR_WorkshopItem> dependentAddons = SCR_WorkshopUiCommon.GetDownloadedDependentAddons(m_Item);
 		array<ref SCR_WorkshopItem> dependencies = m_Item.GetLatestDependencies();
 		
 		m_InfoWidgets.m_wDependenciesHorizontalLayout.SetVisible(!dependencies.IsEmpty());

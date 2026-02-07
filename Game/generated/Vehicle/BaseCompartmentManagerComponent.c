@@ -24,6 +24,9 @@ class BaseCompartmentManagerComponent: GameComponent
 	proto external BaseCompartmentSlot FindCompartment(int compartmentID, int mgrId = -1);
 	//! Returns a list and count of all compartments
 	proto external int GetCompartments(out notnull array<BaseCompartmentSlot> outCompartments);
+	proto external BaseCompartmentDoor GetDoor(int doorIndex);
+	//! Get door referencing this door index
+	proto external CompartmentDoorReference GetDoorReference(int referenceDoorIndex);
 	proto external CompartmentDoorInfo GetDoorInfo(int doorIndex);
 }
 

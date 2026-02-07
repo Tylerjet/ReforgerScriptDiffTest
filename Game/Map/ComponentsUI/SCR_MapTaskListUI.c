@@ -119,6 +119,10 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 			m_ToolMenuEntry.SetActive(false);
 		}
 
+		SCR_MapCursorModule cursorModule = SCR_MapCursorModule.Cast(m_MapEntity.GetMapModule(SCR_MapCursorModule));
+		if (cursorModule)
+			cursorModule.HandleDialog(m_bOpened);
+
 		m_bTaskListInvoked = false;
 	}
 	
@@ -156,7 +160,16 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 	{
 		if (!m_RootWidget)
 			return;
-		
+
+		SCR_MapCursorModule cursorModule = SCR_MapCursorModule.Cast(m_MapEntity.GetMapModule(SCR_MapCursorModule));
+		if (cursorModule && cursorModule.GetCursorState() & SCR_MapCursorModule.STATE_POPUP_RESTRICTED)
+		{
+			if (m_bOpened)
+				ToggleTaskList();
+
+			return;
+		}
+
 		Widget taskListRoot = m_RootWidget.FindAnyWidget(m_sMapTaskListRootName);
 		if (!taskListRoot)
 			return;

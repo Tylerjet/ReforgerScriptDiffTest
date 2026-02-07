@@ -264,7 +264,7 @@ class SCR_CallsignManagerComponent : SCR_BaseGameModeComponent
 	//! Assign callsign for players when they are spawned (Server Only)
 	protected void OnPlayerSpawn(int playerId, IEntity playerEntity)
 	{		
-		if (!m_GroupManager)
+		if (!m_GroupManager || !playerEntity)
 			return;
 		
 		SCR_CallsignCharacterComponent characterCallsign = SCR_CallsignCharacterComponent.Cast(playerEntity.FindComponent(SCR_CallsignCharacterComponent));

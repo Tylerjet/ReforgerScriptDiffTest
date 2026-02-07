@@ -77,7 +77,7 @@ class SCR_ModDetailsSuperMenuComponent : SCR_SuperMenuComponent
 			GetTabView().EnableTab(SCR_EModDetailsMenuTabs.DEPENDENCY, true);
 		
 		// Dependent tab
-		m_aDependent = item.GetDependentAddons();
+		m_aDependent = SCR_WorkshopUiCommon.GetDownloadedDependentAddons(item);
 		if (!m_aDependent.IsEmpty())
 			GetTabView().EnableTab(SCR_EModDetailsMenuTabs.DEPENDENT, true);
 	}

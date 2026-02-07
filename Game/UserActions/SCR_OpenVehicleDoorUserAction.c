@@ -57,6 +57,9 @@ class SCR_OpenVehicleDoorUserAction : VehicleDoorUserAction
 		if (!compartmentAccess)
 			return false;
 		
+		if (compartmentAccess.AreDoorsFromDifferentVehicle(GetOwner(), GetDoorIndex()))
+			return false;
+		
 		BaseCompartmentManagerComponent managerComponent = BaseCompartmentManagerComponent.Cast(GetOwner().FindComponent(BaseCompartmentManagerComponent));
 		if (!managerComponent)
 			return false;
@@ -107,6 +110,9 @@ class SCR_OpenVehicleDoorUserAction : VehicleDoorUserAction
 		if (!compartmentAccess)
 			return false;
 		
+		if (compartmentAccess.AreDoorsFromDifferentVehicle(GetOwner(), GetDoorIndex()))
+			return false;
+
 		if (compartmentAccess.IsGettingIn() || compartmentAccess.IsGettingOut())
 			return false;
 		

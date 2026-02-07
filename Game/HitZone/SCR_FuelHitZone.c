@@ -71,6 +71,11 @@ class SCR_FuelHitZone : SCR_DestructibleHitzone
 			}
 		}
 
+#ifdef WORKBENCH
+		if (!m_FuelTank)
+			PrintFormat("SCR_FuelHitZone %1: fuel tank #%2 not found in %3", GetName(), m_iFuelTankID, GetOwner(), level: LogLevel.WARNING);
+#endif // WORKBENCH
+
 		UpdateFuelTankState();
 	}
 
@@ -86,6 +91,9 @@ class SCR_FuelHitZone : SCR_DestructibleHitzone
 	//! Get secondary explosion desired scale. It will determine the prefab retrieved from secondary explosion config.
 	override float GetSecondaryExplosionScale()
 	{
+		if (!m_FuelTank)
+			return 0;
+
 		// Truck addon fuel cargo that does not have its own health
 		float damage;
 		if (m_RootDamageManager && m_RootDamageManager.GetDefaultHitZone().GetDamageState() == EDamageState.DESTROYED)
