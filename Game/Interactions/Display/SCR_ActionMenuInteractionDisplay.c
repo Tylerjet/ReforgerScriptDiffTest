@@ -836,7 +836,7 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 			m_bForceResetScroll = true;
 			isEmpty = true;
 		}
-		else if (count > 0)
+		else if (count > 0 && data.pActionsData.param1.IsIndexValid(m_iCurrentScroll))
 		{
 			//~ Hackfix: if the player sprint, the action is disabled
 			IEntity playerEntity = SCR_PlayerController.GetLocalControlledEntity();

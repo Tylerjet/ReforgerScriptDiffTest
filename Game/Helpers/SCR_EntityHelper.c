@@ -377,6 +377,10 @@ class SCR_EntityHelper
 	//! \return whether the result is reliable
 	static bool GetRelativeLocalTransform(notnull IEntity owner, notnull IEntity member, out vector relativeTransform[4])
 	{
+		// Temporarily added because notnull seems to be ignored when using ScriptInvoker
+		if (!owner || !member)
+			return false;
+		
 		// Use world transform if not members of same hierarchy
 		IEntity root = owner.GetRootParent();
 		if (root != member.GetRootParent())

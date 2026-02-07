@@ -34,6 +34,9 @@ class SCR_ScenarioFrameworkAIActionSetRadioFrequency : SCR_ScenarioFrameworkActi
 			BaseRadioComponent radio;
 			foreach (SCR_GadgetComponent gadget : radioGadgets)
 			{
+				if (!gadget)
+					continue;
+
 				ent = gadget.GetOwner();
 				if (!ent)
 					continue;

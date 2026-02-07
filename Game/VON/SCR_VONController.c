@@ -372,8 +372,6 @@ class SCR_VONController : ScriptComponent
 
 		if (longRange)
 		{
-			DeactivateVON(EVONTransmitType.CHANNEL);
-			
 			// saved entry to switch back to after using long range mode
 			if (!m_SavedEntry && m_ActiveEntry != m_LongRangeEntry)
 				m_SavedEntry = m_ActiveEntry;
@@ -385,8 +383,6 @@ class SCR_VONController : ScriptComponent
 		}
 		else
 		{
-			DeactivateVON(EVONTransmitType.LONG_RANGE);
-
 			// restore last saved entry
 			if (restorePrevious)
 			{
@@ -411,6 +407,8 @@ class SCR_VONController : ScriptComponent
 				SetActiveTransmit(m_SavedEntry);
 			}
 		}
+		
+		DeactivateVON();
 	}
 	
 	//------------------------------------------------------------------------------------------------

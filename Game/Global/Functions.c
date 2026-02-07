@@ -1888,6 +1888,9 @@ class SCR_Global
 		gadgets.InsertAll(gadgetManager.GetGadgetsByType(EGadgetType.RADIO_BACKPACK));
 		foreach (SCR_GadgetComponent gadget : gadgets)
 		{
+			if (!gadget)
+				continue;
+			
 			radioComponent = BaseRadioComponent.Cast(gadget.GetOwner().FindComponent(BaseRadioComponent));
 
 			if (!radioComponent || !radioComponent.IsPowered() || radioComponent.TransceiversCount() == 0)

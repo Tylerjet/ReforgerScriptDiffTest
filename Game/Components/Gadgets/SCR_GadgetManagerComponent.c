@@ -551,6 +551,10 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		if (!gadgetComp)
 			return;
 
+		InventoryItemComponent invComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (!invComp)
+			return;
+
 		EGadgetType type = gadgetComp.GetType();
 
 		int gadgetArrayID = m_aGadgetArrayMap.Get(type);

@@ -180,7 +180,7 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(composition.GetRootParent().FindComponent(SCR_EditableEntityComponent));
 		if (editableEntity)
-			editableEntity.Delete();
+			editableEntity.Delete(true, true);
 		else
 			RplComponent.DeleteRplEntity(composition, false);
 	}

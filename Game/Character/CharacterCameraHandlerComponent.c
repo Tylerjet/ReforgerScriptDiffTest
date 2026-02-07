@@ -19,6 +19,10 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	
 	protected bool m_bCameraActive;
 	
+	protected bool m_bTraceCharacters = true;
+
+	protected ref PointInfo m_pAttachmentReference;
+	
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	//! \param[in] src
@@ -542,7 +546,10 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4], inout vector transformWS[4])
 	{
-		UpdateHeadVisibility(transformWS[3]);
+		if (m_pAttachmentReference)
+			UpdateHeadVisibility(transformMS[3]);
+		else
+			UpdateHeadVisibility(transformWS[3]);
 		
 		if (m_ControllerComponent.IsDead())
 			return;
@@ -629,6 +636,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			Math3D.MatrixIdentity4(ownerTransformWS);
 		
 		vector resultWorldTransform[4]; // If pOutResult.m_CameraTM is in someone's model space, this transforms it back to world space.
+		m_pAttachmentReference = pOutResult.m_pWSAttachmentReference;
 		if (pOutResult.m_pWSAttachmentReference && pOutResult.m_pWSAttachmentReference.GetOwner())
 			pOutResult.m_pWSAttachmentReference.GetWorldTransform(resultWorldTransform);
 		else if (owner)

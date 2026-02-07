@@ -48,6 +48,9 @@ class SCR_AIToggleFlashlights : AITaskScripted
 		bool success = false;
 		foreach (SCR_GadgetComponent gadget : gadgets)
 		{
+			if (!gadget)
+				continue;
+
 			InventoryItemComponent invComp = InventoryItemComponent.Cast(gadget.GetOwner().FindComponent(InventoryItemComponent));
 			
 			if (!invComp)

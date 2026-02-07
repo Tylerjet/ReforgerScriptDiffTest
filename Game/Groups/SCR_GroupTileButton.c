@@ -662,19 +662,20 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 					m_wIconSymbol.LoadImageFromSet(0,TaskIconImageset,task.GetIconName());
 					m_sTaskText = task.GetTaskListTaskText();
 					task.SetTitleWidgetText(wGroupTaskName, task.GetTaskListTaskTitle());
+
+					if (task.IsPriority())
+					{	
+						wBackground.SetColor(m_sfactionCol.GetOutlineFactionColor());
+						m_wOutline.SetColor(m_sfactionCol.GetFactionColor());
+						m_wIconSymbol.SetColor(m_sfactionCol.GetFactionColor());
+					}
 				}
+
 				if (gmTask) // When task is assigned and when player has the same faction with entry faction for Game Master.
 				{
 					m_wIconSymbol.LoadImageFromSet(0,TaskIconImageset,gmTask.GetIconName());
 					m_sTaskText = gmTask.GetTaskListTaskText();
 					wGroupTaskName.SetTextFormat(gmTask.GetTitle(), gmTask.GetLocationName());
-				}
-				
-				if (task.IsPriority())
-				{	
-					wBackground.SetColor(m_sfactionCol.GetOutlineFactionColor());
-					m_wOutline.SetColor(m_sfactionCol.GetFactionColor());
-					m_wIconSymbol.SetColor(m_sfactionCol.GetFactionColor());
 				}
 			}
 		}
