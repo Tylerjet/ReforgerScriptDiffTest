@@ -24,6 +24,7 @@ class SCR_PlayerListEntry
 	TextWidget m_wDeaths;
 	TextWidget m_wScore;
 	ImageWidget m_wLoadoutIcon;
+	ImageWidget m_wPlatformIcon;
 	Widget m_wTaskIcon;
 	Widget m_wFactionImage;
 };
@@ -755,6 +756,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		entry.m_Block = SCR_ButtonBaseComponent.GetButtonBase("Block", w);
 		entry.m_wTaskIcon = entry.m_wRow.FindAnyWidget("TaskIcon");
 		entry.m_wLoadoutIcon = ImageWidget.Cast(entry.m_wRow.FindAnyWidget("LoadoutIcon"));
+		entry.m_wPlatformIcon = ImageWidget.Cast(entry.m_wRow.FindAnyWidget("PlatformIcon"));
 		if (entry.m_wTaskIcon && GetTaskManager())
 		{
 			SCR_BaseTaskExecutor taskExecutor = SCR_BaseTaskExecutor.FindTaskExecutorByID(entry.m_iID);
@@ -788,6 +790,19 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			BaseContainer container = source.GetObject("m_UIInfo");
 			SCR_EditableEntityUIInfo info = SCR_EditableEntityUIInfo.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
 			info.SetIconTo(entry.m_wLoadoutIcon);
+		}
+		
+		if (entry.m_wPlatformIcon)
+		{
+			PlayerManager playerManager = GetGame().GetPlayerManager();
+			PlatformKind playerPlatform = playerManager.GetPlatformKind(entry.m_iID);
+			string iconName = SCR_Global.GetPlatformName(playerPlatform);
+			entry.m_wPlatformIcon.LoadImageFromSet(0, "{D17288006833490F}UI/Textures/Icons/icons_wrapperUI-32.imageset", iconName);
+			entry.m_wPlatformIcon.SetImage(0);
+		}
+		else
+		{
+			Print("No platform icon detected in players list. This is against MS Xbox Live rules.", LogLevel.WARNING);
 		}
 		
 		

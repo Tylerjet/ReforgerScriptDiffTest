@@ -56,8 +56,10 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		//in case of gamepad just do nothing, because we do not support keybind changes on gamepad
 		if (GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.GAMEPAD)
 			return;
+		
 		if (!m_sActionPreset.IsEmpty())
 			finalPreset = PRIMARY_PRESET_PREFIX + m_sActionPreset;
+		
 		s_Binding.StartCapture(m_sActionName, EInputDeviceType.KEYBOARD, finalPreset, false);
 
 		KeybindMenu menu = KeybindMenu.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.KeybindChangeDialog , DialogPriority.CRITICAL, 0, true));
@@ -79,12 +81,14 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 			if (!finalPreset.IsEmpty())
 				finalPreset = GAMEPAD_PRESET_PREFIX+preset;
 		}
+		
 		if (device == EInputDeviceType.KEYBOARD)
 		{
 			deviceString = "keyboard";
 			if (!finalPreset.IsEmpty())
 				finalPreset = PRIMARY_PRESET_PREFIX+preset;
 		}
+		
 		keybindAction.SetText(string.Format("<action name='%1' preset='%2' device='" + deviceString + "' scale='1.25'/>", actionName, finalPreset));
 		if (canChangeKeybind)
 		{
@@ -99,6 +103,7 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		super.OnFocus(w, x, y);
 		m_KeybindSettings.SetSelectedRowComponent(this);
 		m_KeybindSettings.SingleResetEnabled(true);
+		m_KeybindSettings.UnbindSingleActionEnabled(true);
 		return true;
 	}
 	
@@ -108,6 +113,7 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		super.OnFocusLost(w, x, y);
 		m_KeybindSettings.SetSelectedRowComponent(null);
 		m_KeybindSettings.SingleResetEnabled(false);
+		m_KeybindSettings.UnbindSingleActionEnabled(false);
 		return true;
 	}
 	
@@ -121,6 +127,18 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 	//	InputBinding binding = GetGame().GetInputManager().CreateUserBinding();
 		s_Binding.ResetDefault(m_sActionName, EInputDeviceType.KEYBOARD, finalPreset);
 		s_Binding.ResetDefault(m_sActionName, EInputDeviceType.MOUSE, finalPreset);
+		s_Binding.Save();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void Unbind()
+	{
+		string finalPreset;
+		if (!m_sActionPreset.IsEmpty())
+			finalPreset = PRIMARY_PRESET_PREFIX + m_sActionPreset;
+		
+		s_Binding.StartCapture(m_sActionName, EInputDeviceType.KEYBOARD, finalPreset, false);
+		s_Binding.SaveCapture();
 		s_Binding.Save();
 	}
 };

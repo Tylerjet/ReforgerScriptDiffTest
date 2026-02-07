@@ -4,6 +4,9 @@ class SCR_CampaignDeployMobileAssemblyUserAction : ScriptedUserAction
 	protected SCR_CampaignMobileAssemblyComponent m_AssemblyComponent;
 	protected DamageManagerComponent m_DamageManagerComponent;
 	
+	static const float MAX_TERRAIN_HEIGHT = 0.5;
+	static const float TERRAIN_SLOPE_THRESHOLD = 0.9;
+	
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
@@ -101,6 +104,25 @@ class SCR_CampaignDeployMobileAssemblyUserAction : ScriptedUserAction
 		
 		if (!isInRange)
 			SetCannotPerformReason("#AR-Campaign_Action_NoSignal-UC");
+		
+		IEntity truck = m_TruckBed.GetParent();
+		
+		if (truck)
+		{
+			vector pos = truck.GetOrigin();
+			
+			if (SCR_TerrainHelper.GetHeightAboveTerrain(pos) > MAX_TERRAIN_HEIGHT)
+			{
+				SetCannotPerformReason("#AR-Campaign_Action_UnevenTerrain-UC");
+				return false;
+			}
+			
+			/*if (SCR_TerrainHelper.GetTerrainNormal(pos)[1] < TERRAIN_SLOPE_THRESHOLD)
+			{
+				SetCannotPerformReason("#AR-Campaign_Action_UnevenTerrain-UC");
+				return false;
+			}*/
+		}
 		
 		return isInRange;
 	}

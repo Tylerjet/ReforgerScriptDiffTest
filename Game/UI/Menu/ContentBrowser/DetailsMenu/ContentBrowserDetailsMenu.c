@@ -86,7 +86,6 @@ class ContentBrowserDetailsMenu : SCR_SuperMenuBase
 		if (detailsMenu)
 		{
 			detailsMenu.Init(item);
-			GetGame().GetWorkspace().AddModal(detailsMenu.m_wRoot, null);
 		}	
 		
 		return detailsMenu;
@@ -214,6 +213,11 @@ class ContentBrowserDetailsMenu : SCR_SuperMenuBase
 	{
 		SCR_ConfigurableDialogUi dlg = SCR_WorkshopUiCommon.CreateDialog("report_success");
 		dlg.m_OnClose.Insert(OnReportSuccessDialogConfirm);
+		
+		// Message 
+		/*string msg = dlg.GetMessageStr();
+		msg += "\n\n" + "#AR-Workshop_ReportModReverse";
+		dlg.GetMessageWidget().SetTextFormat(msg, "#AR-Workshop_State_Reported", "#AR-Workshop_CancelReport");*/
 	}
 	
 	

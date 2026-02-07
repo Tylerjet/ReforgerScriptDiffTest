@@ -393,6 +393,10 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			ChimeraCharacter character = ChimeraCharacter.Cast(pOwner);
 			if (!character)
 				return;
+
+			SCR_CharacterControllerComponent charController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+			if (charController)
+				charController.m_OnItemUseCompleteInvoker.Insert(OnItemUsed);
 			
 			m_CompartmentAcessComp = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
 			if (!m_CompartmentAcessComp)
@@ -413,6 +417,35 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			{
 				m_CompartmentAcessComp.GetOnCompartmentEntered().Remove(OnCompartmentEntered);
 				m_CompartmentAcessComp.GetOnCompartmentLeft().Remove(OnCompartmentLeft);
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Called when consumable item is used by the player
+	protected void OnItemUsed(IEntity item)
+	{
+		SCR_ConsumableItemComponent consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+		if (consumable && consumable.GetConsumableType() == EConsumableType.Bandage)
+		{
+			InventoryStorageManagerComponent invMan = InventoryStorageManagerComponent.Cast(GetOwner().FindComponent(InventoryStorageManagerComponent));
+			if (!invMan)
+				return;
+
+			array<IEntity> bandages = {};
+			SCR_BandagePredicate predicate = new SCR_BandagePredicate();
+			invMan.FindItems(bandages, predicate);
+			if (bandages.IsEmpty())
+				return;
+
+			RemoveItemFromQuickSlot(item);
+			foreach (IEntity nextBandage : bandages)
+			{
+				if (nextBandage != item)
+				{
+					StoreItemToQuickSlot(nextBandage);
+					break;
+				}
 			}
 		}
 	}

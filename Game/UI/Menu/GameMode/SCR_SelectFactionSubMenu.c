@@ -214,7 +214,7 @@ class SCR_SelectFactionSubMenu : SCR_RespawnSubMenuBase
 				text.SetText(name);
 
 				PlatformKind platform = pm.GetPlatformKind(playerId);
-				string platformName = GetPlatformName(platform);
+				string platformName = SCR_Global.GetPlatformName(platform);
 
 				ImageWidget img = ImageWidget.Cast(widget.FindAnyWidget("Platform"));
 				if (img && !platformName.IsEmpty())
@@ -265,7 +265,7 @@ class SCR_SelectFactionSubMenu : SCR_RespawnSubMenuBase
 			text.SetText(name);
 
 			PlatformKind platform = pm.GetPlatformKind(playerId);
-			string platformName = GetPlatformName(platform);
+			string platformName = SCR_Global.GetPlatformName(platform);
 
 			ImageWidget img = ImageWidget.Cast(w.FindAnyWidget("Platform"));
 			if (img && !platformName.IsEmpty())
@@ -285,27 +285,6 @@ class SCR_SelectFactionSubMenu : SCR_RespawnSubMenuBase
 			return RequestFaction(GetSelectedFaction());
 		}
 		return false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected string GetPlatformName(PlatformKind kind)
-	{
-		switch (kind)
-		{
-			case PlatformKind.NONE:
-				return "platform-windows";
-
-			case PlatformKind.PSN:
-				return "platform-playstation";
-
-			case PlatformKind.XBOX:
-				return "platform-xbox";
-
-			case PlatformKind.STEAM:
-				return "platform-windows";
-		}
-
-		return string.Empty;
 	}
 
 	//------------------------------------------------------------------------------------------------

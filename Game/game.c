@@ -131,6 +131,8 @@ class ArmaReforgerScripted : ChimeraGame
 					case RplError.DISCONNECTION: reason = "DISCONNECTION"; break;
 					case RplError.CONNECTION_FAILURE: reason = "CONNECTION_FAILURE"; break;
 					case RplError.TIMEOUT: reason = "TIMEOUT"; break;
+					case RplError.FLOODED: reason = "FLOODED"; break;
+					case RplError.STALLED: reason = "STALLED"; break;
 					case RplError.SERVICE_FAILURE: reason = "SERVICE_FAILURE"; break;
 				}
 			break;
@@ -147,6 +149,20 @@ class ArmaReforgerScripted : ChimeraGame
 
 			case KickCauseGroup.BATTLEYE:
 				group = "BATTLEYE";
+				switch(reasonInt)
+				{
+					case BattlEyeKickReason.CLIENT_NOT_RESPONDING: reason = "CLIENT_NOT_RESPONDING"; break;
+					case BattlEyeKickReason.QUERY_TIMEOUT: reason = "QUERY_TIMEOUT"; break;
+					case BattlEyeKickReason.GAME_RESTART_REQUIRED: reason = "GAME_RESTART_REQUIRED"; break;
+					case BattlEyeKickReason.BAD_SERVICE_VERSION: reason = "BAD_SERVICE_VERSION"; break;
+					case BattlEyeKickReason.DISALLOWED_PROGRAM: reason = "DISALLOWED_PROGRAM"; break;
+					case BattlEyeKickReason.CORRUPTED_MEMORY: reason = "CORRUPTED_MEMORY"; break;
+					case BattlEyeKickReason.CORRUPTED_DATA: reason = "CORRUPTED_DATA"; break;
+					case BattlEyeKickReason.WINAPI_FAILURE: reason = "WINAPI_FAILURE"; break;
+					case BattlEyeKickReason.GLOBAL_BAN: reason = "GLOBAL_BAN"; break;
+					case BattlEyeKickReason.ADMIN_BAN: reason = "ADMIN_BAN"; break;
+					case BattlEyeKickReason.ADMIN_KICK: reason = "ADMIN_KICK"; break;
+				}
 			break;
 
 			case KickCauseGroup.DATA:
@@ -167,6 +183,7 @@ class ArmaReforgerScripted : ChimeraGame
 				{
 					case PlatformKickReason.ACTIVE_USER_LOST: reason = "ACTIVE_USER_LOST"; break;
 					case PlatformKickReason.NO_MP_PRIVILEGE: reason = "NO_MP_PRIVILEGE"; break;
+					case PlatformKickReason.NO_CROSSPLAY_PRIVILEGE: reason = "NO_CROSSPLAY_PRIVILEGE"; break;
 				}
 			break;
 
@@ -188,8 +205,9 @@ class ArmaReforgerScripted : ChimeraGame
 		}
 
 		// Detail
-		string format = "Kick cause code: category=%1 '%2', reason=%3 '%4'";
+		string format = "Kick cause code: group=%1 '%2', reason=%3 '%4'";
 		string strDetail = string.Format(format , groupInt, group, reasonInt, reason);
+		PrintFormat(format , groupInt, group, reasonInt, reason);
 
 		//  Set dialog tag
 		string dialogTag = group + "_" + reason;
@@ -197,6 +215,14 @@ class ArmaReforgerScripted : ChimeraGame
 		// Default error
 		if (group == "<unknown>")
 			dialogTag = "DEFAULT_ERROR";
+		else
+		{
+			// No specific reason in group 
+			if (reason == "<unknown>")
+			{
+				dialogTag = group;
+			}
+		}
 
 		// Set msg
 		ServerBrowserMenuUI.SetErrorMessage(dialogTag, group, strDetail);

@@ -66,6 +66,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected ref array<ref ServerBrowserCallback> m_aSearchCallbacks = {};
 	protected ref ServerBrowserCallback m_CallbackLastSearch = null;
 	protected ref ServerBrowserCallback m_CallbackScroll = new ServerBrowserCallback();
+	protected ref ServerBrowserCallback m_CallbackPing = new ServerBrowserCallback();
 	
 	protected ref OnDirectJoinCallback m_CallbackSearchTarget = new OnDirectJoinCallback();
 	
@@ -101,6 +102,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected bool m_bConnectMenuOpened = false;
 	protected bool m_bServerBrowserReopened = false;
 	protected bool m_bIsScenarioLoaded = false;
+	protected bool m_bPingReceived = false;
 	
 	protected bool m_bIsWaitingForBackend = true;
 	
@@ -149,6 +151,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		SetupCallbacks();
 		
 		SetupParams(m_Lobby);
+		CheckPing();
 		
 		m_iFocusedWidgetState = ESBWidgetFocus.SERVER_LIST;
 		
@@ -243,8 +246,8 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Is there last server and reconnect is enabled
 		bool reconnectEnabled = IsKickReconnectEnabled(m_Dialogs.GetCurrentKickDialog());
 			
-		//if (!reconnectEnabled)
-		OnActionRefresh();
+		if (m_Lobby.IsPingAvailable())
+			OnActionRefresh();
 		
 		// Join to invited server 
 		Room invited = m_Lobby.GetInviteRoom();
@@ -290,6 +293,33 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected void ClearConnectionTimeoutWaiting()
 	{
 		GetGame().GetCallqueue().Remove(ConnectionTimeout);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Request ping sites check 
+	protected void CheckPing()
+	{
+		m_CallbackPing.event_OnResponse.Insert(OnCheckPingResponse);
+		m_Lobby.MeasureLatency(m_CallbackPing);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Handle ping check callback response
+	protected void OnCheckPingResponse(ServerBrowserCallback callback)
+	{
+		m_CallbackPing.event_OnResponse.Remove(OnCheckPingResponse);
+		
+		// Success 
+		if (callback.GetResultType() == EServerBrowserRequestResult.SUCCESS)
+		{
+			if (!m_bIsWaitingForBackend)
+ 				OnActionRefresh();
+			
+			return;
+		}
+		
+		// Repeat ping check 
+		CheckPing();
 	}
 	
 	
@@ -342,6 +372,16 @@ class ServerBrowserMenuUI: MenuRootBase
 			m_bFirstRoomLoad = false;
 		}
 		
+		// Ping check 
+		if (!m_bPingReceived)
+		{
+			if (!m_aRooms.IsEmpty())
+			{
+				if (m_aRooms[0].GetPing())
+					
+			}
+		}
+		
 		ClearConnectionTimeoutWaiting();
 		m_ScrollableList.ShowScrollbar(true);
 	}	
@@ -374,6 +414,15 @@ class ServerBrowserMenuUI: MenuRootBase
 			PrintDebug("Could not find addon mngr to verify ugc privilege", "DisplayRooms");
 			return;
 		}
+		
+		// Cross play filter when Cross play privilege is not enabled 
+		/*if (m_ParamsFilter.IsModdedFilterSelected() && !GetGame().GetPlatformService().GetPrivilege(UserPrivilege.CROSS_PLAY))
+		{
+			//Messages_ShowMessage("MISSING_PRIVILEGE_MP", true);
+			NegotiatePrivilegeAsync(UserPrivilege.CROSS_PLAY);
+			
+			//return;
+		}*/
 		
 		// Modds filter when UGC not enabled 
 		if (m_ParamsFilter.IsModdedFilterSelected() && !addonMgr.GetUgcPrivilege())
@@ -486,7 +535,8 @@ class ServerBrowserMenuUI: MenuRootBase
 		if (!GetGame().GetPlatformService().GetPrivilege(UserPrivilege.MULTIPLAYER_GAMEPLAY))
 		{
 			Messages_ShowMessage("MISSING_PRIVILEGE_MP", true);
-			NegotiateMPPrivilegeAsync();
+			//NegotiateMPPrivilegeAsync();
+			NegotiatePrivilegeAsync(UserPrivilege.MULTIPLAYER_GAMEPLAY);
 			return;
 		}
 		
@@ -628,7 +678,14 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Check if this is last request 
 		if (callback != m_CallbackLastSearch)
 			return;
-
+		
+		// Run again if failed ping 
+		if (m_bFirstRoomLoad && m_ParamsFilter.GetSortOrder() == m_ParamsFilter.SOgRT_PING)
+		{
+			OnActionRefresh();
+			return;
+		}
+		
 		Messages_ShowMessage("BACKEND_SERVICE_FAIL", true);
 		m_CallbackLastSearch = null;
 	}
@@ -732,7 +789,7 @@ class ServerBrowserMenuUI: MenuRootBase
 			m_Dialogs.m_OnDialogClose.Remove(OnRejoinCancel);
 			m_Dialogs.m_OnDialogClose.Insert(OnRejoinCancel);
 			
-			m_Dialogs.DisplayReconnectDialog(m_RejoinRoom);
+			m_Dialogs.DisplayReconnectDialog(m_RejoinRoom, m_sErrorMessageDetail);
 		}
 		
 		// Clear messages and backend check 
@@ -955,7 +1012,10 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Tab view 
 		m_TabView = SCR_TabViewComponent.Cast(m_Widgets.FindHandlerReference(null, m_Widgets.WIDGET_TAB_VIEW, SCR_TabViewComponent));
 		if (m_TabView)
+		{
 			m_TabView.m_OnChanged.Insert(OnTabViewSwitch);
+			OnTabViewSwitch(null, null, m_TabView.GetShownTab());
+		}
 		
 		// Filter panel 
 		m_FilterPanel = SCR_FilterPanelComponent.Cast(m_Widgets.FindHandlerReference(null, m_Widgets.WIDGET_FILTER, SCR_FilterPanelComponent));
@@ -968,6 +1028,8 @@ class ServerBrowserMenuUI: MenuRootBase
 			// Attempt load previous filter setup 
 			m_FilterPanel.TryLoad();
 			m_ParamsFilter.SetFilters(m_FilterPanel.GetFilter());
+			
+			FilterCrossplayCheck();
 		}
 		
 		// Sorting header 
@@ -979,7 +1041,7 @@ class ServerBrowserMenuUI: MenuRootBase
 			
 			// Initial sort
 			// todo move default sorting values out of here, it can be set in layout file now
-			m_SortBar.SetCurrentSortElement(1, ESortOrder.ASCENDING);
+			m_SortBar.SetCurrentSortElement(4, ESortOrder.ASCENDING);
 		}
 		 
 		// Search edit box
@@ -1050,6 +1112,44 @@ class ServerBrowserMenuUI: MenuRootBase
 		m_BtnFavorite =  SCR_NavigationButtonComponent.Cast(m_Widgets.FindHandlerReference(
 			null, m_Widgets.WIDGET_BUTTON_FAVORITE, SCR_NavigationButtonComponent
 		));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!	Init behavior when filter panel script is attached
+	protected void FilterCrossplayCheck()
+	{
+		if (!m_FilterPanel)
+			return;
+		
+		bool hasCrossplay = GetGame().GetPlatformService().GetPrivilege(UserPrivilege.CROSS_PLAY);
+		//hasCrossplay = false;
+		
+		// Cross play privilege missing
+		if (!hasCrossplay)
+		{
+			SCR_FilterSet filterSet = m_FilterPanel.GetFilter();
+			if (filterSet)
+			{
+				SCR_FilterCategory crossPlay = filterSet.FindFilterCategory("Crossplay");
+	
+				if (crossPlay)
+				{
+					SCR_FilterEntry enabled = crossPlay.FindFilter("CrossplayEnabled");
+					if (enabled)
+					{
+						enabled.SetSelected(false);
+						m_FilterPanel.SelectFilter(enabled, false, false);
+					}
+					
+					SCR_FilterEntry disabled = crossPlay.FindFilter("CrossPlayDisabled");
+					if (disabled)
+					{
+						disabled.SetSelected(true);
+						m_FilterPanel.SelectFilter(disabled, true, false);
+					}
+				}
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1165,21 +1265,33 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		switch (id)
 		{
-			// All servers 
+			// Official
 			case 0:
+			{
+				m_ParamsFilter.SetOfficialFilter(true, true);
 				break;
+			}
 			
-			// Favorite servers 
+			// Community
 			case 1:
 			{
+				m_ParamsFilter.SetOfficialFilter(true, false);
+				break;
+			}
+			
+			// Favorite servers 
+			case 2:
+			{
 				m_ParamsFilter.SetFavoriteFilter(true);
+				m_ParamsFilter.SetOfficialFilter(false, false);
 				break;
 			}
 			
 			// Recently played 
-			case 2:
+			case 3:
 			{
 				m_ParamsFilter.SetRecentlyPlayedFilter(true); 
+				m_ParamsFilter.SetOfficialFilter(false, false);
 				break;
 			}
 		}
@@ -1188,7 +1300,8 @@ class ServerBrowserMenuUI: MenuRootBase
 		if (m_ParamsFilter)
 			m_ParamsFilter.SetSelectedTab(id);
 		
-		OnActionRefresh();
+		if (!m_bFirstRoomLoad)
+			OnActionRefresh();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1219,7 +1332,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	//! Call this when any of filter in filter panel is changed
 	//! Get last updated filter and set it up for next search
-	protected void OnChangeFilter()
+	protected void OnChangeFilter(SCR_FilterEntry filter)
 	{
 		// Set filter and refresh		
 		m_ParamsFilter.SetFilters(m_FilterPanel.GetFilter());
@@ -1229,6 +1342,37 @@ class ServerBrowserMenuUI: MenuRootBase
 		m_FilterPanel.Save();
 		
 		m_bWasFilterChanged = true;
+		
+		// Prevent using cross play filter 
+		bool hasCrossplay = GetGame().GetPlatformService().GetPrivilege(UserPrivilege.CROSS_PLAY);
+		//hasCrossplay = false;
+		
+		if (!hasCrossplay)
+		{
+			// Is crossplay filter 
+			if (filter.GetCategory().m_sInternalName == "Crossplay")
+			
+			if (!m_CallbackGetPrivilege)
+				m_CallbackGetPrivilege = new SCR_ScriptPlatformRequestCallback();
+			
+			m_CallbackGetPrivilege.m_OnResult.Insert(OnCrossPlayPrivilegeResultFilter);
+			NegotiatePrivilegeAsync(UserPrivilege.CROSS_PLAY);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnCrossPlayPrivilegeResultFilter(UserPrivilege privilege, UserPrivilegeResult result)
+	{
+		if (privilege == UserPrivilege.CROSS_PLAY)
+		{
+			if (result != UserPrivilegeResult.ALLOWED)
+			{
+				FilterCrossplayCheck();
+				OnActionRefresh();
+			}
+		}
+		
+		m_CallbackGetPrivilege.m_OnResult.Remove(OnCrossPlayPrivilegeResultFilter);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2097,8 +2241,26 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Setup join dialog 
 		SetupJoinDialogs();
 		
-		// Setup room and next step
+		// Setup room
 		m_RoomToJoin = roomToJoin;
+		
+		// Check cross play 
+		bool hasPrivilege = GetGame().GetPlatformService().GetPrivilege(UserPrivilege.CROSS_PLAY);
+		
+		if (roomToJoin.IsCrossPlatform() && !hasPrivilege)
+		{
+			//m_Dialogs.DisplayDialog(EJoinDialogState.MOD_UGC_PRIVILEGE_MISSING);
+			
+			// Negotatiate cross play privilege 
+			if (!m_CallbackGetPrivilege)
+				m_CallbackGetPrivilege = new SCR_ScriptPlatformRequestCallback();
+			
+			m_CallbackGetPrivilege.m_OnResult.Insert(OnCrossPlayPrivilegeResultJoin);
+			NegotiatePrivilegeAsync(UserPrivilege.CROSS_PLAY);
+			return;
+		}
+		
+		// Next step check version
 		JoinProcess_CheckVersion(m_RoomToJoin);
 		
 		if (m_Lobby.GetInviteRoom())
@@ -2108,13 +2270,27 @@ class ServerBrowserMenuUI: MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnCrossPlayPrivilegeResultJoin(UserPrivilege privilege, UserPrivilegeResult result)
+	{
+		if (privilege == UserPrivilege.CROSS_PLAY)
+		{
+			if (result == UserPrivilegeResult.ALLOWED)
+				JoinProcess_CheckVersion(m_RoomToJoin);
+			else
+				m_Dialogs.DisplayJoinFail(EApiCode.EACODE_ERROR_UNKNOWN);
+		}
+		
+		m_CallbackGetPrivilege.m_OnResult.Remove(OnCrossPlayPrivilegeResultJoin);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Check if client and room versions match
 	//! Progress only if versions are matching, otherwise show error and stop progress 
 	protected void JoinProcess_CheckVersion(Room roomToJoin)
 	{
 		// Chekc match
 		bool versionsMatch = ClientRoomVersionMatch(roomToJoin);
-		
+
 		// Stop join process with error dialog with wrong version
 		if (!versionsMatch)
 		{
@@ -2353,6 +2529,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected void JoinProcess_OnJoinSuccess(ServerBrowserCallback callback)
 	{
 		// Connect 
+		ArmaReforgerLoadingAnim.SetJoiningCrossPlay(m_RoomToJoin.IsCrossPlatform());
 		m_RoomToJoin.Connect();
 		
 		// Save menu to reopen 
@@ -2406,7 +2583,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		if (m_RoomToJoin.PasswordProtected())
 			JoinProcess_OnPasswordWrong(callback, code, restCode, apiCode);
 		
-		JoinProcess_CleanJoinCallback();
+		JoinProcess_CleanJoinCallback();	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2474,14 +2651,63 @@ class ServerBrowserMenuUI: MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Attempt to allow Cross play privilege
+	/*protected void NegotiateCrossPlayPrivilegeAsync()
+	{
+		if (!m_CallbackGetPrivilege)
+		{
+			m_CallbackGetPrivilege = new SCR_ScriptPlatformRequestCallback();
+			m_CallbackGetPrivilege.m_OnResult.Insert(OnCrossPlayPrivilegeResult);
+		}
+		
+		GetGame().GetPlatformService().GetPrivilegeAsync(UserPrivilege.MULTIPLAYER_GAMEPLAY, m_CallbackGetPrivilege);
+	}*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Attempt to enable selected privilege 
+	protected void NegotiatePrivilegeAsync(UserPrivilege privilege)
+	{
+		if (!m_CallbackGetPrivilege)
+			m_CallbackGetPrivilege = new SCR_ScriptPlatformRequestCallback();
+		
+		switch (privilege)
+		{
+			case UserPrivilege.MULTIPLAYER_GAMEPLAY:
+			{
+				m_CallbackGetPrivilege.m_OnResult.Insert(OnMPPrivilegeResult);
+				break;
+			}
+			
+			case UserPrivilege.CROSS_PLAY:
+			{
+				m_CallbackGetPrivilege.m_OnResult.Insert(OnCrossPlayPrivilegeResult);
+				break;
+			}
+		}
+		
+		GetGame().GetPlatformService().GetPrivilegeAsync(privilege, m_CallbackGetPrivilege);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnMPPrivilegeResult(UserPrivilege privilege, UserPrivilegeResult result)
 	{
 		// Sucessful
 		if (privilege == UserPrivilege.MULTIPLAYER_GAMEPLAY && result == UserPrivilegeResult.ALLOWED)
-		{
 			OnActionRefresh();	
-		}
+		
+		m_CallbackGetPrivilege.m_OnResult.Remove(OnMPPrivilegeResult);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnCrossPlayPrivilegeResult(UserPrivilege privilege, UserPrivilegeResult result)
+	{
+		// Sucessful
+		if (privilege == UserPrivilege.CROSS_PLAY && result == UserPrivilegeResult.ALLOWED)
+			OnActionRefresh();	
+		
+		m_CallbackGetPrivilege.m_OnResult.Remove(OnCrossPlayPrivilegeResult);
+	}
+	
 	
 	
 	

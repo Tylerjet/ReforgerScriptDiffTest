@@ -8,7 +8,7 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 	protected ImageWidget m_wGamepadHintSmall;
 	protected ImageWidget m_wGamepadHintLarge;
 	protected const string s_aIconNames[10] = {
-		"X", "Y", "A", "", "", "DPAD_up", "DPAD_down", "DPAD_left", "DPAD_right", ""
+		"X", "Y", "A", "B", "", "DPAD_up", "DPAD_down", "DPAD_left", "DPAD_right", ""
 	};
 	//ResourceName m_sPrimarySecondaryWeapon = "{E6BDE9DF9368C48C}UI/Textures/WeaponIcons/weapon_AK74.edds";
 	//------------------------------------------------------------------------ USER METHODS ----------------------------------------------------------------------

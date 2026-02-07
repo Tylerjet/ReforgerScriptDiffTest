@@ -17,4 +17,6 @@ sealed class GameAnimationUtils
 	//! @Note: you should always cache and reuse returned id in order to reduce overhead
 	//! return -1 if operation was unsuccessful
 	static proto AnimationTagID RegisterAnimationTag(string animationTagString);
+	static proto string GetEventString(AnimationEventID eventID);
+	static proto string GetTagString(AnimationTagID tagID);
 };

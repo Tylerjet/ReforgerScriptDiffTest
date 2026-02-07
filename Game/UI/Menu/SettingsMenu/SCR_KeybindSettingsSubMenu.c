@@ -20,6 +20,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	
 	protected SCR_KeybindRowComponent m_SelectedRowComponent;
 	protected SCR_NavigationButtonComponent m_ResetSingleButtonComponent;
+	protected SCR_NavigationButtonComponent m_UnbindSingleActionButtonComponent;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
@@ -32,9 +33,9 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		s_Binding = GetGame().GetInputManager().CreateUserBinding();
 		SCR_NavigationButtonComponent reset = CreateNavigationButton("MenuRefresh", "#AR-Settings_Keybind_ResetEveryKeybind", true);
 		reset.m_OnActivated.Insert(ResetKeybindsToDefault);
-		m_ResetSingleButtonComponent = CreateNavigationButton("MenuResetKeybind", "#AR-Settings_Keybind_ResetAllKeybinds", true);
-		m_ResetSingleButtonComponent.m_OnActivated.Insert(ResetSingleKeybindToDefault);
-		m_ResetSingleButtonComponent.SetEnabled(false);
+		
+		CreateUnbindSingleButton();
+		CreateSingleKeybindResetButton();
 
 		//read the categories and actions from KEY_BINDING_CONFIG
 		Resource holder = BaseContainerTools.LoadContainer(KEY_BINDING_CONFIG);
@@ -145,10 +146,19 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void CreateSingleKeybindResetButton()
+	{
+		m_ResetSingleButtonComponent = CreateNavigationButton("MenuResetKeybind", "#AR-Settings_Keybind_ResetAllKeybinds", true);
+		m_ResetSingleButtonComponent.m_OnActivated.Insert(ResetSingleKeybindToDefault);
+		m_ResetSingleButtonComponent.SetEnabled(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void ResetSingleKeybindToDefault()
 	{
 		if (!m_SelectedRowComponent)
 			return;
+		
 		m_SelectedRowComponent.ResetAction();
 	}
 
@@ -193,9 +203,34 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		m_SelectedRowComponent = rowComponent;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void SingleResetEnabled(bool isEnabled)
 	{
 		if (m_ResetSingleButtonComponent)
 			m_ResetSingleButtonComponent.SetEnabled(isEnabled);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void CreateUnbindSingleButton()
+	{
+		m_UnbindSingleActionButtonComponent = CreateNavigationButton("MenuUnbindKeybind", "#AR-Settings_Keybind_UnbindOne", true);
+		m_UnbindSingleActionButtonComponent.m_OnActivated.Insert(UnbindSingleAction);
+		m_UnbindSingleActionButtonComponent.SetEnabled(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UnbindSingleActionEnabled(bool isEnabled)
+	{
+		if (m_UnbindSingleActionButtonComponent)
+			m_UnbindSingleActionButtonComponent.SetEnabled(isEnabled);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UnbindSingleAction()
+	{		
+		if (!m_SelectedRowComponent)
+			return;
+		
+		m_SelectedRowComponent.Unbind();
 	}
 };

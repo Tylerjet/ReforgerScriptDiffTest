@@ -188,7 +188,7 @@ class SCR_ServerBrowserDialogManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void DisplayReconnectDialog(Room roomToJoin)
+	void DisplayReconnectDialog(Room roomToJoin, string strDetail = "")
 	{
 		// Check dialog 
 		if (!m_CurrentKickDialog)
@@ -221,6 +221,13 @@ class SCR_ServerBrowserDialogManager
 		
 		// Set Messages 
 		dialog.SetMessage(kickPreset.m_sMessage);
+		
+		SCR_ErrorDialog errorDialog = SCR_ErrorDialog.Cast(m_CurrentKickDialog.GetRootWidget().FindHandler(SCR_ErrorDialog));
+		if (errorDialog)
+		{
+			errorDialog.SetErrorDetail(strDetail); 
+		}
+		
 		
 		// Setup dialog			
 		if (dialog)

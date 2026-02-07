@@ -31,6 +31,27 @@ class SCR_Global
 		// 2d scopes enabled by default = supresses PIP which is less performant
 		return true;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	static string GetPlatformName(PlatformKind kind)
+	{
+		switch (kind)
+		{
+			case PlatformKind.NONE:
+				return "platform-windows";
+
+			case PlatformKind.PSN:
+				return "platform-playstation";
+
+			case PlatformKind.XBOX:
+				return "platform-xbox";
+
+			case PlatformKind.STEAM:
+				return "platform-windows";
+		}
+
+		return string.Empty;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	static string GetProfileName()

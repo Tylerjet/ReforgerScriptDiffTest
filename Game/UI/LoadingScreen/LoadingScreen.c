@@ -22,11 +22,15 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 	protected SCR_LoadingSpinner m_Spinner1;
 	protected SCR_LoadingSpinner m_Spinner2;
 	protected SCR_LoadingHintComponent m_Hint;
+	
+	protected Widget m_wHintWrap;
+	protected Widget m_wCrossplayWarning;
 
 	protected bool m_bMissionSet;
 	protected float m_fProgress;
 	protected float m_fTotalLoadingTime;
 
+	static protected bool m_bJoiningCrossPlay = false;
 	static protected bool s_bOpened;
 	static ref ScriptInvoker s_OnEnterLoadingScreen = new ScriptInvoker();
 	static ref ScriptInvoker m_onExitLoadingScreen = new ScriptInvoker();
@@ -50,6 +54,8 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 		m_wProgressBar = m_wRoot.FindAnyWidget("LoadingProgress");
 		m_wProgressSpace = m_wRoot.FindAnyWidget("LoadingSpacer");
 		m_wProgressText = TextWidget.Cast(m_wRoot.FindAnyWidget("ProgressText"));
+		m_wHintWrap = m_wRoot.FindAnyWidget("HorizontalHintWrap");
+		m_wCrossplayWarning = m_wRoot.FindAnyWidget("HorizontalCrossplay");
 		
 		Widget spinner1 = m_wRoot.FindAnyWidget("Spinner1");
 		if (spinner1)
@@ -69,6 +75,13 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 			m_wLogo.SetVisible(true);
 		if (m_wLoadingFrame)
 			m_wLoadingFrame.SetVisible(false);
+		
+		// Display hint 
+		if (m_wCrossplayWarning)
+			m_wCrossplayWarning.SetVisible(m_bJoiningCrossPlay);
+		
+		if (m_wHintWrap)
+			m_wHintWrap.SetVisible(!m_bJoiningCrossPlay)
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -236,5 +249,11 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 	static bool IsOpen()
 	{
 		return s_bOpened;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void SetJoiningCrossPlay(bool isCrossPlay)
+	{
+		m_bJoiningCrossPlay = isCrossPlay;
 	}
 };

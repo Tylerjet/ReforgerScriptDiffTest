@@ -118,7 +118,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 		m_NavEnable = CreateNavigationButton("MenuEnable", "#AR-Workshop_ButtonEnable", true);
 		
 		m_NavPlay = CreateNavigationButton("MenuSelect", "#AR-Workshop_ButtonPlay", true);
-		m_NavJoin = CreateNavigationButton("MenuJoin", "#AR-Workshop_ButtonJoin", true);
+		m_NavJoin = CreateNavigationButton("WorkshopPrimary", "#AR-Workshop_ButtonJoin", true);
 		if (SCR_ContentBrowser_ScenarioSubMenu.GetHostingAllowed())
 			m_NavHost = CreateNavigationButton("MenuHost", "#AR-Workshop_ButtonHost", true);
 		
@@ -376,6 +376,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 		}
 	}
 	
+	//protected SCR_ModReportDialogComponent m_ModReportDialog;
 	
 	//------------------------------------------------------------------------------------------------
 	//! This button used in reported and not reported state. It either sends a report or cancels it.
@@ -400,6 +401,12 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 		else
 		{
 			// Not reported yet
+			/*m_ModReportDialog = SCR_ModReportDialogComponent.Cast(m_wRoot.FindHandler(SCR_ModReportDialogComponent));
+			if (m_ModReportDialog)
+			{
+				m_ModReportDialog.OpenSelectReport(m_WorkshopItem);
+			}*/
+			
 			ReportDialogUI dialog = ReportDialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ReportItemDialog));
 			if (dialog)
 			{

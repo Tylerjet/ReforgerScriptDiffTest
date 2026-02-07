@@ -135,7 +135,9 @@ class SCR_CampaignBuildingServerTrigger : SCR_CampaignBuildingTrigger
 		
 		wp.SetOrigin(GetOrigin() + m_vWPoffset);
 
-		agent.GetParentGroup().AddWaypointAt(wp, 0);
+		AIGroup group = agent.GetParentGroup();
+		if (group)
+			group.AddWaypointAt(wp, 0);
 	}
 	
 	//------------------------------------------------------------------------------------------------

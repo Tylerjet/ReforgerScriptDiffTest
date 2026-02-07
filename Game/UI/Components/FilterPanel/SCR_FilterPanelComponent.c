@@ -87,7 +87,7 @@ class SCR_FilterPanelComponent : ScriptedWidgetComponent
 			Filter_TopBar_DeleteButton(filter);
 		
 		if (invokeOnChanged)
-			m_OnFilterChanged.Invoke();
+			m_OnFilterChanged.Invoke(filter);
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -502,7 +502,7 @@ class SCR_FilterPanelComponent : ScriptedWidgetComponent
 		Filter_TopBar_DeleteButton(filter);
 		
 		SyncUiToInternal();
-		m_OnFilterChanged.Invoke();
+		m_OnFilterChanged.Invoke(filter);
 	}
 	
 	
@@ -542,7 +542,7 @@ class SCR_FilterPanelComponent : ScriptedWidgetComponent
 		SyncUiToInternal();
 		
 		if (!preventDeselection)
-			m_OnFilterChanged.Invoke();
+			m_OnFilterChanged.Invoke(filter);
 	}
 	
 	//------------------------------------------------------------------------------------------------

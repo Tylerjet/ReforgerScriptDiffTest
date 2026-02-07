@@ -64,6 +64,7 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 	protected Widget m_wFavoriteImage;
 	
 	protected ImageWidget m_wImgPing;
+	protected int m_iPingLimit = 0;
 	
 	protected bool m_bIsModded = false;
 	
@@ -138,6 +139,15 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 		EnableTextAnimations(false);
 		
 		m_wLoading.SetVisible(false);
+		
+		// Get highest ping 
+		for (int i = 0, count = m_aPingStates.Count(); i < count; i++)
+		{
+			int ping = m_aPingStates[i].m_sValue.ToInt();
+			
+			if (m_iPingLimit < ping)
+				m_iPingLimit = ping;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -355,7 +365,7 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 	//! Display number of current ping and add icon and color
 	protected void DisplayPing(int ping)
 	{
-		float lastHighest = PING_LIMIT + 1;
+		float lastHighest = m_iPingLimit + 1;
 		ServerBrowserEntryProperty displayState;
 		
 		// No ping state 
@@ -384,11 +394,11 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 		string strPing = Math.Floor(ping).ToString();
 		
 		// Over limit 
-		if (ping > PING_LIMIT || ping < 0)
-		{
-			strPing = PING_LIMIT.ToString() + "#ENF-ComboModifier";
+		if (ping > m_iPingLimit || ping < 0)
 			displayState = m_aPingStates[m_aPingStates.Count() - 1];
-		}
+		
+		if (ping > PING_LIMIT)
+			strPing = PING_LIMIT.ToString() + "#ENF-ComboModifier";
 		
 		SetCellText("Ping", strPing);
 			

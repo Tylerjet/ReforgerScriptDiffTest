@@ -13,9 +13,20 @@ class FilteredServerParams : RoomFilterBase
 	const string FILTER_FAVORITES = "favorites";
 	const string FILTER_RECENT_SERVERS = "oldestJoinInSeconds";
 	const string FILTER_MODDED = "modded";
+	const string FILTER_OFFICIAL = "official";
+	const string FILTER_COMMUNITY = "community";
+	const string FILTER_CROSS_PLAY = "gameClientFilter";
 	
 	const string SORT_ASCENDENT = "ascendent";
 	const string SORT_NAME = "SessionName";
+	const string SOgRT_PING = "Ping";
+	
+	// Categories 
+	const string CATEGORY_PLAYERS = "Players";
+	
+	// Filter values 
+	const string VALUE_PLAYERS_MIN = "minPlayersPercent";
+	const string VALUE_PLAYERS_MAX = "maxPlayersPercent";
 	
 	// Filters	
 	protected ref SCR_FilterSet m_Filter;
@@ -38,6 +49,8 @@ class FilteredServerParams : RoomFilterBase
 	protected string order = SORT_NAME;
 	
 	// Tabs filter
+	protected bool m_bOfficialOn = false;
+	protected bool m_bOfficialDisplay = false;
 	protected bool m_bFavoriteFilterOn = false;
 	protected bool m_bRecentlyPlayedOn = false;
 	
@@ -52,24 +65,56 @@ class FilteredServerParams : RoomFilterBase
 	//------------------------------------------------------------------------------------------------
 	override void OnPack()
 	{	
-		// Setup filters 
+		SCR_FilterEntryRoom official = FindFilterByInternalName(m_aDefaultFilters, FILTER_OFFICIAL);
+		SCR_FilterEntryRoom community = FindFilterByInternalName(m_aDefaultFilters, FILTER_COMMUNITY);
+		
+		official.SetSelected(false);
+		community.SetSelected(false);
+		
+		// Setup tab filters
+		if (m_bOfficialOn)
+		{
+			official.SetSelected(m_bOfficialDisplay);
+			community.SetSelected(!m_bOfficialDisplay);
+		}
+		 
 		SCR_FilterEntryRoom favorite = FindFilterByInternalName(m_aDefaultFilters, FILTER_FAVORITES);
 		favorite.SetSelected(m_bFavoriteFilterOn);
 		
 		SCR_FilterEntryRoom recentlyPlayed = FindFilterByInternalName(m_aDefaultFilters, FILTER_RECENT_SERVERS);
 		recentlyPlayed.SetSelected(m_bRecentlyPlayedOn);
 		
+		// Modded
 		m_bModdedFilterSelected = false;
+		m_bCrossPlayFilterSelected = false;
+		
+		// Handle players filters 
+		int min, max = -1;
+		FormatePlayersFilters(min, max);
+		if (min != -1)
+			StoreInteger(VALUE_PLAYERS_MIN, min);
+		if (max != -1)
+			StoreInteger(VALUE_PLAYERS_MAX, max);
 		
 		// Register filters 
 		foreach (SCR_FilterEntryRoom filter : m_aFiltersUncategorized)
 		{		
+			if (!filter)
+				continue;
+			
 			// Store boolean of selected 
 			if (filter.GetSelected())
 			{			
+				// Separated handling for players 
+				if (m_Filter && filter.GetCategory() == m_Filter.FindFilterCategory(CATEGORY_PLAYERS))
+					continue;
+				
 				ActivateFilterValues(filter);
 			}
 		}
+		
+		if (!m_bCrossPlayFilterSelected)
+			StoreString("gameClientFilter", "AnyCompatible");
 		
 		// Set search by mod id 
 		if (modIds.IsEmpty())
@@ -142,6 +187,19 @@ class FilteredServerParams : RoomFilterBase
 		asc.SetSelected(true);
 		m_aDefaultFilters.Insert(asc);
 		
+		// Official-community 
+		SCR_FilterEntryRoom filterOfficial = new SCR_FilterEntryRoom;
+		filterOfficial.m_sInternalName = FILTER_OFFICIAL;
+		filterOfficial.AddFilterValue(FILTER_OFFICIAL, "1", EFilterType.TYPE_BOOL);
+		filterOfficial.SetSelected(false);
+		m_aDefaultFilters.Insert(filterOfficial);
+		
+		SCR_FilterEntryRoom filterCommunity = new SCR_FilterEntryRoom;
+		filterCommunity.m_sInternalName = FILTER_COMMUNITY;
+		filterCommunity.AddFilterValue(FILTER_OFFICIAL, "0", EFilterType.TYPE_BOOL);
+		filterCommunity.SetSelected(false);
+		m_aDefaultFilters.Insert(filterCommunity);
+		
 		// Favorite 
 		SCR_FilterEntryRoom filterFavorite = new SCR_FilterEntryRoom;
 		filterFavorite.m_sInternalName = FILTER_FAVORITES;
@@ -207,6 +265,10 @@ class FilteredServerParams : RoomFilterBase
 			if (name == FILTER_MODDED && value.GetBoolValue() == true)
 				m_bModdedFilterSelected = filter.GetSelected();
 			
+			// Track cross play filter 
+			if (name == FILTER_CROSS_PLAY)
+				m_bCrossPlayFilterSelected = filter.GetSelected();
+			
 			// Check type 
 			EFilterType filterType = value.GetType();
 				
@@ -231,6 +293,55 @@ class FilteredServerParams : RoomFilterBase
 				case EFilterType.TYPE_STRING:
 				StoreString(name, value.GetStringValue());
 				break;
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Agregate combination of player filter to gain player count range 
+	protected void FormatePlayersFilters(out int min, out int max)
+	{
+		if (!m_Filter)
+			return;
+		
+		// Get players 
+		SCR_FilterCategory playersCat = m_Filter.FindFilterCategory(CATEGORY_PLAYERS);
+		if (!playersCat)
+			return;
+		
+		// Checkc filters 
+		array<ref SCR_FilterEntry> filters = playersCat.GetFilters();
+		if(filters.IsEmpty())
+			return;
+		
+		// Default range values 
+		min = -1;
+		max = -1;
+		
+		for (int i = 0, count = filters.Count(); i < count; i++)
+		{
+			// Active?
+			if (!filters[i].GetSelected())
+				continue;
+			
+			SCR_FilterEntryRoom roomFilter = SCR_FilterEntryRoom.Cast(filters[i]);
+			if (!roomFilter)
+				return;
+			
+			// Min range - smallest min 
+			SCR_FilterEntryRoomValue valueMin = roomFilter.FindValue(VALUE_PLAYERS_MIN);
+			if (valueMin)
+			{
+				if (min == -1 || valueMin.GetIntNumberValue() < min)
+					min = valueMin.GetIntNumberValue();
+			}
+			
+			// Max range - biggest max 
+			SCR_FilterEntryRoomValue valueMax = roomFilter.FindValue(VALUE_PLAYERS_MAX);
+			if (valueMax)
+			{
+				if (max == -1 || valueMax.GetIntNumberValue() > max)
+					max = valueMax.GetIntNumberValue();
 			}
 		}
 	}
@@ -304,6 +415,13 @@ class FilteredServerParams : RoomFilterBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetOfficialFilter(bool activate, bool displayOfficial)
+	{
+		m_bOfficialOn = activate;
+		m_bOfficialDisplay = displayOfficial;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetSorting(string mOrder, bool bAscendent)
 	{
 		order = mOrder;
@@ -362,11 +480,18 @@ class FilteredServerParams : RoomFilterBase
 	}
 	
 	protected bool m_bModdedFilterSelected;
+	protected bool m_bCrossPlayFilterSelected;
 	
 	//------------------------------------------------------------------------------------------------
 	bool IsModdedFilterSelected()
 	{
 		return m_bModdedFilterSelected;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsCrossPlayFilterSelected()
+	{
+		
 	}
 
 	
@@ -384,8 +509,8 @@ class FilteredServerParams : RoomFilterBase
 		foreach (SCR_FilterEntryRoom filter : m_aFiltersUncategorized)
 		{
 			filters.Insert(filter);
-			if (filter.GetSelected())
-				Print("count: " + filter.m_sInternalName);
+			/*if (filter.GetSelected())
+				Print("count: " + filter.m_sInternalName);*/
 			
 			filter.SetSelected(false);
 		}
@@ -405,18 +530,6 @@ class FilteredServerParams : RoomFilterBase
 	//! Setup default filters with favorites filtered only
 	void DefaulFilterFavorite()
 	{
-		// Save filters 
-		//m_aFiltersStored = m_aFiltersUncategorized;
-		/*foreach (SCR_FilterEntryRoom filter : m_aFiltersUncategorized)
-		{
-			SCR_FilterEntryRoom filterToAdd = new SCR_FilterEntryRoom;
-			filterToAdd = filter;
-			
-			m_aFiltersStored.Insert(filterToAdd);
-			if (filter.GetSelected())
-				Print("count: " + filter.m_sInternalName);
-		}*/
-		
 		m_bFavoriteFilterOn = true;
 		DefaultFilter();
 		
@@ -494,6 +607,18 @@ class SCR_FilterEntryRoom : SCR_FilterEntry
 
 	//------------------------------------------------------------------------------------------------
 	array<ref SCR_FilterEntryRoomValue> GetValues() { return m_aValues; }
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_FilterEntryRoomValue FindValue(string name)
+	{
+		for (int i = 0, count = m_aValues.Count(); i < count; i++)
+		{
+			if (m_aValues[i].GetName() == name)
+				return m_aValues[i];
+		}
+		
+		return null; 
+	}
 };
 
 //------------------------------------------------------------------------------------------------
