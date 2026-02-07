@@ -25,6 +25,7 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 
 	// Constant sizing 
 	const float SIZE_UNMEASURED = -1;
+	const int CHECK_ENTRY_SIZE_DELAY = 100;
 	
 	// Move offset when moving up in scroll layout 
 	const float ENTRY_OFFSET_UP = 0.1;
@@ -47,7 +48,7 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 	
 	// Sizes 
 	protected float m_fListPxHeight = SIZE_UNMEASURED;
-	protected float m_fPagePxHeight = SIZE_UNMEASURED;
+ 	protected float m_fPagePxHeight = SIZE_UNMEASURED;
 	protected float m_fViewPxHeight = SIZE_UNMEASURED;
 	protected float m_fEntryPxHeight = SIZE_UNMEASURED;
 	protected float m_fEntryPaddingPxHeight = SIZE_UNMEASURED;
@@ -205,7 +206,7 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		
 		// Check if page is changed
 		int currentPage = Math.Floor(scrollY / scrollPageRatio);
-		
+
 		if (m_iCurrentPage != currentPage)
 			SetCurrentPage(currentPage);
 	}
@@ -214,6 +215,9 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 	//! How many entries are of view - how many entries can be scrolled 
 	protected float EntriesOutOfView()
 	{
+		if (m_fPagePxHeight == 0)
+			return 0;
+		
 		// What percent of whole list can bee seen 
 		float pageViewRatio = m_fViewPxHeight / m_fPagePxHeight; 
 		float outOfView = m_iAllEntriesCount - m_iPageEntriesCount * pageViewRatio;
@@ -244,7 +248,7 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 	//! Update positions of pages and offsets 
 	void UpdateScroll()
 	{
-		WorkspaceWidget workspace = GetGame().GetWorkspace();
+ 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		
 		// Get scroll positions 
 		float scrollX, scrollY = 0;
@@ -259,7 +263,7 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		// Is list foucused - is current focus on list fallback widget or list entry?
 		Widget workspaceFocused = workspace.GetFocusedWidget();
 		m_bIsListFocused = (workspaceFocused == m_wFocusRest || workspaceFocused == m_wLastFocused);
-
+		
 		// Check scroll change 
 		if (m_ScrollLastY == scrollY)
 			return;
@@ -303,15 +307,12 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 	protected void SetCurrentPage(int page)
 	{
 		m_iCurrentPage = page;
-		
+
 		// Check if pages are inverted to simulate scrolling 
 		bool pagesInverted = (m_iCurrentPage % 2 != 0);
 		
-		if (m_bPagesInverted != pagesInverted)
-		{
-			SwitchPages(pagesInverted, m_fPagePxHeight, m_iCurrentPage);
-			UpdateEntries();
-		}
+		SwitchPages(pagesInverted, m_fPagePxHeight, m_iCurrentPage);
+		UpdateEntries();
 		
 		m_OnSetPage.Invoke(page);
 	}
@@ -506,12 +507,12 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 			
 			// Check measures
 			if (m_fEntryPxHeight != 0)
+			{
 				m_bIsMeasured = true;
-		}
-		else 
-		{
-			m_wRoot.ClearFlags(WidgetFlags.CLIPCHILDREN);
-			m_wRoot.ClearFlags(WidgetFlags.INHERIT_CLIPPING);	
+				m_wRoot.ClearFlags(WidgetFlags.CLIPCHILDREN);
+				m_wRoot.ClearFlags(WidgetFlags.INHERIT_CLIPPING);
+				SetupOffsets(m_iCurrentPage);
+			}
 		}
 		
 		// Whole height size in px - cut last bottom padding 
@@ -671,11 +672,11 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 		// Set data 
 		m_iAllEntriesCount = entriesCount;
 		
-		// Check sizes 
-		CheckEntrySize();
-		
 		// Show entries 
 		ShowEntries(entriesCount);
+		
+		// Check sizes 
+		GetGame().GetCallqueue().CallLater(CheckEntrySize, CHECK_ENTRY_SIZE_DELAY);
 	}
 	
 	//------------------------------------------------------------------------------------------------

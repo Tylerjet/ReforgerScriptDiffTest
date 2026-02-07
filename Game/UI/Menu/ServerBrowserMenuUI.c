@@ -164,11 +164,10 @@ class ServerBrowserMenuUI: MenuRootBase
 			m_ScrollableList.ShowEmptyRooms();
 		}
 		
-		// Setup connection attempt timeout 
-		GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
-		
 		// Setup debug menu 
 		
+		// Setup connection attempt timeout 
+		GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -199,10 +198,10 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Remove callbacks 
 		m_Lobby.SetRefreshCallback(null);
 
-		m_ScrollableList.m_OnSetPage.Remove(OnServerListSetPage);
+		m_ScrollableList.m_OnSetPage.Remove(CallOnServerListSetPage);
 		m_CallbackAutoRefresh.m_OnSuccess.Clear();
 		
-		GetGame().GetCallqueue().Remove(ConnectionTimeout);
+		ClearConnectionTimeoutWaiting();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -258,8 +257,7 @@ class ServerBrowserMenuUI: MenuRootBase
 			JoinProcess_Init(invited);
 		
 		// Clear error msg 
-		m_sErrorMessage = "";
-		m_sErrorMessageDetail = "";
+		ClearErrorMessage();
 		
 		// Stop waiting for backend
 		m_bIsWaitingForBackend = false;
@@ -348,6 +346,8 @@ class ServerBrowserMenuUI: MenuRootBase
 			m_ScrollableList.SetIsListFocused(true);
 			m_bFirstRoomLoad = false;
 		}
+		
+		ClearConnectionTimeoutWaiting();
 	}	
 	
 	//------------------------------------------------------------------------------------------------
@@ -500,18 +500,18 @@ class ServerBrowserMenuUI: MenuRootBase
 		//  Setup list loading
 		if (m_ScrollableList)
 		{
-			//m_ScrollableList.MoveToTop();
-			//m_ScrollableList.SetRooms(m_aRooms, 0, true);
+			m_ScrollableList.MoveToTop();
 			m_ScrollableList.ShowEmptyRooms();
 		}
+		
+		// Setup connection attempt timeout 
+		GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
 		
 		m_bRoomsLoaded = false;
 		
 		// Start loading 
 		if (m_bFirstRoomLoad)
 		{
-			// TODO@wernerjak - hack, remove it once first search issue is solved
-			//m_Lobby.SearchRooms(m_ParamsFilter, null);	
 			SearchRooms();
 		}
 		else
@@ -732,14 +732,14 @@ class ServerBrowserMenuUI: MenuRootBase
 		m_Lobby.SetRefreshRate(ROOM_REFRESH_RATE);
 		
 		// Server list
-		m_ScrollableList.m_OnSetPage.Insert(OnServerListSetPage);
+		m_ScrollableList.m_OnSetPage.Insert(CallOnServerListSetPage);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void DisplayKick()
 	{
 		m_Dialogs.DisplayKickErrorDialog(m_sErrorMessage, m_sErrorMessageDetail);
-		
+
 		// Find last 
 		string lastId = m_Lobby.GetPreviousRoomId();
 		bool hasLastServer = !lastId.IsEmpty();
@@ -753,6 +753,10 @@ class ServerBrowserMenuUI: MenuRootBase
 			
 			m_Dialogs.DisplayReconnectDialog(m_RejoinRoom);
 		}
+		
+		// Clear messages and backend check 
+		ClearErrorMessage();
+		ClearConnectionTimeoutWaiting();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -960,7 +964,12 @@ class ServerBrowserMenuUI: MenuRootBase
 		m_EntryInteractible = entry;
 		
 		if (entry && entry != m_ServerEntryFocused)
+		{
+			if (!entry.GetRoomInfo())
+				return;
+			
 			ReceiveRoomContent(entry.GetRoomInfo(), false);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -968,8 +977,10 @@ class ServerBrowserMenuUI: MenuRootBase
 	{
 		m_EntryInteractible = m_ServerEntryFocused;
 		
-		if (entry != m_ServerEntryFocused)
+		if (entry != m_ServerEntryFocused && m_LastFocusedRoom)
+		{
 			ReceiveRoomContent(m_LastFocusedRoom, true);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1255,6 +1266,13 @@ class ServerBrowserMenuUI: MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void CallOnServerListSetPage(int page)
+	{
+		GetGame().GetCallqueue().Remove(OnServerListSetPage);
+		GetGame().GetCallqueue().CallLater(OnServerListSetPage, ROOM_REFRESH_WAIT_DELAY, false, page);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Call this actions when server list page is changed
 	protected void OnServerListSetPage(int page)
 	{
@@ -1280,10 +1298,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		m_Lobby.Rooms(m_aRooms);
 		
 		DisplayRooms(m_aRooms);
-
-		// Update rooms data in list 
-		/*if (m_bRoomsLoaded)
-			m_ScrollableList.SetRooms(m_aRooms, m_Lobby.TotalRoomCount());*/
 		
 		// Clear callback 
 		m_CallbackScroll.m_OnSuccess.Remove(OnScrollSuccess);
@@ -1302,9 +1316,6 @@ class ServerBrowserMenuUI: MenuRootBase
 			if (m_Lobby.TotalRoomCount() == 0)
 			{
 				m_bIsCheckingSpecificfilter = true;
-				
-				/*array<SCR_FilterEntryRoom> filterSet = m_ParamsFilter.DefaulFilterFavorited();
-				m_ParamsFilter.SetFilters(filterSet);*/
 				
 				m_ParamsFilter.DefaulFilterFavorite();
 				OnActionRefresh();
@@ -1847,6 +1858,13 @@ class ServerBrowserMenuUI: MenuRootBase
 	{
 		m_sErrorMessage = msg;
 		m_sErrorMessageDetail = details;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ClearErrorMessage()
+	{
+		m_sErrorMessage = "";
+		m_sErrorMessageDetail = "";
 	}
 	
 	//------------------------------------------------------------------------------------------------

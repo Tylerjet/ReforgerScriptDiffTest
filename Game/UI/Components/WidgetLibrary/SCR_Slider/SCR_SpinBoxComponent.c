@@ -40,6 +40,9 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 	[Attribute("", UIWidgets.EditBox, "")]
 	protected ResourceName m_sHintElementImage;
 
+	protected ref ScriptInvoker m_OnLeftArrowClick;
+	protected ref ScriptInvoker m_OnRightArrowClick;
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -223,6 +226,9 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 		{
 			SetCurrentItem(m_iSelectedItem - 1, true, true);
 		}
+
+		if (m_OnLeftArrowClick)
+			m_OnLeftArrowClick.Invoke();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -239,6 +245,9 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 		{
 			SetCurrentItem(m_iSelectedItem + 1, true, true);
 		}
+
+		if (m_OnRightArrowClick)
+			m_OnRightArrowClick.Invoke();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -282,6 +291,24 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 	{
 		super.ClearAll();
 		SetInitialState();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnLeftArrowClick()
+	{
+		if (!m_OnLeftArrowClick)
+			m_OnLeftArrowClick = new ScriptInvoker();
+
+		return m_OnLeftArrowClick;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnRightArrowClick()
+	{
+		if (!m_OnRightArrowClick)
+			m_OnRightArrowClick = new ScriptInvoker();
+
+		return m_OnRightArrowClick;
 	}
 
 	//------------------------------------------------------------------------------------------------

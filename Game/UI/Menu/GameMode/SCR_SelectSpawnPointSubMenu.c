@@ -49,6 +49,8 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 		if (m_wSelectionSpinBox)
 		{
 			m_SelectionSpinBox = SCR_SpinBoxComponent.Cast(m_wSelectionSpinBox.FindHandler(SCR_SpinBoxComponent));
+			m_SelectionSpinBox.GetOnLeftArrowClick().Insert(FocusOnSpawnPointOnly);
+			m_SelectionSpinBox.GetOnRightArrowClick().Insert(FocusOnSpawnPointOnly);
 			m_SelectionSpinBox.m_OnChanged.Insert(UpdateTimedSpawnPoint);
 		}
 
@@ -379,6 +381,15 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 			//m_MapEntity.SetPan(x, y);
 			m_bSmoothPan = true;
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void FocusOnSpawnPointOnly()
+	{
+		string name = m_SelectionSpinBox.GetCurrentItem();
+		m_SelectedSpawnPointId = m_mSpawnPoints.GetKeyByValue(name);
+		FocusOnSelectedSpawnPoint();
+		UntoggleConfirm();
 	}
 
 	//------------------------------------------------------------------------------------------------

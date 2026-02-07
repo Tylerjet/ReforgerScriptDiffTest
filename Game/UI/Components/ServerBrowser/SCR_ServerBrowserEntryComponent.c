@@ -251,7 +251,6 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 		m_RoomInfo = room;
 		
 		// Visualize as empty?
-		EmptyVisuals(m_RoomInfo == null);
 		if (!m_RoomInfo)
 			return;
 		
