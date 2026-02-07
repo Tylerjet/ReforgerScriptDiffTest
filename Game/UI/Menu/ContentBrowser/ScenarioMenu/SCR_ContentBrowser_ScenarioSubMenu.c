@@ -39,16 +39,13 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 	protected ref SCR_MissionHeader m_Header;
 	
 	// Nav buttons
-	protected SCR_NavigationButtonComponent m_NavPlay;
-	protected SCR_NavigationButtonComponent m_NavContinue;
-	protected SCR_NavigationButtonComponent m_NavRestart;
-	
-	protected SCR_NavigationButtonComponent m_NavJoin;
-	protected SCR_NavigationButtonComponent m_NavHost;
 	protected SCR_NavigationButtonComponent m_NavFilter;
 	protected SCR_NavigationButtonComponent m_NavSorting;
-	protected SCR_NavigationButtonComponent m_NavFavourite;
 	
+	protected const string FAVORITE_LABEL_ADD = "#AR-Workshop_ButtonAddToFavourites";
+	protected const string FAVORITE_LABEL_REMOVE = "#AR-Workshop_ButtonRemoveFavourites";
+
+	ref ScriptInvoker<bool, string> m_OnFavorite = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_SuperMenuBase parentMenu) 
@@ -67,31 +64,19 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 		
 		UpdateScenarioList(true);
 		
-		// Create nav buttons
-		SCR_ScenarioMenu scenarioMenu = SCR_ScenarioMenu.Cast(parentMenu);
-		m_NavPlay = CreateNavigationButton("MenuSelect", "#AR-Workshop_ButtonPlay", true);
-		m_NavContinue = CreateNavigationButton("MenuSelect", "#AR-PauseMenu_Continue", true);
-		m_NavRestart = CreateNavigationButton("MenuRestart", "#AR-PauseMenu_Restart", true);
-		m_NavJoin = CreateNavigationButton("MenuJoin", "#AR-Workshop_ButtonJoin", true);
+		// Listen for Actions
+		SCR_MenuActionsComponent actionsComp = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
+		if(actionsComp)
+			actionsComp.m_OnAction.Insert(OnActionTriggered);
+		
+		// Left footer buttons
 		//m_NavFilter = CreateNavigationButton("MenuFilter", "#AR-Workshop_Filter", false);
 		m_NavSorting = CreateNavigationButton("MenuFilter", "#AR-ScenarioBrowser_ButtonSorting", false);
-		m_NavFavourite = CreateNavigationButton("MenuFavourite", "#AR-Workshop_ButtonAddToFavourites", true);
 		
-		m_NavPlay.m_OnActivated.Insert(OnPlayButton);
-		m_NavContinue.m_OnActivated.Insert(OnContinueButton);
-		m_NavRestart.m_OnActivated.Insert(OnRestartButton);
-		m_NavJoin.m_OnActivated.Insert(OnJoinButton);
 		//m_NavFilter.m_OnActivated.Insert(OnFilterButton);
 		m_NavSorting.m_OnActivated.Insert(OnSortingButton);
-		m_NavFavourite.m_OnActivated.Insert(OnFavouriteButton);
-		
-		if (!GetGame().IsPlatformGameConsole())
-		{
-			m_NavHost = CreateNavigationButton("MenuHost", "#AR-Workshop_ButtonHost", true);
-			m_NavHost.m_OnActivated.Insert(OnHostButton);
-		}
 	}
-	
+
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
@@ -123,82 +108,62 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 		
 		UpdateNavigationButtons();
 		
-		// When we switch from non-mouse input to mouse, set focused widget again
-		// This is needed for the case when we scroll with keys, stop scrolling,
-		// Then the mouse is staying over some new line, but it is not being focused
-		// because mouse enter event doesn't get called
-		
-		// Disabled for now because we no longer focus on mouse enter
-		/*
-		EInputDeviceType inputType = GetGame().GetInputManager().GetLastUsedInputDevice();
-		if (m_eLastInputType != EInputDeviceType.MOUSE && inputType == EInputDeviceType.MOUSE)
-		{
-			GetGame().GetWorkspace().SetFocusedWidget(WidgetManager.GetWidgetUnderCursor());
-		}
-		m_eLastInputType = inputType;
-		*/
-		
-		
-		// Set current scenario in the info panel
+		//! Set current scenario in the info panel
 		m_Widgets.m_ScenarioDetailsPanelComponent.SetScenario(GetSelectedScenario());
-	}
-	
-	
-	//------------------------------------------------------------------------------------------------
-	protected void UpdateNavigationButtons()
-	{
-		auto selectedMission = GetSelectedScenario();
-		bool anythingSelected = selectedMission != null;
-		bool mp;
 		
-		// If line is selected...
-		if (selectedMission)
-			mp = selectedMission.GetPlayerCount() > 1;
-		
-		m_NavJoin.SetEnabled(mp && anythingSelected);
-		if (m_NavHost)
-			m_NavHost.SetEnabled(mp && anythingSelected);
-		m_NavFavourite.SetEnabled(anythingSelected);
-		m_NavPlay.SetEnabled(anythingSelected);
-		
-		// Sorting button is hidden if we are using only mouse
-		// It makes no sense to show it for mouse user because focus on sorting header is
-		// Not visualized when we use mouse. The orange frame is only shown for KB & Gamepad.
-		EInputDeviceType deviceType = GetGame().GetInputManager().GetLastUsedInputDevice();
-		m_NavSorting.SetVisible(deviceType != EInputDeviceType.MOUSE);
-		
-		if (selectedMission)
-		{
-			string favLabel;
-			if (!selectedMission.IsFavorite())
-				favLabel = "#AR-Workshop_ButtonAddToFavourites";
-			else
-				favLabel = "#AR-Workshop_ButtonRemoveFavourites";
-			m_NavFavourite.SetLabel(favLabel);
-		}
-		
-		// Update selected scenario
+		//! Update selected scenario
+		MissionWorkshopItem selectedMission = GetSelectedScenario();
 		if (selectedMission && m_SelectedScenario != selectedMission)
 		{
 			m_SelectedScenario = selectedMission;
 			m_Header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(selectedMission.Id()));
-			bool canBeLoaded = m_Header && SCR_SaveLoadComponent.HasSaveFile(m_Header);
-			ShowScenarioPlayButtons(canBeLoaded);
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Show proper play nav buttons 
-	//! Scenario not played -> display only Play
-	//! Scenario played -> display Continue and Restart
-	protected void ShowScenarioPlayButtons(bool played)
-	{
-		m_NavPlay.SetVisible(!played, false);
 		
-		m_NavContinue.SetVisible(played, false);
-		m_NavRestart.SetVisible(played, false)
+		//! Update Tooltip actions
+		EInputDeviceType inputDeviceType = GetGame().GetInputManager().GetLastUsedInputDevice();
+		if (inputDeviceType == m_eLastInputType || !m_LastSelectedLine)
+			return;
+		
+		m_eLastInputType = inputDeviceType;
+		
+		SCR_BrowserHoverTooltipComponent hoverComp = SCR_BrowserHoverTooltipComponent.FindComponent(m_LastSelectedLine.GetRootWidget());
+		if(hoverComp)
+			hoverComp.UpdateButtonAction("Play");
+		
+		//! Needed to update displayed tooltip actions on tick
+		m_eLastInputType = GetGame().GetInputManager().GetLastUsedInputDevice();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuFocusGained()
+	{
+		super.OnMenuFocusGained();
+		
+		SCR_MenuActionsComponent actionsComp = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
+		if (actionsComp)
+			actionsComp.ActivateActions();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuFocusLost()
+	{
+		super.OnMenuFocusLost();
+		
+		SCR_MenuActionsComponent actionsComp = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
+		if (actionsComp)
+			actionsComp.DeactivateActions();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateNavigationButtons()
+	{		
+		// Sorting button is hidden if we are using only mouse
+		// It makes no sense to show it for mouse user because focus on sorting header is
+		// Not visualized when we use mouse. The orange frame is only shown for KB & Gamepad.
+		EInputDeviceType deviceType = GetGame().GetInputManager().GetLastUsedInputDevice();
+		m_NavSorting.SetVisible(deviceType != EInputDeviceType.MOUSE, false);
+	}
+
 	
 	//------------------------------------------------------------------------------------------------
 	protected void InitWidgets()
@@ -220,7 +185,6 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 		// Scan offline items if needed
 		if (m_WorkshopApi.NeedScan())
 			m_WorkshopApi.ScanOfflineItems();
-		
 	}
 	
 	
@@ -252,7 +216,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 			// Select only fav. missions
 			case EScenarioSubMenuMode.MODE_FAVOURITE:
 			{
-				foreach (auto m : missionItemsAll)
+				foreach (MissionWorkshopItem m : missionItemsAll)
 					if (m.IsFavorite())
 						missionItemsTabFiltered.Insert(m);
 			
@@ -503,10 +467,12 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 					
 					comp.m_OnScenarioStateChanged.Insert(Callback_OnScenarioStateChanged);
 					
-					auto buttonComp = SCR_ModularButtonComponent.FindComponent(widget);
+					SCR_ModularButtonComponent buttonComp = SCR_ModularButtonComponent.FindComponent(widget);
 					buttonComp.m_OnFocus.Insert(OnLineFocus);
-					buttonComp.m_OnDoubleClicked.Insert(OnLineDoubleClick);
-					buttonComp.m_OnMouseEnter.Insert(OnLineMouseEnter);
+					
+					SCR_HoverDetectorComponent hoverComp = SCR_HoverDetectorComponent.FindComponent(widget);
+					if(hoverComp)
+						hoverComp.m_OnHoverDetected.Insert(OnTooltipShow);
 				}
 			}
 		}
@@ -578,95 +544,223 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 		
 		return SCR_ContentBrowser_ScenarioLineComponent.Cast(w.FindHandler(SCR_ContentBrowser_ScenarioLineComponent));
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void TryFocusLineUnderCursor()
-	{
-		SCR_ContentBrowser_ScenarioLineComponent comp = GetLineUnderCursor();
-		
-		if (!comp)
-			return;
-		
-		if (comp.GetRootWidget() != GetGame().GetWorkspace().GetFocusedWidget())
-			GetGame().GetWorkspace().SetFocusedWidget(comp.GetRootWidget());
-	}
+
 	
 	// -------------- Button event handlers ------------------------
-	
-	
 	//------------------------------------------------------------------------------------------------
 	protected void OnLineFocus(SCR_ModularButtonComponent buttonComp)
 	{
-		auto lineComp = SCR_ContentBrowser_ScenarioLineComponent.FindComponent(buttonComp.GetRootWidget());
-		
+		SCR_ContentBrowser_ScenarioLineComponent lineComp = SCR_ContentBrowser_ScenarioLineComponent.FindComponent(buttonComp.GetRootWidget());
+
 		m_LastSelectedLine = lineComp;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
-	protected void OnLineMouseEnter(SCR_ModularButtonComponent buttonComp, bool mouseInput)
+	protected void OnTooltipShow(SCR_HoverDetectorComponent baseHoverComp, Widget widget)
 	{
-		// Bail if last input wasn't mouse
-		if (!mouseInput)
+		SCR_BrowserHoverTooltipComponent hoverComp = SCR_BrowserHoverTooltipComponent.FindComponent(widget);
+		if (!hoverComp)
 			return;
 		
-		auto lineComp = SCR_ContentBrowser_ScenarioLineComponent.FindComponent(buttonComp.GetRootWidget());
+		hoverComp.ClearSetupButtons();
 		
-		m_LastSelectedLine = lineComp;
+		//! Setup Tooltip buttons
+		MissionWorkshopItem selectedMission = m_LastSelectedLine.GetScenario();
+		bool canBeLoaded = m_Header && GetGame().GetSaveManager().HasLatestSave(m_Header);
+		
+		// Favorite
+		hoverComp.AddSetupButton("Favorite", "#AR-ServerBrowser_Favorite", "MenuFavourite");
+		
+		if (selectedMission && selectedMission.GetPlayerCount() > 1 )
+		{
+			// Join
+			hoverComp.AddSetupButton("Join", "#AR-Workshop_ButtonFindServers", "MenuJoin");
+	
+			// Host
+			if (!GetGame().IsPlatformGameConsole())
+				hoverComp.AddSetupButton("Host", "#AR-Workshop_ButtonHost", "MenuHost");
+		}
+		
+		//Restart, Continue, Play
+		string playLabel = "#AR-Workshop_ButtonPlay";
+		
+		if (canBeLoaded)
+		{
+			hoverComp.AddSetupButton("Restart", "#AR-PauseMenu_Restart", "MenuRestart");
+			playLabel = "#AR-PauseMenu_Continue";
+		}
+		
+		hoverComp.AddSetupButton("Play", playLabel, "MenuSelect", "MenuEntryDoubleClickMouse");
+		
+		hoverComp.CreateTooltip();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnLineClickInteraction(float multiplier)
+	{
+		//! multiplier value in the action is used to differentiate between single and double click
+
+		SCR_ContentBrowser_ScenarioLineComponent lineComp = GetSelectedLine();
+		if (!lineComp)
+			return;
+
+		EInputDeviceType lastInputDevice = GetGame().GetInputManager().GetLastUsedInputDevice();
+		if(lastInputDevice == EInputDeviceType.MOUSE && lineComp != GetLineUnderCursor())
+			return;
+		
+		switch (Math.Floor(multiplier))
+		{
+			case 1: OnLineClick(lineComp); break;
+			case 2: OnLineDoubleClick(lineComp); break;
+		}
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnLineDoubleClick(SCR_ModularButtonComponent buttonComp)
+	protected void OnLineDoubleClick(SCR_ContentBrowser_ScenarioLineComponent lineComp)
 	{
-		auto lineComp = SCR_ContentBrowser_ScenarioLineComponent.FindComponent(buttonComp.GetRootWidget());
+		if(!lineComp)
+			return;
 		
 		MissionWorkshopItem scenario = lineComp.GetScenario();
-		
 		if (!scenario)
 			return;
 		
-		OnContinueButton();
+		SCR_BrowserHoverTooltipComponent hoverComp = SCR_BrowserHoverTooltipComponent.FindComponent(lineComp.GetRootWidget());
+		if(hoverComp)
+			hoverComp.ForceDeleteTooltip();
+		
+		OnPlayInteraction(lineComp);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnLineClick(SCR_ContentBrowser_ScenarioLineComponent lineComp)
+	{
+		if(!lineComp)
+			return;
+		
+		MissionWorkshopItem scenario = lineComp.GetScenario();
+		if (!scenario)
+			return;
+		
+		SCR_BrowserHoverTooltipComponent hoverComp = SCR_BrowserHoverTooltipComponent.FindComponent(lineComp.GetRootWidget());
+		if(hoverComp)
+			hoverComp.ForceDeleteTooltip();
+		
+		//! If using Mouse single click opens confirmation dialog, double click goes straight to the play interaction
+		if(GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.MOUSE)
+		{
+			SCR_ScenarioConfirmationDialogUi scenarioConfirmationDialog = SCR_ScenarioDialogs.CreateScenarioConfirmationDialog(lineComp, m_OnFavorite);
+			if(!scenarioConfirmationDialog)
+			{
+				OnPlayInteraction(lineComp);
+				return;
+			}
+			
+			//! Bind dialog delegates
+			scenarioConfirmationDialog.m_OnButtonPressed.Insert(OnConfirmationDialogButtonPressed);
+			scenarioConfirmationDialog.m_OnFavorite.Insert(SetFavorite);
+		}
+		//! If using Gamepad or Keyboard there's no confirmation dialog and single click starts the play interaction
+		else
+			OnPlayInteraction(lineComp);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnConfirmationDialogButtonPressed(SCR_ScenarioConfirmationDialogUi dialog, string tag)
+	{
+		SCR_ContentBrowser_ScenarioLineComponent line = dialog.GetLine();
+		if(!line)
+			return;
+
+		switch (tag)
+		{
+			case "confirm": OnPlayInteraction(line); break;
+			case "restart": Restart(line); break;
+			case "join": 	Join(line); break;
+			case "host": 	Host(line); break;
+			default: break;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnActionTriggered(string action, float multiplier)
+	{
+		switch(action)
+		{
+			case "MenuSelectDouble": OnLineClickInteraction(multiplier); break;
+			case "MenuRestart": OnRestartButton(); break;
+			case "MenuJoin": OnJoinButton(); break;
+			case "MenuFavourite": OnFavouriteButton(); break;
+			case "MenuHost":
+			{
+				if (!GetGame().IsPlatformGameConsole()) 
+					OnHostButton(); 
+				break;
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayInteraction(SCR_ContentBrowser_ScenarioLineComponent line)
+	{
+		if(!line)
+			return;
+		
+		MissionWorkshopItem selectedMission = line.GetScenario();
+		if (selectedMission)
+		{
+			bool canBeLoaded = m_Header && GetGame().GetSaveManager().HasLatestSave(m_Header);
+			if(canBeLoaded)
+				Continue(selectedMission);
+			else
+				Play(selectedMission);
+		}
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnJoinButton()
 	{
-		MissionWorkshopItem scenario = GetSelectedScenario();
+		Join(GetSelectedLine());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void Join(SCR_ContentBrowser_ScenarioLineComponent line)
+	{	
+		if(!line)
+			return;
 		
+		MissionWorkshopItem scenario = line.GetScenario();
 		if (!scenario)
 			return;
 		
-		TryFocusLineUnderCursor();
-		
-		ServerBrowserMenuUI.OpenWithScenarioFilter(scenario);
+		bool mp = scenario.GetPlayerCount() > 1;
+		if(mp)
+			ServerBrowserMenuUI.OpenWithScenarioFilter(scenario);
 	}
 	
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnPlayButton()
+	protected void Play(MissionWorkshopItem scenario)
 	{
-		MissionWorkshopItem scenario = GetSelectedScenario();
-		
 		if (!scenario)
 			return;
-		
-		TryFocusLineUnderCursor();
 		
 		SCR_WorkshopUiCommon.TryPlayScenario(scenario);
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ScenarioMenu);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnContinueButton()
+	protected void Continue(MissionWorkshopItem scenario)
 	{
-		if (m_Header && !m_Header.GetSaveFileName().IsEmpty())
-			SCR_SaveLoadComponent.LoadOnStart(m_Header);
-		else
-			SCR_SaveLoadComponent.LoadOnStart();
+		if (!scenario)
+			return;
 		
-		SCR_WorkshopUiCommon.TryPlayScenario(m_SelectedScenario);
+		if (m_Header && !m_Header.GetSaveFileName().IsEmpty())
+			GetGame().GetSaveManager().SetFileNameToLoad(m_Header);
+		else
+			GetGame().GetSaveManager().ResetFileNameToLoad();
+		
+		SCR_WorkshopUiCommon.TryPlayScenario(scenario);
 		
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ScenarioMenu);
 	}
@@ -674,27 +768,54 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	void OnRestartButton()
 	{
-		SCR_SaveLoadComponent.LoadOnStart();
+		Restart(GetSelectedLine());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void Restart(SCR_ContentBrowser_ScenarioLineComponent line)
+	{
+		if(!line)
+			return;
+		
+		MissionWorkshopItem selectedMission = line.GetScenario();
+		if (!selectedMission)
+			return;
+
+		m_SelectedScenario = selectedMission;
+		m_Header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(selectedMission.Id()));
+		bool canBeLoaded = m_Header && GetGame().GetSaveManager().HasLatestSave(m_Header);
+		
+		if(!canBeLoaded)
+			return;
+		
+		GetGame().GetSaveManager().ResetFileNameToLoad();
 		SCR_WorkshopUiCommon.TryPlayScenario(m_SelectedScenario);
 		
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ScenarioMenu);
 	}
 	
-	
-	
 	//------------------------------------------------------------------------------------------------
 	protected void OnHostButton()
 	{
-		MissionWorkshopItem scenario = GetSelectedScenario();
-		
-		if (!scenario)
+		Host(GetSelectedLine());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void Host(SCR_ContentBrowser_ScenarioLineComponent line)
+	{
+		if(!line)
 			return;
 		
-		TryFocusLineUnderCursor();
+		MissionWorkshopItem scenario = line.GetScenario();
+		if (!scenario)
+			return;
+
+		bool mp = scenario.GetPlayerCount() > 1;
+		if (!mp)
+			return;
 		
 		// Open server hosting dialog 
-		ServerHostingUI dialog = ServerHostingUI.Cast(
-			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ServerHostingDialog));
+		ServerHostingUI dialog = ServerHostingUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ServerHostingDialog));
 		
 		dialog.SelectScenario(scenario);
 	}
@@ -756,17 +877,29 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 	protected void OnFavouriteButton()
 	{
 		SCR_ContentBrowser_ScenarioLineComponent line = GetSelectedLine();
-		
+		SetFavorite(line);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetFavorite(SCR_ContentBrowser_ScenarioLineComponent line)
+	{
 		if (!line)
 			return;
 		
-		TryFocusLineUnderCursor();
-		
 		MissionWorkshopItem scenario = line.GetScenario();
 		
-		bool fav = scenario.IsFavorite();
-		scenario.SetFavorite(!fav);
-		line.NotifyScenarioUpdate(); // Update the widgets
+		//Update the scenario
+		scenario.SetFavorite(!scenario.IsFavorite());
+		
+		//Update the widgets
+		line.NotifyScenarioUpdate();
+		
+		//Update the Tooltip
+		SCR_BrowserHoverTooltipComponent hoverComp = SCR_BrowserHoverTooltipComponent.FindComponent(line.GetRootWidget());
+		SCR_NavigationButtonComponent favButton;
+		
+		//Delegate
+		m_OnFavorite.Invoke(scenario.IsFavorite());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -776,8 +909,6 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 		
 		if (!line)
 			return;
-		
-		TryFocusLineUnderCursor();
 		
 		MissionWorkshopItem scenario = line.GetScenario();
 		
@@ -815,6 +946,15 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 	protected void Callback_OnScenarioStateChanged(SCR_ContentBrowser_ScenarioLineComponent comp)
 	{
 		UpdateNavigationButtons();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected string GetFavoriteLabel(bool isFavorite)
+	{
+		if(isFavorite)
+			return FAVORITE_LABEL_REMOVE;
+		else
+			return FAVORITE_LABEL_ADD;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -887,7 +1027,7 @@ class SCR_CompareMissionPlayerCount : SCR_SortCompare<MissionWorkshopItem>
 {
 	override static int Compare(MissionWorkshopItem left, MissionWorkshopItem right)
 	{
-		return left.GetPlayerCount() < right.GetPlayerCount())
+		return left.GetPlayerCount() < right.GetPlayerCount();
 	}
 };
 

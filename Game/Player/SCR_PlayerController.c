@@ -2,11 +2,16 @@ class SCR_PlayerControllerClass : PlayerControllerClass
 {
 };
 
+void OwnershipChangedDelegate(bool isChanging, bool becameOwner);
+typedef func OwnershipChangedDelegate;
+typedef ScriptInvokerBase<OwnershipChangedDelegate> OnOwnershipChangedInvoker;
+
+//------------------------------------------------------------------------------------------------
 class SCR_PlayerController : PlayerController
 {
 	static PlayerController s_pLocalPlayerController;
 	static const float WALK_SPEED = 0.5;
-	static const float FOCUS_THRESHOLD = 0.1;
+	static const float FOCUS_THRESHOLD = 0.01;
 	static const float FOCUS_TIMEOUT = 0.2;
 	static float s_fADSFocus = 0.7;
 	static float s_fFocusTimeout;
@@ -30,6 +35,26 @@ class SCR_PlayerController : PlayerController
 	ref ScriptInvoker<IEntity> m_OnDestroyed = new ScriptInvoker();		// main entity is destroyed
 	ref ScriptInvoker<IEntity> m_OnPossessed = new ScriptInvoker();		// when entity becomes possessed or control returns to the main entity
 	ref ScriptInvoker<IEntity, IEntity> m_OnControlledEntityChanged = new ScriptInvoker();
+	
+	private ref OnOwnershipChangedInvoker m_OnOwnershipChangedInvoker = new OnOwnershipChangedInvoker();
+	//------------------------------------------------------------------------------------------------
+	/*!
+		\see PlayerController.OnOwnershipChanged for more information.
+	*/
+	OnOwnershipChangedInvoker GetOnOwnershipChangedInvoker() 
+	{ 
+		return m_OnOwnershipChangedInvoker; 
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+		\see PlayerController.OnOwnershipChanged for more information.
+	*/
+	protected override void OnOwnershipChanged(bool changing, bool becameOwner)
+	{
+		super.OnOwnershipChanged(changing, becameOwner);
+		m_OnOwnershipChangedInvoker.Invoke(changing, becameOwner);
+	}
 
 	override void OnControlledEntityChanged(IEntity from, IEntity to)
 	{
@@ -84,15 +109,23 @@ class SCR_PlayerController : PlayerController
 				m_CharacterController.SetStickyGadget(stickyGadgets);
 
 			EVehicleDrivingAssistanceMode drivingAssistance;
-			if (gameplaySettings.Get("m_eDrivingAssistance", drivingAssistance))
-				VehicleControllerComponent.SetDrivingAssistanceMode(drivingAssistance);
+			if(GetGame().GetIsClientAuthority())
+			{
+				if (gameplaySettings.Get("m_eDrivingAssistance", drivingAssistance))
+					VehicleControllerComponent.SetDrivingAssistanceMode(drivingAssistance);
+			}
+			else
+			{
+				if (gameplaySettings.Get("m_eDrivingAssistance", drivingAssistance))
+					VehicleControllerComponent_SA.SetDrivingAssistanceMode(drivingAssistance);
+			}
 		}
 
 		//TODO: we might want to set default focusInADS to 100 on XBOX and PSN ( default for mouse control should be 70 - see SCR_GameplaySettings )
 		BaseContainer fovSettings = GetGame().GetGameUserSettings().GetModule("SCR_FieldOfViewSettings");
 		if (fovSettings)
 		{
-			float focusInADS = 0.7;
+			float focusInADS = 0.5;
 			if (fovSettings.Get("m_fFocusInADS", focusInADS))
 				s_fADSFocus = focusInADS;
 		}
@@ -373,6 +406,7 @@ class SCR_PlayerController : PlayerController
 		inputManager.AddActionListener("CharacterWalk", EActionTrigger.DOWN, OnWalk);
 		inputManager.AddActionListener("CharacterWalk", EActionTrigger.UP, OnEndWalk);
 		inputManager.AddActionListener("FocusToggle", EActionTrigger.DOWN, ActionFocusToggle);
+		inputManager.AddActionListener("FocusToggleUnarmed", EActionTrigger.DOWN, ActionFocusToggleUnarmed);
 		inputManager.AddActionListener("Inventory", EActionTrigger.DOWN, ActionOpenInventory );
 		inputManager.AddActionListener("TacticalPing", EActionTrigger.DOWN, ActionGesturePing );
 		inputManager.AddActionListener("TacticalPingHold", EActionTrigger.DOWN, ActionGesturePingHold );
@@ -466,11 +500,14 @@ class SCR_PlayerController : PlayerController
 	*/
 	float GetFocusValue(float adsProgress = 0, float dt = -1)
 	{
+		if (!m_CharacterController)
+			return 0;
+
 		float focus;
 
 		// Autofocus
 		if (adsProgress > 0)
-			focus = Math.Lerp(0, s_fADSFocus, adsProgress);
+			focus = s_fADSFocus * Math.Min(adsProgress, 1);
 
 		InputManager inputManager = GetGame().GetInputManager();
 
@@ -479,10 +516,31 @@ class SCR_PlayerController : PlayerController
 		if (inputDigital && m_bFocusToggle)
 			m_bFocusToggle = false;
 
-		// Cancel toggle focus while not driving in a vehicle
-		bool isFreelookEnforced = m_CharacterController && m_CharacterController.IsFreeLookEnforced();
-		if (m_bFocusToggle && !isFreelookEnforced)
-			m_bFocusToggle = false;
+		// Conditions must be consistent with ActionFocusToggle and ActionFocusToggleUnarmed
+		ChimeraCharacter character = m_CharacterController.GetCharacter();
+		if (m_bFocusToggle && character)
+		{
+			if (character.IsInVehicle())
+			{
+				// Cancel toggle focus when in vehicle and aiming through gadget (binocular, compass)
+				if (m_bGadgetFocus)
+					m_bFocusToggle = false;
+
+				// Cancel toggle focus when in vehicle and not in forced freelook
+				if (!m_CharacterController.IsFreeLookEnforced())
+					m_bFocusToggle = false;
+			}
+			else
+			{
+				// Cancel toggle focus when not in vehicle and holding item in hands
+				if (m_CharacterController.GetCurrentItemInHands())
+					m_bFocusToggle = false;
+
+				// Cancel toggle focus when not in vehicle and holding gadget
+				if (m_CharacterController.IsGadgetInHands())
+					m_bFocusToggle = false;
+			}
+		}
 
 		// Ground vehicles have different focus action to prevent conflict with brakes
 		float inputAnalogue;
@@ -493,7 +551,7 @@ class SCR_PlayerController : PlayerController
 		// analogue: track timeout as we have no input filter that has thresholds or delays and returns axis value yet
 		if (inputAnalogue < FOCUS_THRESHOLD)
 			s_fFocusTimeout = FOCUS_TIMEOUT;
-		else if (dt > 0 && !isFreelookEnforced)
+		else if (dt > 0 && !m_bFocusToggle)
 			s_fFocusTimeout -= dt;
 		else
 			s_fFocusTimeout = -1;
@@ -534,6 +592,50 @@ class SCR_PlayerController : PlayerController
 	//------------------------------------------------------------------------------------------------
 	void ActionFocusToggle(float value = 0.0, EActionTrigger reason = 0)
 	{
+		if (!m_CharacterController)
+			return;
+
+		// Conditions must be consistent with GetFocusValue logic
+		ChimeraCharacter character = m_CharacterController.GetCharacter();
+		if (character && !character.IsInVehicle())
+			return;
+
+		// Cancel toggle focus when in vehicle and aiming through gadget (binocular, compass)
+		if (m_bGadgetFocus)
+			return;
+
+		// Cancel toggle focus when in vehicle and not in forced freelook
+		if (!m_CharacterController.IsFreeLookEnforced())
+			return;
+
+		m_bFocusToggle = !m_bFocusToggle;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ActionFocusToggleUnarmed(float value = 0.0, EActionTrigger reason = 0)
+	{
+		if (!m_CharacterController)
+			return;
+
+		// Conditions must be consistent with GetFocusValue logic
+		ChimeraCharacter character = m_CharacterController.GetCharacter();
+		if (character && character.IsInVehicle())
+			return;
+
+		// Cancel toggle focus when not in vehicle and holding item in hands
+		if (m_CharacterController.GetCurrentItemInHands())
+			return;
+
+		// Cancel toggle focus when not in vehicle and holding gadget
+		if (m_CharacterController.IsGadgetInHands())
+			return;
+
+		// Allow cancelling unarmed focus while picking up items
+		// Disallow enabling unarmed focus while picking up items, as it may become irreleant quickly
+		// Reason is player may want to enter ADS before ready, while intent is unclear
+		if (!m_bFocusToggle && m_CharacterController.IsPlayingItemGesture())
+			return;
+
 		m_bFocusToggle = !m_bFocusToggle;
 	}
 

@@ -58,7 +58,7 @@ class SCR_ContentBrowserTileComponent : ScriptedWidgetComponent
 	[Attribute()]
 	protected ref SCR_ContentBrowser_ColorScheme m_ColorScheme;
 	
-	protected ref SCR_WorkshopUiCommon_DownloadSequence m_DownloadRequest;
+	protected ref SCR_WorkshopDownloadSequence m_DownloadRequest;
 		
 	
 	// ------------------- Public -------------------

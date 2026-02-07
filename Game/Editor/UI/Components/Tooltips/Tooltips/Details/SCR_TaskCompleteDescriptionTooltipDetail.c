@@ -35,6 +35,13 @@ class SCR_TaskCompleteDescriptionTooltipDetail: SCR_EntityTooltipDetail
 		m_Task = SCR_EditorTask.Cast(entity.GetOwner());
 		if (!SCR_EditorTask)
 			return false;
+		
+		if (m_Task.GetTaskCompletionType() != EEditorTaskCompletionType.MANUAL && m_Task.GetTaskCompletionType() != EEditorTaskCompletionType.ALWAYS_MANUAL)
+		{
+			//~ If the same as description do not show
+			if (entity.GetInfo().GetDescription() == m_Task.GetDescription())
+				return false;
+		}
 
 		m_cDefaultColor = m_Text.GetColor();
 		

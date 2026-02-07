@@ -15,6 +15,11 @@ class SCR_NotificationWindChanged : SCR_NotificationPlayer
 		string windDirection = "UNKNOWN";
 		data.GetParams(playerID, windSpeed, windDirectionIndex);
 		
+		string playerName;
+		data.GetNotificationTextEntries(playerName);
+		if (!GetPlayerName(playerID, playerName))
+			return string.Empty;
+		
 		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
 		SCR_WindDirectionInfo windDirectionInfo;
 		
@@ -24,7 +29,7 @@ class SCR_NotificationWindChanged : SCR_NotificationPlayer
 		
 		float windSpeedFloat = windSpeed / 1000;
 		
-		data.SetNotificationTextEntries(GetPlayerName(playerID), windSpeedFloat.ToString(), windDirection);
+		data.SetNotificationTextEntries(playerName, windSpeedFloat.ToString(), windDirection);
 			
 		return super.GetText(data);
 	}	

@@ -18,7 +18,7 @@ class SCR_CampaignBaseTaskSupportEntity : SCR_BaseTaskSupportEntity
 		if (!task)
 			return;
 		
-		SCR_CampaignBase base = SCR_CampaignBaseManager.FindBaseByID(baseID);
+		SCR_CampaignMilitaryBaseComponent base = SCR_GameModeCampaign.GetInstance().GetBaseManager().FindBaseByCallsign(baseID);
 		if (!base)
 			return;
 		
@@ -31,7 +31,7 @@ class SCR_CampaignBaseTaskSupportEntity : SCR_BaseTaskSupportEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetTargetBase(notnull SCR_CampaignBaseTask task, notnull SCR_CampaignBase base)
+	void SetTargetBase(notnull SCR_CampaignBaseTask task, notnull SCR_CampaignMilitaryBaseComponent base)
 	{
 		if (!GetTaskManager())
 			return;
@@ -39,7 +39,7 @@ class SCR_CampaignBaseTaskSupportEntity : SCR_BaseTaskSupportEntity
 		int taskID, baseID;
 		
 		taskID = task.GetTaskID();
-		baseID = base.GetBaseID();
+		baseID = base.GetCallsign();
 		
 		Rpc(RPC_SetTargetBase, taskID, baseID);
 		RPC_SetTargetBase(taskID, baseID);

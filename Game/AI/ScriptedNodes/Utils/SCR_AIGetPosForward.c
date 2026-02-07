@@ -38,7 +38,7 @@ class SCR_AIGetPosForward: AITaskScripted
 		{
 			int distance;
 			GetVariableIn(PORT_DISTANCE, distance);
-			m_Distance = (float)distance;
+			m_Distance = distance;
 		}
 		else if (GetVariableType(true, PORT_DISTANCE) == float)
 		{

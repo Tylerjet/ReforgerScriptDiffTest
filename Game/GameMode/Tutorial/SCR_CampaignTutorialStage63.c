@@ -5,7 +5,7 @@ class SCR_CampaignTutorialStage63Class: SCR_BaseCampaignTutorialStageClass
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignTutorialStage63 : SCR_BaseCampaignTutorialStage
 {
-	protected bool m_bIsBunkerBuilt;
+	protected int m_iOriginalSpawnpointsCount;
 	
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
@@ -17,26 +17,36 @@ class SCR_CampaignTutorialStage63 : SCR_BaseCampaignTutorialStage
 		
 		GetGame().GetCallqueue().Remove(OverrideGMHint);
 		GetGame().GetCallqueue().CallLater(OverrideGMHint, 250, true);
-		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingBunker_GM", duration: -1);
 		
-		// Find local player controller
+		if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
+			SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingBunker_GM_Arland" + CreateString("#AR-KeybindSeparator_ManualCameraRotate", "CharacterSprint"), duration: -1);
+		else
+			SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingBunker_GM_Arland" + CreateString("#AR-KeybindSeparator_ManualCameraRotate", "EditorTransformRotateYaw"), duration: -1);
+		
 		PlayerController playerController = GetGame().GetPlayerController();
+		
 		if (!playerController)
 			return;
 		
-		// Find campaign network component to send RPC to server
-		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
-		if (!campaignNetworkComponent)
+		SCR_PlayerXPHandlerComponent comp = SCR_PlayerXPHandlerComponent.Cast(playerController.FindComponent(SCR_PlayerXPHandlerComponent));
+		
+		if (!comp)
 			return;
 		
-		campaignNetworkComponent.CheatRank();
-		campaignNetworkComponent.CheatRank();
+		comp.CheatRank();
+		comp.CheatRank();
+		
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain").FindComponent(SCR_CampaignMilitaryBaseComponent));
+		m_iOriginalSpawnpointsCount = base.GetSpawnPoint().GetChildSpawnPoints().Count();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
-	{			
-		if (m_bIsBunkerBuilt)
+	{	
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain").FindComponent(SCR_CampaignMilitaryBaseComponent));
+		array<SCR_Position> spawnpoints = base.GetSpawnPoint().GetChildSpawnPoints();
+		
+		if (base.GetSpawnPoint().GetChildSpawnPoints().Count() > m_iOriginalSpawnpointsCount)
 		{
 			if (m_TutorialComponent.GetSupplyTruckComponent() && m_TutorialComponent.GetSupplyTruckComponent().GetSupplies() >= 200)
 				m_TutorialComponent.FinishStage(this, SCR_ECampaignTutorialStage.CONFLICT_BOARD_TRUCK);
@@ -45,20 +55,6 @@ class SCR_CampaignTutorialStage63 : SCR_BaseCampaignTutorialStage
 		}
 		
 		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnStructureBuilt(SCR_CampaignBase base, IEntity structure)
-	{
-		if (base != SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain")))
-			return;
-		
-		SCR_CampaignBunkerComponent comp = SCR_CampaignBunkerComponent.Cast(structure.FindComponent(SCR_CampaignBunkerComponent));
-		
-		if (!comp)
-			return;
-		
-		m_bIsBunkerBuilt = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -71,8 +67,22 @@ class SCR_CampaignTutorialStage63 : SCR_BaseCampaignTutorialStage
 	//------------------------------------------------------------------------------------------------
 	void OverrideGMHint()
 	{
-		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingBunker_GM", duration: -1, isSilent: true);
+		if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
+			SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingBunker_GM_Arland" + CreateString("#AR-KeybindSeparator_ManualCameraRotate", "CharacterSprint"), duration: -1);
+		else
+			SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingBunker_GM_Arland" + CreateString("#AR-KeybindSeparator_ManualCameraRotate", "EditorTransformRotateYaw"), duration: -1);
+		GetGame().GetCallqueue().Remove(OverrideGMHint);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnInputDeviceChanged(bool switchedToKeyboard)
+	{
+		if (switchedToKeyboard)
+			SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingBunker_GM_Arland" + CreateString("#AR-KeybindSeparator_ManualCameraRotate", "CharacterSprint"), duration: -1);
+		else
+			SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingBunker_GM_Arland" + CreateString("#AR-KeybindSeparator_ManualCameraRotate", "EditorTransformRotateYaw"), duration: -1);
+	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_CampaignTutorialStage63()

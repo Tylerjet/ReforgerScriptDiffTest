@@ -7,7 +7,7 @@ class SCR_BaseGameOverScreenInfo
 	[Attribute("", desc: "This is the actual game over layout that is shown within the gameover screen", params: "layout")]
 	protected ResourceName m_GameOverContentLayout;
 	
-	[Attribute()]
+	[Attribute(desc: "Optional parameters to be displayed in the game over screen. Note that many of these settings are set by the inherent class like faction flag and icon in FactionGameOverScreenInfo")]
 	protected ref SCR_BaseGameOverScreenInfoOptional m_OptionalParams;
 	
 	[Attribute(desc: "Params for if the end screen van be displayed in editor. Can be left null if cannot be called by GM")]
@@ -108,7 +108,7 @@ class SCR_BaseGameOverScreenInfo
 	Get image from m_OptionalParams
 	\param factionPlayer faction of the player
 	\param factionsOther secondary factions (Generally this is the winning factions)
-	\return ResourceName icon path
+	\return ResourceName image path
 	*/
 	ResourceName GetImage(Faction factionPlayer, array<Faction> factionsOther)
 	{
@@ -122,12 +122,40 @@ class SCR_BaseGameOverScreenInfo
 	Get image from m_OptionalParams
 	\param playerId id of the player
 	\param otherPlayerIds array of secondary player ids (Generally this is the winning players)
-	\return ResourceName icon path
+	\return ResourceName image path
 	*/
 	ResourceName GetImage(int playerId, array<int> otherPlayerIds)
 	{
 		if (HasOptionalParams())
 			return m_OptionalParams.m_sImageTexture;
+		else
+			return string.Empty;
+	}
+	
+	/*!
+	Get icon from m_OptionalParams
+	\param factionPlayer faction of the player
+	\param factionsOther secondary factions (Generally this is the winning factions)
+	\return ResourceName icon path
+	*/
+	ResourceName GetIcon(Faction factionPlayer, array<Faction> factionsOther)
+	{
+		if (HasOptionalParams())
+			return m_OptionalParams.m_sIcon;
+		else
+			return string.Empty;
+	}
+	
+	/*!
+	Get icon from m_OptionalParams
+	\param playerId id of the player
+	\param otherPlayerIds array of secondary player ids (Generally this is the winning players)
+	\return ResourceName icon path
+	*/
+	ResourceName GetIcon(int playerId, array<int> otherPlayerIds)
+	{
+		if (HasOptionalParams())
+			return m_OptionalParams.m_sIcon;
 		else
 			return string.Empty;
 	}
@@ -330,6 +358,9 @@ class SCR_BaseGameOverScreenInfoOptional
 	
 	[Attribute()]
 	ResourceName m_sImageTexture;
+	
+	[Attribute()]
+	ResourceName m_sIcon;
 	
 	[Attribute()]
 	LocalizedString m_sDebriefing;

@@ -55,7 +55,7 @@ class SCR_ScenarioFrameworkActionInputOnTaskEventIncreaseCounter : SCR_ScenarioF
 		if (m_sTaskLayerName.IsEmpty() || m_sTaskLayerName == sTaskLayerName)
 		{
 			if (!(mask & SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED))
-				m_Input.OnActivate(1);
+				m_Input.OnActivate(1, null);
 				
 			if (mask & SCR_ETaskEventMask.TASK_PROPERTY_CHANGED && !(mask & SCR_ETaskEventMask.TASK_CREATED) && !(mask & SCR_ETaskEventMask.TASK_FINISHED) && !(mask & SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED))
 			{	
@@ -121,7 +121,14 @@ class SCR_ScenarioFrameworkActionInputCheckEntitiesInTrigger : SCR_ScenarioFrame
 			return;		//TODO: add a universal method for informing user about errors
 
 		m_Trigger = trigger;
-		trigger.GetOnChange().Insert(OnActivate);
+		//We want to give trigger enough time to be properly set up and not to get OnChange called prematurely
+		GetGame().GetCallqueue().CallLater(RegisterOnChange, 5000);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RegisterOnChange()
+	{
+		m_Trigger.GetOnChange().Insert(OnActivate);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -141,8 +148,52 @@ class SCR_ScenarioFrameworkActionInputCheckEntitiesInTrigger : SCR_ScenarioFrame
 				((m_eComparisonOperator == SCR_EScenarioFrameworkComparisonOperator.GREATER_THEN) 		&& (iNrOfEnts > m_iValue)) 
 		)
 		{
-			m_Input.OnActivate(true);
+			m_Input.OnActivate(true, m_Trigger);
 		}
 	}
 	
 }
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkActionInputCheckEntitiesInAreaTrigger : SCR_ScenarioFrameworkActionInputCheckEntitiesInTrigger
+{
+	//------------------------------------------------------------------------------------------------
+	override void Init(SCR_ScenarioFrameworkLogicInput input)
+	{	
+		super.Init(input);
+		if (!m_Getter)
+			return;
+
+		SCR_ScenarioFrameworkParam<IEntity> entityWrapper =  SCR_ScenarioFrameworkParam<IEntity>.Cast(m_Getter.Get());
+		if (!entityWrapper)
+		{
+			PrintFormat("ScenarioFramework: Selected getter %1 is not suitable for this operation", m_Getter.ClassName(), LogLevel.ERROR);
+			return;
+		}
+		
+		IEntity entity = entityWrapper.GetValue();
+		if (!entity)
+		{
+			PrintFormat("ScenarioFramework: Selected getter entity is null", m_Getter.ClassName(), LogLevel.ERROR);
+			return;
+		}
+		
+		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+		if (!layer)
+			return;
+		
+		SCR_ScenarioFrameworkArea area = SCR_ScenarioFrameworkArea.Cast(layer);
+		if (!area)
+			return;
+
+		SCR_CharacterTriggerEntity trigger = SCR_CharacterTriggerEntity.Cast(area.GetTrigger());
+		if (!trigger)
+			return;
+
+		m_Trigger = trigger;
+		//We want to give trigger enough time to be properly set up and not to get OnChange called prematurely
+		GetGame().GetCallqueue().CallLater(RegisterOnChange, 5000);
+	}
+	
+}	

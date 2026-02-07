@@ -96,7 +96,7 @@ class SCR_EntityCatalogEntry
 	Get a list of all editable entity lables
 	Prefab needs to be an editable entity
 	\param[out] List of all labels on entity
-	\return Lenght of lable array
+	\return length of lable array
 	*/
 	int GetEditableEntityLabels(notnull out array<EEditableEntityLabel> editableEntityLables)
 	{

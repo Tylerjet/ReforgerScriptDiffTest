@@ -37,7 +37,7 @@ class SCR_CameraFiltersEditorComponent : SCR_BaseEditorComponent
 		
 		return prefabData.GetFilters(outFilters);
 	}
-	void RefreshCurrentFilter()
+	void RefreshCurrentFilter(SCR_ManualCamera manualCamera)
 	{
 		SetCurrentFilter(m_iCurrentFilter);
 	}
@@ -68,7 +68,7 @@ class SCR_CameraFiltersEditorComponent : SCR_BaseEditorComponent
 		if (!cameraManager) return;
 		
 		if (cameraManager.GetCamera())
-			RefreshCurrentFilter();
+			RefreshCurrentFilter(null);
 		else
 			cameraManager.GetOnCameraCreate().Insert(RefreshCurrentFilter);
 	}

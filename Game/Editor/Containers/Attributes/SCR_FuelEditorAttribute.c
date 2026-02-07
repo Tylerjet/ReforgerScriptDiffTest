@@ -33,14 +33,35 @@ class SCR_FuelEditorAttribute : SCR_BaseValueListEditorAttribute
 		if (!owner) return;
 		FuelManagerComponent fuelManager = FuelManagerComponent.Cast(owner.FindComponent(FuelManagerComponent));
 		if (!fuelManager) return;
-				
-		array<BaseFuelNode> nodes = new array<BaseFuelNode>;
-		fuelManager.GetFuelNodesList(nodes);
-		
-		for(int i = 0; i < nodes.Count(); i++)
+
+		// Distribute fuel addition and removal fairly
+		float totalFuel = fuelManager.GetTotalFuel();
+		float totalMaxFuel = fuelManager.GetTotalMaxFuel();
+		float newFuel = var.GetFloat() / 100 * totalMaxFuel;
+		float diff = newFuel - totalFuel;
+
+		array<BaseFuelNode> fuelNodes = {};
+		fuelManager.GetFuelNodesList(fuelNodes);
+
+		foreach (BaseFuelNode fuelNode : fuelNodes)
 		{
-			BaseFuelNode node = nodes.Get(i);
-			node.SetFuel(var.GetFloat() / 100 * node.GetMaxFuel());
+			float fuel = fuelNode.GetFuel();
+			float maxFuel = fuelNode.GetMaxFuel();
+
+			if (diff > 0)
+			{
+				// Distribute remaining capacity
+				if (totalMaxFuel > totalFuel)
+					fuel += diff * (maxFuel - fuel) / (totalMaxFuel - totalFuel);
+			}
+			else if (diff < 0)
+			{
+				// Distribute remaining fuel
+				if (totalFuel > 0)
+					fuel += diff * fuel / totalFuel;
+			}
+
+			fuelNode.SetFuel(fuel);
 		}
 	}
 };

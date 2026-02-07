@@ -47,6 +47,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	protected ref array<SCR_AIGroup> m_aDeletionQueue = {};
 	protected int m_iMovingPlayerToGroupID = -1;
 	
+	
+	
 	//------------------------------------------------------------------------
 	static SCR_GroupsManagerComponent GetInstance()
 	{
@@ -102,6 +104,28 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	void ClearRequests(int groupID, int playerID)
+	{
+		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		if (!playerGroupController)
+			return;				
+		
+		SCR_AIGroup group = FindGroup(groupID);		
+		RplId groupRplID = Replication.FindId(group);
+		
+		array<int> requesterIDs = {};
+		group.GetRequesterIDs(requesterIDs);
+		
+		for (int i = 0, count = requesterIDs.Count(); i < count; i++)
+		{
+			if(!group.IsPlayerInGroup(playerID))
+				SCR_NotificationsComponent.SendToPlayer(requesterIDs[i], ENotification.GROUPS_REQUEST_CANCELLED);	
+		}
+		
+		playerGroupController.ClearAllRequesters(groupRplID);
+	}	
+	
 	//------------------------------------------------------------------------
 	int AddPlayerToGroup(int groupID, int playerID)
 	{
@@ -153,13 +177,11 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 				newGroup.SetCanDeleteIfNoPlayer(false);
 			
 				gr.SetupGroup(newGroup);
-								
-				array<ResourceName> flags = {};
 				
-				groupManager.GetGroupFlags(flags);
-				
-				int index = flags.Find(gr.GetGroupFlag());				
-				newGroup.SetGroupFlag(index);
+				if (newGroup.GetGroupFlag().IsEmpty())
+				{			
+					newGroup.SetGroupFlag(0, !scrFaction.GetGroupFlagImageSet().IsEmpty());
+				}				
 			}
 		
 		}
@@ -170,7 +192,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	{
 		SCR_AIGroup group = FindGroup(groupID);
 		if (!group)
-			return;
+			return;		
 		group.SetGroupLeader(playerID);
 	}
 	
@@ -230,7 +252,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------
 	SCR_AIGroup FindGroup(int groupID)
 	{
-		array<SCR_AIGroup> groups = GetAllPlayableGroups();
+		array<SCR_AIGroup> groups;
+		GetAllPlayableGroups(groups);
+		
 		for (int i = groups.Count() - 1; i >= 0; i--)
 		{
 			if (groups[i].GetGroupID() == groupID)
@@ -262,11 +286,11 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	// Returns group by player id
 	SCR_AIGroup GetPlayerGroup(int playerID)
 	{
-		SCR_RespawnSystemComponent respawnSystemComponent = SCR_RespawnSystemComponent.GetInstance();
-		if (!respawnSystemComponent)
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
 			return null;
 		
-		Faction faction = respawnSystemComponent.GetPlayerFaction(playerID);
+		Faction faction = factionManager.GetPlayerFaction(playerID);
 		if (!faction)
 			return null;
 		
@@ -286,7 +310,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------
 	bool IsPlayerInAnyGroup(int playerID)
 	{
-		array<SCR_AIGroup> playableGroups = GetAllPlayableGroups();
+		array<SCR_AIGroup> playableGroups;
+		GetAllPlayableGroups(playableGroups);
 		for (int i = playableGroups.Count() - 1; i >= 0; i--)
 		{
 			if (playableGroups[i].IsPlayerInGroup(playerID))
@@ -342,7 +367,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	array<SCR_AIGroup> GetAllPlayableGroups()
+	void GetAllPlayableGroups(out array <SCR_AIGroup> outAllGroups)
 	{
 		array<SCR_AIGroup> allGroups = new array<SCR_AIGroup>();
 		array<SCR_AIGroup> currentGroups = new array<SCR_AIGroup>();
@@ -352,11 +377,12 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			
 			for (int j = currentGroups.Count() - 1; j >= 0; j--)
 			{
-				allGroups.Insert(currentGroups[j]);
+				if (currentGroups[j])
+					allGroups.Insert(currentGroups[j]);
 			}
 		}
 		
-		return allGroups;
+		outAllGroups = allGroups;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -393,12 +419,17 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		
 		//Can this group exist empty?
 		if (!group.GetDeleteIfNoPlayer())
+		{
+			if (group.IsPrivate())
+				group.SetPrivate(false);
+		
 			return;
+		}
 		
 		// Yes, can we delete it?
 		array<SCR_AIGroup> playableGroups = GetPlayableGroupsByFaction(group.GetFaction());
 		if (!playableGroups)
-			return;
+			return;				
 		
 		DeleteGroupDelayed(group);
 	}
@@ -418,13 +449,17 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		if (!faction)
 			return;
 		
+		SCR_Faction scrFaction = SCR_Faction.Cast(faction);
+		if (!scrFaction)
+			return;
+
 		array<SCR_AIGroup> groups = GetPlayableGroupsByFaction(faction);
 		if (!groups)
 			return;
 		
 		// No groups found for faction?
 		int groupsCount = groups.Count();
-		if (groupsCount == 0)
+		if (groupsCount == 0 && !scrFaction.GetCanCreateOnlyPredefinedGroups())
 		{
 			// Anyway we create a new one
 			CreateNewPlayableGroup(faction);
@@ -439,7 +474,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		}
 		
 		// All the groups were full, create new one
-		CreateNewPlayableGroup(faction);
+		if (!scrFaction.GetCanCreateOnlyPredefinedGroups())
+			CreateNewPlayableGroup(faction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -609,18 +645,38 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Is called only on the server (authority)
-	void OnPlayerFactionChanged(int playerID, int factionIndex)
+	void OnPlayerFactionChanged(notnull FactionAffiliationComponent owner, Faction previousFaction, Faction newFaction)
 	{
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (!factionManager)
+		if (!newFaction)
 			return;
 		
-		Faction faction = factionManager.GetFactionByIndex(factionIndex);
-		if (!faction)
+		SCR_Faction scrFaction = SCR_Faction.Cast(newFaction);
+		if (!scrFaction)
 			return;
-		SCR_AIGroup newPlayerGroup = GetFirstNotFullForFaction(faction);
+		if (scrFaction.GetCanCreateOnlyPredefinedGroups())
+			return;
+
+		SCR_AIGroup newPlayerGroup = GetFirstNotFullForFaction(newFaction);
 		if (!newPlayerGroup)
-			newPlayerGroup = CreateNewPlayableGroup(faction);
+			newPlayerGroup = CreateNewPlayableGroup(newFaction);
+		
+		//group creation can fail
+		if (!newPlayerGroup || !owner)
+			return;
+		
+		PlayerController controller = PlayerController.Cast(owner.GetOwner());
+		if (!controller)
+			return;
+		
+		SCR_PlayerControllerGroupComponent groupComp = SCR_PlayerControllerGroupComponent.Cast(controller.FindComponent(SCR_PlayerControllerGroupComponent));
+		if (!groupComp)
+			return;
+
+		SCR_AIGroup oldGroup = FindGroup(groupComp.GetGroupID());
+		if (!oldGroup)
+			return;
+
+		oldGroup.RemovePlayer(controller.GetPlayerId());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -729,6 +785,14 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	bool CanCreateNewGroup(notnull Faction newGroupFaction)
 	{
+		SCR_Faction scrFaction = SCR_Faction.Cast(newGroupFaction);
+		
+		SCR_AIGroup playerGroup = GetPlayerGroup(SCR_PlayerController.GetLocalPlayerId());
+		
+		//disable creation of new group if player is the last in his group as there is no reason to create new one
+		if (playerGroup && playerGroup.GetPlayerCount() == 1)
+			return false;
+
 		if (!m_bNewGroupsAllowed)
 			return false;
 		
@@ -739,6 +803,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		if (TryFindEmptyGroup(newGroupFaction))
 			return false;
 		
+		if (scrFaction.GetCanCreateOnlyPredefinedGroups())
+			return false;
 		return true;
 	}
 	
@@ -999,6 +1065,31 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}		
 	
 	//------------------------------------------------------------------------------------------------
+	protected override void OnPlayerRegistered(int playerId)
+	{
+		if (!m_pGameMode.IsMaster()) 
+			return;	
+		
+		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		SCR_PlayerFactionAffiliationComponent playerFactionAffiliation = SCR_PlayerFactionAffiliationComponent.Cast(playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		if (playerFactionAffiliation)
+			playerFactionAffiliation.GetOnFactionChanged().Insert(OnPlayerFactionChanged);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
+	{
+		// TODO@AS: Ensure authority only
+		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		if (playerController)
+		{
+			SCR_PlayerFactionAffiliationComponent playerFactionAffiliation = SCR_PlayerFactionAffiliationComponent.Cast(playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+			if (playerFactionAffiliation)
+				playerFactionAffiliation.GetOnFactionChanged().Remove(OnPlayerFactionChanged);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
@@ -1006,13 +1097,10 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
-	{
+	{		
 		SCR_AIGroup.GetOnPlayerAdded().Insert(OnGroupPlayerAdded);
 		SCR_AIGroup.GetOnPlayerRemoved().Insert(OnGroupPlayerRemoved);
-		
-		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
-		if (respawnSystem)
-			respawnSystem.GetOnPlayerFactionChanged().Insert(OnPlayerFactionChanged);
+		SCR_AIGroup.GetOnPlayerLeaderChanged().Insert(ClearRequests);
 		m_bConfirmedByPlayer = false;
 		
 		CreatePredefinedGroups();

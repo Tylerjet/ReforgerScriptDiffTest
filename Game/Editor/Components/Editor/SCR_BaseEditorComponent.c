@@ -36,12 +36,9 @@ class SCR_BaseEditorComponentClass: ScriptComponentClass
 
 /*!
 Base class for editor components.
-
-Editor components handle actual functionality of the editor, like GUI, camera or entity management.
-
-They must inherit from this class and be attached to SCR_EditorBaseEntity, otherwise they won't initialize.
-
-The base class offers several pre-made functions from which custom editor components can inherit, e.g., \ref EOnEditorOpen or \ref EOnEditorClose.
+- Editor components handle actual functionality of the editor, like GUI, camera or entity management.
+- They must inherit from this class and be attached to SCR_EditorBaseEntity, otherwise they won't initialize.
+- The base class offers several pre-made functions from which custom editor components can inherit, e.g., \ref EOnEditorOpen or \ref EOnEditorActivate.
 
 # Execution Order
 \dot
@@ -114,7 +111,7 @@ digraph SCR_BaseEditorComponent_Order
 	{rank=same; EOnEditorRequest2;}
 	{rank=same; EOnEditorClose;}
 	{rank=same; EOnEditorDelete;}
-};
+}
 \enddot
 
 */
@@ -128,8 +125,8 @@ class SCR_BaseEditorComponent : ScriptComponent
 	
 	private ref ScriptInvoker Event_OnEffect = new ScriptInvoker;
 	
-	/*! @name Override Functions
-	Functions to be overriden by child classes (unless mentioned otherwise, all of them local to the editor owner).
+	/*! @name Template Functions (Owner)
+	Functions to be overriden by child classes, called where the editor is **local**.
 	*/
 	///@{
 	
@@ -144,31 +141,6 @@ class SCR_BaseEditorComponent : ScriptComponent
 	protected void EOnEditorOpen();
 	//! When the editor is closed
 	protected void EOnEditorClose();
-	
-	//! When the entity is created (called on server)
-	protected void EOnEditorInitServer();
-	//! When the entity is destroyed (called on server)
-	protected void EOnEditorDeleteServer();
-	//! When the editor is opened (called on server)
-	protected void EOnEditorOpenServer();
-	//! When the editor is opened (called on server after async loading finished on client)
-	protected void EOnEditorOpenServerCallback();
-	//! When the editor is closed (called on server)
-	protected void EOnEditorCloseServer();
-	//! When the editor is closed (called on server after async loading finished on client)
-	protected void EOnEditorCloseServerCallback();
-	/*!
-	When the component is activated (called on server)
-	- When attached on SCR_EditorManagerEntity, this is executed together with EOnEditorOpen()
-	- When attached on SCR_EditorModeEntity, it's executed when the mode is activated
-	*/
-	protected void EOnEditorActivateServer();
-	/*!
-	When the component is deactivated (called on server)
-	- When attached on SCR_EditorManagerEntity, this is executed together with EOnEditorClose()
-	- When attached on SCR_EditorModeEntity, it's executed when the mode is deactivated
-	*/
-	protected void EOnEditorDeactivateServer();
 	
 	/*!
 	Before the component is activated.
@@ -211,6 +183,38 @@ class SCR_BaseEditorComponent : ScriptComponent
 	//! When an effect is created in reaction an an event
 	protected void EOnEffect(SCR_BaseEditorEffect effect);
 	///@}
+	
+	/*! @name Template Functions (Server)
+	Functions to be overriden by child classes, called on **server**.
+	*/
+	///@{
+	
+	//! When the entity is created (called on server)
+	protected void EOnEditorInitServer();
+	//! When the entity is destroyed (called on server)
+	protected void EOnEditorDeleteServer();
+	//! When the editor is opened (called on server)
+	protected void EOnEditorOpenServer();
+	//! When the editor is opened (called on server after async loading finished on client)
+	protected void EOnEditorOpenServerCallback();
+	//! When the editor is closed (called on server)
+	protected void EOnEditorCloseServer();
+	//! When the editor is closed (called on server after async loading finished on client)
+	protected void EOnEditorCloseServerCallback();
+	/*!
+	When the component is activated (called on server)
+	- When attached on SCR_EditorManagerEntity, this is executed together with EOnEditorOpen()
+	- When attached on SCR_EditorModeEntity, it's executed when the mode is activated
+	*/
+	protected void EOnEditorActivateServer();
+	/*!
+	When the component is deactivated (called on server)
+	- When attached on SCR_EditorManagerEntity, this is executed together with EOnEditorClose()
+	- When attached on SCR_EditorModeEntity, it's executed when the mode is deactivated
+	*/
+	protected void EOnEditorDeactivateServer();
+	///@}
+	
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Event handlers	
@@ -336,7 +340,7 @@ class SCR_BaseEditorComponent : ScriptComponent
 	When not found on editor manager, it will be searched for in current editor mode (SCR_EditorModeEntity).
 	\param editorManager Editor manager or mode which is searched
 	\param type Requested component type
-	\param showError True to log a warning message when the component was not found
+	\param showError True to log a warning message when the component was not found (useful when the component is required by a script)
 	\return Component
 	*/
 	static Managed GetInstance(SCR_EditorBaseEntity editorManager, typename type, bool showError = false)
@@ -390,7 +394,7 @@ class SCR_BaseEditorComponent : ScriptComponent
 		return manager;
 	}
 	
-		/*!
+	/*!
 	Get editor manager this component belongs to.
 	\return Editor manager
 	*/

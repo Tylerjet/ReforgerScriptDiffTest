@@ -85,7 +85,8 @@ class SCR_RandomPositionalSounds: SCR_AmbientSoundsEffect
 		{
 			AmbientSignalsDebug();
 			RandomPositionalSoundDebug(worldTime);
-			DensityDebug(m_AmbientSoundsComponent.GetEnvironmentType());
+			DensityDebug(m_AmbientSoundsComponent.GetEnvironmentType());				
+			PlaySound(worldTime);
 		}	
 #endif	
 	}
@@ -596,7 +597,7 @@ class SCR_RandomPositionalSounds: SCR_AmbientSoundsEffect
 	//------------------------------------------------------------------------------------------------	
 	void AmbientSignalsDebug()
 	{	
-		DbgUI.Begin("Ambient Sounds Signals");			
+		DbgUI.Begin("Ambient Sounds Signals", 178, 0);					
 		DbgUI.Text(SUN_ANGLE_SIGNAL_NAME + ": " + m_LocalSignalsManager.GetSignalValue(m_iSunAngleSignalIdx).ToString());
 		DbgUI.Text(SOUND_NAME_SIGNAL_NAME + ": " + m_LocalSignalsManager.GetSignalValue(m_iSoundNameSignalIdx).ToString());
 		DbgUI.Text(DISTANCE_SIGNAL_NAME + ": " + m_LocalSignalsManager.GetSignalValue(m_iDistanceSignalIdx).ToString());		
@@ -607,7 +608,7 @@ class SCR_RandomPositionalSounds: SCR_AmbientSoundsEffect
 	//------------------------------------------------------------------------------------------------	
 	void DensityDebug(int environmentType)
 	{	
-		DbgUI.Begin("Density");				
+		DbgUI.Begin("Density", 420, 0);							
 		for (int i = 0; i < m_aSpawnDef.Count(); i++)
 			DbgUI.Text(m_aSoundGroup[i].m_sSoundEvent + ": " + m_aDensity[i].ToString() + " / " + (Math.Round(GetDensityMax(i, environmentType) * m_aDensityModifier[i])).ToString());
 		DbgUI.End();
@@ -623,7 +624,7 @@ class SCR_RandomPositionalSounds: SCR_AmbientSoundsEffect
 		int wrongTimeColor = ARGB(255, 125, 125, 125);
 		int inCooldownColor = ARGB(255, 255, 0, 255);
 		
-		DbgUI.Begin("Random Ambient Sounds");	
+		DbgUI.Begin("Random Ambient Sounds", 0, 185);	
 		
 		DbgUI.Panel("av", PANEL_WIDTH, PANEL_HEIGHT, availableColor);
 		DbgUI.SameLine();
@@ -899,6 +900,59 @@ class SCR_RandomPositionalSounds: SCR_AmbientSoundsEffect
 		
 		m_aSoundHandle.Clear();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void PlaySound(float worldTime)
+	{
+			DbgUI.Begin("Play Sound", 0, 0);
+		
+			int soundGroup = 3;
+			int soundType = 2;
+			int soundDef = 0;
+			float distanceFactor = 0.15;
+			DbgUI.InputInt("Sound Group:", soundGroup, 50);
+			DbgUI.InputInt("Sound Type :", soundType, 50);
+			DbgUI.InputInt("Sound Def  :", soundDef, 50);
+			DbgUI.InputFloat("Dist Factor:", distanceFactor, 50);
+			
+			bool play = DbgUI.Button("Play"); 	
+			DbgUI.SameLine();
+			bool clear = DbgUI.Button("Clear");
+			
+			if (play)
+			{
+				// Check if sound definition is correct				
+				if (soundGroup >= m_aSoundGroup.Count() || soundType >= m_aSoundGroup[soundGroup].m_aSoundType.Count() || soundDef >= m_aSoundGroup[soundGroup].m_aSoundType[soundType].m_aSoundDef.Count())
+					return;
+				
+				// Get camera transf
+				vector mat[4];
+				GetGame().GetCameraManager().CurrentCamera().GetTransform(mat);
+				
+				// Get direction
+				vector yaw = mat[0];
+				float angle = yaw.ToYaw();
+				angle -= 90;
+				yaw = vector.FromYaw(angle);
+				
+				// Get sound position
+				float dist =  Math.Lerp(m_aSpawnDef[soundGroup].m_iPlayDistMin, m_aSpawnDef[soundGroup].m_iPlayDistMax, distanceFactor);
+				mat[3] = mat[3] + yaw * dist;		
+				
+				// Add sound to pool 
+				ref SCR_SoundHandle soundHandle = new SCR_SoundHandle(soundGroup, soundType, soundDef, mat, m_aSoundGroup, worldTime);		
+				m_aSoundHandle.Insert(soundHandle);				
+			}
+			
+			if (clear)
+			{
+				m_aSoundHandle.Clear();
+			}
+		
+			DbgUI.End();
+	}
+	
+	
 #endif
 
 	//------------------------------------------------------------------------------------------------	

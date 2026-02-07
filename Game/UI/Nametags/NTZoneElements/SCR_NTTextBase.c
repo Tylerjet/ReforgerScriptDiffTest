@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------------------------
 //! Base nametag element for text
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_NameTagElementTitle()]
 class SCR_NTTextBase : SCR_NTElementBase
 {			
 	[Attribute("14", UIWidgets.CheckBox, "Scaled text size at the beginning of the zone \n pixels")]
@@ -117,6 +117,12 @@ class SCR_NTName : SCR_NTTextBase
 		
 		if (data.m_Flags & ENameTagFlags.NAME_UPDATE)
 		{
+			if (data.m_Flags & ENameTagFlags.ENT_TYPE_UPDATE)
+			{
+				data.UpdateEntityType();
+				data.m_Flags &= ~ENameTagFlags.ENT_TYPE_UPDATE;
+			}
+			
 			string name;
 			array<string> nameParams = {};
 			

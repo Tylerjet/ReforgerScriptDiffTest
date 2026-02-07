@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 {
-	protected SCR_CampaignMapUIBase m_Parent;
+	protected SCR_CampaignMapUIBase m_ParentBase;
 
 	protected SCR_EServicePointType m_eServiceType;
 
@@ -16,8 +16,8 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 		PlayHoverSound(m_sSoundService);
 
 		ShowHint(true);
-		if (m_Parent)
-			m_Parent.m_bIsAnyElementHovered = true;
+		if (m_ParentBase)
+			m_ParentBase.m_bIsAnyElementHovered = true;
 
 		return false;
 	}
@@ -26,8 +26,8 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
 		ShowHint(false);
-		if (m_Parent)
-			m_Parent.m_bIsAnyElementHovered = false;
+		if (m_ParentBase)
+			m_ParentBase.m_bIsAnyElementHovered = false;
 
 		return false;
 	}
@@ -59,35 +59,36 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
-		m_eIconType = EIconType.SERVICE;
+		m_eIconType = SCR_EIconType.SERVICE;
 	}
 
 	//------------------------------------------------------------------------------
 	void ShowHint(bool show)
 	{
-		if (m_Parent)
+		if (m_ParentBase)
 		{
-			SCR_CampaignBase base = m_Parent.GetBase();
-			if (m_eServiceType == SCR_EServicePointType.SUPPLY_DEPOT && base)
+			SCR_CampaignMilitaryBaseComponent base = m_ParentBase.GetBase();
+			
+			if (m_eServiceType == EEditableEntityLabel.SERVICE_SUPPLY_STORAGE && base)
 			{
-				Faction playerFaction = SCR_RespawnSystemComponent.GetLocalPlayerFaction();
-				if (base.GetOwningFaction() == playerFaction)
+				Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
+				if (base.GetFaction() == playerFaction)
 				{
 					int supplies = base.GetSupplies();
 					int suppliesMax = base.GetSuppliesMax();
 
 					m_sServiceText = "#AR-Campaign_BaseSuppliesHintAmount";
-					m_Parent.ShowServiceHint(m_sServiceName, m_sServiceText, show, supplies, suppliesMax);
+					m_ParentBase.ShowServiceHint(m_sServiceName, m_sServiceText, show, supplies, suppliesMax);
 				}
 				else
 				{
 					m_sServiceText = "#AR-Campaign_BaseSuppliesHintUnknown";
-					m_Parent.ShowServiceHint(m_sServiceName, m_sServiceText, show);
+					m_ParentBase.ShowServiceHint(m_sServiceName, m_sServiceText, show);
 				}
 			}
 			else
 			{
-				m_Parent.ShowServiceHint(m_sServiceName, m_sServiceText, show);
+				m_ParentBase.ShowServiceHint(m_sServiceName, m_sServiceText, show);
 			}
 		}
 	}
@@ -156,11 +157,11 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 	//------------------------------------------------------------------------------
 	void SetParent(SCR_CampaignMapUIBase parent)
 	{
-		m_Parent = parent;
+		m_ParentBase = parent;
 	}
 
 	//------------------------------------------------------------------------------
-	void SetService(SCR_EServicePointType type, SCR_CampaignServiceComponent service)
+	void SetService(EEditableEntityLabel type, SCR_ServicePointComponent service)
 	{
 		m_bEnabled = service != null;
 		m_eServiceType = type;
@@ -174,7 +175,13 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 		if (!owner)
 			return;
 		
-		SCR_CampaignServiceMapDescriptorComponent descr = SCR_CampaignServiceMapDescriptorComponent.Cast(owner.FindComponent(SCR_CampaignServiceMapDescriptorComponent));
+		SCR_ServicePointMapDescriptorComponent descr = SCR_ServicePointMapDescriptorComponent.Cast(owner.FindComponent(SCR_ServicePointMapDescriptorComponent));
+
+		if (!descr)
+		{
+			IEntity compositionParent = SCR_EntityHelper.GetMainParent(owner, true);
+			descr = SCR_ServicePointMapDescriptorComponent.Cast(compositionParent.FindComponent(SCR_ServicePointMapDescriptorComponent));
+		}
 		
 		if (descr)
 			m_MapItem = descr.Item();
@@ -185,7 +192,7 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 	{
 		m_sServiceIcon = image;
 		string suffix = string.Empty;
-
+		
 		SCR_ButtonImageComponent img = SCR_ButtonImageComponent.Cast(m_wRoot.FindHandler(SCR_ButtonImageComponent));
 		if (img)
 		{

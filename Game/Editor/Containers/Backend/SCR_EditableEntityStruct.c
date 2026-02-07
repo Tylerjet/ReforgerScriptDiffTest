@@ -5,11 +5,16 @@ Saved data for editable entity.
 */
 class SCR_EditableEntityStruct: JsonApiStruct
 {
+	//--- Constants
+	protected static const string TAG_DESTROYED = "D";
+	protected static const int TARGET_NONE = -1;
+	protected static const int TARGET_SLOT = -2;
+	
 	//--- Serialized (names shortened to save memory)
 	protected ResourceName pf; //--- Prefab
 	protected bool hy; //--- Was hierarchy changed by user
 	protected int pi = -1; //--- Parent ID
-	protected int ti = -1; //--- Target ID
+	protected int ti = TARGET_NONE; //--- Target ID
 	protected int tv = -1; //--- Target value
 	protected float px; //--- Pos X
 	protected float py; //--- Pos Y
@@ -24,8 +29,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 	//--- Non-serialized
 	protected SCR_EditableEntityComponent m_Entity;
 	protected SCR_EditableEntityComponent m_Target;
-	
-	protected static const string TAG_DESTROYED = "D";
+	protected static SCR_CompositionSlotManagerComponent m_SlotManager;
 	
 	/*!
 	Save all editable entities.
@@ -45,6 +49,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 			children = new set<SCR_EditableEntityComponent>();
 			core.GetAllEntities(children, true);
 		}
+		m_SlotManager = SCR_CompositionSlotManagerComponent.GetInstance();
 		
 		//--- Process root entities
 		array<int> entriesWithTarget = {};
@@ -67,14 +72,15 @@ class SCR_EditableEntityStruct: JsonApiStruct
 					break;
 				}
 			}
-			if (entry.ti == -1)
+			if (entry.ti == TARGET_NONE)
 				entry.m_Entity.Log("Error when serializing attach link!", true, LogLevel.WARNING);
 		}
+		m_SlotManager = null;
 	}
 	protected static void SerializeEntity(SCR_EditableEntityComponent entity, int parentID, out notnull array<ref SCR_EditableEntityStruct> outEntries, SCR_EditorAttributeList attributeList, out array<int> entriesWithTarget, bool isParentDirty)
 	{
 		SCR_EditableEntityComponent target;
-		int targetValue = -1;
+		int targetValue = TARGET_NONE;
 		bool isDestroyed;
 		if (!entity.Serialize(target, targetValue, isDestroyed))
 			return;
@@ -113,6 +119,12 @@ class SCR_EditableEntityStruct: JsonApiStruct
 			entry.tv = targetValue;
 			entriesWithTarget.Insert(parentID);
 		}
+		else if (m_SlotManager)
+		{
+			SCR_EditableEntityUIInfo info = SCR_EditableEntityUIInfo.Cast(entity.GetInfo());
+			if (info && info.GetSlotPrefab() && m_SlotManager.IsInSlot(entity.GetOwner()))
+				entry.ti = TARGET_SLOT;
+		}
 		
 		SCR_EditorAttributeStruct.SerializeAttributes(entry.at, attributeList, entity);
 		
@@ -132,6 +144,8 @@ class SCR_EditableEntityStruct: JsonApiStruct
 	*/
 	static void DeserializeEntities(notnull array<ref SCR_EditableEntityStruct> entries, SCR_EditorAttributeList attributeList = null)
 	{
+		SCR_CompositionSlotManagerComponent slotManager = SCR_CompositionSlotManagerComponent.GetInstance();
+		
 		SCR_EditableEntityComponent parent;
 		map<int, SCR_EditableEntityComponent> entities = new map<int, SCR_EditableEntityComponent>();
 		array<int> entriesWithTarget = {};
@@ -173,7 +187,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 			{
 				prefabParams = prefab.Substring(guidIndex, prefabParamsCount);
 				prefab = prefab.Substring(0, guidIndex);
-			}		
+			}	
 			
 			IEntity rawEntity = GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), spawnParams);
 			entry.m_Entity = SCR_EditableEntityComponent.GetEditableEntity(rawEntity);
@@ -189,8 +203,13 @@ class SCR_EditableEntityStruct: JsonApiStruct
 				
 				SCR_EditorAttributeStruct.DeserializeAttributes(entry.at, attributeList, entry.m_Entity);
 				
-				if (entry.ti != -1)
-					entriesWithTarget.Insert(id);
+				if (entry.ti!= TARGET_NONE)
+				{
+					if (entry.ti == TARGET_SLOT)
+						slotManager.SetOccupant(spawnParams.Transform[3], rawEntity);
+					else
+						entriesWithTarget.Insert(id);
+				}
 			
 				if (prefabParams.Contains(TAG_DESTROYED))
 					entry.m_Entity.Destroy();
@@ -253,7 +272,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 			resource = Resource.Load(entry.pf);
 			resourceName = resource.GetResource().GetResourceName();
 			
-			if (entry.ti != -1)
+			if (entry.ti != TARGET_NONE)
 				PrintFormat(textTarget, id, entry.pi, FilePath.StripPath(resourceName), Vector(entry.px, entry.py, entry.pz), angles, entry.sc, entry.ti, entry.tv, entry.hy);
 			else
 				PrintFormat(textDefault, id, entry.pi, FilePath.StripPath(resourceName), Vector(entry.px, entry.py, entry.pz), angles, entry.sc, entry.ti, entry.tv, entry.hy);
@@ -269,11 +288,6 @@ class SCR_EditableEntityStruct: JsonApiStruct
 	override void OnPack()
 	{
 		Print("OnPack()");
-	}
-	override void OnBufferReady()
-	{
-		Print("OnBufferReady()");
-		Print(AsString());
 	}
 	override void OnSuccess(int errorCode)
 	{

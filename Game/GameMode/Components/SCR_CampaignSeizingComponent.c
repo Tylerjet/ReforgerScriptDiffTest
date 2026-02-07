@@ -6,12 +6,12 @@ class SCR_CampaignSeizingComponentClass : SCR_SeizingComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 {
-	protected SCR_CampaignBase m_Base;
+	protected SCR_CampaignMilitaryBaseComponent m_Base;
 	
 	//------------------------------------------------------------------------------------------------
 	protected override SCR_Faction EvaluateEntityFaction(IEntity ent)
 	{
-		if (!m_Base || m_Base.GetIsHQ())
+		if (!m_Base || m_Base.IsHQ() || !m_Base.IsInitialized())
 			return null;
 		
 		SCR_Faction faction = super.EvaluateEntityFaction(ent);
@@ -25,26 +25,22 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 		if (!cFaction)
 			return null;
 		
-		if (faction.IsPlayable() && !m_Base.IsBaseInFactionRadioSignal(cFaction))
+		if (faction.IsPlayable() && !m_Base.IsHQRadioTrafficPossible(cFaction))
 			return null;
 		
 		return faction;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnPostInit(IEntity owner)
+	override void OnBaseRegistered(notnull SCR_MilitaryBaseComponent base)
 	{
-		m_Base = SCR_CampaignBase.Cast(GetOwner());
+		super.OnBaseRegistered(base);
 		
-		if (!m_Base)
-		{
-			Print("SCR_CampaignSeizingComponent: Parent base not found! Terminating...", LogLevel.ERROR);
-			return;
-		}
+		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
 		
-		if (m_Base.GetIsHQ())
+		if (!campaignBase || campaignBase.IsHQ())
 			return;
 		
-		super.OnPostInit(owner);
+		m_Base = campaignBase;
 	}
 };

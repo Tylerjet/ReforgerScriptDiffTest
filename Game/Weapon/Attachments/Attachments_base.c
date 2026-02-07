@@ -8,7 +8,9 @@ class AttachmentOptics : BaseAttachmentType
 {
 };
 
-//RIS 1913 - pic rail
+// RIS 1913 - pic rail
+// Accessories like larger flashlights, lasers, covers and similar can be attached to this rail
+// RIS accessory rail above or equal 60mm
 class AttachmentRIS1913Class {}
 AttachmentRIS1913Class AttachmentRIS1913Source;
 
@@ -16,7 +18,9 @@ class AttachmentRIS1913 : AttachmentUnderbarrelRIS1913
 {
 };
 
-//RIS 1913 - pic rail short
+// RIS 1913 - pic rail short
+// Accessories like small flashlights or lasers can be attached to this rail
+// RIS accessory rail below 60mm
 class AttachmentRIS1913ShortClass {}
 AttachmentRIS1913ShortClass AttachmentRIS1913ShortSource;
 

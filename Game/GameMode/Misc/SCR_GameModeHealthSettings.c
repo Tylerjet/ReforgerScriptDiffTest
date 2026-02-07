@@ -9,7 +9,7 @@ class SCR_GameModeHealthSettings : ScriptComponent
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, desc: "Character regeneration rate multiplier", params: "0 5 0.001", precision: 3, category: "Game Mode")]
 	protected float m_fRegenScale;
 	
-	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Whether unconsciousness is allowed", category: "Game Mode")]
+	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Whether unconsciousness is allowed", category: "Game Mode")]
 	protected bool m_bPermitUnconsciousness;
 	
 	[Attribute(defvalue: "0.75", uiwidget: UIWidgets.Slider, desc: "How much will the character be slowed down when having tourniquetted leg", params: "0 1 0.001", precision: 3, category: "Game Mode")]

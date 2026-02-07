@@ -21,9 +21,6 @@ class SCR_NameTagRulesetBase : Managed
 	[Attribute("0", UIWidgets.CheckBox, desc: "seconds \n how long it takes for the tag to start fading if LOS is obstructed")]
 	protected float m_fLOSFadeDelay;
 	
-	[Attribute("20", UIWidgets.CheckBox, desc: "degrees \n base angle from center of the screen to entity required to expand nametag, automatically scales with distance")]
-	protected float m_fBaseAngleToFocus;
-	
 	// Consts
 	const int DISABLE_FLAGS = ENameTagFlags.UPDATE_DISABLE | ENameTagFlags.DISABLED; // flags which mark the nametag for cleanup process
 	const int SECONDARY_FLAGS = ENameTagEntityState.VON; // tags with these entity states are eligible to be secondary tags
@@ -56,8 +53,7 @@ class SCR_NameTagRulesetBase : Managed
 
 	protected ref array<ref SCR_NameTagData> m_aNameTags = {};		// basic nametag array from display
 	protected ref array<ref SCR_NameTagData> m_aCandidateTags = {};	// nametags who passed initial visibility rules
-	protected ref array<ref SCR_NameTagData> m_aSecondaryTags = {};	// nametags who passed secondary visibility rules
-			
+	
 	//------------------------------------------------------------------------------------------------
 	//! Determine whether the tag passes basic conditions for visibility
 	//! \param data is the subject nametag
@@ -254,23 +250,15 @@ class SCR_NameTagRulesetBase : Managed
 	//! \return Returns true if the tested target is visible/not obstructed in current players line of sight
 	protected bool TraceLOS(SCR_NameTagData data)
 	{						
-		autoptr TraceParam param = new TraceParam;
+		TraceParam param = new TraceParam;
 		param.Start = m_CurrentPlayerTag.m_vEntHeadPos;
 		param.End = data.m_vEntHeadPos + HEAD_LOS_OFFSET;
 		param.LayerMask = EPhysicsLayerDefs.Perception;
-		param.Flags = TraceFlags.ENTS | TraceFlags.WORLD; 
+		param.Flags = TraceFlags.ANY_CONTACT | TraceFlags.WORLD | TraceFlags.ENTS; 
 		param.Exclude = m_CurrentPlayerTag.m_Entity;
 			
 		float percent = GetGame().GetWorld().TraceMove(param, null);
-			
-		// If trace hits the target entity or travels the entire path, return true	
-		GenericEntity ent = GenericEntity.Cast(param.TraceEnt);
-		if (ent)
-		{
-			if ( ent == data.m_Entity || ent.GetParent() == data.m_Entity )
-				return true;
-		} 
-		else if (percent == 1)
+		if (percent == 1)	// If trace travels the entire path, return true
 			return true;
 				
 		return false;
@@ -375,7 +363,7 @@ class SCR_NameTagRulesetBase : Managed
 			
 			data.m_Flags &= ~ENameTagFlags.VISIBLE;
 			data.m_Flags &= ~ENameTagFlags.VISIBLE_PASS;
-			data.m_Flags |= ENameTagFlags.UPDATE_DISABLE;
+			data.m_Flags |= ENameTagFlags.UPDATE_DISABLE | ENameTagFlags.NAME_UPDATE | ENameTagFlags.ENT_TYPE_UPDATE;
 			
 			data.m_fTimeSliceVisibility = m_fTagFadeTime;
 			return false;
@@ -532,7 +520,6 @@ class SCR_NameTagRulesetBase : Managed
 	{
 		m_aNameTags = null;		
 		m_aCandidateTags = null;	
-		m_aSecondaryTags = null;	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -540,8 +527,8 @@ class SCR_NameTagRulesetBase : Managed
 	protected void UpdateDebug()
 	{
 		DbgUI.Begin("NameTag debug");
-		string dbg = "queried tags: %1 | candidate tags: %2 | secondary tags: %3";
-		DbgUI.Text( string.Format( dbg, m_aNameTags.Count(), m_aCandidateTags.Count(), m_aSecondaryTags.Count() ) );
+		string dbg = "queried tags: %1 | candidate tags: %2";
+		DbgUI.Text( string.Format( dbg, m_aNameTags.Count(), m_aCandidateTags.Count() ) );
 		string dbg2 = "primary: %1";
 		DbgUI.Text( string.Format( dbg2, m_PrimaryTag ) );
 		string dbg3 = "focusAngle: %1 | sq distance: %2";

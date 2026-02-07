@@ -14,7 +14,7 @@ class SCR_EditorCanEnterLayerActionCondition: SCR_AvailableActionCondition
 		SCR_EditableEntityComponent entity = SCR_BaseEditableEntityFilter.GetFirstEntity(EEditableEntityState.HOVER);
 		
 		if (!entity)
-			return GetReturnResult(false));
+			return GetReturnResult(false);
 		
 		if (!m_LayersManager)
 		{
@@ -23,6 +23,6 @@ class SCR_EditorCanEnterLayerActionCondition: SCR_AvailableActionCondition
 				return false;
 		}
 		
-		return m_LayersManager.IsEditingLayersEnabled() && GetReturnResult(entity.CanEnterLayer(m_LayersManager)));
+		return m_LayersManager.IsEditingLayersEnabled() && GetReturnResult(entity.CanEnterLayer(m_LayersManager));
 	}
 };

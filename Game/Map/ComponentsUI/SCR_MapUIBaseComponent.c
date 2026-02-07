@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-// SCR_MapUIBaseComponent handles the context menu, dragging and clicks.
+// Base for 2d map UI components
 [BaseContainerProps()]
 class SCR_MapUIBaseComponent : ScriptedWidgetComponent
 {		

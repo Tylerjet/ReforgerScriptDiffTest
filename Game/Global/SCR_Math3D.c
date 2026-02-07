@@ -243,6 +243,7 @@ class SCR_Math3D
 	\param[out] transform Affected matrix
 	\param scale Scaling coefficient
 	*/
+	[Obsolete("Use Math3D.MatrixScale")]
 	static void ScaleMatrix(out vector transform[3], float scale)
 	{
 		if (scale == 1)
@@ -258,6 +259,7 @@ class SCR_Math3D
 	Normalize direction elements of transformation matrix (position will remain unchanged).
 	\param[out] transform Affected matrix
 	*/
+	[Obsolete("Use Math3D.MatrixNormalize")]
 	static void NormalizeMatrix(out vector transform[3])
 	{
 		transform[0] = transform[0].Normalized();

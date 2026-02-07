@@ -40,7 +40,7 @@ class SCR_DamageStateUIComponent : ScriptedWidgetComponent
 	Set visuals using SCR_DamageStateUIInfo
 	\param uiInfo Visuals to set
 	*/
-	void SetVisuals(SCR_DamageStateUIInfo uiInfo)
+	void SetVisuals(SCR_DamageStateUIInfo uiInfo, int iconIndex = -1)
 	{
 		m_UiInfo = uiInfo;
 		
@@ -54,54 +54,33 @@ class SCR_DamageStateUIComponent : ScriptedWidgetComponent
 		ImageWidget background = ImageWidget.Cast(m_wRoot.FindAnyWidget(m_sBackgroundName));
 		
 		ResourceName image;
-		
+		string quadName;
+
 		if (icon)
 		{
-			if (m_UiInfo.HasIcon())
-			{
-				icon.SetVisible(true);
-				m_UiInfo.SetIconTo(icon);
-				icon.SetColor(m_UiInfo.GetColor());
-			}
-			else 
-			{
-				icon.SetVisible(false);
-			}
+			icon.SetVisible(m_UiInfo.SetIconTo(icon, iconIndex));
+			icon.SetColor(m_UiInfo.GetColor());
 		}
 		
 		if (outline)
 		{
 			image = m_UiInfo.GetOutlineImage();
+			quadName = m_UiInfo.GetOutlineQuadName();
 			
-			if (!image.IsEmpty())
-			{
-				outline.SetVisible(true);
-				outline.LoadImageTexture(0, image);
-				outline.SetColor(m_UiInfo.GetColor());
-			}
-			else 
-			{
-				outline.SetVisible(false);
-			}
+			outline.SetVisible(m_UiInfo.SetImageTo(outline, image, quadName));
+			outline.SetColor(m_UiInfo.GetOutlineColor());
 		}
 
 		if (background)
 		{
 			image = m_UiInfo.GetBackgroundImage();
-			
-			if (!image.IsEmpty())
-			{
-				background.SetVisible(true);
-				background.LoadImageTexture(0, image);
-				background.SetColor(m_UiInfo.GetBackgroundColor());
-			}
-			else 
-			{
-				background.SetVisible(false);
-			}
+			quadName = m_UiInfo.GetBackgroundQuadName();
+
+			background.SetVisible(m_UiInfo.SetImageTo(background, image, quadName));
+			background.SetColor(m_UiInfo.GetBackgroundColor());
 		}
 	}
-	
+
 	/*!
 	Set size of images
 	\param size Size of images

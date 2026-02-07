@@ -47,15 +47,18 @@ class Game
 	*/
 	proto external RestApi GetRestApi();
 	/*!
-	\brief Begin preloading on given position with given radius. Call is non-blocking, to get status of preload use WaitPreload method.
+	\brief Begin preloading on given position with given radius. Call is non-blocking, to get status of preload use IsPreloadFinished method.
+	\param world
+	\param pos Position of place which to preload
+	\param radius Radius of area which to preload
+	\param maxTime_sec Maximum duration of preload in seconds <0, 300>
 	\return Returns true when preload starts, returns false when there is nothing to preload
 	*/
-	proto external bool BeginPreload(notnull BaseWorld world, vector pos, float radius);
+	proto external bool BeginPreload(notnull BaseWorld world, vector pos, float radius, int maxTime_sec = 60);
 	/*!
-	\brief Process preload for maximum time "wait_ms"
-	\return Returns number of remaining resources to be loaded.
+	\brief If preload (started with BeginPreload method) is finished, returns true.
 	*/
-	proto external int WaitPreload(int wait_ms = 0);
+	proto external bool IsPreloadFinished();
 	/*!
 	\brief Returns load time in milliseconds for the lastly loaded world.
 	*/
@@ -82,6 +85,11 @@ class Game
 	@return True if the game is in play mode. False otherwise.
 	*/
 	proto external bool InPlayMode();
+	/*!
+	\warning Obsolete - Game state do not have a conpcet of SafeMode
+	\return false
+	*/
+	[Obsolete("Game state have no concept of 'SafeMode'")]
 	proto external bool IsSafeMode();
 	proto external int FailureAddon(out notnull array<string> addons);
 	proto external ScriptModule GetScriptModule();
@@ -96,6 +104,7 @@ class Game
 	\brief Setting request flag for the engine to reinitialize the game
 	* Doesn't do anything in Workbench
 	*/
+	[Obsolete("Pass addon GUIDs to the transition request directly")]
 	proto external void RequestReload(array<string> addonGUIDs = null);
 	/*!
 	Safely instantiate the entity and calls EOnInit if the entity sets event mask EntityEvent.INIT.
@@ -184,7 +193,7 @@ class Game
 	event void OnWindowResize(int w, int h, bool windowed);
 	//! Called after reload to host a modded scenario.
 	event void HostGameConfig();
-	event void PlayGameConfig(ResourceName sResource);
+	event void PlayGameConfig(ResourceName sResource, string addonsList);
 	event ref array<ResourceName> GetDefaultGameConfigs();
 	event Managed ReadGameConfig(string sResource);
 }

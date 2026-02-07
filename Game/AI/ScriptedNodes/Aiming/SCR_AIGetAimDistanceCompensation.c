@@ -29,7 +29,7 @@ class SCR_AIGetAimDistanceCompensation : AITaskScripted
 		vector vout;
 		float initSpeedCoef = 1.0;
 		GetVariableIn(VECTOR_IN_PORT, vin);
-		GetVariableIn(INITIAL_SPEED_COEFFICIENT, initSpeedCoef);
+		GetVariableIn(INITIAL_SPEED_COEFFICIENT, initSpeedCoef); // if not connected it will be still default 1.0
 		
 		// Resolve target position
 		vector targetPos;
@@ -47,9 +47,6 @@ class SCR_AIGetAimDistanceCompensation : AITaskScripted
 		else
 			GetVariableIn(TARGET_POSITION_PORT, targetPos);
 		
-		// Resolve distance to target
-		float distance = vector.Distance(targetPos, owner.GetControlledEntity().GetOrigin());
-		
 		// Resolve current weapon and muzzle
 		BaseWeaponComponent currentWeapon;
 		BaseMuzzleComponent currentMuzzle;
@@ -57,6 +54,17 @@ class SCR_AIGetAimDistanceCompensation : AITaskScripted
 		currentWeapon = m_WeaponMgr.GetCurrentWeapon();
 		if (currentWeapon)
 			currentMuzzle = currentWeapon.GetCurrentMuzzle();
+		
+		// Resolve distance to target
+		float distance;
+		if (currentMuzzle)
+		{
+			vector muzzleMatrix[4];
+			m_WeaponMgr.GetCurrentMuzzleTransform(muzzleMatrix);
+			distance = vector.Distance(targetPos, muzzleMatrix[3]);
+		}
+		else
+			distance = vector.Distance(targetPos, owner.GetControlledEntity().GetOrigin());
 		
 		// Read data from ballistic tables
 		float heightOffset;
@@ -81,6 +89,9 @@ class SCR_AIGetAimDistanceCompensation : AITaskScripted
 		
 		
 		vout = vin + vHeightCompensation;
+		// problem of calculation: if character is reloading magazine and no ammo is in barrel -> the heightOffset is zero
+		// if (float.AlmostEqual(heightOffset, 0.0))
+		//	Print("Error in testing mission: compensation is zero!", LogLevel.ERROR);
 		SetVariableOut(VECTOR_OUT_PORT, vout);
 		
 		return ENodeResult.SUCCESS;

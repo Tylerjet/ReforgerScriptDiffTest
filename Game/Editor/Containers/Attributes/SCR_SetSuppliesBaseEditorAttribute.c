@@ -18,7 +18,7 @@ class SCR_SetSuppliesBaseEditorAttribute : SCR_BaseValueListEditorAttribute
 			return null;
 		
 		//~ Send over current and max value as max value is used in UI to set slider max
-		return SCR_BaseEditorAttributeVar.CreateVector(Vector(supplyComponent.GetSupplies(), supplyComponent.GetSuppliesMax(), 0)));
+		return SCR_BaseEditorAttributeVar.CreateVector(Vector(supplyComponent.GetSupplies(), supplyComponent.GetSuppliesMax(), 0));
 	}
 	
 	protected bool CanDisplay(SCR_EditableEntityComponent editableEntity)

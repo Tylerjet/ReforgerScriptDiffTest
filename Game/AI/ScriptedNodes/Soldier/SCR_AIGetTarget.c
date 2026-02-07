@@ -42,7 +42,7 @@ class SCR_AIGetTarget: AITaskScripted
 		
 		if (m_PerceptionComp && m_ConfigComp.m_EnablePerception)
 		{
-			BaseTarget baseTarget = m_PerceptionComp.GetClosestTarget(m_eTargetType, m_fTimeSinceSeenMax);
+			BaseTarget baseTarget = m_PerceptionComp.GetClosestTarget(m_eTargetType, m_fTimeSinceSeenMax, m_fTimeSinceSeenMax);
 			
 			SetVariableOut(PORT_BASE_TARGET, baseTarget);
 			

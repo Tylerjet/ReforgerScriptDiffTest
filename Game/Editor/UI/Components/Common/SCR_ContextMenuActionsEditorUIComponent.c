@@ -28,6 +28,10 @@ class SCR_ContextMenuActionsEditorUIComponent : SCR_BaseContextMenuEditorUICompo
 		if (m_HoveredEntityReference)
 		{
 			GetMenu().GetOnMenuUpdate().Insert(OnHoveredEntityCheck);
+			
+			//--- Close the menu when UI of hovered entity changed, as it implies major change in its state (e.g., character died)
+			if (m_HoveredEntityReference.GetOnUIRefresh())
+				m_HoveredEntityReference.GetOnUIRefresh().Insert(CloseContextMenu);
 		}
 	}
 	

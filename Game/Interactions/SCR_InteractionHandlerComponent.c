@@ -153,7 +153,8 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 						display.OnActionFinish(user, action, ActionFinishReason.FINISHED);
 					
 					// Finally perform action
-					user.DoPerformObjectAction(action);
+					if (!action.ShouldPerformPerFrame())
+						user.DoPerformObjectAction(action);
 
 					// Reset state
 					m_fCurrentProgress = 0.0;
@@ -354,6 +355,10 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		
 		// Or climbing
 		if (controller.IsClimbing())
+			return false;
+		
+		// Or unconscious
+		if (controller.IsUnconscious())
 			return false;
 		
 		return true;

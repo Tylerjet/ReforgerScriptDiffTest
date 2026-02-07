@@ -8,12 +8,12 @@ class SCR_CampaignTaskSupportEntityClass: SCR_CampaignBaseTaskSupportEntityClass
 class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 {
 	protected bool m_bInitialTasksGenerated = false;
-	protected ref array<SCR_CampaignBase> m_aCheckedBases = {};
+	protected ref array<SCR_CampaignMilitaryBaseComponent> m_aCheckedBases = {};
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns the found task if it exists.
 	//TODO: Remove this method after no longer needed.
-	SCR_CampaignTask GetTask(SCR_CampaignBase targetBase, Faction targetFaction, SCR_CampaignTaskType type)
+	SCR_CampaignTask GetTask(SCR_CampaignMilitaryBaseComponent targetBase, Faction targetFaction, SCR_CampaignTaskType type)
 	{
 		if (!GetTaskManager())
 			return null;
@@ -44,39 +44,39 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 			return;
 		
 		SCR_CampaignTaskType type = SCR_CampaignTaskType.CAPTURE;
-		array<SCR_CampaignBase> bases = new array<SCR_CampaignBase>();
+		array<SCR_CampaignMilitaryBaseComponent> bases = new array<SCR_CampaignMilitaryBaseComponent>();
 		SCR_CampaignFaction faction;
+		SCR_CampaignMilitaryBaseComponent capturedBase = SCR_CampaignMilitaryBaseComponent.Cast(entity.FindComponent(SCR_CampaignMilitaryBaseComponent));
 		
-		if (entity.Type() == SCR_CampaignBase)
+		if (capturedBase)
 		{
 			// It's a base
-			SCR_CampaignBase capturedBase = SCR_CampaignBase.Cast(entity);
 			m_aCheckedBases.Insert(capturedBase);
 			GenerateRecaptureTask(capturedBase);
-			faction = capturedBase.GetOwningFaction();
+			faction = capturedBase.GetCampaignFaction();
 			
 			if (!faction)
 				return;
 			
-			if (!capturedBase.IsBaseInFactionRadioSignal(faction))
+			if (!capturedBase.IsHQRadioTrafficPossible(faction))
 				return;
 			
-			capturedBase.GetBasesInRange(CampaignBaseType.BASE | CampaignBaseType.RELAY, bases);
+			capturedBase.GetBasesInRange(SCR_ECampaignBaseType.BASE | SCR_ECampaignBaseType.RELAY, bases);
 			
-			foreach (SCR_CampaignBase base: bases)
+			foreach (SCR_CampaignMilitaryBaseComponent base: bases)
 			{
-				if (base.GetIsHQ())
+				if (base.IsHQ())
 					continue;
 				
 				if (GetTask(base, faction, type))
 					continue;
 				
-				if (base.GetOwningFaction() == faction)
+				if (base.GetFaction() == faction)
 				{
 					if (m_aCheckedBases.Contains(base))
 						continue;
 					
-					GenerateCaptureTasks(base);
+					GenerateCaptureTasks(base.GetOwner());
 					continue;
 				}
 				
@@ -92,22 +92,22 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 				return;
 			
 			faction = comp.GetParentFaction();
-			bases = comp.GetBasesInRange();
+			comp.GetBasesInRange(bases);
 			
-			foreach (SCR_CampaignBase base: bases)
+			foreach (SCR_CampaignMilitaryBaseComponent base: bases)
 			{
 				if (GetTask(base, faction, type))
 					continue;
 				
-				if (base.GetIsHQ())
+				if (base.IsHQ())
 					continue;
 				
-				if (base.GetOwningFaction() == faction)
+				if (base.GetFaction() == faction)
 				{
 					if (m_aCheckedBases.Contains(base))
 						continue;
 					
-					GenerateCaptureTasks(base);
+					GenerateCaptureTasks(base.GetOwner());
 					continue;
 				}
 				
@@ -117,9 +117,9 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void GenerateRecaptureTask(notnull SCR_CampaignBase capturedBase)
+	protected void GenerateRecaptureTask(notnull SCR_CampaignMilitaryBaseComponent capturedBase)
 	{
-		if (capturedBase.GetIsHQ())
+		if (capturedBase.IsHQ())
 			return;
 		
 		if (!GetTaskManager())
@@ -129,7 +129,7 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 		if (!factionManager)
 			return;
 		
-		SCR_CampaignFaction owningFaction = capturedBase.GetOwningFaction();
+		SCR_CampaignFaction owningFaction = capturedBase.GetCampaignFaction();
 		if (!owningFaction)
 			return;
 		
@@ -140,7 +140,7 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 		if (GetTask(capturedBase, opposingFaction, SCR_CampaignTaskType.CAPTURE))
 			return;
 		
-		if (!capturedBase.IsBaseInFactionRadioSignal(opposingFaction))
+		if (!capturedBase.IsHQRadioTrafficPossible(opposingFaction))
 			return;
 		
 		CreateNewCampaignTask(SCR_CampaignTaskType.CAPTURE, capturedBase, opposingFaction, true);
@@ -159,20 +159,23 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 			return;
 		
 		//Get bases manager
-		SCR_CampaignBaseManager manager = SCR_CampaignBaseManager.GetInstance();
+		SCR_MilitaryBaseManager manager = SCR_MilitaryBaseManager.GetInstance();
 		
 		//Get all bases
-		array<SCR_CampaignBase> bases = manager.GetBases();
+		array<SCR_MilitaryBaseComponent> bases = {};
+		manager.GetBases(bases);
 		
 		//Create start tasks for each base
 		for (int i = bases.Count() - 1; i >= 0; i--)
 		{
-			if (!bases[i].GetIsEnabled())
+			SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(bases[i]);
+			
+			if (!campaignBase || !campaignBase.IsInitialized())
 				continue;
 			
 			// Create tasks for this base
-			if (bases[i].GetOwningFaction())
-				GenerateNewTask(bases[i]);
+			if (campaignBase.GetFaction())
+				GenerateNewTask(campaignBase);
 		}
 		
 		//Let the game mode know, the tasks are ready
@@ -184,26 +187,19 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 	//------------------------------------------------------------------------------------------------
 	//!	This method is called when a new base has been captured.
 	//! Creates recon task around a base + creates capture tasks for bases in the newly gained radio signal.
-	void GenerateNewTask(SCR_CampaignBase capturedBase)
+	void GenerateNewTask(SCR_CampaignMilitaryBaseComponent capturedBase)
 	{
 #ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EXECUTE_TASKS))
 			return;
 #endif
 		
-		GenerateCaptureTasks(capturedBase);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void OnAllBasesInitialized()
-	{
-		// Timeout added to allow for backend load process
-		GetGame().GetCallqueue().CallLater(GenerateInitialTasksForAllBases, 2000);
+		GenerateCaptureTasks(capturedBase.GetOwner());
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! An event called when a base has been captured.
-	void OnBaseCaptured(notnull SCR_CampaignBase capturedBase)
+	void OnBaseCaptured(notnull SCR_CampaignMilitaryBaseComponent capturedBase)
 	{
 #ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EXECUTE_TASKS))
@@ -217,8 +213,8 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Creates a new campaign task.
-	SCR_CampaignTask CreateNewCampaignTask(SCR_CampaignTaskType type, SCR_CampaignBase base, Faction faction, bool newTask = false)
+	//! Creates a new conflict task.
+	SCR_CampaignTask CreateNewCampaignTask(SCR_CampaignTaskType type, SCR_CampaignMilitaryBaseComponent base, Faction faction, bool newTask = false)
 	{
 		if (!GetTaskManager())
 			return null;
@@ -226,22 +222,22 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 		if (!base || !faction)
 			return null;
 		
-		if (type == SCR_CampaignTaskType.CAPTURE && (base.GetIsHQ() || (base.GetCanBeHQ() && base.GetDisableWhenUnusedAsHQ())))
+		if (type == SCR_CampaignTaskType.CAPTURE && (base.IsHQ() || (base.CanBeHQ() && base.GetDisableWhenUnusedAsHQ())))
 			return null;
 		
-		if (base.GetOwningFaction() == faction && type == SCR_CampaignTaskType.CAPTURE)
+		if (base.GetFaction() == faction && type == SCR_CampaignTaskType.CAPTURE)
 			return null;
 		
 		SCR_CampaignTask task = SCR_CampaignTask.Cast(CreateTask());
 		if (!task)
 			return null;
 		
-		SetTargetBase(task, base); // Replicated internally
 		SetTargetFaction(task, faction); // Replicated internally
+		SetTargetBase(task, base); // Replicated internally
 		SetTaskType(task, type); // Replicated internally
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		if (campaign && newTask && SCR_RespawnSystemComponent.GetLocalPlayerFaction() == faction)
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (campaign && newTask && SCR_FactionManager.SGetLocalPlayerFaction() == faction)
 		{
 			string text = task.TASK_AVAILABLE_TEXT + " " + task.GetTitle();
 			string baseName;
@@ -284,29 +280,38 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 	//------------------------------------------------------------------------------------------------
 	override void Initialize()
 	{
-		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
-		if (baseManager.AllBasesInitialized())
-		{
-			// Timeout added to allow for backend load process
-			GetGame().GetCallqueue().CallLater(GenerateInitialTasksForAllBases, 2000);
-		}
+		// Timeout added to allow for backend load process
+		GetGame().GetCallqueue().CallLater(GenerateInitialTasksForAllBases, 2000);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SCR_CampaignTaskSupportEntity(IEntitySource src, IEntity parent)
 	{
 		//Register to script invokers
-		SCR_GameModeCampaignMP.s_OnBaseCaptured.Insert(OnBaseCaptured);
-		SCR_CampaignBaseManager.s_OnAllBasesInitialized.Insert(OnAllBasesInitialized);
-		SCR_GameModeCampaignMP.s_OnSignalChanged.Insert(OnBaseCaptured);
+		SCR_MilitaryBaseManager.GetInstance().GetOnBaseFactionChanged().Insert(OnBaseCaptured);
+		
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		
+		if (!campaign)
+			return;
+		
+		campaign.GetBaseManager().GetOnSignalChanged().Insert(OnBaseCaptured);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_CampaignTaskSupportEntity()
 	{
 		//Unregister from script invokers
-		SCR_GameModeCampaignMP.s_OnBaseCaptured.Remove(OnBaseCaptured);
-		SCR_CampaignBaseManager.s_OnAllBasesInitialized.Remove(OnAllBasesInitialized);
-		SCR_GameModeCampaignMP.s_OnSignalChanged.Remove(OnBaseCaptured);
+		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
+		
+		if (baseManager)
+			baseManager.GetOnBaseFactionChanged().Remove(OnBaseCaptured);
+		
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		
+		if (!campaign)
+			return;
+		
+		campaign.GetBaseManager().GetOnSignalChanged().Remove(OnBaseCaptured);
 	}
 };

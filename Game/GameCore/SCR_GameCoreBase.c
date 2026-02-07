@@ -60,6 +60,11 @@ class SCR_GameCoreBase
 	void OnGameStart();
 	
 	/*!
+	Executed once loading of all entities of the world have been finished. (still within the loading)
+	*/
+	void OnWorldPostProcess(World world);
+	
+	/*!
 	Executed every frame
 	\param timeSlice Time passed since previous frame
 	*/

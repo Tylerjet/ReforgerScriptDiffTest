@@ -32,13 +32,13 @@ class SCR_AIFindFirePositionBehavior : SCR_AIBehaviorBase
 		m_eTargetUnitType = targetUnitType;
 		
 		m_sBehaviorTree = "{905124EEBF36D180}AI/BehaviorTrees/Chimera/Soldier/FindFirePosition.bt";
-		m_fPriority = PRIORITY_BEHAVIOR_FIND_FIRE_POSITION;
+		SetPriority(PRIORITY_BEHAVIOR_FIND_FIRE_POSITION);
 		m_fPriorityLevel.m_Value = priorityLevel;
 		m_bAllowLook = true;
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------
-	override float Evaluate()
+	override float CustomEvaluate()
 	{
 		// Complete when we have found some target to attack
 		if (m_Utility.m_CombatComponent.GetCurrentTarget())
@@ -47,7 +47,7 @@ class SCR_AIFindFirePositionBehavior : SCR_AIBehaviorBase
 			return 0;
 		}
 		
-		return m_fPriority;
+		return GetPriority();
 	}
 	
 	//-----------------------------------------------------------------------------------------------------

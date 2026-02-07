@@ -1,84 +1,69 @@
 //------------------------------------------------------------------------------------------------
-enum EVideoQualityPreset
+enum ESettingManagerModuleType
 {
-	SERIES_X_PRESET_QUALITY = 4,
-	SERIES_S_PRESET_QUALITY = 5,
-	SERIES_X_PRESET_PERFORMANCE = 6,
-	SERIES_S_PRESET_PERFORMANCE = 7,
+	SETTINGS_MANAGER_INVALID,
+	SETTINGS_MANAGER_KEYBINDING,
+	SETTINGS_MANAGER_VIDEO
 };
 
 //------------------------------------------------------------------------------------------------
 class SCR_SettingsManager
 {
-	BaseContainer m_DisplayUserSettings;
-	UserSettings m_VideoUserSettings;
-	BaseContainer m_VideoSettings;
-		
-	protected const int COMBO_OPTION_QUALITY = 0;
-	protected const int COMBO_OPTION_PERFORMANCE = 1;
+	protected ref array<ref SCR_SettingsManagerModuleBase> m_aModules = {};
 	
 	//------------------------------------------------------------------------------------------------
 	void SCR_SettingsManager()
 	{
+		//todo: rework this to load out of config so we can just have config with all the modules
+		SCR_SettingsManagerVideoModule videoModule = new SCR_SettingsManagerVideoModule();
+		if (videoModule)
+			AddModule(videoModule);
 		
+		SCR_SettingsManagerKeybindModule keybindModule = new SCR_SettingsManagerKeybindModule();
+		if (keybindModule)
+			AddModule(keybindModule);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetConsolePreset(int presetIndex)
+	SCR_SettingsManagerModuleBase GetModule(ESettingManagerModuleType moduleType)
 	{
-		m_DisplayUserSettings = GetGame().GetEngineUserSettings().GetModule("DisplayUserSettings");
-		m_VideoUserSettings = GetGame().GetEngineUserSettings().GetModule("VideoUserSettings");
-		m_VideoSettings = GetGame().GetGameUserSettings().GetModule("SCR_VideoSettings");
-		
-		if (!m_DisplayUserSettings || !m_VideoUserSettings || !m_VideoSettings)
-			return;
-		
-		if (presetIndex == EVideoQualityPreset.SERIES_S_PRESET_QUALITY)
+		foreach(SCR_SettingsManagerModuleBase module : m_aModules)
 		{
-			m_DisplayUserSettings.Set("OverallQuality", EVideoQualityPreset.SERIES_S_PRESET_QUALITY);
-			m_VideoUserSettings.Set("ResolutionScale", 0.75);
-			m_VideoUserSettings.Set("Fsaa", 2);
-			m_VideoSettings.Set("m_bNearDofEffect", false);
-			m_VideoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
-			m_VideoUserSettings.Set("MaxFps", 30);
-			m_VideoUserSettings.Set("Vsynch", true);
-			m_VideoSettings.Set("m_iLastUsedPreset", EVideoQualityPreset.SERIES_S_PRESET_QUALITY);
-		}		
-		else if (presetIndex == EVideoQualityPreset.SERIES_S_PRESET_PERFORMANCE)
-		{
-			m_DisplayUserSettings.Set("OverallQuality", EVideoQualityPreset.SERIES_S_PRESET_PERFORMANCE);
-			m_VideoUserSettings.Set("ResolutionScale", 0.60);
-			m_VideoUserSettings.Set("Fsaa", 2);
-			m_VideoSettings.Set("m_bNearDofEffect", false);
-			m_VideoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
-			m_VideoUserSettings.Set("MaxFps", 60);
-			m_VideoUserSettings.Set("Vsynch", true);
-			m_VideoSettings.Set("m_iLastUsedPreset", EVideoQualityPreset.SERIES_S_PRESET_PERFORMANCE);
+			if (module.GetModuleType() == moduleType)
+				return module;
 		}
-		else if (presetIndex == EVideoQualityPreset.SERIES_X_PRESET_QUALITY)
-		{
-			m_DisplayUserSettings.Set("OverallQuality", EVideoQualityPreset.SERIES_X_PRESET_QUALITY);
-			m_VideoUserSettings.Set("ResolutionScale", 0.75);
-			m_VideoUserSettings.Set("Fsaa", 4);
-			m_VideoSettings.Set("m_bNearDofEffect", false);
-			m_VideoSettings.Set("m_iDofType", DepthOfFieldTypes.BOKEH);
-			m_VideoUserSettings.Set("MaxFps", 30);
-			m_VideoUserSettings.Set("Vsynch", true);
-			m_VideoSettings.Set("m_iLastUsedPreset", EVideoQualityPreset.SERIES_X_PRESET_QUALITY);
-		}
-		else if (presetIndex == EVideoQualityPreset.SERIES_X_PRESET_PERFORMANCE)
-		{
-			m_DisplayUserSettings.Set("OverallQuality", EVideoQualityPreset.SERIES_X_PRESET_PERFORMANCE);
-			m_VideoUserSettings.Set("ResolutionScale", 0.50);
-			m_VideoUserSettings.Set("Fsaa", 4);
-			m_VideoSettings.Set("m_bNearDofEffect", false);
-			m_VideoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
-			m_VideoUserSettings.Set("MaxFps", 60);
-			m_VideoUserSettings.Set("Vsynch", true);
-			m_VideoSettings.Set("m_iLastUsedPreset", EVideoQualityPreset.SERIES_X_PRESET_PERFORMANCE);
-		}
+		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! inserts module into the settingsManager in case that module is not already present
+	void AddModule(notnull SCR_SettingsManagerModuleBase module)
+	{
+		if (!GetModule(module.GetModuleType()))
+			m_aModules.Insert(module);
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+class SCR_SettingsManagerModuleBase
+{
+	protected ESettingManagerModuleType m_eModuleType;
+	
+	//------------------------------------------------------------------------------------------------
+	ESettingManagerModuleType GetModuleType()
+	{
+		return m_eModuleType;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	void SetModuleType(ESettingManagerModuleType managerType)
+	{
+		m_eModuleType = managerType;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_SettingsManagerModuleBase()
+	{
 		
-		GetGame().ApplySettingsPreset();
-		GetGame().UserSettingsChanged();
 	}
 }

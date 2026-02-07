@@ -60,6 +60,9 @@ class SCR_SelectionWidgetComponent : SCR_ChangeableComponentBase
 	//------------------------------------------------------------------------------------------------
 	Managed GetCurrentItemData()
 	{
+		if (!m_aElementData.IsIndexValid(m_iSelectedItem))
+			return null;
+		
 		return m_aElementData[m_iSelectedItem];
 	}
 

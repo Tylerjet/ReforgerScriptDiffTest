@@ -1,13 +1,30 @@
 //#define DEBUG_VEHICLE_UI
 
+//------------------------------------------------------------------------------------------------
+//! UI indicator state, controlling colors and opacity
 enum EVehicleInfoState
 {
+	NOT_INITIALIZED,
 	DISABLED,
 	ENABLED,
 	WARNING,
 	ERROR
 };
 
+//------------------------------------------------------------------------------------------------
+//! Predefined colors that can be assigned in the InfoDisplay configuration
+enum EVehicleInfoColor
+{
+	WHITE,
+	BLUE,
+	GREEN,
+	ORANGE,
+	RED
+};
+
+//------------------------------------------------------------------------------------------------
+//! Base class for all vehicle UI state and damage indicators
+[BaseContainerProps(configRoot: true)]
 class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 {
 	protected ResourceName m_Imageset = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
@@ -18,6 +35,9 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 
 	[Attribute("", UIWidgets.EditBox, "Indicator icon to be displayed.")]
 	protected string m_sIcon;
+	
+	[Attribute(SCR_Enum.GetDefault(EVehicleInfoColor.WHITE), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EVehicleInfoColor))]
+	EVehicleInfoColor m_eColor;		
 
 	[Attribute("0.8", UIWidgets.Slider, "Indicator scale", "0.25 2 0.05")]
 	protected float m_fWidgetScale;
@@ -29,65 +49,9 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 	protected bool m_bIsBlinking;
 	protected int m_iBlinkingOffset;
 
-	const float OPACITY_FADED = 0.3;
-	const float OPACITY_DEFAULT = 1;
-
-	const ref Color COLOR_DISABLED = Color.FromSRGBA(200, 200, 200, 100);				//WHITE with 30% alpha converted to GREY with 100% alpha
-	const ref Color COLOR_DISABLED_GLOW = Color.FromSRGBA(0, 0, 0, 100);
-
-	const ref Color COLOR_ENABLED = Color.FromSRGBA(255, 255, 255, 255);				//WHITE
-	const ref Color COLOR_ENABLED_GLOW = Color.FromSRGBA(162, 162, 162, 255);
-
-	const ref Color COLOR_WARNING = Color.FromSRGBA(226, 167, 80, 255);			//ORANGE (standard UI orange)
-	const ref Color COLOR_WARNING_GLOW = Color.FromSRGBA(162, 97, 0, 255);		//DARK ORANGE
-
-	const ref Color COLOR_ERROR = Color.FromSRGBA(226, 80, 80, 255);			//RED
-	const ref Color COLOR_ERROR_GLOW = Color.FromSRGBA(162, 0, 0, 255);		//DARK RED
-
-	//------------------------------------------------------------------------------------------------
-	//! Turn the icon to active state, set the opacity
-	void SetState(EVehicleInfoState state)
-	{
-		#ifdef DEBUG_VEHICLE_UI
-		PrintFormat("%1 SetState: %2", this, state);
-		#endif
-
-		if (!m_wIcon)
-			return;
-
-		if (!m_wGlow)
-			return;
-
-		m_eState = state;
-
-		if (state == EVehicleInfoState.DISABLED)
-		{
-			m_wIcon.SetColor(COLOR_DISABLED);
-			m_wGlow.SetColor(COLOR_DISABLED_GLOW);
-		}
-		else if (state == EVehicleInfoState.ENABLED)
-		{
-			m_wIcon.SetColor(COLOR_ENABLED);
-			m_wGlow.SetColor(COLOR_ENABLED_GLOW);
-		}
-		else if (state == EVehicleInfoState.WARNING)
-		{
-			m_wIcon.SetColor(COLOR_WARNING);
-			m_wGlow.SetColor(COLOR_WARNING_GLOW);
-		}
-		else if (state == EVehicleInfoState.ERROR)
-		{
-			m_wIcon.SetColor(COLOR_ERROR);
-			m_wGlow.SetColor(COLOR_ERROR_GLOW);
-		}
-
-		if (!m_bShowGhost)
-		{
-			m_bShowLocal = state != EVehicleInfoState.DISABLED;
-			SetVisible(state != EVehicleInfoState.DISABLED);
-		}
-	}
-
+    protected Color m_aColors[5];
+	protected Color m_aColorsGlow[5];
+  
 	//------------------------------------------------------------------------------------------------
 	//! Can be overridden to get state of actual system or linked to an event
 	protected EVehicleInfoState GetState()
@@ -103,7 +67,7 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private void Scale(ImageWidget widget, float scale)
+	protected void Scale(ImageWidget widget, float scale)
 	{
 		if (!widget)
 			return;
@@ -117,7 +81,7 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private void Scale(TextWidget widget, float scale)
+	protected void Scale(TextWidget widget, float scale)
 	{
 		if (!widget)
 			return;
@@ -128,12 +92,62 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void SetIcon(string icon)
+	{
+		if (!m_wIcon || !m_wGlow)
+			return;
+
+		m_wIcon.LoadImageFromSet(0, m_Imageset, icon);
+		m_wGlow.LoadImageFromSet(0, m_ImagesetGlow, icon);
+
+		Scale(m_wIcon, m_fWidgetScale);
+		Scale(m_wGlow, m_fWidgetScale);
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetColor(EVehicleInfoState state, EVehicleInfoColor color)
+	{
+		if (!m_wIcon || !m_wGlow)
+			return;
+
+		switch(state)
+		{
+			case EVehicleInfoState.DISABLED:
+				m_wIcon.SetColor(GUIColors.DISABLED);
+				m_wGlow.SetColor(GUIColors.DISABLED_GLOW);
+				break;
+			
+			case EVehicleInfoState.ENABLED:
+				m_wIcon.SetColor(m_aColors[color]);
+				m_wGlow.SetColor(m_aColorsGlow[color]);
+				break;
+			
+			case EVehicleInfoState.WARNING:
+				m_wIcon.SetColor(GUIColors.ORANGE);
+				m_wGlow.SetColor(GUIColors.ORANGE_DARK);
+				break;			
+			
+			case EVehicleInfoState.ERROR:
+				m_wIcon.SetColor(GUIColors.RED);
+				m_wGlow.SetColor(GUIColors.RED_DARK);
+				break;
+		}		
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	protected bool UpdateRequired(EVehicleInfoState state)
+	{
+		return m_eState != state;
+	}		
+			
+	//------------------------------------------------------------------------------------------------
 	override event void DisplayUpdate(IEntity owner, float timeSlice)
 	{
 		if (!m_wRoot)
 			return;
 
 		EVehicleInfoState state = GetState();
+		
 		int time = GetGame().GetWorld().GetWorldTime();
 		if (IsBlinking())
 		{
@@ -145,8 +159,22 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 			m_iBlinkingOffset = Math.Mod(time, 1000);
 		}
 
-		if (m_eState != state)
-			SetState(state);
+		if (UpdateRequired(state))
+		{
+			#ifdef DEBUG_VEHICLE_UI
+			PrintFormat("%1 SetState: %2", this, state);
+			#endif
+
+			m_eState = state;
+			
+			SetIcon(m_sIcon);
+			SetColor(state, m_eColor);
+		
+			bool show = m_bShowGhost || state != EVehicleInfoState.DISABLED;
+			
+			if (m_bShown != show)
+				Show(show);		
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -173,16 +201,9 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 		m_wIcon = ImageWidget.Cast(m_wRoot.FindAnyWidget("Icon"));
 		m_wGlow = ImageWidget.Cast(m_wRoot.FindAnyWidget("Glow"));
 
-		if (!m_wIcon || !m_wGlow)
-			return;
-
-		m_wIcon.LoadImageFromSet(0, m_Imageset, m_sIcon);
-		m_wGlow.LoadImageFromSet(0, m_ImagesetGlow, m_sIcon);
-
-		Scale(m_wIcon, m_fWidgetScale);
-		Scale(m_wGlow, m_fWidgetScale);
-
-		SetState(GetState());
+		m_eState = EVehicleInfoState.NOT_INITIALIZED;
+		
+		DisplayUpdate(owner, 0);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -197,5 +218,17 @@ class SCR_BaseVehicleInfo : SCR_InfoDisplayExtended
 	{
 		if (m_wRoot)
 			m_wRoot.RemoveFromHierarchy();
+		
+		m_aColors[EVehicleInfoColor.WHITE] = GUIColors.ENABLED;
+		m_aColors[EVehicleInfoColor.BLUE] = GUIColors.BLUE_BRIGHT2;
+		m_aColors[EVehicleInfoColor.GREEN] = GUIColors.GREEN_BRIGHT2;
+		m_aColors[EVehicleInfoColor.ORANGE] = GUIColors.ORANGE_BRIGHT2;
+		m_aColors[EVehicleInfoColor.RED] = GUIColors.RED_BRIGHT2;
+		
+		m_aColorsGlow[EVehicleInfoColor.WHITE] = GUIColors.ENABLED_GLOW;
+		m_aColorsGlow[EVehicleInfoColor.BLUE] = GUIColors.BLUE;
+		m_aColorsGlow[EVehicleInfoColor.GREEN] = GUIColors.GREEN;
+		m_aColorsGlow[EVehicleInfoColor.ORANGE] = GUIColors.ORANGE;
+		m_aColorsGlow[EVehicleInfoColor.RED] = GUIColors.RED;		
 	}
 };

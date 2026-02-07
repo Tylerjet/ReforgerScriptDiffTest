@@ -17,17 +17,18 @@ class SCR_SupplyBasesContextAction : SCR_SelectedEntitiesContextAction
 		if (hoveredEntity)
 		{
 			owner = hoveredEntity.GetOwner();
-			if (!owner.IsInherited(SCR_CampaignBase))
+			SCR_CampaignMilitaryBaseComponent militaryBase = SCR_CampaignMilitaryBaseComponent.Cast(owner.FindComponent(SCR_CampaignMilitaryBaseComponent));
+			if (!militaryBase)
 				return false;
 			
-			if (SCR_CampaignBase.Cast(owner).GetType() == CampaignBaseType.RELAY)
+			if (militaryBase.GetType() == SCR_ECampaignBaseType.RELAY)
 				return false;
 		}
 		
 		for (int i = 0; i < selectedEntitiesCount; i++)
 		{
 			owner = selectedEntities[i].GetOwner();
-			if (!owner.IsInherited(SCR_CampaignBase))
+			if (!owner.IsInherited(SCR_CampaignMilitaryBaseComponent))
 				return false;
 		}
 		
@@ -59,7 +60,7 @@ class SCR_SupplyBasesContextAction : SCR_SelectedEntitiesContextAction
 	
 	void PerformOn(SCR_EditableEntityComponent entity)
 	{
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(entity.GetOwner());
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(entity.GetOwner().FindComponent(SCR_CampaignMilitaryBaseComponent));
 		
 		if (!base)
 			return;

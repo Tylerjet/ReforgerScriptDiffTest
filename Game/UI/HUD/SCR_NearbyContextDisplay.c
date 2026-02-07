@@ -60,7 +60,28 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 		m_pColorVisible = null;
 		m_pColorNotVisible = null;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	override void DisplayStartDraw(IEntity owner)
+	{
+		if (m_aWidgets.IsEmpty())
+		{
+			Print("Pre-cached SCR_NearbyContextDisplay widgets cannot be detected; re-rooting to m_wRoot cannot happen!", LogLevel.ERROR);
+			return;
+		}
+
+		if (!m_wRoot)
+		{
+			Print("The SCR_NearbyContextDisplay root is NULL, the pre-cached SCR_NearbyContextDisplay widgets cannot be re-rooted!", LogLevel.ERROR);
+			return;
+		}
+		
+			
+		// Re-root the blips to the info display root
+		foreach (Widget w : m_aWidgets)
+			m_wRoot.AddChild(w);
+	}	
+		
 	//------------------------------------------------------------------------------------------------
 	override void DisplayInit(IEntity owner)
 	{
@@ -76,7 +97,7 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 		for (int i = 0; i < m_iPrecachedWidgetCount; i++)
 		{
 			// Instantiate widgets
-			Widget iconWidget = GetGame().GetWorkspace().CreateWidgets(m_wIconLayoutPath, m_wRoot);
+			Widget iconWidget = GetGame().GetWorkspace().CreateWidgets(m_wIconLayoutPath);
 			if (!iconWidget)
 			{
 				if (m_wIconLayoutPath.IsEmpty())
@@ -101,11 +122,6 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 			m_fOriginalSizeX = size[0];
 			m_fOriginalSizeY = size[1];
 		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void DisplayStartDraw(IEntity owner)
-	{
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -217,6 +233,9 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 	//! \param count The amount of widgets to leave active.
 	protected void SetVisibleWidgets(int count)
 	{
+		if (m_aWidgets.IsEmpty() || !m_wRoot)
+			return;
+		
 		// Enable additional widgets
 		if (count > m_iVisibleWidgets)
 		{

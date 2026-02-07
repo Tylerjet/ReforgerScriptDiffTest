@@ -137,14 +137,15 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 		if (!editableEnt || !CanSendNotification(editableEnt))
 			return;
 
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(m_ProviderEntity.FindComponent(SCR_CampaignMilitaryBaseComponent));
+
 		if (!IsPlayerAndCompositionFactionSame(editableEnt))
 			return;
 
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(m_ProviderEntity);
 		if (!base)
 			return;
 
-		SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_SERVICE_BUILD, GetBuilderId(), Replication.FindId(editableEnt), base.GetBaseID());
+		SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_SERVICE_BUILD, GetBuilderId(), Replication.FindId(editableEnt), base.GetCallsign());
 		if (m_OnBuilderSet)
 			m_OnBuilderSet.Remove(SendBuildNotification);
 	}
@@ -155,7 +156,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 		if (!editableEnt || !CanSendNotification(editableEnt))
 			return;
 		
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(m_ProviderEntity);
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(m_ProviderEntity.FindComponent(SCR_CampaignMilitaryBaseComponent));
 		if (!base)
 			return;
 
@@ -175,7 +176,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 		if (!core)
 			return;
 
-		SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_SERVICE_DISASSEMBLED, initiator, Replication.FindId(editableEnt), base.GetBaseID());
+		SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_SERVICE_DISASSEMBLED, initiator, Replication.FindId(editableEnt), base.GetCallsign());
 		core.Event_OnEntityUnregistered.Remove(SendDissasamblyNotification);
 	}
 

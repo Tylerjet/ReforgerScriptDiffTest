@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Editor", description: "Main campaign editor component to handle building mode placing", icon: "WBData/ComponentEditorProps/componentEditor.png")]
+[ComponentEditorProps(category: "GameScripted/Editor", description: "Main conflict editor component to handle building mode placing", icon: "WBData/ComponentEditorProps/componentEditor.png")]
 class SCR_CampaignBuildingPlacingEditorComponentClass : SCR_PlacingEditorComponentClass
 {
 	[Attribute(params: "et", desc: "List of prefabs that are ignored for clipping check.")]
@@ -16,7 +16,7 @@ class SCR_CampaignBuildingPlacingEditorComponentClass : SCR_PlacingEditorCompone
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 {
-	[Attribute("{C7EE4C198B641E21}Sounds/UI/UI_Actions.acp", UIWidgets.ResourceNamePicker, "Sound project file to be used for building", "acp")]
+	[Attribute("{C7EE4C198B641E21}Sounds/Editor/BaseBuilding/Editor_BaseBuilding.acp", UIWidgets.ResourceNamePicker, "Sound project file to be used for building", "acp")]
 	protected ResourceName m_sSoundFile;
 
 	protected bool m_bCanBeCreated = true;
@@ -31,30 +31,12 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	//Adding this value to a sea level as the composition preview, even above sea doesn't have it's Y value exactly a zero.
 	protected static const float SEA_LEVEL_OFFSET = 0.01;
 	protected static const float BOUNDING_BOX_FACTOR = 0.3;
-
-	//------------------------------------------------------------------------------------------------
-	//! Let the Conflict know player builds (or dissassambled) a service at the base.
-	protected void NotifyCampaign(int prefabID, SCR_EditableEntityComponent entity, bool add)
-	{
-		if (!m_Provider)
-			return;
-
-		SCR_CampaignBase base;
-		if (!GetProviderBase(base))
-			return;
-
-		SCR_GameModeCampaignMP campaignMode = SCR_GameModeCampaignMP.GetInstance();
-		if (!campaignMode)
-			return;
-
-		campaignMode.OnStructureBuilt(base, entity, add);
-	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Return the base which belongs to a provider (if any)
-	protected bool GetProviderBase(out SCR_CampaignBase base)
+	protected bool GetProviderBase(out SCR_CampaignMilitaryBaseComponent base)
 	{
-		base = SCR_CampaignBase.Cast(m_Provider);
+		base = SCR_CampaignMilitaryBaseComponent.Cast(m_Provider.FindComponent(SCR_CampaignMilitaryBaseComponent));
 		if (!base)
 			return false;
 
@@ -142,7 +124,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 		compositionComponent.SetProviderEntity(provider);
 
 		// Don't set up this hook if the provider is a base. We don't want to change the ownership here
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(provider);
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(provider.FindComponent(SCR_CampaignMilitaryBaseComponent));
 		if (base)
 			return;
 
@@ -153,8 +135,6 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlaceEntityServer(int prefabID, SCR_EditableEntityComponent entity)
 	{
-		NotifyCampaign(prefabID, entity, true);
-
 		vector position = entity.GetOwner().GetOrigin();
 		Rpc(PlaySoundEvent, position, m_sSoundFile);
 		PlaySoundEvent(position, m_sSoundFile);
@@ -185,7 +165,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	//------------------------------------------------------------------------------------------------
 	bool IsServiceCapReached(IEntityComponentSource editableEntitySource)
 	{
-		SCR_CampaignBase base;
+		SCR_CampaignMilitaryBaseComponent base;
 		if (!GetProviderBase(base))
 			return false;
 
@@ -194,9 +174,9 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 			return false;
 
 		array<EEditableEntityLabel> entityLabels = {};
-		array<SCR_CampaignServiceComponent> baseServices = {};
+		array<SCR_ServicePointComponent> baseServices = {};
 		editableUIInfo.GetEntityLabels(entityLabels);
-		int count = base.GetAllBaseServices(baseServices);
+		int count = base.GetServices(baseServices);
 
 		for (int i = 0; i < count; i++)
 		{

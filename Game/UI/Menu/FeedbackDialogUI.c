@@ -276,13 +276,16 @@ class FeedbackDialogUI: DialogUI
 		"#AR-MainMenu_Conflict_Name"
 	};
 	
-	SCR_EditBoxComponent m_EditBox;	
-	SCR_ComboBoxComponent m_Type;
-	SCR_ComboBoxComponent m_Category;
+	protected SCR_EditBoxComponent m_EditBox;	
+	protected SCR_ComboBoxComponent m_Type;
+	protected SCR_ComboBoxComponent m_Category;
 	
 	protected static ref FeedbackData m_LastFeedback;
 	protected static float m_fLastFeedbackTime = -float.MAX;
 	protected static const float FEEDBACK_SEND_TIMEOUT = 5000; // ms
+	
+	SCR_NavigationButtonComponent m_CreateAccount;	
+	protected bool m_bShouldEnableConfirmButton;
 	
 	//------------------------------------------------------------------------------------------------
 	override protected void OnConfirm()
@@ -306,12 +309,6 @@ class FeedbackDialogUI: DialogUI
 			GetGame().GetWorkspace().SetFocusedWidget(m_Type.GetRootWidget());
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	override void OnMenuUpdate(float tDelta)
-	{
-		if (m_Confirm)
-			m_Confirm.SetEnabled(m_EditBox.GetValue() != string.Empty && FeedbackDialogUI.CanSendFeedback());
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	static bool CanSendFeedback()
@@ -343,6 +340,12 @@ class FeedbackDialogUI: DialogUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	private void OnCreateAccount()
+	{
+		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_PrivacyPolicy"));
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
 		super.OnMenuOpen();
@@ -369,5 +372,32 @@ class FeedbackDialogUI: DialogUI
 			}
 			m_Category.SetCurrentItem(0);
 		}
+		
+		m_CreateAccount = SCR_NavigationButtonComponent.GetNavigationButtonComponent("CreateAccount", w);
+		if (m_CreateAccount)
+			m_CreateAccount.m_OnActivated.Insert(OnCreateAccount);
+		
+		if(m_EditBox)
+		{
+			m_EditBox.m_OnWriteModeLeave.Insert(OnWriteModeLeave);
+			m_EditBox.m_OnTextChange.Insert(OnTextChange);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnWriteModeLeave()
+	{
+		OnTextChange();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnTextChange()
+	{
+		if (!m_Confirm)
+			return;
+		
+		m_bShouldEnableConfirmButton = m_EditBox.GetValue() != string.Empty && FeedbackDialogUI.CanSendFeedback();
+
+		m_Confirm.SetEnabled(m_bShouldEnableConfirmButton);
 	}
 };

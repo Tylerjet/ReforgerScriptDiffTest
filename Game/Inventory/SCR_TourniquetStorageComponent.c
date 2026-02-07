@@ -6,10 +6,35 @@ class SCR_TourniquetMovedCallback : ScriptedInventoryOperationCallback
 {
 	SCR_CharacterInventoryStorageComponent m_CharInventoryStorageComp;
 	IEntity m_Tourniquet;
-	
+	int m_iSlotId;
+	BaseInventoryStorageComponent m_Storage;
+	bool m_bRemove;
+	ref ScriptInvoker<int> m_OnTourniquetMoved;
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnComplete()
 	{
-		m_CharInventoryStorageComp.RemoveItemFromQuickSlot(m_Tourniquet);
+		if (m_bRemove)
+			m_CharInventoryStorageComp.RemoveItemFromQuickSlot(m_Tourniquet);
+
+		SCR_InventoryMenuUI menu = SCR_InventoryMenuUI.Cast(GetGame().GetMenuManager().FindMenuByPreset(ChimeraMenuPreset.Inventory20Menu));
+		if (menu)
+		{
+			InventoryItemComponent itemComp = InventoryItemComponent.Cast(m_Tourniquet.FindComponent(InventoryItemComponent));
+			if (itemComp && itemComp.GetParentSlot())
+			{
+				BaseInventoryStorageComponent tqStorage = itemComp.GetParentSlot().GetStorage();
+				SCR_InventoryStorageBaseUI storageUI = menu.GetStorageUIByBaseStorageComponent(m_Storage);
+				if (storageUI)
+					storageUI.Refresh();
+			}
+
+			SCR_InventoryStorageBaseUI storageUI = menu.GetStorageUIByBaseStorageComponent(m_Storage);
+			if (storageUI)
+				storageUI.Refresh();
+
+			m_OnTourniquetMoved.Invoke(m_iSlotId);
+		}
 	}
 };
 
@@ -41,9 +66,13 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 			if (tqTargetSlot.GetAssociatedHZGroup() != eHitZoneGroup)
 				continue;
 			
+			//Return if slot already contains this particular tourniquet. Likely function got called twice harmlessly
+			if (tqTargetSlot.GetItem(i) == tourniquet)
+				return;		
+
 			if (tqTargetSlot.GetItem(i))
 			{
-				Debug.Error("TourniquetSlot already contained some item");
+				Print("TourniquetSlot already contained another item", LogLevel.WARNING);
 				return;
 			}
 
@@ -56,6 +85,11 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 
 		m_TourniquetMovedCallback.m_Tourniquet = tourniquet;
 		m_TourniquetMovedCallback.m_CharInventoryStorageComp = charInventoryStorageComp;
+		m_TourniquetMovedCallback.m_iSlotId = eHitZoneGroup;
+
+		InventoryItemComponent itemComp = InventoryItemComponent.Cast(tourniquet.FindComponent(InventoryItemComponent));
+		m_TourniquetMovedCallback.m_Storage = itemComp.GetParentSlot().GetStorage();
+		m_TourniquetMovedCallback.m_bRemove = true;
 		
 		storageMan.TryMoveItemToStorage(tourniquet, tourniquetStorageComp, tqTargetSlot.GetID(), m_TourniquetMovedCallback);
 	}
@@ -94,7 +128,11 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 			break;
 		}
 
-		return storageMan.TryMoveItemToStorage(targetTourniquet, storageMan.FindStorageForItem(targetTourniquet, EStoragePurpose.PURPOSE_DEPOSIT));		
+		BaseInventoryStorageComponent targetStorage = storageMan.FindStorageForItem(targetTourniquet, EStoragePurpose.PURPOSE_DEPOSIT);
+		m_TourniquetMovedCallback.m_Storage = targetStorage;
+		m_TourniquetMovedCallback.m_bRemove = false;
+
+		return storageMan.TryMoveItemToStorage(targetTourniquet, targetStorage, -1, m_TourniquetMovedCallback);		
 	}
 	
 	override void OnAddedToSlot(IEntity item, int slotID)
@@ -129,5 +167,12 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 			return;
 
 		damageMgr.SetTourniquettedGroup(tqSlot.GetAssociatedHZGroup(), false);
+	}
+	
+	ScriptInvoker GetOnTourniquetMoved()
+	{
+		if (!m_TourniquetMovedCallback.m_OnTourniquetMoved)
+			m_TourniquetMovedCallback.m_OnTourniquetMoved = new ScriptInvoker();
+		return m_TourniquetMovedCallback.m_OnTourniquetMoved;
 	}
 };

@@ -47,6 +47,10 @@ class SCR_AIProcessOrder: AITaskScripted
 			dbgString = m_Order.GetOrderTypeString();
 		SCR_AIDebugVisualization.VisualizeMessage(owner.GetControlledEntity(), dbgString, EAIDebugCategory.ORDER, 3);
 		#endif
+		
+		#ifdef AI_DEBUG
+		AddDebugMessage(owner, string.Format("Process order: %1, from BT: %2", order, order.m_sSentFromBt));
+		#endif
 			
 		return ENodeResult.SUCCESS;		
 	}
@@ -80,4 +84,11 @@ class SCR_AIProcessOrder: AITaskScripted
 		return "Process order: reads order and gets type and data of order from it";
 	};
 	
+	#ifdef AI_DEBUG
+	protected void AddDebugMessage(AIAgent agent, string str)
+	{
+		SCR_AIInfoBaseComponent infoComp = SCR_AIInfoBaseComponent.Cast(agent.FindComponent(SCR_AIInfoBaseComponent));
+		infoComp.AddDebugMessage(str, msgType: EAIDebugMsgType.MAILBOX);
+	}
+	#endif
 };

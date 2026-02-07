@@ -74,6 +74,8 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 
 		if (m_Task == localTask)
 			background.SetColor(faction.GetFactionColor());
+		else if (m_Task.IsPriority())
+			background.SetColor(Color.DarkMagenta);
 		else
 			background.SetColor(Color.White);
 

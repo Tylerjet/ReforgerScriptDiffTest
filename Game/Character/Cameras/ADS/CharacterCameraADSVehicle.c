@@ -18,14 +18,14 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 			if (compartment)
 			{
 				m_OwnerVehicle = compartment.GetVehicle();
-				
+
 				SCR_VehicleCameraDataComponent vehicleCamData = SCR_VehicleCameraDataComponent.Cast(m_OwnerVehicle.FindComponent(SCR_VehicleCameraDataComponent));
 				if (vehicleCamData)
 				{
 					m_fRollFactor = vehicleCamData.m_fRollFactor;
 					m_fPitchFactor = vehicleCamData.m_fPitchFactor;
 				}
-				
+
 				BaseControllerComponent controller = compartment.GetController();
 				if (controller)
 				{
@@ -37,21 +37,19 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 		}
 	}
 
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override void OnBlendIn()
 	{
-		m_bIsFullyBlend = true;
 		OnBlendingIn(1.0);
 	}
-	
-	//-----------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	override void OnBlendOut()
 	{
 		OnBlendingOut(1.0);
-		m_bIsFullyBlend = false;
 	}
-		
-	//-----------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnBlendingIn(float blendAlpha)
 	{
 		if (m_TurretController && blendAlpha >= GetSightsADSActivationPercentage())
@@ -60,8 +58,8 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 				m_TurretController.SetCurrentSightsADS(true);
 		}
 	}
-	
-	//-----------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	override protected void OnBlendingOut(float blendAlpha)
 	{
 		if (m_TurretController && blendAlpha >= GetSightsADSDeactivationPercentage())
@@ -69,9 +67,9 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 			if (m_TurretController.GetCurrentSightsADS()) // Only disable if enabled
 				m_TurretController.SetCurrentSightsADS(false);
 		}
-	}	
-	
-	//-----------------------------------------------------------------------------
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
 		if (m_CameraHandler && m_CameraHandler.IsCameraBlending())
@@ -81,25 +79,19 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 			else
 				OnBlendingOut(m_CameraHandler.GetBlendAlpha(m_CameraHandler.GetCurrentCamera()));
 		}
-		
-		// Update 2d sight 
-		BaseSightsComponent sights = m_TurretController.GetCurrentSights();
-		SCR_2DOpticsComponent sights2d = SCR_2DOpticsComponent.Cast(sights);
-		if (sights2d)
-			sights2d.Tick(pDt);
 
 		TurretComponent turret = m_TurretController.GetTurretComponent();
 		vector aimingTranslationWeaponLS = turret.GetRawAimingTranslation();
-		
+
 		//! sights transformation and FOV get
 		vector sightWSMat[4];
 		m_TurretController.GetCurrentSightsCameraTransform(sightWSMat, pOutResult.m_fFOV);
-		
+
 		PointInfo cameraSlot = turret.GetCameraAttachmentSlot();
 		if (cameraSlot)
 		{
 			m_bUseCameraSlot = true;
-			
+
 			pOutResult.m_CameraTM[3] 			= aimingTranslationWeaponLS;
 			pOutResult.m_iDirectBone 			= -1;
 			pOutResult.m_iDirectBoneMode 		= EDirectBoneMode.None;
@@ -109,23 +101,23 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 			pOutResult.m_fNearPlane				= 0.025;
 			pOutResult.m_bAllowInterpolation	= true;
 			pOutResult.m_pWSAttachmentReference = cameraSlot;
-			
+
 			// Apply shake
 			if (m_CharacterCameraHandler)
 				m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
 			return;
 		}
-		
+
 		// character matrix
 		vector charMat[4];
 		m_OwnerCharacter.GetTransform(charMat);
-		
+
 		//Add translation
 		vector aimingTranslationWeapon = aimingTranslationWeaponLS.Multiply3(sightWSMat);
 		sightWSMat[3] = sightWSMat[3] - aimingTranslationWeapon;
 
 		Math3D.MatrixInvMultiply4(charMat, sightWSMat, pOutResult.m_CameraTM);
-		
+
 		pOutResult.m_iDirectBone 			= -1;
 		pOutResult.m_iDirectBoneMode 		= EDirectBoneMode.None;
 		pOutResult.m_bUpdateWhenBlendOut	= false;
@@ -135,16 +127,23 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 		pOutResult.m_bAllowInterpolation	= true;
 		pOutResult.m_pOwner 				= m_OwnerCharacter;
 		pOutResult.m_pWSAttachmentReference = null;
-		
+
 		// Apply shake
 		if (m_CharacterCameraHandler)
 			m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
 	}
-	
-	//-----------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	override void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4])
 	{
+		IEntity owner = m_OwnerVehicle;
+		if (m_TurretController)
+			owner = m_TurretController.GetOwner();
+
 		if (m_bUseCameraSlot)
-			AddVehiclePitchRoll(m_OwnerVehicle, pDt, transformMS);
+		{
+			m_fPitchFactor = 0;
+			AddVehiclePitchRoll(owner, pDt, transformMS);
+		}
 	}
 };

@@ -1,15 +1,31 @@
 //------------------------------------------------------------------------------------------------
 //! Type of consumable gadget
-enum EConsumableType
+enum SCR_EConsumableType
 {
-	None,
-	Bandage,
-	Health,
-	Tourniquet,
-	Saline,
-	Morphine
+	NONE,
+	BANDAGE,
+	HEALTH,
+	TOURNIQUET,
+	SALINE,
+	MORPHINE,
+	MED_KIT
 };
 
+//------------------------------------------------------------------------------------------------
+//! Reason why consumable can't be applied
+enum SCR_EConsumableFailReason
+{
+	NONE = 0,
+	UNKOWN = 1,
+	IS_BLEEDING = 10,
+	NOT_BLEEDING = 11,
+	ALREADY_APPLIED = 12,
+	DAMAGED = 13,
+	UNDAMAGED = 14
+};
+
+//------------------------------------------------------------------------------------------------
+//! Type of consumable gadget
 class SCR_ConsumableEffectAnimationParameters : Managed
 {
 	void SCR_ConsumableEffectAnimationParameters(
@@ -58,7 +74,7 @@ class SCR_ConsumableEffectBase : Managed
 	[Attribute("1", UIWidgets.EditBox, "Duration of the animation for using consumable on other", category: "General")]
 	protected float m_fApplyToOtherDuration;
 
-	EConsumableType m_eConsumableType;
+	SCR_EConsumableType m_eConsumableType;
 	
 	bool ActivateEffect(IEntity target, IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams = null)
 	{
@@ -90,9 +106,10 @@ class SCR_ConsumableEffectBase : Managed
 	{}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Condition whther this effect can be applied
+	//! Condition whether this effect can be applied
 	//! /param target is the character who is having the effect applied
-	bool CanApplyEffect(notnull IEntity target, notnull IEntity user)
+	//! /param failReason is reason why CanApplyEffect returned false
+	bool CanApplyEffect(notnull IEntity target, notnull IEntity user, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
 	{}
 	
 	//------------------------------------------------------------------------------------------------

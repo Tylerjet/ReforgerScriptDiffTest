@@ -8,13 +8,13 @@ class SCR_CanCharacterLeaveLadderCondition : SCR_AvailableActionCondition
 	[Attribute("0")]
 	protected bool m_bIsAvailableInVehicle;
 	*/
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool IsAvailable(SCR_AvailableActionsConditionData data)
 	{
 		if (!data)
 			return false;
-		
+
 		CharacterAnimationComponent animComp = data.GetAnimationComponent();
 		if (!animComp)
 			return false;
@@ -24,12 +24,12 @@ class SCR_CanCharacterLeaveLadderCondition : SCR_AvailableActionCondition
 			return false;
 		int lrExitState = ladderCMD.CanExitLR();
 		// TODO: once we can differentiate between left and right filter, we should diffrentiate the result ( now it shows A/D to Leave ladder )
-		if ( lrExitState & 0x1 || lrExitState & 0x2 )
+		if (lrExitState & 0x1 || lrExitState & 0x2)
 		{
 			//Print("Can exit right");
-			return GetReturnResult( true );
+			return GetReturnResult(true);
 		}
-						
-		return GetReturnResult( false );
+
+		return GetReturnResult(false);
 	}
 };

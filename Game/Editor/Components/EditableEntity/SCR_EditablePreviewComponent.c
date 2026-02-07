@@ -45,10 +45,21 @@ class SCR_EditablePreviewComponent : SCR_EditableEntityComponent
 		
 		string iconBoneName;
 		from.Get("m_sIconBoneName", iconBoneName);
-		m_iIconBoneIndex = m_Owner.GetBoneIndex(iconBoneName);
+		if (m_Owner.GetAnimation())
+			m_iIconBoneIndex = m_Owner.GetAnimation().GetBoneIndex(iconBoneName);
+		else
+			m_iIconBoneIndex = -1;
+		
 		RestoreParentEntity();
 	}
 	
+	override bool GetPos(out vector pos)
+	{
+		if (m_Owner.GetFlags() & EntityFlags.VISIBLE)
+			return super.GetPos(pos);
+		else
+			return false;
+	}
 	override void UpdateGameHierarchy(IEntity parent, IEntity child, bool toAdd)
 	{
 		//--- Game hierarchy is managed by SCR_BasePreviewEntity

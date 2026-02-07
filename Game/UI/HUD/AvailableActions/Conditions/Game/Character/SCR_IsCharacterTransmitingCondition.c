@@ -8,7 +8,7 @@ class SCR_IsCharacterUsingRadioCondition : SCR_AvailableActionCondition
 	{
 		if (!data)
 			return false;
-		
+
 		return GetReturnResult(data.GetIsCharacterUsingRadio());
 	}
 };

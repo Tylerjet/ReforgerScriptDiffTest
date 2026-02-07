@@ -229,7 +229,7 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 	void SCR_InventoryStoragesListUI(BaseInventoryStorageComponent storage, LoadoutAreaType slotID = null, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
 	{
 		m_MenuHandler = menuManager;
-		m_iMaxRows 		= 9;
+		m_iMaxRows 		= 10;
 		m_iMaxColumns 	= 1;
 		m_iMatrix = new SCR_Matrix( m_iMaxColumns, m_iMaxRows );
 		m_sGridPath = "CharacterGrid";

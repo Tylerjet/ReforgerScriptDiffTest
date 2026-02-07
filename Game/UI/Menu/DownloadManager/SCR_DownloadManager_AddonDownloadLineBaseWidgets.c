@@ -41,6 +41,8 @@ class SCR_DownloadManager_AddonDownloadLineBaseWidgets
 	TextWidget m_VersionArrow;
 
 	TextWidget m_VersionFromText;
+	
+	ImageWidget m_AddonSizeIcon;
 
 	bool Init(Widget root)
 	{
@@ -80,6 +82,8 @@ class SCR_DownloadManager_AddonDownloadLineBaseWidgets
 
 		m_VersionFromText = TextWidget.Cast(root.FindWidget("Height.Overlay.LineElements.HorizontalLayout.m_RightWidgetGroup.m_VersionsOverlay.VersionsOverlay.m_VersionFromText"));
 
+		m_AddonSizeIcon = ImageWidget.Cast(root.FindWidget("Height.Overlay.LineElements.HorizontalLayout.m_RightWidgetGroup.m_AddonSizeOverlay.AddonSizeOverlay.Scale1.AddonSizeIcon"));
+		
 		return true;
 	}
 };

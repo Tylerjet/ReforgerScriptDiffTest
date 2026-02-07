@@ -8,29 +8,29 @@ class SCR_InVehicleTurretADSCondition : SCR_AvailableActionCondition
 	{
 		if (!data)
 			return false;
-		
-		// Current weapon 
+
+		// Current weapon
 		BaseControllerComponent controller = data.GetCurrentVehicleController();
 		if (!controller)
 			return GetReturnResult(false);
-		
+
 		// Turret
 		IEntity turretEntity = controller.GetOwner();
 		if (!turretEntity)
 			return GetReturnResult(false);
-		
+
 		TurretComponent turret = TurretComponent.Cast(turretEntity.FindComponent(TurretComponent));
 		if (!turret)
 			return GetReturnResult(false);
-		
-		// Sights 
+
+		// Sights
 		ScriptedSightsComponent sights = ScriptedSightsComponent.Cast(turret.FindComponent(ScriptedSightsComponent));
 		if (!sights)
 			return GetReturnResult(false);
-	
-		// In sights ADS? 
+
+		// In sights ADS?
 		bool result = sights.IsSightADSActive();
-		
+
 		return GetReturnResult(result);
 	}
 };

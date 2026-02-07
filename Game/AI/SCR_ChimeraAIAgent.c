@@ -6,23 +6,29 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 {
 	// Current waypoint of our group
 	AIWaypoint m_GroupWaypoint;
+	SCR_AIInfoComponent m_InfoComponent;
 	
 	protected EventHandlerManagerComponent	m_EventHandlerManagerComponent;
 	protected FactionAffiliationComponent m_FactionAffiliationComponent;
 	
+	protected int m_iPendingPlayerId;
+	
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner) 
 	{
-		if (!GetControlledEntity())
+		IEntity controlledEntity = GetControlledEntity();
+		
+		if (!controlledEntity)
 			return;
 		
-		IEntity controlledEntity = GetControlledEntity();
+		GetGame().GetCallqueue().CallLater(EnsureAILimit, 1, false);
 		
 		m_EventHandlerManagerComponent = EventHandlerManagerComponent.Cast(controlledEntity.FindComponent(EventHandlerManagerComponent));
 		if (m_EventHandlerManagerComponent)
 			m_EventHandlerManagerComponent.RegisterScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
 		
 		m_FactionAffiliationComponent = FactionAffiliationComponent.Cast(controlledEntity.FindComponent(FactionAffiliationComponent));
+		m_InfoComponent = SCR_AIInfoComponent.Cast(FindComponent(SCR_AIInfoComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -30,6 +36,23 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 	{
 		if (m_EventHandlerManagerComponent)
 			m_EventHandlerManagerComponent.RemoveScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void EnsureAILimit()
+	{
+		auto aiWorld = GetGame().GetAIWorld();
+		if (!aiWorld)
+			return;
+		
+		if (aiWorld.CanAICharacterBeAdded())
+			return;
+		
+		IEntity controlledEntity = GetControlledEntity();
+		if (!EntityUtils.IsPlayer(controlledEntity) && !IsPlayerPending_S()) // Ensure that pending players can spawn
+		{
+			SCR_EntityHelper.DeleteEntityAndChildren(controlledEntity);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------	
@@ -42,17 +65,30 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 		if (!damageMgr.IsDamagedOverTime(EDamageType.BLEEDING))
 			return;
 		
-		AIGroup myGroup = GetParentGroup();
-		if (!myGroup)
+		SCR_AIGroup msgReceiverGroup = null;
+		
+		SCR_AIGroup myGroup = SCR_AIGroup.Cast(GetParentGroup());
+		if (myGroup)
+		{
+			SCR_AIGroup slaveGroup = myGroup.GetSlave();
+			if (slaveGroup)
+				msgReceiverGroup = slaveGroup;	// Send to our slave group - this is the one which has AIs and will heal us
+			else
+				msgReceiverGroup = myGroup;	// Send to our group
+		}
+		
+		if (!msgReceiverGroup)
 			return;
 		
-		AICommunicationComponent comms = GetCommunicationComponent();
+		// Inject message to the group mailbox directly.
+		// This bypasses problems of our own mailbox being disabled (because character is possessed by GM, or because we are unconscious)
+		AICommunicationComponent comms = msgReceiverGroup.GetCommunicationComponent();
 		if (!comms)
 			return;
 		
 		SCR_AIMessage_Wounded msg = SCR_AIMessage_Wounded.Create(GetControlledEntity());
-		msg.SetReceiver(myGroup);
-		comms.RequestBroadcast(msg, myGroup);
+		msg.SetReceiver(msgReceiverGroup);
+		comms.RequestBroadcast(msg, msgReceiverGroup);
 	} 
 	
 	//------------------------------------------------------------------------------------------------
@@ -114,5 +150,23 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 	void OnGroupWaypointChanged(AIWaypoint newWaypoint)
 	{
 		m_GroupWaypoint = newWaypoint;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetPlayerPending_S(int playerId)
+	{
+		if (m_iPendingPlayerId != 0 && playerId != 0)
+		{
+			Print("Trying to set pending player on an already pending agent!", LogLevel.ERROR);
+			return;
+		}
+		
+		m_iPendingPlayerId = playerId;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsPlayerPending_S()
+	{
+		return m_iPendingPlayerId != 0;
 	}
 };

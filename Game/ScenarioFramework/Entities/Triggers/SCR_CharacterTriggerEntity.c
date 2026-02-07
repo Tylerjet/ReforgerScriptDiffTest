@@ -19,18 +19,18 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(TA_EActivationPresence), category: "Trigger")]
 	protected TA_EActivationPresence	m_eActivationPresence;
 
-	[Attribute(desc: "If SPECIFIC_CLASS is selected, fill the class name here.", category: "Trigger")]	//TODO: do array of classes
-	protected string 	m_sSpecificClassName;
+	[Attribute(desc: "If SPECIFIC_CLASS is selected, fill the class name here.", category: "Trigger")]
+	protected ref array<string> 	m_aSpecificClassNames;
 
-	[Attribute(desc: "If SPECIFIC_PREFAB_NAME is selected, fill the class name here.", category: "Trigger")]	//TODO: do array of classes
-	protected ResourceName 	m_sSpecificPrefabName;
+	[Attribute(desc: "If SPECIFIC_PREFAB_NAME is selected, fill the class name here.", category: "Trigger")]
+	protected ref array<ResourceName> 	m_aSpecificPrefabNames;
 
 	[Attribute(desc: "Here you can input custom trigger conditions that you can create by extending the SCR_CustomTriggerConditions", uiwidget: UIWidgets.Object)]
 	protected ref array<ref SCR_CustomTriggerConditions> m_aCustomTriggerConditions;
 
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")]
 	protected bool		m_bOnce;
-
+	
 	[Attribute(defvalue: "0", UIWidgets.Slider, desc: "Minimum players needed to activate this trigger when PLAYER Activation presence is selected", params: "0 1 0.01", precision: 2, category: "Trigger")]
 	protected float		m_fMinimumPlayersNeededPercentage;
 
@@ -52,6 +52,8 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	[Attribute("", UIWidgets.EditBox, desc: "Audio sound that will be playing when countdown is active.", category: "Trigger")]
 	protected string 	m_sCountdownAudio;
 
+	protected ref set<BaseContainer> 	m_aPrefabContainerSet = new ref set<BaseContainer>();
+	
 	protected ref ScriptInvoker 	m_OnChange;
 	protected Faction 				m_OwnerFaction;
 	protected float 				m_fTempWaitTime = m_fActivationCountdownTimer;
@@ -75,17 +77,25 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Sets specific class to be searched in the trigger
-	void SetSpecificClass(string sClassName)
+	//! Sets specific classname to be searched in the trigger
+	void SetSpecificClassName(array<string> aClassName)
 	{
-		m_sSpecificClassName = sClassName;
+		foreach (string className : aClassName)
+		{
+			if (!m_aSpecificClassNames.Contains(className))
+				m_aSpecificClassNames.Insert(className);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Sets specific prefab to be searched in the trigger
-	void SetSpecificPrefabName(string sPrefabName)
+	void SetSpecificPrefabName(array<ResourceName> aPrefabNames)
 	{
-		m_sSpecificPrefabName = sPrefabName;
+		foreach (ResourceName prefabName : aPrefabNames)
+		{
+			if (!m_aSpecificPrefabNames.Contains(prefabName))
+				m_aSpecificPrefabNames.Insert(prefabName);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -100,6 +110,13 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	void SetNotificationEnabled(bool notificationEnabled)
 	{
 		m_bNotificationEnabled = notificationEnabled;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sets trigger conditions status
+	void SetTriggerConditionsStatus(bool status)
+	{
+		m_bTriggerConditionsStatus = status;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -249,59 +266,72 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 					iCnt++;
 			}
 		}
+
 		return iCnt;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns number of specific class that is inside of this trigger
-	protected int GetSpecificClassCountInsideTrigger()
+	int GetSpecificClassCountInsideTrigger(string className, int targetCount = -1)
 	{
-		if (m_sSpecificClassName.IsEmpty())
+		if (className.IsEmpty())
 			return 0;
 
 		int iCnt = 0;
 		GetEntitiesInside(m_aEntitiesInside);
 		foreach (IEntity entity : m_aEntitiesInside)
 		{
-			if (entity.IsInherited(m_sSpecificClassName.ToType()))
+			if (!entity)
+				continue;
+
+			if (entity.IsInherited(className.ToType()))
 				iCnt++;
+			
+			if (iCnt == targetCount)
+				break;
 		}
+
 		return iCnt;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns number of specific prefab that is inside of this trigger
-	protected int GetSpecificPrefabCountInsideTrigger()
+	int GetSpecificPrefabCountInsideTrigger(BaseContainer prefabContainer, int targetCount = -1)
 	{
-		if (m_sSpecificPrefabName.IsEmpty())
-			return 0;
-
 		int iCnt = 0;
 		GetEntitiesInside(m_aEntitiesInside);
 		foreach (IEntity entity : m_aEntitiesInside)
 		{
+			if (!entity)
+				continue;
+
 			EntityPrefabData prefabData = entity.GetPrefabData();
 			if (!prefabData)
 				continue;
-
-			ResourceName sPrefabName = prefabData.GetPrefabName();
-			if (sPrefabName.IsEmpty() || sPrefabName != m_sSpecificPrefabName)
+			
+			if (prefabData.GetPrefab() != prefabContainer)
 				continue;
-
+			
 			iCnt++;
+			if (iCnt == targetCount)
+				break;
 		}
+
 		return iCnt;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns number of characters from the selected faction that are inside this trigger
-	int GetCharacterCountByFactionInsideTrigger(Faction faction)
+	int GetCharacterCountByFactionInsideTrigger(Faction faction, int targetCount = -1)
 	{
 		int iCnt = 0;
 		SCR_ChimeraCharacter chimeraCharacter;
 		GetEntitiesInside(m_aEntitiesInside);
 		foreach (IEntity entity : m_aEntitiesInside)
 		{
+			if (!entity)
+				continue;
+
 			if (!faction)
 			{
 				chimeraCharacter = SCR_ChimeraCharacter.Cast(entity);
@@ -319,7 +349,11 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 				if (chimeraCharacter.GetFaction() == faction)
 					iCnt++;
 			}
+			
+			if (iCnt == targetCount)
+				break;
 		}
+
 		return iCnt;
 	}
 
@@ -328,13 +362,18 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	int GetPlayersCountByFactionInsideTrigger(Faction faction)
 	{
 		int iCnt = 0;
+		m_aPlayersInside.Clear();
 		SCR_PlayerController playerController;
 		GetEntitiesInside(m_aEntitiesInside);
 		foreach (IEntity entity : m_aEntitiesInside)
 		{
+			if (!entity)
+				continue;
+			
 			if (!faction)
 			{
 				iCnt++;			//Faction not set == ANY faction
+				m_aPlayersInside.Insert(entity);
 			}
 			else
 			{
@@ -342,10 +381,14 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 				if (!playerController)
 					continue;
 
-				if (playerController.GetLocalControlledEntityFaction() == faction)
-					iCnt++;
+				if (playerController.GetLocalControlledEntityFaction() != faction)
+					continue;
+				
+				iCnt++;
+				m_aPlayersInside.Insert(entity);
 			}
 		}
+
 		return iCnt;
 	}
 
@@ -357,6 +400,9 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 		GetEntitiesInside(m_aEntitiesInside);
 		foreach (IEntity entity : m_aEntitiesInside)
 		{
+			if (!entity)
+				continue;
+			
 			//Faction not set == ANY faction
 			if (!m_OwnerFaction)
 			{
@@ -418,17 +464,42 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 		}
 		else if (m_eActivationPresence == TA_EActivationPresence.SPECIFIC_CLASS)
 		{
-			if (!ent.IsInherited(m_sSpecificClassName.ToType()))
+			bool isClassName;
+			foreach (string specificClassName : m_aSpecificClassNames)
+			{
+				if (!ent.IsInherited(specificClassName.ToType()))
+				{
+					isClassName= false;
+				}
+				else
+				{
+					isClassName = true;
+					break;
+				}
+			}
+
+			//We are checking this bool here in this way because we don't want to return true here just yet
+			if (!isClassName)
 				return false;
 		}
-
 		else if (m_eActivationPresence == TA_EActivationPresence.SPECIFIC_PREFAB_NAME)
 		{
 			EntityPrefabData prefabData = ent.GetPrefabData();
 			if (!prefabData)
 				return false;
-			ResourceName sPrefabName = prefabData.GetPrefabName();
-			if (sPrefabName.IsEmpty() || sPrefabName != m_sSpecificPrefabName)
+			
+			bool found;
+			foreach (BaseContainer prefabContainer : m_aPrefabContainerSet)
+			{
+				if (prefabData.GetPrefab() == prefabContainer)
+				{
+					found = true;
+					break;
+				}
+			}
+			
+			//We are checking this bool here in this way because we don't want to return true here just yet
+			if (!found)
 				return false;
 		}
 
@@ -472,11 +543,23 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 		}
 
 		if (m_eActivationPresence == TA_EActivationPresence.ANY_CHARACTER)
-			m_iCountInsideTrigger = GetCharacterCountByFactionInsideTrigger(m_OwnerFaction);
+		{
+			m_iCountInsideTrigger = GetCharacterCountByFactionInsideTrigger(m_OwnerFaction, 1);
+		}
 		else if (m_eActivationPresence == TA_EActivationPresence.SPECIFIC_CLASS)
-			m_iCountInsideTrigger = GetSpecificClassCountInsideTrigger();
+		{
+			foreach (string className : m_aSpecificClassNames)
+			{
+				m_iCountInsideTrigger += GetSpecificClassCountInsideTrigger(className, 1);
+			}
+		}
 		else if (m_eActivationPresence == TA_EActivationPresence.SPECIFIC_PREFAB_NAME)
-			m_iCountInsideTrigger = GetSpecificPrefabCountInsideTrigger();
+		{
+			foreach (BaseContainer prefabData : m_aPrefabContainerSet)
+			{
+				m_iCountInsideTrigger += GetSpecificPrefabCountInsideTrigger(prefabData, 1);
+			}
+		}
 
 		if (m_iCountInsideTrigger > 0)
 			m_bTriggerConditionsStatus = true;
@@ -561,15 +644,22 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	//------------------------------------------------------------------------------------------------
 	override protected event void OnActivate(IEntity ent)
 	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override event protected void OnQueryFinished(bool bIsEmpty)
+	{
+		super.OnQueryFinished(bIsEmpty);
+		
+		if (bIsEmpty)
+			return;
+		
 		if (!IsMaster())
 			return;
 
 		if (!m_bInitSequenceDone)
 			return;
-
-		if (!m_aPlayersInside.Contains(ent))
-			m_aPlayersInside.Insert(ent);
-
+		
 		ActivationPresenceConditions();
 		CustomTriggerConditions();
 		HandleTimer();
@@ -578,7 +668,7 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 			HandleAudio();
 
 		if (m_bTriggerConditionsStatus && m_fTempWaitTime <= 0)
-			FinishTrigger(ent);
+			FinishTrigger(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -718,11 +808,52 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 
 		return m_OnChange;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Prepares optimized solution for scripted querry using BaseContainer for quicker calculations
+	void PrepareScriptedQuerry(array<ResourceName> aPrefabData, out set<BaseContainer> aBaseContainerOut)
+	{
+		//We need to initialize this set here
+		aBaseContainerOut = new ref set<BaseContainer>();
+		
+		Resource resource;
+		BaseResourceObject resourceObject;
+		BaseContainer prefabContainer;
+		foreach (ResourceName resourceName : aPrefabData)
+		{
+			resource = Resource.Load(resourceName);
+			if (!resource.IsValid())
+				continue;
+			
+			resourceObject = resource.GetResource();
+			if (!resourceObject)
+				continue;
+			
+			prefabContainer = resourceObject.ToBaseContainer();
+			if (!prefabContainer)
+				continue;
+			
+			//This set is part of this trigger entity and will contain all BaseContainers needed for calculations
+			if (!m_aPrefabContainerSet.Contains(prefabContainer))
+				m_aPrefabContainerSet.Insert(prefabContainer);
+			
+			//This set is being outed and contains just newly proccessed BaseContainers
+			if (!aBaseContainerOut.Contains(prefabContainer))
+				aBaseContainerOut.Insert(prefabContainer);
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Sets Init sequence as done
 	protected void SetInitSequenceDone()
 	{
+		foreach (SCR_CustomTriggerConditions condition : m_aCustomTriggerConditions)
+		{
+			condition.Init(this);
+		}
+		
+		//Here we process array of strings to more optimized set of BaseContainers. However in this case, we do not need outed set here.
+		PrepareScriptedQuerry(m_aSpecificPrefabNames, null);
 		m_bInitSequenceDone = true;
 	}
 
@@ -746,19 +877,90 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 class SCR_CustomTriggerConditions
 {
 	//------------------------------------------------------------------------------------------------
+	//! This method is supposed to be overriden in a new class that extends this class and it is used if some init actions are needed
+	void Init(SCR_CharacterTriggerEntity trigger)
+	{
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! This method is supposed to be overriden in a new class that extends this class and it is used in evaluation afterwards
 	void CustomTriggerConditions(SCR_CharacterTriggerEntity trigger)
 	{
 	}
 };
 
-//Example of how to handle the custom condition by extending the base class and then performing changes there
 [BaseContainerProps()]
-class SCR_CustomTriggerConditionsExtended : SCR_CustomTriggerConditions
+class SCR_CustomTriggerConditionsSpecificPrefabCount : SCR_CustomTriggerConditions
 {
+	[Attribute(desc: "If SPECIFIC_PREFAB_NAME is selected, fill the class name here.", category: "Trigger")]
+	protected ref array<ResourceName> 	m_aSpecificPrefabNames;
+
+	protected ref set<BaseContainer> 	m_aPrefabContainerSet = new ref set<BaseContainer>();
+
+	[Attribute(defvalue: "1", desc: "How many entities of specific prefab are requiered to be inside the trigger", params: "0 100000 1", category: "Trigger")]
+	protected int 	m_iPrefabCount;
+
 	//------------------------------------------------------------------------------------------------
-	//! This method is supposed to be filled by end users with their own custom conditions and it is evaluated as last
+	override void Init(SCR_CharacterTriggerEntity trigger)
+	{
+		trigger.PrepareScriptedQuerry(m_aSpecificPrefabNames, m_aPrefabContainerSet);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks how many times the specific prefab (Using the BaseContainer) is present inside the trigger and sets trigger conditions accordingly
 	override void CustomTriggerConditions(SCR_CharacterTriggerEntity trigger)
 	{
+		bool triggerStatus;
+		foreach (BaseContainer prefabContainer : m_aPrefabContainerSet)
+		{
+			if (trigger.GetSpecificPrefabCountInsideTrigger(prefabContainer, m_iPrefabCount) >= m_iPrefabCount)
+			{
+				triggerStatus= true;
+			}
+			else
+			{
+				triggerStatus = false;
+				break;
+			}
+		}
+
+		trigger.SetTriggerConditionsStatus(triggerStatus);
+	}
+};
+
+[BaseContainerProps()]
+class SCR_CustomTriggerConditionsSpecificClassNameCount : SCR_CustomTriggerConditions
+{
+	[Attribute(desc: "If SPECIFIC_CLASS is selected, fill the class name here.", category: "Trigger")]
+	protected ref array<string> 	m_aSpecificClassNames;
+
+	[Attribute(defvalue: "1", desc: "How many entities of specific prefab are requiered to be inside the trigger", params: "0 100000 1", category: "Trigger")]
+	protected int 	m_iPrefabCount;
+
+	//------------------------------------------------------------------------------------------------
+	override void Init(SCR_CharacterTriggerEntity trigger)
+	{
+		trigger.SetSpecificClassName(m_aSpecificClassNames);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks how many times the specific classname is present inside the trigger and sets trigger conditions accordingly
+	override void CustomTriggerConditions(SCR_CharacterTriggerEntity trigger)
+	{
+		bool triggerStatus;
+		foreach (string className : m_aSpecificClassNames)
+		{
+			if (trigger.GetSpecificClassCountInsideTrigger(className) >= m_iPrefabCount)
+			{
+				triggerStatus= true;
+			}
+			else
+			{
+				triggerStatus = false;
+				break;
+			}
+		}
+
+		trigger.SetTriggerConditionsStatus(triggerStatus);
 	}
 };

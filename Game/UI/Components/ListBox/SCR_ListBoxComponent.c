@@ -8,7 +8,7 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 
 	// ---- Public member variables ----
 	
-	ref ScriptInvoker m_OnChanged = new ref ScriptInvoker; // (SCR_ListBoxComponent comp, int item, bool newSelected)
+	ref ScriptInvoker m_OnChanged = new ScriptInvoker(); // (SCR_ListBoxComponent comp, int item, bool newSelected)
 	
 	// ---- Protected member variables ----
 	
@@ -137,9 +137,12 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 	
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns ID of currently selected item, if multiselection is disabled.
+	//! Returns ID of currently selected item, if multiselection is disabled. Otherwise returns -1.
 	int GetSelectedItem()
 	{
+		if (m_bMultiSelection)
+			return -1;
+		
 		return m_iCurrentItem;
 	}
 	
@@ -205,29 +208,17 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		return false;
 	}
 	
-	
-	
-	/*
-	override bool SetCurrentItem(int i)
-	{
-		// todo
 		
-		m_OnChanged.Invoke(this, i);
-		
-		return ret;
-	}
-	*/
-	
-	
 	//------------------------------------------------------------------------------------------------
-	/*
-	// todo
-	override void ClearAll()
+	//! Removes all items and separators from the listbox
+	void Clear()
 	{
+		while (m_wList.GetChildren())
+			m_wList.GetChildren().RemoveFromHierarchy();
+		
 		m_aElementComponents.Clear();
-		m_aSelected.Clear();
+		m_iCurrentItem = -1;
 	}
-	*/
 	
 	
 	
@@ -236,6 +227,10 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 	{
 		if (item < 0 || item > m_aElementComponents.Count())
 			return;
+		
+		// If multiselection is disabled, unselect current item
+		if (!m_bMultiSelection && selected && m_aElementComponents.IsIndexValid(m_iCurrentItem))
+				this.VisualizeSelection(m_iCurrentItem, false);
 		
 		_SetItemSelected(item, selected, invokeOnChanged);
 	}
@@ -336,6 +331,19 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void _SetItemSelected(int item, bool selected, bool invokeOnChanged)
 	{
+		// Set m_iCurrentItem, if multi selection is not used
+		if (!m_bMultiSelection)
+		{
+			if (selected)
+				m_iCurrentItem = item;
+			else
+			{
+				// Nothing will be selected
+				if (item == m_iCurrentItem)
+					m_iCurrentItem = -1;
+			}
+		}
+				
 		bool oldSelected = m_aElementComponents[item].GetToggled();
 		this.VisualizeSelection(item, selected);
 		
@@ -369,15 +377,11 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		else
 		{
 			// Unselect previous item
-			if (m_iCurrentItem >= 0 && m_iCurrentItem < m_aElementComponents.Count())
-			{
+			if (id != m_iCurrentItem && m_iCurrentItem >= 0 && m_iCurrentItem < m_aElementComponents.Count())
 				this.VisualizeSelection(m_iCurrentItem, false);
-			}
 			
-			// Select the new item
-			m_iCurrentItem = id;
-			this.VisualizeSelection(id, true);
-			m_OnChanged.Invoke(this, id, true);
+			// Select new item
+			_SetItemSelected(id, true, true);
 		}
 	}
 	

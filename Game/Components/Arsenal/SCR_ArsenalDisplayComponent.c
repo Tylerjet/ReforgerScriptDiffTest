@@ -38,7 +38,7 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnFactionChanged()
+	override void OnFactionChanged(FactionAffiliationComponent owner, Faction previousFaction, Faction newFaction)
 	{
 		ClearArsenal();
 		RefreshArsenal();
@@ -159,7 +159,7 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 		}
 
 		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
-		if (rpl && rpl.Role() == RplRole.Authority)
+		if (!rpl || (rpl && rpl.Role() == RplRole.Authority))
 		{
 			RefreshArsenal();
 

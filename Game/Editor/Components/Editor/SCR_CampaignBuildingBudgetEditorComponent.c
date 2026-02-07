@@ -155,11 +155,7 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
 		if (!playerController)
 			return SCR_ECharacterRank.INVALID;
-
-		SCR_CampaignFactionManager factionManager = SCR_CampaignFactionManager.GetInstance();
-		if (!factionManager)
-			return SCR_ECharacterRank.INVALID;
-
+		
 		return SCR_CharacterRankComponent.GetCharacterRank(playerController.GetControlledEntity());
 	}
 	

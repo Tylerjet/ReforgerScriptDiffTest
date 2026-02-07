@@ -6,9 +6,10 @@ enum ENameTagEntityState
 	DEFAULT		 	= 1,	// alive
 	FOCUSED 		= 1<<1,	// focused
 	GROUP_MEMBER	= 1<<2,	// part of the same squad
-	VON 			= 1<<3,	// voice over network
-	DEAD 			= 1<<4,	// dead
-	HIDDEN 			= 1<<5	// tag is hidden
+	UNCONSCIOUS 	= 1<<3,	// voice over network
+	VON 			= 1<<4,	// voice over network
+	DEAD 			= 1<<5,	// dead
+	HIDDEN 			= 1<<6	// tag is hidden
 };
 
 //------------------------------------------------------------------------------------------------
@@ -26,7 +27,8 @@ enum ENameTagFlags
 	FADE_TIMER 			= 1<<8,		// run fade timer for obstruction check
 	OBSTRUCTED			= 1<<9,		// LOS trace result obstructed 
 	VEHICLE 			= 1<<10,	// tag owner is in a vehicle
-	NAME_UPDATE 		= 1<<11		// request name update
+	NAME_UPDATE 		= 1<<11,	// request name update
+	ENT_TYPE_UPDATE 	= 1<<12		// request entity type update
 };
 
 //------------------------------------------------------------------------------------------------
@@ -77,7 +79,7 @@ class SCR_NameTagData : Managed
 	float m_fTimeSliceVisibility;	// Slice for animation changes to visibility
 	float m_fDistance;				// distance from player to this entity, pow of 2 of the real distance for calculation purposes
 	float m_fOpacityFade;			// opacity fade based on distance, is value between 0.1-1 (percentage), a secondary effect to global opacity setting
-	float m_fVisibleOpacity;		// cached default opacity
+	float m_fVisibleOpacity = 1;	// cached default opacity
 	float m_fAngleToScreenCenter;	// angle between this entity and the center of the screen used for visibility limiting
 	vector m_vTagScreenPos;			// tag screen pos (2D) - in reference resolution (not screen size) values
 	vector m_vTagWorldPos;			// tag world pos (with offset)
@@ -188,22 +190,27 @@ class SCR_NameTagData : Managed
 		if (visible)
 		{
 			m_NameTagWidget.SetVisible(true);
-			m_fVisibleOpacity = visibleOpacity;
+			if (widget == m_NameTagWidget)
+				m_fVisibleOpacity = visibleOpacity;
+			
 			m_Flags |= ENameTagFlags.VISIBLE;
 			m_Flags &= ~ENameTagFlags.UPDATE_DISABLE;
 			m_Flags &= ~ENameTagFlags.DISABLED;
-			targetVal = m_fVisibleOpacity * m_fOpacityFade;
+			targetVal = visibleOpacity * m_fOpacityFade;
 		}
 		else 
 			targetVal = 0;
 		
 		if (m_fTagFadeSpeed == 0)
 			animate = false;
-		
+				
 		if (animate)
 			AnimateWidget.Opacity(widget, targetVal, m_fTagFadeSpeed);
 		else 
+		{
 			AnimateWidget.StopAnimation(widget, WidgetAnimationOpacity);
+			widget.SetOpacity(targetVal);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -212,6 +219,47 @@ class SCR_NameTagData : Managed
 	{
 		float size[2] = {targetVal, targetVal};
 		AnimateWidget.Size(widget, size, m_fTagFadeSpeed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Determine type of nametag entity
+	void UpdateEntityType()
+	{
+		if (ChimeraCharacter.Cast(m_Entity))
+		{				
+			bool playerIDIsMainEnt = false;
+			
+			m_iPlayerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(m_Entity);
+			if (m_iPlayerID == 0 && m_PossessingManager)
+			{
+				m_iPlayerID = m_PossessingManager.GetIdFromMainEntity(m_Entity);	// in case this is a main entity of someone whos currently possessing, consider it that player
+				if (m_iPlayerID > 0)
+					playerIDIsMainEnt = true;
+			}
+			
+			if (m_iPlayerID > 0)
+			{
+				m_eType = ENameTagEntityType.PLAYER;
+				
+				if (!playerIDIsMainEnt && m_PossessingManager)
+				{
+					if (m_PossessingManager.IsPossessing(m_iPlayerID))		// possessed AI entity should keep its name
+						m_eType = ENameTagEntityType.AI;
+				}
+				
+				if (m_GroupManager)
+				{
+					SCR_AIGroup group = m_GroupManager.GetPlayerGroup(m_iPlayerID);
+					SetGroup(group);
+				}
+			}
+			else 	// non players are considered AI
+				m_eType = ENameTagEntityType.AI;
+		}
+		else if (Vehicle.Cast(m_Entity))
+		{
+			m_eType = ENameTagEntityType.VEHICLE;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -365,6 +413,16 @@ class SCR_NameTagData : Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! SCR_CharacterController event
+	void OnLifeStateChanged(ECharacterLifeState lifeState)
+	{
+		if (lifeState == ECharacterLifeState.INCAPACITATED)
+			ActivateEntityState(ENameTagEntityState.UNCONSCIOUS);
+		else if (lifeState == ECharacterLifeState.ALIVE)
+			DeactivateEntityState(ENameTagEntityState.UNCONSCIOUS);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Cleanup
 	//! \param removeFromArray determines whether the tag is removed from main array, this is not desired when entrire array is being cleaned up
 	void Cleanup(bool removeFromArray = true)
@@ -416,9 +474,10 @@ class SCR_NameTagData : Managed
 	void UpdateTagPos()
 	{		
 		vector matPos[4];
-		m_Entity.GetBoneMatrix(m_iSpineBone, matPos);
+		Animation anim = m_Entity.GetAnimation();
+		anim.GetBoneMatrix(m_iSpineBone, matPos);
 		m_vEntWorldPos = m_Entity.CoordToParent(matPos[3]);
-		m_Entity.GetBoneMatrix(m_iHeadBone, matPos);
+		anim.GetBoneMatrix(m_iHeadBone, matPos);
 		m_vEntHeadPos = m_Entity.CoordToParent(matPos[3]);
 		
 		if (m_eAttachedTo == ENameTagPosition.HEAD)
@@ -473,32 +532,10 @@ class SCR_NameTagData : Managed
 				m_fTagFadeSpeed = 1/ruleset.m_fTagFadeTime; // convert multiplier to seconds
 		}
 		
-		// Determine type, non players are considered AI
+		UpdateEntityType();
+		
 		if (ChimeraCharacter.Cast(m_Entity))
 		{				
-			bool playerIDIsMainEnt = false;
-			
-			m_iPlayerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(m_Entity);
-			if (m_iPlayerID == 0 && m_PossessingManager)
-			{
-				m_iPlayerID = m_PossessingManager.GetIdFromMainEntity(m_Entity);	// in case this is a main entity of someone whos currently possessing, consider it that player
-				if (m_iPlayerID > 0)
-					playerIDIsMainEnt = true;
-			}
-			
-			if (m_iPlayerID > 0)
-			{
-				m_eType = ENameTagEntityType.PLAYER;
-				
-				if (!playerIDIsMainEnt && m_PossessingManager)
-				{
-					if (m_PossessingManager.IsPossessing(m_iPlayerID))		// possessed AI entity should keep its name
-						m_eType = ENameTagEntityType.AI;
-				}
-			}
-			else 
-				m_eType = ENameTagEntityType.AI;
-			
 			// Vehicle enter/leave event
 			SCR_CompartmentAccessComponent accessComp = SCR_CompartmentAccessComponent.Cast( m_Entity.FindComponent(SCR_CompartmentAccessComponent) );
 			if (accessComp)
@@ -507,15 +544,12 @@ class SCR_NameTagData : Managed
 				accessComp.GetOnCompartmentLeft().Insert(OnVehicleLeft);
 			}
 		}
-		else if (Vehicle.Cast(m_Entity))
-		{
-			m_eType = ENameTagEntityType.VEHICLE;
-		}
-		
+
 		if (m_Entity)
 		{
-			m_iSpineBone = m_Entity.GetBoneIndex(SPINE_BONE);
-			m_iHeadBone = m_Entity.GetBoneIndex(HEAD_BONE);
+			
+			m_iSpineBone = m_Entity.GetAnimation().GetBoneIndex(SPINE_BONE);
+			m_iHeadBone = m_Entity.GetAnimation().GetBoneIndex(HEAD_BONE);
 		}
 		
 		GetName(m_sName, m_aNameParams);
@@ -538,6 +572,11 @@ class SCR_NameTagData : Managed
 			m_CharController = SCR_CharacterControllerComponent.Cast(ent.FindComponent(SCR_CharacterControllerComponent));
 			if (!m_CharController || m_CharController.IsDead())
 				return false;	
+			
+			if (m_CharController.IsUnconscious())
+				ActivateEntityState(ENameTagEntityState.UNCONSCIOUS);
+			
+			m_CharController.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
 			
 			if (m_bIsCurrentPlayer)		// we only need VON received event for current player to set VON status icons
 			{
@@ -570,6 +609,9 @@ class SCR_NameTagData : Managed
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_NameTagData()
 	{
+		if (m_CharController)
+			m_CharController.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
+		
 		if (m_bIsCurrentPlayer && m_Entity)
 		{
 			SCR_VoNComponent vonComp = SCR_VoNComponent.Cast( m_Entity.FindComponent(SCR_VoNComponent) );

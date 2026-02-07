@@ -2,20 +2,14 @@
 [BaseContainerProps()]
 class SCR_RankIDCampaign: SCR_RankID
 {	
-	[Attribute("100", UIWidgets.EditBox, "XP required to get promoted to this rank.")]
-	protected int m_iXP;
-	
 	[Attribute("10", UIWidgets.EditBox, "How long does this rank has to wait between requests (sec).")]
 	protected int m_iRequestCD;
 	
 	[Attribute("30", UIWidgets.EditBox, "Respawn timer when deploying on this unit while it's carrying a radio.")]
 	protected int m_iRadioRespawnCooldown;
 	
-	//------------------------------------------------------------------------------------------------
-	int GetRankXP()
-	{
-		return m_iXP;
-	}
+	[Attribute("0", UIWidgets.ComboBox, "ID of this reward.", enums: ParamEnumArray.FromEnum(SCR_ERadioMsg))]
+	protected SCR_ERadioMsg m_eRadioMsg;
 	
 	//------------------------------------------------------------------------------------------------
 	int GetRankRequestCooldown()
@@ -28,6 +22,12 @@ class SCR_RankIDCampaign: SCR_RankID
 	{
 		return m_iRadioRespawnCooldown;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_ERadioMsg GetRadioMsg()
+	{
+		return m_eRadioMsg;
+	}
 };
 
 //------------------------------------------------------------------------------------------------
@@ -38,65 +38,6 @@ class SCR_CampaignFactionManagerClass: SCR_FactionManagerClass
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignFactionManager : SCR_FactionManager
 {
-	protected static SCR_CampaignFactionManager s_Instance;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Slot Flat Small", "et")]
-	private ResourceName m_SlotFlatSmall;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Slot Flat Medium", "et")]
-	private ResourceName m_SlotFlatMedium;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Slot Flat Large", "et")]
-	private ResourceName m_SlotFlatLarge;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Slot Checkpoint Small", "et")]
-	private ResourceName m_SlotCheckpointSmall;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Slot Checkpoint Medium", "et")]
-	private ResourceName m_SlotCheckpointMedium;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Slot Checkpoint Large", "et")]
-	private ResourceName m_SlotCheckpointLarge;
-	
-	
-	//------------------------------------------------------------------------------------------------
-	ResourceName GetSlotsResource(SCR_ESlotTypesEnum type)
-	{
-		switch (type)
-		{
-			case SCR_ESlotTypesEnum.FlatSmall: {return m_SlotFlatSmall;};
-			case SCR_ESlotTypesEnum.FlatMedium: {return m_SlotFlatMedium;};
-			case SCR_ESlotTypesEnum.FlatLarge: {return m_SlotFlatLarge;};
-			case SCR_ESlotTypesEnum.CheckpointSmall: {return m_SlotCheckpointSmall;};
-			case SCR_ESlotTypesEnum.CheckpointMedium: {return m_SlotCheckpointMedium;};
-			case SCR_ESlotTypesEnum.CheckpointLarge: {return m_SlotCheckpointLarge;};
-			default: {return m_SlotFlatSmall;};
-		}
-		
-		return ResourceName.Empty;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static notnull SCR_CampaignFactionManager GetInstance()
-	{
-		if (!s_Instance)
-		{
-			FactionManager factionManager = GetGame().GetFactionManager();
-			if (factionManager)
-			{
-				SCR_CampaignFactionManager campaignFactionManager = SCR_CampaignFactionManager.Cast(factionManager);
-				if (!campaignFactionManager)
-					Print("SCR_CampaignFactionManager.s_Instance is null, but there's another faction manager! Something is very wrong, check the map!", LogLevel.ERROR);
-				else
-					s_Instance = campaignFactionManager;
-			}
-			else
-				GetGame().SpawnEntityPrefab(SCR_GameModeCampaignMP.GetFactionManagerResource(), GetGame().GetWorld());
-		}
-		
-		return s_Instance;
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	SCR_CampaignFaction GetEnemyFaction(notnull SCR_CampaignFaction alliedFaction)
 	{
@@ -131,17 +72,6 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetRankXP(SCR_ECharacterRank rankID)
-	{
-		SCR_RankIDCampaign rank = SCR_RankIDCampaign.Cast(GetRankByID(rankID));
-		
-		if (!rank)
-			return int.MAX;
-			
-		return rank.GetRankXP();
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	int GetRankRequestCooldown(SCR_ECharacterRank rankID)
 	{
 		SCR_RankIDCampaign rank = SCR_RankIDCampaign.Cast(GetRankByID(rankID));
@@ -162,85 +92,12 @@ class SCR_CampaignFactionManager : SCR_FactionManager
 		
 		return rank.GetRankRadioRespawnCooldown();
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_ECharacterRank GetRankByXP(int XP)
-	{
-		if (!m_aRanks)
-			return SCR_ECharacterRank.INVALID;
-		
-		int maxFoundXP = -100000;
-		SCR_ECharacterRank rankFound = GetRenegadeRank();
-		
-		foreach (SCR_RankID rank: m_aRanks)
-		{
-			int reqXP = GetRankXP(rank.GetRankID());
-			
-			if (reqXP <= XP && reqXP > maxFoundXP)
-			{
-				maxFoundXP = reqXP;
-				rankFound = rank.GetRankID();
-			}
-		}
-		
-		return rankFound;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Returns the next higher rank
-	SCR_ECharacterRank GetRankNext(SCR_ECharacterRank rank)
-	{
-		int rankXP = GetRankXP(rank);
-		int higherXP = 99999;
-		SCR_ECharacterRank foundID = SCR_ECharacterRank.INVALID;
-		
-		foreach (SCR_RankID r: m_aRanks)
-		{
-			if (!r)
-				continue;
-			
-			SCR_ECharacterRank ID = r.GetRankID();
-			int thisXP = GetRankXP(ID);
-			
-			if (thisXP > rankXP && thisXP < higherXP)
-			{
-				higherXP = thisXP;
-				foundID = ID;
-			}
-		}
-		
-		return foundID;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Returns the next lower rank
-	SCR_ECharacterRank GetRankPrev(SCR_ECharacterRank rank)
-	{
-		int rankXP = GetRankXP(rank);
-		int lowerXP = -99999;
-		SCR_ECharacterRank foundID = SCR_ECharacterRank.INVALID;
-		
-		foreach (SCR_RankID r: m_aRanks)
-		{
-			if (!r)
-				continue;
-			
-			SCR_ECharacterRank ID = r.GetRankID();
-			int thisXP = GetRankXP(ID);
-			
-			if (thisXP < rankXP && thisXP > lowerXP)
-			{
-				lowerXP = thisXP;
-				foundID = ID;
-			}
-		}
-		
-		return foundID;
-	}
-	//------------------------------------------------------------------------------------------------
-	void SCR_CampaignFactionManager(IEntitySource src, IEntity parent)
-	{
-		if (SCR_GameModeCampaignMP.NotPlaying())
-			return;
-	}
+};
+
+//------------------------------------------------------------------------------------------------
+enum SCR_ECampaignFaction
+{
+	INDFOR,
+	BLUFOR,
+	OPFOR
 };

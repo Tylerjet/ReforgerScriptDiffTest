@@ -85,7 +85,11 @@ class SCR_RecoilCameraShakeProgress : SCR_GenericCameraShakeProgress
 				{
 					TurretControllerComponent turretController = TurretControllerComponent.Cast(compartment.GetController());
 					if (turretController)
-						recoilTranslation = turretController.GetTurretComponent().GetCurrentRecoilTranslation();
+					{
+						TurretComponent turretComponent = turretController.GetTurretComponent();
+						if(turretComponent)
+							recoilTranslation = turretComponent.GetCurrentRecoilTranslation();
+					}
 				}
 			}
 		}

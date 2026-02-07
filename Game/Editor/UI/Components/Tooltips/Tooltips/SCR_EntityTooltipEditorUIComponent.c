@@ -118,10 +118,10 @@ class SCR_EntityTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
 			}
 			else if (playerID > 0)
 			{
-				SCR_RespawnSystemComponent respawnSystemComponent = SCR_RespawnSystemComponent.GetInstance();
+				SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 				
-				if (respawnSystemComponent)
-					faction = respawnSystemComponent.GetPlayerFaction(playerID);
+				if (factionManager)
+					faction = factionManager.GetPlayerFaction(playerID);
 				
 				if (faction)
 					factionColor = faction.GetFactionColor();

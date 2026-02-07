@@ -159,6 +159,22 @@ class SCR_ConfigHelper
 
 		return lastPart;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Extract GUID from full resource name.
+	\param path Full path
+	\return GUID
+	*/
+	static string GetGUID(ResourceName path)
+	{
+		"{"; // fix indent
+		int guidIndex = path.LastIndexOf("}");
+		if (guidIndex >= 0)
+			return path.Substring(0, guidIndex + 1);
+		else
+			return string.Empty;
+	}
 };
 
 class SCR_ConfigHelperT<Class T>

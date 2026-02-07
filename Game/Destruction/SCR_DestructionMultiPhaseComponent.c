@@ -233,7 +233,8 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 	{
 		if (damagePhase >= GetNumDamagePhases()) // Going past final phase, so delete if we can
 		{
-			s_OnDestructibleDestroyed.Invoke(this);
+			if (GetDestructionBaseData())
+				s_OnDestructibleDestroyed.Invoke(this);
 			
 			DeleteDestructible();
 			return;
@@ -371,9 +372,12 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns objects that are meant to be created when the object is destroyed (particles, debris, etc)
-	override void SpawnDestroyObjects()
+	override void SpawnDestroyObjects(SCR_HitInfo hitInfo)
 	{
 		Physics ownerPhysics = GetOwner().GetPhysics();
+		SCR_HitInfo spawnHitInfo = hitInfo;
+		if (!spawnHitInfo)
+			spawnHitInfo = GetDestructionHitInfo();
 		
 		if (GetIsInInitialDamagePhase()) // Initial phase
 		{
@@ -382,7 +386,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 			for (int i = 0; i < numSpawnOnDestroy; i++)
 			{
 				SCR_BaseSpawnable spawnObject = destroySpawnObjects[i];
-				spawnObject.Spawn(GetOwner(), ownerPhysics, GetDestructionHitInfo());
+				spawnObject.Spawn(GetOwner(), ownerPhysics, spawnHitInfo);
 			}
 		}
 		else
@@ -394,7 +398,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 				for (int i = 0; i < numSpawnOnDestroy; i++)
 				{
 					SCR_BaseSpawnable spawnObject = damagePhaseData.m_PhaseDestroySpawnObjects[i];
-					spawnObject.Spawn(GetOwner(), ownerPhysics, GetDestructionHitInfo());
+					spawnObject.Spawn(GetOwner(), ownerPhysics, spawnHitInfo);
 				}
 			}
 		}
@@ -419,7 +423,12 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 	//! Handle destruction
 	override void HandleDestruction()
 	{
-		SpawnDestroyObjects();
+		if (GetOwner().IsDeleted())
+			return;
+		
+		if (!ShouldDestroyParent()) // If parent should be destroyed, we leave effects to them
+			SpawnDestroyObjects(null);
+		
 		PlaySound();
 		
 		GetDestructionBaseData().SetDestructionQueued(false);

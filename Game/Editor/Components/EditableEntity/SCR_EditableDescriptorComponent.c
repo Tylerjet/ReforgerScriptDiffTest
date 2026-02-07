@@ -73,7 +73,7 @@ class SCR_EditableDescriptorComponent: SCR_EditableSystemComponent
 		m_NearestLocation = SCR_EditableEntityComponent.GetEditableEntity(nearestLocationEntity);
 		
 		GetOnLocationChange(m_NearestLocation);
-		m_OnChange.Invoke(m_NearestLocation);
+		m_OnChange.Invoke(SCR_EditableCommentComponent.Cast(m_NearestLocation));
 	}
 	protected void GetOnLocationChange(SCR_EditableEntityComponent nearestLocation)
 	{

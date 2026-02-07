@@ -1,5 +1,4 @@
 //! Base class for any button, regardless its own content
-
 //------------------------------------------------------------------------------------------------
 class SCR_ButtonBaseComponent : SCR_WLibComponentBase 
 {
@@ -40,16 +39,16 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	Widget m_wBorder;
 	
 	// Arguments passed: SCR_ButtonBaseComponent
-	ref ScriptInvoker m_OnClicked = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnClicked = new ScriptInvoker();
 	// Arguments passed: SCR_ButtonBaseComponent, bool (toggled)
-	ref ScriptInvoker m_OnToggled = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnToggled = new ScriptInvoker();
 	
-	// TODO: Rewrite - do not pass widget 
-	ref ScriptInvoker m_OnFocus = new ref ScriptInvoker();
-	ref ScriptInvoker<Widget> m_OnFocusLost = new ref ScriptInvoker();
+	// TODO: Rewrite - do not pass widget //Why? This is super useful!
+	ref ScriptInvoker<Widget> m_OnFocus = new ScriptInvoker<Widget>();
+	ref ScriptInvoker<Widget> m_OnFocusLost = new ScriptInvoker<Widget>();
 		
 	// Arguments passed: SCR_ButtonBaseComponent, bool border shown
-	ref ScriptInvoker m_OnShowBorder = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnShowBorder = new ScriptInvoker();
 	
 	protected MenuBase m_ParentMenu; // Pointer back to menu which owns this button, initialized at FindParentMenu
 	protected SCR_SubMenuBase m_ParentSubMenu;
@@ -147,6 +146,7 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		super.OnFocus(w, x, y);
+
 		if (m_bShowBorderOnFocus && m_wBorder)
 		{
 			if (m_bNoBorderAnimation)
@@ -174,6 +174,7 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 			m_wBorder.SetOpacity(0);
 		else
 			AnimateWidget.Opacity(m_wBorder, 0, m_fAnimationRate, true);
+
 		return false;
 	}
 	
@@ -183,6 +184,14 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 		if (!m_wRoot.IsEnabled())
 			return;
 		
+		MenuSelectBase();
+		
+		m_OnClicked.Invoke(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void MenuSelectBase()
+	{
 		if (m_bCanBeToggled)
 		{
 			SetToggled(!m_bIsToggled);
@@ -192,7 +201,6 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 			AnimateWidget.Color(m_wBackground, m_BackgroundClicked, m_fAnimationRate);
 			GetGame().GetCallqueue().CallLater(ColorizeBackground, m_fAnimationTime * 500 + 1, false, true);
 		}
-		m_OnClicked.Invoke(this);
 	}
 	
 	// Public API

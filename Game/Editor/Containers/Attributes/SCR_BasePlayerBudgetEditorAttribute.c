@@ -37,7 +37,7 @@ class SCR_BasePlayerBudgetEditorAttribute: SCR_BaseValueListEditorAttribute
 		int maxBudget;
 		budgetComponent.GetMaxBudgetValue(GetBudgetType(), maxBudget);
 
-		return SCR_BaseEditorAttributeVar.CreateFloat(maxBudget));
+		return SCR_BaseEditorAttributeVar.CreateFloat(maxBudget);
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)

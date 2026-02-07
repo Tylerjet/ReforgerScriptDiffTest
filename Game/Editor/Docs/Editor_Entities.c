@@ -53,7 +53,7 @@ digraph Editor_Entities
 	Core -> Manager_Component_2 [lhead=cluster_Manager, label="m_EditorManagerPrefab\nAttribute"];
 	Manager_Component_2 -> Mode_1_Component_n [ltail=cluster_Manager, lhead=cluster_Mode_1, label="m_ModePrefabs\nAttribute"];
 	Manager_Component_2 -> Mode_n_Component_1 [ltail=cluster_Manager, lhead=cluster_Mode_n, label="m_ModePrefabs\nAttribute"];
-};
+}
 \enddot
 
 # Execution Order
@@ -142,7 +142,7 @@ digraph Editor_Entities_Order
 	{rank=same; label_2; Event_OnEditorManagerCreatedServer;}
 	{rank=same; label_3; CreateEditorMode; Mode_InitServer; Mode_InitOwner;}
 	{rank=same; label_4; Manager_PostInitServer;}
-};
+}
 \enddot
 
 @ingroup Editor

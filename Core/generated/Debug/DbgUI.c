@@ -73,6 +73,7 @@ sealed class DbgUI
 	static proto void SameLine();
 	static proto void SameSpot();
 	static proto void PlotLive(string label, int sizeX, int sizeY, float val, int timeStep = 100, int historySize = 30, int color = 0xFFFFFFFF);
+	static proto void PlotLiveClamped(string label, int sizeX, int sizeY, float val, float yMin, float yMax, int timeStep = 100, int historySize = 30, int color = 0xFFFFFFFF);
 	static proto void Check(string label, out bool checked);
 	static proto void Combo(string label, out int selection, TStringArray elems);
 	static proto void List(string label, out int selection, TStringArray elems);
@@ -87,6 +88,8 @@ sealed class DbgUI
 	static proto void EndCleanupScope();
 	static proto void Begin(string windowTitle, float x = 0, float y = 0);
 	static proto void End();
+	static proto void PushID(void id);
+	static proto void PopID();
 }
 
 /*!

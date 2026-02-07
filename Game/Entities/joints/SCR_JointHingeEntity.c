@@ -104,7 +104,7 @@ class SCR_JointHingeEntity: SCR_JointBaseEntity
 	{
 		// Create the joint
 		m_Joint = PhysicsJoint.CreateHinge2(parent, child, jointMat1, jointMat2, m_CollisionBlocker, -1);
-		PhysicsHingeJoint jointHinge = (PhysicsHingeJoint)m_Joint;
+		PhysicsHingeJoint jointHinge = m_Joint;
 		if (m_RotateIsFree)
 			jointHinge.SetLimits(1, -1, m_Softness, m_BiasFactor, m_RelaxationFactor);
 		else

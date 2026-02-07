@@ -7,7 +7,7 @@ class SCR_EvacuateTaskClass: SCR_RequestedTaskClass
 class SCR_EvacuateTask : SCR_RequestedTask
 {
 	static const string SUPPORT_TASK_DESCRIPTION_TEXT = "#AR-CampaignTasks_TitleEvac";
-	static const CampaignBaseType BASES_FILTER = CampaignBaseType.BASE;
+	static const SCR_ECampaignBaseType BASES_FILTER = SCR_ECampaignBaseType.BASE;
 	
 	protected vector m_vStartOrigin;
 	
@@ -71,23 +71,26 @@ class SCR_EvacuateTask : SCR_RequestedTask
 		
 		vector requesterOrigin = requesterEntity.GetOrigin();
 		
-		array<SCR_CampaignBase> bases = new array<SCR_CampaignBase>();
-		
-		SCR_CampaignBaseManager.GetInstance().GetFilteredBases(SCR_EvacuateTask.BASES_FILTER, bases);
+		array<SCR_MilitaryBaseComponent> bases = {};
+		SCR_MilitaryBaseManager.GetInstance().GetBases(bases);
 		
 		for (int i = 0; i < bases.Count(); i++)
 		{
-			if (requesterFaction != bases[i].GetOwningFaction())
+			SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(bases[i]);
+			
+			if (!campaignBase)
 				continue;
 			
-			vector baseOrigin = bases[i].GetOrigin();
+			if (requesterFaction != campaignBase.GetCampaignFaction())
+				continue;
+			
+			vector baseOrigin = campaignBase.GetOwner().GetOrigin();
 			float baseToStartDistance = vector.Distance(baseOrigin, m_vStartOrigin);
 			
 			if (baseToStartDistance < SCR_EvacuateTask.GetMinDistanceFromStart())
 				continue;
 			
-			SCR_CampaignTriggerEntity trigger = bases[i].GetTrigger();
-			if (!trigger.QueryEntityInside(requesterEntity))
+			if (!campaignBase.GetIsEntityPresent(requesterEntity))
 				continue;
 			
 			requesterInBase = true;

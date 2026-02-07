@@ -37,10 +37,27 @@ class CharacterCameraBase extends ScriptedCameraItem
 		{
 			sm_TagFPCamera = GameAnimationUtils.RegisterAnimationTag("TagFPCamera");
 		}
+		if (sm_TagADSTransitionIn == -1)
+		{
+			sm_TagADSTransitionIn = GameAnimationUtils.RegisterAnimationTag("TagTransitionADSIn");
+		}
+		if (sm_TagADSTransitionOut == -1)
+		{
+			sm_TagADSTransitionOut = GameAnimationUtils.RegisterAnimationTag("TagTransitionADSOut");
+		}
+		if (sm_TagLyingCamera == -1)
+		{
+			sm_TagLyingCamera = GameAnimationUtils.RegisterAnimationTag("TagLyingCamera");
+		}
+		if (sm_TagItemUpdateCols == -1)
+		{
+			sm_TagItemUpdateCols = GameAnimationUtils.RegisterAnimationTag("TagItemUpdateColliders");
+		}
 		if (sm_iCameraBoneIndex == -1)
 		{
-			sm_iHeadBoneIndex = m_OwnerCharacter.GetBoneIndex("Head");
-			sm_iCameraBoneIndex = m_OwnerCharacter.GetBoneIndex("Camera");
+			Animation anim = m_OwnerCharacter.GetAnimation();
+			sm_iHeadBoneIndex = anim.GetBoneIndex("Head");
+			sm_iCameraBoneIndex = anim.GetBoneIndex("Camera");
 		}
 		m_CharacterAnimationComponent = CharacterAnimationComponent.Cast(m_OwnerCharacter.FindComponent(CharacterAnimationComponent));
 		CharacterCommandHandlerComponent cmdHandler = CharacterCommandHandlerComponent.Cast(m_CharacterAnimationComponent.FindComponent(CharacterCommandHandlerComponent));
@@ -56,7 +73,7 @@ class CharacterCameraBase extends ScriptedCameraItem
 		
 		//On Foot
 		if (m_CompartmentAccessComponent && !m_CompartmentAccessComponent.IsInCompartment())
-			pAngle += m_ControllerComponent.GetAimingAngles()[1];
+			pAngle += m_ControllerComponent.GetInputContext().GetAimingAngles()[1];
 		
 		return pAngle;
 	}
@@ -185,9 +202,10 @@ class CharacterCameraBase extends ScriptedCameraItem
 			return;
 		
 		// Compensate for roll after camera is updated
-		vector yawPitchRoll = Vector(0, -vehicle.GetLocalYawPitchRoll()[1], -vehicle.GetLocalYawPitchRoll()[2]);
-		m_fPitchSmooth = Math.SmoothCD(m_fPitchSmooth, yawPitchRoll[1], m_fPitchSmoothVel, 0.14, 1000, pDt);
-		m_fRollSmooth = Math.SmoothCD(m_fRollSmooth, yawPitchRoll[2], m_fRollSmoothVel, 0.14, 1000, pDt);
+		vector yawPitchRoll = vehicle.GetYawPitchRoll();
+		m_fPitchSmooth = Math.SmoothCD(m_fPitchSmooth, -yawPitchRoll[1], m_fPitchSmoothVel, 0.14, 1000, pDt);
+		m_fRollSmooth = Math.SmoothCD(m_fRollSmooth, -yawPitchRoll[2], m_fRollSmoothVel, 0.14, 1000, pDt);
+		yawPitchRoll[0] = 0;
 		yawPitchRoll[1] = m_fPitchSmooth;
 		yawPitchRoll[2] = m_fRollSmooth;
 		AddPitchRoll(yawPitchRoll, m_fPitchFactor, m_fRollFactor, transformMS);
@@ -199,7 +217,7 @@ class CharacterCameraBase extends ScriptedCameraItem
 	protected 	float 	m_fLeftRightAngle = 0.0; //!< left right angle in rad
 	
 	//-----------------------------------------------------------------------------
-	override void SetBaseAngles(vector angles)
+	override void SetBaseAngles(out vector angles)
 	{
 		m_fUpDownAngle = fixAngle_180_180(angles[0]);
 		m_fLeftRightAngle = fixAngle_180_180(angles[1]);
@@ -257,4 +275,8 @@ class CharacterCameraBase extends ScriptedCameraItem
 	protected static TNodeId sm_iCameraBoneIndex = -1;
 	protected static TNodeId sm_iHeadBoneIndex = -1;
 	protected static AnimationTagID sm_TagFPCamera = -1;
+	protected static AnimationTagID sm_TagLyingCamera = -1; // beware: very deceitful!
+	protected static AnimationTagID sm_TagItemUpdateCols = -1; // beware: very deceitful!
+	protected static AnimationTagID sm_TagADSTransitionOut = -1;
+	protected static AnimationTagID sm_TagADSTransitionIn = -1;
 };

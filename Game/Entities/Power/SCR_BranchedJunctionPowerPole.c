@@ -7,18 +7,18 @@ class SCR_BranchedJunctionPowerPoleClass: SCR_JunctionPowerPoleClass
 class SCR_BranchedJunctionPowerPole : SCR_JunctionPowerPole
 {
 	[Attribute("3")]
-	int m_iBranchSize;
-	
+	protected int m_iBranchSize;
+
 	//------------------------------------------------------------------------------------------------
 	//Only for when sameLine == false
-	int GetClosestBranch(vector point)
+	protected int GetClosestBranch(vector point)
 	{
 		int slotsCount = m_aJunctionSlots.Count();
 		int repetitionCount = Math.Floor(slotsCount / m_iBranchSize);
 		int selectedBranch = 0;
-		
+
 		float closestDistance = float.MAX;
-		
+
 		float currentDistance;
 		for (int i = slotsCount - 1; i >= 0; i--)
 		{
@@ -30,7 +30,7 @@ class SCR_BranchedJunctionPowerPole : SCR_JunctionPowerPole
 					closestDistance = currentDistance;
 					selectedBranch = Math.Floor(i / m_iBranchSize);
 				}
-				
+
 				currentDistance = 0;
 			}
 		}
@@ -41,61 +41,47 @@ class SCR_BranchedJunctionPowerPole : SCR_JunctionPowerPole
 			{
 				currentDistance += vector.DistanceSq(m_aJunctionSlots[i * m_iBranchSize - j].m_vSlotA, point);
 			}
-			
+
 			currentDistance /= m_iBranchSize;
 			if (currentDistance < closestDistance)
 				selectedBranch = i;
 		}*/
-		
+
 		return selectedBranch;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override vector TryGetSlot(int index, vector otherSlot, bool sameLine)
 	{
 		if (sameLine)
 			return super.TryGetSlot(index, otherSlot, sameLine);
-		
+
 		index += GetClosestBranch(otherSlot) * m_iBranchSize;
-		
+
 		if (index >= m_aJunctionSlots.Count())
 		{
 			return m_aJunctionSlots[index % m_aJunctionSlots.Count()].m_vSlotA;
 			return vector.Zero;
 		}
-		
+
 		SCR_PowerPoleSlot dualSlot = SCR_PowerPoleSlot.Cast(m_aJunctionSlots[index]);
-		/*if (dualSlot)
-			return CoordToParent(dualSlot.m_vSlotB);*/
 		if (dualSlot)
 		{
 			if (vector.Distance(otherSlot, CoordToParent(dualSlot.m_vSlotA)) > vector.Distance(otherSlot, CoordToParent(dualSlot.m_vSlotB)))
-			{
 				return CoordToParent(dualSlot.m_vSlotB);
-			}
 			else
-			{
 				return CoordToParent(dualSlot.m_vSlotA);
-			}
 		}
-		
+
 		SCR_PowerPoleSlotSingle singleSlot = SCR_PowerPoleSlotSingle.Cast(m_aJunctionSlots[index]);
 		if (singleSlot)
-		{
 			return CoordToParent(singleSlot.m_vSlotA);
-		}
-		
+
 		return vector.Zero;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SCR_BranchedJunctionPowerPole(IEntitySource src, IEntity parent)
 	{
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_BranchedJunctionPowerPole()
-	{
-	}
-
 };

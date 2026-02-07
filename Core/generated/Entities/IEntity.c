@@ -51,15 +51,15 @@ class IEntity: Managed
 	*/
 	event protected void EOnAnimEvent(IEntity owner, int type, int slot);
 	/*!
-	Event before simulated by physics engine (called from sub-iterations!).
+	Event before every physics fixed step (can be multiple calls per engine update)
 	\param owner The owner entity
-	\param timeSlice Time slice of simulation step
+	\param timeSlice Time slice of physics fixed step
 	*/
 	event protected void EOnSimulate(IEntity owner, float timeSlice);
 	/*!
-	Event after simulated by physics engine (once per frame).
+	Event after every physics fixed step (can be multiple calls per engine update)
 	\param owner The owner entity
-	\param timeSlice Time slice of simulation step
+	\param timeSlice Time slice of physics fixed step
 	*/
 	event protected void EOnPostSimulate(IEntity owner, float timeSlice);
 	/*!
@@ -81,7 +81,7 @@ class IEntity: Managed
 	*/
 	event protected void EOnContact(IEntity owner, IEntity other, Contact contact);
 	/*!
-	Event when physics engine (de)activated RigidBody.
+	Event when a RigidBody active state is changed between consecutive fixed steps
 	\param owner The owner entity
 	*/
 	event protected void EOnPhysicsActive(IEntity owner, bool activeState);
@@ -155,11 +155,32 @@ class IEntity: Managed
 	\endcode
 	*/
 	proto external EntityID GetID();
-	//! Returns pointer to parent Entity in hierarchy.
+	/*!
+	Returns parent of this entity (entity on upper level
+	of hierarchy).
+	\return
+	Pointer to parent entity, or nullptr, when we are not child.
+	*/
 	proto external IEntity GetParent();
-	//! Returns pointer to first child Entity in hierarchy.
+	/*!
+	Returns top-parent of this entity.
+	\return
+	Pointer to root entity, or nullptr, when we are not child.
+	*/
+	proto external IEntity GetRootParent();
+	/*!
+	Returns first child from this level of hierarchy
+	if there is any.
+	\return
+	Pointer to child entity, or nullptr
+	*/
 	proto external IEntity GetChildren();
-	//! Returns pointer to next child Entity on the same hierarchy.
+	/*!
+	Returns next sibling of this entity (next entity on this level
+	of hierarchy).
+	\return
+	Pointer to sibling entity, or nullptr
+	*/
 	proto external IEntity GetSibling();
 	//! Returns visual object set to this Entity. No reference is added.
 	proto external VObject GetVObject();
@@ -392,7 +413,6 @@ class IEntity: Managed
 	\param recursively Flags will be recursively applied to children of hierarchy too
 	\return previous flags
 	*/
-	[Restrict(EAccessLevel.LEVEL_1, false)]
 	proto external EntityFlags SetFlags(EntityFlags flags, bool recursively = false);
 	/*!
 	Clear Entity flags. Returns cleared flags.
@@ -484,17 +504,23 @@ class IEntity: Managed
 	proto external int SetCameraMask(int mask);
 	proto external Physics GetPhysics();
 	proto external Particles GetParticles();
+	proto external Animation GetAnimation();
 	//! Updates animation (either xob, or particle, whatever).
 	proto external int Animate(float speed, int loop);
 	//! Updates animation (either xob, or particle, whatever).
 	proto external int AnimateEx(float speed, int loop, out vector lin, out vector ang);
+	[Obsolete("Use GetAnimation().SetBone() instead")]
 	proto external void	SetBone(TNodeId bone, vector angles, vector trans, float scale);
+	[Obsolete("Use GetAnimation().SetBoneMatrix() instead")]
 	proto external bool	SetBoneMatrix(TNodeId bone, vector mat[4]);
-	proto external void	SetBoneGlobal(TNodeId bone, vector mat[4]);
-	proto external bool	GetBoneMatrix(TNodeId bone, vector mat[4]);
+	[Obsolete("Use GetAnimation().GetBoneMatrix() instead")]
+	proto external bool	GetBoneMatrix(TNodeId bone, out vector mat[4]);
+	[Obsolete("Use GetAnimation().GetBoneIndex() instead")]
 	proto external TNodeId	GetBoneIndex(string boneName);
+	[Obsolete("Use GetAnimation().GetBoneNames() instead")]
 	proto external void	GetBoneNames(out notnull array<string> boneNames);
-	proto external bool	GetBoneLocalMatrix(TNodeId bone, vector mat[4]);
+	[Obsolete("Use GetAnimation().GetBoneLocalMatrix() instead")]
+	proto external bool	GetBoneLocalMatrix(TNodeId bone, out vector mat[4]);
 	[Obsolete("Use GetParticles().OverridePrevPos() instead")]
 	proto external void ResetParticlePosition();
 	[Obsolete("Use GetParticles().Restart() instead")]

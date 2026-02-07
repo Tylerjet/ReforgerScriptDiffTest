@@ -22,17 +22,14 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external CameraHandlerComponent GetCameraHandlerComponent();
 	proto external InventoryStorageManagerComponent GetInventoryStorageManager();
 	proto external VoNComponent GetVONComponent();
+	proto external AIControlComponent GetAIControlComponent();
 	proto external EntitySlotInfo GetRightHandPointInfo();
 	proto external EntitySlotInfo GetLeftHandPointInfo();
 	proto external CharacterInputContext GetInputContext();
 	proto external float GetMovementSpeed();
 	//! Update animation about state of movement, define speed and direction in local space of character
 	proto external void SetMovement(float movementSpeed, vector movementDirModel);
-	//! set heading angle in radians
 	proto external void SetHeadingAngle(float newHeadingAngle, bool adjustAimingYaw = false);
-	proto external float GetHeadingAngle();
-	//! set aiming angles in radians
-	proto external void SetAimingAngles(float yaw, float pitch);
 	//! Returns the current stance of the character.
 	proto external ECharacterStance GetStance();
 	//! Returns the current controlled character.
@@ -117,6 +114,11 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	Returns true if weapon is deployed and stabilized.
 	*/
 	proto external bool GetIsWeaponDeployed();
+	/*!
+	Returns true if weapon can be deployed and stabilized.
+	This method uses traces to see if the surface is suitable for weapon deployment.
+	*/
+	proto external bool CanDeployWeapon();
 	/*!
 	Returns true if weapon is deployed and stabilized using a bipod.
 	*/
@@ -284,12 +286,6 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool CanPartialLower();
 	//! Sets desired partial lower state, if allowed.
 	proto external void SetPartialLower(bool state);
-	//! Returns the aiming angles in radians
-	proto external vector GetAimingAngles();
-	//! Returns the weapon angles in degrees
-	proto external vector GetWeaponAngles();
-	//! Returns the camera weapon angles in degrees
-	proto external vector GetCameraWeaponAngles();
 	//------------------------------------------------------------------------
 	proto external vector GetCameraWeaponOffset();
 	//------------------------------------------------------------------------
@@ -390,6 +386,8 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	event protected bool OnPerformAction() { return false; };
 	//! Override to handle whether character can get out of vehicle via GetOut input action
 	event bool CanGetOutVehicleScript() { return true; };
+	//! Override to handle whether character can eject from vehicle via JumpOut input action
+	event bool CanJumpOutVehicleScript() { return true; };
 	//! Handling of death
 	event protected void OnDeath(IEntity instigator);
 	//! Will be called when gadget taken/removed from hand
@@ -407,10 +405,18 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	or 0 if no adjustment is to be made.
 	*/
 	event float GetInspectTargetLookAt(out vector targetAngles);
+	/*Should return true if during CharacterHeadingAnimComponent aligning, the aiming angles should influence aiming angles.*/
+	event bool ShouldAligningAdjustAimingAngles();
 	//! Runs after a weapon is dropped from hands. Returns dropped weapon entity and slot that the weapon was dropped from.
 	event protected void OnWeaponDropped(IEntity pWeaponEntity, WeaponSlotComponent pWeaponSlot);
 	//! Runs after the left hand item is dropped. Returns dropped item entity.
 	event protected void OnItemDroppedFromLeftHand(IEntity pItemEntity);
+	//------------------------------------------------------------------------
+	event bool SCR_GetDisableMovementControls();
+	//------------------------------------------------------------------------
+	event void SCR_OnDisabledJumpAction();
+	//------------------------------------------------------------------------
+	event bool SCR_GetDisableViewControls();
 	//! Called when a player has been assigned to this controller
 	event protected void OnControlledByPlayer(IEntity owner, bool controlled);
 }

@@ -19,7 +19,7 @@ class SCR_SpawnAtPlayersEditorAttribute : SCR_BaseEditorAttribute
 		if (!playerSpawnPointManager)
 			return null;
 		
-		return SCR_BaseEditorAttributeVar.CreateBool(playerSpawnPointManager.PlayerSpawnPointsEnabled());
+		return SCR_BaseEditorAttributeVar.CreateBool(playerSpawnPointManager.IsPlayerSpawnPointsEnabled());
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)

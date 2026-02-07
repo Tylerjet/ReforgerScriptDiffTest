@@ -28,6 +28,11 @@ class SCR_NotificationPlayerKicked : SCR_NotificationPlayer
 		KickCauseCode kickCode;
 		data.GetParams(playerID, kickCode, duration);
 		
+		string playerName;
+		data.GetNotificationTextEntries(playerName);
+		if (!GetPlayerName(playerID, playerName))
+			return string.Empty;
+		
 		string kickReasonText = m_sUnknownKickReason;
 		SCR_ConfigurableDialogUiPreset preset;
 		
@@ -54,7 +59,7 @@ class SCR_NotificationPlayerKicked : SCR_NotificationPlayer
 		//~ Player was kicked (0 duration) or banned (-1 duration)
 		if (duration <= 0)
 		{
-			data.SetNotificationTextEntries(GetPlayerName(playerID), kickReasonText);
+			data.SetNotificationTextEntries(playerName, kickReasonText);
 		}
 		//~ Higher then 0 so Player was temp banned
 		else
@@ -62,7 +67,7 @@ class SCR_NotificationPlayerKicked : SCR_NotificationPlayer
 			int days, hours, minutes, seconds;
 			SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds(duration, days, hours, minutes, seconds);
 			
-			data.SetNotificationTextEntries(GetPlayerName(playerID), days.ToString(),  hours.ToString(),  minutes.ToString(),  seconds.ToString(), kickReasonText);
+			data.SetNotificationTextEntries(playerName, days.ToString(),  hours.ToString(),  minutes.ToString(),  seconds.ToString(), kickReasonText);
 		}
 
 		return super.GetText(data);

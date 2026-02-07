@@ -13,6 +13,9 @@ class SCR_DamageStateConfig
 	[Attribute(desc: "UI info for Destroyed state")]
 	protected ref SCR_DamageStateUIInfo m_DestroyedStateUiInfo;
 	
+	[Attribute(desc: "UI info for Fractured state")]
+	protected ref SCR_DamageStateUIInfo m_FracturedStateUiInfo;
+ 	
 	/*!
 	Get UI info using damage type
 	\param damageType Damage type of the visual that needs to be obtained
@@ -70,6 +73,15 @@ class SCR_DamageStateConfig
 	SCR_DamageStateUIInfo GetDestroyedStateUiInfo()
 	{
 		return m_DestroyedStateUiInfo;
+	}	
+	
+	/*!
+	Get UI info for Destroyed State
+	\return Ui info
+	*/
+	SCR_DamageStateUIInfo GetFracturedStateUiInfo()
+	{
+		return m_FracturedStateUiInfo;
 	}
 };
 

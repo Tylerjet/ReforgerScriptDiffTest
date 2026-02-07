@@ -84,6 +84,8 @@ class SCR_AIWorld : AIWorld
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SET_BT_BREAKPOINT, "", "Set BT Breakpoint", "AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_DEBUG,"","Print debug from BTs","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_GROUP_INFO,"","Print init of groups","AIScript");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_FIRETEAMS, "", "Show fireteams", "AIScript");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_TARGET_CLUSTERS, "", "Show target clusters", "AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_SHOT_STATISTICS,"","Print stats for aiming","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_ACTIVITY,"","Print new activity","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_DEBUG_SHAPES,"","Show debug shapes from BTs","AIScript");

@@ -15,7 +15,7 @@ class SCR_SelectedEditableEntityFilter : SCR_BaseEditableEntityFilter
 	{
 		set<SCR_EditableEntityComponent> selection = new set<SCR_EditableEntityComponent>();
 		selection.Copy(m_Entities);
-		m_SavedSelections.Insert(index, selection);
+		m_SavedSelections.Set(index, selection);
 	}
 	/*!
 	Load currently selected entities.

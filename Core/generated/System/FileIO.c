@@ -14,6 +14,8 @@ sealed class FileIO
 	private void FileIO();
 	private void ~FileIO();
 
+	[Obsolete("use FileIO.FileExists")] static bool FileExist(string name) { return FileExists(name); }
+
 	/*!
 	Opens a File.
 	\param name Name of a file to open. You can use filesystem prefixes. For accessing profile dir use '$profile', e.g. '$profile:myFileName.txt'.
@@ -27,7 +29,7 @@ sealed class FileIO
 	*/
 	static proto ParseHandle BeginParse(string filename);
 	//! Check existence of file
-	static proto bool FileExist(string name);
+	static proto bool FileExists(string name);
 	//! Makes a directory
 	static proto bool MakeDirectory(string name);
 	//! delete file. Works only on "$profile:", "$logs:" and "$saves:" locations

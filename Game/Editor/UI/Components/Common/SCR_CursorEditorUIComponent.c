@@ -2,6 +2,9 @@
 */
 class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 {
+	protected const float TRACE_DIS_SINGLE = 10000;
+	protected const float TRACE_DIS_REPEATED = 250;
+	
 	//[Attribute()]
 	//private string m_sGamepadCursorWidgetName;
 	
@@ -154,7 +157,7 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		vector cursorPos = GetCursorPos();
 		vector outDir;
 		vector startPos = workspace.ProjScreenToWorld(cursorPos[0], cursorPos[1], outDir, world, -1);
-		outDir *= 10000;
+		outDir *= TRACE_DIS_SINGLE;
 		
 		//--- Use default flags
 		if (flags < 0)
@@ -256,50 +259,68 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 			//	break;
 			
 			case (m_StatesManager && m_EditorManager && (m_StatesManager.IsWaiting() || m_EditorManager.IsModeChangeRequested())):
+			{
 				SetCursorType(EEditorCursor.WAITING);
 				break;
-			
+			}
 			case (isEditing && !m_PreviewManager.IsChange()):
+			{
 				SetCursorType(EEditorCursor.TRANSFORM_DISABLED);
 				break;
-
+			}
 			case (isEditing && m_PreviewManager.IsRotating()):
+			{
 				SetCursorType(EEditorCursor.ROTATE);
 				break;
-
+			}
 			case (isEditing && (m_PreviewManager.GetTarget() || m_PreviewManager.IsFixedPosition())):
+			{
 				if (m_PreviewManager.GetTargetInteraction() == EEditableEntityInteraction.NONE)
 					SetCursorType(EEditorCursor.TRANSFORM_SNAP_DISABLED);
 				else
 					SetCursorType(EEditorCursor.TRANSFORM_SNAP);
 				break;
-			
+			}
 			case (isEditing && !m_PreviewManager.CanMoveInRoot()):
+			{
 				SetCursorType(EEditorCursor.TRANSFORM_DISABLED);
 				break;
-
+			}
 			case (editorState == EEditorState.TRANSFORMING):
-				SetCursorType(EEditorCursor.TRANSFORM);
+			{
+				if (m_PreviewManager.GetVerticalMode() == EEditorTransformVertical.GEOMETRY && m_PreviewManager.GetVerticalMode() == m_PreviewManager.GetVerticalModeReal())
+					SetCursorType(EEditorCursor.TRANSFORM_GEOMETRY);
+				else
+					SetCursorType(EEditorCursor.TRANSFORM);	
 				break;
-
+			}
 			case (editorState == EEditorState.PLACING):
-				SetCursorType(EEditorCursor.PLACE);
+			{
+				if (m_PreviewManager.GetVerticalMode() == EEditorTransformVertical.GEOMETRY && m_PreviewManager.GetVerticalMode() == m_PreviewManager.GetVerticalModeReal())
+					SetCursorType(EEditorCursor.PLACE_GEOMETRY);
+				else
+					SetCursorType(EEditorCursor.PLACE);
 				break;
-
+			}
 			case (m_CommandManager && m_CommandManager.GetCommandState() & EEditorCommandActionFlags.WAYPOINT):
+			{
 				SetCursorType(EEditorCursor.WAYPOINT);
 				break;
-
+			}
 			case (m_CommandManager && m_CommandManager.GetCommandState() & EEditorCommandActionFlags.OBJECTIVE):
+			{
 				SetCursorType(EEditorCursor.OBJECTIVE);
 				break;
-
+			}
 			case (editorState == EEditorState.SELECTING && m_HoverManager && m_HoverManager.GetInteractiveEntityUnderCursor()):
+			{
 				SetCursorType(EEditorCursor.FOCUS);
 				break;
-
+			}
 			default:
+			{
 				SetCursorType(EEditorCursor.DEFAULT);
+			}
 		}
 	}
 	void OnFilterChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
@@ -319,7 +340,7 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		//--- Trace cursor position
 		autoptr TraceParam trace = new TraceParam();
 		trace.Start = camPos;
-		trace.End = camPos + outDir * 1000;
+		trace.End = camPos + outDir * TRACE_DIS_REPEATED;
 		trace.Flags = TraceFlags.ENTS | TraceFlags.WORLD | TraceFlags.OCEAN;
 		float coefTrace = GetGame().GetWorld().TraceMove(trace, null);//TraceFilter);
 		

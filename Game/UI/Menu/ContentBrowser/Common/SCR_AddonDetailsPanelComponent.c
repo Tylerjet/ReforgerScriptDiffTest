@@ -95,7 +95,9 @@ class SCR_AddonDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		m_Widgets.m_MainArea.SetVisible(true);
 		
 		// Name, description, author name
-		m_Widgets.m_NameText.SetText(m_Item.GetName());
+		string title = m_Item.GetName();
+		//title.ToUpper();
+		m_Widgets.m_NameText.SetText(title);
 		m_Widgets.m_AuthorNameText.SetText(m_Item.GetAuthorName());
 		m_Widgets.m_DescriptionText.SetText(m_Item.GetSummary());
 		

@@ -2,6 +2,8 @@ class KeybindMenu : DialogUI
 {
 	protected static ref InputBinding s_Binding;
 	protected SCR_KeybindSetting m_KeybindMenuComponent;
+	
+	protected ref ScriptInvoker m_OnKeyCaptured;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
@@ -13,7 +15,11 @@ class KeybindMenu : DialogUI
 		if (s_Binding.GetCaptureState() == EInputBindingCaptureState.IDLE)
 		{
 			s_Binding.Save();
-			m_KeybindMenuComponent.ListActionsFromCurrentCategory();
+			if (m_KeybindMenuComponent)
+				m_KeybindMenuComponent.ListActionsFromCurrentCategory();
+			
+			if (m_OnKeyCaptured)
+				m_OnKeyCaptured.Invoke();
 			CloseAnimated();
 		}
 	}
@@ -27,17 +33,27 @@ class KeybindMenu : DialogUI
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetKeybind(InputBinding binding, SCR_KeybindSetting keybindMenuComponent)
+	void SetKeybind(InputBinding binding, SCR_KeybindSetting keybindMenuComponent = null)
 	{
 		m_KeybindMenuComponent = keybindMenuComponent;
 		s_Binding = binding;
 		GetGame().GetInputManager().AddActionListener("MenuBackKeybind", EActionTrigger.DOWN, CancelCapture);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void CancelCapture()
 	{
 		s_Binding.CancelCapture();
 		m_OnCancel.Invoke();
 		CloseAnimated();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnKeyCaptured()
+	{
+		if (!m_OnKeyCaptured)
+			m_OnKeyCaptured = new ScriptInvoker();
+		
+		return m_OnKeyCaptured;
 	}
 };

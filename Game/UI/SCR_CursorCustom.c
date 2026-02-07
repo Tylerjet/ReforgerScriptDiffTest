@@ -29,7 +29,11 @@ class SCR_CursorCustom
 			m_wRoot.SetVisible(true);
 		}
 								
-		m_wCursorImage.LoadImageFromSet(0, stateCfg.m_sCursorIconsImageset, stateCfg.m_sImageQuad);
+		if (SCR_MapCursorInfo.isGamepad && !stateCfg.m_sImageQuadController.IsEmpty())
+			m_wCursorImage.LoadImageFromSet(0, stateCfg.m_sCursorIconsImageset, stateCfg.m_sImageQuadController);
+		else
+			m_wCursorImage.LoadImageFromSet(0, stateCfg.m_sCursorIconsImageset, stateCfg.m_sImageQuad);
+		
 		AlignableSlot.SetPadding(m_wCursorImage, stateCfg.m_fPaddingLeft, stateCfg.m_fPaddingTop, 0, 0);
 				
 		m_wCursorImage.SetColor(stateCfg.m_Color);

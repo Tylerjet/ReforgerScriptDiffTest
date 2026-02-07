@@ -54,7 +54,12 @@ class SCR_NotificationOnKillfeedChanged : SCR_NotificationPlayer
 			}
 		}
 		
-		data.SetNotificationTextEntries(GetPlayerName(playerID), killfeedChangedTo);
+		string playerName;
+		data.GetNotificationTextEntries(playerName);
+		if (!GetPlayerName(playerID, playerName))
+			return string.Empty;
+		
+		data.SetNotificationTextEntries(playerName, killfeedChangedTo);
 		return super.GetText(data);
 	}	
 };

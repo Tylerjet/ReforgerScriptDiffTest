@@ -3,6 +3,8 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 	[Attribute(desc: "Contains Default Prefab of character to be spawned into compartment", params: "et")]
 	protected ref SCR_DefaultOccupantData m_DefaultOccupantData;
 	
+	static const vector SPAWN_IN_VEHICLE_OFFSET = Vector(0, 250, 0); //~ Offset added when characters are spawned to add to vehicle. To make sure they are close and streamed but not on the vehicle as this would kill them
+	
 	private bool m_bCompartmentAccessible = true;
 
 	override void DebugDrawPosition()
@@ -184,7 +186,14 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 		if (characterPrefab.IsEmpty() || !IsCompartmentAccessible() || GetOccupant() != null)
 			return null;
 		
-		IEntity spawnedCharacter = GetGame().SpawnEntityPrefab(Resource.Load(characterPrefab));
+		//~ Spawn at vehicle position
+		EntitySpawnParams params = new EntitySpawnParams();
+		GetOwner().GetTransform(params.Transform);
+		
+		//~ Spawn characters above the vehicle to make sure physics do not interact with the character and they die on contact of the vehicle
+		params.Transform[3] + SPAWN_IN_VEHICLE_OFFSET;
+		
+		IEntity spawnedCharacter = GetGame().SpawnEntityPrefab(Resource.Load(characterPrefab), params: params);
 		if (!spawnedCharacter)
 		{
 			Print(string.Format("'BaseCompartmentSlot' Failed to spawn character in compartment. Check if ResourceName is correct! Path: '%1'", characterPrefab), LogLevel.ERROR);
@@ -219,7 +228,7 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 		
 		//~ Create new group
 		if (!group)
-		{
+		{			
 			IEntity groupEntity = GetGame().SpawnEntityPrefab(Resource.Load(groupPrefab));
 			if (!groupEntity) 
 			{

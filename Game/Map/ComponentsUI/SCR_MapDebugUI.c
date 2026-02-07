@@ -202,40 +202,40 @@ class SCR_MapDebugUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnRadialMenuOpen()
 	{
-		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapContextualMenuUI));
+		SCR_MapRadialUI radialUI = SCR_MapRadialUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapRadialUI));
 		
 		bool isDebugOn = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_UI_MAP_DEBUG_OPTIONS, false);
 		if (isDebugOn)
 		{
-			SCR_MapMenuCategory category = ctxMenu.AddRadialCategory("Debug Options");
+			SCR_SelectionMenuCategoryEntry category = radialUI.AddRadialCategory("Debug Options");
 			category.SetIcon(m_sIconImageset, "view-point");
 			
-			SCR_MapMenuEntry entry = ctxMenu.AddRadialEntry("Map variables dbg", "Debug Options");
-			entry.m_OnClick.Insert(m_MapEntity.ShowScriptDebug);
+			SCR_SelectionMenuEntry entry = radialUI.AddRadialEntry("Map variables dbg", category);
+			entry.GetOnPerform().Insert(m_MapEntity.ShowScriptDebug);
 			entry.SetIcon(m_sIconImageset, "culvet");
 			
-			entry = ctxMenu.AddRadialEntry("Zoom to 1px == 1m", "Debug Options");
-			entry.m_OnClick.Insert(ZoomToPPU1);
+			entry = radialUI.AddRadialEntry("Zoom to 1px == 1m", category);
+			entry.GetOnPerform().Insert(ZoomToPPU1);
 			entry.SetIcon(m_sIconImageset, "single-tree");
 			
-			entry = ctxMenu.AddRadialEntry("Zoom up a layer", "Debug Options"); 
-			entry.m_OnClick.Insert(ZoomLayerUp);
+			entry = radialUI.AddRadialEntry("Zoom up a layer", category); 
+			entry.GetOnPerform().Insert(ZoomLayerUp);
 			entry.SetIcon(m_sIconImageset, "ancient-fortification");
 			
-			entry = ctxMenu.AddRadialEntry("Zoom down a layer", "Debug Options");
-			entry.m_OnClick.Insert(ZoomLayerDown);
+			entry = radialUI.AddRadialEntry("Zoom down a layer", category);
+			entry.GetOnPerform().Insert(ZoomLayerDown);
 			entry.SetIcon(m_sIconImageset, "hospital");
 			
-			entry = ctxMenu.AddRadialEntry("Pan to player", "Debug Options");
-			entry.m_OnClick.Insert(PanToPlayer);
+			entry = radialUI.AddRadialEntry("Pan to player", category);
+			entry.GetOnPerform().Insert(PanToPlayer);
 			entry.SetIcon(m_sIconImageset, "hill-marker");
 			
-			entry = ctxMenu.AddRadialEntry("Show units", "Debug Options");
-			entry.m_OnClick.Insert(ShowUnits);
+			entry = radialUI.AddRadialEntry("Show units", category);
+			entry.GetOnPerform().Insert(ShowUnits);
 			entry.SetIcon(m_sIconImageset, "crane");
 			
-			entry = ctxMenu.AddRadialEntry("Toggle Light", "Debug Options");
-			entry.m_OnClick.Insert(ToggleLight);
+			entry = radialUI.AddRadialEntry("Toggle Light", category);
+			entry.GetOnPerform().Insert(ToggleLight);
 			entry.SetIcon(m_sIconImageset, "smoke-stack");
 		}
 	}
@@ -258,17 +258,13 @@ class SCR_MapDebugUI : SCR_MapUIBaseComponent
 			m_bIsUnitVisible = false;
 			ShowUnits();
 		}
-		
-		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapContextualMenuUI));
-		if (ctxMenu)
-			ctxMenu.GetOnMenuOpenInvoker().Insert(OnRadialMenuOpen);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMapClose(MapConfiguration config)
+	override void Init()
 	{
-		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapContextualMenuUI));
-		if (ctxMenu)
-			ctxMenu.GetOnMenuOpenInvoker().Remove(OnRadialMenuOpen);
+		SCR_MapRadialUI radialMenu = SCR_MapRadialUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapRadialUI));
+		if (radialMenu)
+			radialMenu.GetOnMenuInitInvoker().Insert(OnRadialMenuOpen);
 	}
 };

@@ -18,6 +18,14 @@ class SCR_AIReactionBase
 
 	void PerformReaction(notnull SCR_AIUtilityComponent utility) {}
 	void PerformReaction(notnull SCR_AIGroupUtilityComponent utility) {}
+	
+	#ifdef AI_DEBUG
+	protected void AddDebugMessage(SCR_AIUtilityComponent utility, string str)
+	{
+		SCR_AIInfoBaseComponent infoComp = SCR_AIInfoBaseComponent.Cast(utility.GetOwner().FindComponent(SCR_AIInfoBaseComponent));
+		infoComp.AddDebugMessage(string.Format("%1: %2", this, str), msgType: EAIDebugMsgType.REACTION);
+	}
+	#endif
 };
 
 //------------------------------------------------------------------------------------------------
@@ -49,7 +57,7 @@ class SCR_AIIdleReaction : SCR_AIReactionBase
 	
 	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility) 
 	{
-		auto activity = new SCR_AIIdleActivity(utility, false);
+		auto activity = new SCR_AIIdleActivity(utility, null);
 		utility.AddAction(activity);
 	}
 };

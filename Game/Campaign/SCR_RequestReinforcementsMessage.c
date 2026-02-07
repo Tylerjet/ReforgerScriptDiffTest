@@ -2,7 +2,7 @@
 //------------------------------------------------------------------------------------------------
 class SCR_RequestReinforcementsMessage : ScriptedRadioMessage
 {
-	protected SCR_CampaignBase m_TargetBase;
+	protected SCR_CampaignMilitaryBaseComponent m_TargetBase;
 	protected SCR_CampaignFaction m_TargetFaction;
 	
 	//------------------------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ class SCR_RequestReinforcementsMessage : ScriptedRadioMessage
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetTargetBase(SCR_CampaignBase targetBase)
+	void SetTargetBase(SCR_CampaignMilitaryBaseComponent targetBase)
 	{
 		m_TargetBase = targetBase;
 	}

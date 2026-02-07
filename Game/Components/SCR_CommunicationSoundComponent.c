@@ -97,7 +97,7 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 		m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("CompanyCaller"), company);
 		m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("PlattonCaller"), platoon);
 		m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("SquadCaller"), squad);
-		m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("SoldierCaller"), character);
+		m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("SoldierCaller"), character -1);
 	}
 		
 	//------------------------------------------------------------------------------------------------

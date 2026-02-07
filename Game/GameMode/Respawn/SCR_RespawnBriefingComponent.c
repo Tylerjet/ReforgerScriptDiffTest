@@ -5,6 +5,9 @@ class SCR_RespawnBriefingComponentClass : SCR_BaseGameModeComponentClass
 
 class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 {
+	[Attribute("")]
+	protected ResourceName m_sJournalConfigPath;
+
 	[Attribute()]
 	protected ref SCR_UIInfo m_Info;
 	
@@ -46,6 +49,11 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	ResourceName GetSimpleBriefingBackground()
 	{
 		return m_SimpleBriefingBackground;
+	}
+
+	ResourceName GetJournalConfigPath()
+	{
+		return m_sJournalConfigPath;
 	}
 
 	//------------------------------------------------------------------------------------------------

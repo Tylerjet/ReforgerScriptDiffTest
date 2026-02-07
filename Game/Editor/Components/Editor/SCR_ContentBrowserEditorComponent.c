@@ -865,12 +865,11 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 			//~ If ever passengers picking can be chosen then this logic needs to change
 			else if (extendedEntity.GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent))
 			{
-				transform[3] = vector.Zero; //~ Set at 0,0,0 after Getting transform else characters are not always added to the vehicle
+				transform[3] = extendedEntity.GetOwner().GetOrigin() + BaseCompartmentSlot.SPAWN_IN_VEHICLE_OFFSET; //~ Spawn close so the entities are spawned in but still above the entity out of sight
 				params.m_TargetInteraction = EEditableEntityInteraction.PASSENGER;
 				params.m_Parent = extendedEntity;
 				params.m_ParentID = Replication.FindId(extendedEntity);
 			}
-			
 			
 			params.m_vTransform = transform;
  			params.SetTarget(extendedEntity);

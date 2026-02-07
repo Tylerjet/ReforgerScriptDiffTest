@@ -10,7 +10,13 @@ class SCR_NotificationEditableEntity : SCR_NotificationDisplayData
 	{		
 		int entityID;
 		data.GetParams(entityID);
-		data.SetNotificationTextEntries(GetEditableEntityName(entityID));		
+		
+		string entityName;
+		data.GetNotificationTextEntries(entityName);
+		if (!GetEditableEntityName(entityID, entityName))
+			return string.Empty;
+		
+		data.SetNotificationTextEntries(entityName);		
 		return super.GetText(data);
 	}
 	

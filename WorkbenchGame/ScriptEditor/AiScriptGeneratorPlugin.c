@@ -812,6 +812,11 @@ class AiScriptGenerator_SendGoalMessageGenerator : AiScriptGenerator_ClassGenera
 				// Set message variables
 				GenerateSetMessageVariables(ctx, variables);
 				
+				// Set related waypoint
+				ctx.AddLine("if (msg.m_bIsWaypointRelated)");
+				ctx.AddLine("\tmsg.m_RelatedWaypoint = GetRelatedWaypoint(owner);");
+				ctx.AddLine("");
+				
 				ctx.AddLine(string.Format("if (SendMessage(owner, receiver, msg))"));
 				ctx.AddLine("\treturn ENodeResult.SUCCESS;");
 				ctx.AddLine("else");
@@ -910,6 +915,6 @@ class AiScriptGenerator_Variable
 	//---------------------------------------------------------------------------------------
 	string GetListing()
 	{
-		return string.Format("Variable: %1 %2 -> %3", m_sType, m_sName, m_sBindPortName));
+		return string.Format("Variable: %1 %2 -> %3", m_sType, m_sName, m_sBindPortName);
 	}
 }

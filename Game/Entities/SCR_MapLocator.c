@@ -43,7 +43,7 @@ class SCR_MapLocator : GenericEntity
 	protected void ShowMapHint()
 	{
 		//--- ToDo: Don't hardcode conditions, let the map config define whether to show location hint or not
-		if (SCR_SelectSpawnPointSubMenu.GetInstance() || SCR_EditorManagerEntity.IsOpenedInstance())
+		if (SCR_DeployMenuMain.GetDeployMenu())
 			return;
 		m_wUIHintLayout = GetGame().GetWorkspace().CreateWidgets(m_sUIHintLayout);
 		if (!m_wUIHintLayout)

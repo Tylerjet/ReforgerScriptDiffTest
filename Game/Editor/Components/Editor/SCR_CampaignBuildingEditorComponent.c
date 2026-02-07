@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Editor", description: "Main campaign component for handling building editor mode", icon: "WBData/ComponentEditorProps/componentEditor.png")]
+[ComponentEditorProps(category: "GameScripted/Editor", description: "Main conflict component for handling building editor mode", icon: "WBData/ComponentEditorProps/componentEditor.png")]
 class SCR_CampaignBuildingEditorComponentClass : SCR_BaseEditorComponentClass
 {
 };
@@ -30,8 +30,8 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		if (!providerComponent || m_aProvidersComponents.Contains(providerComponent))
 			return;
 
-		SCR_CampaignBase baseEnt = SCR_CampaignBase.Cast(providerComponent.GetOwner());
-		if (baseEnt)
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(providerComponent.GetOwner().FindComponent(SCR_CampaignMilitaryBaseComponent));
+		if (base)
 			m_aProvidersComponents.InsertAt(providerComponent, 0);
 		else
 			m_aProvidersComponents.Insert(providerComponent);
@@ -203,15 +203,17 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	//! Make the area around where is possible to build composition visible for player
 	override protected void EOnEditorActivate()
 	{
+		SCR_CampaignBuildingProviderComponent providerComponenet = GetProviderComponent();
+		if (!providerComponenet)
+			return;
+		
 		if (!System.IsConsoleApp() && GetGame().GetPlayerController())
 		{
 			ScriptedGameTriggerEntity trigger = SpawnClientTrigger();
 
 			if (trigger)
 			{
-				SCR_CampaignBuildingProviderComponent providerComponenet = GetProviderComponent();
-				if (providerComponenet)
-					trigger.SetSphereRadius(providerComponenet.GetBuildingRadius());
+				trigger.SetSphereRadius(providerComponenet.GetBuildingRadius());
 				
 				SCR_CampaignBuildingAreaMeshComponent areaMeshComponent = SCR_CampaignBuildingAreaMeshComponent.Cast(trigger.FindComponent(SCR_CampaignBuildingAreaMeshComponent));
 				if (areaMeshComponent && areaMeshComponent.ShouldEnableFrameUpdateDuringEditor())
@@ -245,16 +247,32 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		m_ContentBrowserManager.SetStateTabVisible(0, false);
 		
 		//~ Hide services in base show if outside base. Make sure given index is 0 if above hotfix is removed
-		m_ContentBrowserManager.SetStateTabVisible(1, SCR_CampaignBase.Cast(GetProviderEntity()) != null);
+		m_ContentBrowserManager.SetStateTabVisible(1, GetProviderEntity().FindComponent(SCR_CampaignMilitaryBaseComponent) != null);
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_ECharacterRank GetUserRank()
+	{		
+		int playerId = SCR_PlayerController.GetLocalPlayerId();
+		
+		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		if (!playerController)
+			return SCR_ECharacterRank.INVALID;
+		
+		return SCR_CharacterRankComponent.GetCharacterRank(playerController.GetControlledEntity());
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorOpenServer()
 	{
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(GetProviderEntity());
+		SCR_CampaignMilitaryBaseComponent base;
+		
+		if (GetProviderEntity())
+			base = SCR_CampaignMilitaryBaseComponent.Cast(GetProviderEntity().FindComponent(SCR_CampaignMilitaryBaseComponent));
+		
 		if (base)
-			return;
-
+			return; 
+		
 		GetGame().GetWorld().QueryEntitiesBySphere(GetProviderEntity().GetOrigin(), GetProviderComponent().GetBuildingRadius(), AssociateCompositionsToProvider, null, EQueryEntitiesFlags.ALL);
 	}
 
@@ -262,10 +280,10 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	override protected void EOnEditorCloseServer()
 	{
 		// In case the provider of the building was the base, don't remove it's stamp from component. So the composition can't be build from another providers
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(GetProviderEntity());
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(GetProviderEntity().FindComponent(SCR_CampaignMilitaryBaseComponent));
 		if (base)
-			return;
-
+			return; 
+		
 		GetGame().GetWorld().QueryEntitiesBySphere(GetProviderEntity().GetOrigin(), GetProviderComponent().GetBuildingRadius(), UnassignCompositionProvider, null, EQueryEntitiesFlags.ALL);
 	}
 

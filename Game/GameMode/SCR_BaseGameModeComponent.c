@@ -138,20 +138,34 @@ class SCR_BaseGameModeComponent : ScriptComponent
 		\param playerId PlayerId of spawned player.
 		\param controlledEntity Spawned entity for this player.
 	*/
+	[Obsolete("Use OnPlayerSpawnFinalize_S instead")]
 	void OnPlayerSpawned(int playerId, IEntity controlledEntity)
 	{
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	bool PreparePlayerEntity_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
+	{
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnSpawnPlayerEntityFailure_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, IEntity entity, SCR_SpawnData data, SCR_ESpawnResult reason)
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
+	{
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
-		Check if entity is actual player, or just possessed one (e.g., Game Master-controlled AI or unmanned vehicle)
-		\param player Assumed player entity
-		\param[out] playerID Value to be filled with player ID
-		\return True if the value was set
+		See SCR_BaseGameMode.HandlePlayerKilled.
 	*/
-	bool GetPlayerID(IEntity entity, out int playerID)
+	bool HandlePlayerKilled(int playerId, IEntity player, IEntity killer)
 	{
-		return false;
+		return true; // by default, handle automatically
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -164,6 +178,18 @@ class SCR_BaseGameModeComponent : ScriptComponent
 	void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
 	{
 
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Called after player gets killed in cases where the kill was handled by the game mode,
+		supressing the default OnPlayerKilled behaviour. See also SCR_BaseGameMode.HandlePlayerKilled().
+		\param playerId PlayerId of victim player.
+		\param player Entity of victim player if any.
+		\param killer Entity of killer instigator if any.
+	*/
+	void OnPlayerKilledHandled(int playerId, IEntity player, IEntity killer)
+	{
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -198,18 +224,21 @@ class SCR_BaseGameModeComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! What happens when a player is assigned a lodout
+	[Obsolete()]
 	void HandleOnLoadoutAssigned(int playerID, SCR_BasePlayerLoadout assignedLoadout)
 	{
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! What happens when a player is assigned a faction
+	[Obsolete()]
 	void HandleOnFactionAssigned(int playerID, Faction assignedFaction)
 	{
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! What happens when a player is assigned a spawn point
+	[Obsolete()]
 	void HandleOnSpawnPointAssigned(int playerID, SCR_SpawnPoint spawnPoint)
 	{
 	}

@@ -43,7 +43,7 @@ class SCR_ConsumableSalineBag : SCR_ConsumableEffectHealthItems
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanApplyEffect(notnull IEntity target, notnull IEntity user)
+	override bool CanApplyEffect(notnull IEntity target, notnull IEntity user,out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
@@ -52,7 +52,10 @@ class SCR_ConsumableSalineBag : SCR_ConsumableEffectHealthItems
 		//Can only apply when SCR_CharacterBloodHitZone is damaged
 		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
 		if (!damageMgr || damageMgr.GetBloodHitZone().GetDamageState() == EDamageState.UNDAMAGED)
+		{
+			failReason = SCR_EConsumableFailReason.UNDAMAGED;
 			return false;
+		}
 
 		//Character must have slot for the salinebag to move to
 		SCR_SalineStorageComponent salineStorageMan = SCR_SalineStorageComponent.Cast(target.FindComponent(SCR_SalineStorageComponent));
@@ -62,24 +65,24 @@ class SCR_ConsumableSalineBag : SCR_ConsumableEffectHealthItems
 		array<IEntity> items = {};
 		salineStorageMan.GetAll(items);
 		if (!items.IsEmpty())
+		{
+			failReason = SCR_EConsumableFailReason.ALREADY_APPLIED;
 			return false;
-
+		}
+		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group)
+	override bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
 	{
-		if (group == ECharacterHitZoneGroup.LEFTARM || group == ECharacterHitZoneGroup.RIGHTARM)
-			return CanApplyEffect(target, user);
-		
-		return false;
+		return CanApplyEffect(target, user, failReason);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SCR_ConsumableSalineBag()
 	{
-		m_eConsumableType = EConsumableType.Saline;
+		m_eConsumableType = SCR_EConsumableType.SALINE;
 	}
 	
 };

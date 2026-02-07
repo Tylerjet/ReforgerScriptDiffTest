@@ -8,10 +8,10 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 	[Attribute("#AR-Editor_Attribute_Randomize_Name")]
 	protected LocalizedString m_sRandomizeButtonLabel;
 	
-	[Attribute()]
+	[Attribute("{0C6A9655C33FB75D}UI/layouts/Editor/Attributes/Base/ButtonImageUnderlined.layout")]
 	protected ResourceName m_sButtonWithIcon;
 	
-	[Attribute()]
+	[Attribute("{B98EA1D6487A6F45}UI/layouts/Editor/Attributes/Base/AttributeEmptyButton.layout")]
 	protected ResourceName m_sEmptyButton;
 	
 	[Attribute("0", desc: "At which int the randomizer starts. This is when you want the first few buttons to be ignored by the randomize button")]
@@ -60,13 +60,16 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 			SCR_EditorAttributePresetEntry presetEntry = SCR_EditorAttributePresetEntry.Cast(entry);
 			if (presetEntry)
 			{
-				
 				float buttonHeight;
 				string buttonDescription;
 				presetEntry.GetPresetValues(buttonsOnRow, m_bHasRandomizeButton, iconOfRandomizeButton, hasIcon, hasButtonDescription, buttonDescription, buttonHeight);
 				
 				if (hasButtonDescription)
-					m_ButtonDescriptionUIInfo.SetDescription(buttonDescription);
+				{
+					SCR_EditorAttributeUIInfo newButtonDescription = new SCR_EditorAttributeUIInfo();
+					newButtonDescription.CopyFromEditorAttributeUIInfo(m_ButtonDescriptionUIInfo, buttonDescription);
+					m_ButtonDescriptionUIInfo = newButtonDescription;
+				}
 				
 				if (multiLine)
 				{
@@ -229,6 +232,8 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 			if (var)
 				var.SetInt(0);		
 		}	
+		
+		SetFromVarOrDefault();
 	}
 	
 	override void SetFromVar(SCR_BaseEditorAttributeVar var)
@@ -251,6 +256,26 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 					m_bSelectionButtonIsSelected = true;
 			}
 		}
+		
+		SetFromVarOrDefault();
+	}
+		
+	/*!
+	Get toolbox component of the attribute UI
+	\return Toolbox component
+	*/
+	SCR_ToolboxComponent GetToolboxComponent()
+	{
+		return m_ToolBoxComponent;
+	}		
+	
+	/*!
+	Get toolbox component of the attribute UI
+	\return Toolbox component
+	*/
+	SCR_BaseEditorAttributeFloatStringValues GetButtonBoxData()
+	{
+		return m_ButtonBoxData;
 	}
 	
 	//-1 means all are set to selected value

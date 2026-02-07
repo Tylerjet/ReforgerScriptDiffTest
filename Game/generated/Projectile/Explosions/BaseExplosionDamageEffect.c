@@ -5,7 +5,7 @@ Do not modify, this script is generated
 */
 
 /*!
-\addtogroup Projectile\Explosions
+\addtogroup Projectile_Explosions
 \{
 */
 

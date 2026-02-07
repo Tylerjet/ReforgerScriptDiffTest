@@ -1,20 +1,35 @@
+
 /*!
 Manages availible callsigns for each faction
 */
 [ComponentEditorProps(category: "GameScripted/Callsign", description: "")]
-class SCR_CallsignManagerComponentClass: ScriptComponentClass
+class SCR_CallsignManagerComponentClass: SCR_BaseGameModeComponentClass
 {
 };
-class SCR_CallsignManagerComponent: ScriptComponent
+
+
+//~ ScriptInvokers
+//~ Called when callsign changed or is assigned
+void SCR_GroupsManagerComponent_OnPlayerCallsignChanged(int playerId, int companyCallsignIndex, int platoonCallsignIndex, int squadCallsignIndex, int characterCallsignNumber, ERoleCallsign characterRole);
+typedef func SCR_GroupsManagerComponent_OnPlayerCallsignChanged;
+
+class SCR_CallsignManagerComponent: SCR_BaseGameModeComponent
 {
 	//All availible callsigns are stored here
-	protected ref map<Faction, ref SCR_FactionCallsignData> m_mAvailibleCallsigns = new ref map<Faction, ref SCR_FactionCallsignData>;
+	protected ref map<Faction, ref SCR_FactionCallsignData> m_mAvailibleCallsigns = new map<Faction, ref SCR_FactionCallsignData>;
 	
 	//Assigned Duplicate callsigns. If all callsigns are assigned then this stores any assigned dupplicates.
 	protected ref array<ref array<int>> m_aDuplicateCallsigns = new ref array<ref array<int>>;
 	
 	//Holds all the callsigns that are assigned to players
-	protected ref map<int, ref SCR_PlayerCallsignData> m_mPlayerCallsignData = new ref map<int, ref SCR_PlayerCallsignData>;
+	protected ref map<int, ref SCR_PlayerCallsignData> m_mPlayerCallsignData = new map<int, ref SCR_PlayerCallsignData>;
+	
+	//~ Script invoker (Server only)
+	protected ref ScriptInvokerBase<SCR_GroupsManagerComponent_OnPlayerCallsignChanged> m_OnPlayerCallsignChanged = new ScriptInvokerBase<SCR_GroupsManagerComponent_OnPlayerCallsignChanged>();
+	
+	//~ Ref (Server only)
+	SCR_GroupsManagerComponent m_GroupManager;
+	
 	
 	//======================================== GET CALLSIGN ========================================\\
 	/*!
@@ -91,11 +106,18 @@ class SCR_CallsignManagerComponent: ScriptComponent
 	\param[out] platoonIndex to assign
 	\param[out] squadIndex to assign
 	*/ 
-	void AssignCallGroupsign(Faction faction, out int companyIndex, out int platoonIndex, out int squadIndex)
+	void AssignCallGroupCallsign(Faction faction, SCR_CallsignGroupComponent masterCallsignComponent, out int companyIndex, out int platoonIndex, out int squadIndex)
 	{
 		companyIndex = -1;
 		platoonIndex = -1;
 		squadIndex = -1;
+		
+		//~ Use master callsign
+		if (masterCallsignComponent)
+		{
+			masterCallsignComponent.GetCallsignIndexes(companyIndex, platoonIndex, squadIndex);
+			return;
+		}
 		
 		//Faction has no callsigns
 		if (!m_mAvailibleCallsigns.Contains(faction))
@@ -243,71 +265,95 @@ class SCR_CallsignManagerComponent: ScriptComponent
 		}
 	}
 	
+	
 	//======================================== PLAYER CALLSIGNS ========================================\\
-	//---------------------------------------- On Faction joined ----------------------------------------\\
-	//On player spawned, assign callsign if new faction or no callsign yet
+	//---------------------------------------- On Player Spawned ----------------------------------------\\
+	//~ Assign callsign for players when they are spawned (Server Only)
 	protected void OnPlayerSpawn(int playerId, IEntity playerEntity)
+	{		
+		if (!m_GroupManager)
+			return;
+		
+		SCR_CallsignCharacterComponent characterCallsign = SCR_CallsignCharacterComponent.Cast(playerEntity.FindComponent(SCR_CallsignCharacterComponent));
+		if (!characterCallsign)
+			return;
+		
+		//~ Init player Callsign component to make sure it knows it is a player and it listens to on Callsign Changed
+		characterCallsign.InitPlayerOnServer(playerId);
+		
+		//~ Get player Group
+		SCR_AIGroup playerGroup = m_GroupManager.GetPlayerGroup(playerId);
+		if (!playerGroup)
+			return;
+		
+		//~ Get master if group is slave
+		if (playerGroup.IsSlave())
+		{
+			SCR_AIGroup master = playerGroup.GetMaster();
+			
+			if (master)
+				playerGroup = master;
+		}
+		
+		int companyIndex, platoonIndex, squadIndex, characterNumber;
+		ERoleCallsign characterRole;
+		
+		//~ Get player callsign from manager (If any)
+		if (!GetPlayerCallsign(playerId, companyIndex, platoonIndex, squadIndex, characterNumber, characterRole))
+			return;
+
+		//~ Assign player callsign if found
+		characterCallsign.AssignCharacterCallsign(playerGroup.GetFaction(), companyIndex, platoonIndex, squadIndex, characterNumber, characterRole, playerGroup.GetPlayerAndAgentCount(true) <= 1);
+	}
+	
+	//---------------------------------------- Set Player Callsign ----------------------------------------\\
+	void SetPlayerCallsign(int playerId, int companyIndex, int platoonIndex, int squadIndex, int characterNumber, ERoleCallsign characterRole = ERoleCallsign.NONE)
 	{
-		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		if (groupsManager)
+		if (playerId <= 0)
+		{
+			Print("'SetPlayerCallsign': Invalid player ID: " + playerId, LogLevel.ERROR);
 			return;
-		
-		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(playerEntity.FindComponent(FactionAffiliationComponent));
-		if (!factionAffiliation)
-			return;
-		
-		Faction faction = factionAffiliation.GetAffiliatedFaction();
-		if (!faction)
-			return;
+		}
 		
 		SCR_PlayerCallsignData playerCallsignData;
 		
-		if (m_mPlayerCallsignData.Find(playerId, playerCallsignData))
-		{
-			if (playerCallsignData.GetFaction() != faction)
-			{
-				playerCallsignData.SetPlayerCallsign(faction, this);
-				m_mPlayerCallsignData.Insert(playerId, playerCallsignData);
-			}
-		}
-		else 
-		{			
-			playerCallsignData = new SCR_PlayerCallsignData(faction, this);
-			m_mPlayerCallsignData.Insert(playerId, playerCallsignData);
-		}
+		//~ Create new Data if non existing
+		if (!m_mPlayerCallsignData.Find(playerId, playerCallsignData))
+			playerCallsignData = new SCR_PlayerCallsignData();
+		
+		//~ Set new player callsign data
+		playerCallsignData.SetPlayerCallsignIndexes(companyIndex, platoonIndex, squadIndex, characterNumber, characterRole);
+		m_mPlayerCallsignData.Set(playerId, playerCallsignData);
+		
+		//~ Call On player callsign changed
+		m_OnPlayerCallsignChanged.Invoke(playerId, companyIndex, platoonIndex, squadIndex, characterNumber, characterRole);
 	}
 	
 	//---------------------------------------- On player left ----------------------------------------\\
 	protected void OnPlayerLeftGame(int playerId)
 	{
-		//Make player callsign availible again
-		SCR_PlayerCallsignData playerCallsignData;
-		if (m_mPlayerCallsignData.Find(playerId, playerCallsignData))
-		{			
-			playerCallsignData.MakePlayerCallsignAvailible(this);
+		if (m_mPlayerCallsignData.Contains(playerId))
 			m_mPlayerCallsignData.Remove(playerId);
-		}
 	}
-	
-	//---------------------------------------- Get Player Callsigns System ----------------------------------------\\
-	/*!
-	Returns player callsigns. Should only be called by player controlled, use GetPlayerCallsignIndexes instead
-	\param playerId, id of player
-	\param[out] companyIndex assigned
-	\param[out] platoonIndex assigned
-	\param[out] squadIndex assigned
-	\param[out] characterIndex assigned (Will not return player role!, use GetPlayerCallsignIndexes instead)
-	\return returns false if callsign was not assigned
-	*/ 
-	bool SystemGetPlayerCallsignIndexes(int playerId, out int companyIndex, out int platoonIndex, out int squadIndex, out int characterIndex)
+		
+	//---------------------------------------- Get Player Callsign ----------------------------------------\\
+	bool GetPlayerCallsign(int playerId, out int companyIndex, out int platoonIndex, out int squadIndex, out int characterNumber = -1, out ERoleCallsign characterRole = ERoleCallsign.NONE)
 	{
 		SCR_PlayerCallsignData playerCallsignData;
 		if (m_mPlayerCallsignData.Find(playerId, playerCallsignData))
-			return playerCallsignData.GetPlayerCallsignIndexes(companyIndex, platoonIndex, squadIndex, characterIndex);
+			return playerCallsignData.GetPlayerCallsignIndexes(companyIndex, platoonIndex, squadIndex, characterNumber, characterRole);
 		else 
 			return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Returns ScriptInvoker on player callsign changed
+	*/
+	ScriptInvokerBase<SCR_GroupsManagerComponent_OnPlayerCallsignChanged> GetOnPlayerCallsignChanged()
+	{
+		return m_OnPlayerCallsignChanged;
+	}
 	
 	//======================================== INIT ========================================\\
 	//---------------------------------------- Fill callsign list ----------------------------------------\\
@@ -358,20 +404,27 @@ class SCR_CallsignManagerComponent: ScriptComponent
 	//---------------------------------------- On Init ----------------------------------------\\
 	override void EOnInit(IEntity owner)
 	{
+		super.EOnInit(owner);
+		
 		FillAvailibleCallsigns();
 		
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (gameMode)
+		if (GetGameMode().IsMaster())
 		{
-			gameMode.GetOnPlayerSpawned().Insert(OnPlayerSpawn);
-			gameMode.GetOnPlayerDisconnected().Insert(OnPlayerLeftGame);
+			m_GroupManager = SCR_GroupsManagerComponent.GetInstance();
+			if (!m_GroupManager)
+				Debug.Error2("SCR_CallsignManagerComponent: EOnInit", "Could not find SCR_GroupsManagerComponent!");
+			
+			GetGameMode().GetOnPlayerDisconnected().Insert(OnPlayerLeftGame);
+			GetGameMode().GetOnPlayerSpawned().Insert(OnPlayerSpawn);
 		}
 	}	
 	
 	//---------------------------------------- On Post Init ----------------------------------------\\
 	override void OnPostInit(IEntity owner)
 	{	
-		if (SCR_Global.IsEditMode(owner) || Replication.IsClient())
+		super.OnPostInit(owner);
+		
+		if (SCR_Global.IsEditMode(owner))
 			return;
 
 		SetEventMask(owner, EntityEvent.INIT);
@@ -379,11 +432,13 @@ class SCR_CallsignManagerComponent: ScriptComponent
 	
 	void ~SCR_CallsignManagerComponent()
 	{
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (gameMode)
+		if (!GetGameMode())
+			return;
+		
+		if (GetGameMode().IsMaster())
 		{
-			gameMode.GetOnPlayerSpawned().Remove(OnPlayerSpawn);
-			gameMode.GetOnPlayerDisconnected().Remove(OnPlayerLeftGame);
+			GetGameMode().GetOnPlayerDisconnected().Remove(OnPlayerLeftGame);
+			GetGameMode().GetOnPlayerSpawned().Remove(OnPlayerSpawn);
 		}
 	}
 };

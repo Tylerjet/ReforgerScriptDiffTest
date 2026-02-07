@@ -12,7 +12,7 @@ class SCR_AIMedicHealBehavior : SCR_AIBehaviorBase
 	{
 		m_EntityToHeal.Init(this, entityToHeal);
 		m_sBehaviorTree = "{990FE3889BBA5839}AI/BehaviorTrees/Chimera/Soldier/MedicHeal.bt";
-		m_fPriority = priority;
+		SetPriority(priority);
 		m_fPriorityLevel.m_Value = priorityLevel;
 		m_bAllowLook = false;
 	}

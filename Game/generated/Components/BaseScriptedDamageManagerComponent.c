@@ -33,6 +33,12 @@ class BaseScriptedDamageManagerComponent: SCR_DamageManagerComponent
 	event protected void OnFrame(IEntity owner, float timeSlice);
 	//! Must be first enabled with event mask
 	event protected bool OnContact(IEntity owner, IEntity other, Contact contact);
+	/*!
+	Called during EOnDiag.
+	\param owner Entity this component is attached to.
+	\param timeSlice Delta time since last update.
+	*/
+	event protected void OnDiag(IEntity owner, float timeSlice);
 	event protected void OnDamage(EDamageType type, float damage, HitZone pHitZone, IEntity instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID);
 }
 

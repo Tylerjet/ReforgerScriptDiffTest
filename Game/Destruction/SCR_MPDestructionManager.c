@@ -118,7 +118,7 @@ class SCR_MPDestructionManager : GenericEntity
 	protected ref map<RplId, ref array<SCR_DestructionBaseComponent>> m_mDynamicallySpawnedDestructibles = new map<RplId, ref array<SCR_DestructionBaseComponent>>();
 	protected ref map<RplId, ref array<int>> m_mChangedDynamicallySpawnedDestructibles = new map<RplId, ref array<int>>();
 	protected ref map<RplId, ref array<int>> m_mDeletedDynamicallySpawnedDestructibles = new map<RplId, ref array<int>>();
-	protected ref map<SCR_DestructionBaseHandler, bool> m_mDestroyInFrame = new ref map<SCR_DestructionBaseHandler, bool>();
+	protected ref array<SCR_DestructionBaseHandler> m_aDestroyInFrame = {};
 	protected RplComponent m_RplComponent;
 	
 	//------------------------------------------------------------------------------------------------
@@ -163,18 +163,20 @@ class SCR_MPDestructionManager : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	protected void DestroyDelayed()
 	{
-		for (int i = m_mDestroyInFrame.Count() - 1; i >= 0; i--)
+		for (int i = m_aDestroyInFrame.Count() - 1; i >= 0; i--)
 		{
-			SCR_DestructionBaseHandler handler = m_mDestroyInFrame.GetKey(i);
-			handler.StartDestruction(m_mDestroyInFrame.Get(handler));
-			m_mDestroyInFrame.Remove(handler);
+			SCR_DestructionBaseHandler handler = m_aDestroyInFrame[i];
+			if (handler)
+				handler.HandleDestruction();
+
+			m_aDestroyInFrame.Remove(i);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void DestroyInFrame(SCR_DestructionBaseHandler handler, bool immediate)
+	void DestroyInFrame(SCR_DestructionBaseHandler handler)
 	{
-		m_mDestroyInFrame.Insert(handler, immediate);
+		m_aDestroyInFrame.Insert(handler);
 		SetEventMask(EntityEvent.FRAME);
 	}
 	
@@ -268,8 +270,8 @@ class SCR_MPDestructionManager : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnFrame(IEntity owner, float timeSlice)
 	{
-		DestroyDelayed();
 		ClearEventMask(EntityEvent.FRAME);
+		DestroyDelayed();
 	}
 	
 	//------------------------------------------------------------------------------------------------

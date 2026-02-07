@@ -10,12 +10,15 @@ class FactionChatChannel : BaseChatChannel
 		if (!receiverPC || !senderPC)
 			return false;
 		
-		SCR_RespawnSystemComponent respawnSystemComponent = SCR_RespawnSystemComponent.GetInstance();
-		if (!respawnSystemComponent)
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
 			return false;
 		
+		Faction senderFaction = factionManager.GetPlayerFaction(senderPC.GetPlayerId());
+		Faction receiverFaction = factionManager.GetPlayerFaction(receiverPC.GetPlayerId());
+		
 		// Compare factions
-		if (respawnSystemComponent.GetPlayerFaction(senderPC.GetPlayerId()) == respawnSystemComponent.GetPlayerFaction(receiverPC.GetPlayerId()))
+		if (senderFaction == receiverFaction)
 			return true;
 		
 		// Receiver faction is not the same as sender faction
@@ -27,15 +30,16 @@ class FactionChatChannel : BaseChatChannel
 	override bool IsAvailable(BaseChatComponent sender)
 	{
 		
-		SCR_PlayerController senderPC =SCR_PlayerController.Cast(sender.GetOwner());
+		SCR_PlayerController senderPC = SCR_PlayerController.Cast(sender.GetOwner());
 		if (!senderPC)
 			return false;
 		
-		SCR_RespawnSystemComponent respawnSystemComponent = SCR_RespawnSystemComponent.GetInstance();
-		if (!respawnSystemComponent)
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
 			return false;
 		
-		if (respawnSystemComponent.GetPlayerFaction(senderPC.GetPlayerId()))
+		Faction senderFaction = factionManager.GetPlayerFaction(senderPC.GetPlayerId());		
+		if (senderFaction)
 			return true;
 		else 
 			return false;

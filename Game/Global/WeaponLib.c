@@ -10,14 +10,18 @@ class SCR_WeaponLib
 	static BaseWeaponComponent GetCurrentWeaponComponent(notnull ChimeraCharacter owner)
 	{
 		// Detect weapon manager
-		BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(owner.FindComponent(BaseWeaponManagerComponent));
-		if (!weaponManager) 
+		CharacterControllerComponent controller = owner.GetCharacterController();
+		if (!controller)
 			return null;
-		
+
+		BaseWeaponManagerComponent weaponManager = controller.GetWeaponManagerComponent();
+		if (!weaponManager)
+			return null;
+
 		BaseWeaponComponent weapon = SCR_WeaponLib.GetCurrentWeaponComponent(weaponManager);
 	
 		return weapon;
-	}	
+	}
 
 	//-----------------------------------------------------------------------------------------------------------
 	//! Returns BaseWeaponComponent of current weapon
@@ -52,9 +56,7 @@ class SCR_WeaponLib
 	//! Returns true if current weapon has component we are testing
 	static bool CurrentWeaponHasComponent(notnull BaseWeaponManagerComponent weaponManager, typename component)
 	{
-		GenericEntity genericEntity = null;
-
-		BaseWeaponComponent weapon = weaponManager.GetCurrent();		
+		BaseWeaponComponent weapon = weaponManager.GetCurrent();
 		if (!weapon) 
 			return false;
 		
@@ -64,11 +66,9 @@ class SCR_WeaponLib
 		// Weapon slot detected, retrieve weapon from it
 		if (weaponSlot)
 		{
-			genericEntity = GenericEntity.Cast(weaponSlot.GetWeaponEntity());
-			if (genericEntity && genericEntity.FindComponent(component))
-			{
+			IEntity weaponEntity = weaponSlot.GetWeaponEntity();
+			if (weaponEntity && weaponEntity.FindComponent(component))
 				return true;
-			}
 		}
 	
 		return false;

@@ -41,6 +41,9 @@ class SCR_CampaignMapUIElement : SCR_MapUIElement
 	[Attribute("Select")]
 	protected string m_sSelection;
 
+	[Attribute("{F7E8D4834A3AFF2F}UI/Imagesets/Conflict/conflict-icons-bw.imageset")]
+	protected ResourceName m_sImageSet;
+
 	//------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -52,5 +55,11 @@ class SCR_CampaignMapUIElement : SCR_MapUIElement
 	{
 		super.OnMouseEnter(w, x, y);
 		return false;
+	}
+
+	override void SetImage(string image)
+	{
+		if (m_wImage)
+			m_bVisible = m_wImage.LoadImageFromSet(0, m_sImageSet, image);
 	}
 };

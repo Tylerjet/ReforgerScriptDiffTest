@@ -36,17 +36,17 @@ class SCR_CampaignPackMobileAssemblyUserAction : SCR_CampaignDeployMobileAssembl
 	{
 		if (!m_AssemblyComponent)
 			return false;
-		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		
+
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+
 		if (!campaign)
 			return false;
-		
-		if (campaign.GetLastPlayerFaction() != m_AssemblyComponent.GetFaction())
+
+		if (SCR_FactionManager.SGetLocalPlayerFaction() != m_AssemblyComponent.GetParentFaction())
 			return false;
 		
 		int basesCovered = m_AssemblyComponent.GetCountOfExclusivelyLinkedBases();
-		
+
 		if (basesCovered == 0)
 			return false;
 		

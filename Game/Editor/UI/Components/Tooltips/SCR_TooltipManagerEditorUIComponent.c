@@ -287,12 +287,6 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		m_Cursor = SCR_CursorEditorUIComponent.Cast(menuRoot.FindComponent(SCR_CursorEditorUIComponent));
 		//if (!m_Cursor) return;
 		
-		SCR_RadialMenuManagerEditorComponent radialMenuHost = SCR_RadialMenuManagerEditorComponent.Cast(SCR_RadialMenuManagerEditorComponent.GetInstance(SCR_RadialMenuManagerEditorComponent));
-		if (radialMenuHost)
-		{
-			radialMenuHost.GetEditorRadialMenuOpened().Insert(OnRadialMenuToggle);
-		}
-		
 		m_ContextMenu = SCR_ContextMenuActionsEditorUIComponent.Cast(GetRootComponent().FindComponent(SCR_ContextMenuActionsEditorUIComponent));
 		if (m_ContextMenu)
 			m_ContextMenu.GetOnContextMenuToggle().Insert(OnContextMenuToggle);
@@ -327,12 +321,6 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		SCR_BaseEditableEntityFilter hoverFilter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.HOVER);
 		if (hoverFilter) hoverFilter.GetOnChanged().Remove(OnHover);
-		
-		SCR_RadialMenuManagerEditorComponent radialMenuHost = SCR_RadialMenuManagerEditorComponent.Cast(SCR_RadialMenuManagerEditorComponent.GetInstance(SCR_RadialMenuManagerEditorComponent));
-		if (radialMenuHost)
-		{
-			radialMenuHost.GetEditorRadialMenuOpened().Remove(OnRadialMenuToggle);
-		}
 		
 		if (m_ContextMenu)
 			m_ContextMenu.GetOnContextMenuToggle().Remove(OnContextMenuToggle);

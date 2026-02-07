@@ -22,7 +22,11 @@ class SCR_AIChangeUnitState : AITaskScripted
 			m_stateAdd = unitState > 0;
 		}	
 		
-		SCR_AIInfoComponent infoComp = 	SCR_AIInfoComponent.Cast(owner.FindComponent(SCR_AIInfoComponent));
+		SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(owner);
+		if (!chimeraAgent)
+			return SCR_AgentMustChimera(this, owner);
+		
+		SCR_AIInfoComponent infoComp = 	chimeraAgent.m_InfoComponent;
 		if (!infoComp)
 			ENodeResult.FAIL;
 		

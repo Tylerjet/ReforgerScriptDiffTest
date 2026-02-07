@@ -19,6 +19,12 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	[Attribute("0.4", "0 1")]
 	protected float m_fOpacityFocused;
 	
+	[Attribute("0.022995 0.022995 0.022995 1.000000", UIWidgets.ColorPicker)]
+	ref Color m_BackgroundDefault;
+	
+	[Attribute("0.108995 0.108995 0.108995 1.000000", UIWidgets.ColorPicker)]
+	ref Color m_BackgroundInteracting;
+	
 	[Attribute("", UIWidgets.EditBox, "Text that should appear next to error warning on invalid input")]
 	protected string m_sWarningText;
 	
@@ -41,6 +47,22 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	// Arguments passed: SCR_EditBoxComponent, string (text)
 	ref ScriptInvoker m_OnConfirm = new ref ScriptInvoker();
 	ref ScriptInvoker m_OnFocusChangedEditBox = new ref ScriptInvoker();
+	
+	protected MultilineEditBoxWidget m_wMultilineEditBoxWidget;
+	protected EditBoxWidget m_wEditBoxWidget;
+	
+	protected const int INTERACTION_STATE_UPDATE_FREQUENCY = 50;
+	protected const int FOCUS_LOST_INTERACTION_STATE_UPDATE_DELAY = 1000 / UIConstants.FADE_RATE_DEFAULT;
+	
+	protected bool m_bIsInWriteMode;
+	protected bool m_bIsInWriteModePrevious;
+	protected ref Color m_BackgroundCurrent;
+	
+	ref ScriptInvoker m_OnWriteModeEnter = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnWriteModeLeave = new ref ScriptInvoker();
+	ref ScriptInvoker<string> m_OnTextChange = new ref ScriptInvoker();
+	
+	protected string m_sTextPrevious;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -102,17 +124,44 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 		}
 		
 		if (m_wEditBackground)
+		{
 			m_wEditBackground.SetOpacity(m_fOpacityDefault);
+			m_wEditBackground.SetColor(m_BackgroundDefault);
+			m_BackgroundCurrent = m_BackgroundDefault;
+		}
 		
 		// Image image 
 		if (m_wImgWriteIcon && m_wWriteIconScale)
 		{
-			bool hasResource = !m_sIconImageSet.IsEmpty() && !m_sIconImageName.IsEmpty() && m_bShowWriteIcon;
+			bool hasResource = !m_sIconImageSet.IsEmpty() && !m_sIconImageName.IsEmpty();
 			m_wWriteIconScale.SetVisible(hasResource);
 			
 			if (hasResource)
 				m_wImgWriteIcon.LoadImageFromSet(0, m_sIconImageSet, m_sIconImageName);
+			
+			ShowWriteIcon(m_bShowWriteIcon && hasResource);
 		}
+		
+		//Type of edit box. Why aren't these derived from a common parent :(
+		m_wMultilineEditBoxWidget = MultilineEditBoxWidget.Cast(m_wEditBox);
+		m_wEditBoxWidget = EditBoxWidget.Cast(m_wEditBox);
+		
+		if(m_wMultilineEditBoxWidget)
+			m_bIsInWriteMode = m_wMultilineEditBoxWidget.IsInWriteMode();
+		else if(m_wEditBoxWidget)
+			m_bIsInWriteMode = m_wEditBoxWidget.IsInWriteMode();
+		
+		m_bIsInWriteModePrevious = m_bIsInWriteMode;
+		
+		m_sTextPrevious = GetEditBoxText();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+		
+		ClearInteractionState();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -121,6 +170,7 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 		// Set focus to handler - super.OnFocus will be called only after the handler is focused!
 		GetGame().GetWorkspace().SetFocusedWidget(m_wEditBox);
 		m_bIsTyping = true;
+		
 		return true;
 	}
 
@@ -139,6 +189,7 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 		
 		AnimateWidget.Color(m_wColorOverlay, COLOR_VALID_INPUT, m_fColorsAnimationTime);
 		m_bValidInput = true;
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -153,6 +204,10 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 		// Make the widget unfocusable
 		m_wRoot.SetFlags(WidgetFlags.NOFOCUS);
 		m_OnFocusChangedEditBox.Invoke(this, m_wEditBox, true);
+		
+		//Update interaction state timer, because there are no delegates for write start and end :(
+		if(m_wMultilineEditBoxWidget || m_wEditBoxWidget)
+			GetGame().GetCallqueue().CallLater(UpdateInteractionState, INTERACTION_STATE_UPDATE_FREQUENCY, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -167,8 +222,10 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 		m_wRoot.ClearFlags(WidgetFlags.NOFOCUS);
 		
 		m_OnFocusChangedEditBox.Invoke(this, m_wEditBox, false);
+		
+		ClearInteractionState();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnInvalidInput()
 	{
@@ -277,9 +334,11 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	//! Set write mode of editbox handler
 	void ActivateWriteMode()
 	{
-		EditBoxWidget editBox = EditBoxWidget.Cast(m_wEditBox);
-		if (editBox)
-			editBox.ActivateWriteMode();
+		if(m_wMultilineEditBoxWidget)
+			m_wMultilineEditBoxWidget.ActivateWriteMode();
+
+		if(m_wEditBoxWidget)
+			m_wEditBoxWidget.ActivateWriteMode();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -289,11 +348,77 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 			m_Hint.SetVisible(show);
 	}
 	
-	// User API
+	//------------------------------------------------------------------------------------------------
+	void ShowWriteIcon(bool show)
+	{
+		if (m_wWriteIconScale)
+			m_wWriteIconScale.SetVisible(show);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UpdateInteractionState()
+	{
+		//These don't come from a common parent :(
+		if(m_wMultilineEditBoxWidget)
+		{
+			m_bIsInWriteMode = m_wMultilineEditBoxWidget.IsInWriteMode();
+		}
+		
+		else if(m_wEditBoxWidget)
+		{
+			m_bIsInWriteMode = m_wEditBoxWidget.IsInWriteMode();
+		}
+		
+		if(m_bIsInWriteMode != m_bIsInWriteModePrevious)
+		{
+			SCR_NavigationButtonHelper.SetActiveWidgetInteractionState(m_bIsInWriteMode);
+			
+			if(m_bIsInWriteMode)
+				m_BackgroundCurrent = m_BackgroundInteracting;
+			else
+				m_BackgroundCurrent = m_BackgroundDefault;
+			
+			AnimateWidget.Color(m_wEditBackground, m_BackgroundCurrent, m_fAnimationRate);
+			
+			if(m_bIsInWriteMode)
+				m_OnWriteModeEnter.Invoke();
+			else
+				m_OnWriteModeLeave.Invoke();
+		}
+		
+		m_bIsInWriteModePrevious = m_bIsInWriteMode;
+		
+		if(GetEditBoxText() != m_sTextPrevious)
+		{
+			m_sTextPrevious = GetEditBoxText();
+			m_OnTextChange.Invoke(m_sTextPrevious);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ClearInteractionState()
+	{
+		GetGame().GetCallqueue().Remove(UpdateInteractionState);
+		if(m_wMultilineEditBoxWidget || m_wEditBoxWidget)
+			SCR_NavigationButtonHelper.SetActiveWidgetInteractionState(false, FOCUS_LOST_INTERACTION_STATE_UPDATE_DELAY);
+		
+		if(m_wEditBackground)
+			AnimateWidget.Color(m_wEditBackground, m_BackgroundDefault, m_fAnimationRate);
+		
+		m_bIsInWriteMode = false;
+		m_bIsInWriteModePrevious = false;
+		m_OnWriteModeLeave.Invoke();
+		m_OnTextChange.Invoke(GetEditBoxText());
+	}
+
+	
+	//------------------------------------------------------------------------------------------------
+	//! User API
 	void SetValue(string value) { SetEditBoxText(value); }
 	string GetValue() { return GetEditBoxText(); }
 	string GetPlaceHolderText() { return GetPlaceholderText(); }
 	Widget GetEditBoxWidget() { return m_wEditBox; }
 	bool IsValidInput() { return m_bValidInput; }
 	SCR_WidgetHintComponent GetHint() { return m_Hint; }
+	bool IsInWriteMode() { return m_bIsInWriteMode; }
 };

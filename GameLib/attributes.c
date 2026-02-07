@@ -9,3 +9,13 @@ class CinematicTrackAttribute
 		m_Description = description;
 	}
 }
+
+class CinematicEventAttribute
+{
+	string m_Name; //<! Custom name if you don't want to use name of the method
+	
+	void CinematicEventAttribute(string name = "")
+	{
+		m_Name = name;
+	}
+}

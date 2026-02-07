@@ -24,6 +24,12 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	[Attribute(defvalue: "0.25")]
 	protected float m_fUnsnapDuration;
 	
+	[Attribute(defvalue: "45", desc: "When vertical mode is GEOMETRY, hovering over surface with at least this slope will place preview entity below the surface, not on it.\n\nCurrently disabled, entity editing will be disable beyond this angle.")]
+	protected float m_fMinAngleWall;
+	
+	[Attribute(defvalue: "101", desc: "When vertical mode is GEOMETRY, hovering over surface with at least this slope will prevent showing preview entity and confirming the change.")]
+	protected float m_fMinAngleCeiling;
+	
 	[Attribute(defvalue: "1", desc: "When adjusting entity height, camera will move together with the entity when above this vertical offset.\nWhen below, the camera will rotate towards the entity instead.")]
 	protected float m_fMinCameraVerticalOffset;
 	
@@ -101,6 +107,10 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		m_bIsRotatingTowardsCursor = false;
 		delete m_DirIndicator;
 	}
+	protected void OnEditorTransformSnapToSurface()
+	{
+		m_PreviewEntityManager.ResetPreviewHeight();
+	}
 	protected void OnEditorTransformRotationModifierDown(float value, EActionTrigger reason)
 	{
 		if (!m_CursorComponentBase) return;
@@ -111,7 +121,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	}
 	protected void OnEditorTransformRotationModifierUp(float value, EActionTrigger reason)
 	{
-		if (!m_PreviewEntityManager.IsEditing() || !m_bIsRotatingTowardsCursor) return;
+		if (!m_PreviewEntityManager.IsEditing() || !m_bIsRotatingTowardsCursor)
+			return;
 		
 		//m_PreviewEntityManager.SetTarget(null); //--- Don't reset, messes up restoring pre-snap transformation
 		m_bIsRotatingTowardsCursor = false;
@@ -119,6 +130,23 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		//--- Return cursor back
 		if (m_CursorComponentBase)
+		{
+			m_CursorComponentBase.SetCursorPos(m_vClickPosBase, true);
+			m_vClickPosCancel = m_vClickPosBase;
+		}
+	}
+	protected void OnEditorTransformMoveVerticalModifierDown(float value, EActionTrigger reason)
+	{
+		if (!m_PreviewEntityManager.IsRotating())
+			SetClickPos(m_CursorComponentBase.GetCursorPos());	
+	}
+	protected void OnEditorTransformMoveVerticalModifierUp(float value, EActionTrigger reason)
+	{
+		if (!m_PreviewEntityManager.IsEditing())// || !m_bIsRotatingTowardsCursor)
+			return;
+		
+		//--- Return cursor back
+		if (m_CursorComponentBase && !m_PreviewEntityManager.IsRotating() && m_PreviewEntityManager.GetVerticalMode() == EEditorTransformVertical.GEOMETRY)
 		{
 			m_CursorComponentBase.SetCursorPos(m_vClickPosBase, true);
 			m_vClickPosCancel = m_vClickPosBase;
@@ -138,8 +166,15 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			m_vClickTransformBase[3] = worldPos;
 		}
 		
+		TraceParam trace;
+		if (m_PreviewEntityManager.GetVerticalMode() == EEditorTransformVertical.GEOMETRY)
+		{
+			trace = new TraceParam();
+			trace.ExcludeArray = m_PreviewEntityManager.GetExcludeArray();
+		}
+		
 		vector pos = m_vClickTransformBase[3];
-		m_vTerrainNormal = SCR_TerrainHelper.GetTerrainNormal(pos, m_World, !m_PreviewEntityManager.IsUnderwater());
+		m_vTerrainNormal = SCR_TerrainHelper.GetTerrainNormal(pos, m_World, !m_PreviewEntityManager.IsUnderwater(), trace);
 	}
 	protected void SetClickPos(vector clickPos)
 	{
@@ -245,8 +280,13 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		cursorDir *= TRACE_DIS;
 		vector pos = transform[3];
 		
-		switch (m_PreviewEntityManager.GetVerticalMode())
+		switch (verticalMode)
 		{
+			case EEditorTransformVertical.GEOMETRY:
+			{
+				canTransform = GetPreviewPosAboveGeometry(cameraPos, cursorDir, pos, verticalMode);
+				break;
+			}
 			case EEditorTransformVertical.TERRAIN:
 			{
 				canTransform = GetPreviewPosAboveTerrain(cameraPos, cursorDir, pos, verticalMode);
@@ -257,16 +297,12 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 				canTransform = GetPreviewPosAboveSea(cameraPos, cursorDir, pos, verticalMode);
 				break;
 			}
-			case EEditorTransformVertical.GEOMETRY:
-			{
-				break;
-			}
 		}
 		transform[3] = pos;
 		m_fUnsnapProgress = 0;
 		m_PreviewEntityManager.SetIsMovingVertically(false);
 	}
-	protected bool MoveVertical(float tDelta, out vector transform[4], float moveVertical)
+	protected bool MoveVertical(float tDelta, out vector transform[4], float moveVertical, EEditorTransformVertical verticalMode)
 	{		
 		//--- Gamepad move vertical
 		if (m_PreviewEntityManager.CanUnsnap(moveVertical))
@@ -292,7 +328,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		//--- Adjust camera to keep looking at preview
 		SCR_ManualCamera camera;
-		if (m_CameraManagerBase && m_CameraManagerBase.GetCamera(camera))
+		if (verticalMode != EEditorTransformVertical.GEOMETRY && m_CameraManagerBase && m_CameraManagerBase.GetCamera(camera))
 		{
 			vector cameraPos = camera.GetWorldTransformAxis(3) + transform[3] - pos;
 			pos = transform[3];
@@ -326,6 +362,14 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		transform[3] = m_PreviewEntityManager.SnapVertically(transform[3]);
 		m_PreviewEntityManager.SetPreviewHeight(transform[3]);
 		m_PreviewEntityManager.SetIsMovingVertically(true);
+		
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_SHOW_DEBUG))
+		{
+			string text = string.Format("    %1 m", m_PreviewEntityManager.GetPreviewHeightAboveTerrain().ToString(lenDec: 3));
+			DebugTextWorldSpace.Create(m_World, text, DebugTextFlags.ONCE | DebugTextFlags.FACE_CAMERA, transform[3][0], transform[3][1], transform[3][2], color: Color.PINK);
+		}
+#endif
 	}
 	protected void Rotate(float tDelta, out vector transform[4], float rotationValue)
 	{		
@@ -411,6 +455,78 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Intersections
+	protected bool GetPreviewPosAboveGeometry(vector cameraPos, vector cursorDir, out vector worldPos, out EEditorTransformVertical verticalMode)
+	{
+		//--- Trace entity under cursor
+		TraceParam trace = new TraceParam();
+		trace.Start = cameraPos;
+		trace.End = trace.Start + cursorDir;
+		trace.LayerMask = EPhysicsLayerPresets.Projectile; //--- Use more detailed mask which can also detect e.g., rack shelves
+		trace.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
+		if (cameraPos[1] >= m_World.GetOceanBaseHeight())
+			trace.Flags |= TraceFlags.OCEAN;
+		trace.ExcludeArray = m_PreviewEntityManager.GetExcludeArray();
+		float traceCursor = m_World.TraceMove(trace, null);
+		
+		//--- No entity intersection, calculate by terrain
+		if (traceCursor == 1)// || (trace.TraceEnt && trace.TraceEnt.IsInherited(GenericTerrainEntity)))
+			return GetPreviewPosAboveTerrain(cameraPos, cursorDir, worldPos, verticalMode);
+		
+		worldPos = cameraPos + cursorDir * traceCursor;
+		
+		//--- Terrain or sea is under cursor, change real vertical mode type
+		if (!trace.TraceEnt || trace.TraceEnt.Type() == GenericTerrainEntity || trace.TraceEnt.Type() == RoadEntity)
+			verticalMode = EEditorTransformVertical.TERRAIN;
+		
+		//--- Check slope of intersected surface
+		//vector basePos = worldPos;
+		float dotProduct = vector.Dot(trace.TraceNorm, vector.Up);
+		float slope = 90 - Math.Tan(dotProduct) * Math.RAD2DEG;
+		
+		//--- When intersecting ceiling, prevent editing altogether
+		if (slope > m_fMinAngleCeiling)
+			return false;
+		
+		//--- When intersecting wall, find surface at its base.
+		//--- Proved to be quite unreliable when the entity was moved vertically before (Alt+ LMB drag).
+		//--- Let's disable walls for now, but keep the code in case we need in in the future.
+		if (slope > m_fMinAngleWall)
+		{
+			return false;
+			/*
+			//--- Rotate trace normal vector to point down
+			vector matrixNorm[3];
+			Math3D.MatrixFromForwardVec(trace.TraceNorm, matrixNorm);
+			
+			vector matrixConvert[3];
+			matrixConvert[0] = vector.Up;
+			matrixConvert[1] = vector.Right;
+			matrixConvert[2] = vector.Forward;
+			
+			Math3D.MatrixMultiply3(matrixNorm, matrixConvert, matrixNorm);
+			vector vectorNorm = matrixNorm[0] * 100;
+			if (vectorNorm[1] > 0)
+				vectorNorm = -vectorNorm;
+			
+			//--- Trace down along the wall
+			vector offsetNorm = trace.TraceNorm * 0.01;
+			TraceParam traceBase = new TraceParam();
+			traceBase.Start = worldPos + offsetNorm;
+			traceBase.End = trace.Start + vectorNorm;
+			traceBase.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
+			traceBase.ExcludeArray = m_PreviewEntityManager.GetSourceEntities();
+			float traceBaseDis = m_World.TraceMove(traceBase, null);
+			
+			basePos = traceBase.Start + vectorNorm * traceBaseDis - offsetNorm;
+			*/
+		}
+		//worldPos = basePos;
+		
+		//--- Add entity height
+		worldPos[1] = worldPos[1] + m_PreviewEntityManager.GetPreviewHeightAboveTerrain();
+		
+		return true;
+	}
 	protected bool GetPreviewPosAboveTerrain(vector cameraPos, vector cursorDir, out vector worldPos, out EEditorTransformVertical verticalMode)
 	{
 		//float heightASL = m_PreviewEntityManager.GetPreviewHeightAboveSea();
@@ -418,8 +534,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		//--- Cursor below horizon
 		vector offsetPos = cameraPos;
-		//if (cameraPos[1] > heightASL)
-		if (cameraPos[1] > worldPos[1]) //--- When camera is above ground, offset tracing pos by entity height to keep preview under cursor
+		if (verticalMode != EEditorTransformVertical.GEOMETRY && cameraPos[1] > worldPos[1]) //--- When camera is above ground, offset tracing pos by entity height to keep preview under cursor
 			offsetPos -= vector.Up * heightATL;
 		
 		float traceDis = GetTraceDis(offsetPos, cursorDir, cameraPos[1]);
@@ -428,11 +543,14 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			//--- Cursor on the ground: Use intersection positon
 			worldPos = offsetPos + cursorDir * traceDis;
 			worldPos[1] = worldPos[1] + heightATL;
+			
+			verticalMode = EEditorTransformVertical.TERRAIN;
 			return true;
 		}
 		else
 		{
-			if (cursorDir[1] > 0) return false;
+			if (cursorDir[1] > 0)
+				return false;
 		
 			//--- Cursor above horizon: Use ASL
 			return GetPreviewPosAboveSea(cameraPos, cursorDir, worldPos, verticalMode);
@@ -455,7 +573,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 
 		//--- Check for intersection with horizontal plane in entity's ASL height
 		if (traceDis == 1)
-			traceDis = Math3D.IntersectRayBox(cameraPos, cameraPos + cursorDir, Vector(-float.MAX, heightASL, -float.MAX), Vector(float.MAX, heightASL, float.MAX));
+			traceDis = Math3D.IntersectionRayBox(cameraPos, cameraPos + cursorDir, Vector(-float.MAX, heightASL, -float.MAX), Vector(float.MAX, heightASL, float.MAX));
 		
 		//--- No plane intersection: Ignore (e.g., when camera is above the entity and cursor points at the sky)
 		if (traceDis == -1) return false;
@@ -470,7 +588,8 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	//--- Main Loop
 	protected void ProcessInput(float tDelta)
 	{
-		if (!m_InputManagerBase || !m_PreviewEntityManager || m_PreviewEntityManager.IsFixedPosition()) return;
+		if (!m_InputManagerBase || !m_PreviewEntityManager || m_PreviewEntityManager.IsFixedPosition() || !m_PreviewEntityManager.GetPreviewEntity())
+			return;
 		
 		//--- Transforming
 		bool canTransform = true;
@@ -482,6 +601,10 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		m_PreviewEntityManager.ShowAsDisabled(CanShowAsDisabled());
 		
+		//--- There are numerous issues with editing along geometry, so it's disabled for now
+		if (verticalMode == EEditorTransformVertical.GEOMETRY && m_PreviewEntityManager.GetPreviewEntity().HasMultipleEditableEntities())
+			verticalMode = EEditorTransformVertical.TERRAIN;
+		
 		//--- Automatic animation when restoring transformation after unsnapping from a target
 		if (m_bIsAnimated)
 		{
@@ -492,10 +615,6 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		float moveVertical = m_InputManagerBase.GetActionValue("EditorTransformMoveVertical") * tDelta;
 		float rotateYaw = m_InputManagerBase.GetActionValue("EditorTransformRotateYaw") * tDelta;
-		
-		//--- Snap to surface
-		if (m_InputManagerBase.GetActionTriggered("EditorTransformSnapToSurface"))
-			moveVertical = m_PreviewEntityManager.GetVerticalSnapDelta(previewTransform[3]);
 		
 		if (rotateYaw != 0 && Math.AbsFloat(rotateYaw) > Math.AbsFloat(moveVertical) && (m_Operation == EPreviewEntityEditorOperation.MOVE_HORIZONTAL || m_Operation == EPreviewEntityEditorOperation.ROTATE))
 		{
@@ -524,7 +643,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		else if (moveVertical != 0 && (m_Operation == EPreviewEntityEditorOperation.MOVE_HORIZONTAL || m_Operation == EPreviewEntityEditorOperation.MOVE_VERTICAL))
 		{
 			//--- Vertical movement
-			instant = MoveVertical(tDelta, previewTransform, moveVertical * m_fMoveVerticalCoef);
+			instant = MoveVertical(tDelta, previewTransform, moveVertical * m_fMoveVerticalCoef, verticalMode);
 			m_Operation = EPreviewEntityEditorOperation.MOVE_VERTICAL;
 		}
 		else
@@ -578,6 +697,11 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			m_InputManagerBase = game.GetInputManager();
 			if (m_InputManagerBase)
 			{
+				m_InputManagerBase.AddActionListener("EditorTransformSnapToSurface", EActionTrigger.DOWN, OnEditorTransformSnapToSurface);
+				
+				m_InputManagerBase.AddActionListener("EditorTransformMoveVerticalModifier", EActionTrigger.DOWN, OnEditorTransformMoveVerticalModifierDown);
+				m_InputManagerBase.AddActionListener("EditorTransformMoveVerticalModifier", EActionTrigger.UP, OnEditorTransformMoveVerticalModifierUp);
+				
 				m_InputManagerBase.AddActionListener("EditorTransformRotateYawModifier", EActionTrigger.DOWN, OnEditorTransformRotationModifierDown);
 				m_InputManagerBase.AddActionListener("EditorTransformRotateYawModifier", EActionTrigger.UP, OnEditorTransformRotationModifierUp);
 			}
@@ -600,6 +724,11 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		if (m_InputManagerBase)
 		{
+			m_InputManagerBase.RemoveActionListener("EditorTransformSnapToSurface", EActionTrigger.DOWN, OnEditorTransformSnapToSurface);
+			
+			m_InputManagerBase.RemoveActionListener("EditorTransformMoveVerticalModifier", EActionTrigger.DOWN, OnEditorTransformMoveVerticalModifierDown);
+			m_InputManagerBase.RemoveActionListener("EditorTransformMoveVerticalModifier", EActionTrigger.UP, OnEditorTransformMoveVerticalModifierUp);
+			
 			m_InputManagerBase.RemoveActionListener("EditorTransformRotateYawModifier", EActionTrigger.DOWN, OnEditorTransformRotationModifierDown);
 			m_InputManagerBase.RemoveActionListener("EditorTransformRotateYawModifier", EActionTrigger.UP, OnEditorTransformRotationModifierUp);
 		}

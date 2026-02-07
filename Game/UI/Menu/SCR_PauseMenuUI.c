@@ -17,7 +17,7 @@ class PauseMenuUI: ChimeraMenuBase
 	protected SCR_ButtonTextComponent m_EditorPhotoOpenButton;
 	protected SCR_ButtonTextComponent m_EditorPhotoCloseButton;
 	
-	protected SCR_SaveLoadComponent m_SaveLoadComponent;
+	protected SCR_SaveLoadComponent m_SavingComponent;
 	
 	const string EXIT_SAVE = "#AR-PauseMenu_ReturnSaveTitle";
 	const string EXIT_NO_SAVE = "#AR-PauseMenu_ReturnTitle";
@@ -41,7 +41,7 @@ class PauseMenuUI: ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
-		m_SaveLoadComponent = SCR_SaveLoadComponent.GetInstance();
+		m_SavingComponent = SCR_SaveLoadComponent.GetInstance();
 
 		m_wRoot = GetRootWidget();
 		m_wFade = m_wRoot.FindAnyWidget("BackgroundFade");
@@ -80,6 +80,27 @@ class PauseMenuUI: ChimeraMenuBase
 
 			comp.GetRootWidget().SetVisible(canRespawn);
 			comp.m_OnClicked.Insert(OnRespawn);
+		}
+		
+		// Leave faction
+		comp = SCR_ButtonTextComponent.GetButtonText("LeaveFaction", m_wRoot);
+		if (comp)
+		{
+			bool factionLeaveAllowed;
+			SCR_BaseGameMode gm = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+			if (gm)
+				factionLeaveAllowed = gm.IsFactionChangeAllowed();
+
+			comp.GetRootWidget().SetVisible(factionLeaveAllowed);
+			if (factionLeaveAllowed)
+			{			
+				PlayerController pc = GetGame().GetPlayerController();
+				SCR_PlayerFactionAffiliationComponent factionComp = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
+				
+				if (factionComp)
+					comp.GetRootWidget().SetEnabled(factionComp.GetAffiliatedFaction() != null);
+				comp.m_OnClicked.Insert(OnLeaveFaction)
+			}
 		}
 
 		// Exit
@@ -277,14 +298,12 @@ class PauseMenuUI: ChimeraMenuBase
 	private void OnLoad()
 	{
 		// Create dialog
-		DialogUI dialog = DialogUI.CreateOkCancelDialog();
+		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog("scenario_load");
 		if (!dialog)
 			return;
 		
-		dialog.SetMessage(LOAD_MESSAGE);
-		dialog.SetTitle(LOAD_TITLE);
-		dialog.SetTitleIcon(ACTIONS_IMAGESET, LOAD_IMAGE);
 		dialog.m_OnConfirm.Insert(OnLoadConfirm);
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -297,21 +316,19 @@ class PauseMenuUI: ChimeraMenuBase
 	private void OnExit()
 	{
 		// Create exit dialog
-		DialogUI dialog = DialogUI.CreateOkCancelDialog();
+		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog("scenario_exit");
 		if (!dialog)
 			return;
 		
-		dialog.SetMessage(EXIT_MESSAGE);
-		dialog.SetTitle(EXIT_TITLE);
-		dialog.SetTitleIcon(ACTIONS_IMAGESET, EXIT_IMAGE);
 		dialog.m_OnConfirm.Insert(OnExitConfirm);
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	private void OnExitConfirm()
 	{
-		if (m_SaveLoadComponent && IsSavingOnExit())
-			m_SaveLoadComponent.Save();
+		if (IsSavingOnExit())
+			GetGame().GetSaveManager().Save(ESaveType.AUTO);
 		
 		Close();
 		GameStateTransitions.RequestGameplayEndTransition();
@@ -435,13 +452,10 @@ class PauseMenuUI: ChimeraMenuBase
 	private void OnRestart()
 	{
 		// Create dialog
-		DialogUI dialog = DialogUI.CreateOkCancelDialog();
+		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog("scenario_restart");
 		if (!dialog)
 			return;
 		
-		dialog.SetMessage(RESTART_MESSAGE);
-		dialog.SetTitle(RESTART_TITLE);
-		dialog.SetTitleIcon(ACTIONS_IMAGESET, RESTART_IMAGE);
 		dialog.m_OnConfirm.Insert(OnRestartConfirm);
 	}
 	
@@ -449,7 +463,7 @@ class PauseMenuUI: ChimeraMenuBase
 	private void OnRestartConfirm()
 	{
 		GetGame().GetMenuManager().CloseAllMenus();
-		ChimeraMenuBase.ReloadCurrentWorld();
+		GameStateTransitions.RequestScenarioRestart();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -470,6 +484,27 @@ class PauseMenuUI: ChimeraMenuBase
 			return;
 
 		respawn.RequestPlayerSuicide();
+		Close();
+	}
+
+	//------------------------------------------------------------------------------------------------	
+	private void OnLeaveFaction()
+	{
+		PlayerController pc = GetGame().GetPlayerController();
+		if (!pc)
+			return;
+		
+		SCR_PlayerFactionAffiliationComponent factionComp = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		if (!factionComp)
+			return;
+
+		SCR_RespawnComponent rc = SCR_RespawnComponent.Cast(pc.FindComponent(SCR_RespawnComponent));
+		if (!rc)
+			return;
+
+		factionComp.RequestFaction(null);
+		rc.RequestPlayerSuicide();
+
 		Close();
 	}
 
@@ -526,7 +561,7 @@ class PauseMenuUI: ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected bool IsSavingOnExit()
 	{
-		return !Replication.IsRunning() && m_SaveLoadComponent && m_SaveLoadComponent.CanSaveOnExit();
+		return !Replication.IsRunning() && GetGame().GetSaveManager().CanSave(ESaveType.AUTO) && m_SavingComponent && m_SavingComponent.CanSaveOnExit();
 	}
 };
 

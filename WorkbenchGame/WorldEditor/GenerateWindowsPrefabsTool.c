@@ -1,398 +1,347 @@
-/** @defgroup GenerateWindowsPrefabsTool Windows Prefab Generator
-Workbench plugin for generation of windows & glass prefabs
+#ifdef WORKBENCH
+/*! @defgroup GenerateWindowsPrefabsTool Windows Prefab Generator
+Workbench plugin for generation of windows, sash & glass prefabs
 */
 
-/** @ingroup GenerateWindowsPrefabsTool
+/*! @ingroup GenerateWindowsPrefabsTool
 */
 
 /*!
 Workbench plugin for generation of windows & glass prefabs.
 
-Two separate buttons for glass and window frames generation
+Multiple buttons for:
+- glass, sash and frame generation from XOB
+- sash and window prefab update
 */
-[WorkbenchToolAttribute("Windows Prefabs Generator Tool", "Generate prefabs for destroyable windows.\nCreate Window - Triggers creation of window frames prefabs\nCreate Glass - Triggers creation of glass panels prefabs", "2", awesomeFontCode : 0xF2D2)]
+[WorkbenchToolAttribute(
+	name: "Windows Prefabs Generator Tool",
+	description: "Generate prefabs for destroyable windows.\n\n" +
+		"- select sash/window xob/prefab by:\n" +
+		"-- using the Resource Browser\n" +
+		"-- opening the prefab in Prefab Edit Mode\n" +
+		"- select glass xob from the UI",
+	awesomeFontCode : 0xF2D2)]
 class GenerateWindowsPrefabsTool : WorldEditorTool
 {
-	// General
-	[Attribute("1", UIWidgets.ComboBox, "File system where new prefabs will be created", "", ParamEnumAddons.FromEnum(), "General")]
+	/*
+		Category: General
+	*/
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "File system where new prefabs will be created", enums: ParamEnumAddons.FromEnum(), category: "General")]
 	protected int m_iAddonToUse;
 
-	// Glass generation
-	[Attribute("{86834A0D5920F32F}Prefabs/Structures/Core/DestructibleGlass_Base.et", UIWidgets.ResourceNamePicker, "Choose a base class of your glass prefabs.", "et", null, "Glass")]
-	protected ResourceName m_sBaseClassGlass;
+	[Attribute(defvalue: "1", desc: "Remove updated prefab's existing children", category: "General")]
+	protected bool m_bRemoveExistingChildren;
 
-	[Attribute("", UIWidgets.ResourceNamePicker, "Choose a path to save your glass prefabs.", "unregfolders", null, "Glass")]
-	protected ResourceName m_sPathToSaveGlass;
+	/*
+		Category: Glass
+	*/
 
-	[Attribute("", UIWidgets.ResourceAssignArray, "Choose XOB files to process.", "xob", null, "Glass")]
+	[Attribute(defvalue: "{86834A0D5920F32F}Prefabs/Structures/Core/DestructibleGlass_Base.et", desc: "Choose a base class of your glass prefabs", params: "et", category: "Glass")]
+	protected ResourceName m_sGlassBasePrefab;
+
+	[Attribute(desc: "Path to save the glass prefabs", params: "unregFolders", category: "Glass")]
+	protected ResourceName m_sGlassSavePath;
+
+	[Attribute(desc: "Choose XOB files to process", uiwidget: UIWidgets.ResourcePickerThumbnail, params: "xob", category: "Glass")]
 	protected ref array<ResourceName> m_aGlassVariants;
 
-	[Attribute("1", UIWidgets.EditBox, "Number of damage variants", "", null, "Glass")]
-	protected int m_GlassDmgCount;
+	[Attribute(defvalue: "-1", UIWidgets.Slider, desc: "Number of damage variants - set to -1 to autodetect", params: "-1 100 1", category: "Glass")]
+	protected int m_iGlassDmgCount;
 
-	[Attribute("", UIWidgets.EditBox, "Model base path and base name to use for the shards (adds the index to the end automatically)", "", null, "Glass")]
+	[Attribute(desc: "Model base path and base name to use for the shards; leave empty to generate a name from the save path", category: "Glass")]
 	protected string m_sGlassName;
 
-	[Attribute("0", UIWidgets.CheckBox, "Generate name from save path.", "", null, "Glass")]
-	protected bool m_bGlassNameGenerate;
-
-	[Attribute("0", UIWidgets.CheckBox, "Automatically detect number of damage variant of glass pieces.", "", null, "Glass")]
-	protected bool m_bGlassAutoCount;
-
-	[Attribute("1", UIWidgets.CheckBox, "Use Multi Phase destruction instead of Fractal destruction.", "", null, "Glass")]
+	[Attribute(defvalue: "1", desc: "Use Multi Phase destruction instead of Fractal destruction", category: "Glass")]
 	protected bool m_bUseMultiPhaseDestruction;
 
-	// Window generation
-	[Attribute("{3FF56BA19C8780DE}Prefabs/Structures/BuildingParts/Windows/Window_Base.et", UIWidgets.ResourceNamePicker, "Choose a base class of your window prefabs.", "et", null, "Window")]
-	protected ResourceName m_sBaseClass;
+	/*
+		Category: Sash
+	*/
 
-	[Attribute("", UIWidgets.ResourceNamePicker, "Choose a path to save your window prefab.", "unregFolders", null, "Window")]
-	protected ResourceName m_sPathToSave;
+	[Attribute(defvalue: "{08C59B2AAE05ACFE}Prefabs/Structures/BuildingParts/Windows/WindowSash_base.et", desc: "Base class for the sash prefabs", params: "et", category: "Sash")]
+	protected ResourceName m_sSashBasePrefab;
 
-	[Attribute("", UIWidgets.ResourceNamePicker, "", "xob", null, "Window")]
-	protected ref array<ResourceName> m_aFrameModels;
+	[Attribute(defvalue: "{604D1E6E05FB1038}Assets/Structures/BuildingsParts/Windows", desc: "Path to save the sash prefabs", params: "unregFolders", category: "Sash")]
+	protected ResourceName m_sSashSavePath;
 
-	[Attribute("", UIWidgets.ResourceNamePicker, "", "et", null, "Window")]
-	protected ref array<ResourceName> m_aGlassPrefabs;
+	/*
+		Category: Window
+	*/
 
-	[Attribute("", UIWidgets.ResourceNamePicker, "Pick a config with sockets & glass prefabs configuration.", "conf", null, "Window")]
-	protected ResourceName m_sGlassConfig;
+	[Attribute(defvalue: "{3FF56BA19C8780DE}Prefabs/Structures/BuildingParts/Windows/Window_Base.et", desc: "Base class for window prefabs", params: "et", category: "Window")]
+	protected ResourceName m_sWindowBasePrefab;
 
-	protected WorldEditor worldEditor;
-	protected ResourceManager resourceManager;
+	[Attribute(defvalue: "{604D1E6E05FB1038}Assets/Structures/BuildingsParts/Windows", desc: "Path to save the window prefabs", params: "unregFolders", category: "Window")]
+	protected ResourceName m_sWindowSavePath;
 
-	protected IEntityComponentSource m_MeshObject;
+	protected static const string BASE_PREFAB_SUFFIX = "_base"; //< only used to name the Prefab file - case-insensitive
+	protected static const string MESHOBJECT_CLASSNAME = "MeshObject";
+	protected static const string HIERARCHY_CLASSNAME = "Hierarchy";
+	protected static const string GENERICENTITY_CLASSNAME = "GenericEntity";
+
+	// criteria MUST be lowercase as ResourceNames are lowercased when searched
+	protected static const ref array<string> GLASS_CRITERIA = { "glass_", "x" };
+	protected static const ref array<string> SASH_CRITERIA = { "winsash_", "x" };
+	protected static const ref array<string> WINDOW_CRITERIA = { "win_", "x" };
+
+	//! these criteria must target/filter ALL bones (window or sash), so no "glass_" filter in there
+	protected static const ref array<string> BONE_CRITERIA = { "x" };
+
+	/*
+		Category: Debug
+	*/
+
+	// pure IEntitySource mode activated! -not yet-
+	// [Attribute(category: "DEBUG - DO NOT USE FOR PRODUCTION")]
+	bool m_bUsePureIEntitySource;
+
+	/*
+
+		BUTTON SECTION
+
+	*/
 
 	//------------------------------------------------------------------------------------------------
-	// Trim GUID
-	protected string TrimGUID(string inputString)
+	[ButtonAttribute("IMPORT: Glass .xob")]
+	protected void CreateGlassButton()
 	{
-		if (inputString.Contains("{") && inputString.Contains("}"))
-		{
-			"{"; // fix indent issue
-			int guidBracket = inputString.IndexOf("}");
-			inputString = inputString.Substring(guidBracket + 1, inputString.Length() - guidBracket - 1);
-			return inputString;
-		}
-		return "";
+		CreateGlass();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Get path to destroyed model
-	protected string GetDestroyedModel(string inputString, int variant)
+	[ButtonAttribute("Sash .xob")]
+	protected void CreateSashesButton()
 	{
-		string tempString = TrimGUID(inputString);
-		if (variant > 0)
-			tempString.Replace("Glass_01", "Glass_0" + variant);
-
-		tempString = FilePath.StripFileName(tempString) + "dst/" + FilePath.StripPath(tempString);
-		tempString.Replace(".xob", "_dst.xob");
-		string absPathDst;
-		Workbench.GetAbsolutePath(tempString, absPathDst);
-		if (!absPathDst)
-		{
-			Print("Unable to find destroyed model for " + tempString + ". Base model will be used instead", LogLevel.WARNING);
-			return inputString;
-		}
-		MetaFile meta = resourceManager.GetMetaFile(absPathDst);
-		tempString = String(meta.GetResourceID());
-		return tempString;
+		CreateAndFillPrefabFromXOBs(SASH_CRITERIA, { GLASS_CRITERIA }, m_sSashBasePrefab, m_sSashSavePath);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Get damage mask string
-	protected string GetDamageMask(string inputString)
+	[ButtonAttribute("Frame .xob")]
+	protected void CreateFramesButton()
 	{
-		inputString = TrimGUID(inputString);
-		inputString = FilePath.StripFileName(inputString) + "Dmg/" + FilePath.StripPath(inputString);
-		inputString.Replace(".xob", "_dmg_");
-		return inputString;
+		CreateAndFillPrefabFromXOBs(WINDOW_CRITERIA, { SASH_CRITERIA, GLASS_CRITERIA }, m_sWindowBasePrefab, m_sWindowSavePath);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Check how many damage variants are present in data
-	protected string GetDamageVariants(string inputString)
+	[ButtonAttribute("UPDATE: Sash .et")]
+	protected void UpdateSashPrefabs()
 	{
-		bool variantExist = true;
-		int numberOfVariants = 0;
-		string outputString;
-		while (true)
-		{
-			string absPath;
-			string inputStringTemp = inputString + "0" + numberOfVariants + ".xob";
-			variantExist = Workbench.GetAbsolutePath(inputStringTemp, absPath);
-			if (!variantExist)
-				return outputString;
-
-			outputString = outputString + String(Workbench.GetResourceName(inputStringTemp)) + ",";
-			numberOfVariants++;
-		}
-		return "";
+		RefreshPrefabs(SASH_CRITERIA, { GLASS_CRITERIA });
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected int GetGlassCount(string inputString)
+	[ButtonAttribute("Window .et")]
+	protected void UpdateWindowPrefabs()
 	{
-		bool variantExist = true;
-		int numberOfVariants = 1;
-		inputString = TrimGUID(inputString);
-		inputString.Replace("Glass_01", "Dmg/Glass_01");
-		while (true)
-		{
-			string absPath;
-			string inputStringTemp = inputString;
-			inputStringTemp.Replace(".xob", "_dmg_00.xob");
-			inputStringTemp.Replace("Glass_01", "Glass_0" + numberOfVariants);
-			Print(inputStringTemp);
-			variantExist = Workbench.GetAbsolutePath(inputStringTemp, absPath);
-			if (!variantExist)
-				return numberOfVariants - 1;
-			numberOfVariants++;
-		}
-		return 1;
+		RefreshPrefabs(WINDOW_CRITERIA, { SASH_CRITERIA, GLASS_CRITERIA });
 	}
 
+	/*
+
+		CREATE SECTION
+
+	*/
+
 	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Create Window")]
-	protected void Execute()
+	//! Create a Prefab with the found XOBs
+	protected void CreateAndFillPrefabFromXOBs(notnull array<string> xobCriteria, notnull array<ref array<string>> fillerCriteria, ResourceName basePrefab, ResourceName saveDirectory)
 	{
-		// Validate input parameters
-		if (!m_aFrameModels)
+		// check input
+		if (saveDirectory.IsEmpty())
 		{
-			Print("Frame Models is empty. Please fill it with correct name", LogLevel.ERROR);
+			Print("Save Directory is empty. Please select a valid save location", LogLevel.WARNING);
 			return;
 		}
 
-		if (!m_sPathToSave)
+		if (basePrefab.IsEmpty())
 		{
-			Print("Path To Save is empty. Please select valid save location", LogLevel.ERROR);
+			Print("Base Class is empty. Please select a valid base prefab", LogLevel.WARNING);
 			return;
 		}
 
-		if (!m_sBaseClass)
+		// check saveDir
+		string absoluteSaveDir;
+		if (!SCR_AddonTool.GetAddonAbsolutePath(m_iAddonToUse, saveDirectory, absoluteSaveDir))
 		{
-			Print("Base Class is empty. Please select valid base prefab for your window", LogLevel.ERROR);
+			Print("Wrong path: " + SCR_AddonTool.GetAddonIndex(m_iAddonToUse) + saveDirectory.GetPath(), LogLevel.WARNING);
 			return;
 		}
 
-		if (!m_aGlassPrefabs && !m_sGlassConfig)
+		// get & check XOBs
+		array<ResourceName> foundXOBs = GetListedSelectedOrOpenedResources("xob", xobCriteria);
+		if (foundXOBs.IsEmpty())
 		{
-			Print("Glass Prefabs and Glass Config is empty. Please select valid prefab for window glass", LogLevel.ERROR);
+			Print("No Sash models are listed nor are they selected via the Resource Browser. Do one of the two", LogLevel.WARNING);
 			return;
 		}
 
-		if (m_aGlassPrefabs && !m_sGlassConfig)
+		map<string, ResourceName> prefabMap = PrefabSearchMap(fillerCriteria);
+
+		foreach (ResourceName xobPath : foundXOBs)
 		{
-			if (m_aFrameModels.Count() != m_aGlassPrefabs.Count())
-			{
-				Print("Frame Models count doesn't correspond to m_aGlassPrefabs! Each single frame model needs one glass prefab.", LogLevel.ERROR);
-				return;
-			}
-		}
+			// create entity with selected base class
+			m_API.BeginEntityAction("Processing " + xobPath);
 
-		worldEditor = Workbench.GetModule(WorldEditor);
-		resourceManager = Workbench.GetModule(ResourceManager);
+			if (!CreateAndSaveBaseAndDefaultPrefabFromXOB(prefabMap, xobPath, basePrefab, absoluteSaveDir))
+				Print("Could not process " + xobPath.GetPath(), LogLevel.ERROR);
 
-		// Get addon
-		string addon = SCR_AddonTool.GetAddonIndex(m_iAddonToUse);
-		addon = SCR_AddonTool.ToFileSystem(addon);
-
-		// Get absolute path for CreateEntityTemplate
-		string pathToSave = TrimGUID(String(m_sPathToSave));
-		string absPath;
-		Workbench.GetAbsolutePath(addon + pathToSave, absPath);
-
-		array<string> socketsList;
-		SCR_WindowsGeneratorSockets windowsGeneratorSockets;
-		// Load config if its present
-		if (m_sGlassConfig)
-		{
-			Resource holder = BaseContainerTools.LoadContainer(m_sGlassConfig);
-			if (!holder)
-				return;
-
-			windowsGeneratorSockets = SCR_WindowsGeneratorSockets.Cast(BaseContainerTools.CreateInstanceFromContainer(holder.GetResource().ToBaseContainer()));
-			socketsList = {};
-			foreach (int currentIndex2, SCR_WindowsGeneratorSocketsPair currentElement2 : windowsGeneratorSockets.m_aReplacementArray)
-			{
-				socketsList.Insert(currentElement2.m_sSocketName);
-			}
-		}
-
-		foreach (int currentIndex, string currentElement : m_aFrameModels)
-		{
-			// Load metafile and get resource GUID
-			string modelName = currentElement;
-			string modelDstName = GetDestroyedModel(modelName, 0);
-
-			// Create entity with selected base class
-			m_API.BeginEntityAction("Processing " + modelName);
-			IEntity entity = m_API.CreateEntity(m_sBaseClass, "", m_API.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
-			IEntitySource entSrc = m_API.EntityToSource(entity);
-
-			// Apply basic values
-			array<ref ContainerIdPathEntry> containerPath = {};
-
-			int count = entSrc.GetComponentCount();
-			bool meshObjectFound;
-			for (int i = 0; i < count; i++) //workaround for nonfunctional FindComponent(Hierarchy)
-			{
-				if (entSrc.GetComponent(i).GetClassName() == "MeshObject")
-				{
-					meshObjectFound = true;
-					break;
-				}
-			}
-
-			// Try to find MeshObject component and if it doesn't exist, then create new one
-			if (!meshObjectFound)
-				m_MeshObject = m_API.CreateComponent(entSrc, "MeshObject");
-
-			containerPath.Clear();
-			containerPath.Insert(new ContainerIdPathEntry("MeshObject"));
-			m_API.SetVariableValue(entSrc, containerPath, "Object", modelName);
-			entity = m_API.SourceToEntity(entSrc);
-
-			// Get Bone Names and extract socket names from it
-			array<string> boneNames = {};
-			entity.GetBoneNames(boneNames);
-
-			int glassCount = boneNames.Count();
-			if (glassCount > 0)
-			{
-				// Remove scene root bone
-				boneNames.Remove(boneNames.Find("Scene_Root"));
-				glassCount--;
-			}
-			else
-			{
-				// Set it to 1 when m_aGlassPrefabs are used
-				if (!m_sGlassConfig)
-					glassCount = 1;
-				else
-					Print("No sockets were detected even though model is using config!", LogLevel.ERROR);
-			}
-
-			string pivotName;
-			string glassPrefabName;
-			string tempName;
-			for (int i = 0; i < glassCount; i++)
-			{
-				// Use prefabs list
-				if (!m_sGlassConfig)
-					glassPrefabName = m_aGlassPrefabs[currentIndex];
-
-				if (glassCount >= 1)
-				{
-					if (m_sGlassConfig)
-					{
-						// Use config file
-						pivotName = boneNames[i];
-						string searchString = pivotName;
-						searchString.ToLower();
-						searchString = searchString.Substring(0, searchString.LastIndexOf("_"));
-						int indexFound = socketsList.Find(searchString);
-						if (indexFound >= 0)
-							glassPrefabName = windowsGeneratorSockets.m_aReplacementArray[indexFound].m_sGlassPrefab;
-						else
-							PrintFormat("Unable to find prefab for coresponding socket %1. Full pivot name: %2", searchString, pivotName);
-					}
-					else
-					{
-						// Use prefabs list
-						pivotName = boneNames[i];
-						glassPrefabName = m_aGlassPrefabs[currentIndex];
-					}
-				}
-
-				IEntity glassEntity = m_API.CreateEntity(glassPrefabName, "", m_API.GetCurrentEntityLayerId(), entSrc, vector.Zero, vector.Zero);
-				if (!pivotName.IsEmpty())
-				{
-					IEntitySource glassEntSrc = m_API.EntityToSource(glassEntity);
-					array<ref ContainerIdPathEntry> subcContainerPath = { ContainerIdPathEntry("Hierarchy") };
-					m_API.SetVariableValue(glassEntSrc, subcContainerPath, "PivotID", pivotName)
-				}
-			}
-			// Fill slots with glass prefabs. If there are sockets,
-
-			// Save our modified entity to prefab
-			bool fileCreated;
-			array<string> tempArray = {};
-			modelName.Split("/", tempArray, false);
-			tempName = tempArray[tempArray.Count() - 1];
-			tempName.Replace(".xob", "");
-			fileCreated = m_API.CreateEntityTemplate(entSrc, FilePath.Concat(absPath, tempName + "_base.et"));
-
-			if (fileCreated)
-				Print(string.Format("@\"%1\"", FilePath.Concat(absPath, tempName + "_base.et")));
-			else
-				Print("Script was unable to create new prefab at designated location", LogLevel.ERROR);
-
-			// Delete entiy and finish operations
-			entity = m_API.SourceToEntity(entSrc);
-			m_API.DeleteEntity(entity);
 			m_API.EndEntityAction();
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Create Glass")]
-	protected void ExecuteGlass()
+	//! Save both _base prefab (empty) and a default prefab (inheriting from the base one, with created children)
+	//! \return true on success, false on failure
+	protected bool CreateAndSaveBaseAndDefaultPrefabFromXOB(map<string, ResourceName> prefabMap, ResourceName xobPath, ResourceName parentPrefab, string absoluteSaveDir)
+	{
+		IEntity entity = m_API.CreateEntity(parentPrefab, "", m_API.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
+		if (!entity)
+		{
+			Print("Prefab's entity could not be created", LogLevel.ERROR);
+			return false;
+		}
+
+		IEntitySource entitySource = m_API.EntityToSource(entity);
+		if (!entitySource)
+		{
+			Print("Prefab's entity source could not be found", LogLevel.ERROR);
+			m_API.DeleteEntity(entity);
+			return false;
+		}
+
+		// find MeshObject component - if it doesn't exist, SKIP
+		if (!SCR_BaseContainerTools.FindComponentSource(entitySource, MESHOBJECT_CLASSNAME))
+		{
+			Print(parentPrefab + " does not have the " + MESHOBJECT_CLASSNAME + " component - fix the base prefab " + parentPrefab, LogLevel.ERROR);
+			SCR_WorldEditorToolHelper.DeleteEntityFromSource(entitySource);
+			return false;
+		}
+
+		// apply XOB path to mesh
+		if (!m_API.SetVariableValue(entitySource, { new ContainerIdPathEntry(MESHOBJECT_CLASSNAME) }, "Object", xobPath))
+		{
+			Print("Could not apply XOB model", LogLevel.ERROR);
+			SCR_WorldEditorToolHelper.DeleteEntityFromSource(entitySource);
+			return false;
+		}
+
+		string fileNameWithoutExtension = FilePath.StripExtension(FilePath.StripPath(xobPath));
+
+		// save as base prefab
+		string absoluteFilePath = FilePath.Concat(absoluteSaveDir, fileNameWithoutExtension + BASE_PREFAB_SUFFIX + ".et");
+		if (!SaveEntitySourceAsNewTemplate(entitySource, absoluteFilePath))
+		{
+			Print("Script was unable to create BASE prefab", LogLevel.ERROR);
+			SCR_WorldEditorToolHelper.DeleteEntityFromSource(entitySource);
+			return false;
+		}
+
+		// prepare the default prefab
+		entity = m_API.CreateEntity(SCR_WorldEditorToolHelper.GetResourceNameFromFile(absoluteFilePath), "", m_API.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
+		if (!entity)
+		{
+			Print("Could not create BASE prefab!", LogLevel.ERROR);
+			SCR_WorldEditorToolHelper.DeleteEntityFromSource(entitySource);
+			return false;
+		}
+
+		entitySource = m_API.EntityToSource(entity);
+		if (!entitySource)
+		{
+			Print("BASE prefab's entity source could not be found", LogLevel.ERROR);
+			m_API.DeleteEntity(entity);
+			return false;
+		}
+
+		// get all bones and create prefab from them - if prefabMap is provided
+		if (prefabMap && !prefabMap.IsEmpty())
+			CreateEntitySourcesFromBoneNames(prefabMap, entitySource, true);
+
+		// save the default prefab
+		absoluteFilePath = FilePath.Concat(absoluteSaveDir, fileNameWithoutExtension + ".et");
+		if (!SaveEntitySourceAsNewTemplate(entitySource, absoluteFilePath))
+		{
+			Print("Could not create DEFAULT prefab", LogLevel.ERROR);
+			SCR_WorldEditorToolHelper.DeleteEntityFromSource(entitySource);
+			return false;
+		}
+
+		SCR_WorldEditorToolHelper.DeleteEntityFromSource(entitySource);
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! As its name says, take the provided entitySource and save it as a new Prefab
+	//! \return true on success, false on failure
+	protected bool SaveEntitySourceAsNewTemplate(notnull IEntitySource entitySource, string absoluteFilePath)
+	{
+		bool fileCreated = m_API.CreateEntityTemplate(entitySource, absoluteFilePath);
+
+		if (fileCreated)
+			Print("Created " + absoluteFilePath, LogLevel.VERBOSE);
+		else
+			Print("Failed to create " + absoluteFilePath, LogLevel.WARNING);
+
+		return fileCreated;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Create a prefab from the provided XOBs
+	protected void CreateGlass()
 	{
 		// Validate input parameters
-		if (m_sGlassName.IsEmpty() && !m_bGlassNameGenerate)
+		if (m_sGlassSavePath.IsEmpty())
 		{
-			Print("Glass Name is empty. Please fill it with correct name", LogLevel.ERROR);
+			Print("Path To SaveGlass is empty. Please select a valid save location", LogLevel.WARNING);
 			return;
 		}
 
-		if (!m_sPathToSaveGlass)
+		if (m_sGlassBasePrefab.IsEmpty())
 		{
-			Print("Path To SaveGlass is empty. Please select valid save location", LogLevel.ERROR);
+			Print("Base Class Glass is empty. Please select a valid base prefab for your glass", LogLevel.WARNING);
 			return;
 		}
 
-		if (!m_sBaseClassGlass)
+		if (m_aGlassVariants)
 		{
-			Print("Base Class Glass is empty. Please select base prefab for your glass", LogLevel.ERROR);
+			for (int i = m_aGlassVariants.Count() - 1; i >= 0; i--)
+			{
+				if (m_aGlassVariants[i].IsEmpty())
+					m_aGlassVariants.RemoveOrdered(i);
+			}
+
+			WorldEditorTool.UpdatePropertyPanel();
+		}
+
+		if (!m_aGlassVariants || m_aGlassVariants.IsEmpty())
+		{
+			Print("Glass Variants is empty. Please select at least one glass XOB variant", LogLevel.WARNING);
 			return;
 		}
 
-		if (m_aGlassVariants.IsEmpty())
+		string glassName = m_sGlassName.Trim();
+		if (glassName.IsEmpty())
+			glassName = FilePath.StripPath(m_sGlassSavePath.GetPath());
+
+		// check saveDir
+		string absoluteSaveDir;
+		if (!SCR_AddonTool.GetAddonAbsolutePath(m_iAddonToUse, m_sGlassSavePath, absoluteSaveDir))
 		{
-			Print("Glass Variants is empty. Please select at least one glass XOB variant", LogLevel.ERROR);
-			return;
-		}
-
-		if (m_bGlassNameGenerate)
-			m_sGlassName = FilePath.StripPath(m_sPathToSaveGlass);
-
-		worldEditor = Workbench.GetModule(WorldEditor);
-		resourceManager = Workbench.GetModule(ResourceManager);
-
-		// Get addon
-		string addon = SCR_AddonTool.GetAddonIndex(m_iAddonToUse);
-		addon = SCR_AddonTool.ToFileSystem(addon);
-
-		// Get absolute path for CreateEntityTemplate
-		string pathToSave = TrimGUID(String(m_sPathToSaveGlass));
-		string absPath;
-		Workbench.GetAbsolutePath(addon + pathToSave, absPath);
-
-		if (!m_aGlassVariants)
-		{
-			Print("At least one glass variant is required in order to generate glass prefab!", LogLevel.ERROR);
+			Print("Wrong path: " + SCR_AddonTool.GetAddonIndex(m_iAddonToUse) + m_sGlassSavePath.GetPath(), LogLevel.WARNING);
 			return;
 		}
 
 		// Automatically detect number of glass variants
-		if (m_bGlassAutoCount)
-			m_GlassDmgCount = GetGlassCount(String(m_aGlassVariants[0]));
+		int glassVariants = m_iGlassDmgCount;
+		if (glassVariants < 0)
+			glassVariants = GetGlassCount(m_aGlassVariants[0]);
 
 		// Create new entity
-		m_API.BeginEntityAction("Processing " + m_sGlassName);
-		IEntity m_Entity = m_API.CreateEntity(m_sBaseClassGlass, "", m_API.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
-		IEntitySource entSrc = m_API.EntityToSource(m_Entity);
+		m_API.BeginEntityAction("Processing " + glassName);
+		IEntity entity = m_API.CreateEntity(m_sGlassBasePrefab, "", m_API.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
+		IEntitySource entitySource = m_API.EntityToSource(entity);
 		array<ref ContainerIdPathEntry> containerPath;
 
 		// Add glass variants to entity with correct parameters
@@ -400,70 +349,497 @@ class GenerateWindowsPrefabsTool : WorldEditorTool
 		if (m_bUseMultiPhaseDestruction)
 		{
 			// Modify SCR_DestructionMultiPhaseComponent first m_DamagePhases and replace m_PhaseModel with ResourceName fetched from SCR_DestructionFractalComponent
-			array<ref ContainerIdPathEntry> subcContainerPath = { ContainerIdPathEntry("SCR_DestructionMultiPhaseComponent"), ContainerIdPathEntry("m_DamagePhases", 0) };
-			m_API.SetVariableValue(entSrc, subcContainerPath, "m_PhaseModel", GetDestroyedModel(m_aGlassVariants[0], 0));
+			array<ref ContainerIdPathEntry> subContainerPath = { ContainerIdPathEntry("SCR_DestructionMultiPhaseComponent"), ContainerIdPathEntry("m_DamagePhases", 0) };
+			m_API.SetVariableValue(entitySource, subContainerPath, "m_PhaseModel", GetDestroyedGlassModelPath(m_aGlassVariants[0], 0));
 		}
 		else
 		{
-		// Use Fractal destruction
+			// Use Fractal destruction
 			containerPath = { new ContainerIdPathEntry("SCR_DestructionFractalComponent") };
-			foreach (int currentIndex, ResourceName currentElement : m_aGlassVariants)
+			foreach (int currentIndex, ResourceName glassVariant : m_aGlassVariants)
 			{
-				for (int i = m_GlassDmgCount; i > 0;i--)
+				for (int i = glassVariants; i > 0; i--)
 				{
 					// Modify damage mask
-					string damageMask = GetDamageMask(currentElement);
-					if (m_GlassDmgCount > 1)
+					string damageMask = GetDamageMask(glassVariant);
+					if (glassVariants > 1)
 					{
 						string tempPath = FilePath.StripFileName(damageMask);
 						string tempFile = FilePath.StripPath(damageMask);
-						tempFile.Replace("Glass_01", "Glass_0" + i);
+						tempFile.Replace("Glass_01", "Glass_" + i.ToString(2));
 						damageMask = tempPath + tempFile;
-					};
+					}
 
 					// Apply parameters to sub variant
-					m_API.CreateObjectArrayVariableMember(entSrc, containerPath, "m_FractalVariants", "SCR_FractalVariation", currentIndex);
-					array<ref ContainerIdPathEntry> subcContainerPath = { ContainerIdPathEntry("SCR_DestructionFractalComponent"), ContainerIdPathEntry("m_FractalVariants", currentIndex) };
-					m_API.SetVariableValue(entSrc, subcContainerPath, "m_ModelNormal", String(currentElement));
-					m_API.SetVariableValue(entSrc, subcContainerPath, "m_ModelDestroyed", GetDestroyedModel(currentElement, i));
-					m_API.SetVariableValue(entSrc, subcContainerPath, "m_aModelFragments", GetDamageVariants(damageMask));
-				};
+					m_API.CreateObjectArrayVariableMember(entitySource, containerPath, "m_FractalVariants", "SCR_FractalVariation", currentIndex);
+					array<ref ContainerIdPathEntry> subContainerPath = { ContainerIdPathEntry("SCR_DestructionFractalComponent"), ContainerIdPathEntry("m_FractalVariants", currentIndex) };
+					m_API.SetVariableValue(entitySource, subContainerPath, "m_ModelNormal", (string)glassVariant);
+					m_API.SetVariableValue(entitySource, subContainerPath, "m_ModelDestroyed", GetDestroyedGlassModelPath(glassVariant, i));
+					m_API.SetVariableValue(entitySource, subContainerPath, "m_aModelFragments", GetDamageVariants(damageMask));
+				}
 			}
 		}
 
 		// Assign some model to MeshObject
-		containerPath = { new ContainerIdPathEntry("MeshObject") };
-		m_API.SetVariableValue(entSrc, containerPath, "Object", m_aGlassVariants[0]);
+		containerPath = { new ContainerIdPathEntry(MESHOBJECT_CLASSNAME) };
+		m_API.SetVariableValue(entitySource, containerPath, "Object", m_aGlassVariants[0]);
 
 		// Save our modified entity to prefab
-		bool fileCreated;
-		fileCreated = m_API.CreateEntityTemplate(entSrc, FilePath.Concat(absPath, m_sGlassName + ".et"));
+		bool fileCreated = m_API.CreateEntityTemplate(entitySource, FilePath.Concat(absoluteSaveDir, glassName + ".et"));
 		if (fileCreated)
-			Print(string.Format("@\"%1\"", FilePath.Concat(absPath, m_sGlassName + ".et")));
+			Print(string.Format("@\"%1\"", FilePath.Concat(absoluteSaveDir, glassName + ".et")), LogLevel.NORMAL);
 		else
-			Print("Script was unable to create new prefab at designated location", LogLevel.ERROR);
+			Print("Script was unable to create new prefab at the designated location", LogLevel.ERROR);
 
-		m_Entity = m_API.SourceToEntity(entSrc);
-		m_API.DeleteEntity(m_Entity);
+		SCR_WorldEditorToolHelper.DeleteEntityFromSource(entitySource);
 		m_API.EndEntityAction();
 	}
-};
 
-//------------------------------------------------------------------------------------------------
-//! SCR_WindowsGeneratorSocketList config
-[BaseContainerProps(configRoot: true)]
-class SCR_WindowsGeneratorSockets
-{
-	[Attribute()]
-	ref array<ref SCR_WindowsGeneratorSocketsPair> m_aReplacementArray;
-};
+	//------------------------------------------------------------------------------------------------
+	//! Get path to destroyed glass model
+	protected ResourceName GetDestroyedGlassModelPath(ResourceName resourceName, int variant)
+	{
+		if (resourceName.IsEmpty())
+		{
+			Print("Provided glass is empty!", LogLevel.WARNING);
+			return resourceName;
+		}
 
-[BaseContainerProps(configRoot: false), BaseContainerCustomTitleField("m_sSocketName")]
-class SCR_WindowsGeneratorSocketsPair
-{
-	[Attribute()]
-	string m_sSocketName;
+		string tempString = resourceName.GetPath();
+		if (variant > 0)
+			tempString.Replace("Glass_01", "Glass_" + variant.ToString(2));
 
-	[Attribute("", UIWidgets.ResourcePickerThumbnail, "", params: "et")]
-	ResourceName m_sGlassPrefab;
+		tempString = FilePath.StripFileName(tempString) + "dst/" + FilePath.StripPath(tempString);
+		tempString.Replace(".xob", "_dst.xob");
+
+		string absPathDst;
+		if (!Workbench.GetAbsolutePath(tempString, absPathDst, true))
+		{
+			Print("Unable to find destroyed model for " + tempString + ". Base model will be used instead", LogLevel.WARNING);
+			return resourceName;
+		}
+
+		return SCR_WorldEditorToolHelper.GetResourceNameFromFile(absPathDst);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get damage mask string
+	//! \return resourceNameDirPath/Dmg/resourceNameFileName with ".xob" replaced by "_dmg_"
+	protected string GetDamageMask(ResourceName resourceName)
+	{
+		string inputString = resourceName.GetPath();
+		inputString = FilePath.StripFileName(inputString) + "Dmg/" + FilePath.StripPath(inputString);
+		inputString.Replace(".xob", "_dmg_");
+		return inputString;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get all variants (resourceName + "00", "01", "02" etc) present in data
+	//! \return comma-separated resourceNames
+	protected string GetDamageVariants(ResourceName resourceName)
+	{
+		bool variantExists = true;
+		int numberOfVariants = 0;
+
+		array<string> variants = {};
+		while (variantExists)
+		{
+			string absPath;
+			string inputStringTemp = resourceName + numberOfVariants.ToString(2) + ".xob";
+			variantExists = Workbench.GetAbsolutePath(inputStringTemp, absPath);
+			if (variantExists)
+			{
+				variants.Insert(Workbench.GetResourceName(inputStringTemp));
+				numberOfVariants++;
+			}
+		}
+
+		return SCR_StringHelper.Join(",", variants, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Count how many damage variants exist
+	protected int GetGlassCount(ResourceName glassResourceName)
+	{
+		if (glassResourceName.IsEmpty())
+			return 0;
+
+		bool variantExists = true;
+		int numberOfVariants = 1;
+		string relativeFilePath = glassResourceName.GetPath();
+		relativeFilePath.Replace("Glass_01", "Dmg/Glass_01");
+
+		while (variantExists)
+		{
+			string inputStringTemp = relativeFilePath;
+			inputStringTemp.Replace(".xob", "_dmg_00.xob");
+			inputStringTemp.Replace("Glass_01", "Glass_" + numberOfVariants.ToString(2));
+			Print(inputStringTemp, LogLevel.DEBUG);
+
+			variantExists = Workbench.GetAbsolutePath(inputStringTemp, inputStringTemp, true);
+			if (variantExists)
+				numberOfVariants++;
+		}
+
+		return numberOfVariants;
+	}
+
+	/*
+
+		REFRESH SECTION
+
+	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Update prefabs - to use other prefabs deduced from bone names
+	protected void RefreshPrefabs(notnull array<string> prefabCriteria, notnull array<ref array<string>> fillerCriteria)
+	{
+		array<ResourceName> prefabsToUpdate = GetListedSelectedOrOpenedResources("et", prefabCriteria);
+		if (prefabsToUpdate.IsEmpty())
+		{
+			Print("No Prefabs were found to update", LogLevel.WARNING);
+			return;
+		}
+
+		map<string, ResourceName> prefabMap = PrefabSearchMap(fillerCriteria);
+		if (prefabMap.IsEmpty())
+		{
+			Print("No filler Prefabs were found", LogLevel.WARNING);
+			return;
+		}
+
+		foreach (ResourceName prefabToUpdate : prefabsToUpdate)
+		{
+			if (prefabToUpdate.IsEmpty())
+				continue;
+
+			m_API.BeginEntityAction("Processing " + prefabToUpdate);
+
+			if (!RefreshPrefab(prefabMap, prefabToUpdate))
+				Print("Could not process " + prefabToUpdate, LogLevel.ERROR);
+
+			m_API.EndEntityAction();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return true = success, false = failure
+	protected bool RefreshPrefab(notnull map<string, ResourceName> boneResourceNames, ResourceName prefabResourceName)
+	{
+		IEntity entity = m_API.CreateEntity(prefabResourceName, "", m_API.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
+		if (!entity)
+			return false;
+
+		IEntitySource entitySource = m_API.EntityToSource(entity);
+		if (!entitySource)
+		{
+			Print("Created entity does not have EntitySource", LogLevel.ERROR);
+			m_API.DeleteEntity(entity);
+			return false;
+		}
+
+		IEntitySource actualPrefab = IEntitySource.Cast(entitySource.GetAncestor());
+		if (!actualPrefab)
+		{
+			Print("Created entity's source does not have an ancestor", LogLevel.ERROR);
+			SCR_WorldEditorToolHelper.DeleteEntityFromSource(entitySource);
+			return false;
+		}
+
+		// remove existing children
+		array<IEntitySource> childEntitySources;
+		if (m_bRemoveExistingChildren && entitySource.GetNumChildren() > 0)
+		{
+			childEntitySources = {};
+			for (int i, count = entitySource.GetNumChildren(); i < count; i++)
+			{
+				childEntitySources.Insert(actualPrefab.GetChild(i));
+			}
+
+			if (!childEntitySources.IsEmpty()) // crashes otherwise
+				m_API.RemovePrefabMembers(childEntitySources);
+		}
+
+		array<ref Resource> childrenResources; // needed for nullpointer reasons
+		if (m_bUsePureIEntitySource)
+		{
+			Print("USE PURE IENTITYSOURCE", LogLevel.DEBUG);
+
+			childrenResources = CreateResourcesFromBoneNames(boneResourceNames, entitySource);
+
+			// reused array var
+			childEntitySources = {};
+			foreach (Resource resource : childrenResources)
+			{
+				childEntitySources.Insert(resource.GetResource().ToEntitySource());
+			}
+			if (childEntitySources && !childEntitySources.IsEmpty())
+				m_API.AddPrefabMembers(actualPrefab, childEntitySources);
+		}
+		else
+		{
+			Print("USE WORLDEDITOR IENTITYSOURCE", LogLevel.DEBUG);
+
+			// reused array var
+			childEntitySources = CreateEntitySourcesFromBoneNames(boneResourceNames, entitySource, false);
+			if (childEntitySources && !childEntitySources.IsEmpty())
+				m_API.MoveEntitiesToPrefab(entitySource, actualPrefab, childEntitySources);	// deletes children IEntities in the process
+		}
+
+		// update the prefab's .et
+		bool savedSuccessfully = m_API.SaveEntityTemplate(actualPrefab);
+		if (savedSuccessfully)
+			Print("Saved successfully", LogLevel.VERBOSE);
+		else
+			Print(prefabResourceName.GetPath() + " failed to save!", LogLevel.ERROR);
+
+		SCR_WorldEditorToolHelper.DeleteEntityFromSource(entitySource);
+		return true;
+	}
+
+	/*
+
+		GLOBAL SECTION
+
+	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Get prefab search result as a map of filename (lowercase)/resourceName
+	//! \return filenameLC-prefabResourceName pair map - (e.g "glass_100x42"-"{6B82AB4CBFE63D6E}Prefabs/Structures/BuildingParts/Windows/Glass_100x42/Glass_100x42.et")
+
+	protected map<string, ResourceName> PrefabSearchMap(notnull array<ref array<string>> searchStringGroups)
+	{
+		map<string, ResourceName> result = new map<string, ResourceName>();
+		foreach (array<string> searchStrings : searchStringGroups)
+		{
+			array<ResourceName> searchResult = SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, searchStrings);
+
+			foreach (ResourceName resourceName : searchResult)
+			{
+				string toLowerFileNameWithoutExtension = FilePath.StripExtension(FilePath.StripPath(resourceName));
+				toLowerFileNameWithoutExtension.ToLower();
+				result.Insert(toLowerFileNameWithoutExtension, resourceName);
+				Print("Adding " + toLowerFileNameWithoutExtension + " - " + resourceName, LogLevel.VERBOSE);
+			}
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get defined array resources or selected resources - filtered by keyword
+	//! \param resourceNames
+	//! \param wantedExtension without the separating period, e.g "xob"
+	//! \param keywords (lowercase) mandatory keywords that must exist in resource filename
+	//! \return array of results - either selected or array-listed ResourceNames
+	protected array<ResourceName> GetListedSelectedOrOpenedResources(string wantedExtension = "", array<string> keywords = null, array<ResourceName> resourceNames = null)
+	{
+		array<ResourceName> temporaryResults;
+		if (resourceNames && !resourceNames.IsEmpty())
+			temporaryResults = resourceNames;
+		else // find selected assets
+			temporaryResults = SCR_WorldEditorToolHelper.GetSelectedOrOpenedResources();
+
+		array<ResourceName> result = {};
+		foreach (ResourceName resourceName : temporaryResults)
+		{
+			string extension;
+			string resourceNameLC = FilePath.StripExtension(resourceName, extension);
+
+			if (!wantedExtension.IsEmpty() && extension != wantedExtension)
+				continue;
+
+			if (resourceName.EndsWith(BASE_PREFAB_SUFFIX + ".et")) // avoid updating BASE prefabs
+				continue;
+
+			resourceNameLC = FilePath.StripPath(resourceNameLC);
+			resourceNameLC.ToLower();
+
+			if (SCR_StringHelper.ContainsEvery(resourceNameLC, keywords))
+				result.Insert(resourceName);
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return the created entities' entitySources
+	protected array<IEntitySource> CreateEntitySourcesFromBoneNames(notnull map<string, ResourceName> prefabMap, notnull IEntitySource entitySource, bool addToParent)
+	{
+		if (prefabMap.IsEmpty())
+			return {};
+
+		IEntity entity = m_API.SourceToEntity(entitySource);
+		if (!entity)
+		{
+			Print("null entity?!", LogLevel.WARNING);
+			return {};
+		}
+
+		array<string> boneNames = {};
+		entity.GetAnimation().GetBoneNames(boneNames);
+		boneNames.RemoveItem("Scene_Root");
+
+		IEntitySource parent;
+		if (addToParent)
+			parent = entitySource;
+
+		array<IEntitySource> newPrefabSources = {};
+		foreach (string boneName : boneNames)
+		{
+			IEntitySource bonePrefabEntitySource = CreateEntitySourceFromBoneName(prefabMap, boneName, parent);
+			if (bonePrefabEntitySource)
+				newPrefabSources.Insert(bonePrefabEntitySource);
+			else
+				Print("Bone " + boneName + " could not see a matching prefab created", LogLevel.VERBOSE);
+		}
+
+		return newPrefabSources;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param parent can be null
+	// - if so, the IEntitySource will be created from Resource, no IEntity will be created ← not a Doxygen comment -yet- for a reason
+	//! \return the created entity's entitySource
+	protected IEntitySource CreateEntitySourceFromBoneName(notnull map<string, ResourceName> prefabMap, string boneName, IEntitySource parent)
+	{
+		if (boneName.IsEmpty())
+			return null;
+
+		string prefab = FindAdaptedPrefab(prefabMap, boneName);
+		if (prefab.IsEmpty())
+		{
+			Print("No prefab could be found matching bone " + boneName, LogLevel.VERBOSE);
+			return null;
+		}
+
+		IEntity entity = m_API.CreateEntity(prefab, "", m_API.GetCurrentEntityLayerId(), parent, vector.Zero, vector.Zero);
+		if (!entity)
+		{
+			Print("Entity " + prefab + " could not be created for bone " + boneName, LogLevel.WARNING);
+			return null;
+		}
+
+		IEntitySource result = m_API.EntityToSource(entity);
+		if (!result)
+		{
+			Print("Entity " + prefab + " does not have a source", LogLevel.WARNING);
+			m_API.DeleteEntity(entity);
+			return null;
+		}
+
+		IEntityComponentSource hierarchyComponent = SCR_BaseContainerTools.FindComponentSource(result, HIERARCHY_CLASSNAME);
+		if (!hierarchyComponent) // do not create the component, directly throw an error
+		{
+			Print("No Hierarchy component - fix by adding a " + HIERARCHY_CLASSNAME + " component to " + prefab + " first", LogLevel.WARNING);
+			SCR_WorldEditorToolHelper.DeleteEntityFromSource(result);
+			return null;
+		}
+
+		m_API.SetVariableValue(result, { new ContainerIdPathEntry(HIERARCHY_CLASSNAME) }, "PivotID", boneName);
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return the created entities' entitySources
+	protected array<ref Resource> CreateResourcesFromBoneNames(notnull map<string, ResourceName> prefabMap, notnull IEntitySource entitySource)
+	{
+		if (prefabMap.IsEmpty())
+			return {};
+
+		IEntity entity = m_API.SourceToEntity(entitySource);
+		if (!entity)
+		{
+			Print("null entity?!", LogLevel.WARNING);
+			return {};
+		}
+
+		array<string> boneNames = GetBoneNames(entity);
+
+		array<ref Resource> result = {};
+		foreach (string boneName : boneNames)
+		{
+			Resource bonePrefabResource = CreateResourceFromBoneName(prefabMap, boneName);
+			if (bonePrefabResource)
+				result.Insert(bonePrefabResource);
+			else
+				Print("Bone " + boneName + " could not see a matching prefab created", LogLevel.VERBOSE);
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return the created entity's Resource (for ref reasons)
+	protected Resource CreateResourceFromBoneName(notnull map<string, ResourceName> prefabMap, string boneName)
+	{
+		if (boneName.IsEmpty())
+			return null;
+
+		string prefab = FindAdaptedPrefab(prefabMap, boneName);
+		if (prefab.IsEmpty())
+		{
+			Print("No prefab could be found matching bone " + boneName, LogLevel.VERBOSE);
+			return null;
+		}
+
+		Resource result = BaseContainerTools.CreateContainer(GENERICENTITY_CLASSNAME);
+		if (!result || !result.IsValid())
+		{
+			Print("Could not create a new " + GENERICENTITY_CLASSNAME + " for boneName", LogLevel.WARNING);
+			return null;
+		}
+
+		IEntitySource resultSource = result.GetResource().ToEntitySource();
+		resultSource.SetAncestor(prefab);
+		IEntityComponentSource hierarchyComponent = SCR_BaseContainerTools.FindComponentSource(resultSource, HIERARCHY_CLASSNAME);
+		if (!hierarchyComponent) // do not create the component, directly throw an error
+		{
+			Print("No Hierarchy component - fix by adding a " + HIERARCHY_CLASSNAME + " component to " + prefab + " first", LogLevel.WARNING);
+			return null;
+		}
+		hierarchyComponent.Set("PivotID", boneName);
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get useful bone names without e.g Scene_Root or COM_
+	protected array<string> GetBoneNames(notnull IEntity entity)
+	{
+		array<string> result = {};
+		entity.GetAnimation().GetBoneNames(result);
+		for (int i = result.Count() - 1; i >= 0; i--)
+		{
+			string boneName = result[i];
+			// ditch Scene_Root, Center Of Mass bones, non-WxH bones
+			if (boneName == "Scene_Root" || boneName.StartsWith("COM_") || !SCR_StringHelper.ContainsEvery(boneName, BONE_CRITERIA))
+				result.Remove(i); // order does not matter here
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Find the prefab adapted to the provided bone name
+	//! \return the prefab's ResourceName, string.Empty if not found
+	protected ResourceName FindAdaptedPrefab(notnull map<string, ResourceName> prefabMap, string boneName)
+	{
+		if (boneName.IsEmpty())
+			return string.Empty;
+
+		boneName.ToLower();
+		foreach (string key, ResourceName value : prefabMap)
+		{
+			if (boneName.Contains(key))
+			{
+				Print("Found " + key + " for bone " + boneName, LogLevel.DEBUG);
+				return value;
+			}
+		}
+
+		Print("Did not find prefab for bone " + boneName, LogLevel.DEBUG);
+		return string.Empty;
+	}
 };
+#endif

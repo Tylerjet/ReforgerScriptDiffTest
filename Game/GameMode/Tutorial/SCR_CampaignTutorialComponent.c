@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignTutorialComponentClass : SCR_BaseGameModeComponentClass
 {
@@ -23,7 +24,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	protected ref array<ref SCR_CampaignTutorialStageInfo> m_aStageInfos = {};
 	protected SCR_BaseCampaignTutorialStage m_Stage;
 	protected ImageWidget m_wFadeOut;
-	protected SCR_GameModeCampaignMP m_CampaignGamemode;
+	protected SCR_GameModeCampaign m_CampaignGamemode;
 	protected bool m_bPlayerSpawned;
 	protected SCR_ECampaignTutorialStage m_eStage = SCR_ECampaignTutorialStage.START;
 	protected SCR_ECampaignTutorialStage m_eLastStage;
@@ -35,7 +36,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	protected ref array<SCR_FiringRangeTarget> m_aFiringRangeTargets = {};
 	protected SCR_CampaignSuppliesComponent m_SupplyTruckComponent;
 	protected int m_iCountOfHits;
-	protected SCR_CampaignBase m_HQUS;
+	protected SCR_CampaignMilitaryBaseComponent m_HQUS;
 	protected BaseRadioComponent m_Radio;
 	protected bool m_bIsMapOpen = false;
 	protected bool m_bUsed3PV = false;
@@ -46,7 +47,18 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	protected bool m_fDelayedControlSchemeChangeRunning = false;
 	protected bool m_bIsUsingGamepad;
 	protected SCR_ETutorialSupplyTruckWaypointMode m_eWaypointTruckPosition = SCR_ETutorialSupplyTruckWaypointMode.NONE;
+	#ifndef AR_CAMPAIGN_TIMESTAMP
 	protected float m_fStageTimestamp;
+	#else
+	protected WorldTimestamp m_fStageTimestamp;
+	#endif
+	protected static ref ScriptInvoker m_OnStructureBuilt = new ScriptInvoker();
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvoker GetOnStructureBuilt()
+	{
+		return m_OnStructureBuilt;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
@@ -59,7 +71,13 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		if (!playerController)
 			return;
 		
-		GetGame().GetCallqueue().CallLater(TryPlayerSpawn, 25, true, playerController);
+		array<SCR_SpawnPoint> availableSpawnpoints = SCR_SpawnPoint.GetSpawnPointsForFaction(m_CampaignGamemode.GetFactionKeyByEnum(SCR_ECampaignFaction.BLUFOR));
+		
+		if (availableSpawnpoints.Count() < 2)
+			return;
+		
+		TrySpawnPlayer(playerController, availableSpawnpoints[1]);
+		//GetGame().GetCallqueue().CallLater(TryPlayerSpawn, 25, true, playerController);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -94,11 +112,6 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnWorldPostProcess(World world)
 	{
-		SCR_CampaignBase chotain = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain"));
-		chotain.SpawnComposition(ECampaignCompositionType.RADIO_ANTENNA);
-		chotain.SpawnComposition(ECampaignCompositionType.HOSPITAL);
-		chotain.SpawnComposition(ECampaignCompositionType.ARMORY);
-		chotain.SpawnComposition(ECampaignCompositionType.SUPPLIES);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -123,7 +136,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		if (!mHQ)
 			return;
 		
-		SCR_CampaignFaction f = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_BLUFOR));
+		SCR_CampaignFaction f = m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR);
 		
 		if (!f)
 			return;
@@ -251,7 +264,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	void StageReset_PrepareChotain()
 	{
 		m_SupplyTruckComponent.AddSupplies(500);
-		SCR_CampaignBase baseChotain = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain"));
+		SCR_CampaignMilitaryBaseComponent baseChotain = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain").FindComponent(SCR_CampaignMilitaryBaseComponent));
 		
 		if (baseChotain && baseChotain.GetSupplies() < 950)
 			baseChotain.AddSupplies(950 - baseChotain.GetSupplies());
@@ -260,20 +273,17 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void StageReset_CaptureLaruns()
 	{
-		SCR_CampaignBase baseLaruns = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseLaruns"));
+		SCR_CampaignMilitaryBaseComponent baseLaruns = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("TownBaseLaruns").FindComponent(SCR_CampaignMilitaryBaseComponent));
 				
-		if (baseLaruns && !baseLaruns.GetOwningFaction())
-		{
-			if (baseLaruns.BeginCapture(SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(m_CampaignGamemode.FACTION_BLUFOR)), SCR_CampaignBase.INVALID_PLAYER_INDEX))
-				baseLaruns.FinishCapture();
-		}
+		if (baseLaruns && baseLaruns.GetFaction() != m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR))
+			baseLaruns.SetFaction(m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void StageReset_HandleRespawnRadios()
 	{
-		while (m_CampaignGamemode.GetActiveRespawnRadiosCount(m_CampaignGamemode.FACTION_BLUFOR) > 0)
-			m_CampaignGamemode.RemoveActiveRespawnRadio(m_CampaignGamemode.FACTION_BLUFOR);
+		while (m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).GetActiveRespawnRadios() > 0)
+			m_CampaignGamemode.RemoveActiveRespawnRadio(m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -282,7 +292,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		if (m_MobileAssemblyComponent && !m_MobileAssemblyComponent.IsDeployed())
 		{
 			m_MobileAssemblyComponent.UpdateRadioCoverage();
-			m_MobileAssemblyComponent.Deploy(true);
+			m_MobileAssemblyComponent.Deploy(SCR_EMobileAssemblyStatus.DEPLOYED);
 		}
 	}
 	
@@ -454,17 +464,17 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		super.OnPlayerRegistered(playerId);
 		
 		BaseWorld world = GetGame().GetWorld();
-		SCR_CampaignBase.Cast(world.FindEntityByName("MainBaseChotain")).SetCallsignIndex(0);
-		SCR_CampaignBase.Cast(world.FindEntityByName("TownBaseChotain")).SetCallsignIndex(1);
-		SCR_CampaignBase.Cast(world.FindEntityByName("TownBaseLaruns")).SetCallsignIndex(2);
-		SCR_CampaignBase.Cast(world.FindEntityByName("MajorBaseLevie")).SetCallsignIndex(4);
+		SCR_CampaignMilitaryBaseComponent.Cast(world.FindEntityByName("MainBaseChotain").FindComponent(SCR_CampaignMilitaryBaseComponent)).SetCallsignIndex(0);
+		SCR_CampaignMilitaryBaseComponent.Cast(world.FindEntityByName("TownBaseChotain").FindComponent(SCR_CampaignMilitaryBaseComponent)).SetCallsignIndex(1);
+		SCR_CampaignMilitaryBaseComponent.Cast(world.FindEntityByName("TownBaseLaruns").FindComponent(SCR_CampaignMilitaryBaseComponent)).SetCallsignIndex(2);
+		SCR_CampaignMilitaryBaseComponent.Cast(world.FindEntityByName("MajorBaseLevie").FindComponent(SCR_CampaignMilitaryBaseComponent)).SetCallsignIndex(4);
 		
 		// Attempt to spawn the player automatically, cease after spawn is successful in OnPlayerSpawned
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
 		TryPlayerSpawn(playerController);
 		
-		if (!m_bPlayerSpawned)
-			GetGame().GetCallqueue().CallLater(TryPlayerSpawn, 100, true, playerController);
+		//if (!m_bPlayerSpawned)
+		//	GetGame().GetCallqueue().CallLater(TryPlayerSpawn, 100, true, playerController);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -476,7 +486,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		int playerId = pc.GetPlayerId();
 		
 		// Skip faction and spawnpoint selection
-		SCR_RespawnSystemComponent respawnSystem = m_CampaignGamemode.GetRespawnSystemComponent();
+		SCR_RespawnSystemComponent respawnSystem = GetGameMode().GetRespawnSystemComponent();
 		
 		if (!respawnSystem)
 			return;
@@ -486,24 +496,147 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		if (!factionManager)
 			return;
 
-		Faction factionUS = factionManager.GetFactionByKey(m_CampaignGamemode.FACTION_BLUFOR);
+		Faction factionUS = m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR);
 		
 		if (!factionUS)
 			return;
 		
-		respawnSystem.DoSetPlayerFaction(playerId, respawnSystem.GetFactionIndex(factionUS));
-		array<SCR_SpawnPoint> availableSpawnpoints = SCR_SpawnPoint.GetSpawnPointsForFaction(m_CampaignGamemode.FACTION_BLUFOR);
+		SCR_BasePlayerLoadout loadout = GetGame().GetLoadoutManager().GetRandomFactionLoadout(factionUS);
+		if (!loadout)
+			return;
+		
+		array<SCR_SpawnPoint> availableSpawnpoints = SCR_SpawnPoint.GetSpawnPointsForFaction(m_CampaignGamemode.GetFactionKeyByEnum(SCR_ECampaignFaction.BLUFOR));
 		
 		if (availableSpawnpoints.Count() < 2)
 			return;
 		
-		respawnSystem.DoSetPlayerSpawnPoint(playerId, SCR_SpawnPoint.GetSpawnPointRplId(availableSpawnpoints[1]));
-		
 		if (!pc)
 			return;
+
+		SCR_PlayerFactionAffiliationComponent playerFactionAffiliation = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		SCR_PlayerLoadoutComponent playerLoadout = SCR_PlayerLoadoutComponent.Cast(pc.FindComponent(SCR_PlayerLoadoutComponent));
+		SCR_RespawnComponent respawnComp = SCR_RespawnComponent.Cast(pc.FindComponent(SCR_RespawnComponent));
+
 		
-		if (m_CampaignGamemode.CanPlayerRespawn(pc.GetPlayerId()))
-			pc.RequestRespawn();
+		playerFactionAffiliation.GetOnPlayerFactionResponseInvoker_S().Insert(OnPlayerFactionResponse);
+		playerLoadout.GetOnPlayerLoadoutResponseInvoker_S().Insert(OnPlayerLoadoutResponse);
+		respawnComp.GetOnRespawnResponseInvoker_S().Insert(OnPlayerSpawnResponse);
+		
+		TrySetPlayerFaction(pc, factionUS);
+		TrySetPlayerLoadout(pc, loadout);
+		TrySpawnPlayer(pc, availableSpawnpoints[1]); // Select the second spawnpoint in array to spawn at the correct place.		
+	}
+
+	//------------------------------------------------------------------------------------------------	
+	protected void OnPlayerFactionResponse(SCR_PlayerFactionAffiliationComponent component, int factionIndex, bool response)
+	{
+		PlayerController controller = PlayerController.Cast(component.GetOwner());
+		FactionManager factionManager = GetGame().GetFactionManager();
+		
+		if (!factionManager)
+			return;
+
+		Faction factionUS = factionManager.GetFactionByIndex(factionIndex);
+		
+		if (!factionUS)
+			return;
+		
+		if(!response)
+			TrySetPlayerFaction(controller, factionUS);
+		else
+			component.GetOnPlayerFactionResponseInvoker_S().Remove(OnPlayerFactionResponse);
+	}
+
+	//------------------------------------------------------------------------------------------------		
+	protected void OnPlayerLoadoutResponse(SCR_PlayerLoadoutComponent component, int loadoutIndex, bool response)
+	{
+		PlayerController controller = PlayerController.Cast(component.GetOwner());
+		SCR_BasePlayerLoadout loadout = GetGame().GetLoadoutManager().GetLoadoutByIndex(loadoutIndex);
+		
+		if(!response)
+			TrySetPlayerLoadout(controller, loadout);
+		else
+			component.GetOnPlayerLoadoutResponseInvoker_S().Remove(OnPlayerLoadoutResponse);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerSpawnResponse(SCR_SpawnRequestComponent requestComponent, SCR_ESpawnResult response)
+	{
+		PlayerController controller = PlayerController.Cast(requestComponent.GetOwner());
+		array<SCR_SpawnPoint> availableSpawnpoints = SCR_SpawnPoint.GetSpawnPointsForFaction(m_CampaignGamemode.GetFactionKeyByEnum(SCR_ECampaignFaction.BLUFOR));
+		SCR_RespawnComponent respawnComp = SCR_RespawnComponent.Cast(controller.FindComponent(SCR_RespawnComponent));
+		
+		if(response != SCR_ESpawnResult.OK)
+			TrySpawnPlayer(controller, availableSpawnpoints[1]);
+		else
+			respawnComp.GetOnRespawnResponseInvoker_S().Remove(OnPlayerSpawnResponse);
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	protected void TrySetPlayerFaction(notnull PlayerController playerController, Faction faction)
+	{
+		// TODO@YURI:
+		//	Make sure that a callback is hooked to SCR_PlayerFactionAffiliationComponent.GetOnPlayerFactionResponseInvoker_S() for authority callback
+		//	or SCR_PlayerFactionAffiliationComponent.GetOnPlayerFactionResponseInvoker_O() for the owner client (the target/requesting player)
+		//	prior to calling this method. In case the request fails, you will receive a reponse and you can handle it accordingly!
+		//	no need for endless call later!
+		
+		SCR_PlayerFactionAffiliationComponent playerFactionAffiliation = SCR_PlayerFactionAffiliationComponent.Cast(playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		if (!playerFactionAffiliation.RequestFaction(faction))
+		{
+			// Request not sent, failed locally
+			return;
+		}
+		
+		// Request sent, await response.
+		// Response delivered via SCR_PlayerFactionAffiliationComponent.GetOnCanPlayerFactionResponseInvoker..., explained above.
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void TrySetPlayerLoadout(notnull PlayerController playerController, SCR_BasePlayerLoadout loadout)
+	{
+		// TODO@YURI:
+		//	Make sure that a callback is hooked to SCR_PlayerLoadoutComponent.GetOnPlayerLoadoutResponseInvoker_S() for authority callback
+		//	or SCR_PlayerLoadoutComponent.GetOnPlayerLoadoutResponseInvoker_O() for the owner client (the target/requesting player)
+		//	prior to calling this method. In case the request fails, you will receive a reponse and you can handle it accordingly!
+		//	no need for endless call later!
+		
+		SCR_PlayerLoadoutComponent playerLoadoutComponent = SCR_PlayerLoadoutComponent.Cast(playerController.FindComponent(SCR_PlayerLoadoutComponent));
+		if (!playerLoadoutComponent.RequestLoadout(loadout))
+		{
+			// Request not sent, failed locally
+			return;
+		}
+		
+		// Request sent, await response.
+		// Response delivered via SCR_PlayerLoadoutComponent.GetOnPlayerLoadoutResponseInvoker...(), explained above.
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void TrySpawnPlayer(notnull PlayerController playerController, notnull SCR_SpawnPoint spawnPoint)
+	{
+		// TODO@YURI:
+		//	Make sure that a callback is hooked to SCR_RespawnComponent.GetOnRespawnResponseInvoker_S() for authority callback
+		//	or SCR_RespawnComponent.GetOnRespawnResponseInvoker_O() for the owner client (the target/requesting player)
+		//	prior to calling this method. In case the request fails, you will receive a reponse and you can handle it accordingly!
+		//	no need for endless call later!
+		
+		SCR_RespawnComponent spawnComponent = SCR_RespawnComponent.Cast(playerController.FindComponent(SCR_RespawnComponent));
+		SCR_PlayerLoadoutComponent loadoutComponent = SCR_PlayerLoadoutComponent.Cast(playerController.FindComponent(SCR_PlayerLoadoutComponent));
+		
+		// Retrieve loadout the user had stored prior to this request; this is synchronized as an ask/response
+		SCR_BasePlayerLoadout loadout = loadoutComponent.GetAssignedLoadout();
+		ResourceName loadoutResource = loadout.GetLoadoutResource();
+		SCR_SpawnData spawnData = new SCR_SpawnPointSpawnData(loadoutResource, spawnPoint.GetRplId());		
+		if (!spawnComponent.RequestSpawn(spawnData))
+		{
+			// Request not sent, failed locally
+			return;
+		}
+		
+		// Request sent, await response.
+		// Response delivered via SCR_RespawnComponent.GetOnRespawnResponseInvoker...(), explained above.
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -744,17 +877,17 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnStructureBuilt(SCR_CampaignBase base, IEntity structure)
+	void OnStructureBuilt(SCR_CampaignMilitaryBaseComponent base, IEntity structure)
 	{
 		if (m_Stage)
 			m_Stage.OnStructureBuilt(base, structure);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerSpawned(int playerId, IEntity controlledEntity)
+	override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
 	{
 		m_bPlayerSpawned = true;
-		m_Player = ChimeraCharacter.Cast(controlledEntity);
+		m_Player = ChimeraCharacter.Cast(entity);
 		GetGame().GetCallqueue().Remove(TryPlayerSpawn);
 		
 		if (m_Stage)
@@ -762,9 +895,22 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		
 		if (!m_bFirstStageSet)
 		{
+			if (m_CampaignGamemode.IsTutorial())
+			{
+				SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+				
+				if (hudManager)
+				{
+					SCR_XPInfoDisplay display = SCR_XPInfoDisplay.Cast(hudManager.FindInfoDisplay(SCR_XPInfoDisplay));
+					
+					if (display)
+						display.AllowShowingInfo(false);
+				}
+			}
+			
 			m_bFirstStageSet = true;
-			m_HQUS = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("MainBaseChotain"));
-			m_HQUS.AlterReinforcementsTimer(9999999);
+			m_HQUS = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("MainBaseChotain").FindComponent(SCR_CampaignMilitaryBaseComponent));
+			m_HQUS.AlterSupplyIncomeTimer(9999999);
 			FiringRangeInit();
 			MobileHQInit();
 			IEntity WP_cottage = GetGame().GetWorld().FindEntityByName("WP_CONFLICT_COMPAS_MOVE");
@@ -774,8 +920,8 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			cottageDescr.Item().SetVisible(false);
 			mobileTruckDescr.Item().SetVisible(false);
 			
-			while (m_CampaignGamemode.GetActiveRespawnRadiosCount(m_CampaignGamemode.FACTION_BLUFOR) < m_CampaignGamemode.GetMaxRespawnRadios())
-				m_CampaignGamemode.AddActiveRespawnRadio(m_CampaignGamemode.FACTION_BLUFOR);
+			while (m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).GetActiveRespawnRadios() < m_CampaignGamemode.GetMaxRespawnRadios())
+				m_CampaignGamemode.AddActiveRespawnRadio(m_CampaignGamemode.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
 			
 			m_wFadeOut = ImageWidget.Cast(GetGame().GetHUDManager().CreateLayout("{265245C299401BF6}UI/layouts/Menus/ContentBrowser/DownloadManager/ScrollBackground.layout", EHudLayers.OVERLAY));
 			m_wFadeOut.SetOpacity(0);
@@ -807,7 +953,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			if (m_wWaypoint)
 			{
 				m_wWaypoint.SetOpacity(0);
-				m_wWaypoint.LoadImageFromSet(0, m_CampaignGamemode.GetBuildingIconsImageset(), "USSR_Base_Small_Select");
+				m_wWaypoint.LoadImageFromSet(0, "{F7E8D4834A3AFF2F}UI/Imagesets/Conflict/conflict-icons-bw.imageset", "USSR_Base_Small_Select");
 				m_wWaypoint.SetColor(Color.Yellow);
 				FrameSlot.SetSize(m_wWaypoint, 64, 64);
 			}
@@ -849,7 +995,12 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	float GetStageDuration()
 	{
+		#ifndef AR_CAMPAIGN_TIMESTAMP
 		return Replication.Time() - m_fStageTimestamp;
+		#else
+		ChimeraWorld world = GetOwner().GetWorld();
+		return world.GetServerTimestamp().DiffMilliseconds(m_fStageTimestamp);
+		#endif
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -905,7 +1056,12 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		{
 			if (stageInfo.GetIndex() == m_eStage)
 			{
+				#ifndef AR_CAMPAIGN_TIMESTAMP
 				m_fStageTimestamp = Replication.Time();
+				#else
+				ChimeraWorld world = GetOwner().GetWorld();
+				m_fStageTimestamp = world.GetServerTimestamp();
+				#endif
 				m_Stage = SCR_BaseCampaignTutorialStage.Cast(GetGame().SpawnEntity(stageInfo.GetClassName().ToType()));
 				break;
 			}
@@ -1043,7 +1199,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		if (!GetGame().InPlayMode())
 			return;
 		
-		m_CampaignGamemode = SCR_GameModeCampaignMP.Cast(GetGameMode());
+		m_CampaignGamemode = SCR_GameModeCampaign.GetInstance();
 		
 		if (!m_CampaignGamemode)
 			return;

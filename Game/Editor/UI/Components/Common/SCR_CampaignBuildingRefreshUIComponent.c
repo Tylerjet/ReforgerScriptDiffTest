@@ -19,8 +19,8 @@ class SCR_CampaignBuildingRefreshUIComponent : ScriptedWidgetComponent
 		if (supplyComponent)
 			supplyComponent.m_OnSuppliesChanged.Insert(m_PagUIComp.RefreshPage);
 		
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(provider);
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(provider.FindComponent(SCR_CampaignMilitaryBaseComponent));
 		if (base)
-			base.s_OnServiceRegistered.Insert(m_PagUIComp.RefreshPage);
+			base.GetOnServiceRegistered().Insert(m_PagUIComp.RefreshPage);
 	}
 };

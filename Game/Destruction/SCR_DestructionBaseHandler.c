@@ -1,78 +1,81 @@
 #define ENABLE_BASE_DESTRUCTION
 //------------------------------------------------------------------------------------------------
 //! Base destruction handler, destruction handler types extend from this
+//! TODO: Move this to damage manager instead
 //! Ported from SCR_DestructionBaseComponent
 [BaseContainerProps()]
 class SCR_DestructionBaseHandler
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Model to swap to on destruction", params: "xob")]
-	private ResourceName m_sWreckModel;
-	[Attribute("0", UIWidgets.EditBox, desc: "Delay for the wreck model switch upon destruction (ms)",  params: "0 10000 1")]
-	private int m_iWreckDelay;
-	[Attribute("100", UIWidgets.EditBox, desc: "Default mass of the wreck physics, to be set if the part did not have physics before destruction",  params: "0 10000 1")]
-	private int m_fDefaultWreckMass;
-	
+	protected ResourceName m_sWreckModel;
+	[Attribute("1", UIWidgets.Slider, desc: "Delay for the wreck model switch upon destruction (ms)", params: "1 10000 1")]
+	protected int m_iWreckDelay;
+	[Attribute("100", UIWidgets.Slider, desc: "Default mass of the wreck physics, to be set if the part did not have physics before destruction", params: "0 10000 1")]
+	protected float m_fDefaultWreckMass;
+
 	[Attribute("0", UIWidgets.CheckBox, "If true the part will detach from parent after hitzone is destroyed")]
-	private bool m_bDetachAfterDestroyed;
+	protected bool m_bDetachAfterDestroyed;
 	[Attribute("1", UIWidgets.CheckBox, "If true the part will be hidden after it is destroyed, unless wreck model is provided")]
-	private bool m_bAllowHideWreck;
+	protected bool m_bAllowHideWreck;
 	[Attribute("1", UIWidgets.CheckBox, "If true and not detached the part will be deleted after parent entity is destroyed")]
-	private bool m_bDeleteAfterParentDestroyed;
+	protected bool m_bDeleteAfterParentDestroyed;
 	[Attribute("0", UIWidgets.CheckBox, "If true the physics will be disabled after hitzone is destroyed")]
-	private bool m_bDisablePhysicsAfterDestroyed;
+	protected bool m_bDisablePhysicsAfterDestroyed;
 #ifdef ENABLE_BASE_DESTRUCTION
-	
+
 	protected IEntity m_pOwner; // TODO: Remove once we can get the owner dynamically
-	private bool m_bIsDestructionDelayed;
-	
-	bool IsDestructionQueued()
+	protected bool m_bIsDestructionDelayed;
+
+	//------------------------------------------------------------------------------------------------
+	//! Destroy
+	void StartDestruction(bool immediate = false)
 	{
-		return m_bIsDestructionDelayed;
-	}
-	
-	void StartDestruction(bool immediate = false, bool isInContact = false)
-	{
-		if (isInContact)
-		{
-			SCR_MPDestructionManager destructionManager = SCR_MPDestructionManager.GetInstance();
-			if (destructionManager)
-			{
-				destructionManager.DestroyInFrame(this, immediate);
-				return;
-			}
-		}
-		
-		if (immediate || m_iWreckDelay <= 0)
+		if (immediate)
 		{
 			if (m_bIsDestructionDelayed)
-				GetGame().GetCallqueue().Remove(HandleDestruction);
-			
-			HandleDestruction();
+				GetGame().GetCallqueue().Remove(StartDestruction);
+
+			// Delegation is only allowed through destruction manager, ensuring the event will always be triggered inside frame
+			// This includes deletion, physics deactivation, deletion
+			SCR_MPDestructionManager destructionManager = SCR_MPDestructionManager.GetInstance();
+			if (destructionManager)
+				destructionManager.DestroyInFrame(this);
+			else
+				Debug.DPrint("SCR_MPDestructionManager is missing, cannot perform DestroyInFrame");
+
+			return;
 		}
-		else if (!m_bIsDestructionDelayed)
+
+		if (!m_bIsDestructionDelayed)
 		{
 			m_bIsDestructionDelayed = true;
-			GetGame().GetCallqueue().CallLater(HandleDestruction, m_iWreckDelay);
+
+			// The delay allows for particle effects to envelop vehicle before it is transformed to wreck.
+			// CallLater is used as a simple measure to delay that operation
+			GetGame().GetCallqueue().CallLater(StartDestruction, m_iWreckDelay, param1: true);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Revert model back to default
 	void OnRepair()
 	{
+		if (!m_pOwner || m_pOwner.IsDeleted())
+			return;
+
 		ResourceName object = SCR_Global.GetPrefabAttributeResource(m_pOwner, "MeshObject", "Object");
 		SetModelResource(object);
-		
+
 		// Some objects have no valid destruction physics
 		if (!m_bDisablePhysicsAfterDestroyed)
 			return;
-		
+
 		m_pOwner.SetFlags(EntityFlags.TRACEABLE, false);
-		
+
 		Physics physics = m_pOwner.GetPhysics();
 		if (!physics)
 			return;
-		
+
 		// Set proper physics simulation state for slotted entities, use just collision physics.
 		if (m_pOwner.GetParent())
 			physics.ChangeSimulationState(SimulationState.COLLISION);
@@ -82,16 +85,22 @@ class SCR_DestructionBaseHandler
 
 	//------------------------------------------------------------------------------------------------
 	//! Handle destruction
-	protected void HandleDestruction()
+	//! Must happen inside frame event, for example via SCR_MPDestructionManager
+	void HandleDestruction()
 	{
 		m_bIsDestructionDelayed = false;
-		if (!m_pOwner)
+
+		if (!m_pOwner || m_pOwner.IsDeleted())
 			return;
-		
+
+		IEntity parent = m_pOwner.GetParent();
+		if (parent && parent.IsDeleted())
+			return;
+
 		// Destroy all children slotted entities
 		array<EntitySlotInfo> slotInfos = {};
 		EntitySlotInfo.GetSlotInfos(m_pOwner, slotInfos);
-		foreach (EntitySlotInfo slotInfo: slotInfos)
+		foreach (EntitySlotInfo slotInfo : slotInfos)
 		{
 			if (!slotInfo)
 				continue;
@@ -100,90 +109,99 @@ class SCR_DestructionBaseHandler
 			if (!slotEntity)
 				continue;
 
+			if (slotEntity.IsDeleted())
+				continue;
+
 			HitZoneContainerComponent hitZoneContainer = HitZoneContainerComponent.Cast(slotEntity.FindComponent(HitZoneContainerComponent));
 			if (!hitZoneContainer)
 				continue;
-			
+
 			HitZone hitZone = hitZoneContainer.GetDefaultHitZone();
-			if (!hitZone)
-				continue;
-			
-			// Need to trigger the destruction to hide or delete the unnecessary slotted objects
-			if (hitZone.GetDamageState() == EDamageState.DESTROYED)
-				hitZone.SetHealthScaled(1);
-			
-			hitZone.SetHealthScaled(0);
+			if (hitZone)
+			{
+				if (hitZone.GetDamageState() == EDamageState.DESTROYED)
+				{
+					SCR_DestructibleHitzone destructibleHitZone = SCR_DestructibleHitzone.Cast(hitZone);
+					if (destructibleHitZone)
+						destructibleHitZone.StartDestruction(true);
+				}
+				else
+				{
+					hitZone.SetHealth(0);
+				}
+			}
 		}
-		
+
 		// Check parent only if the part is not set to be deleted anyway
-		if (m_bDeleteAfterParentDestroyed && m_pOwner.GetParent())
+		if (m_bDeleteAfterParentDestroyed && parent)
 		{
-			HitZoneContainerComponent parentContainer = HitZoneContainerComponent.Cast(m_pOwner.GetParent().FindComponent(HitZoneContainerComponent));
+			HitZoneContainerComponent parentContainer = HitZoneContainerComponent.Cast(parent.FindComponent(HitZoneContainerComponent));
 			if (parentContainer && parentContainer.GetDefaultHitZone() && parentContainer.GetDefaultHitZone().GetDamageState() == EDamageState.DESTROYED)
 			{
-				GetGame().GetCallqueue().CallLater(DeleteSelf); // Must not delete entities outside of frame
+				DeleteSelf();
 				return;
 			}
 		}
-		
+
 		if (m_bAllowHideWreck || !m_sWreckModel.IsEmpty())
-			GetGame().GetCallqueue().CallLater(SetModelResource, param1: m_sWreckModel, param2: m_bAllowHideWreck); // Must not change model outside frame
-		
+			SetModelResource(m_sWreckModel, m_bAllowHideWreck);
+
 		if (m_bDetachAfterDestroyed)
 			DetachFromParent(true);
-		
+
 		// Some objects have no valid destruction physics
 		if (!m_bDisablePhysicsAfterDestroyed)
 			return;
-		
+
 		m_pOwner.ClearFlags(EntityFlags.TRACEABLE, false);
-		
+
 		Physics physics = m_pOwner.GetPhysics();
 		if (physics)
 			physics.ChangeSimulationState(SimulationState.NONE);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Checks whether provided entity has parent and if so, tries to find a slot which it would belong to
 	//! and unregister from it.
 	private void DetachFromParent(bool updateHierarchy)
 	{
-		if (!m_pOwner)
+		if (!m_pOwner || m_pOwner.IsDeleted())
 			return;
-		
-		if (!m_pOwner.GetParent())
+
+		IEntity parent = m_pOwner.GetParent();
+		if (!parent || parent.IsDeleted())
 			return;
-		
+
 		Physics physics = m_pOwner.GetPhysics();
 		if (!physics)
 			return;
-		
+
 		vector velocity = physics.GetVelocity();
 		vector angularVelocity = physics.GetAngularVelocity();
-		
+
 		EntitySlotInfo slotInfo = EntitySlotInfo.GetSlotInfo(m_pOwner);
 		if (slotInfo)
 			slotInfo.DetachEntity(updateHierarchy);
-		
+
 		if (physics.IsDynamic() && !m_pOwner.GetParent())
 		{
 			physics.SetVelocity(velocity);
 			physics.SetAngularVelocity(angularVelocity);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Deletes self
 	void DeleteSelf()
 	{
-		if (!m_pOwner)
+		if (!m_pOwner || m_pOwner.IsDeleted())
 			return;
-		
+
 		if (m_pOwner.GetParent())
 			DetachFromParent(false);
-		
+
 		m_pOwner.SetObject(null, string.Empty);
-		RplComponent.DeleteRplEntity(m_pOwner, false);
+		RplComponent.DeleteRplEntity(m_pOwner, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -200,40 +218,51 @@ class SCR_DestructionBaseHandler
 			if (resource.IsValid())
 				model = resource.GetResource().ToVObject();
 		}
-		
+
 		if (model || allowEmpty)
 			SetModel(model);
 	}
+
 	//------------------------------------------------------------------------------------------------
 	/*! Sets the model of the object
 	\param model Loaded model data
 	*/
 	protected void SetModel(VObject model)
 	{
+		if (!m_pOwner || m_pOwner.IsDeleted())
+			return;
+
 		Vehicle vehicle = Vehicle.Cast(m_pOwner);
 		if (vehicle)
 			vehicle.SetWreckModel(model);
-		else if (m_pOwner)
+		else
 			m_pOwner.SetObject(model, string.Empty);
-		
+
 		m_pOwner.Update();
-		
+
 		if (!model)
 			return;
-		
+
 		// If there is no model, ignore the rest
 		Physics physics = m_pOwner.GetPhysics();
 		if (!physics)
 			return;
-		
+
 		// If the object has dynamic physics, pass the state
 		float mass = physics.GetMass();
 		if (mass == 0)
 			mass = m_fDefaultWreckMass;
-		
-		physics.UpdateGeometries();
-		physics.SetActive(ActiveState.ACTIVE);
-		physics.EnableGravity(true);
+
+		if (physics.UpdateGeometries())
+		{
+			physics.SetActive(ActiveState.ACTIVE);
+			physics.EnableGravity(true);
+		}
+		else
+		{
+			//!< TODO Suspicious, possibly use ChangeSimulationState(SimulationState.NONE) instead
+			physics.Destroy(); // No geoms found, destroy physics
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -242,4 +271,4 @@ class SCR_DestructionBaseHandler
 		m_pOwner = owner;
 	}
 #endif
-};
+}

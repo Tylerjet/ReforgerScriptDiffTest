@@ -17,14 +17,14 @@ class SCR_CaptureBasesContextAction : SCR_SelectedEntitiesContextAction
 		if (hoveredEntity)
 		{
 			owner = hoveredEntity.GetOwner();
-			if (!owner.IsInherited(SCR_CampaignBase))
+			if (!owner.IsInherited(SCR_CampaignMilitaryBaseComponent))
 					return false;
 		}
 		
 		for (int i = 0; i < selectedEntitiesCount; i++)
 		{
 			owner = selectedEntities[i].GetOwner();
-			if (!owner.IsInherited(SCR_CampaignBase))
+			if (!owner.IsInherited(SCR_CampaignMilitaryBaseComponent))
 				return false;
 		}
 		
@@ -81,13 +81,13 @@ class SCR_CaptureBasesContextAction : SCR_SelectedEntitiesContextAction
 	
 	void PerformOn(SCR_EditableEntityComponent entity, array<int> factionIDs, int factionIDsCount)
 	{
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(entity.GetOwner());
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(entity.GetOwner().FindComponent(SCR_CampaignMilitaryBaseComponent));
 		FactionManager factionManager = GetGame().GetFactionManager();
 		
 		if (!base)
 			return;
 		
-		int index = factionIDs.Find(factionManager.GetFactionIndex(base.GetOwningFaction())) + 1;
+		int index = factionIDs.Find(factionManager.GetFactionIndex(base.GetFaction())) + 1;
 		
 		if (index >= factionIDsCount)
 			index = 0;

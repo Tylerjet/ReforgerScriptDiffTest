@@ -31,7 +31,12 @@ class SCR_NotificationPlayerAndNumber : SCR_NotificationPlayer
 		float display6 = param6;
 		display5 = param6 / m_iNumberDivider;
 		
-		data.SetNotificationTextEntries(GetPlayerName(playerID), display2.ToString(), display3.ToString(), display4.ToString(), display5.ToString(), display6.ToString());
+		string playerName;
+		data.GetNotificationTextEntries(playerName);
+		if (!GetPlayerName(playerID, playerName))
+			return string.Empty;
+		
+		data.SetNotificationTextEntries(playerName, display2.ToString(), display3.ToString(), display4.ToString(), display5.ToString(), display6.ToString());
 		return super.GetText(data);
 	}
 };

@@ -281,8 +281,8 @@ class WorldDecal: GenericEntity
 		
 		if (param.TraceEnt)
 		{
-			World world = (World) GetWorld();
-			Decal decal = world.CreateDecal(param.TraceEnt, param.Start, forward, NearPlane, FarPlane, Angle* Math.DEG2RAD, GetSize(), Stretch, Mat, Lifetime, 0xFFFFFFFF);
+			World world = GetWorld();
+			Decal decal = world.CreateDecal(param.TraceEnt, param.Start, forward, NearPlane, FarPlane, Angle* Math.DEG2RAD, GetSize(), Stretch, Mat, Lifetime, 0xFFFFFFFF, 0);
 			
 			#ifdef WORKBENCH
 				m_bCheckIntersection = true;

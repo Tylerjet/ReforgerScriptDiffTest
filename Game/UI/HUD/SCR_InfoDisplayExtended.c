@@ -7,7 +7,9 @@ enum EShowGUI
 	IN_1ST_PERSON = 2,
 	IN_3RD_PERSON = 4,
 	IN_PAUSE_MENU = 8,
-	WITHOUT_ENTITY = 16
+	WITHOUT_ENTITY = 16,
+	WHILE_UNCONSCIOUS = 32,
+	IN_EDITOR = 64
 };
 
 //------------------------------------------------------------------------------------------------
@@ -16,56 +18,95 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	[Attribute("1", UIWidgets.CheckBox, "Toggles ON/OFF info display.")]
 	protected bool m_bIsEnabled;
 	
-	[Attribute("7", UIWidgets.Flags, "Defines when the GUI element is allowed to show.", "", ParamEnumArray.FromEnum(EShowGUI) )]
+	[Attribute("39", UIWidgets.Flags, "Defines when the GUI element is allowed to show.", "", ParamEnumArray.FromEnum(EShowGUI) )]
 	private EShowGUI m_eShow;	
 	
-	protected IEntity m_ControlledEntity;
 	protected SCR_PlayerController m_PlayerController;
+	protected CharacterControllerComponent m_CharacterController;
 	protected SCR_CharacterCameraHandlerComponent m_CameraHandler;
 	protected MenuManager m_MenuManager;
 	protected EventHandlerManagerComponent m_EventHandlerManager;
+	protected SCR_EditorManagerEntity m_EditorManager;
 	
-	protected bool m_bAttachedToController;
+	protected bool m_bAttachedToPlayerController;
 	
 	protected bool m_bInThirdPerson;
 	protected bool m_bInADS;
+	protected bool m_bIsUnconscious;
 	protected bool m_bInPauseMenu;
-	protected bool m_bShowGlobal;							// Global GUI visibility flag, is not meant to be fiddled with outside this class
-	protected bool m_bShowLocal = true;					// Local/custom "per-GUI-handling" flag
+	protected bool m_bInEditor;
+	protected bool m_bCanShow;							// Global GUI visibility flag, is not meant to be fiddled with outside this class
 	protected bool m_bShowInAllCameras = true;
 	
 	private ScriptInvoker<IEntity, IEntity> m_OnControlledEntityChanged;
 	private ScriptInvoker m_OnThirdPersonChange;
 	private ScriptInvoker m_OnPauseMenuOpen;
 	private ScriptInvoker m_OnPauseMenuClose;
+	private ScriptInvoker m_OnEditorOpen;
+	private ScriptInvoker m_OnEditorClose;
+		
+	//------------------------------------------------------------------------------------------------		
+	// DEBUG: Used to output debug prints only for specific class
+	//------------------------------------------------------------------------------------------------		
+	#ifdef DEBUG_INFO_DISPLAY_EXT
+	void _printClass(string str)
+	{
+		if (this.Type() != SCR_WeaponInfo && this.Type() != SCR_WeaponInfoVehicle)
+			return;
+		
+		Print(str, LogLevel.DEBUG);
+	}
+	#endif
+
+	//------------------------------------------------------------------------------------------------
+	void SetEnabled(bool isEnabled)
+	{
+		m_bIsEnabled = isEnabled;
+	}
 	
 	//------------------------------------------------------------------------------------------------		
 	// Interface methods for the extended InfoDisplay class.
 	//------------------------------------------------------------------------------------------------		
-	bool DisplayStartDrawInit(IEntity owner)
+	protected bool DisplayStartDrawInit(IEntity owner)
 	{
 		return true;
 	}	
 
-	void DisplayStartDraw(IEntity owner)
+	protected void DisplayStartDraw(IEntity owner)
 	{
 	}	
 
-	void DisplayControlledEntityChanged(IEntity from, IEntity to)
-	{
-	}	
-			
-	void DisplayStopDraw(IEntity owner)
+	protected void DisplayStopDraw(IEntity owner)
 	{
 	}	
 	
-	void DisplayInit(IEntity owner)
+	protected void DisplayInit(IEntity owner)
 	{
 	}	
 
-	void DisplayUpdate(IEntity owner, float timeSlice)
+	protected void DisplayUpdate(IEntity owner, float timeSlice)
 	{
 	}	
+
+	protected void DisplayControlledEntityChanged(IEntity from, IEntity to)
+	{
+	}			
+
+	protected void DisplayConsciousnessChanged(bool conscious, bool init = false)
+	{
+	}
+
+	// Called when GUI is temp. suspended due to visibility flags; e.g. GM entered and GUI marked as not to show in GM
+	protected void DisplayOnSuspended()
+	{
+	}
+	
+	// Called when the visibility flags no longer suspend the GUI; e.g. GM left and GUI marked as not to show in GM -> GUI can show again
+	// Doesn't mean the GUI is visible, it is just not hidded due to visibility flags; use m_bShown to check the visibility
+	protected void DisplayOnResumed()
+	{
+	}		
+		
 	
 	//------------------------------------------------------------------------------------------------
 	// InfoDisplay events blocked for overriding.
@@ -74,7 +115,7 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	private override event void OnStartDraw(IEntity owner)
 	{
 		#ifdef DEBUG_INFO_DISPLAY_EXT
-		PrintFormat("%1 [OnStartDraw] owner:%2", this, owner);
+		_printClass(string.Format("%1 [OnStartDraw] owner: %2", this, owner));
 		#endif
 		
 		#ifdef DISABLE_HUD
@@ -91,11 +132,6 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 			m_bIsEnabled = false;
 			return;
 		}
-		
-		m_EventHandlerManager = EventHandlerManagerComponent.Cast(owner.FindComponent(EventHandlerManagerComponent));
-		
-		if (m_EventHandlerManager)
-			m_EventHandlerManager.RegisterScriptHandler("OnADSChanged", this, OnADSSwitched);
 	
 		m_HUDManager = SCR_HUDManagerComponent.GetHUDManager();
 		
@@ -121,9 +157,40 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 			m_bIsEnabled = false;
 			return;
 		}
+
+		// Init Editor Open/Close handling
+		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
 		
-		m_ControlledEntity = m_PlayerController.GetControlledEntity();
+		// If Editor doesn't exist yet, we need to add invoker and postpone the initialization of Editor Open/Close invokers
+		if (!editorManager)
+		{
+			SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+			core.Event_OnEditorManagerInitOwner.Insert(OnEditorInit);		
+		}
+		else
+		{
+			OnEditorInit(editorManager);
+		}
+
+		// Init PauseMenu handling
+		if ((m_eShow & EShowGUI.IN_PAUSE_MENU) == 0)
+		{
+			m_OnPauseMenuOpen = PauseMenuUI.m_OnPauseMenuOpened;
+			m_OnPauseMenuOpen.Insert(OnPauseMenuOpen);
+			
+			m_OnPauseMenuClose = PauseMenuUI.m_OnPauseMenuClosed;
+			m_OnPauseMenuClose.Insert(OnPauseMenuClose);
+		}
+
 		
+		// Init monitor of controlled entity and setup initial GUI visibility
+		if (m_bAttachedToPlayerController)
+		{
+			m_OnControlledEntityChanged = m_PlayerController.m_OnControlledEntityChanged;
+			m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
+		}
+		OnControlledEntityChanged(null, m_PlayerController.GetControlledEntity());
+				
 		m_bIsEnabled = DisplayStartDrawInit(owner);
 		
 		if (!m_bIsEnabled)
@@ -139,34 +206,108 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 		
 		DisplayStartDraw(owner);
 
-		// Init PauseMenu handling
-		if ((m_eShow & EShowGUI.IN_PAUSE_MENU) == 0)
-		{
-			m_OnPauseMenuOpen = PauseMenuUI.m_OnPauseMenuOpened;
-			m_OnPauseMenuOpen.Insert(OnPauseMenuOpen);
-			
-			m_OnPauseMenuClose = PauseMenuUI.m_OnPauseMenuClosed;
-			m_OnPauseMenuClose.Insert(OnPauseMenuClose);
-		}
-		
-		// Init monitor of controlled entity and setup initial GUI visibility
-		if (m_bAttachedToController)
-		{
-			m_OnControlledEntityChanged = m_PlayerController.m_OnControlledEntityChanged;
-			m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
-		}
-		OnControlledEntityChanged(null, m_ControlledEntity);				
+		// Init visibility
+		UpdateVisibility();
 	}
+
+	private void OnControlledEntityChanged(IEntity from, IEntity to)
+	{
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		_printClass(string.Format("%1 [OnControlledEntityChanged] %2 -> %3", this, from, to));
+		#endif
+		
+		// Update camera handler + init 1st/3rd person monitoring, if visibility is changing between 1st/3rd person cameras
+		if (m_OnThirdPersonChange)
+			m_OnThirdPersonChange.Remove(UpdateVisibility);		
+		
+		if (to)
+			m_CameraHandler = SCR_CharacterCameraHandlerComponent.Cast(to.FindComponent(SCR_CharacterCameraHandlerComponent));
+		else
+			m_CameraHandler = null;
 	
+		if (m_CameraHandler && !m_bShowInAllCameras)
+		{			
+			m_OnThirdPersonChange = m_CameraHandler.GetThirdPersonSwitchInvoker();
+			m_OnThirdPersonChange.Insert(UpdateVisibility);
+		}	
+		
+		// Update event handlers "OnADSChanged" & "OnConsciousnessChanged"
+		if (m_EventHandlerManager)
+		{
+			m_EventHandlerManager.RemoveScriptHandler("OnADSChanged", this, OnADSSwitched);
+			m_EventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);	
+		}		
+		
+		IEntity eventHandlerOwner;
+		
+		if (m_bAttachedToPlayerController)
+			eventHandlerOwner = to;
+		else
+			eventHandlerOwner = m_OwnerEntity;
+		
+		if (eventHandlerOwner)
+			m_EventHandlerManager = EventHandlerManagerComponent.Cast(eventHandlerOwner.FindComponent(EventHandlerManagerComponent));
+		else
+			m_EventHandlerManager = null;
+		
+		if (m_EventHandlerManager)
+		{
+			m_EventHandlerManager.RegisterScriptHandler("OnADSChanged", this, OnADSSwitched);
+			m_EventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+		}		
+		
+		// Update character controller
+		ChimeraCharacter character = ChimeraCharacter.Cast(to);
+		
+		if (character)
+			m_CharacterController = character.GetCharacterController();	
+		
+		// Init the state flags
+		m_bInADS = false;
+		m_bInThirdPerson = m_CameraHandler && m_CameraHandler.Is3rdPersonView();
+		m_bIsUnconscious = m_CharacterController && m_CharacterController.IsUnconscious();	
+			
+		// Call the interface method
+		DisplayControlledEntityChanged(from, to);
+		
+		// Call the interface method, with 'init = true' to flag this is not a standard state change, but initialization when entity changed
+		DisplayConsciousnessChanged(!m_bIsUnconscious, true);
+		
+		// Update visibility after entity changed
+		UpdateVisibility();		
+	}	
+	
+		
 	private void OnADSSwitched(BaseWeaponComponent weapon, bool inADS)
 	{
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		_printClass(string.Format("%1 [OnADSSwitched] inADS: %2", this, inADS));
+		#endif
+		
 		m_bInADS = inADS;
 		
 		UpdateVisibility();
 	}
 
+	private void OnConsciousnessChanged(bool conscious)
+	{
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		_printClass(string.Format("%1 [OnConsciousnessChanged] conscious: %2", this, conscious));
+		#endif
+		
+		m_bIsUnconscious = !conscious;
+		
+		DisplayConsciousnessChanged(conscious);
+		
+		UpdateVisibility();
+	}
+	
 	private void OnPauseMenuOpen()
 	{
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		_printClass(string.Format("%1 [OnPauseMenuOpen]", this));
+		#endif
+		
 		m_bInPauseMenu = true;
 		
 		UpdateVisibility();
@@ -174,18 +315,65 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 
 	private void OnPauseMenuClose()
 	{
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		_printClass(string.Format("%1 [OnPauseMenuClose]", this));
+		#endif
+		
 		m_bInPauseMenu = false;
 		
 		UpdateVisibility();
 	}	
+
+	private void OnEditorInit(SCR_EditorManagerEntity editorManager)
+	{
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		_printClass(string.Format("%1 [OnEditorInit] editorManager: %2", this, editorManager));
+		#endif
+		
+		m_EditorManager = editorManager;
+		
+		// Init Editor handling
+		if ((m_eShow & EShowGUI.IN_EDITOR) == 0)
+		{
+			m_OnEditorOpen = m_EditorManager.GetOnOpened();
+			m_OnEditorOpen.Insert(OnEditorOpen);
 			
+			m_OnEditorClose = m_EditorManager.GetOnClosed();
+			m_OnEditorClose.Insert(OnEditorClose);
+		}			
+	}	
+	
+	private void OnEditorOpen()
+	{
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		_printClass(string.Format("%1 [OnEditorOpen]", this));
+		#endif
+		
+		m_bInEditor = true;
+		
+		UpdateVisibility();
+	}	
+
+	private void OnEditorClose()
+	{
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		_printClass(string.Format("%1 [OnEditorClose]", this));
+		#endif
+		
+		m_bInEditor = false;
+		
+		UpdateVisibility();
+	}	
+				
 	private void UpdateVisibility()
 	{
 		#ifdef DEBUG_INFO_DISPLAY_EXT
-		PrintFormat("%1 [UpdateVisibility] m_CameraHandler:%2", this, m_CameraHandler);
+		_printClass(string.Format("%1 [UpdateVisibility] editor: %2", this, SCR_EditorManagerEntity.GetInstance()));
 		#endif
 
-		bool menuPassed = !m_bInPauseMenu || (m_bInPauseMenu && m_eShow & EShowGUI.IN_PAUSE_MENU);		
+		bool menuPassed = !m_bInPauseMenu || (m_bInPauseMenu && m_eShow & EShowGUI.IN_PAUSE_MENU);
+		bool editorPassed = !m_bInEditor || (m_bInEditor && m_eShow & EShowGUI.IN_EDITOR);
+		bool statePassed = !m_bIsUnconscious || (m_bIsUnconscious && m_eShow & EShowGUI.WHILE_UNCONSCIOUS);
 		bool cameraPassed;
 		
 		if (m_CameraHandler)		
@@ -197,17 +385,42 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 		else
 		{
 			cameraPassed = m_eShow & EShowGUI.WITHOUT_ENTITY;
-		}
-			
-		m_bShowGlobal = cameraPassed && menuPassed;
+		}		
 		
-		SetVisible(m_bShowGlobal && m_bShowLocal);
+		bool updateNeeded = (cameraPassed && statePassed && menuPassed && editorPassed) != m_bCanShow;
+		
+		m_bCanShow = cameraPassed && statePassed && menuPassed && editorPassed;
+		
+		if (!updateNeeded)
+			return;
+		
+		Show(m_bShown);
+		
+		if (m_bCanShow)
+			DisplayOnResumed();
+		else
+			DisplayOnSuspended()	
+	}
+
+	override void Show(bool show, float speed = UIConstants.FADE_RATE_INSTANT, EAnimationCurve curve = EAnimationCurve.LINEAR)
+	{
+		// Make hiding GUI cuz failing show-conditions always instant as we want to prevent visual artifacts
+		if (!m_bCanShow)
+			speed = UIConstants.FADE_RATE_INSTANT;
+
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		_printClass(string.Format("%1 [Show] m_bShown && m_bCanShow: %2 | m_bShown: %3 | m_bCanShow: %4", this, show && m_bCanShow, show, m_bCanShow));
+		#endif		
+				
+		super.Show(show && m_bCanShow, speed, curve);
+		
+		m_bShown = show;			// Re-store the 'shown' flag, that get overriden inside the Show() method, so the info is not lost
 	}
 	
 	private override event void OnStopDraw(IEntity owner)
 	{
 		#ifdef DEBUG_INFO_DISPLAY_EXT
-		PrintFormat("%1 [OnStopDraw]", this);
+		_printClass(string.Format("%1 [OnStopDraw] owner: %2", this, owner));
 		#endif
 		
 		#ifdef DISABLE_HUD
@@ -220,18 +433,27 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 		if (m_OnControlledEntityChanged)
 			m_OnControlledEntityChanged.Remove(OnControlledEntityChanged);		
 		
-		if (m_OnThirdPersonChange)
-			m_OnThirdPersonChange.Remove(UpdateVisibility);	
-		
 		if (m_OnPauseMenuOpen)
 			m_OnPauseMenuOpen.Remove(OnPauseMenuOpen);
 
 		if (m_OnPauseMenuClose)
 			m_OnPauseMenuClose.Remove(OnPauseMenuClose);
-				
+
+		if (m_OnEditorOpen)
+			m_OnEditorOpen.Remove(OnEditorOpen);
+
+		if (m_OnEditorClose)
+			m_OnEditorClose.Remove(OnEditorClose);		
+		
+		if (m_OnThirdPersonChange)
+			m_OnThirdPersonChange.Remove(UpdateVisibility);	
+		
 		if (m_EventHandlerManager)
-			m_EventHandlerManager.RemoveScriptHandler("OnADSChanged", this, OnADSSwitched);						
-				
+		{
+			m_EventHandlerManager.RemoveScriptHandler("OnADSChanged", this, OnADSSwitched);				
+			m_EventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);				
+		}
+		
 		super.OnStopDraw(owner);
 		
 		DisplayStopDraw(owner);		
@@ -240,7 +462,7 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	private override event void OnInit(IEntity owner)
 	{
 		#ifdef DEBUG_INFO_DISPLAY_EXT
-		PrintFormat("%1 [OnInit]", this);
+		_printClass(string.Format("%1 [OnInit] owner: %2", this, owner));
 		#endif
 		
 		#ifdef DISABLE_HUD
@@ -250,7 +472,7 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 		if (!m_bIsEnabled)
 			return;
 
-		m_bAttachedToController = PlayerController.Cast(owner);
+		m_bAttachedToPlayerController = PlayerController.Cast(owner);
 		
 		super.OnInit(owner);
 		
@@ -259,45 +481,11 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	
 	private override event void UpdateValues(IEntity owner, float timeSlice)
 	{
-		if (!m_bIsEnabled || !m_bShowGlobal)
+		if (!m_bIsEnabled || !m_bCanShow)
 			return;
 		
 		super.UpdateValues(owner, timeSlice);		
 		
 		DisplayUpdate(owner, timeSlice);
-	}	
-	
-	private void OnControlledEntityChanged(IEntity from, IEntity to)
-	{
-		#ifdef DEBUG_INFO_DISPLAY_EXT
-		PrintFormat("%1 [OnControlledEntityChanged] %2 -> %3", this, from, to);
-		#endif
-		
-		// Unregister old & potentionally obsolete callback
-		if (m_OnThirdPersonChange)
-			m_OnThirdPersonChange.Remove(UpdateVisibility);
-		
-		m_ControlledEntity = to;	
-		m_CameraHandler = null;
-		
-		if (m_ControlledEntity)
-		{
-			m_CameraHandler = SCR_CharacterCameraHandlerComponent.Cast(m_ControlledEntity.FindComponent(SCR_CharacterCameraHandlerComponent));			
-
-			// Listen to camera changed invoker, if UI is enabled only for some of the camera modes - 1PV, ADS or 3PV
-			if (m_CameraHandler && !m_bShowInAllCameras)
-			{			
-				m_OnThirdPersonChange = m_CameraHandler.GetThirdPersonSwitchInvoker();
-				m_OnThirdPersonChange.Insert(UpdateVisibility);
-			}			
-		}	
-
-		// ADS seems to cancel when the entity changes		
-		m_bInADS = false;
-				
-		DisplayControlledEntityChanged(from, to);
-		
-		// Update visibility after entity changed
-		UpdateVisibility();		
 	}	
 };

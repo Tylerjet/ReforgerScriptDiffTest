@@ -1,12 +1,11 @@
 // Will print every change to gear shift; CLI -scrDefine DEBUG_GEARSHIFT
 //#define DEBUG_GEARSHIFT
 
-class SCR_GearShiftInfo: SCR_InfoDisplayExtended
+class SCR_GearShiftInfo: SCR_BaseVehicleInfo
 {	
-	[Attribute("0.8", UIWidgets.Slider, "Indicator scale", "0.25 2 0.05")]
-	protected float m_fWidgetScale;	
-	
 	protected CarControllerComponent m_pCarController;
+	protected CarControllerComponent_SA m_pCarController_SA;
+
 	protected SCR_InfoDisplayExtended m_pParentDisplayExtended;
 	
 	// Widgets
@@ -40,10 +39,19 @@ class SCR_GearShiftInfo: SCR_InfoDisplayExtended
 	void GetGearboxModeDisplay(bool automatic, int futureGear, int currentGear)
 	{
 		int gearCount = 0;
-		VehicleWheeledSimulation simulation = m_pCarController.GetSimulation();
-		if (simulation)
-			gearCount = simulation.GearboxGearsCount();
-		
+		if(GetGame().GetIsClientAuthority())
+		{
+			VehicleWheeledSimulation simulation = m_pCarController.GetSimulation();
+			if (simulation)
+				gearCount = simulation.GearboxGearsCount();
+		}
+		else
+		{
+			VehicleWheeledSimulation_SA simulation = m_pCarController_SA.GetSimulation();
+			if (simulation)
+				gearCount = simulation.GearboxGearsCount();
+		}
+	
 		if (automatic)
 		{
 			futureGear = EVehicleGearboxGear.NEUTRAL;
@@ -122,22 +130,8 @@ class SCR_GearShiftInfo: SCR_InfoDisplayExtended
 		AlignableSlot.SetPadding(widget, left * scale, top * scale, right * scale, bottom * scale);
 	}	
 		
-	//------------------------------------------------------------------------------------------------
-	private void Scale(ImageWidget widget, float scale)
-	{
-		if (!widget)
-			return;
-		
-		int imageWidth = 0;
-		int imageHeight = 0;
-		int image = widget.GetImage();
-		
-		widget.GetImageSize(image, imageWidth, imageHeight);
-		widget.SetSize((float)imageWidth * scale, (float)imageHeight * scale);		
-	}	
-
 	//------------------------------------------------------------------------------------------------	
-	private void Scale(TextWidget widget, float scale)
+	override void Scale(TextWidget widget, float scale)
 	{
 		if (!widget)
 			return;
@@ -148,7 +142,7 @@ class SCR_GearShiftInfo: SCR_InfoDisplayExtended
 		widget.GetTextSize(width, height);
 		
 		height = Math.Round(height * scale);
-		int size = (int)height;
+		int size = height;
 		
 		widget.SetExactFontSize(size);
 	}
@@ -184,60 +178,113 @@ class SCR_GearShiftInfo: SCR_InfoDisplayExtended
 		if (!m_wRoot)
 			return;
 		
-		if (!m_pCarController)
-			return;
-		
-		EVehicleDrivingAssistanceMode drivingAssistance = CarControllerComponent.GetDrivingAssistanceMode();
-		
-		bool assistanceChanged = m_eDrivingAssistance != drivingAssistance;
-		
-		if (assistanceChanged)
+		if(GetGame().GetIsClientAuthority())
 		{
-			#ifdef DEBUG_GEARSHIFT
-			PrintFormat("Gear assistance changed from %1 -> %2", m_eDrivingAssistance, drivingAssistance);
-			#endif			
+			if (!m_pCarController)
+				return;
 			
-			m_eDrivingAssistance = drivingAssistance;
+			EVehicleDrivingAssistanceMode drivingAssistance = CarControllerComponent.GetDrivingAssistanceMode();
 			
-			bool show = drivingAssistance != EVehicleDrivingAssistanceMode.FULL;
+			bool assistanceChanged = m_eDrivingAssistance != drivingAssistance;
 			
-			m_bShowLocal = show;
-			SetVisible(show);
-			
-			if (m_pParentDisplayExtended)
+			if (assistanceChanged)
 			{
-				m_pParentDisplayExtended.m_bShowLocal = show;
-				m_pParentDisplayExtended.SetVisible(show);
+				#ifdef DEBUG_GEARSHIFT
+				PrintFormat("Gear assistance changed from %1 -> %2", m_eDrivingAssistance, drivingAssistance);
+				#endif			
+				
+				m_eDrivingAssistance = drivingAssistance;
+				
+				bool show = drivingAssistance != EVehicleDrivingAssistanceMode.FULL;
+				
+				Show(show);
+				
+				if (m_pParentDisplayExtended)
+					m_pParentDisplayExtended.Show(show);
+				
+				if (!show)			
+					return;
 			}
 			
-			if (!show)			
-				return;
-		}
-		
-		bool automatic = drivingAssistance == EVehicleDrivingAssistanceMode.PARTIAL || m_pCarController.HasAutomaticGearbox();
-		
-		bool automaticChanged = m_bAutomaticGearbox != automatic;
-		
-		if (automaticChanged)
-		{
-			#ifdef DEBUG_GEARSHIFT
-			PrintFormat("Gearbox manual vs. automatic changed! automatic: %1", automaticChanged);
-			#endif	
+			bool automatic = drivingAssistance == EVehicleDrivingAssistanceMode.PARTIAL || m_pCarController.HasAutomaticGearbox();
 			
-			m_bAutomaticGearbox = automatic;	
+			bool automaticChanged = m_bAutomaticGearbox != automatic;
+			
+			if (automaticChanged)
+			{
+				#ifdef DEBUG_GEARSHIFT
+				PrintFormat("Gearbox manual vs. automatic changed! automatic: %1", automaticChanged);
+				#endif	
+				
+				m_bAutomaticGearbox = automatic;	
+			}
+			
+			int futureGear = m_pCarController.GetFutureGear();
+			int currentGear = m_pCarController.GetCurrentGear();
+					
+			// Prevent unneeded execution and UI updates, if gears didn't change
+			if (!assistanceChanged && futureGear == m_iFutureGear && currentGear == m_iCurrentGear)
+				return;
+			
+			m_iFutureGear = futureGear;
+			m_iCurrentGear = currentGear;
+			
+			GetGearboxModeDisplay(automatic, futureGear, currentGear);
+		}
+		else
+		{
+			if (!m_pCarController_SA)
+				return;
+			
+			EVehicleDrivingAssistanceMode drivingAssistance = CarControllerComponent_SA.GetDrivingAssistanceMode();
+			
+			bool assistanceChanged = m_eDrivingAssistance != drivingAssistance;
+			
+			if (assistanceChanged)
+			{
+				#ifdef DEBUG_GEARSHIFT
+				PrintFormat("Gear assistance changed from %1 -> %2", m_eDrivingAssistance, drivingAssistance);
+				#endif			
+				
+				m_eDrivingAssistance = drivingAssistance;
+				
+				bool show = drivingAssistance != EVehicleDrivingAssistanceMode.FULL;
+				
+				Show(show);
+				
+				if (m_pParentDisplayExtended)
+					m_pParentDisplayExtended.Show(show);
+				
+				if (!show)			
+					return;
+			}
+			
+			bool automatic = drivingAssistance == EVehicleDrivingAssistanceMode.PARTIAL || m_pCarController_SA.HasAutomaticGearbox();
+			
+			bool automaticChanged = m_bAutomaticGearbox != automatic;
+			
+			if (automaticChanged)
+			{
+				#ifdef DEBUG_GEARSHIFT
+				PrintFormat("Gearbox manual vs. automatic changed! automatic: %1", automaticChanged);
+				#endif	
+				
+				m_bAutomaticGearbox = automatic;	
+			}
+			
+			int futureGear = m_pCarController_SA.GetFutureGear();
+			int currentGear = m_pCarController_SA.GetCurrentGear();
+					
+			// Prevent unneeded execution and UI updates, if gears didn't change
+			if (!assistanceChanged && futureGear == m_iFutureGear && currentGear == m_iCurrentGear)
+				return;
+			
+			m_iFutureGear = futureGear;
+			m_iCurrentGear = currentGear;
+			
+			GetGearboxModeDisplay(automatic, futureGear, currentGear);
 		}
 		
-		int futureGear = m_pCarController.GetFutureGear();
-		int currentGear = m_pCarController.GetCurrentGear();
-				
-		// Prevent unneeded execution and UI updates, if gears didn't change
-		if (!assistanceChanged && futureGear == m_iFutureGear && currentGear == m_iCurrentGear)
-			return;
-		
-		m_iFutureGear = futureGear;
-		m_iCurrentGear = currentGear;
-		
-		GetGearboxModeDisplay(automatic, futureGear, currentGear);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -248,8 +295,16 @@ class SCR_GearShiftInfo: SCR_InfoDisplayExtended
 			return false;
 		
 		// Should probably kill the display if there is no controller
-		if (!m_pCarController)
-			return false;
+		if(GetGame().GetIsClientAuthority())
+		{
+			if (!m_pCarController)
+				return false;
+		}
+		else
+		{
+			if (!m_pCarController_SA)
+				return false;
+		}
 		
 		// Fallback to avoid the need to fill-in always the same layout filename
 		if (m_LayoutPath == "")
@@ -286,6 +341,10 @@ class SCR_GearShiftInfo: SCR_InfoDisplayExtended
 		if (m_wRoot)
 			m_wRoot.RemoveFromHierarchy();
 		
-		m_pCarController = CarControllerComponent.Cast(owner.FindComponent(CarControllerComponent));
+		if(GetGame().GetIsClientAuthority())
+			m_pCarController = CarControllerComponent.Cast(owner.FindComponent(CarControllerComponent));
+		else
+			m_pCarController_SA = CarControllerComponent_SA.Cast(owner.FindComponent(CarControllerComponent_SA));
+
 	}
 };

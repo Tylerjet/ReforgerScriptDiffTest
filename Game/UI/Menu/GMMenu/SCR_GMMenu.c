@@ -54,8 +54,8 @@ class SCR_GMMenu: ChimeraMenuBase
 		PrepareHeaders();
 		PrepareWidgets();
 		
-		if (m_aEntries.Count() > 1)
-			m_Gallery.SetFocusedItem(1);
+		if (m_aEntries.Count() > 0)
+			m_Gallery.SetFocusedItem(0, true);
 		
 		TextWidget title = TextWidget.Cast(GetRootWidget().FindAnyWidget(m_sTitleWidgetName));
 		if (title)
@@ -147,7 +147,7 @@ class SCR_GMMenu: ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlay(SCR_GMMenuTileComponent tile)
 	{
-		SCR_SaveLoadComponent.LoadOnStart();
+		GetGame().GetSaveManager().ResetFileNameToLoad();
 		TryPlayScenario(tile.m_Item);
 		
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.EditorSelectionMenu);
@@ -158,9 +158,9 @@ class SCR_GMMenu: ChimeraMenuBase
 	{
 		SCR_MissionHeader header = tile.m_Header;
 		if (header && !header.GetSaveFileName().IsEmpty())
-			SCR_SaveLoadComponent.LoadOnStart(header);
+			GetGame().GetSaveManager().SetFileNameToLoad(header);
 		else
-			SCR_SaveLoadComponent.LoadOnStart();
+			GetGame().GetSaveManager().ResetFileNameToLoad();
 		
 		TryPlayScenario(tile.m_Item);
 		
@@ -170,7 +170,7 @@ class SCR_GMMenu: ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	void OnRestart(SCR_GMMenuTileComponent tile)
 	{
-		SCR_SaveLoadComponent.LoadOnStart();
+		GetGame().GetSaveManager().ResetFileNameToLoad();
 		SCR_WorkshopUiCommon.TryPlayScenario(tile.m_Item);
 		
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.EditorSelectionMenu);
@@ -214,7 +214,7 @@ class SCR_GMMenu: ChimeraMenuBase
 		if (!m_CurrentTile || !m_CurrentTile.m_Header)
 			return;
 		
-		SCR_SaveLoadComponent.LoadOnStart(m_CurrentTile.m_Header);
+		GetGame().GetSaveManager().SetFileNameToLoad(m_CurrentTile.m_Header);
 		TryPlayScenario(m_CurrentTile.m_Item);
 	}
 

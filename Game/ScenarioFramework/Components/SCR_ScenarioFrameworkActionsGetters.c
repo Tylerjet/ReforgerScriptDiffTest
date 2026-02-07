@@ -39,12 +39,12 @@ class SCR_ScenarioFrameworkGet
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	IEntity FindEntityByName(IEntity entity, string name)
+	IEntity FindEntityByName(string name)
 	{
 		if (!GetGame().GetWorld())
 			return null;
 		
-		entity = GetGame().GetWorld().FindEntityByName(name);
+		IEntity entity = GetGame().GetWorld().FindEntityByName(name);
 		if (!entity)
 			return null;
 	
@@ -110,7 +110,7 @@ class SCR_ScenarioFrameworkGetTask: SCR_ScenarioFrameworkGet
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
-		IEntity entity = FindEntityByName(entity, m_sLayerTaskName);
+		IEntity entity = FindEntityByName(m_sLayerTaskName);
 		SCR_ScenarioFrameworkLayerTask layer = SCR_ScenarioFrameworkLayerTask.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerTask));
 		if (!layer)
 			return null;
@@ -129,7 +129,10 @@ class SCR_ScenarioFrameworkGetLayerTask: SCR_ScenarioFrameworkGet
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
-		IEntity entity = FindEntityByName(entity, m_sLayerTaskName);
+		IEntity entity = FindEntityByName(m_sLayerTaskName);
+		if (!entity)
+			return null;
+		
 		SCR_ScenarioFrameworkLayerTask layer = SCR_ScenarioFrameworkLayerTask.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerTask));
 		if (!layer)
 			return null;
@@ -148,8 +151,9 @@ class SCR_ScenarioFrameworkGetLayerBase: SCR_ScenarioFrameworkGet
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
-		IEntity entity;
-		FindEntityByName(entity, m_sLayerBaseName);
+		IEntity entity = FindEntityByName(m_sLayerBaseName);
+		if (!entity)
+			return null;
 		
 		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
 		if (!layer)
@@ -169,9 +173,38 @@ class SCR_ScenarioFrameworkGetArea: SCR_ScenarioFrameworkGet
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
-		IEntity entity = FindEntityByName(entity, m_sAreaName);
+		IEntity entity = FindEntityByName(m_sAreaName);
+		if (!entity)
+			return null;
+		
 		SCR_ScenarioFrameworkArea area = SCR_ScenarioFrameworkArea.Cast(entity.FindComponent(SCR_ScenarioFrameworkArea));
 		if (!area)
+			return null;
+
+		return new SCR_ScenarioFrameworkParam<IEntity>(entity);
+	}
+};
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkGetAreaTrigger: SCR_ScenarioFrameworkGet
+{
+	[Attribute()];
+	protected string 		m_sAreaName;
+	
+	//------------------------------------------------------------------------------------------------
+	override SCR_ScenarioFrameworkParamBase Get()
+	{
+		IEntity entity = FindEntityByName(m_sAreaName);
+		if (!entity)
+			return null;
+		
+		SCR_ScenarioFrameworkArea area = SCR_ScenarioFrameworkArea.Cast(entity.FindComponent(SCR_ScenarioFrameworkArea));
+		if (!area)
+			return null;
+		
+		SCR_CharacterTriggerEntity trigger = SCR_CharacterTriggerEntity.Cast(area.GetTrigger());
+		if (!trigger)
 			return null;
 
 		return new SCR_ScenarioFrameworkParam<IEntity>(entity);

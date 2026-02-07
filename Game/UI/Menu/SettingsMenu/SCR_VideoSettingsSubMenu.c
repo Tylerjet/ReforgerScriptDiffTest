@@ -111,7 +111,6 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 	protected override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
 	{
 		super.OnMenuOpen(parentMenu);
-
 		m_ResourceManager = GetGame().GetEngineUserSettings().GetModule("ResourceManagerUserSettings");
 		m_Pipeline = GetGame().GetEngineUserSettings().GetModule("PipelineUserSettings");
 		m_Video = GetGame().GetEngineUserSettings().GetModule("VideoUserSettings");
@@ -187,7 +186,7 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		m_ResourceManager.Get("TextureDetail", value);
 		m_ResourceManager.GetLimits(item, min, max, step);
 
-		int current = (int)(max - value);
+		int current = (max - value);
 		textureDetail.SetCurrentItem(current);
 
 		if (isInit)

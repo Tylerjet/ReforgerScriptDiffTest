@@ -11,9 +11,6 @@ Do not modify, this script is generated
 
 class CharacterCommandUnconscious: CharacterCommand
 {
-	proto external bool CanStartReviving();
-	//! Should start/stop reviving command
-	proto external void Reviving(bool shouldStart);
 	/*
 	Starts/Stops unconscious Command
 	Lying on your back - 1,
@@ -24,18 +21,6 @@ class CharacterCommandUnconscious: CharacterCommand
 	Exit uncsocious animation state - 0
 	*/
 	proto external void StartCommandUnconscious(int commandI);
-	/*
-
-		General Injury - BodyPart == 1
-		Head Injury - BodyPart == 2
-		Chest Injury - BodyPart == 3
-		Left Leg Injury - BodyPart == 4
-		Right Leg Injury - BodyPart == 5
-		Left Arm Injury - BodyPart == 6
-		Right Arm Injury - BodyPart == 7
-
-	*/
-	proto external void SetBodyPartVar(int bodyPart);
 }
 
 /*!

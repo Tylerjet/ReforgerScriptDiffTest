@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-class SCR_CareerEndScreenUI: ScriptedWidgetComponent 
+class SCR_CareerEndScreenUI: SCR_BaseGameOverTabUIComponent 
 {
 	protected Widget m_wRootWidget;
 	protected Widget m_wFirstColumnWidget;
@@ -21,14 +21,10 @@ class SCR_CareerEndScreenUI: ScriptedWidgetComponent
 	
 	protected static ref SCR_PlayerData m_PlayerData;
 	
-	[Attribute("#AR-CareerProfile_MatchEnd_Winner", params: "String winner faction")]
-	protected string m_sWinnerFaction;
-	
 	//------------------------------------------------------------------------------------------------
-	protected override void HandlerAttached(Widget w)
+	override void GameOverTabInit(notnull SCR_GameOverScreenUIContentData endScreenUIContent)
 	{
-		super.HandlerAttached(w);
-		m_wRootWidget = w;
+		super.GameOverTabInit(endScreenUIContent);
 		
 		m_wFirstColumnWidget = m_wRootWidget.FindAnyWidget("FirstColumn");
 		m_wCareerSpecializationsWidget = m_wRootWidget.FindAnyWidget("CareerSpecializations0");
@@ -51,7 +47,8 @@ class SCR_CareerEndScreenUI: ScriptedWidgetComponent
 		if (!m_CareerSpecializationsHandler)
 			return;
 		
-		SetWinningFaction();
+		//~ Sets winning faction or any other text and icon linked to the end screen
+		SetEndscreenVisualInfo(endScreenUIContent);
 		
 		if (!m_PlayerData)
 		{
@@ -76,6 +73,14 @@ class SCR_CareerEndScreenUI: ScriptedWidgetComponent
 		}
 		
 		FillFields();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+		m_wRootWidget = w;
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -126,11 +131,11 @@ class SCR_CareerEndScreenUI: ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void FillHudAndStats()
 	{
-		int Level = m_PlayerData.GetLevelExperience();
+		int Level = m_PlayerData.GetStat(SCR_EDataStats.LEVEL_EXPERIENCE);
 		
 		m_HudHandler.SetPlayerLevel(Level / SCR_PlayerDataConfigs.XP_NEEDED_FOR_LEVEL);
 		m_HudHandler.SetProgressBarValue(Level % SCR_PlayerDataConfigs.XP_NEEDED_FOR_LEVEL);
-		m_HudHandler.SetPlayerRank(m_PlayerData.GetRank());
+		m_HudHandler.SetPlayerRank(m_PlayerData.GetStat(SCR_EDataStats.RANK));
 		m_HudHandler.SetRandomBackgroundPicture();
 		
 		array<float> EarntPoints = m_PlayerData.GetArrayEarntPoints();
@@ -141,8 +146,12 @@ class SCR_CareerEndScreenUI: ScriptedWidgetComponent
 		if (!GeneralStatsWidget)
 			return;
 		
-		float warCrimes = (m_PlayerData.GetWarCrimes()) *  (SCR_PlayerDataConfigs.WARCRIMES_PUNISHMENT);
-		int minutes = (m_PlayerData.GetSessionDuration() - m_PlayerData.GetSessionDuration(false)) / 60;
+		//warcrimes = Punishment * "AreThereWarCrimes?"
+		float warCrimes = 0;
+		if (m_PlayerData.GetStat(SCR_EDataStats.WARCRIMES) != 0)
+			warCrimes = SCR_PlayerDataConfigs.WARCRIMES_PUNISHMENT;
+		
+		int minutes = (m_PlayerData.GetStat(SCR_EDataStats.SESSION_DURATION) - m_PlayerData.GetStat(SCR_EDataStats.SESSION_DURATION, false)) / 60;
 		
 		SCR_CareerUI.CreateProgressionStatEntry(GeneralStatsWidget, m_ProgressionStatsLayout, "#AR-CareerProfile_TimePlayed", EarntPoints[SCR_EDataStats.SESSION_DURATION] * warCrimes, EarntPoints[SCR_EDataStats.SESSION_DURATION], "#AR-CareerProfile_Minutes", ""+minutes);	
 	}
@@ -156,49 +165,23 @@ class SCR_CareerEndScreenUI: ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void SetWinningFaction()
+	protected void SetEndscreenVisualInfo(notnull SCR_GameOverScreenUIContentData endScreenUIContent)
 	{
 		ImageWidget matchFlag = ImageWidget.Cast(m_wFirstColumnWidget.FindAnyWidget("MatchResultFlag"));
 		RichTextWidget MatchFactionWinner = RichTextWidget.Cast(m_wFirstColumnWidget.FindAnyWidget("MatchFactionWinner"));
-		SCR_BaseGameMode gamemode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (!matchFlag || !MatchFactionWinner || !gamemode)
+		if (!matchFlag || !MatchFactionWinner)
 			return;
 		
-		SCR_GameModeEndData endData = gamemode.GetEndGameData();
-		if (!endData)
-			return;
-		
-		if (endData.GetEndReason() != SCR_GameModeEndData.ENDREASON_EDITOR_FACTION_VICTORY)
-		{
-			matchFlag.SetVisible(false);
+		//~ Set match done text
+		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(endScreenUIContent.m_sSubtitle))
+			MatchFactionWinner.SetTextFormat(endScreenUIContent.m_sSubtitle, endScreenUIContent.m_sSubtitleParam);
+		else 
 			MatchFactionWinner.SetVisible(false);
-			return;
-		}
 		
-		array<int> winningFactionIds = new array<int>;
-		endData.GetFactionWinnerIds(winningFactionIds);
-		
-		if (winningFactionIds.Count() <= 0)
-			return;
-		
-		int factionId = winningFactionIds[0];
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (!factionManager)
-			return;
-		
-		Faction factionWinner = factionManager.GetFactionByIndex(factionId);
-		if (!factionWinner)
-			return;
-		
-		MatchFactionWinner.SetTextFormat(m_sWinnerFaction, factionWinner.GetFactionName());
-		
-		ResourceName winnerFlag = factionWinner.GetUIInfo().GetIconPath();
-		bool success = matchFlag.LoadImageTexture(0, winnerFlag);
-		if (!success)
-			return;
-		
-		int x, y;
-		matchFlag.GetImageSize(0, x, y);
-		matchFlag.SetSize(x, y);
+		//~ Set flag icon
+		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(endScreenUIContent.m_sIcon))
+			matchFlag.LoadImageTexture(0, endScreenUIContent.m_sIcon);
+		else 
+			matchFlag.SetVisible(false);
 	}
 };

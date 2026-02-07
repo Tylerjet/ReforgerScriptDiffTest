@@ -24,4 +24,14 @@ class BaseZeroingGenerator: ScriptAndConfig
 	a WeaponAnimationComponent, like e.g. with the UGL's.
 	*/
 	proto external WeaponAnimationComponent GetWeaponAnimationComponent();
+	/*!
+	Flag the generation of PointInfo's. Normal operation is to generate a PointInfo with every SightRangeInfo
+	generated, but some zeroing mechanisms like the PiP scopes don't need it.
+
+	By default, PointInfo is generated, so this really only needs to be called in case they are unwanted.
+
+	\param doGenerate boolean flag. If true, PointInfo's are generated. If false, they are not.
+	*/
+	proto external void SetPointInfoGeneration(bool doGenerate);
+	proto external void SetProjectileResource(ResourceName resourceName);
 }

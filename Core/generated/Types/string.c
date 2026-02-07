@@ -337,27 +337,26 @@ sealed class string
 	\param[out] outTokens Array with strings
 	\param removeEmptyEntries If true removes empty strings from outTokens array
 	\code
-		TStringArray strs = new TStringArray;
-		EnString.Split("The;quick;brown;fox;jumps;over;the;;dog;", ";", strs);
+		array<string> strs = {};
+		string line = "The;quick;brown;fox;jumps;over;the;;dog;";
+		line.Split(";", strs, true);
 
 		for ( int i = 0; i < strs.Count(); i++ )
 		{
-			Print("_" + strs.Get(i) + "_");
+			Print(strs.Get(i));
 		}
 
-		>> '_The_'
-		>> '_quick_'
-		>> '_brown_'
-		>> '_fox_'
-		>> '_jumps_'
-		>> '_over_'
-		>> '_the_'
-		>> '__'		// This one is an empty string
-		>> '_dog_'
-		>> '__'		// This one is an empty string
+		>> 'The'
+		>> 'quick'
+		>> 'brown'
+		>> 'fox'
+		>> 'jumps'
+		>> 'over'
+		>> 'the'
+		>> 'dog'
 	\endcode
 	*/
-	proto external void Split(string delimiter, out array<string> outTokens, bool removeEmptyEntries);
+	proto external void Split(string delimiter, notnull out array<string> outTokens, bool removeEmptyEntries);
 	static proto string ToString(void var, bool type = false, bool name = false, bool quotes = true);
 	/*!
 	\brief Gets n-th character from string

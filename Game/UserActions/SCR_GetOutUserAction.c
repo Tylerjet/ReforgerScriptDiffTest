@@ -1,20 +1,26 @@
 class SCR_GetOutAction : SCR_CompartmentUserAction
 {
+	protected const float MAX_GETOUT_SPEED_METER_PER_SEC_SQ = 17.36138889;
+
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
-		if (!pOwnerEntity || !pUserEntity)
+		if (!pOwnerEntity)
 			return;
 		
 		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
 		if (!character)
 			return;
 		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (controller && controller.IsUnconscious())
+			return;
+		
 		BaseCompartmentSlot targetCompartment = GetCompartmentSlot();
 		if (!targetCompartment)
 			return;
 		
-		CompartmentAccessComponent compartmentAcess = CompartmentAccessComponent.Cast(character.FindComponent(CompartmentAccessComponent));
+		CompartmentAccessComponent compartmentAcess = character.GetCompartmentAccessComponent();
 		if (!compartmentAcess)
 			return;
 		
@@ -31,11 +37,11 @@ class SCR_GetOutAction : SCR_CompartmentUserAction
 		if (!character)
 			return false;
 		
-		CharacterControllerComponent characterController = CharacterControllerComponent.Cast(character.FindComponent(CharacterControllerComponent));
-		if (!characterController)
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (controller && controller.IsUnconscious())
 			return false;
-		
-		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(character.FindComponent(CompartmentAccessComponent));
+
+		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
 		if (!compartmentAccess)
 			return false;
 		
@@ -46,8 +52,34 @@ class SCR_GetOutAction : SCR_CompartmentUserAction
 			return false;
 		
 		BaseCompartmentSlot compartment = compartmentAccess.GetCompartment();
-		if (compartment == null)
+		if (!compartment)
 			return false;
+		
+		// Do not allow plain GetOut with speeds higher than 15 km/phys
+		IEntity vehicle;
+		IEntity parent = GetOwner();
+		while (parent)
+		{
+			vehicle = parent;
+
+			if (Vehicle.Cast(parent))
+				break;
+
+			parent = parent.GetParent();
+		}
+		
+		if (vehicle)
+		{
+			Physics phys = vehicle.GetPhysics();
+			
+			if (phys) 
+			{
+				vector velocity = phys.GetVelocity();
+
+				if ((velocity.LengthSq()) > MAX_GETOUT_SPEED_METER_PER_SEC_SQ)
+					return false;
+			}
+		}
 		
 		BaseCompartmentSlot thisCompartment = GetCompartmentSlot();
 		return thisCompartment == compartment;
@@ -64,10 +96,6 @@ class SCR_GetOutAction : SCR_CompartmentUserAction
 	{		
 		BaseCompartmentSlot compartment = GetCompartmentSlot();
 		if (!compartment)
-			return false;
-		
-		UIInfo compartmentInfo = compartment.GetUIInfo();
-		if (!compartmentInfo)
 			return false;
 		
 		UIInfo actionInfo = GetUIInfo();

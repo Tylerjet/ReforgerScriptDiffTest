@@ -2,6 +2,45 @@ class SCR_BaseContainerTools
 {
 	//------------------------------------------------------------------------------------------------
 	/*!
+	Get Managed Instance from prefab
+	\param prefab Prefab ResourceName
+	\param printError If true will print an error if it fails
+	\return Managed entity
+	*/
+	static Managed CreateInstanceFromPrefab(ResourceName prefab, bool printError = false)
+	{
+		//~ Load resource
+		Resource resource = Resource.Load(prefab);
+		if (!resource.IsValid())
+		{
+			if (printError)
+				Print(string.Format("'SCR_BaseContainerTools', function 'CreateInstanceFromPrefab': failed '%1' at the Resource.Load step!", prefab), LogLevel.ERROR);
+			return null;
+		}
+		
+		//~ Get base container
+		BaseContainer baseContainer = resource.GetResource().ToBaseContainer();
+		if (!baseContainer)
+		{
+			if (printError)
+				Print(string.Format("'SCR_BaseContainerTools', function 'CreateInstanceFromPrefab': failed '%1' at the BaseContainer step!", prefab), LogLevel.ERROR);
+			return null;
+		}
+		
+		//~ Get managed
+		Managed managed = BaseContainerTools.CreateInstanceFromContainer(baseContainer);
+		if (!managed)
+		{
+			if (printError)
+				Print(string.Format("'SCR_BaseContainerTools', function 'CreateInstanceFromPrefab': failed '%1' create instance step!", prefab), LogLevel.ERROR);
+			return null;
+		}
+		
+		return managed;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
 	Get class name of the prefab.
 	Use to check if prefab class is matching requirements before you spawn it.
 	\param prefab Prefab path
@@ -10,7 +49,7 @@ class SCR_BaseContainerTools
 	static string GetContainerClassName(ResourceName prefab)
 	{
 		Resource prefabResource = Resource.Load(prefab);
-		if (!prefabResource.IsValid())
+		if (!prefabResource || !prefabResource.IsValid())
 			return string.Empty;
 
 		return GetContainerClassName(prefabResource);
@@ -25,7 +64,7 @@ class SCR_BaseContainerTools
 	*/
 	static string GetContainerClassName(Resource prefabResource)
 	{
-		if (!prefabResource.IsValid())
+		if (!prefabResource || !prefabResource.IsValid())
 			return string.Empty;
 
 		BaseResourceObject prefabContainer = prefabResource.GetResource();
@@ -66,7 +105,7 @@ class SCR_BaseContainerTools
 	*/
 	static IEntityComponentSource FindComponentSource(Resource prefabResource, string componentClassName)
 	{
-		if (!prefabResource.IsValid())
+		if (!prefabResource || !prefabResource.IsValid())
 			return null;
 
 		IEntitySource prefabEntity = FindEntitySource(prefabResource);
@@ -85,7 +124,7 @@ class SCR_BaseContainerTools
 	*/
 	static IEntityComponentSource FindComponentSource(Resource prefabResource, typename componentClass)
 	{
-		if (!prefabResource.IsValid())
+		if (!prefabResource || !prefabResource.IsValid())
 			return null;
 
 		IEntitySource prefabEntity = FindEntitySource(prefabResource);
@@ -192,7 +231,7 @@ class SCR_BaseContainerTools
 					array<IEntityComponentSource> components = componentSources[j];
 					if (!components)
 					{
-						components = new array<IEntityComponentSource>;
+						components = {};
 						componentSources.Set(j, components);
 					}
 					components.Insert(componentSource);
@@ -254,9 +293,36 @@ class SCR_BaseContainerTools
 		{
 			if (container.GetResourceName().Contains("/"))
 				return ancestor;
+
 			ancestor = ancestor.GetAncestor();
 		}
 		return container;
+	}
+	//------------------------------------------------------------------------------------------------
+	//! Get the resourceName's BaseContainer
+	static BaseContainer GetBaseContainer(ResourceName resourceName)
+	{
+		if (resourceName.IsEmpty())
+		{
+			Print("resourceName is empty", LogLevel.WARNING);
+			return null;
+		}
+
+		Resource resource = Resource.Load(resourceName);
+		if (!resource || !resource.IsValid())
+		{
+			Print("invalid resourceName");
+			return null;
+		}
+
+		BaseResourceObject baseResourceObject = resource.GetResource();
+		if (!baseResourceObject)
+		{
+			Print("BaseResourceObject could not be obtained");
+			return null;
+		}
+
+		return baseResourceObject.ToBaseContainer();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -271,9 +337,27 @@ class SCR_BaseContainerTools
 		{
 			if (container.GetResourceName().Contains("/"))
 				return container.GetResourceName();
+
 			container = container.GetAncestor();
 		}
+
 		return ResourceName.Empty;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get a Prefab's modifications from its parent
+	//! \param sourcePrefab
+	//! \return Prefab-set variable names without parent Prefab values
+	static array<string> GetPrefabSetValueNames(notnull BaseContainer baseContainer)
+	{
+		array<string> result = {};
+		for (int i, count = baseContainer.GetNumVars(); i < count; i++)
+		{
+			string varName = baseContainer.GetVarName(i);
+			if (baseContainer.IsVariableSetDirectly(varName))
+				result.Insert(varName);
+		}
+		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -346,6 +430,7 @@ class SCR_BaseContainerTools
 		{
 			if (i > 0)
 				result += ",";
+
 			result += values[i].ToString();
 		}
 		return result;

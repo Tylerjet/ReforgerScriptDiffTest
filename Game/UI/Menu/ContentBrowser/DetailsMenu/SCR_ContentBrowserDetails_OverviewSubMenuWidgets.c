@@ -37,6 +37,9 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 	ButtonWidget m_SolveIssuesButton;
 	SCR_ModularButtonComponent m_SolveIssuesButtonComponent;
 
+	ButtonWidget m_FavoriteButton;
+	SCR_ModularButtonComponent m_FavoriteButtonComponent;
+	
 	ButtonWidget m_VoteUpButton;
 	SCR_ModularButtonComponent m_VoteUpButtonComponent;
 
@@ -104,6 +107,9 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 		m_SolveIssuesButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_SolveIssuesButton"));
 		m_SolveIssuesButtonComponent = SCR_ModularButtonComponent.Cast(m_SolveIssuesButton.FindHandler(SCR_ModularButtonComponent));
 
+		m_FavoriteButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_FavoriteButton"));
+		m_FavoriteButtonComponent = SCR_ModularButtonComponent.Cast(m_FavoriteButton.FindHandler(SCR_ModularButtonComponent));
+		
 		m_VoteUpButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_VoteUpButton"));
 		m_VoteUpButtonComponent = SCR_ModularButtonComponent.Cast(m_VoteUpButton.FindHandler(SCR_ModularButtonComponent));
 

@@ -16,4 +16,6 @@ enum DataError
 	WORLD_LOAD_ERROR,
 	//! Replicated parts of world do not match between client and server.
 	WORLD_LOAD_INCONSISTENCY,
+	//! Addon loading failed
+	ADDON_LOAD_ERROR,
 }

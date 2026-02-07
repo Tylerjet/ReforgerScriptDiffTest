@@ -5,7 +5,7 @@ class SCR_CampaignTutorialStage58Class: SCR_BaseCampaignTutorialStageClass
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignTutorialStage58 : SCR_BaseCampaignTutorialStage
 {
-	protected SCR_CampaignBase m_Base;
+	protected SCR_CampaignMilitaryBaseComponent m_Base;
 	
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
@@ -15,7 +15,7 @@ class SCR_CampaignTutorialStage58 : SCR_BaseCampaignTutorialStage
 		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_SuppliesUnload", duration: -1, isSilent: true);
 		m_TutorialComponent.SetWaypointTruckPosition(SCR_ETutorialSupplyTruckWaypointMode.BACK);
 		
-		m_Base = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain"));
+		m_Base = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain").FindComponent(SCR_CampaignMilitaryBaseComponent));
 		
 		if (m_Base && m_Base.GetSupplies() < 450)
 			m_Base.AddSupplies(450 - m_Base.GetSupplies());

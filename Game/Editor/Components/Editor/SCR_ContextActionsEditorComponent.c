@@ -55,7 +55,7 @@ class SCR_ContextActionsEditorComponent : SCR_BaseActionsEditorComponent
 						m_HoveredEntity = m_LayerManager.GetParentBelowCurrentLayer(m_HoveredEntity);
 		
 					//--- Update selection (not when the action was activated instantly, i.e., by a shortcut)
-					if (!isInstant)
+					if (!isInstant && m_SelectedManager)
 					{
 						if (m_HoveredEntity)
 						{

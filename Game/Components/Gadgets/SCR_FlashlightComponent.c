@@ -207,6 +207,10 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	{		
 		super.ModeSwitch(mode, charOwner);
 
+		InventoryItemComponent inventoryItemComp = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
+		if (!inventoryItemComp)
+			return;
+
 		if (mode == EGadgetMode.ON_GROUND || !charOwner)
 			m_CharController = null;
 		else
@@ -214,6 +218,8 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		
 		if (mode == EGadgetMode.ON_GROUND || mode == EGadgetMode.IN_STORAGE)
 		{
+			inventoryItemComp.EnablePhysics();
+
 			m_bLastLightState = m_bActivated;
 			
 			if (m_bActivated)
@@ -224,7 +230,9 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 				
 		}
 		else if (mode == EGadgetMode.IN_SLOT)
-		{					
+		{
+			inventoryItemComp.DisablePhysics();
+
 			m_CompartmentComp = SCR_CompartmentAccessComponent.Cast(m_CharacterOwner.FindComponent(SCR_CompartmentAccessComponent));
 			if (m_CompartmentComp)
 			{				
@@ -236,6 +244,8 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		}
 		else if (mode == EGadgetMode.IN_HAND)
 		{			
+			inventoryItemComp.EnablePhysics();
+
 			SetShadowNearPlane(false);
 			
 			if (m_bLastLightState)
@@ -358,7 +368,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		// adjust angle of the flashlight to provide usable angle within various poses
 		GetOwner().GetTransform(m_ItemMat);
 		m_vAnglesCurrent = GetOwner().GetLocalYawPitchRoll();
-		m_vAnglesTarget = ( m_CharController.GetAimingAngles() - Math3D.MatrixToAngles(m_ItemMat) ) + m_vAnglesCurrent;	 // diff between WS aiming and item angles, add local to the result
+		m_vAnglesTarget = ( Math.RAD2DEG * m_CharController.GetInputContext().GetAimingAngles() - Math3D.MatrixToAngles(m_ItemMat) ) + m_vAnglesCurrent;	 // diff between WS aiming and item angles, add local to the result
 		m_vAnglesTarget[0] = fixAngle_180_180(m_vAnglesTarget[0]);		
 		m_vAnglesTarget[1] = Math.Clamp(m_vAnglesTarget[1], 0, 30);	// only need too offset upwards, also avoid glitches with some stances
 		m_vAnglesTarget[2] = 0;	// no roll		

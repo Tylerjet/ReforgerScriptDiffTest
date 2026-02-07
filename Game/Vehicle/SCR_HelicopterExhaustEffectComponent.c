@@ -28,4 +28,14 @@ class SCR_HelicopterExhaustEffectComponent : MotorExhaustEffectComponent
 			m_Effect.MultParam(-1, EmitterParam.LIFETIME_RND, lifetime_scale);
 		}
 	}
+	
+	void OnEngineStart(notnull IEntity owner)
+	{
+		TurnOn(owner);
+	}
+	
+	void OnEngineStop()
+	{
+		TurnOff();
+	}
 };

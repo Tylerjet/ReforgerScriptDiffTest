@@ -548,7 +548,7 @@ class SCR_FiringRangeController : GenericEntity
 		if (!m_Indicator)
 			return;
 		
-		World world = (World) GetWorld();
+		World world = GetWorld();
 		Decal decal = world.CreateDecal(
 				m_Indicator, // Entity 
 				m_Indicator.CoordToParent(localCoordOfHit), // origin vector (position) 

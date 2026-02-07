@@ -42,7 +42,7 @@ Entity composition which is supposed to fit into a slot
 class SCR_SlotCompositionComponent : ScriptComponent
 {
 	protected GenericEntity m_Owner;
-	
+	protected static bool m_bIgnoreOrientChildrenToTerrain;
 	/*!
 	Get prefab of the slot to which the composition fits.
 	\return Slot prefab
@@ -67,7 +67,13 @@ class SCR_SlotCompositionComponent : ScriptComponent
 		else
 			return false;
 	}
-	
+	/*!
+	Bool to disable the terrain snapping for next spawned composition
+	*/
+	static void IgnoreOrientChildrenToTerrain()
+	{
+		m_bIgnoreOrientChildrenToTerrain = true;
+	}
 	/*!
 	Orient composition and its children to terrain.
 	Applied only if "Can Orient Children To Terrain" attribute is enabled.
@@ -161,7 +167,11 @@ class SCR_SlotCompositionComponent : ScriptComponent
 	{
 		if (SCR_Global.IsEditMode(owner))
 			return;
-		
+		if (m_bIgnoreOrientChildrenToTerrain)
+		{
+			m_bIgnoreOrientChildrenToTerrain = false;
+			return;
+		}
 		//--- Initialize transform on every machine (ToDo: Remove SCR_EditableEntityComponent check; rather, have editable entities suppress this functionality)
 		if (!owner.FindComponent(SCR_EditableEntityComponent))
 			OrientToTerrain();

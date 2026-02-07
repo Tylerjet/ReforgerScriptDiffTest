@@ -32,14 +32,26 @@ class SCR_AITalk: AITaskScripted
 	static const int SIGNAL_VALUE_SOLDIER_ALL = 1000;
 	
 	[Attribute("0", UIWidgets.ComboBox, "Message type", "", ParamEnumArray.FromEnum(ECommunicationType) )]
-	private int m_messageType;
+	private ECommunicationType m_messageType;
 	
-	private SCR_AIInfoComponent m_targetInfoComponent;
-	private SCR_CallsignCharacterComponent m_CallsignComponent;
-	private SCR_AIInfoComponent m_agentInfoComponent;
+	[Attribute("1", UIWidgets.CheckBox, "Should check if nearby friendly speakers are speaking? Might be slightly perf. heavy")]
+	private bool m_bCheckNearbySpeakers;
+	
+	[Attribute("3", UIWidgets.ComboBox, "In case speaker(s) are busy what node result?", "", ParamEnumArray.FromEnum(ENodeResult) )]
+	private ENodeResult m_eNodeResult;
+	
+	[Attribute("0.5", UIWidgets.Slider, "How often to check for speaker(s) states", "0.1 2.0 0.1")]
+	private float m_fCheckPeriod;
+	
+	private SCR_AICommunicationState m_speakerCommunicationState;	
+	
+	//private SCR_CallsignCharacterComponent m_CallsignComponent;
 	private AudioHandle m_audioHandle = AudioHandle.Invalid;
 	private VoNComponent m_vonComponent;
-	private ref array<float> m_signals = new array<float>();
+	private SignalsManagerComponent m_signalsManagerComponent;
+	private bool m_bIgnoreSpeakerState = false; 		// should speak no matter if speaker (owner) is already speaking or not
+	private float m_fTimer = 0; 						// internal timer for frames	
+	
 	
 //	-----------------------------------
 	override void OnInit(AIAgent owner)
@@ -52,7 +64,18 @@ class SCR_AITalk: AITaskScripted
     {
 		IEntity speaker;
 		SCR_AIGroup speakerGroup;
+		// evaluating once and then whole node returns running for m_fCheckPeriod time, then new evaluation happens
+		if (m_fTimer > 0)
+		{
+			m_fTimer += dt;
+			if (m_fTimer > m_fCheckPeriod)
+				m_fTimer = 0;
+			return ENodeResult.RUNNING;
+		}
 		
+		m_fTimer += dt;	
+		
+		//  start of conditions if speaking at all, if repeat test later
 		GetVariableIn(PORT_SPEAKER,speaker);
 		
 		if (!speaker)
@@ -64,6 +87,7 @@ class SCR_AITalk: AITaskScripted
 		if (pGr)
 		{
 			speaker = pGr.GetLeaderEntity();
+			pAg = pGr.GetLeaderAgent();
 			speakerGroup = SCR_AIGroup.Cast(pGr);
 			if (speakerGroup && speakerGroup.IsSlave())
 				return ENodeResult.SUCCESS;	// skipping RadioProtocol for leader of player's group
@@ -71,179 +95,255 @@ class SCR_AITalk: AITaskScripted
 		else if (pAg)
 		{
 			speaker = pAg.GetControlledEntity();
+			pGr = pAg.GetParentGroup();
 			speakerGroup = SCR_AIGroup.Cast(pAg.GetParentGroup());	
 			if (speakerGroup && speaker == speakerGroup.GetLeaderEntity() && speakerGroup.IsSlave())
 				return ENodeResult.SUCCESS;	// skipping RadioProtocol for leader of player's group
+		}
+				
+		if (!pGr || pGr.GetAgentsCount() <= 1 || !speaker)
+			return ENodeResult.SUCCESS;
+		
+		if (!pAg.GetControlComponent().IsAIActivated() || pAg.GetLOD() > 0) // ignoring speaking further from any player
+			return ENodeResult.SUCCESS;
+		
+		if (!m_speakerCommunicationState)
+		{
+			m_speakerCommunicationState = GetCommunicationState(speaker);
+			if (!m_speakerCommunicationState)
+				m_bIgnoreSpeakerState = true;
 		}	
 		
-		if (!m_vonComponent && speaker)
+		if (!m_vonComponent)
 		{
 			m_vonComponent = VoNComponent.Cast(speaker.FindComponent(VoNComponent));
 		}
-			
-		if (!m_vonComponent || !speaker)
+		
+		if (!m_vonComponent)
 			return ENodeResult.SUCCESS;
 		
-		SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(speaker.FindComponent(SignalsManagerComponent));
-		if(!signalsManagerComponent)
-			return ENodeResult.SUCCESS;
-		
-		IEntity target;
-		vector knownLocation, myLocation = speaker.GetOrigin();
-		AIAgent targetAgent;
-			
-		GetVariableIn(PORT_TARGET, target);
-		GetVariableIn(PORT_LOCATION, knownLocation);
-		targetAgent = AIAgent.Cast(target);
-		
-		if(targetAgent)
+		if (!m_signalsManagerComponent)
 		{
-			IEntity targetEntity = targetAgent.GetControlledEntity();
-			if (!targetEntity)
+			m_signalsManagerComponent = SignalsManagerComponent.Cast(speaker.FindComponent(SignalsManagerComponent));
+		}	
+		if (!m_signalsManagerComponent)
+			return ENodeResult.SUCCESS;
+		
+		
+		if (!m_bIgnoreSpeakerState && m_speakerCommunicationState.IsSpeaking())
+			return m_eNodeResult;
+		
+		if (m_bCheckNearbySpeakers && NearbyFriendlyAgentsSpeaking(speaker))
+			return m_eNodeResult;
+		
+		//  end of conditions if speaking at all
+		
+		IEntity targetEntity;
+		AIAgent targetAgent;
+		
+		if (GetVariableIn(PORT_TARGET, targetEntity))
+		{
+			targetAgent = AIAgent.Cast(targetEntity);
+			if (targetAgent)
 			{
-				NodeError(this, owner, "invalid target entity provided");
-				return ENodeResult.FAIL;
+				targetEntity = targetAgent.GetControlledEntity();
+				if (!targetEntity)
+				{
+					NodeError(this, owner, "invalid target entity provided");
+					return ENodeResult.FAIL;
+				}
 			}
-			m_CallsignComponent = SCR_CallsignCharacterComponent.Cast(targetEntity.FindComponent(SCR_CallsignCharacterComponent));
-			m_targetInfoComponent = GetInfoComponent(targetEntity);
-		}		
+		}
+		if (!SetSignalsAndTransmit(m_messageType, targetEntity, speaker.GetOrigin()))
+			return ENodeResult.FAIL;
 		
-		m_signals.Clear();
-
-		int SN_Seed = signalsManagerComponent.FindSignal("Seed");
-		SetSignal(SN_Seed, Math.RandomFloat(0, 1));
+		if (m_speakerCommunicationState)
+			m_speakerCommunicationState.StartSpeaking();
 		
-		switch (m_messageType)
+		return ENodeResult.SUCCESS;
+	}
+	
+//  -----------------------------------
+	bool NearbyFriendlyAgentsSpeaking(notnull IEntity speakerEntity, float distanceSq = 100.0)
+	{
+		array<AIAgent> aiAgents = {};
+		
+		SCR_ChimeraCharacter char;
+		auto speakerChar = SCR_ChimeraCharacter.Cast(speakerEntity);
+		if (!speakerChar) // speaker is a non-character?
+			return false;
+		
+		GetGame().GetAIWorld().GetAIAgents(aiAgents);
+		foreach (AIAgent agent : aiAgents)
+		{
+			SCR_ChimeraAIAgent chimeraAIAgent = SCR_ChimeraAIAgent.Cast(agent);
+			if (!chimeraAIAgent) // group or non-chimera?
+				continue;
+			IEntity ctrlEnt = agent.GetControlledEntity();
+			if (!ctrlEnt || ctrlEnt == speakerEntity) // same entity as speaker?
+				continue;
+			if (vector.DistanceSq(ctrlEnt.GetOrigin(), speakerEntity.GetOrigin()) > distanceSq) // too far?
+				continue;
+			char = SCR_ChimeraCharacter.Cast(ctrlEnt);
+			if (!char) // not chimeraCharacter?
+				continue;
+			Faction ctrlEntFac = char.GetFaction();
+			if (!ctrlEntFac || ctrlEntFac != speakerChar.GetFaction()) // no faction or not same faction as speaker?
+				continue;
+			SCR_AICommunicationState commState = chimeraAIAgent.m_InfoComponent.m_CommunicationState;
+			if (!commState) // no agent info?
+				continue;
+			if (commState.IsSpeaking()) // is agent speaking? if yes we are done with our search
+				return true;
+		}
+		return false;
+	}
+	
+//	-----------------------------------	
+	
+	bool SetSignalsAndTransmit(ECommunicationType commType, IEntity targetEntity, vector myLocation)
+	{
+		ref array<float> signals = {};
+		SCR_CallsignCharacterComponent callsignComponent;
+		vector signalLocation;
+		int SN_Seed = m_signalsManagerComponent.FindSignal("Seed");
+		// randomize variant of the signal
+		SetSignal(SN_Seed, Math.RandomFloat(0, 1), signals);
+		// different signals depending on cummunication type
+		if (targetEntity)
+			 callsignComponent = SCR_CallsignCharacterComponent.Cast(targetEntity.FindComponent(SCR_CallsignCharacterComponent));
+		
+		switch (commType)
 		{
 			case ECommunicationType.REPORT_TARGET:
-			{	
-				if (!target)
-					return ENodeResult.FAIL;
-				SetSignal_TargetValues(target, signalsManagerComponent);
-				SetSignal_SoldierCalledValues(signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL);
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_TARGET, m_signals, NORMAL_PRIORITY);
+			{
+				if (!targetEntity)
+					return false;
+				SetSignal_TargetValues(targetEntity, m_signalsManagerComponent, signals);
+				SetSignal_SoldierCalledValues(m_signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL, signals);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_TARGET, signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_MOVE:
 			{
-				SetSignal_SoldierCalledValues(signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL);
-				if (SetSignal_PositionValues(target, signalsManagerComponent, knownLocation,myLocation))
-					m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOVE_MID, m_signals, NORMAL_PRIORITY);
+				if (!GetVariableIn(PORT_LOCATION, signalLocation))
+					return false;
+				SetSignal_SoldierCalledValues(m_signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL, signals);
+				if (SetSignal_PositionValues(targetEntity, m_signalsManagerComponent, signalLocation, myLocation, signals))
+					m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOVE_MID, signals, NORMAL_PRIORITY);
 				else
-					m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOVE_CLOSE,  m_signals, NORMAL_PRIORITY);
-				break;
-			}
-			case ECommunicationType.REPORT_RETURN:
-			{
-				SetSignal_SoldierCalledValues(signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL);
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_RETURN, m_signals, NORMAL_PRIORITY);
-				break;
-			}
-			case ECommunicationType.REPORT_MOUNT:
-			{
-				if (!target)
-					return ENodeResult.FAIL;
-				SetSignal_TargetValues(target, signalsManagerComponent);
-				SetSignal_SoldierCalledValues(signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL);
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOUNT_BOARD, m_signals, NORMAL_PRIORITY);
-				break;
-			}
-			case ECommunicationType.REPORT_MOUNT_AS:
-			{
-				if (!m_CallsignComponent)
-					return ENodeResult.FAIL;
-				int role;
-				if (!GetVariableIn(PORT_INT, role))
-					role = 0;
-					
-				SetSignal_MountAsValues(signalsManagerComponent, m_CallsignComponent.GetCharacterCallsignIndex(), RoleInVehicleToSoundRoleEnum(role));
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOUNT_ROLE, m_signals, NORMAL_PRIORITY);
-				break;
-			}
-			case ECommunicationType.REPORT_UNMOUNT:
-			{
-				SetSignal_SoldierCalledValues(signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL);	
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOUNT_GETOUT, m_signals, NORMAL_PRIORITY);
-				break;
-			}
-			case ECommunicationType.REPORT_STOP:
-			{
-				if (m_CallsignComponent)
-					SetSignal_SoldierCalledValues(signalsManagerComponent, m_CallsignComponent.GetCharacterCallsignIndex());
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_STOP, m_signals, NORMAL_PRIORITY);
-				break;
-			}
-			case ECommunicationType.REPORT_FLANK:
-			{
-				if (!m_CallsignComponent)
-					return ENodeResult.FAIL;
-				SetSignal_SoldierCalledValues(signalsManagerComponent, m_CallsignComponent.GetCharacterCallsignIndex());
-				SetSignal_FlankValues(signalsManagerComponent, 0);	
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_FLANK, m_signals, NORMAL_PRIORITY);
+					m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOVE_CLOSE,  signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_CONTACT:
 			{
-				if (!target)
-					return ENodeResult.FAIL;
-				SetSignal_TargetValues(target, signalsManagerComponent);
-				SetSignal_PositionValues(target, signalsManagerComponent, knownLocation,myLocation);
-				SetSignal_FactionValues(signalsManagerComponent, 1);
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_SPOTTED_MID, m_signals, NORMAL_PRIORITY);
+				if (!targetEntity || !GetVariableIn(PORT_LOCATION, signalLocation))
+					return false;
+				SetSignal_TargetValues(targetEntity, m_signalsManagerComponent, signals);
+				SetSignal_PositionValues(targetEntity, m_signalsManagerComponent, signalLocation, myLocation, signals);
+				SetSignal_FactionValues(m_signalsManagerComponent, 1, signals);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_SPOTTED_MID, signals, NORMAL_PRIORITY);
+				break;
+			}
+			case ECommunicationType.REPORT_RETURN:
+			{
+				SetSignal_SoldierCalledValues(m_signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL, signals);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_RETURN, signals, NORMAL_PRIORITY);
+				break;
+			}
+			case ECommunicationType.REPORT_MOUNT:
+			{
+				if (!targetEntity)
+					return false;
+				SetSignal_TargetValues(targetEntity, m_signalsManagerComponent, signals);
+				SetSignal_SoldierCalledValues(m_signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL, signals);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOUNT_BOARD, signals, NORMAL_PRIORITY);
+				break;
+			}
+			case ECommunicationType.REPORT_MOUNT_AS:
+			{
+				if (!callsignComponent)
+					return false;
+				int role;
+				if (!GetVariableIn(PORT_INT, role))
+					role = 0;
+				
+				SetSignal_MountAsValues(m_signalsManagerComponent, callsignComponent.GetCharacterCallsignIndex(), RoleInVehicleToSoundRoleEnum(role), signals);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOUNT_ROLE, signals, NORMAL_PRIORITY);
+				break;
+			}
+			case ECommunicationType.REPORT_UNMOUNT:
+			{
+				SetSignal_SoldierCalledValues(m_signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL, signals);	
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_MOUNT_GETOUT, signals, NORMAL_PRIORITY);
+				break;
+			}
+			case ECommunicationType.REPORT_STOP:
+			{
+				if (callsignComponent)
+					SetSignal_SoldierCalledValues(m_signalsManagerComponent, callsignComponent.GetCharacterCallsignIndex(), signals);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_STOP, signals, NORMAL_PRIORITY);
+				break;
+			}
+			case ECommunicationType.REPORT_FLANK:
+			{
+				if (!callsignComponent)
+					return false;
+				SetSignal_SoldierCalledValues(m_signalsManagerComponent, callsignComponent.GetCharacterCallsignIndex(), signals);
+				SetSignal_FlankValues(m_signalsManagerComponent, 0, signals);	
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_FLANK, signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_NO_AMMO:
 			{
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_STATUS_NOAMMO, m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_STATUS_NOAMMO, signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_CLEAR:
 			{
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_STATUS_CLEAR, m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_STATUS_CLEAR, signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_ENGAGING:
 			{
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_STATUS_ENGAGING, m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_STATUS_ENGAGING, signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_TARGET_DOWN:
 			{
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_STATUS_TARGETDOWN, m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_STATUS_TARGETDOWN, signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_RELOADING:
 			{
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_ACTIONSTATUS_RELOAD, m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_ACTIONSTATUS_RELOAD, signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_MOVING:
 			{
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_ACTIONSTATUS_MOVE, m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_ACTIONSTATUS_MOVE, signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_COVERING:
 			{
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_ACTIONSTATUS_COVER, m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_REPORTS_ACTIONSTATUS_COVER, signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_DEFEND:
 			{
-				SetSignal_SoldierCalledValues(signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL);
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_DEFEND_POSITION, m_signals, NORMAL_PRIORITY);
+				SetSignal_SoldierCalledValues(m_signalsManagerComponent, SIGNAL_VALUE_SOLDIER_ALL, signals);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_DEFEND_POSITION, signals, NORMAL_PRIORITY);
 				break;
 			}
 			case ECommunicationType.REPORT_NEGATIVE:
 			{
-				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_NEGATIVEFEEDBACK_NEGATIVE, m_signals, NORMAL_PRIORITY);
+				m_vonComponent.SoundEventPriority(SCR_SoundEvent.SOUND_CP_NEGATIVEFEEDBACK_NEGATIVE, signals, NORMAL_PRIORITY);
 				break;
 			}
 		}
-			
-		return ENodeResult.SUCCESS;
+		return true;
 	}
-	
-//	-----------------------------------		
+//	-----------------------------------
 	override bool VisibleInPalette()
     {
         return true;
@@ -274,6 +374,7 @@ class SCR_AITalk: AITaskScripted
 		return 0;
 	}
 	
+//	-----------------------------------	
 	private int RoleInVehicleToSoundRoleEnum(int role)
 	{
 		switch (role)
@@ -289,53 +390,70 @@ class SCR_AITalk: AITaskScripted
 			case ECompartmentType.Cargo:
 			{
 				return ECP_VehicleRoles.PASSANGER;
-			}			
+			}
 		}
 		return role;
 	}
 	
+//	-----------------------------------
 	private SCR_AIInfoComponent GetInfoComponent(IEntity entity)
 	{
 		if (!entity)
 			return null;
-		AIAgent agent = AIAgent.Cast(entity);
+		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(entity);
 		if (entity && !agent)
 		{
 			AIControlComponent cc = AIControlComponent.Cast(entity.FindComponent(AIControlComponent));
 			if (!cc)
 				return null;
-			agent = cc.GetAIAgent();
+			agent = SCR_ChimeraAIAgent.Cast(cc.GetAIAgent());
 			if (!agent)
 				return null;
 		}
-		SCR_AIInfoComponent info = SCR_AIInfoComponent.Cast(agent.FindComponent(SCR_AIInfoComponent));
-		if (!info)
+		return agent.m_InfoComponent;	
+	}
+	
+//	-----------------------------------	
+	private SCR_AICommunicationState GetCommunicationState(IEntity entity)
+	{
+		if (!entity)
 			return null;
-		return info;		
+		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(entity);
+		if (entity && !agent)
+		{
+			AIControlComponent cc = AIControlComponent.Cast(entity.FindComponent(AIControlComponent));
+			if (!cc)
+				return null;
+			agent = SCR_ChimeraAIAgent.Cast(cc.GetAIAgent());
+			if (!agent)
+				return null;
+		}
+		return agent.m_InfoComponent.m_CommunicationState;	
 	}
 	
 //  ----------------------------------	
 	
-	private void SetSignal_TargetValues(IEntity target, SignalsManagerComponent signalsManagerComponent)
+	private void SetSignal_TargetValues(IEntity target, SignalsManagerComponent signalsManagerComponent, array<float> signals)
 	{
 		if (target.IsInherited(Vehicle))
 		{
 			int SN_Vehicle = signalsManagerComponent.FindSignal("Vehicle");
 			
-			SetSignal(SN_Vehicle, Vehicle.Cast(target).m_eVehicleType);
+			SetSignal(SN_Vehicle, Vehicle.Cast(target).m_eVehicleType, signals);
 		}
 									
 		else if (target.IsInherited(ChimeraCharacter))
 		{
 			int SN_Character = signalsManagerComponent.FindSignal("Character");
-			int unitRole = InfoUnitRoleToSoundCharacterEnum(m_targetInfoComponent);
+			SCR_AIInfoComponent targetInfoComponent = GetInfoComponent(target);
+			int unitRole = InfoUnitRoleToSoundCharacterEnum(targetInfoComponent);
 			
-			SetSignal(SN_Character, unitRole);
+			SetSignal(SN_Character, unitRole, signals);
 		}	
 		//TODO: do Miscellaneous - now not objects to attacks
 	}
 	
-	private bool SetSignal_PositionValues(IEntity target, SignalsManagerComponent signalsManagerComponent, vector locationTarget, vector locationSelf)
+	private bool SetSignal_PositionValues(IEntity target, SignalsManagerComponent signalsManagerComponent, vector locationTarget, vector locationSelf, array<float> signals)
 	{
 		if (target)
 			locationTarget = target.GetOrigin();
@@ -349,46 +467,52 @@ class SCR_AITalk: AITaskScripted
 			int SN_TargetDistance = signalsManagerComponent.FindSignal("TargetDistance");
 			int SN_DirectionAngle = signalsManagerComponent.FindSignal("DirectionAngle");
 			
-			SetSignal(SN_TargetDistance, distance);
-			SetSignal(SN_DirectionAngle, directionAngle);
+			SetSignal(SN_TargetDistance, distance, signals);
+			SetSignal(SN_DirectionAngle, directionAngle, signals);
 			return true;
 		}
 		return false;
 	}
 	
-	private void SetSignal_SoldierCalledValues(SignalsManagerComponent signalsManagerComponent, int soldierCalled)
+	private void SetSignal_SoldierCalledValues(SignalsManagerComponent signalsManagerComponent, int soldierCalled, array<float> signals)
 	{
 		int SN_SoldierCalled = signalsManagerComponent.FindSignal("SoldierCalled");
 		
-		SetSignal(SN_SoldierCalled, soldierCalled);
+		SetSignal(SN_SoldierCalled, soldierCalled, signals);
 	}
 		
-	private void SetSignal_MountAsValues(SignalsManagerComponent signalsManagerComponent, int soldierCalledId, int soldierRole)
+	private void SetSignal_MountAsValues(SignalsManagerComponent signalsManagerComponent, int soldierCalledId, int soldierRole, array<float> signals)
 	{
 		int SN_SoldierCalled = signalsManagerComponent.FindSignal("SoldierCalled");
 		int SN_Role = signalsManagerComponent.FindSignal("Role");
 		
-		SetSignal(SN_SoldierCalled, soldierCalledId);
-		SetSignal(SN_Role, soldierRole);
+		SetSignal(SN_SoldierCalled, soldierCalledId, signals);
+		SetSignal(SN_Role, soldierRole, signals);
 	}
 	
-	private void SetSignal_FlankValues(SignalsManagerComponent signalsManagerComponent, int flank)
+	private void SetSignal_FlankValues(SignalsManagerComponent signalsManagerComponent, int flank, array<float> signals)
 	{
 		int SN_Flank = signalsManagerComponent.FindSignal("Flank");
 		
-		SetSignal(SN_Flank, flank);
+		SetSignal(SN_Flank, flank, signals);
 	}
 	
-	private void SetSignal_FactionValues(SignalsManagerComponent signalsManagerComponent, int faction)
+	private void SetSignal_FactionValues(SignalsManagerComponent signalsManagerComponent, int faction, array<float> signals)
 	{
 		int SN_Faction = signalsManagerComponent.FindSignal("Faction");
 		
-		SetSignal(SN_Faction, faction);
+		SetSignal(SN_Faction, faction, signals);
 	}
 	
-	private void SetSignal(int index, float value)
+	private void SetSignal(int index, float value, notnull array<float> signals)
 	{
-		m_signals.Insert(index);
-		m_signals.Insert(value);
+		signals.Insert(index);
+		signals.Insert(value);
+	}
+	
+//	-----------------------------------
+	override protected bool CanReturnRunning()
+	{
+		return true;
 	}
 };

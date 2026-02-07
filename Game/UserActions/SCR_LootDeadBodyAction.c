@@ -13,21 +13,19 @@ class SCR_LootDeadBodyAction : SCR_LootAction
 		if (!char)
 			return false;
 		
-		// Interacting with unconscious characters' inventory is forbidden due to AI, for now.
-	/*	CharacterControllerComponent charControllerComp = char.GetCharacterController();
-		if (!charControllerComp)
+		// Disallow looting when alive
+		SCR_CharacterControllerComponent contr = SCR_CharacterControllerComponent.Cast(char.GetCharacterController());
+		if (!contr)
 			return false;
 		
-		if (charControllerComp.IsUnconscious())
-			return super.CanBePerformedScript(user);*/
-		
-		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
-		if (!damageMan)
+		if (contr.GetLifeState() == ECharacterLifeState.ALIVE)
 			return false;
-		
-		if (damageMan.GetState() != EDamageState.DESTROYED)
+
+		// Disallow looting when in vehicle
+		IEntity userVeh = CompartmentAccessComponent.GetVehicleIn(char);
+		if (userVeh)
 			return false;
-		
+
 		return super.CanBePerformedScript(user);
 	}
-};
+}

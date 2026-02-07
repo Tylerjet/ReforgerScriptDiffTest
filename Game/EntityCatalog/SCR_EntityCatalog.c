@@ -180,7 +180,7 @@ Catalog that holds faction entity lists of a specific entity type
 [BaseContainerProps(configRoot: true), SCR_BaseContainerCustomEntityCatalogCatalog(EEntityCatalogType, "m_eEntityCatalogType", "m_aEntityEntryList", "m_aMultiLists")]
 class SCR_EntityCatalog
 {
-	[Attribute("0", desc: "Type of the Catalog. Must be unique within the array of the faction!", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EEntityCatalogType))]
+	[Attribute("0", desc: "Type of the Catalog", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EEntityCatalogType))]
 	protected EEntityCatalogType m_eEntityCatalogType;
 
 	[Attribute(desc: "List of all entities of the given type (Note that this list can still be used if using the 'SCR_EntityCatalogMultiList' Class. All entries in the multi lists will be merged into this one on init including the entries already in it)")]
@@ -548,6 +548,24 @@ class SCR_EntityCatalog
 		}
 			
 		return filteredEntityList.Count();
+	}
+	
+	//======================================== MERGE CATALOGS ========================================\\
+	/*!
+	Merge the given catalog into this catalog.
+	Used on init to create one coherent list of each catalog type
+	\param catalogToMerge Given catalog to merge into this one
+	*/
+	void MergeCatalogs(notnull SCR_EntityCatalog catalogToMerge)
+	{
+		array<SCR_EntityCatalogEntry> entityList = {};
+		catalogToMerge.GetEntityList(entityList);
+		
+		//~ Add the entry
+		foreach(SCR_EntityCatalogEntry entry : entityList)
+		{
+			m_aEntityEntryList.Insert(entry);
+		}
 	}
 	
 	//======================================== INIT ========================================\\

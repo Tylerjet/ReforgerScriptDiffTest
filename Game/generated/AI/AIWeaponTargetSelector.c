@@ -15,7 +15,7 @@ class AIWeaponTargetSelector: ScriptAndConfig
 	/*!
 	Initializes properties for target/weapon selection
 	*/
-	proto external void SetSelectionProperties(float maxLastSeenDirect, float maxLastSeenIndirect, float maxDistanceInfantry, float maxDistanceVehicles, float maxTimeSinceEndangered);
+	proto external void SetSelectionProperties(float maxLastSeenDirect, float maxLastSeenIndirect, float maxDistanceInfantry, float maxDistanceVehicles, float maxTimeSinceEndangered, float maxDistanceDisarmed);
 	/*!
 	Sets constants for target score calculation. Formula is: score = offset + slope*distance
 	*/
@@ -23,7 +23,7 @@ class AIWeaponTargetSelector: ScriptAndConfig
 	/*!
 	Selects weapon and target. Returns true when a valid option is selected. Call GetSelectedTarget, GetSelectedWeapon, GetSelectedWeaponProperties to get result.
 	*/
-	proto external bool SelectWeaponAndTarget(notnull array<IEntity> assignedTargets, float assignedTargetsScoreIncrement, bool useCompartmentWeapons, array<int> weaponTypesWhitelist = null, array<int> weaponTypesBlacklist = null);
+	proto external bool SelectWeaponAndTarget(notnull array<IEntity> assignedTargets, float assignedTargetsScoreIncrement, float dangerTargetsScoreIncrement, bool useCompartmentWeapons, array<int> weaponTypesWhitelist = null, array<int> weaponTypesBlacklist = null);
 	/*!
 	Returns selected target
 	*/

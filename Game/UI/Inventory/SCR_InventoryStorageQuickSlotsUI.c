@@ -116,7 +116,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	{
 		int count = pItemsInStorage.Count();
 		if (!GetGame().GetInputManager().IsUsingMouseAndKeyboard() && !m_MenuHandler)
-			count = 4; // todo: get this from radial menu input
+			count = Math.Min(count, 4); // todo: get this from radial menu config
 		
 		if (count < m_aSlots.Count())
 		{

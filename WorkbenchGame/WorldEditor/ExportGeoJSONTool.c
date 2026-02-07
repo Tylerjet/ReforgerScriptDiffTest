@@ -48,7 +48,7 @@ class GeoExporter
 	float x_shift;
 	float y_shift;
 	
-	FileHandle file;
+	ref FileHandle file;
 	
 	void GeoExporter(string path, int x, int y)
 	{

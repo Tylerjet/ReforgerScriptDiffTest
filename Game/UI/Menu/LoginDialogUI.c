@@ -68,7 +68,6 @@ class LoginDialogUI: DialogUI
 	Widget m_wOverlay;
 	int m_iDelayMs = 500;
 	SCR_LoadingOverlay m_LoadingOverlay;
-	const string ACCOUNT_CREATION_URL = "https:\/\/accounts.bistudio.com/auth/register";
 
 	ref ScriptInvoker m_OnDialogClosed = new ScriptInvoker();
 	ref ScriptInvoker m_OnLogin = new ScriptInvoker();
@@ -85,7 +84,7 @@ class LoginDialogUI: DialogUI
 		m_UserName = SCR_EditBoxComponent.GetEditBoxComponent("UserName", w);
 		m_WarningText = w.FindAnyWidget("DialogWarning");
 		if (m_WarningText)
-			m_WarningText.SetOpacity(0);
+			m_WarningText.SetVisible(false);
 		if (m_UserName)
 		{
 			m_UserName.SetValue(name);
@@ -102,7 +101,7 @@ class LoginDialogUI: DialogUI
 
 		m_CodeWarningText = w.FindAnyWidget("CodeWarning");
 		if (m_CodeWarningText)
-			m_CodeWarningText.SetOpacity(0);
+			m_CodeWarningText.SetVisible(false);
 		
 		m_2FACode = SCR_EditBoxComponent.GetEditBoxComponent("Code", w);
 		if (m_2FACode)
@@ -123,7 +122,7 @@ class LoginDialogUI: DialogUI
 	//------------------------------------------------------------------------------------------------
 	private void OnCreateAccount()
 	{
-		GetGame().GetPlatformService().OpenBrowser(ACCOUNT_CREATION_URL);
+		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_RegisterAccount"));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -153,7 +152,7 @@ class LoginDialogUI: DialogUI
 
 		// Store credentials
 		if (m_WarningText)
-			m_WarningText.SetOpacity(0);
+			m_WarningText.SetVisible(false);
 
 		if (m_UserName)
 		{
@@ -218,7 +217,7 @@ class LoginDialogUI: DialogUI
 	void ShowLoadinAnim(bool show)
 	{
 		if (show && m_wOverlay)
-			 m_LoadingOverlay = SCR_LoadingOverlay.ShowForWidget(m_wOverlay, string.Empty, false, true);
+			 m_LoadingOverlay = SCR_LoadingOverlay.ShowForWidget(m_wOverlay, string.Empty, false, false);
 		else if (m_LoadingOverlay)
 			m_LoadingOverlay.HideAndDelete();
 	}

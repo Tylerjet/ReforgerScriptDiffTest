@@ -4,16 +4,16 @@
 class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 {
 
-	private TurretControllerComponent m_pTurretController;
-	private TurretComponent m_pControlledTurret;
-	private TurretCompartmentSlot m_pCompartment;
-	private vector m_vVertAimLimits;
-	private vector m_vHorAimLimits;
-	private float m_fLRAngleAdd;
-	private vector m_vPrevEyePosition;
-	private IEntity m_OwnerVehicle;
+	protected TurretControllerComponent m_pTurretController;
+	protected TurretComponent m_pControlledTurret;
+	protected TurretCompartmentSlot m_pCompartment;
+	protected vector m_vVertAimLimits;
+	protected vector m_vHorAimLimits;
+	protected float m_fLRAngleAdd;
+	protected vector m_vPrevEyePosition;
+	protected IEntity m_OwnerVehicle;
 
-	private vector m_vLastCameraAngles; //< Does not update in freelook
+	protected vector m_vLastCameraAngles; //< Does not update in freelook
 
 	//-----------------------------------------------------------------------------
 	void CharacterCamera1stPersonTurret(CameraHandlerComponent pCameraHandler)
@@ -34,8 +34,6 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 			BaseCompartmentSlot compartment = m_pCompartmentAccess.GetCompartment();
 			if (compartment)
 			{
-				ForceFreelook(compartment.GetForceFreeLook());
-				
 				m_OwnerVehicle = compartment.GetVehicle();
 				
 				SCR_VehicleCameraDataComponent vehicleCamData = SCR_VehicleCameraDataComponent.Cast(m_OwnerVehicle.FindComponent(SCR_VehicleCameraDataComponent));
@@ -45,17 +43,14 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 					m_fPitchFactor = vehicleCamData.m_fPitchFactor;
 				}
 				
-				BaseControllerComponent controller = compartment.GetController();
-				if (controller)
-				{
-					m_pTurretController = TurretControllerComponent.Cast(controller);
-				}
+				m_pTurretController = TurretControllerComponent.Cast(compartment.GetController());
+				if (!m_pTurretController)
+					return;
+
 				// If we'll have multiple turrets, don't cache turret
 				m_pControlledTurret = m_pTurretController.GetTurretComponent();
 				if (!m_pControlledTurret)
-				{
 					return;
-				}
 
 				m_pControlledTurret.GetAimingLimits(m_vHorAimLimits, m_vVertAimLimits);
 				m_pCompartment = TurretCompartmentSlot.Cast(compartment);

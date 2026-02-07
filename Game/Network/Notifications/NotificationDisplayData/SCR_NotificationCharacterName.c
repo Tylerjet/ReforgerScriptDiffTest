@@ -15,7 +15,12 @@ class SCR_NotificationCharacterName : SCR_NotificationDisplayData
 		
 		if (!GetCharacterName(entityID, format, firstname, alias, surname))
 		{
-			data.SetNotificationTextEntries(GetEditableEntityName(entityID));	
+			string entityName;
+			data.GetNotificationTextEntries(entityName);
+			if (!GetEditableEntityName(entityID, entityName))
+				return string.Empty;
+			
+			data.SetNotificationTextEntries(entityName);	
 			Print("'SCR_NotificationCharacterName' entity could not be found or has no 'SCR_CharacterIdentityComponent'", LogLevel.ERROR);
 		}
 		else 

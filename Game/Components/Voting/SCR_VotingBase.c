@@ -270,7 +270,7 @@ class SCR_VotingReferendum: SCR_VotingBase
 	
 	protected float GetRatio()
 	{
-		return (float)(m_aPlayerIDs.Count() / GetPlayerCount());
+		return (m_aPlayerIDs.Count() / GetPlayerCount());
 	}
 	override void SetVote(int playerID, int value = DEFAULT_VALUE)
 	{
@@ -408,7 +408,7 @@ class SCR_VotingElection: SCR_VotingBase
 	}
 	override bool Evaluate(out EVotingOutcome outcome)
 	{
-		float ratio = (float)(m_iHighestCount / GetPlayerCount());
+		float ratio = (m_iHighestCount / GetPlayerCount());
 		return super.Evaluate(outcome) || (ratio > m_fThreshold && EvaluateParticipation(m_Votes.Count()));
 	}
 	override int GetWinner()

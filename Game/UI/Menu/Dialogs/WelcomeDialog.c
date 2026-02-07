@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------------------------
 class WelcomeDialogUI: DialogUI
 {
-	protected string m_sHeaderName = "Text0";
+	protected string m_sHeaderName = "Title";
 	protected string m_sTextName = "Text";
 	protected string m_sSelectionHintName = "SelectionHint";
 	protected string m_sPreviousName = "Previous";
@@ -11,6 +11,8 @@ class WelcomeDialogUI: DialogUI
 	protected TextWidget m_wText;
 	protected Widget m_wHeader;
 	protected Widget m_wLinks;
+	protected ref array<ref Widget> m_wLinkButtons = new array<ref Widget>;
+	protected Widget m_wLastFocusedLinkButton;
 	protected SCR_SelectionHintComponent m_SelectionHint;
 	protected SCR_NavigationButtonComponent m_Previous;
 	protected SCR_NavigationButtonComponent m_Next;
@@ -37,11 +39,24 @@ class WelcomeDialogUI: DialogUI
 		Widget w = GetRootWidget();
 		m_wText = TextWidget.Cast(w.FindAnyWidget(m_sTextName));
 		m_wHeader = w.FindAnyWidget(m_sHeaderName);
+		
 		m_wLinks = w.FindAnyWidget(m_sLinksName);
-
-		// Make sure esc will close the dialog too
-		GetGame().GetInputManager().AddActionListener("MenuBack", EActionTrigger.DOWN, OnConfirm);
-
+		if(m_wLinks)
+			SCR_WidgetHelper.GetAllChildren(m_wLinks, m_wLinkButtons);
+		
+		if(!m_wLinkButtons.IsEmpty())
+		{
+			SCR_ButtonTextComponent buttonComp;
+			foreach(Widget linkButton : m_wLinkButtons)
+			{
+				buttonComp = SCR_ButtonTextComponent.Cast(linkButton.FindHandler(SCR_ButtonTextComponent));
+				if(!buttonComp)
+					continue;
+				
+				buttonComp.m_OnFocus.Insert(OnLinkButtonFocus);
+			}
+		}
+		
 		m_Previous = SCR_NavigationButtonComponent.GetNavigationButtonComponent(m_sPreviousName, w);
 		if (m_Previous)
 			m_Previous.m_OnActivated.Insert(OnPrevious);
@@ -65,6 +80,17 @@ class WelcomeDialogUI: DialogUI
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void OnConfirm()
+	{
+		//! SCR_BrowserLinkComponent already reacts to OnClick events, meaning that the confirm button is only necessary as a visual indicator or if the player clicks it specifically
+		if(!m_wLastFocusedLinkButton || GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE)
+			return;
+		
+		SCR_BrowserLinkComponent linkComp =	SCR_BrowserLinkComponent.Cast(m_wLastFocusedLinkButton.FindHandler(SCR_BrowserLinkComponent));
+		linkComp.OpenBrowser();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnPrevious()
 	{
 		ShowIndex(m_iCurrentIndex - 1);
@@ -77,26 +103,60 @@ class WelcomeDialogUI: DialogUI
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void OnLinkButtonFocus(Widget linkButton)
+	{
+		SCR_BrowserLinkComponent linkComp =	SCR_BrowserLinkComponent.Cast(linkButton.FindHandler(SCR_BrowserLinkComponent));
+		
+		m_wLastFocusedLinkButton = linkButton;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void ShowIndex(int index)
 	{
 		if (index < 0 || index > m_iMaxIndex)
 			return;
 
 		m_iCurrentIndex = index;
-		
-		if (m_wHeader)
-			m_wHeader.SetVisible(index == 0);
+
 		if (m_wLinks)
 			m_wLinks.SetVisible(index == m_iMaxIndex);
+		
+		if(index == m_iMaxIndex && !m_wLinkButtons.IsEmpty())
+		{
+			//! Focus one of the link buttons
+			if(!m_wLastFocusedLinkButton)
+				m_wLastFocusedLinkButton = m_wLinkButtons[0];
+			GetGame().GetWorkspace().SetFocusedWidget(m_wLastFocusedLinkButton);
+			
+			/*
+			if (m_Confirm)
+				//m_Confirm.SetVisible(true);
+			*/
+		}
+		else
+		{
+			/*
+			if (m_Confirm)
+				m_Confirm.SetVisible(false);
+			*/
+			
+			//! Prevents SCR_BrowserLinkComponent from opening webpages while on another tab
+			GetGame().GetWorkspace().SetFocusedWidget(null);
+		}
+		
 		if (m_Previous)
 			m_Previous.SetEnabled(index != 0);
+		
 		if (m_Next)
 			m_Next.SetEnabled(index != m_iMaxIndex);
+		
 		if (m_wText)
 			m_wText.SetTextFormat(m_aPageTexts[index]);
+		
 		if (m_SelectionHint)
 			m_SelectionHint.SetCurrentItem(index);
 	}
+	
 };
 
 

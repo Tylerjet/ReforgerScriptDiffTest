@@ -226,9 +226,10 @@ class SCR_MapEntity: MapEntity
 		m_bIsOpen = true;
 		
 		s_OnMapInit.Invoke(config);
-		auto plc = GetGame().GetPlayerController();
-		if (plc)
-			plc.SetCharacterCameraRenederActive(false);
+
+		PlayerController plc = GetGame().GetPlayerController();
+		if (plc && GetGame().GetCameraManager().CurrentCamera() == plc.GetPlayerCamera())
+			plc.SetCharacterCameraRenderActive(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -243,7 +244,7 @@ class SCR_MapEntity: MapEntity
 		m_iDelayCounter = FRAME_DELAY;
 		auto plc = GetGame().GetPlayerController();
 		if (plc)
-			plc.SetCharacterCameraRenederActive(true);
+			plc.SetCharacterCameraRenderActive(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -328,7 +329,10 @@ class SCR_MapEntity: MapEntity
 	//! Game event
 	protected void OnUserSettingsChanged()
 	{
-		m_bDoUpdate = true;
+		if (m_bIsOpen)
+			ZoomSmooth(m_fZoomPPU);
+		else
+			m_bDoUpdate = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -808,13 +812,13 @@ class SCR_MapEntity: MapEntity
 	
 		if (withPan)
 		{
-			screenPosX = (int)( ( worldX * pixPerUnit ) + m_Workspace.DPIScale(m_fPanX));
-			screenPosY = (int)( ( worldY * pixPerUnit ) + m_Workspace.DPIScale(m_fPanY));
+			screenPosX = (worldX * pixPerUnit) + m_Workspace.DPIScale(m_fPanX);
+			screenPosY = (worldY * pixPerUnit) + m_Workspace.DPIScale(m_fPanY);
 		}
 		else
 		{
-			screenPosX = (int)( ( worldX * pixPerUnit ) );
-			screenPosY = (int)( ( worldY * pixPerUnit ) );		
+			screenPosX = worldX * pixPerUnit;
+			screenPosY = worldY * pixPerUnit;		
 		}
 	}
 
@@ -1225,9 +1229,6 @@ class SCR_MapEntity: MapEntity
 	//! \param modules is an array of component names
 	protected void ActivateOtherComponents(EMapOtherComponents componentFlags)
 	{
-		if (componentFlags == EMapOtherComponents.NONE)
-			return;
-		
 		if (componentFlags & EMapOtherComponents.LEGEND_SCALE)
 			EnableLegend(true);
 		else 
@@ -1472,6 +1473,7 @@ class SCR_MapEntity: MapEntity
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_UI_MAP_DEBUG_OPTIONS, "", "Enable map debug menu", "UI");
 		
 		GetGame().OnUserSettingsChangedInvoker().Insert(OnUserSettingsChanged);
+		GetGame().OnWindowResizeInvoker().Insert(OnUserSettingsChanged);
 	}
 
 	//------------------------------------------------------------------------------------------------

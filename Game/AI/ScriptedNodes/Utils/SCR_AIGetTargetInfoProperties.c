@@ -30,9 +30,9 @@ class SCR_AIGetTargetInfoProperties : AITaskScripted
 		
 		if (targetInfo)
 		{
-			SetVariableOut(ENTITY_PORT, targetInfo.m_TargetEntity);
-			SetVariableOut(LAST_SEEN_POSITION_PORT, targetInfo.m_vLastSeenPosition);
-			SetVariableOut(TIME_SINCE_SEEN_PORT, targetInfo.m_fLastSeenTime);			
+			SetVariableOut(ENTITY_PORT, targetInfo.m_Entity);
+			SetVariableOut(LAST_SEEN_POSITION_PORT, targetInfo.m_vWorldPos);
+			SetVariableOut(TIME_SINCE_SEEN_PORT, targetInfo.m_fTimestamp);			
 			return ENodeResult.SUCCESS;
 		}
 		return ENodeResult.FAIL;

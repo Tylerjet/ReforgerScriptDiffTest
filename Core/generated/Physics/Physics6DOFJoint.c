@@ -17,14 +17,14 @@ Each axis can be configured to be either free, locked or limited. All axes are l
 can lead to an undefined behavior.
 
 Configuration of the axes:
-\li upper < lower - free axis
-\li upper == lower - locked axis
-\li upper > lower - limited axis
+- upper < lower - free axis
+- upper == lower - locked axis
+- upper > lower - limited axis
 
 Ranges of the angular limits:
-\li x axis - (-PI, PI)
-\li y axis - (-PI/2, PI/2)
-\li z axis - (-PI, PI)
+- x axis - (-PI, PI)
+- y axis - (-PI/2, PI/2)
+- z axis - (-PI, PI)
 */
 sealed class Physics6DOFJoint: PhysicsJoint
 {

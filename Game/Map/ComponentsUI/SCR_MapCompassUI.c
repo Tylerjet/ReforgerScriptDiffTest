@@ -58,10 +58,6 @@ class SCR_MapCompassUI: SCR_MapRTWBaseUI
 	{		
 		if (visible)
 		{
-			SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(SCR_PlayerController.GetLocalControlledEntity());
-			if (!gadgetManager)
-				return;
-			
 			// No compass equipped
 			if (!FindRelatedGadget())
 			{
@@ -96,7 +92,7 @@ class SCR_MapCompassUI: SCR_MapRTWBaseUI
 		SCR_MapToolMenuUI toolMenu = SCR_MapToolMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolMenuUI));
 		if (toolMenu)
 		{
-			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 1);
+			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 11);
 			m_ToolMenuEntry.m_OnClick.Insert(ToggleVisible);
 		}
 	}

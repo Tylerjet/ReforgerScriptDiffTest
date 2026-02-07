@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------------------------
 class SCR_RequestMessage : ScriptedRadioMessage
 {
-	protected SCR_CampaignBase m_RequesterMainBase;
+	protected SCR_CampaignMilitaryBaseComponent m_RequesterMainBase;
 	protected int m_iRequesterID;
 	protected vector m_vPosition;
 

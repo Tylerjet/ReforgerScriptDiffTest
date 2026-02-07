@@ -23,14 +23,13 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 	protected SCR_LoadingSpinner m_Spinner2;
 	protected SCR_LoadingHintComponent m_Hint;
 	
-	protected Widget m_wHintWrap;
 	protected Widget m_wCrossplayWarning;
+	protected Widget m_wModdedWarning;
 
 	protected bool m_bMissionSet;
 	protected float m_fProgress;
 	protected float m_fTotalLoadingTime;
 
-	static protected bool m_bJoiningCrossPlay = false;
 	static protected bool s_bOpened;
 	static ref ScriptInvoker s_OnEnterLoadingScreen = new ScriptInvoker();
 	static ref ScriptInvoker m_onExitLoadingScreen = new ScriptInvoker();
@@ -54,14 +53,14 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 		m_wProgressBar = m_wRoot.FindAnyWidget("LoadingProgress");
 		m_wProgressSpace = m_wRoot.FindAnyWidget("LoadingSpacer");
 		m_wProgressText = TextWidget.Cast(m_wRoot.FindAnyWidget("ProgressText"));
-		m_wHintWrap = m_wRoot.FindAnyWidget("HorizontalHintWrap");
-		m_wCrossplayWarning = m_wRoot.FindAnyWidget("HorizontalCrossplay");
+		m_wCrossplayWarning = m_wRoot.FindAnyWidget("LoadingNote_CrossPlay");
+		m_wModdedWarning = m_wRoot.FindAnyWidget("LoadingNote_ModdedGame");
 		
-		Widget spinner1 = m_wRoot.FindAnyWidget("Spinner1");
+		Widget spinner1 = m_wRoot.FindAnyWidget("Spinner1").FindAnyWidget("Spinner");
 		if (spinner1)
 			m_Spinner1 = SCR_LoadingSpinner.Cast(spinner1.FindHandler(SCR_LoadingSpinner));
 		
-		Widget spinner2 = m_wRoot.FindAnyWidget("Spinner2");
+		Widget spinner2 = m_wRoot.FindAnyWidget("Spinner2").FindAnyWidget("Spinner");
 		if (spinner2)
 			m_Spinner2 = SCR_LoadingSpinner.Cast(spinner2.FindHandler(SCR_LoadingSpinner));
 		
@@ -75,13 +74,6 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 			m_wLogo.SetVisible(true);
 		if (m_wLoadingFrame)
 			m_wLoadingFrame.SetVisible(false);
-		
-		// Display hint 
-		if (m_wCrossplayWarning)
-			m_wCrossplayWarning.SetVisible(m_bJoiningCrossPlay);
-		
-		if (m_wHintWrap)
-			m_wHintWrap.SetVisible(!m_bJoiningCrossPlay)
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -100,9 +92,12 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 	//------------------------------------------------------------------------------------------------
 	override void Show()
 	{
+		// HOTFIX: This prevents consecutive loading screen to show properly
+		/*
 		// If there is a splash screen, link it to the current workspace
 		if (!SplashScreenSequence.m_bShown && SplashScreenSequence.s_Sequence && SplashScreenSequence.s_wLayout)
 			m_WorkspaceWidget.AddChild(SplashScreenSequence.s_wLayout);
+		*/
 		
 		super.Show();
 		s_bOpened = true;
@@ -252,8 +247,14 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static void SetJoiningCrossPlay(bool isCrossPlay)
+	void SetJoiningCrossPlay(bool isCrossPlay)
 	{
-		m_bJoiningCrossPlay = isCrossPlay;
+		m_wCrossplayWarning.SetVisible(isCrossPlay);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetLoadingModded(bool isModded)
+	{
+		m_wModdedWarning.SetVisible(isModded);
+	}	
 };

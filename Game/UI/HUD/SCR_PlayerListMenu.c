@@ -12,12 +12,12 @@ class SCR_PlayerListEntry
 	Widget m_wRow;
 	Faction m_Faction;
 	int m_iSortFrequency;
-	
+
 	SCR_ButtonBaseComponent m_Mute;
 	SCR_ButtonBaseComponent m_Block;
 	SCR_ButtonBaseComponent m_Friend;
 	SCR_ComboBoxComponent m_VotingCombo;
-	
+
 	TextWidget m_wName;
 	TextWidget m_wKills;
 	TextWidget m_wFreq;
@@ -34,31 +34,32 @@ class SCR_PlayerListEntry
 class SCR_PlayerListMenu : SCR_SuperMenuBase
 {
 	protected ResourceName m_sScoreboardRow = "{65369923121A38E7}UI/layouts/Menus/PlayerList/PlayerListEntry.layout";
-	
+
 	protected ref array<ref SCR_PlayerListEntry> m_aEntries = new array<ref SCR_PlayerListEntry>();
 	protected ref map<int, SCR_ScoreInfo> m_aAllPlayersInfo = new ref map<int, SCR_ScoreInfo>();
 	protected ref array<Faction> m_aFactions = {null};
-	
+
 	protected SCR_NavigationButtonComponent m_Mute;
 	protected SCR_NavigationButtonComponent m_Block;
 	protected SCR_NavigationButtonComponent m_Friend;
 	protected SCR_NavigationButtonComponent m_Vote;
 	protected SCR_NavigationButtonComponent m_Invite;
-	
+
 	protected SCR_VotingManagerComponent m_VotingManager;
 	protected SCR_VoterComponent m_VoterComponent;
-	protected SCR_RespawnSystemComponent m_RespawnSystem;
+	//protected SCR_RespawnSystemComponent m_RespawnSystem;
 	protected SCR_BaseScoringSystemComponent m_ScoringSystem;
 	protected SCR_PlayerListEntry m_SelectedEntry;
-	protected SCR_PlayerControllerGroupComponent m_playerGroupController;
+	protected SCR_PlayerControllerGroupComponent m_PlayerGroupController;
+	protected PlayerController m_PlayerController;
 	SCR_SortHeaderComponent m_Header;
 	protected Widget m_wTable;
 	protected Widget m_wRoot;
 	protected bool m_bFiltering;
 	protected float m_fTimeSkip;
-	
+
 	protected const float TIME_STEP = 1.0;
-	
+
 	protected const string ADD_FRIEND = "#AR-PlayerList_AddFriend";
 	protected const string REMOVE_FRIEND = "#AR-PlayerList_RemoveFriend";
 	protected const string MUTE = "#AR-PlayerList_Mute";
@@ -66,8 +67,16 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected const string BLOCK = "#AR-PlayerList_Block";
 	protected const string UNBLOCK = "#AR-PlayerList_Unblock";
 	protected const string INVITE_PLAYER_VOTE = "#AR-PlayerList_Invite";
+	protected const string START_KICK_VOTE = "#AR-Voting_KICK_StartVotingName";
+	protected const string CANCEL_KICK_VOTE = "#AR-Voting_KICK_CancelVotingName";
 	protected const string MUTE_TEXTURE = "sound-off";
-	
+	protected const string OPTIONS_COMBO_ACCEPT = "#AR-Group_AcceptJoinPrivateGroup";
+	protected const string OPTIONS_COMBO_CANCEL = "#AR-Group_RefuseJoinPrivateGroup";
+	protected const string OPTIONS_COMBO_VOTE_TO_BECOME_GM = "#AR-Voting_EDITOR_IN_StartVotingName";
+	protected const string OPTIONS_COMBO_VOTE_TO_REMOVE_GM = "#AR-Voting_EDITOR_OUT_StartVotingName";
+	protected const string OPTIONS_COMBO_RELINQUISH_GM = "#AR-Voting_EDITOR_WIDRAW_Name";
+	protected const string OPTIONS_COMBO_VOTE_FOR_GM = "#AR-Voting_EDITOR_IN_AddVoteName";
+
 	protected const string FILTER_FAV = "Favourite";
 	protected const string FILTER_NAME = "Name";
 	protected const string FILTER_FREQ = "Freq";
@@ -76,18 +85,18 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected const string FILTER_SCORE = "Score";
 	protected const string FILTER_MUTE = "Mute";
 	protected const string FILTER_BLOCK = "Block";
-	
+
 	protected static const ResourceName FACTION_COUNTER_LAYOUT = "{5AD2CE85825EDA11}UI/layouts/Menus/PlayerList/FactionPlayerCounter.layout";
 	
 	protected const int DEFAULT_SORT_INDEX = 1;
-	
+
 	protected string m_sGameMasterIndicatorName = "GameMasterIndicator";
 	protected ref array<EVotingType> m_aVotingTypes = {};
-	
+
 	protected static ref ScriptInvoker s_OnPlayerListMenu = new ScriptInvoker();
-	
+
 	protected ref Color m_PlayerNameSelfColor = new Color(0.898, 0.541, 0.184, 1);
-	
+
 	/*!
 	Get event called when player list opens or closes.
 	\return Script invoker
@@ -96,31 +105,34 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	{
 		return s_OnPlayerListMenu;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void InitSorting()
 	{
 		if (!m_wRoot)
 			return;
-		
+
 		Widget w = m_wRoot.FindAnyWidget("SortHeader");
 		if (!w)
 			return;
-		
+
 		m_Header = SCR_SortHeaderComponent.Cast(w.FindHandler(SCR_SortHeaderComponent));
 		if (!m_Header)
 			return;
-		
+
 		m_Header.m_OnChanged.Insert(OnHeaderChanged);
-			
+
 		if (m_ScoringSystem)
 			return;
 
-		// Hide K/D/S sorting headers if the re is no scoreboard		
+		SCR_AIGroup.GetOnJoinPrivateGroupConfirm().Insert(SetEntryBackgrounColor);
+		SCR_AIGroup.GetOnJoinPrivateGroupCancel().Insert(SetEntryBackgrounColor);
+
+		// Hide K/D/S sorting headers if the re is no scoreboard
 		ButtonWidget sortKills = ButtonWidget.Cast(w.FindAnyWidget("sortKills"));
 		ButtonWidget sortDeaths = ButtonWidget.Cast(w.FindAnyWidget("sortDeaths"));
 		ButtonWidget sortScore = ButtonWidget.Cast(w.FindAnyWidget("sortScore"));
-		
+
 		if (sortKills)
 			sortKills.SetOpacity(0);
 		if (sortDeaths)
@@ -128,7 +140,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		if (sortScore)
 			sortScore.SetOpacity(0);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnHeaderChanged(SCR_SortHeaderComponent sortHeader)
 	{
@@ -136,8 +148,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		bool sortUp = sortHeader.GetSortOrderAscending();
 		Sort(filterName, sortUp);
 	}
-	
-	
+
+
 	//------------------------------------------------------------------------------------------------
 	protected void Sort(string filterName, bool sortUp)
 	{
@@ -158,132 +170,132 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		else if (filterName == FILTER_BLOCK)
 			SortByBlocked(sortUp);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SortByMuted(bool reverseSort = false)
 	{
 		int direction = 1;
 		if (reverseSort)
 			direction = -1;
-		
-		foreach (SCR_PlayerListEntry entry:  m_aEntries)
+
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			entry.m_wRow.SetZOrder(entry.m_Mute.IsToggled() * direction);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SortByBlocked(bool reverseSort = false)
 	{
 		int direction = 1;
 		if (reverseSort)
 			direction = -1;
-		
-		foreach (SCR_PlayerListEntry entry:  m_aEntries)
+
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			entry.m_wRow.SetZOrder(entry.m_Block.IsToggled() * direction);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SortByName(bool reverseSort = false)
 	{
 		int direction = 1;
 		if (reverseSort)
 			direction = -1;
-		
+
 		array<string> names = {};
-		foreach (SCR_PlayerListEntry entry:  m_aEntries)
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			if (entry.m_wName)
 				names.Insert(entry.m_wName.GetText());
 		}
-		
+
 		names.Sort();
-		
-		foreach (SCR_PlayerListEntry entry:  m_aEntries)
+
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			if (!entry.m_wName)
 				continue;
-			
+
 			string text = entry.m_wName.GetText();
-			
+
 			foreach (int i, string s : names)
 			{
 				if (s != text)
 					continue;
-				
+
 				if (entry.m_wRow)
 					entry.m_wRow.SetZOrder(i * direction);
 				continue;
 			}
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SortByFriends(bool reverseSort = false)
 	{
 		int direction = 1;
 		if (reverseSort)
 			direction = -1;
-		
-		foreach (SCR_PlayerListEntry entry:  m_aEntries)
+
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			entry.m_wRow.SetZOrder(entry.m_Friend.IsToggled() * direction);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SortByFrequency(bool reverseSort = false)
 	{
 		int direction = 1;
 		if (reverseSort)
 			direction = -1;
-		
-		foreach (SCR_PlayerListEntry entry:  m_aEntries)
+
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			entry.m_wRow.SetZOrder(entry.m_iSortFrequency * direction);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SortByKills(bool reverseSort = false)
 	{
 		int direction = 1;
 		if (reverseSort)
 			direction = -1;
-		
-		foreach (SCR_PlayerListEntry entry:  m_aEntries)
+
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			SCR_ScoreInfo score = entry.m_Info;
 			if (score)
 				entry.m_wRow.SetZOrder(score.m_iKills * direction);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SortByDeaths(bool reverseSort = false)
 	{
 		int direction = 1;
 		if (reverseSort)
 			direction = -1;
-		
-		foreach (SCR_PlayerListEntry entry:  m_aEntries)
+
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			SCR_ScoreInfo score = entry.m_Info;
 			if (score)
 				entry.m_wRow.SetZOrder(score.m_iDeaths * direction);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SortByScore(bool reverseSort = false)
 	{
- 		int direction = 1;
+		int direction = 1;
 		if (reverseSort)
 			direction = -1;
-		
-		foreach (SCR_PlayerListEntry entry:  m_aEntries)
+
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			SCR_ScoreInfo info = entry.m_Info;
 			if (info)
@@ -293,69 +305,69 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 					score = m_ScoringSystem.GetPlayerScore(entry.m_iID);
 				else
 					score = 0;
-				
+
 				entry.m_wRow.SetZOrder(score * direction);
 			}
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnBlock()
 	{
 		if (!m_SelectedEntry)
 			return;
-		
+
 		SCR_ButtonBaseComponent block = m_SelectedEntry.m_Block;
 		if (!block)
 			return;
-		
+
 		block.SetToggled(!block.IsToggled());
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnMute()
 	{
 		if (!m_SelectedEntry)
 			return;
-		
+
 		SCR_ButtonBaseComponent mute = m_SelectedEntry.m_Mute; // This is temporary, until mute and block are not the same
 		if (!mute)
 			return;
 		mute.SetToggled(!mute.IsToggled());
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnAddFriend()
 	{
-  		if (!m_SelectedEntry)
+		if (!m_SelectedEntry)
 			return;
-		
+
 		SCR_ButtonBaseComponent friend = m_SelectedEntry.m_Friend;
 		if (!friend)
 			return;
-		
+
 		friend.SetToggled(!friend.IsToggled());
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnTabChanged(SCR_TabViewComponent comp, Widget w, int selectedTab)
 	{
 		if (selectedTab < 0)
 			return;
-		
+
 		Faction faction = null;
 		foreach (Faction playableFaction : m_aFactions)
 		{
 			if (comp.GetShownTabComponent().m_sTabButtonContent == playableFaction.GetFactionName())
 				faction = playableFaction;
 		}
-		
+
 		int lowestZOrder = int.MAX;
-		foreach (SCR_PlayerListEntry entry:  m_aEntries)
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			if (!entry.m_wRow)
 				continue;
-	
+
 			//if the tab is the first one, it's the All tab for now
 			if (comp.GetShownTab() == 0)
 				entry.m_wRow.SetVisible(true);
@@ -364,12 +376,12 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			else
 				entry.m_wRow.SetVisible(false);
 		}
-		
+
 		if (m_Header)
 			m_Header.SetCurrentSortElement(DEFAULT_SORT_INDEX, ESortOrder.ASCENDING, useDefaultSortOrder: true);
 		CloseAllVoting();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnBack()
 	{
@@ -378,28 +390,28 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		else
 			Close();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnFilter()
 	{
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnVoting()
 	{
 		if (!m_SelectedEntry)
 			return;
-		
+
 		SCR_ComboBoxComponent comp = m_SelectedEntry.m_VotingCombo;
 		if (!comp)
 			return;
-		
+
 		if (comp.IsOpened())
 			comp.CloseList();
 		else
 			comp.OpenList();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnInvite()
 	{
@@ -407,40 +419,35 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			return;
 		SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent().InvitePlayer(m_SelectedEntry.m_iID);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnMuteClick(SCR_ButtonBaseComponent comp, bool selected)
-	{
-		PlayerController controller = GetGame().GetPlayerController();
-		if (!controller)
-			return;
-		
+	{		
 		int id = -1;
 		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			if (entry.m_Mute != comp)
 				continue;
-			
+
 			id = entry.m_iID;
 			break;
 		}
-		
-		controller.SetPlayerMutedState(id, selected);
-		
-		if (GetGame().GetPlayerController().GetPlayerMutedState(id) == PermissionState.DISALLOWED)
+
+		m_PlayerController.SetPlayerMutedState(id, selected);
+
+		if (m_PlayerController.GetPlayerMutedState(id) == PermissionState.DISALLOWED)
 			m_Mute.SetLabel(UNMUTE);
 		else
 			m_Mute.SetLabel(MUTE);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnBlockClick(SCR_ButtonBaseComponent comp, bool selected)
 	{
-		PlayerController controller = GetGame().GetPlayerController();
 		SCR_ButtonBaseComponent mute;
-		if (!controller)
+		if (!m_PlayerController)
 			return;
-		
+
 		int id = -1;
 		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
@@ -450,15 +457,15 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			id = entry.m_iID;
 			break;
 		}
-		
-		controller.SetPlayerBlockedState(id, selected);
-		
+
+		m_PlayerController.SetPlayerBlockedState(id, selected);
+
 		// Set button state, set nav button state
-		if (GetGame().GetPlayerController().GetPlayerBlockedState(id) == PermissionState.DISALLOWED)
+		if (m_PlayerController.GetPlayerBlockedState(id) == PermissionState.DISALLOWED)
 			m_Block.SetLabel(UNBLOCK);
 		else
 			m_Block.SetLabel(BLOCK);
-		
+
 		if (mute)
 		{
 			mute.SetToggled(true);
@@ -466,7 +473,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			m_Mute.SetEnabled(!m_Mute.IsEnabled());
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnFriendClick(SCR_ButtonBaseComponent comp, bool selected)
 	{
@@ -476,19 +483,22 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		else
 			m_Friend.SetLabel(ADD_FRIEND);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void OnEntryFocused(Widget w)
-	{
+	{		
+		if (!m_PlayerController)
+			return;
+		
 		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			if (!entry)
 				continue;
-			
+
 			Widget row = entry.m_wRow;
 			if (row != w)
 				continue;
-			
+
 			m_SelectedEntry = entry;
 			break;
 		}
@@ -497,7 +507,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		bool enableBlock;
 		bool enableMute;
 		bool enableVoting = CanOpenVoteList(m_SelectedEntry);
-		
+
 		if (m_SelectedEntry)
 		{
 			if (m_SelectedEntry.m_Friend)
@@ -515,13 +525,13 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			if (m_SelectedEntry.m_VotingCombo)
 				m_SelectedEntry.m_VotingCombo.SetEnabled(enableVoting);
 		}
-		
+
 		if (m_Friend)
 			m_Friend.SetEnabled(enableFriend);
 		if (m_Block)
 		{
 			m_Block.SetEnabled(enableBlock);
-			if (GetGame().GetPlayerController().GetPlayerBlockedState(m_SelectedEntry.m_iID) == PermissionState.DISALLOWED)
+			if (m_PlayerController.GetPlayerBlockedState(m_SelectedEntry.m_iID) == PermissionState.DISALLOWED)
 			{
 				enableMute = false;
 				m_Block.SetLabel(UNBLOCK);
@@ -532,28 +542,28 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		if (m_Mute)
 		{
 			m_Mute.SetEnabled(enableMute);
-			if (GetGame().GetPlayerController().GetPlayerMutedState(m_SelectedEntry.m_iID) == PermissionState.DISALLOWED)
+			if (m_PlayerController.GetPlayerMutedState(m_SelectedEntry.m_iID) == PermissionState.DISALLOWED)
 				m_Mute.SetLabel(UNMUTE);
 			else
 				m_Mute.SetLabel(MUTE);
 		}
 		if (m_Vote)
 			m_Vote.SetEnabled(enableVoting);
-		if (m_Invite && m_playerGroupController)
-			m_Invite.SetEnabled(m_playerGroupController.CanInvitePlayer(m_SelectedEntry.m_iID));
-			
+		if (m_Invite && m_PlayerGroupController)
+			m_Invite.SetEnabled(m_PlayerGroupController.CanInvitePlayer(m_SelectedEntry.m_iID));
+
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void FocusFirstItem()
 	{
 		Widget firstEntry;
 		int lowestZOrder = int.MAX;
-		foreach (SCR_PlayerListEntry entry:  m_aEntries)
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			if (!entry.m_wRow.IsVisible())
 				continue;
-			
+
 			int z = entry.m_wRow.GetZOrder();
 			if (z < lowestZOrder)
 			{
@@ -561,26 +571,26 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				firstEntry = entry.m_wRow;
 			}
 		}
-		
+
 		if (firstEntry)
 			GetGame().GetWorkspace().SetFocusedWidget(firstEntry);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void SetupVoteComboBox(SCR_ComboBoxComponent combo)
 	{
 		if (!m_VotingManager || !m_VoterComponent)
 			return;
-		
+
 		combo.ClearAll();
-		
+
 		int playerID = GetVotingPlayerID(combo);
 		SCR_VotingUIInfo info;
 		for (int i, count = m_VotingManager.GetVotingsAboutPlayer(playerID, m_aVotingTypes, true, true); i < count; i++)
 		{
 			EVotingType votingType = m_aVotingTypes[i];
 			info = m_VotingManager.GetVotingInfo(votingType);
-			
+
 			if (!m_VotingManager.IsVoting(votingType, playerID))
 			{
 				//--- Voting not in progress, start it
@@ -601,27 +611,57 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				}
 			}
 		}
-		if (m_playerGroupController.CanInvitePlayer(playerID))
+
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+
+		SCR_AIGroup group = groupManager.GetPlayerGroup(SCR_PlayerController.GetLocalPlayerId());
+		if (!group)
+			return;
+
+		array<int> requesters = {};
+		group.GetRequesterIDs(requesters);
+
+		if (requesters.Contains(playerID))
+		{
+			combo.AddItem(OPTIONS_COMBO_ACCEPT);
+			combo.AddItem(OPTIONS_COMBO_CANCEL);
+		}
+		else if (m_PlayerGroupController.CanInvitePlayer(playerID))
 			combo.AddItem(INVITE_PLAYER_VOTE);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnComboBoxConfirm(SCR_ComboBoxComponent combo, int index)
 	{
 		if (!m_VoterComponent)
 			return;
-		
+
+		if (combo.GetItemName(index) == OPTIONS_COMBO_ACCEPT)
+		{
+			// accept request for joining to private group
+			m_PlayerGroupController.AcceptJoinPrivateGroup(GetVotingPlayerID(combo), true);
+		}
+
+		if (combo.GetItemName(index) == OPTIONS_COMBO_CANCEL)
+		{
+			// refuse request for joining to private group
+			m_PlayerGroupController.AcceptJoinPrivateGroup(GetVotingPlayerID(combo), false);
+		}
+
 		if (combo.GetItemName(index) == INVITE_PLAYER_VOTE)
 		{
 			SCR_PlayerControllerGroupComponent groupComponent = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 			if (groupComponent)
 				groupComponent.InvitePlayer(GetVotingPlayerID(combo));
 		}
-		else 
+
+		if (ComboboxHasOptions(combo, index))
 		{
 			EVotingType votingType = m_aVotingTypes[index];
 			int playerID = GetVotingPlayerID(combo);
-			
+
 			if (m_VoterComponent.DidVote(votingType, playerID))
 				m_VoterComponent.RemoveVote(votingType, playerID);
 			else
@@ -630,6 +670,17 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		combo.SetCurrentItem(-1, false, false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected bool ComboboxHasOptions(notnull SCR_ComboBoxComponent combo, int index)
+	{
+		switch (combo.GetItemName(index))
+		{
+		    case START_KICK_VOTE: case CANCEL_KICK_VOTE: case OPTIONS_COMBO_VOTE_TO_REMOVE_GM: case OPTIONS_COMBO_VOTE_TO_BECOME_GM: case OPTIONS_COMBO_RELINQUISH_GM: case OPTIONS_COMBO_VOTE_FOR_GM:
+		    return true;
+		}
+		return false;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected int GetVotingPlayerID(SCR_ComboBoxComponent combo)
 	{
@@ -640,27 +691,62 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		}
 		return 0;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetEntryBackgrounColor(Color color)
+	{
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+		
+		SCR_AIGroup group = groupManager.GetPlayerGroup(m_PlayerController.GetPlayerId());
+		if (!group)
+			return;
+
+		array<int> requesters = {};
+		array<string> reqNames = {};
+
+		group.GetRequesterIDs(requesters);
+
+		foreach (int req : requesters)
+		{
+			reqNames.Insert(GetGame().GetPlayerManager().GetPlayerName(req));
+		}
+
+		if (!requesters.Contains(m_SelectedEntry.m_iID))
+			return;
+		
+		Widget w = GetGame().GetWorkspace().FindAnyWidget("Button");
+
+		SCR_ButtonBaseComponent button = SCR_ButtonBaseComponent.Cast(w.FindHandler(SCR_ButtonBaseComponent));
+		if (!button)
+			return;
+
+		ImageWidget background = ImageWidget.Cast(m_SelectedEntry.m_wRow.FindAnyWidget("Background"));
+
+		background.SetColor(color);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	void CreateEntry(int id, SCR_PlayerDelegateEditorComponent editorDelegateManager)
 	{
 		//check for existing entry, return if it exists already
-		foreach (SCR_PlayerListEntry entry : m_aEntries )
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			if (entry.m_iID == id)
 				return;
 		}
-		
+
 		ImageWidget badgeTop, badgeMiddle, badgeBottom;
-		
+
 		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sScoreboardRow, m_wTable);
 		if (!w)
 			return;
-		
+
 		SCR_PlayerListEntry entry = new SCR_PlayerListEntry();
 		entry.m_iID = id;
 		entry.m_wRow = w;
-		
+
 		//--- Initialize voting combo box
 		entry.m_VotingCombo = SCR_ComboBoxComponent.GetComboBoxComponent("VotingCombo", w);
 		if (m_VotingManager)
@@ -668,7 +754,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			entry.m_VotingCombo.m_OnOpened.Insert(SetupVoteComboBox);
 			entry.m_VotingCombo.m_OnChanged.Insert(OnComboBoxConfirm);
 			entry.m_VotingCombo.SetEnabled(CanOpenVoteList(entry));
-				
+
 			entry.m_wVotingNotification = entry.m_wRow.FindAnyWidget("VotingNotification");
 			entry.m_wVotingNotification.SetVisible(IsVotedAbout(entry));
 		}
@@ -676,31 +762,33 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		{
 			entry.m_VotingCombo.SetVisible(false);
 		}
-		
+
 		SCR_ButtonBaseComponent handler = SCR_ButtonBaseComponent.Cast(w.FindHandler(SCR_ButtonBaseComponent));
 		if (handler)
 			handler.m_OnFocus.Insert(OnEntryFocused);
-		
+
 		if (m_aAllPlayersInfo)
 		{
 			foreach (int playerId, SCR_ScoreInfo info : m_aAllPlayersInfo)
 			{
-				if (!info || playerId  != id)
+				if (!info || playerId != id)
 					continue;
-				
+
 				entry.m_Info = info;
 				break;
 			}
 		}
-		
+
 		// Find faction
-		if (m_RespawnSystem)
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
 		{
-			Faction faction = m_RespawnSystem.GetPlayerFaction(entry.m_iID);
+			Faction faction = factionManager.GetPlayerFaction(entry.m_iID);
 			entry.m_Faction = faction;
 		}
-		
+
 		Widget factionImage = w.FindAnyWidget("FactionImage");
+
 		if (factionImage)
 		{
 			if (entry.m_Faction)
@@ -708,26 +796,28 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			else
 				factionImage.SetVisible(false);
 		}
+
 		entry.m_wName = TextWidget.Cast(w.FindAnyWidget("PlayerName"));
+
 		if (entry.m_wName)
 		{
 			entry.m_wName.SetText(GetGame().GetPlayerManager().GetPlayerName(id));
-			if (entry.m_iID == GetGame().GetPlayerController().GetPlayerId())
+			if (entry.m_iID == m_PlayerController.GetPlayerId())
 				entry.m_wName.SetColor(m_PlayerNameSelfColor);
 		}
 
 		if (editorDelegateManager)
 		{
 			SCR_EditablePlayerDelegateComponent playerEditorDelegate = editorDelegateManager.GetDelegate(id);
-			
+
 			if (playerEditorDelegate)
 			{
 				playerEditorDelegate.GetOnLimitedEditorChanged().Insert(OnEditorRightsChanged);
 				UpdateGameMasterIndicator(entry, playerEditorDelegate.HasLimitedEditor());
 			}
 		}
-		
-		entry.m_wFreq = TextWidget.Cast(w.FindAnyWidget("Freq"));		
+
+		entry.m_wFreq = TextWidget.Cast(w.FindAnyWidget("Freq"));
 		entry.m_wKills = TextWidget.Cast(w.FindAnyWidget("Kills"));
 		entry.m_wDeaths = TextWidget.Cast(w.FindAnyWidget("Deaths"));
 		entry.m_wScore = TextWidget.Cast(w.FindAnyWidget("Score"));
@@ -737,19 +827,19 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				entry.m_wKills.SetText(entry.m_Info.m_iKills.ToString());
 			if (entry.m_wDeaths)
 				entry.m_wDeaths.SetText(entry.m_Info.m_iDeaths.ToString());
-			if (entry.m_wScore) 
+			if (entry.m_wScore)
 			{
 				// Use modifiers from scoring system where applicable!!!
 				int score;
 				if (m_ScoringSystem)
 					score = m_ScoringSystem.GetPlayerScore(id);
-				
+
 				entry.m_wScore.SetText(score.ToString());
 			}
 		}
 		else
 		{
-			
+
 			if (entry.m_wKills)
 				entry.m_wKills.SetText("");
 			if (entry.m_wDeaths)
@@ -766,13 +856,24 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				entry.m_wScore.GetParent().GetParent().SetVisible(false);
 			*/
 		}
-		
+
 		entry.m_Mute = SCR_ButtonBaseComponent.GetButtonBase("Mute", w);
 		entry.m_Friend = SCR_ButtonBaseComponent.GetButtonBase("Friend", w);
 		entry.m_Block = SCR_ButtonBaseComponent.GetButtonBase("Block", w);
 		entry.m_wTaskIcon = entry.m_wRow.FindAnyWidget("TaskIcon");
 		entry.m_wLoadoutIcon = ImageWidget.Cast(entry.m_wRow.FindAnyWidget("LoadoutIcon"));
 		entry.m_wPlatformIcon = ImageWidget.Cast(entry.m_wRow.FindAnyWidget("PlatformIcon"));
+
+		ImageWidget background = ImageWidget.Cast(w.FindAnyWidget("Background"));
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+
+		SCR_AIGroup group = groupManager.GetPlayerGroup(m_PlayerController.GetPlayerId());
+
+		if (group && group.HasRequesterID(id))
+			background.SetColor(m_PlayerNameSelfColor);		// Saphyr TODO: temporary before definition from art dept.
+
 		if (entry.m_wTaskIcon && GetTaskManager())
 		{
 			SCR_BaseTaskExecutor taskExecutor = SCR_BaseTaskExecutor.FindTaskExecutorByID(entry.m_iID);
@@ -780,23 +881,36 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			{
 				entry.m_wTaskIcon.SetColor(entry.m_Faction.GetFactionColor());
 			}
-			else 
+			else
 			{
 				entry.m_wTaskIcon.SetOpacity(0);
 			}
 		}
+
+
+		Faction playerFaction;		
+		Faction entryPlayerFaction;
+		if (factionManager)
+		{
+			playerFaction = factionManager.GetPlayerFaction(m_PlayerController.GetPlayerId());	
+			entryPlayerFaction = factionManager.GetPlayerFaction(entry.m_iID);
+		}
+		 
 		
+		SCR_BasePlayerLoadout playerLoadout;
+		SCR_LoadoutManager loadoutManager = GetGame().GetLoadoutManager();
+		if (loadoutManager)
+			playerLoadout = loadoutManager.GetPlayerLoadout(entry.m_iID);		 
+
+				
 		
-		Faction playerFaction = m_RespawnSystem.GetPlayerFaction(GetGame().GetPlayerController().GetPlayerId());
-		SCR_BasePlayerLoadout playerLoadout = m_RespawnSystem.GetPlayerLoadout(entry.m_iID);
-		
-		if (entry.m_wLoadoutIcon && (playerFaction != m_RespawnSystem.GetPlayerFaction(entry.m_iID)))
+		if (entry.m_wLoadoutIcon && (playerFaction != entryPlayerFaction))
 			entry.m_wLoadoutIcon.SetVisible(false);
-		
+
 		//enable GM to see everyones loadout icon, temporary solution until we get improved ways to say who's GM
 		if (SCR_EditorManagerEntity.IsOpenedInstance())
 			entry.m_wLoadoutIcon.SetVisible(true);
-		
+
 		if (entry.m_wLoadoutIcon && playerLoadout && entry.m_wLoadoutIcon.IsVisible())
 		{
 			Resource res = Resource.Load(playerLoadout.GetLoadoutResource());
@@ -807,7 +921,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			SCR_EditableEntityUIInfo info = SCR_EditableEntityUIInfo.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
 			info.SetIconTo(entry.m_wLoadoutIcon);
 		}
-		
+
 		if (entry.m_wPlatformIcon)
 		{
 			PlayerManager playerManager = GetGame().GetPlayerManager();
@@ -820,13 +934,13 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		{
 			Print("No platform icon detected in players list. This is against MS Xbox Live rules.", LogLevel.WARNING);
 		}
-		
-		
+
+
 		badgeTop = ImageWidget.Cast(entry.m_wRow.FindAnyWidget("BadgeTop"));
 		badgeMiddle = ImageWidget.Cast(entry.m_wRow.FindAnyWidget("BadgeMiddle"));
 		badgeBottom = ImageWidget.Cast(entry.m_wRow.FindAnyWidget("BadgeBottom"));
 		Color factionColor;
-		
+
 		if (badgeTop && badgeMiddle && badgeBottom && entry.m_Faction)
 		{
 			factionColor = entry.m_Faction.GetFactionColor();
@@ -834,78 +948,77 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			badgeMiddle.SetColor(factionColor);
 			badgeBottom.SetColor(factionColor);
 		}
-		
+
 		// If this is player, set all buttons invisible
 		if (IsLocalPlayer(entry.m_iID))
 		{
 			if (entry.m_Friend)
 				entry.m_Friend.SetEnabled(false);
-			
+
 			if (entry.m_Mute)
 				entry.m_Mute.SetEnabled(false);
-			
+
 			if (entry.m_Block)
 				entry.m_Block.SetEnabled(false);
 		}
 		else
 		{
-			PlayerController controller = GetGame().GetPlayerController();
 			if (entry.m_Mute)
 			{
 				// Find out if the person is aleady muted
 				//entry.m_Mute.SetEnabled(false);
-				
-				if (controller)
+
+				if (m_PlayerController)
 				{
 					entry.m_Mute.SetEnabled(true);
-					if (controller.GetPlayerMutedState(entry.m_iID) == PermissionState.DISALLOWED)
+					if (m_PlayerController.GetPlayerMutedState(entry.m_iID) == PermissionState.DISALLOWED)
 						entry.m_Mute.SetToggled(true);
 
-					else if (controller.GetPlayerMutedState(entry.m_iID) == PermissionState.ALLOWED)
-					
-						entry.m_Mute.SetToggled(false);						
-						
-					if (controller.GetPlayerMutedState(entry.m_iID) ==  PermissionState.DISABLED)
+					else if (m_PlayerController.GetPlayerMutedState(entry.m_iID) == PermissionState.ALLOWED)
+
+						entry.m_Mute.SetToggled(false);
+
+					if (m_PlayerController.GetPlayerMutedState(entry.m_iID) == PermissionState.DISABLED)
 							entry.m_Mute.SetEnabled(false);
-						
+
 				}
 				entry.m_Mute.m_OnToggled.Insert(OnMuteClick);
 			}
-			
+
 			if (entry.m_Friend)
 			{
 				entry.m_Friend.SetEnabled(false);
 				entry.m_Friend.m_OnToggled.Insert(OnFriendClick);
 			}
-			
+
 			if (entry.m_Block)
 			{
-				if (controller)
+				if (m_PlayerController)
 				{
 					entry.m_Block.SetEnabled(true);
-					if (controller.GetPlayerBlockedState(entry.m_iID) == PermissionState.DISALLOWED)
+					if (m_PlayerController.GetPlayerBlockedState(entry.m_iID) == PermissionState.DISALLOWED)
 						entry.m_Block.SetToggled(true);
 
-					else if (controller.GetPlayerBlockedState(entry.m_iID) == PermissionState.ALLOWED)
-					
-						entry.m_Block.SetToggled(false);						
-						
-					if (controller.GetPlayerBlockedState(entry.m_iID) ==  PermissionState.DISABLED)
+					else if (m_PlayerController.GetPlayerBlockedState(entry.m_iID) == PermissionState.ALLOWED)
+
+						entry.m_Block.SetToggled(false);
+
+					if (m_PlayerController.GetPlayerBlockedState(entry.m_iID) == PermissionState.DISABLED)
 							entry.m_Block.SetEnabled(false);
-						
+
 				}
-	
+
 				entry.m_Block.m_OnToggled.Insert(OnBlockClick);
 			}
 		}
 
 		m_aEntries.Insert(entry);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnEditorRightsChanged(int playerID, bool newLimited)
 	{
-		foreach (SCR_PlayerListEntry entry: m_aEntries)
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			if (entry.m_iID == playerID)
 			{
@@ -914,7 +1027,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			}
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateGameMasterIndicator(SCR_PlayerListEntry entry, bool editorIslimited)
 	{
@@ -922,7 +1035,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		if (gameMasterIndicator)
 			gameMasterIndicator.SetVisible(!editorIslimited);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	// IsLocalPlayer would be better naming
 	protected bool IsLocalPlayer(int id)
@@ -932,36 +1045,36 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 		return SCR_PlayerController.GetLocalPlayerId() == id;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void RemoveEntry(notnull SCR_PlayerListEntry entry)
 	{
 		if (entry.m_wRow)
 			entry.m_wRow.RemoveFromHierarchy();
-		
+
 		SCR_PlayerDelegateEditorComponent editorDelegateManager = SCR_PlayerDelegateEditorComponent.Cast(SCR_PlayerDelegateEditorComponent.GetInstance(SCR_PlayerDelegateEditorComponent));
-		
+
 		//Remove the subscription to player right changed
 		if (editorDelegateManager)
 		{
 			SCR_EditablePlayerDelegateComponent playerEditorDelegate = editorDelegateManager.GetDelegate(entry.m_iID);
-			
+
 			if (playerEditorDelegate)
 			{
 				playerEditorDelegate.GetOnLimitedEditorChanged().Remove(OnEditorRightsChanged);
 			}
 		}
-		
+
 		m_aEntries.RemoveItem(entry);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OpenPauseMenu()
 	{
 		GetGame().OpenPauseMenu();
 		Close();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnVotingChanged(EVotingType type, int value, int playerID)
 	{
@@ -978,7 +1091,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			entry.m_VotingCombo.SetEnabled(CanOpenVoteList(entry));
 			entry.m_wVotingNotification.SetVisible(IsVotedAbout(entry));
 		}
-		
+
 		if (m_SelectedEntry)
 			m_Vote.SetEnabled(CanOpenVoteList(m_SelectedEntry));
 	}
@@ -986,27 +1099,26 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	{
 		if (!entry || !m_VotingManager)
 			return false;
-		
+
 		array<EVotingType> votingTypes = {};
 		int count = m_VotingManager.GetVotingsAboutPlayer(entry.m_iID, votingTypes);
 		return count > 0;
 	}
+	
 	protected bool CanOpenVoteList(SCR_PlayerListEntry entry)
 	{
 		if (!entry || !m_VotingManager)
 			return false;
-		
-		array<EVotingType> votingTypes = {};
-		int count = m_VotingManager.GetVotingsAboutPlayer(entry.m_iID, votingTypes, true, true);
-		return count > 0;
+
+		return true;
 	}
 	//------------------------------------------------------------------------------------------------
-	
-	
+
+
 	private void OnPlayerAdded(int playerId)
 	{
 		UpdatePlayerList(true, playerId);
-	}	
+	}
 	private void OnPlayerRemoved(int playerId)
 	{
 		UpdatePlayerList(false, playerId);
@@ -1014,7 +1126,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	private void OnScoreChanged()
 	{
 		UpdateScore();
-	}	
+	}
 	private void OnPlayerScoreChanged(int playerId, SCR_ScoreInfo scoreInfo)
 	{
 		OnScoreChanged();
@@ -1023,35 +1135,39 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	{
 		OnScoreChanged();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen() 
+	override void OnMenuOpen()
 	{
 		super.OnMenuOpen();
 		m_wRoot = GetRootWidget();
-		
+
 		//if (!m_ChatPanel)
-		//	m_ChatPanel = SCR_ChatPanel.Cast(m_wRoot.FindAnyWidget("ChatPanel").FindHandler(SCR_ChatPanel));
-		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_HUDManagerComponent));
-		hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~EHudLayers.HIGH);
+		//	m_ChatPanel = SCR_ChatPanel.Cast(m_wRoot.FindAnyWidget("ChatPanel").FindHandler(SCR_ChatPanel));		
 		
+		m_PlayerController = GetGame().GetPlayerController();
+		
+		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(m_PlayerController.FindComponent(SCR_HUDManagerComponent));
+		hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~EHudLayers.HIGH);
+
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (!gameMode)
 			return;
-		m_playerGroupController =  SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		m_PlayerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		m_PlayerController = GetGame().GetPlayerController();
 		m_VoterComponent = SCR_VoterComponent.GetInstance();
 		m_VotingManager = SCR_VotingManagerComponent.GetInstance();
-		
+
 		if (m_VotingManager)
 		{
 			m_VotingManager.GetOnVotingEnd().Insert(OnVotingChanged);
 			m_VotingManager.GetOnVotingStart().Insert(GetOnVotingStart);
 			m_VotingManager.GetOnRemoveVote().Insert(OnVotingChanged);
 		}
-		
+
 		//gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
 		gameMode.GetOnPlayerRegistered().Insert(OnPlayerConnected);
-		
+
 		m_ScoringSystem = gameMode.GetScoringSystemComponent();
 		if (m_ScoringSystem)
 		{
@@ -1059,18 +1175,16 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			m_ScoringSystem.GetOnPlayerRemoved().Insert(OnPlayerRemoved);
 			m_ScoringSystem.GetOnPlayerScoreChanged().Insert(OnPlayerScoreChanged);
 			m_ScoringSystem.GetOnFactionScoreChanged().Insert(OnFactionScoreChanged);
-			
+
 			array<int> players = {};
 			PlayerManager playerManager = GetGame().GetPlayerManager();
 			playerManager.GetPlayers(players);
-			
+
 			m_aAllPlayersInfo.Clear();
 			foreach (int playerId : players)
 				m_aAllPlayersInfo.Insert(playerId, m_ScoringSystem.GetPlayerScoreInfo(playerId));
 		}
-		
-		m_RespawnSystem = SCR_RespawnSystemComponent.Cast(gameMode.FindComponent(RespawnSystemComponent));
-		
+
 		FactionManager fm = GetGame().GetFactionManager();
 		if (fm)
 		{
@@ -1078,21 +1192,21 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		}
 
 		m_wTable = m_wRoot.FindAnyWidget("Table");
-		
+
 		// Create navigation buttons
 		Widget footer = m_wRoot.FindAnyWidget("FooterLeft");
 		Widget footerBack = m_wRoot.FindAnyWidget("Footer");
 		SCR_NavigationButtonComponent back = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Back", footerBack);
 		if (back)
 			back.m_OnActivated.Insert(OnBack);
-		
+
 		m_Friend = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Friend", footer);
 		if (m_Friend)
 		{
 			m_Friend.SetEnabled(false);
 			m_Friend.m_OnActivated.Insert(OnAddFriend);
 		}
-		
+
 		m_Block = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Block", footer);
 		if (m_Block)
 		{
@@ -1110,7 +1224,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		SCR_NavigationButtonComponent filter = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Filter", footer);
 		if (filter)
 			filter.m_OnActivated.Insert(OnFilter);
-		
+
 		m_Vote = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Vote", footer);
 		if (m_Vote)
 		{
@@ -1119,16 +1233,16 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			else
 				m_Vote.SetVisible(false,false);
 		}
-		
+
 		m_Invite = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Invite", footer);
 		if (m_Invite)
 		{
-			if (m_playerGroupController)
+			if (m_PlayerGroupController)
 				m_Invite.m_OnActivated.Insert(OnInvite);
-			else 
+			else
 				m_Invite.SetVisible(false, false);
-		}		
-		
+		}
+
 
 		// Create table
 		if (!m_wTable || m_sScoreboardRow == string.Empty)
@@ -1136,26 +1250,26 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 		//Get editor Delegate manager to check if has editor rights
 		SCR_PlayerDelegateEditorComponent editorDelegateManager = SCR_PlayerDelegateEditorComponent.Cast(SCR_PlayerDelegateEditorComponent.GetInstance(SCR_PlayerDelegateEditorComponent));
-		
-		
+
+
 		array<int> ids = {};
-		GetGame().GetPlayerManager().GetPlayers(ids);		
-	
+		GetGame().GetPlayerManager().GetPlayers(ids);
+
 			foreach (int id : ids)
 			{
 				CreateEntry(id, editorDelegateManager);
 			}
-		
+
 		InitSorting();
-		
+
 		Widget tab = m_wRoot.FindAnyWidget("TabViewRoot0");
 		if (!tab)
 			return;
-		
+
 		SCR_TabViewComponent tabView = SCR_TabViewComponent.Cast(tab.FindHandler(SCR_TabViewComponent));
 		if (!tabView)
 			return;
-		
+
 		tabView.m_OnChanged.Insert(OnTabChanged);
 
 		// Create new tabs
@@ -1164,92 +1278,86 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		{
 			if (!faction)
 				continue;
-			
+
 			scrFaction = SCR_Faction.Cast(faction);
 			if (scrFaction && !scrFaction.IsPlayable())
 				continue; //--- ToDo: Refresh dynamically when a new faction is added/removed
-			
+
 			string name = faction.GetFactionName();
 			tabView.AddTab(ResourceName.Empty,name);
 			
 			AddFactionPlayerCounter(faction);
 		}
-		
+
 		//handle groups tab
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupsManager || !SCR_RespawnSystemComponent.GetInstance().GetPlayerFaction(SCR_PlayerController.GetLocalPlayerId()) )
+		Faction playerFaction;
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+			playerFaction = factionManager.GetLocalPlayerFaction();
+		
+		
+		if (!groupsManager || !playerFaction)
 			tabView.SetTabVisible(EPlayerListTab.GROUPS, false);
 		UpdateFrequencies();
-		
+
 		s_OnPlayerListMenu.Invoke(true);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
 	{
 		m_fTimeSkip = m_fTimeSkip + tDelta;
-		
+
 		if (m_fTimeSkip >= TIME_STEP)
 		{
 			DeleteDisconnectedEntries();
 			m_fTimeSkip = 0.0;
 		}
-		
+
 		GetGame().GetInputManager().ActivateContext("PlayerMenuContext");
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuFocusGained() 
+	override void OnMenuFocusGained()
 	{
 		GetGame().GetInputManager().AddActionListener("ShowScoreboard",	EActionTrigger.DOWN, Close);
-		GetGame().GetInputManager().AddActionListener("MenuOpen", EActionTrigger.DOWN, OpenPauseMenu);
-#ifdef WORKBENCH
-		GetGame().GetInputManager().AddActionListener("MenuOpenWB", EActionTrigger.DOWN, OpenPauseMenu);
-#endif
-		
+
 		if (m_Header)
 			m_Header.SetCurrentSortElement(DEFAULT_SORT_INDEX, ESortOrder.ASCENDING, useDefaultSortOrder: true);
-		
+
 		FocusFirstItem();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuFocusLost()
 	{
 		GetGame().GetInputManager().RemoveActionListener("ShowScoreboard",	EActionTrigger.DOWN, Close);
-		GetGame().GetInputManager().RemoveActionListener("MenuOpen", EActionTrigger.DOWN, OpenPauseMenu);
-#ifdef WORKBENCH
-		GetGame().GetInputManager().RemoveActionListener("MenuOpenWB", EActionTrigger.DOWN, OpenPauseMenu);
-#endif
-		
+
 		//--- Close when some other menu is opened on top
 		Close();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuClose() 
+	override void OnMenuClose()
 	{
 		super.OnMenuClose();
 
-		PlayerController controller = GetGame().GetPlayerController();
-		if (!controller)
-			return;
-		
-		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(controller.FindComponent(SCR_HUDManagerComponent));
+		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(m_PlayerController.FindComponent(SCR_HUDManagerComponent));
 		if (hudManager)
 			hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() | EHudLayers.HIGH);
-		
+
 		SCR_PlayerDelegateEditorComponent editorDelegateManager = SCR_PlayerDelegateEditorComponent.Cast(SCR_PlayerDelegateEditorComponent.GetInstance(SCR_PlayerDelegateEditorComponent));
-		
+
 		//Remove the subscriptions to player right changed
 		if (editorDelegateManager)
 		{
-			foreach (SCR_PlayerListEntry entry: m_aEntries)
+			foreach (SCR_PlayerListEntry entry : m_aEntries)
 			{
 				if (entry)
 				{
 					SCR_EditablePlayerDelegateComponent playerEditorDelegate = editorDelegateManager.GetDelegate(entry.m_iID);
-					
+
 					if (playerEditorDelegate)
 					{
 						playerEditorDelegate.GetOnLimitedEditorChanged().Remove(OnEditorRightsChanged);
@@ -1257,10 +1365,10 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				}
 			}
 		}
-		
+
 		m_aAllPlayersInfo.Clear();
 		m_aFactions.Clear();
-		
+
 		if (m_ScoringSystem)
 		{
 			m_ScoringSystem.GetOnPlayerAdded().Remove(OnPlayerAdded);
@@ -1268,7 +1376,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			m_ScoringSystem.GetOnPlayerScoreChanged().Remove(OnPlayerScoreChanged);
 			m_ScoringSystem.GetOnFactionScoreChanged().Remove(OnFactionScoreChanged);
 		}
-		
+
 		s_OnPlayerListMenu.Invoke(false);
 	}
 
@@ -1278,7 +1386,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	{
 		GetGame().GetCallqueue().CallLater(UpdatePlayerList, 1000, false, true, id);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void UpdatePlayerList(bool addPlayer, int id)
 	{
@@ -1286,11 +1394,11 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		{
 			SCR_PlayerDelegateEditorComponent editorDelegateManager = SCR_PlayerDelegateEditorComponent.Cast(SCR_PlayerDelegateEditorComponent.GetInstance(SCR_PlayerDelegateEditorComponent));
 			CreateEntry(id, editorDelegateManager);
-			
+
 			// Get current sort method and re-apply sorting
 			if (!m_Header)
 				return;
-			
+
 			OnHeaderChanged(m_Header);
 		}
 		else
@@ -1301,22 +1409,22 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			{
 				if (entry.m_iID != id)
 					continue;
-				
+
 				playerEntry = entry;
 				break;
 			}
-			
+
 			if (!playerEntry)
 				return;
-			
+
 			playerEntry.m_wRow.RemoveFromHierarchy();
 			m_aEntries.RemoveItem(playerEntry);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void UpdateFrequencies()
-	{		
+	{
 		SCR_GadgetManagerComponent gadgetManager;
 		IEntity localPlayer = SCR_PlayerController.GetLocalMainEntity();
 		Faction localFaction;
@@ -1325,12 +1433,12 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		{
 			gadgetManager = SCR_GadgetManagerComponent.Cast(localPlayer.FindComponent(SCR_GadgetManagerComponent));
 			SCR_Global.GetFrequencies(gadgetManager, localFrequencies);
-			
+
 			FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(localPlayer.FindComponent(FactionAffiliationComponent));
 			if (factionAffiliation)
 				localFaction = factionAffiliation.GetAffiliatedFaction();
 		}
-		
+
 		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			if (entry.m_Faction == localFaction)
@@ -1355,27 +1463,27 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		}
 		GetGame().GetCallqueue().CallLater(UpdateFrequencies, 1000, false);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void UpdateScore()
-	{		
+	{
 		if (!m_aAllPlayersInfo || m_aAllPlayersInfo.Count() == 0 || !m_ScoringSystem)
 			return;
 
 		foreach (SCR_PlayerListEntry entry : m_aEntries)
-		{			
+		{
 			foreach (int playerId, SCR_ScoreInfo info : m_aAllPlayersInfo)
 			{
 				if (!info || playerId != entry.m_iID)
 					continue;
-				
+
 				entry.m_Info = info;
 				break;
 			}
 
 			if (!entry.m_Info)
 				continue;
-			
+
 			if (entry.m_wKills)
 				entry.m_wKills.SetText(entry.m_Info.m_iKills.ToString());
 			if (entry.m_wDeaths)
@@ -1386,32 +1494,32 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				int score;
 				if (m_ScoringSystem)
 					score = m_ScoringSystem.GetPlayerScore(entry.m_iID);
-				
+
 				entry.m_wScore.SetText(score.ToString());
 			}
 		}
-		
+
 		// Get current sort method and re-apply sorting
 		if (!m_Header)
 			return;
-		
+
 		OnHeaderChanged(m_Header);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void CloseAllVoting()
 	{
 		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
-			if( entry.m_VotingCombo && entry.m_VotingCombo.IsOpened())
+			if (entry.m_VotingCombo && entry.m_VotingCombo.IsOpened())
 				entry.m_VotingCombo.CloseList();
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void DeleteDisconnectedEntries()
 	{
-		for (int i = m_aEntries.Count() - 1; i >= 0; i-- )
+		for (int i = m_aEntries.Count() - 1; i >= 0; i--)
 		{
 			if (GetGame().GetPlayerManager().IsPlayerConnected(m_aEntries[i].m_iID))
 				continue;

@@ -27,6 +27,8 @@ class CharacterAnimationComponent: BaseAnimPhysComponent
 	*/
 	proto external bool GetCollisionMinMax(ECharacterStance whichStance, out vector outMin, out vector outMax);
 	proto external void GetMovementState(out CharacterMovementState movementState);
+	//! heading component - AnimPhysAgent component
+	proto external CharacterHeadingAnimComponent GetHeadingComponent();
 	proto external bool IsWeaponADSTag();
 	proto external bool IsPrimaryTag(AnimationTagID tagID);
 	proto external bool IsSecondaryTag(AnimationTagID tagID);

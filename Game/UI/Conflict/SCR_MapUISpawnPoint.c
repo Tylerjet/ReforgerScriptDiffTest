@@ -6,47 +6,35 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 	protected string m_sSpawnPoint;
 
 	protected SCR_SpawnPoint m_SpawnPoint;
+	protected RplId m_SpawnPointId;
 	protected string m_sFactionKey;
-	protected SCR_MapCampaignUI m_Parent;
 	protected TextWidget m_wSpawnPointName;
 	protected Widget m_wImageOverlay;
 	protected OverlayWidget m_wSymbolOverlay;
 	protected SCR_MilitarySymbolUIComponent m_MilitarySymbolComponent;
 	protected ButtonWidget m_wButton;
 	protected SizeLayoutWidget m_wSizeLayout;
-	
+
 	//------------------------------------------------------------------------------
-	override void SetParent(SCR_MapCampaignUI parent)
+	void Init(notnull SCR_SpawnPoint spawnPoint)
 	{
-		m_Parent = parent;
+		m_SpawnPoint = spawnPoint;
+		m_SpawnPointId = spawnPoint.GetRplId();
+		m_sFactionKey = spawnPoint.GetFactionKey();
+		// TODO@AS: Api?
+		m_wSpawnPointName.SetText(spawnPoint.GetSpawnPointName());
+		UpdateIcon();
 	}
 
-	//------------------------------------------------------------------------------
-	void Init(SCR_SpawnPoint sp)
+	override vector GetPos()
 	{
-		m_SpawnPoint = sp;
-		m_sFactionKey = sp.GetFactionKey();
-		UpdateIcon();
-		SCR_UIInfo info = sp.GetInfo();
-		if (info)
-			info.SetNameTo(m_wSpawnPointName);
-
-		SCR_MapDescriptorComponent descr = SCR_MapDescriptorComponent.Cast(m_SpawnPoint.FindComponent(SCR_MapDescriptorComponent));
-		
-		if(!descr)
-			return;
-		
-		m_MapItem = descr.Item();
-		MapDescriptorProps props = m_MapItem.GetProps();
-		props.SetIconVisible(false);
-		props.SetTextVisible(false);
-		props.Activate(true);
+		return m_SpawnPoint.GetOrigin();
 	}
 
 	//------------------------------------------------------------------------------
 	void UpdateIcon()
 	{
-		SCR_MilitarySymbol symbol = new SCR_MilitarySymbol;
+		SCR_MilitarySymbol symbol = new SCR_MilitarySymbol();
 		
 		SCR_GroupIdentityCore core = SCR_GroupIdentityCore.Cast(SCR_GroupIdentityCore.GetInstance(SCR_GroupIdentityCore));
 		if (!core)
@@ -106,8 +94,9 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 		m_wSymbolOverlay.SetColor(GetColorForFaction(m_sFactionKey));
 		if (m_wGradient)
 			m_wGradient.SetColor(GetColorForFaction(m_sFactionKey));
-				
-		m_MilitarySymbolComponent.Update(symbol);
+
+		if (faction)
+			m_MilitarySymbolComponent.Update(symbol);
 	}
 
 	//------------------------------------------------------------------------------
@@ -118,8 +107,6 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 		m_wImageOverlay = w.FindAnyWidget("IconOverlay");
 		m_wSizeLayout = SizeLayoutWidget.Cast(w.FindAnyWidget("SizeLayout"));
 		m_wSpawnPointName = TextWidget.Cast(w.FindAnyWidget("Name"));
-		SCR_SelectSpawnPointSubMenu.Event_OnSpawnPointChanged.Insert(OnSelected);
-		SCR_SpawnPoint.Event_SpawnPointRemoved.Insert(Remove);
 		m_wSymbolOverlay = OverlayWidget.Cast(m_wImageOverlay.FindWidget("Symbol"));
 		if (!m_wSymbolOverlay)
 			return;
@@ -132,29 +119,7 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 	}
 
 	//------------------------------------------------------------------------------
-	override void HandlerDeattached(Widget w)
-	{
-		super.HandlerDeattached(w);
-
-		SCR_SelectSpawnPointSubMenu.Event_OnSpawnPointChanged.Remove(OnSelected);
-		SCR_SpawnPoint.Event_SpawnPointRemoved.Remove(Remove);
-	}
-
-	//------------------------------------------------------------------------------
-	void Remove(SCR_SpawnPoint sp)
-	{
-		if (sp == m_SpawnPoint)
-			m_Parent.RemoveIcon(this);
-	}
-	
-	//------------------------------------------------------------------------------
-	SCR_SpawnPoint GetSpawnPoint()
-	{
-		return m_SpawnPoint;
-	}
-
-	//------------------------------------------------------------------------------
-	override void SelectIcon()
+	override void SelectIcon(bool invoke = true)
 	{
 		if (!m_wSelectImg)
 			return;
@@ -168,32 +133,32 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 		if (m_wGradient)
 			m_wGradient.SetVisible(true);
 
-		if (m_bIsSelected)
-			Event_OnPointSelected.Invoke(m_SpawnPoint);
+		if (m_bIsSelected && invoke)
+			m_Parent.OnSpawnPointSelected(m_SpawnPointId);
 	}
 
-	//------------------------------------------------------------------------------
-	protected void OnSelected(SCR_SpawnPoint sp)
-	{
-		if (!sp)
-			return;
-		if (sp == m_SpawnPoint)
-		{
-			AnimExpand();
-			m_wRoot.SetZOrder(1);
-			m_wSelectImg.SetVisible(true);
-			if (m_wGradient)
-				m_wGradient.SetVisible(true);
-		}
-		else
-		{
-			AnimCollapse();
-			m_wRoot.SetZOrder(0);
-			m_wSelectImg.SetVisible(false);
-			if (m_wGradient)
-				m_wGradient.SetVisible(false);
-		}
-	}
+	// todo@lk: plug this somewhere later
+	// protected void OnSelected(SCR_SpawnPoint sp)
+	// {
+	// 	if (!sp)
+	// 		return;
+	// 	if (sp == m_SpawnPoint)
+	// 	{
+	// 		AnimExpand();
+	// 		m_wRoot.SetZOrder(1);
+	// 		m_wSelectImg.SetVisible(true);
+	// 		if (m_wGradient)
+	// 			m_wGradient.SetVisible(true);
+	// 	}
+	// 	else
+	// 	{
+	// 		AnimCollapse();
+	// 		m_wRoot.SetZOrder(0);
+	// 		m_wSelectImg.SetVisible(false);
+	// 		if (m_wGradient)
+	// 			m_wGradient.SetVisible(false);
+	// 	}
+	// }
 
 	//------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
@@ -231,5 +196,10 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 			m_wButton.SetEnabled(false);
 		
 		return false;
+	}
+
+	override RplId GetSpawnPointId()
+	{
+		return m_SpawnPointId;
 	}
 };

@@ -6,29 +6,31 @@ class SCR_VehicleCameraDataComponentClass: ScriptComponentClass
 
 class SCR_VehicleCameraDataComponent : ScriptComponent
 {
-	[Attribute("1", UIWidgets.EditBox, "Height the camera should stay above the vehicle's bounding box center (in m)")]
+	[Attribute("1", UIWidgets.EditBox, "Height the camera should stay above the vehicle's bounding box center\n[m]")]
 	float m_fHeight;
-	[Attribute("1", UIWidgets.EditBox, "Speed-based view bobbing multiplier")]
+	[Attribute("1", UIWidgets.EditBox, "Speed-based view bobbing multiplier\n[x * 100%]")]
 	float m_fBobScale;
-	[Attribute("1", UIWidgets.EditBox, "Acceleration-based view shaking multiplier")]
+	[Attribute("1", UIWidgets.EditBox, "Acceleration-based view shaking multiplier\n[x * 100%]")]
 	float m_fShakeScale;
-	[Attribute("150", UIWidgets.EditBox, "Maximum speed at which camera distance and FOV adjustments are at their maximum (in km/h)")]
+	[Attribute("150", UIWidgets.EditBox, "Maximum speed at which camera distance and FOV adjustments are at their maximum\n[km/h]")]
 	float m_fSpeedMax;
-	[Attribute("8", UIWidgets.EditBox, "Maximum distance the camera should keep from the vehicle (in m)")]
+	[Attribute("8", UIWidgets.EditBox, "Maximum distance the camera should keep from the vehicle\n[m]")]
 	float m_fDist_Max;
-	[Attribute("3", UIWidgets.EditBox, "Minimum distance the camera should keep from the vehicle (in m)")]
+	[Attribute("3", UIWidgets.EditBox, "Minimum distance the camera should keep from the vehicle\n[m]")]
 	float m_fDist_Min;
-	[Attribute("5", UIWidgets.EditBox, "Desired distance the camera should keep from the vehicle (in m)")]
+	[Attribute("5", UIWidgets.EditBox, "Desired distance the camera should keep from the vehicle\n[m]")]
 	float m_fDist_Desired;
-	[Attribute("70", UIWidgets.EditBox, "Field Of View of the camera (in deg)")]
+	[Attribute("70", UIWidgets.EditBox, "Field Of View of the camera\n[deg]")]
 	float m_fFOV;
-	[Attribute("10", UIWidgets.EditBox, "Maximum Field Of View adjustment based on speed (in deg)")]
+	[Attribute("10", UIWidgets.EditBox, "Maximum Field Of View adjustment based on speed\n[deg]")]
 	float m_fFOV_SpeedAdjustMax;
-	[Attribute("0.4", UIWidgets.Slider, "How much roll (0=0%, 1=100%, ...5=500% of original) is applied of the parent vehicle roll.", params: "0 5 0.001")]
+	[Attribute("0.4", UIWidgets.Slider, "How much roll of the parent vehicle is applied to camera\n[x * 100%]", params: "-5 5 0.001")]
 	float m_fRollFactor;
-	[Attribute("0.2", UIWidgets.Slider, "How much pitch (0=0%, 1=100%, ...5=500% of original) is applied of the parent vehicle pitch.", params: "0 5 0.001")]
+	[Attribute("0.2", UIWidgets.Slider, "How much pitch of the parent vehicle is applied to camera\n[x * 100%]", params: "-5 5 0.001")]
 	float m_fPitchFactor;
-	[Attribute("20", UIWidgets.EditBox, "Angle in third person added to the camera on the vehicle (in deg)")]
+	[Attribute("20", UIWidgets.EditBox, "Angle in first person added to the camera on the vehicle\n[deg]")]
+	float m_fAngleFirstPerson;
+	[Attribute("20", UIWidgets.EditBox, "Angle in third person added to the camera on the vehicle\n[deg]")]
 	float m_fAngleThirdPerson;
 	[Attribute(uiwidget: UIWidgets.Object)]
 	ref SCR_VehicleCameraAimpoint m_pCameraAimpointData;

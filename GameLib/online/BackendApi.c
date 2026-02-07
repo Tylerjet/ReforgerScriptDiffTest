@@ -24,6 +24,7 @@
 		EBERR_FILE_NOT_FOUND,		// save point doesn't exist
 		EBERR_UNSUPPORTED_REQUEST,	// non-supported request call performed
 		EBERR_STORAGE_IS_FULL, 		// unable to store data
+		EBERR_VALIDATION_FAILED		// downloaded asset is invalid
 	}
 	
 
@@ -31,7 +32,6 @@
 	enum EBackendRequest
 	{
 		EBREQ_GAME_Test,
-		EBREQ_GAME_World,
 		EBREQ_GAME_CharacterGet,
 //		#if BACKENDAPI_DEV_CHARACTER
 		EBREQ_GAME_DevCharacterGet,
@@ -56,7 +56,13 @@
 		EBREQ_LOBBY_GetInviteRoom,
 		EBREQ_LOBBY_CreateServerOwnerToken,
 		EBREQ_LOBBY_VerifyPassword,
+		// server config
+		EBREQ_LOBBY_SaveServerConfig,
+		EBREQ_LOBBY_DownloadServerConfig,
+		EBREQ_LOBBY_ListServerConfig,
+		EBREQ_LOBBY_DeleteServerConfig,
 
+		// workshop
 		EBREQ_WORKSHOP_GetAssetList,
 		EBREQ_WORKSHOP_CheckAssets,
 		EBREQ_WORKSHOP_GetOwnAssetRating,
@@ -65,7 +71,6 @@
 		EBREQ_WORKSHOP_GetDownloadURL,
 		EBREQ_WORKSHOP_PostSubscriptions,
 		EBREQ_WORKSHOP_DeleteSubscriptions,
-		EBREQ_WORKSHOP_GetAssetPartial,
 		EBREQ_WORKSHOP_GetAsset,
 		EBREQ_WORKSHOP_ReportAsset,
 		EBREQ_WORKSHOP_DeleteAssetReport,
@@ -87,6 +92,10 @@
 		
 		EBREQ_WORKSHOP_DownloadAsset,
 		EBREQ_WORKSHOP_DownloadImage,
+		EBREQ_WORKSHOP_ValidateAsset,
+	
+		EBREQ_WORKSHOP_DownloadFragment,
+		EBREQ_WORKSHOP_DirectDownloadFile
 	}
 	
 	//! Credential parameters
@@ -258,7 +267,7 @@ class DSSessionCallback : Managed
 	\param currentValue - Actual value of ban records
 	\param triggerValue - Ammount of ban records triggering ban
 	*/
-	void OnBanResult( int iPlayerId, bool triggered, int currentValue, int triggerValue )
+	void OnBanEventResult( int iPlayerId, bool triggered, int currentValue, int triggerValue )
 	{
 	}
 
@@ -351,6 +360,11 @@ class SessionStorage
 	\param fileName - name of file handle
 	*/
 	proto native void LocalLoad( string fileName );
+	/**
+	\brief Request local delete of session content (can be invoked from script or game)
+	\param fileName - name of file handle
+	*/
+	proto native void LocalDelete( string fileName );
 	/**
 	\brief Check if file/ handle with thist name exist - local if you're local - online if you're online
 	\param fileName - name of file handle
@@ -581,6 +595,10 @@ class NewsFeedItem
 	\brief Date & Time
 	*/
 	proto native string Date();
+	/**
+	\brief Path to downloaded image
+	*/
+	proto native string Path();
 
 }
 
@@ -872,6 +890,21 @@ class BackendApi
 	proto native void PlayerBanCreate( string sReason, int iBanDuration, int iPlayerId );
 
 	/**
+	\brief Provide list of active bans for local player
+	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
+	\param dataObject Is destination where response returns Json data which will be present after OnSuccess() is invoked in callback
+	*/
+	proto native void PlayerBanList(BackendCallback cb, ActiveBansObject dataObject);
+
+	/**
+	\brief Expand settings data upon defined structure, this is Server-Side only!
+	\note Data are available only after game was successfully executed and connected to online services
+	\param sFileName Is name of settings file you want to access, remember - it must exist!
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
+	*/
+	proto native void SettingsData( string sFileName, JsonApiStruct dataObject );
+
+	/**
 	\brief Send feedback message and/ or script object with whatever data on it (additionally it is possible to handle callback as well)
 	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
 	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
@@ -923,12 +956,34 @@ class BackendApi
 	proto native int GetAvailableConfigPaths(out notnull array<string> configs);
 	proto native ServerConfigApi GetServerConfigApi();
 	
+	/**
+	\brief Check if player is in list of admins defined in server config
+	\param iPlayerId is Id of Player which is being verified
+	*/
+	proto native bool IsListedServerAdmin( int iPlayerId );
+
+	/**
+	\brief Check if player is server owner defined by ownerToken
+	\param iPlayerId is Id of Player which is being verified
+	*/
+	proto native bool IsServerOwner( int iPlayerId );
 	
 	/**
 	\brief Called when new server or client game session is started
 	*/
 	proto native void NewSession();
 	
+	/**
+	\brief Debugging API for internal builds
+	*/
+	proto native void SetDebugHandling(EBackendRequest eRequest, EBackendDebugHandling eHandlingType);
+}	
+
+enum EBackendDebugHandling
+{
+	EBDH_NONE,
+	EBDH_ERROR,
+	EBDH_TIMEOUT
 }
 
 // -------------------------------------------------------------------------

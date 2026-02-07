@@ -48,12 +48,6 @@ class SCR_RadialMenuIcons
 		if (!baseEntry)
 			return RADIALMENU_ICON_EMPTY;
 		
-		auto weaponSwitchEntry = SCR_WeaponSwitchSelectionMenuEntry.Cast(instance);
-		if (weaponSwitchEntry)
-		{
-			return GetSafeIconPath(RADIALMENU_ICON_DEFAULT_WEAPONSWITCHING);
-		}
-		
 		auto aiMessageEntry = AIMessageSelectionMenuEntry.Cast(instance);
 		if (aiMessageEntry)
 		{

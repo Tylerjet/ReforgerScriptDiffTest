@@ -6,13 +6,13 @@ Examples of various features, not to be used in actual game.
 Example of how to document a class in Doxygen.
 @ingroup Examples
 
-    ██████╗  ██████╗ ██╗  ██╗██╗   ██╗ ██████╗ ███████╗███╗   ██╗
-    ██╔══██╗██╔═══██╗╚██╗██╔╝╚██╗ ██╔╝██╔════╝ ██╔════╝████╗  ██║
-    ██║  ██║██║   ██║ ╚███╔╝  ╚████╔╝ ██║  ███╗█████╗  ██╔██╗ ██║
-    ██║  ██║██║   ██║ ██╔██╗   ╚██╔╝  ██║   ██║██╔══╝  ██║╚██╗██║
-    ██████╔╝╚██████╔╝██╔╝ ██╗   ██║   ╚██████╔╝███████╗██║ ╚████║
-    ╚═════╝  ╚═════╝ ╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚══════╝╚═╝  ╚═══╝
->  What is not documented, does not exist!
+	██████╗  ██████╗ ██╗  ██╗██╗   ██╗ ██████╗ ███████╗███╗   ██╗
+	██╔══██╗██╔═══██╗╚██╗██╔╝╚██╗ ██╔╝██╔════╝ ██╔════╝████╗  ██║
+	██║  ██║██║   ██║ ╚███╔╝  ╚████╔╝ ██║  ███╗█████╗  ██╔██╗ ██║
+	██║  ██║██║   ██║ ██╔██╗   ╚██╔╝  ██║   ██║██╔══╝  ██║╚██╗██║
+	██████╔╝╚██████╔╝██╔╝ ██╗   ██║   ╚██████╔╝███████╗██║ ╚████║
+	╚═════╝  ╚═════╝ ╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚══════╝╚═╝  ╚═══╝
+>  What is not documented does not exist!
 
 # Why document?
 - Provide info for other developers and modders
@@ -26,20 +26,20 @@ Example of how to document a class in Doxygen.
 # Local setup
 1. Download and install [Doxygen]
 2. Download and install [GraphViz]
-3. In *Docs* folder, create *Generate.bat* file and put following line inside
-   (update path to Doxygen installation with your path)
-   ~~~~
-   "C:\Program Files\doxygen\bin\doxygen.exe" ArmaReforgerDoxygen.cfg
-   ~~~~
+3. In *Docs* folder, create *Generate.bat* file and put the following line inside
+	(update the path to Doxygen installation with your path)
+	~~~~
+	"C:\Program Files\doxygen\bin\doxygen.exe" ArmaReforgerDoxygen.cfg
+	~~~~
 4. **Run the bat file.**
-   Documentation will be generated in Docs\html folder
-   You can access it by opening index.html.
+	Documentation will be generated in Docs\html folder
+	You can access it by opening index.html.
 
-   Consider creating a shortcut / bookmark both for Generate.bat file
-   and for index.hml, so you can access them later with ease.
+	Consider creating a shortcut / bookmark both for Generate.bat file
+	and for index.hml, so you can access them later with ease.
 
 # What to document?
-- Public variables and functions
+- Public variables and methods
 - Protected variables and function you expect to be overriden in inherited classes
 - Enum values
 
@@ -50,26 +50,30 @@ For more info, check the official Doxygen website: https://www.doxygen.nl/
 */
 class SCR_ExampleDoxygen
 {
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Example public variable.
-	Ideally avoid using public variables and offer public functions instead.
+	Ideally avoid using public variables and offer public methods instead.
 	But if you must, please document them.
 	*/
-	int m_ExamplePublicVariable;
-	
+	int m_iExamplePublicVariable;
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Example protected variable.
 	Document protected vars for example when you expect them to be used in inherited classes.
 	*/
-	protected int m_ExampleProtectedVariable;
-	
-	/// Simple example function.
+	protected int m_iExampleProtectedVariable;
+
+	//------------------------------------------------------------------------------------------------
+	//! Simple example function.
 	void Example()
 	{
-		// Comments without Doxygen markup like this one are ignored
+		// comments without Doxygen markup like this one are ignored
 		Print("Example");
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Example function with documented parameters.
 	\param exampleParam Example parameter
@@ -78,7 +82,8 @@ class SCR_ExampleDoxygen
 	{
 		PrintFormat("ExampleWithParam: exampleParam1=%", exampleParam);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Example function with out parameter.
 	\param[out] outExampleParam Example parameter to be overriden by the function
@@ -88,7 +93,8 @@ class SCR_ExampleDoxygen
 		outExampleParam = 42;
 		PrintFormat("ExampleWithOutParam: outExampleParam=%1", outExampleParam);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Example function with return value.
 	\return Example value
@@ -98,7 +104,8 @@ class SCR_ExampleDoxygen
 		Print("ExampleWithReturnValue");
 		return 42;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Example function with a parameter, out parameter and returned value.
 	\param exampleParam Example parameter
@@ -117,8 +124,8 @@ class SCR_ExampleDoxygen
 Example of how to document an enum in Doxygen.
 @ingroup Examples
 */
-enum EExampleDoxygen
+enum SCR_EExampleDoxygen
 {
-	EXAMPLE_1, ///< First value
-	EXAMPLE_2 ///< Second value
+	EXAMPLE_1, //!< First value
+	EXAMPLE_2, //!< Second value
 };

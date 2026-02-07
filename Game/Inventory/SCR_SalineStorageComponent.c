@@ -14,11 +14,11 @@ class SCR_SalineMovedCallback : ScriptedInventoryOperationCallback
 	{
 		m_CharInventoryStorageComp.RemoveItemFromQuickSlot(m_SalineBag);
 		//Destroy saline bag when the healing effect wears off
-		GetGame().GetCallqueue().CallLater(DestroysalineBag, m_fItemRegenerationDuration * 1000, false, m_SalineBag);
+		GetGame().GetCallqueue().CallLater(DestroySalineBag, m_fItemRegenerationDuration * 1000, false, m_SalineBag);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void DestroysalineBag(IEntity item)
+	protected void DestroySalineBag(IEntity item)
 	{
 		if (!item)
 			return;
@@ -35,9 +35,13 @@ class SCR_SalineStorageComponent : SCR_EquipmentStorageComponent
 	//------------------------------------------------------------------------------------------------
 	bool AddSalineBagToSlot(IEntity target, ECharacterHitZoneGroup eHitZoneGroup, IEntity salineBag, float itemRegenerationDuration)
 	{
-		if (!salineBag)
+		if (!target || !salineBag)
 			return false;
-		
+
+		RplComponent rplComp = RplComponent.Cast(target.FindComponent(RplComponent));
+		if (rplComp && rplComp.IsProxy())
+			return false;
+
 		SCR_SalineStorageComponent SalineStorageComp = SCR_SalineStorageComponent.Cast(target.FindComponent(SCR_SalineStorageComponent));
 		if (!SalineStorageComp)
 			return false;
@@ -55,6 +59,9 @@ class SCR_SalineStorageComponent : SCR_EquipmentStorageComponent
 
 			if (salineTargetSlot.GetAssociatedHZGroup() != eHitZoneGroup)
 				continue;
+			
+			if (salineTargetSlot.GetItem(i) == salineBag)
+				return false;
 			
 			if (salineTargetSlot.GetItem(i))
 			{
@@ -80,6 +87,42 @@ class SCR_SalineStorageComponent : SCR_EquipmentStorageComponent
 			return true;
 		
 		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnAddedToSlot(IEntity item, int slotID)
+	{
+		ChimeraCharacter char = ChimeraCharacter.Cast(GetOwner());
+		if (!char)
+			return;
+
+		SCR_SalineBagStorageSlot salineSlot = SCR_SalineBagStorageSlot.Cast(GetSlot(slotID));
+		if (!salineSlot)
+			return;
+
+		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
+		if (!damageMgr)
+			return;
+
+		damageMgr.SetSalineBaggedGroup(salineSlot.GetAssociatedHZGroup(), true);		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnRemovedFromSlot(IEntity item, int slotID)
+	{
+		ChimeraCharacter char = ChimeraCharacter.Cast(GetOwner());
+		if (!char)
+			return;
+		
+		SCR_SalineBagStorageSlot salineSlot = SCR_SalineBagStorageSlot.Cast(GetSlot(slotID));
+		if (!salineSlot)
+			return;
+
+		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
+		if (!damageMgr)
+			return;
+
+		damageMgr.SetSalineBaggedGroup(salineSlot.GetAssociatedHZGroup(), false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

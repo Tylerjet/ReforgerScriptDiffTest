@@ -4,18 +4,18 @@ class SCR_AICombatMoveGroupBehavior : SCR_AIMoveBehaviorBase
 	ref SCR_BTParamRef<BaseTarget> m_Target = new ref SCR_BTParamRef<BaseTarget>(SCR_AIActionTask.TARGET_PORT); // needed to check if one should look around when in combat move	
 	
 	//--------------------------------------------------------------------------------------------------------------
-	override void Complete()
+	override void OnComplete()
 	{
-		super.Complete();
+		super.OnComplete();
 		if (!m_Utility.m_AIInfo)
 			return;
 		m_Utility.m_AIInfo.SetAIState(EUnitAIState.AVAILABLE);
 	}
 	
 	//--------------------------------------------------------------------------------------------------------------
-	override void Fail()
+	override void OnFail()
 	{
-		super.Fail();
+		super.OnFail();
 		if (!m_Utility.m_AIInfo)
 			return;
 		m_Utility.m_AIInfo.SetAIState(EUnitAIState.AVAILABLE);
@@ -45,9 +45,9 @@ class SCR_AICombatMoveGroupBehavior : SCR_AIMoveBehaviorBase
 		InitParameters(vector.Zero, _tgt);
 		
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/CombatMove.bt";
-		m_fPriority = priority;
+		SetPriority(priority);
 		m_fPriorityLevel.m_Value = priorityLevel;
-		m_bUniqueInActionQueue = false;
+		SetIsUniqueInActionQueue(false);
 		m_Utility.m_AIInfo.SetAIState(EUnitAIState.BUSY);
 	}
 };

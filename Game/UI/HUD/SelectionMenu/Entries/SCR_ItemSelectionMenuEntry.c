@@ -30,7 +30,6 @@ class SCR_ItemSelectionMenuEntry : SCR_SelectionMenuEntry
 
 		// Widget setup
 		SetName(name);
-		SetDescription(description);
 
 		if (entry)
 			entry.SetEnabled(enabled);
@@ -101,5 +100,7 @@ class SCR_ItemSelectionMenuEntry : SCR_SelectionMenuEntry
 		m_iQuickSlotID = quickSlotID;
 
 		SetCustomLayout(LAYOUT_ITEM);
+		
+		Enable(GetItem() != null);
 	}
 };

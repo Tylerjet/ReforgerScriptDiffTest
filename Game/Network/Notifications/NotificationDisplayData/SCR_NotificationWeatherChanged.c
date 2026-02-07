@@ -14,6 +14,11 @@ class SCR_NotificationWeatherChanged : SCR_NotificationPlayer
 		int playerID, weatherIndex;
 		data.GetParams(playerID, weatherIndex);
 		
+		string playerName;
+		data.GetNotificationTextEntries(playerName);
+		if (!GetPlayerName(playerID, playerName))
+			return string.Empty;
+		
 		TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
 		if (!weatherManager)
 			return string.Empty;
@@ -23,7 +28,7 @@ class SCR_NotificationWeatherChanged : SCR_NotificationPlayer
 		if (weatherIndex >= weatherStates.Count() )
 			return string.Empty;
 
-		data.SetNotificationTextEntries(GetPlayerName(playerID), weatherStates[weatherIndex].GetLocalizedName());
+		data.SetNotificationTextEntries(playerName, weatherStates[weatherIndex].GetLocalizedName());
 			
 		return super.GetText(data);
 	}	

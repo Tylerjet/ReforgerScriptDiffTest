@@ -42,7 +42,7 @@ class SCR_JointBaseEntity: GenericEntity
 		
 		vector boneMat[4];
 		
-		m_JointParent.GetBoneMatrix(SNAP_TO_PARENT_BONE, boneMat);
+		m_JointParent.GetAnimation().GetBoneMatrix(SNAP_TO_PARENT_BONE, boneMat);
 		
 		vector angles = Math3D.MatrixToAngles(boneMat);
 		vector pos = boneMat[3];

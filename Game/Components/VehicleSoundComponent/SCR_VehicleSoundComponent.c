@@ -5,99 +5,87 @@ class SCR_VehicleSoundComponentClass : VehicleSoundComponentClass
 };
 
 class SCR_VehicleSoundComponent : VehicleSoundComponent
-{	
-	[Attribute("1.8", UIWidgets.Object, "")]
-	protected float m_fRainSoundHeight;
-	
+{		
 	[Attribute("", UIWidgets.Object, "")]
 	protected ref array<ref SCR_SignalDefinition> m_aSignalDefinition;
-
-	private float m_fWorldTimeLast;
 	
-	private SignalsManagerComponent m_SignalsManagerComponent;
+	[Attribute("0 0 0", UIWidgets.Coords, "Mins OOB Point for rain sound")]
+	vector m_vMins;
+	
+	[Attribute("0 0 0", UIWidgets.Coords, "Maxs OOB Point for rain sound")]
+	vector m_vMaxs;
+	
+	protected SignalsManagerComponent m_SignalsManagerComponent;
 	
 	// Audio Handles
-	private AudioHandle m_LoopedSound = AudioHandle.Invalid;
-	private AudioHandle m_RainSound = AudioHandle.Invalid;
+	private AudioHandle m_RainSoundAudioHandle = AudioHandle.Invalid;
 	
-	private const static float OBB_CROP_FACTOR = 0.7;
-	private vector m_vMins;
-	private vector m_vMaxs;
 	private GameSignalsManager m_GameSignalsManager;
 	private int m_iRainIntensitySignalIdx;
-	private float m_fCheckRainTime;
-	private const static int RAIN_CHECK_TIME = 500;
-	private const static float RAIN_RAIN_THRESHOLD = 0.1;
-	
-	private int m_iOBBdiffSignalIdx;
+	private const static float RAIN_INTENSITY_THRESHOLD = 0.1;
+	private const static string RAIN_INTENSITY_SIGNAL_NAME = "RainIntensity";
 	
 	//------------------------------------------------------------------------------------------------
 	
-	private vector GetRainSoundPositionOffset(IEntity owner)
+	private vector GetRainSoundPositionOffset()
 	{
-		PlayerCamera playerCamera = GetGame().GetPlayerController().GetPlayerCamera();
-		
-		if (!playerCamera)
-			return vector.Zero;
-		
+		vector cameraTransform[4];
+		GetGame().GetWorld().GetCurrentCamera(cameraTransform);
+				
 		// Local camara position
-		vector camera = owner.CoordToLocal(playerCamera.GetOrigin());
+		vector camera = GetOwner().CoordToLocal(cameraTransform[3]);
 			
 		// Get offset
 		vector offset;
 		offset[0] = Math.Clamp(camera[0], m_vMins[0], m_vMaxs[0]);
-		offset[1] = m_fRainSoundHeight;
+		offset[1] = Math.Clamp(camera[1], m_vMins[1], m_vMaxs[1]);;
 		offset[2] = Math.Clamp(camera[2], m_vMins[2], m_vMaxs[2]);
 				
-		return owner.VectorToParent(offset);
+		return GetOwner().VectorToParent(offset);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void UpdateSoundJob(IEntity owner, float timeSlice)
 	{
-		float worldTime = owner.GetWorld().GetWorldTime();
-
-		if (m_fWorldTimeLast == worldTime)
-			return;
-		
-		if (m_SignalsManagerComponent)
-		{
-			foreach (SCR_SignalDefinition signalDefinition : m_aSignalDefinition)
-			{
-				m_SignalsManagerComponent.SetSignalValue(signalDefinition.m_iSignalIdx, signalDefinition.GetSignalValue(worldTime));
-			}
-		}
-		
-		m_fWorldTimeLast = worldTime;
-		
-		// Trigger rain sound
-		if (m_fCheckRainTime <= worldTime)
-		{
-			float rainIntensity = m_GameSignalsManager.GetSignalValue(m_iRainIntensitySignalIdx);
-			
-			if (rainIntensity >= RAIN_RAIN_THRESHOLD)
-			{
-				if (IsFinishedPlaying(m_RainSound))
-					m_RainSound = SoundEvent(SCR_SoundEvent.SOUND_VEHICLE_RAIN);
-			}	
-			else
-			{
-				if (!IsFinishedPlaying(m_RainSound))
-					Terminate(m_RainSound);
-			}
-			
-			m_fCheckRainTime = worldTime + RAIN_CHECK_TIME;
-		}
-		
-		// Set rain sound position
-		if (!IsFinishedPlaying(m_RainSound))
-		{
-			vector mat[4];
-			mat[3] = GetRainSoundPositionOffset(owner) + owner.GetOrigin();
-			SetSoundTransformation(m_RainSound, mat);
-		}	
+		HandleGeneratedSignals();
+		HandleRainSound();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	private void HandleGeneratedSignals()
+	{
+		if (!m_SignalsManagerComponent)
+			return;
+		
+		float worldTime = GetGame().GetWorld().GetWorldTime();
+			
+		foreach (SCR_SignalDefinition signalDefinition : m_aSignalDefinition)
+			m_SignalsManagerComponent.SetSignalValue(signalDefinition.m_iSignalIdx, signalDefinition.GetSignalValue(worldTime));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void HandleRainSound()
+	{
+		if (m_GameSignalsManager.GetSignalValue(m_iRainIntensitySignalIdx) >= RAIN_INTENSITY_THRESHOLD)
+		{
+			if (IsFinishedPlaying(m_RainSoundAudioHandle))
+				m_RainSoundAudioHandle = SoundEvent(SCR_SoundEvent.SOUND_VEHICLE_RAIN);
+			
+			if (!IsHandleValid(m_RainSoundAudioHandle))
+				return;
+				
+			// Update position
+			vector mat[4];
+			mat[3] = GetRainSoundPositionOffset() + GetOwner().GetOrigin();
+			SetSoundTransformation(m_RainSoundAudioHandle, mat);
+		}	
+		else if (m_RainSoundAudioHandle != AudioHandle.Invalid)
+		{
+			Terminate(m_RainSoundAudioHandle);
+			m_RainSoundAudioHandle = AudioHandle.Invalid;
+		}	
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{	
@@ -111,18 +99,14 @@ class SCR_VehicleSoundComponent : VehicleSoundComponent
 				signalDefinition.UpdateSignalPoint(owner.GetWorld().GetWorldTime());
 			}
 		}
-				
-		// Get OBB	
-		owner.GetBounds(m_vMins, m_vMaxs);
-		m_vMins *= OBB_CROP_FACTOR;
-		m_vMaxs *= OBB_CROP_FACTOR;
-		
+						
 		// Get Game Signals Manger
 		m_GameSignalsManager = GetGame().GetSignalsManager();
 		
 		// Get RainIntensity signal index
-		m_iRainIntensitySignalIdx = m_GameSignalsManager.AddOrFindSignal("RainIntensity");
+		m_iRainIntensitySignalIdx = m_GameSignalsManager.AddOrFindSignal(RAIN_INTENSITY_SIGNAL_NAME);
 		
+		// Collision sounds setup
 		SetMinTimeAfterImpact(300);
 	}
 

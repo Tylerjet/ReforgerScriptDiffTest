@@ -6,14 +6,14 @@ enum EHudLayers
 {
 	BACKGROUND = 1, 	// Only background textures like Screen effects
 	LOW = 2, 			// Read only informations, like weapon info
-	MEDIUM = 4,			// 
+	MEDIUM = 4,			//
 	HIGH = 8,			// Dialogue-like elements like weapon switching
 	OVERLAY = 16,		// Interactive elements that should always be on top
 	ALWAYS_TOP = 32
 };
 
 [ComponentEditorProps(icon: HYBRID_COMPONENT_ICON)]
-class SCR_HUDManagerComponentClass: HUDManagerComponentClass
+class SCR_HUDManagerComponentClass : HUDManagerComponentClass
 {
 };
 
@@ -23,145 +23,383 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	private Widget m_wRoot;
 	private Widget m_wRootTop;
 
-	protected BaseWorld m_World;	
-	
+	protected BaseWorld m_World;
+
 	private bool m_MenuOpen;
-	
+
 	protected ref ScriptInvoker<float, float, float> m_OnSceneBrightnessChanged = new ScriptInvoker();
 
-	protected float m_fUpdateTime = -1;		
+	protected float m_fUpdateTime = -1;
 	const float UPDATE_DELAY = 100;
-	
+
 	const float ADAPTIVE_OPACITY_MIN = 0.6;
 	const float ADAPTIVE_OPACITY_MAX = 0.9;
-	
+
 	protected float m_fSceneBrightnessRaw = -1;
 	protected float m_fSceneBrightness = -1;
 	protected float m_fOpacity = -1;
-	
+
+	[Attribute(params: "layout", desc: "Layout for the HUD groups")]
+	protected ResourceName m_sGroupsLayout;
+
+	[Attribute()]
+	protected ref array<ref SCR_HUDLayout> m_aHUDLayouts;
+
+	[Attribute()]
+	protected string m_sMainLayout;
+
+	protected SCR_HUDLayout m_ActiveLayout;
+	bool m_bEditorEventsInitialized;
+
 	#ifndef DISABLE_HUD_MANAGER
-	
+
 	//------------------------------------------------------------------------------------------------
-	protected override void OnInit(IEntity owner) 
+	Widget GetHUDRootWidget()
+	{
+		return m_wRoot;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Searches for and returns a Group Widget with the given name.
+	\param groupName Name of the group to look for.
+	*/
+	Widget GetGroupByName(string groupName)
+	{
+		if (!m_ActiveLayout)
+			return null;
+
+		return m_ActiveLayout.GetGroupWidgetByName(groupName);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Searches for and returns the Component responsible for managing and controlling a Group with the given name.
+	\param groupName Name of the group to look for.
+	*/
+	SCR_HUDGroupUIComponent GetGroupComponent(string groupName)
+	{
+		if (!m_ActiveLayout)
+			return null;
+
+		return m_ActiveLayout.GetGroupComponent(groupName);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Searches for and returns the Component responsible for managing and controlling a Slot with the given name.
+	\param slotName Name of the slot to look for.
+	*/
+	SCR_HUDSlotUIComponent GetSlotComponentByName(string slotName)
+	{
+		return m_ActiveLayout.FindSlotComponent(slotName);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Searches for and returns the Widget responsible for managing and controlling a Slot with the given name.
+	\param slotName Name of the slot to look for.
+	*/
+	Widget GetSlotWidgetByName(string slotName)
+	{
+		return m_ActiveLayout.FindSlotWidget(slotName);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_HUDLayout FindHUDLayout(string layoutIdentifier)
+	{
+		foreach (SCR_HUDLayout hudLayout : m_aHUDLayouts)
+		{
+			if (hudLayout.GetIdentifier() == layoutIdentifier)
+				return hudLayout;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Creates the Group Layout and places it under the Workspace Widget.
+	*/
+	protected void CreateGroups()
+	{
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		if (!workspace)
+			return;
+
+		Widget slotRoot = workspace.CreateWidgets(m_sGroupsLayout, null);
+		if (!slotRoot)
+			return;
+
+		Widget iteratedWidget = slotRoot.GetChildren();
+		while (iteratedWidget)
+		{
+			SCR_HUDGroupUIComponent groupComponent = SCR_HUDGroupUIComponent.Cast(iteratedWidget.FindHandler(SCR_HUDGroupUIComponent));
+			if (!groupComponent)
+			{
+				Print("[SCR_HUDManagerComponent] A Group Widget must have a SCR_HUDGroupUIComponent component attached to it! Check: " + iteratedWidget.GetName(), LogLevel.ERROR);
+				iteratedWidget = iteratedWidget.GetSibling();
+				continue;
+			}
+
+			//m_mGroups.Insert(iteratedWidget.GetName(), iteratedWidget);
+			iteratedWidget = iteratedWidget.GetSibling();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void InitializeHUDLayouts()
+	{
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		foreach (SCR_HUDLayout hudLayout : m_aHUDLayouts)
+		{
+			Widget layoutWidget = workspace.CreateWidgets(hudLayout.GetLayout(), null);
+			hudLayout.SetRootWidget(layoutWidget);
+
+			if (hudLayout.GetIdentifier() == m_sMainLayout)
+			{
+				m_ActiveLayout = hudLayout;
+			}
+			else
+			{
+				layoutWidget.SetVisible(false);
+				layoutWidget.SetEnabled(false);
+			}
+		}
+
+		ChangeActiveHUDLayout(m_sMainLayout);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ChangeActiveHUDLayout(string layoutIdentifier)
+	{
+		// Temp disabled
+		return;
+		
+		SCR_HUDLayout newLayout = FindHUDLayout(layoutIdentifier);
+		if (!newLayout || newLayout == m_ActiveLayout)
+			return;
+
+		Widget newLayoutWidget = newLayout.GetRootWidget();
+		if (!newLayoutWidget)
+			return;
+
+		m_ActiveLayout = newLayout;
+		newLayoutWidget.SetVisible(true);
+		newLayoutWidget.SetEnabled(true);
+
+		foreach (SCR_InfoDisplay infoDisplay : m_aHUDElements)
+		{
+			SCR_InfoDisplaySlotHandler slotHandler = SCR_InfoDisplaySlotHandler.Cast(infoDisplay.GetHandler(SCR_InfoDisplaySlotHandler));
+			if (!slotHandler)
+				continue;
+
+			string groupName = slotHandler.GetGroupName();
+			string slotName = slotHandler.GetSlotName();
+
+			SCR_HUDSlotUIComponent currentSlot = slotHandler.GetSlotUIComponent();
+			SCR_HUDGroupUIComponent currentGroup = slotHandler.GetGroupUIComponent();
+			if (!currentSlot || !currentGroup)
+				continue;
+			
+			Widget currentSlotWidget = currentSlot.GetRootWidget();
+
+			Widget contentWidget = currentSlot.GetContentWidget();
+			if (!contentWidget)
+				continue;
+
+			SCR_HUDGroupUIComponent newGroup = newLayout.GetGroupComponent(groupName);
+			SCR_HUDSlotUIComponent newSlot = newLayout.FindSlotComponent(slotName);
+
+			if (!newGroup || !newSlot)
+			{
+				currentSlotWidget.SetVisible(false);
+				currentSlotWidget.SetEnabled(false);
+
+				contentWidget.SetVisible(false);
+				contentWidget.SetEnabled(false);
+
+				slotHandler.SetEnabled(false);
+
+				continue;
+			}
+
+			Widget newSlotWidget = newSlot.GetRootWidget();
+			if (!newSlotWidget)
+				continue;
+
+			currentSlotWidget.RemoveChild(contentWidget);
+			newSlotWidget.AddChild(contentWidget);
+
+			newSlot.SetContentWidget(contentWidget);
+			currentSlot.SetContentWidget(null);
+
+			contentWidget.SetVisible(true);
+			contentWidget.SetEnabled(true);
+
+			newSlotWidget.SetVisible(true);
+			newSlotWidget.SetEnabled(true);
+
+			slotHandler.SetEnabled(true);
+			slotHandler.SetSlotComponent(newSlot);
+			slotHandler.SetGroupComponent(newGroup);
+		}
+	}
+
+	void ChangeHUDLayoutToEditor()
+	{
+		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
+		if (!editorManager || editorManager.GetCurrentMode() != EEditorMode.EDIT)
+			return;
+
+		ChangeActiveHUDLayout("Editor");
+	}
+	
+	void ChangeHUDLayoutToMain()
+	{
+		ChangeActiveHUDLayout(m_sMainLayout);
+	}
+
+	void InitializeEditorEvents()
+	{
+		if (m_bEditorEventsInitialized)
+			return;
+
+		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
+		if (!editorManager)
+			return;
+
+		editorManager.GetOnOpened().Insert(ChangeHUDLayoutToEditor);
+		editorManager.GetOnClosed().Insert(ChangeHUDLayoutToMain);
+		m_bEditorEventsInitialized = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override void OnInit(IEntity owner)
 	{
 		if (!GetGame().GetWorldEntity())
 			return;
-		
+
+		//CreateGroups();
+		InitializeHUDLayouts();
+
 		ArmaReforgerScripted game = GetGame();
 		if (game && !game.GetHUDManager())
 		{
 			game.SetHUDManager(this);
 			CreateHUDLayers();
 		}
-		
+
 		m_World = GetGame().GetWorld();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected override void OnUpdate(IEntity owner)
 	{
 		if (!m_World)
 			return;
-		
+		if (!m_bEditorEventsInitialized)
+			InitializeEditorEvents();
+
 		float time = m_World.GetWorldTime();
-		
+
 		if (time < m_fUpdateTime)
 			return;
-		
+
 		m_fUpdateTime = time + UPDATE_DELAY;
 
-		//--------------------------------------------------------------------------------------------
-		// Adaptive opacity		
-		//--------------------------------------------------------------------------------------------
+		//------------------------------------------------------------------------------------------------
+		// Adaptive opacity
+		//------------------------------------------------------------------------------------------------
 		float sceneBrightnessRaw = m_World.GetCameraSceneMiddleBrightness(0);
-		
+
 		// Throttle the opacity update if brightness change is not bigger than n%
 		if (Math.AbsFloat(m_fSceneBrightnessRaw - sceneBrightnessRaw) < 0.02)
 			return;
-		
+
 		// We are interested mostly about the lower spectrum of brightness levels; formulae is subject to change
 		float sceneBrightness = Math.Clamp(sceneBrightnessRaw * 3, 0, 1);
-		
+
 		// Throttle the opacity update if brightness change is not bigger than n%
-		if (Math.AbsFloat(m_fSceneBrightness - sceneBrightness) < 0.02)			
-			return;		
-		
+		if (Math.AbsFloat(m_fSceneBrightness - sceneBrightness) < 0.02)
+			return;
+
 		// Linear opacity interpolation based on scene brightness
 		float opacity = Math.Round(100 * ((ADAPTIVE_OPACITY_MAX - ADAPTIVE_OPACITY_MIN) * sceneBrightness + ADAPTIVE_OPACITY_MIN)) * 0.01;
-		
+
 		// Invoke the opacity update only if change is greater than n%
 		if (Math.AbsFloat(m_fOpacity - opacity) >= 0.05)
 		{
 			//PrintFormat("'Adaptive Opacity' recalculated %1 -> %2", m_fOpacity, opacity);
-			
+
 			m_fSceneBrightnessRaw = sceneBrightnessRaw;
 			m_fSceneBrightness = sceneBrightness;
 			m_fOpacity = opacity;
-			
+
 			if (m_OnSceneBrightnessChanged)
-				m_OnSceneBrightnessChanged.Invoke(opacity, sceneBrightness, sceneBrightnessRaw);				
+				m_OnSceneBrightnessChanged.Invoke(opacity, sceneBrightness, sceneBrightnessRaw);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	float GetAdaptiveOpacity()
 	{
 		return m_fOpacity;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	float GetSceneBrightness()
 	{
 		return m_fSceneBrightness;
-	}	
+	}
 
 	//------------------------------------------------------------------------------------------------
 	float GetSceneBrightnessRaw()
 	{
 		return m_fSceneBrightnessRaw;
-	}	
-		
+	}
+
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetSceneBrightnessChangedInvoker()
 	{
 		return m_OnSceneBrightnessChanged;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void ~SCR_HUDManagerComponent()
 	{
 		if (m_wRoot)
 			m_wRoot.RemoveFromHierarchy();
 	}
-	
+
 	#endif
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void CreateHUDLayers()
 	{
 		m_wRoot = GetGame().GetWorkspace().CreateWidget(WidgetType.FrameWidgetTypeID, WidgetFlags.VISIBLE, Color.White, 0);
 		m_wRootTop = GetGame().GetWorkspace().CreateWidget(WidgetType.FrameWidgetTypeID, WidgetFlags.VISIBLE, Color.White, 0);
 		m_wRootTop.SetZOrder(100); //set high to be always on top, even above MenuManager layouts
-		
+
 		if (m_wRoot && m_wRootTop)
 		{
 			InitRootWidget(m_wRoot, "SCR_HUDManagerComponent.m_wRoot");
 			InitRootWidget(m_wRootTop, "SCR_HUDManagerComponent.m_wRootTop");
-			
+
 			array<int> bitValues = new array<int>;
 			int bitCount = SCR_Enum.GetEnumValues(EHudLayers, bitValues);
-			
+
 			for (int i = 0; i < bitCount; i++)
 			{
 				Widget frame;
 				Widget parent = m_wRoot;
 				if (bitValues[i] == EHudLayers.ALWAYS_TOP)
 					parent = m_wRootTop;
-				
+
 				frame = GetGame().GetWorkspace().CreateWidget(WidgetType.FrameWidgetTypeID, WidgetFlags.VISIBLE, Color.White, 0, parent);
-				FrameSlot.SetAnchorMin(frame,0,0);
-				FrameSlot.SetAnchorMax(frame,1,1);
-				FrameSlot.SetOffsets(frame,0,0,0,0);
+				FrameSlot.SetAnchorMin(frame, 0, 0);
+				FrameSlot.SetAnchorMax(frame, 1, 1);
+				FrameSlot.SetOffsets(frame, 0, 0, 0, 0);
 				frame.SetFlags(WidgetFlags.IGNORE_CURSOR);
 				frame.SetName(string.Format("SCR_HudManagerComponent: %1", typename.EnumToString(EHudLayers, bitValues[i])));
 
@@ -169,7 +407,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 			}
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Return hud component of given type
 	SCR_InfoDisplay FindInfoDisplay(typename type)
@@ -179,12 +417,12 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 			if (display.Type() == type)
 				return display;
 		}
-		
+
 		return null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//! Find layout by resorce name 
+	//! Find layout by resorce name
 	SCR_InfoDisplay FindInfoDisplayByResourceName(ResourceName path)
 	{
 		foreach (SCR_InfoDisplay display : m_aHUDElements)
@@ -192,12 +430,12 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 			if (display.m_LayoutPath == path)
 				return display;
 		}
-		
+
 		return null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//! Find layout by resorce name 
+	//! Find layout by resorce name
 	Widget FindLayoutByResourceName(ResourceName path)
 	{
 		foreach (SCR_InfoDisplay display : m_aHUDElements)
@@ -205,37 +443,37 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 			if (display.m_LayoutPath == path)
 				return display.GetRootWidget();
 		}
-		
+
 		return null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void InitRootWidget(Widget root, string name)
 	{
-		FrameSlot.SetAnchorMin(root,0,0);
-		FrameSlot.SetAnchorMax(root,1,1);
-		FrameSlot.SetOffsets(root,0,0,0,0);
+		FrameSlot.SetAnchorMin(root, 0, 0);
+		FrameSlot.SetAnchorMax(root, 1, 1);
+		FrameSlot.SetOffsets(root, 0, 0, 0, 0);
 		root.SetFlags(WidgetFlags.IGNORE_CURSOR);
 		root.SetName(name);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	Widget CreateLayout(ResourceName path, EHudLayers layer, int zOrder = 0)
 	{
 		#ifndef DISABLE_HUD_MANAGER
-		
+
 		if (path == string.Empty)
 			return null;
-		
+
 		Widget parent;
 		if (m_aLayerWidgets.Find(layer, parent) && parent)
 		{
 			Widget w = GetGame().GetWorkspace().CreateWidgets(path, parent);
 			if (w)
 			{
-				FrameSlot.SetAnchorMin(w,0,0);
-				FrameSlot.SetAnchorMax(w,1,1);
-				FrameSlot.SetOffsets(w,0,0,0,0);
+				FrameSlot.SetAnchorMin(w, 0, 0);
+				FrameSlot.SetAnchorMax(w, 1, 1);
+				FrameSlot.SetOffsets(w, 0, 0, 0, 0);
 				w.SetFlags(WidgetFlags.IGNORE_CURSOR);
 				if (zOrder != 0)
 					w.SetZOrder(zOrder);
@@ -243,12 +481,12 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 				return w;
 			}
 		}
-		
+
 		#endif
-		
+
 		return null;
 	}
-	
+
 	/*!
 	Set visibility of HUD.
 	\param isVisible True if visible
@@ -266,7 +504,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	{
 		return m_wRoot.IsVisible();
 	}
-	
+
 	/*!
 	Set which HUD layers should be visible.
 	\param layers Enum flag containing all layers to be shown. Use -1 to show all layers
@@ -276,7 +514,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 		if (layers == -1)
 		{
 			//--- Show all
-			foreach (EHudLayers layer, Widget w: m_aLayerWidgets)
+			foreach (EHudLayers layer, Widget w : m_aLayerWidgets)
 			{
 				w.SetVisible(true);
 			}
@@ -284,7 +522,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 		else
 		{
 			//--- Show custom
-			foreach (EHudLayers layer, Widget w: m_aLayerWidgets)
+			foreach (EHudLayers layer, Widget w : m_aLayerWidgets)
 			{
 				w.SetVisible(layers & layer);
 			}
@@ -298,28 +536,28 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	EHudLayers GetVisibleLayers()
 	{
 		EHudLayers layers;
-		foreach (EHudLayers layer, Widget w: m_aLayerWidgets)
+		foreach (EHudLayers layer, Widget w : m_aLayerWidgets)
 		{
 			if (w.IsVisible()) layers = layers | layer;
 		}
 		return layers;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	static SCR_HUDManagerComponent GetHUDManager()
 	{
 		#ifndef DISABLE_HUD_MANAGER
-		
+
 		ArmaReforgerScripted game = GetGame();
-		
+
 		if (game)
 			return game.GetHUDManager();
-		
+
 		#endif
 
 		return null;
 	}
-	
+
 	#ifdef WORKBENCH
 	// The two methods below allow us to open a context menu over the SCR_HUDManagerComponent
 	// It adds a 'Add actions to AvailableActionsDisplay info' entry
@@ -327,7 +565,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	// AvailableActionsDisplay is then filled with entries of selected actions
 	// Entry is only added if we have a SCR_AvailableActionsDisplay object in the hud manager
 	// Multiple SCR_AvailableActionsDisplay are not supported
-	
+
 	//------------------------------------------------------------------------------------------------
 	const int CONTEXT_GENERATE_AVAILABLE_INPUT_ACTION = 0;
 	//------------------------------------------------------------------------------------------------
@@ -335,7 +573,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	{
 		// Prep array
 		array<ref WB_UIMenuItem> items = new array<ref WB_UIMenuItem>();
-		
+
 		// Find available actions display
 		array<BaseInfoDisplay> elements = new array<BaseInfoDisplay>();
 		GetInfoDisplays(elements);
@@ -351,15 +589,15 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 		}
 		// Return arr
 		return items;
-	}	
-	
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override void _WB_OnContextMenu(IEntity owner, int id)
 	{
 		if (id == CONTEXT_GENERATE_AVAILABLE_INPUT_ACTION)
 		{
 			SCR_AvailableActionsDisplay target;
-			
+
 			// Find available actions display
 			array<BaseInfoDisplay> elements = new array<BaseInfoDisplay>();
 			GetInfoDisplays(elements);
@@ -371,14 +609,14 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 					break;
 				}
 			}
-			
+
 			if (!target)
 				return;
-			
+
 			GenericEntity genericOwner = GenericEntity.Cast(owner);
 			if (!genericOwner)
 				return;
-			
+
 			// Get all actions
 			InputManager mgr = GetGame().GetInputManager();
 			array<string> actions = new array<string>();
@@ -396,17 +634,17 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 			WorldEditorAPI api = genericOwner._WB_GetEditorAPI();
 			if (!api)
 				return;
-		
+
 			// Pass them into a dialog
 			// TODO: Make this not use cpp and make it more reasonable in general
 			array<int> selection = new array<int>();
 			api.ShowItemListDialog("Actions Selection", "Select actions from the actions manager to create entry for.", 340, 480, actions, selection, 0);
-			
+
 			// Parent entity source
 			IEntitySource entitySource = api.EntityToSource(owner);
 			if (!entitySource)
 				return;
-			
+
 			// Hud manager source
 			BaseContainer componentContainer;
 			int cmpCount = entitySource.GetComponentCount();
@@ -419,15 +657,15 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 					break;
 				}
 			}
-			
+
 			if (!componentContainer)
 				return;
-			
+
 			// InfoDisplays array of hud manager
 			BaseContainerList infoDisplays = componentContainer.GetObjectArray("InfoDisplays");
 			if (!infoDisplays)
 				return;
-			
+
 			// SCR_AvailableActionsDisplay object
 			BaseContainer displaySource;
 			for (int i = 0; i < infoDisplays.Count(); i++)
@@ -439,12 +677,12 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 					break;
 				}
 			}
-			
+
 			if (!displaySource)
 				return;
-			
+
 			api.BeginEntityAction("Create action container");
-			
+
 			const string list = "m_aActions";
 			// Create object for each action
 			foreach (auto sel : selection)
@@ -452,7 +690,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 				string selectedActionName = actions[sel];
 				if (selectedActionName == string.Empty)
 					continue;
-				
+
 				const int objIndex = 0;
 				// Create object, push it into array
 				api.CreateObjectArrayVariableMember(displaySource, null, list, "SCR_AvailableActionContext", objIndex);
@@ -462,7 +700,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 				thisContainer.Set("m_sAction", selectedActionName);
 				thisContainer.Set("m_sName", selectedActionName);
 			}
-			
+
 			api.EndEntityAction();
 			return;
 		}

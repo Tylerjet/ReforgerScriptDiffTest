@@ -1,12 +1,7 @@
 [EntityEditorProps(category: "GameScripted", description: "Particle emitter", color: "32 94 200 255")]
 class SCR_ParticleEmitterClass: GenericEntityClass
 {
-	const int PLAYSTATE_STOPPED = 0;
-	const int PLAYSTATE_PLAYING = 1;
-	const int PLAYSTATE_PAUSED = 2;
-	const int PLAYSTATE_FINISHED = 3;
 };
-
 
 class SCR_ParticleEmitter : GenericEntity
 {	
@@ -27,10 +22,7 @@ class SCR_ParticleEmitter : GenericEntity
 	[Attribute("1", UIWidgets.CheckBox, "Play / stop the particle in Editor")]
 	bool m_PlayInEditor;
 	
-	private int m_PlayState = SCR_ParticleEmitterClass.PLAYSTATE_STOPPED;
-	
-	
-	
+	protected EParticleEmitterState m_ePlayState = EParticleEmitterState.PLAYSTATE_STOPPED;
 	
 	
 	//-----------------------------------------------------------------------------------------------------------------
@@ -266,20 +258,14 @@ class SCR_ParticleEmitter : GenericEntity
 	//! Returns whether the particle effect is playing
 	bool GetIsPlaying()
 	{
-		if (m_PlayState == SCR_ParticleEmitterClass.PLAYSTATE_PLAYING)
-			return true;
-		else
-			return false;
+		return m_ePlayState == EParticleEmitterState.PLAYSTATE_PLAYING;
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------
 	//! Returns whether the particle effect is paused
 	bool GetIsPaused()
 	{
-		if (m_PlayState == SCR_ParticleEmitterClass.PLAYSTATE_PAUSED)
-			return true;
-		else
-			return false;
+		return m_ePlayState == EParticleEmitterState.PLAYSTATE_PAUSED || m_ePlayState == EParticleEmitterState.PLAYSTATE_PAUSING || m_ePlayState == EParticleEmitterState.PLAYSTATE_PAUSING_AND_DELETE;
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------
@@ -289,7 +275,7 @@ class SCR_ParticleEmitter : GenericEntity
 		if (m_EffectPath == "")
 			return;
 		
-		if (m_PlayState == SCR_ParticleEmitterClass.PLAYSTATE_PAUSED)
+		if (GetIsPaused())
 		{
 			UnPause();
 			return;
@@ -307,7 +293,7 @@ class SCR_ParticleEmitter : GenericEntity
 		if (particle_effect)
 		{
 			SetObject(particle_effect, "");
-			m_PlayState = SCR_ParticleEmitterClass.PLAYSTATE_PLAYING;
+			SetPlayState(EParticleEmitterState.PLAYSTATE_PLAYING);
 		}
 	}
 	
@@ -315,28 +301,53 @@ class SCR_ParticleEmitter : GenericEntity
 	//! Pauses the playing particle effect
 	void Pause()
 	{
-		if (m_PlayState != SCR_ParticleEmitterClass.PLAYSTATE_PLAYING)
+		if (m_ePlayState != EParticleEmitterState.PLAYSTATE_PLAYING)
 			return;
 		
 		Particles particles = GetParticles();
 		particles.SetParam(-1, EmitterParam.BIRTH_RATE, 0);
 		particles.SetParam(-1, EmitterParam.BIRTH_RATE_RND, 0);
 		
-		m_PlayState = SCR_ParticleEmitterClass.PLAYSTATE_PAUSED;
+		SetPlayState(EParticleEmitterState.PLAYSTATE_PAUSING);
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------
 	//! Unpauses the paused particle effect
 	void UnPause()
 	{
-		if (m_PlayState != SCR_ParticleEmitterClass.PLAYSTATE_PAUSED)
+		if (!GetIsPaused())
 			return;
 		
 		Particles particles = GetParticles();
 		particles.MultParam(-1, EmitterParam.BIRTH_RATE, 1);
 		particles.MultParam(-1, EmitterParam.BIRTH_RATE_RND, 1);
 		
-		m_PlayState = SCR_ParticleEmitterClass.PLAYSTATE_PLAYING;
+		SetPlayState(EParticleEmitterState.PLAYSTATE_PLAYING);
+	}
+	
+	//----------------------------------------------------------------------------------------------------------------
+	/*!
+	Pauses the particle and when all particles are gone will delete the particle Emitter
+	This is to naturally delete the emitter after all particles disapear instand of instantly deleting it
+	Note if the State is already stopped, paused or finished than it is instantly deleted
+	Cancelled if Play() is called again
+	*/
+	void PauseAndDelete()
+	{
+		EParticleEmitterState state = GetPlayState();
+		
+		//~ Already in a paused state so instant delete
+		if (state == EParticleEmitterState.PLAYSTATE_STOPPED || state == EParticleEmitterState.PLAYSTATE_PAUSED || state == EParticleEmitterState.PLAYSTATE_FINISHED)
+		{
+			delete this;
+			return;
+		}
+		
+		//~ Execute pause logics
+		Pause();
+		
+		//~ Set state to pausing and delete
+		SetPlayState(EParticleEmitterState.PLAYSTATE_PAUSING_AND_DELETE);
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------
@@ -344,34 +355,115 @@ class SCR_ParticleEmitter : GenericEntity
 	void Stop()
 	{
 		SetObject(null, "");
-		m_PlayState = SCR_ParticleEmitterClass.PLAYSTATE_STOPPED;
+		SetPlayState(EParticleEmitterState.PLAYSTATE_STOPPED);
+	}
+	
+	//----------------------------------------------------------------------------------------------------------------
+	/*!
+	Get current PlayState
+	\return Current PlayState
+	*/ 
+	EParticleEmitterState GetPlayState()
+	{
+		return m_ePlayState;
+	}
+	
+	//----------------------------------------------------------------------------------------------------------------
+	//~ Set playstate
+	protected void SetPlayState(EParticleEmitterState playState)
+	{
+		//~ State not changed
+		if (m_ePlayState == playState)
+			return;
+		
+		//~ Set new state
+		m_ePlayState = playState;
+		
+		//~ Set or Clear OnFrame event mask
+		switch (m_ePlayState)
+		{
+			//~ Playing Enable OnFrame
+			case EParticleEmitterState.PLAYSTATE_PLAYING :
+			{
+				SetEventMask(EntityEvent.FRAME);
+				return;
+			}
+			//~ Finished Disable OnFrame
+			case EParticleEmitterState.PLAYSTATE_FINISHED :
+			{
+				ClearEventMask(EntityEvent.FRAME);
+				return;
+			}
+			//~ Pausing Enable OnFrame
+			case EParticleEmitterState.PLAYSTATE_PAUSING :
+			{
+				SetEventMask(EntityEvent.FRAME);
+				return;
+			}
+			//~ Pausing and delete Enable OnFrame
+			case EParticleEmitterState.PLAYSTATE_PAUSING_AND_DELETE :
+			{
+				SetEventMask(EntityEvent.FRAME);
+				return;
+			}
+			//~ Paused Disable OnFrame
+			case EParticleEmitterState.PLAYSTATE_PAUSED :
+			{
+				ClearEventMask(EntityEvent.FRAME);
+				return;
+			}
+			//~ Stopped Disable OnFrame
+			case EParticleEmitterState.PLAYSTATE_STOPPED :
+			{
+				ClearEventMask(EntityEvent.FRAME);
+				return;
+			}
+		};
+	}
+	
+	//----------------------------------------------------------------------------------------------------------------
+	protected void RestartEmitter()
+	{
+		GetParticles().Restart();
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------
 	//! Called when the particle should be updated
 	//! \param timeSlice The amount of time that has passed since the last update
-	private void Update(float timeSlice)
+	protected void Update(float timeSlice)
 	{
-		bool finished = false;
-		if (m_PlayState == SCR_ParticleEmitterClass.PLAYSTATE_PLAYING  ||  m_PlayState == SCR_ParticleEmitterClass.PLAYSTATE_PAUSED)
-			finished = GetParticles().Simulate(timeSlice);
+		bool finished = GetParticles().Simulate(timeSlice);
 		
-		if (finished)
+		//~ Animate but stop when all Particles are done
+		if (m_ePlayState == EParticleEmitterState.PLAYSTATE_PLAYING)
 		{
+			if (!finished)
+				return;
+
 			#ifdef WORKBENCH
-				if (GetGame().GetWorldEntity()) // True if the game has started
-				{
-					m_PlayState = SCR_ParticleEmitterClass.PLAYSTATE_FINISHED;
-					if (m_DeleteOnFinish)
-						delete this;
-				}
-				else
-					GetParticles().Restart();
-			#else
-				m_PlayState = SCR_ParticleEmitterClass.PLAYSTATE_FINISHED;
+			if (GetGame().GetWorldEntity()) // True if the game has started
+			{
+				SetPlayState(EParticleEmitterState.PLAYSTATE_FINISHED);
 				if (m_DeleteOnFinish)
 					delete this;
+			}
+			else
+				RestartEmitter();
+			#else
+			SetPlayState(EParticleEmitterState.PLAYSTATE_FINISHED);
+			if (m_DeleteOnFinish)
+				delete this;
 			#endif
+		}
+		//~ Not in play state but OnFrame is still called so check if there are any particles left alive
+		else if (GetParticles().GetNumParticles() <= 0)
+		{
+			//~ Set paused state as no particles alive
+			if (m_ePlayState == EParticleEmitterState.PLAYSTATE_PAUSING)
+				SetPlayState(EParticleEmitterState.PLAYSTATE_PAUSED);
+			//~ Delete as no particles alive
+			else if (m_ePlayState == EParticleEmitterState.PLAYSTATE_PAUSING_AND_DELETE)
+				delete this;
 		}
 	}
 	
@@ -389,8 +481,11 @@ class SCR_ParticleEmitter : GenericEntity
 					Stop();
 			}		
 			
-			Update(timeSlice);
-			Update(); // Update entity (it does not happen automatically in edit mode)
+			if (GetEventMask() & EntityEvent.FRAME)
+			{
+				Update(timeSlice);
+				Update(); // Update entity (it does not happen automatically in edit mode)
+			}
 		}
 	#endif
 	
@@ -413,7 +508,7 @@ class SCR_ParticleEmitter : GenericEntity
 	void SCR_ParticleEmitter(IEntitySource src, IEntity parent)
 	{
 		SetFlags(EntityFlags.VISIBLE);
-		SetEventMask(EntityEvent.FRAME | EntityEvent.INIT);
+		SetEventMask(EntityEvent.INIT);
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------
@@ -452,4 +547,17 @@ class SCR_ParticleEmitter : GenericEntity
 		return CreateEx(type, name, localPos, localRot, parent, boneID, play);
 	}
 	
+};
+
+/**
+Particle Emitter state enum
+*/
+enum EParticleEmitterState
+{
+	PLAYSTATE_STOPPED 				= 10,
+	PLAYSTATE_PLAYING 				= 20,
+	PLAYSTATE_PAUSING 				= 30,
+	PLAYSTATE_PAUSING_AND_DELETE 	= 40,
+	PLAYSTATE_PAUSED 				= 50,
+	PLAYSTATE_FINISHED 				= 60,
 };

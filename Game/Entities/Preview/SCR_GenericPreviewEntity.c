@@ -24,7 +24,7 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 			return null;
 		}
 		
-		array<ref SCR_BasePreviewEntry> entries = GetPreviewEntriesFromEntity(entity, spawnParams);
+		array<ref SCR_BasePreviewEntry> entries = GetPreviewEntriesFromEntity(entity, spawnParams, flags);
 		return SpawnPreview(entries, previewPrefab, world, spawnParams, material, flags);
 	}
 	
@@ -35,13 +35,20 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 	\param[out] outEntries Array filled with preview entries
 	\return Array of configuration entries.
 	*/
-	static array<ref SCR_BasePreviewEntry> GetPreviewEntriesFromEntity(IEntity entity, out EntitySpawnParams spawnParams = null)
+	static array<ref SCR_BasePreviewEntry> GetPreviewEntriesFromEntity(IEntity entity, out EntitySpawnParams spawnParams = null, EPreviewEntityFlag flags = 0)
 	{
 		if (!spawnParams)
 			spawnParams = new EntitySpawnParams();
 		
+		TraceParam trace;
+		if (SCR_Enum.HasFlag(flags, EPreviewEntityFlag.GEOMETRY))
+		{
+			trace = new TraceParam();
+			SCR_EntityHelper.GetHierarchyEntityList(entity, trace.ExcludeArray);
+		}
+		
 		array<ref SCR_BasePreviewEntry> entries = {};
-		GetPreviewEntries(entity, entries, spawnParams.Transform);
+		GetPreviewEntries(entity, entries, spawnParams.Transform, -1, flags, trace);
 		return entries;
 	}
 	
@@ -51,7 +58,7 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 	\param[out] outEntries Array to be filled with entity entries
 	\param[out] rootTransform Center pivot of the preview. When zero, transformation of the first entity will be used
 	*/
-	static void GetPreviewEntries(IEntity entity, out notnull array<ref SCR_BasePreviewEntry> outEntries, out vector rootTransform[4], int parentID = -1, EPreviewEntityFlag flags = 0)
+	static void GetPreviewEntries(IEntity entity, out notnull array<ref SCR_BasePreviewEntry> outEntries, out vector rootTransform[4], int parentID = -1, EPreviewEntityFlag flags = 0, TraceParam trace = null)
 	{
 		vector transform[4];
 		if (parentID == -1)
@@ -65,8 +72,19 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 			if (entity.IsInherited(ChimeraCharacter))
 				return;
 			
-			//--- Skip entities with mesh that are not visible, as well as entities not intended for play mode
-			if ((entity.GetVObject() && !(entity.GetFlags() & EntityFlags.VISIBLE)) || (entity.GetFlags() & EntityFlags.EDITOR_ONLY))
+			//--- Skip the entity if...
+			if (
+				//--- ... it has an object (e.g., not a composition folder)...
+				entity.GetVObject()
+				&&
+				(
+					//--- ... but the object does not have a mesh (e.g., particle effect)...
+					(!entity.GetVObject().ToMeshObject())
+					||
+					//--- ... or the object is not visible or is not intended for play mode
+					(!(entity.GetFlags() & EntityFlags.VISIBLE) || (entity.GetFlags() & EntityFlags.EDITOR_ONLY))
+				)
+			)
 				return;
 			
 			entity.GetLocalTransform(transform);
@@ -78,8 +96,7 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 		
 		entry.m_Entity = entity;
 		entry.SaveTransform(transform);
-		//entry.m_fScale = entity.GetScale();
-		entry.m_fScale = GetLocalScale(entity);
+		entry.SetScale(GetLocalScale(entity));
 		entry.m_iPivotID = GetPivotName(entity);
 		
 		if (GetMesh(entity, flags, entry, outEntries))
@@ -94,14 +111,14 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 			entry.m_Flags |= EPreviewEntityFlag.HORIZONTAL;
 		
 		if (!SCR_Enum.HasFlag(flags, EPreviewEntityFlag.IGNORE_TERRAIN) && (entry.m_iParentID == -1 || SCR_Enum.HasFlag(entry.m_Flags, EPreviewEntityFlag.ORIENT_CHILDREN)))
-			SaveTerrainTransform(entity, entry);
+			SaveTerrainTransform(entity, entry, SCR_Enum.HasFlag(flags, EPreviewEntityFlag.UNDERWATER), trace);
 		
 		if (entry.m_Shape != EPreviewEntityShape.PREFAB)
 		{
 			IEntity child = entity.GetChildren();
 			while (child)
 			{
-				GetPreviewEntries(child, outEntries, rootTransform, parentID);
+				GetPreviewEntries(child, outEntries, rootTransform, parentID, flags, trace);
 				child = child.GetSibling();
 			}
 		}
@@ -126,10 +143,11 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 			return string.Empty;
 		
 		array<string> boneNames = {};
-		parent.GetBoneNames(boneNames);
+		Animation anim = parent.GetAnimation();
+		anim.GetBoneNames(boneNames);
 		for (int i = 0, count = boneNames.Count(); i < count; i++)
 		{
-			if (parent.GetBoneIndex(boneNames[i]) == pivotIndex)
+			if (anim.GetBoneIndex(boneNames[i]) == pivotIndex)
 				return boneNames[i];
 		}
 		return string.Empty;
@@ -139,8 +157,15 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 		SCR_BaseAreaMeshComponent areaMeshComponent = SCR_BaseAreaMeshComponent.Cast(entity.FindComponent(SCR_BaseAreaMeshComponent));
 		if (areaMeshComponent)
 		{
-			entry.m_Shape = EPreviewEntityShape.CYLINDER;
-			entry.m_fScale = areaMeshComponent.GetRadius();
+			EAreaMeshShape areaMeshShape = areaMeshComponent.GetShape();
+			if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+				entry.m_Shape = EPreviewEntityShape.ELLIPSE;
+			else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+				entry.m_Shape = EPreviewEntityShape.RECTANGLE;
+			else 
+				return false;
+			
+			areaMeshComponent.GetDimensions3D(entry.m_vScale);
 			return false;
 		}
 		
@@ -149,7 +174,7 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 			SCR_PreviewEntityComponent previewComponent = SCR_PreviewEntityComponent.Cast(entity.FindComponent(SCR_PreviewEntityComponent));
 			if (previewComponent && previewComponent.IsRuntime())
 			{
-				//--- Entires pre-defined in the component, use them instead of scanning entity children dynamically
+				//--- Entries pre-defined in the component, use them instead of scanning entity children dynamically
 				if (previewComponent.GetPreviewEntries(outEntries, entry) != 0)
 					return true;
 				
@@ -169,7 +194,7 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 		
 		return false;
 	}
-	protected static void SaveTerrainTransform(IEntity entity, SCR_BasePreviewEntry entry, bool isUnderwater = false)
+	protected static void SaveTerrainTransform(IEntity entity, SCR_BasePreviewEntry entry, bool isUnderwater = false, TraceParam trace = null)
 	{
 		vector worldTransform[4], terrainTransform[4], surfaceBasis[4];
 		
@@ -177,7 +202,7 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 		entity.GetWorldTransform(worldTransform);
 		
 		//--- Get surface basis
-		if (!SCR_TerrainHelper.GetTerrainBasis(worldTransform[3], surfaceBasis, entity.GetWorld(), !isUnderwater))
+		if (!SCR_TerrainHelper.GetTerrainBasis(worldTransform[3], surfaceBasis, entity.GetWorld(), !isUnderwater, trace))
 			return;
 		
 		//--- Get identity matrix rotated according to the entity

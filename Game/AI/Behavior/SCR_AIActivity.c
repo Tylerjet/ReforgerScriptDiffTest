@@ -1,19 +1,45 @@
 class SCR_AIActivityBase : SCR_AIActionBase
 {
 	SCR_AIGroupUtilityComponent m_Utility;
-	ref SCR_BTParam<bool> m_bIsWaypointRelated = new SCR_BTParam<bool>(SCR_AIActionTask.WAYPOINT_RELATED_PORT);	
+	ref SCR_BTParam<bool> m_bIsWaypointRelated = new SCR_BTParam<bool>(SCR_AIActionTask.WAYPOINT_RELATED_PORT);
+	AIWaypoint m_RelatedWaypoint = null;
+	bool m_bAllowFireteamRebalance = true;	// Allows rebalancing of fireteams while this activity exists
 	
 	//---------------------------------------------------------------------------------------------------------------------------------
-	void InitParameters(bool isWaypointRelated)
+	void InitParameters(AIWaypoint relatedWaypoint)
 	{
+		bool isWaypointRelated = relatedWaypoint != null;
 		m_bIsWaypointRelated.Init(this, isWaypointRelated);
+		m_RelatedWaypoint = relatedWaypoint;
 	}
 	
 	//---------------------------------------------------------------------------------------------------------------------------------	
-	void SCR_AIActivityBase(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated)
+	void SCR_AIActivityBase(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint)
 	{
 		m_Utility = utility;
-		InitParameters(isWaypointRelated);
+		InitParameters(relatedWaypoint);
+	}
+	
+	//------------------------------------------------------------------------------------
+	protected void SendCancelMessagesToAllAgents()
+	{
+		AICommunicationComponent comms = m_Utility.m_Owner.GetCommunicationComponent();
+		if (!comms)
+			return;
+		
+		// Send to all agents
+		array<AIAgent> agents = {};
+		m_Utility.m_Owner.GetAgents(agents);
+		foreach (AIAgent agent : agents)
+		{
+			if (!agent)
+				continue;
+			
+			SCR_AIMessage_Cancel msg = SCR_AIMessage_Cancel.Create(this);
+			
+			msg.SetReceiver(agent);
+			comms.RequestBroadcast(msg, agent);
+		}
 	}
 	
 	//---------------------------------------------------------------------------------------------------------------------------------
@@ -29,14 +55,9 @@ class SCR_AIActivityBase : SCR_AIActionBase
 class SCR_AIIdleActivity : SCR_AIActivityBase
 {
 	//---------------------------------------------------------------------------------------------------------------------------------
-	override float Evaluate()
-	{
-		return 1;
-	}
-	
-	//---------------------------------------------------------------------------------------------------------------------------------
-	void SCR_AIIdleActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated)
+	void SCR_AIIdleActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint)
 	{
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityIdle.bt";
+		SetPriority(1.0);
 	}
 };

@@ -159,11 +159,12 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 	
 	protected void OnAcceptEndGame()
 	{
-		DialogUI dlg = DialogUI.CreateOkCancelDialog();
-		dlg.SetTitle(m_sEndGamePopUpTitle);
-		dlg.SetMessage(m_sEndGamePopUpMessage);
-		dlg.SetConfirmText(m_sEndGamePopUpConfirm);
+		SCR_ConfigurableDialogUi dlg = SCR_CommonDialogs.CreateDialog("session_end");
+		if (!dlg) 
+			return;
+		
 		dlg.m_OnConfirm.Insert(EndGamePopupComfirm);
+		
 	}
 	
 	protected void ButtonReset()

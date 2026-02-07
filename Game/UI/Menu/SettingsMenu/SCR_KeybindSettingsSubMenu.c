@@ -11,8 +11,8 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	protected VerticalLayoutWidget m_wActionsLayout;
 
 	// Bindings
-	protected static ref InputBinding s_Binding;
-	protected static const string PRIMARY_PRESET_PREFIX = "primary:";
+	protected ref InputBinding m_Binding;
+	protected static const string PRIMARY_PRESET_PREFIX = "";
 
 	// Strings (should be localised)
 	protected static const string RESET_ALL_DIALOG_TITLE = "#AR-Settings_Keybind_WarningResetAll";
@@ -21,6 +21,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	protected SCR_KeybindRowComponent m_SelectedRowComponent;
 	protected SCR_NavigationButtonComponent m_ResetSingleButtonComponent;
 	protected SCR_NavigationButtonComponent m_UnbindSingleActionButtonComponent;
+	protected SCR_NavigationButtonComponent m_AdvancedBindingButtonComponent;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
@@ -30,14 +31,18 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		if (!m_wActionsLayout)
 			return;
 
+		SCR_SettingsManagerKeybindModule settingsKeybindModule = SCR_SettingsManagerKeybindModule.Cast(GetGame().GetSettingsManager().GetModule(ESettingManagerModuleType.SETTINGS_MANAGER_KEYBINDING));
+		if (!settingsKeybindModule)
+			return;
 		
-		s_Binding = GetGame().GetInputManager().CreateUserBinding();
+		m_Binding = settingsKeybindModule.GetInputBindings();
 		
 		SCR_NavigationButtonComponent reset = CreateNavigationButton("MenuResetAllKeybind", "#AR-Settings_Keybind_ResetEveryKeybind", true);
 		reset.m_OnActivated.Insert(ResetKeybindsToDefault);
 		
 		CreateSingleKeybindResetButton();
 		CreateUnbindSingleButton();
+		CreateAdvancedBindingButton();
 
 		//read the categories and actions from KEY_BINDING_CONFIG
 		Resource holder = BaseContainerTools.LoadContainer(KEY_BINDING_CONFIG);
@@ -113,7 +118,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 				actionRowWidget = GetGame().GetWorkspace().CreateWidgets(ACTIONROW_LAYOUT_PATH ,m_wActionsLayout);
 				component = SCR_KeybindRowComponent.Cast(actionRowWidget.FindHandler(SCR_KeybindRowComponent));
 				if (component)
-					component.Create(actionRowWidget, displayName, entry.actionName, this, entry.preset,  GetRootWidget(), s_Binding);
+					component.Create(actionRowWidget, displayName, entry.actionName, this, entry.preset,  GetRootWidget(), m_Binding);
 			}
 		}
 	}
@@ -142,9 +147,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void ResetKeybindsToDefault()
 	{
-		DialogUI menu = DialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ConfirmationDialog , DialogPriority.CRITICAL, 0, true));
-		menu.SetTitle(RESET_ALL_DIALOG_TITLE);
-		menu.SetMessage(RESET_ALL_DIALOG_MESSAGE);
+		SCR_ConfigurableDialogUi menu = SCR_CommonDialogs.CreateDialog("reset_keybinds");
 		menu.m_OnConfirm.Insert(ResetKeybindsToDefaultConfirm);
 	}
 	
@@ -169,7 +172,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	protected void ResetKeybindsToDefaultConfirm()
 	{
 		array<string> contexts = {};
-		s_Binding.GetContexts(contexts);
+		m_Binding.GetContexts(contexts);
 		
 		foreach (SCR_KeyBindingCategory category: m_KeybindConfig.keyBindingCategories)
 		{
@@ -179,12 +182,12 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 				if (!entry.preset.IsEmpty())
 					finalPreset = PRIMARY_PRESET_PREFIX + entry.preset;
 				
-				s_Binding.ResetDefault(entry.actionName, EInputDeviceType.KEYBOARD, finalPreset);
-				s_Binding.ResetDefault(entry.actionName, EInputDeviceType.MOUSE, finalPreset);
+				m_Binding.ResetDefault(entry.actionName, EInputDeviceType.KEYBOARD, finalPreset);
+				m_Binding.ResetDefault(entry.actionName, EInputDeviceType.MOUSE, finalPreset);
 			}
 		}
 		ListActionsFromCurrentCategory();
-		s_Binding.Save();
+		m_Binding.Save();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -222,10 +225,25 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void CreateAdvancedBindingButton()
+	{
+		m_AdvancedBindingButtonComponent = CreateNavigationButton("MenuAdvancedKeybind", "#AR_Settings_KeybindAdvanced_Title", true);
+		m_AdvancedBindingButtonComponent.m_OnActivated.Insert(AdvancedKeybindButtonClick);
+		m_AdvancedBindingButtonComponent.SetEnabled(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void UnbindSingleActionEnabled(bool isEnabled)
 	{
 		if (m_UnbindSingleActionButtonComponent)
 			m_UnbindSingleActionButtonComponent.SetEnabled(isEnabled);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AdvancedBindingEnabled(bool isEnabled)
+	{
+		if (m_AdvancedBindingButtonComponent)
+			m_AdvancedBindingButtonComponent.SetEnabled(isEnabled);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -235,5 +253,21 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 			return;
 		
 		m_SelectedRowComponent.Unbind();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AdvancedKeybindButtonClick()
+	{
+		//save the selected row component because it will loose focus as soon as dialog opens
+		SCR_KeybindRowComponent rowComp = m_SelectedRowComponent;
+		
+		SCR_AdvancedKeybindDialogUI keybindDialog = SCR_AdvancedKeybindDialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.AdvancedKeybindDialog));
+		if (!keybindDialog || !rowComp)
+			return;
+		
+		keybindDialog.SetActionName(rowComp.GetActionName());
+		keybindDialog.SetActionPreset(PRIMARY_PRESET_PREFIX + rowComp.GetActionPreset());
+		keybindDialog.InitiateAdvancedKeybindDialog();
+		keybindDialog.m_OnCancel.Insert(ListActionsFromCurrentCategory);
 	}
 };

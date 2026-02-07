@@ -377,7 +377,7 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 	}	
 	
 	//~Todo: Test what happens if player is deleted
-	protected void OnPlayerKilled(int playerID)
+	protected void OnPlayerKilled(int playerID, IEntity player, IEntity killer)
 	{
 		if (m_aRestrictionZones.IsEmpty())
 			return;

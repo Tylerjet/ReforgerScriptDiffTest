@@ -15,7 +15,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 	protected SCR_VehicleFactionAffiliationComponent m_VehicleFactionAffiliation;
 	protected ref ScriptInvoker m_OnUIRefresh = new ScriptInvoker();
 	
-	protected void OnFactionUpdate()
+	protected void OnFactionUpdate(FactionAffiliationComponent owner, Faction previousFaction, Faction newFaction)
 	{
 		m_OnUIRefresh.Invoke();
 	}
@@ -275,7 +275,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		m_ComparmentManager = SCR_BaseCompartmentManagerComponent.Cast(owner.FindComponent(SCR_BaseCompartmentManagerComponent));
 		m_VehicleFactionAffiliation = SCR_VehicleFactionAffiliationComponent.Cast(owner.FindComponent(SCR_VehicleFactionAffiliationComponent));
 		if (m_VehicleFactionAffiliation)
-			m_VehicleFactionAffiliation.GetOnFactionUpdate().Insert(OnFactionUpdate);
+			m_VehicleFactionAffiliation.GetOnFactionChanged().Insert(OnFactionUpdate);
 		
 		EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(owner.FindComponent(EventHandlerManagerComponent));
 		if (eventHandlerManager)
@@ -284,6 +284,6 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 	void ~SCR_EditableVehicleComponent()
 	{
 		if (m_VehicleFactionAffiliation)
-			m_VehicleFactionAffiliation.GetOnFactionUpdate().Remove(OnFactionUpdate);
+			m_VehicleFactionAffiliation.GetOnFactionChanged().Remove(OnFactionUpdate);
 	}
 };

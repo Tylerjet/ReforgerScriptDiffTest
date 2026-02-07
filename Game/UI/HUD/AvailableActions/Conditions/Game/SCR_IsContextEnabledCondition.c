@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_IsContextEnabledCondition : SCR_AvailableActionCondition
-{	
+{
 	[Attribute("")]
 	protected string m_sContext;
 

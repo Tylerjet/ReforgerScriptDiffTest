@@ -284,43 +284,41 @@ class SCR_PossessingManagerComponent: SCR_BaseGameModeComponent
 		}
 		return RplId.Invalid();
 	}
-	override bool GetPlayerID(IEntity entity, out int playerID)
+	
+	override bool HandlePlayerKilled(int playerId, IEntity player, IEntity killer)
 	{
-		if (playerID > 0)
+		if (playerId > 0)
 		{
 			//--- Controlled entity
-			if (entity != GetMainEntity(playerID))
+			if (player != GetMainEntity(playerId))
 			{
 				//--- Switch to main entity when the possessed one dies
-				SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerID));
+				SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerId));
 				if (playerController)
 				{
 					//--- Open editor, assume it will stop possessing (ToDo: No direct editor reference here)
 					SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
 					if (core)
 					{
-						SCR_EditorManagerEntity editorManager = core.GetEditorManager(playerID);
+						SCR_EditorManagerEntity editorManager = core.GetEditorManager(playerId);
 						if (editorManager)
 						{
 							editorManager.Open();
+							// Don't handle kill automatically
 							return false;
 						}
 					}
 					
 					//--- No editor, stop possessing right now					
 					playerController.SetPossessedEntity(null);
+					// Don't handle this kill automatically
+					return false;
 				}
-				
-				playerID = 0;
 			}
 		}
-		else
-		{
-			//--- Main entity
-			playerID = GetPlayerIdFromMainEntity(entity);
-		}
 		
-		return true;
+		// Main entity, handle kill as usual
+		return super.HandlePlayerKilled(playerId, player, killer);
 	}
 	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{

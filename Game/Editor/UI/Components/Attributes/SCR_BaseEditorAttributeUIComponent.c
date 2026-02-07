@@ -37,13 +37,8 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	//Attribute desciption
 	protected bool m_bIsShowingDescription;
 	protected bool m_bShowButtonDescription;
-	protected bool m_bIsOverridingDescription;
 	protected string m_sButtonDescription;
 	protected string m_sButtonDescriptionParam1;
-	protected string m_sOverrideDescriptionCustomDescription;
-	protected string m_sOverrideDescriptionParam1;
-	protected string m_sOverrideDescriptionParam2;
-	protected string m_sOverrideDescriptionParam3;
 	
 	protected ref ScriptInvoker Event_OnAttributeChanged = new ref ScriptInvoker;
 	protected ref ScriptInvoker Event_OnEnabledByAttribute = new ref ScriptInvoker;
@@ -80,13 +75,30 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		
 		SetFromVar(var);
 	}
+	
 	/*!
 	Update GUI from attribute variable. Called when attributes are initialized in a dialog or when they are reset based on user request.
 	\param var Attribute variable
 	*/
 	void SetFromVar(SCR_BaseEditorAttributeVar var)
+	{	
+		SetFromVarOrDefault();
+	}
+	
+	protected void SetFromVarOrDefault()
 	{
+		array<SCR_BaseAttributeDynamicDescription> dynamicDescriptionArray = {};
+		m_Attribute.GetDynamicDescriptionArray(dynamicDescriptionArray);
 		
+		//~ Init dynamic descriptions
+		foreach(SCR_BaseAttributeDynamicDescription discription: dynamicDescriptionArray)
+		{
+			discription.InitDynamicDescription(m_Attribute, this);
+		}
+		
+		//~ Update discription if showing
+		if (m_bIsShowingDescription)
+			ShowAttributeDescription();
 	}
 	
 	//============================ Init ============================\\
@@ -202,7 +214,6 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 			}
 		}
 		
-		
 		if (attribute.GetIsMultiSelect())
 		{
 			if (attribute.GetHasConflictingValues())
@@ -255,6 +266,8 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		m_Attribute.UpdateInterlinkedVariables(m_Attribute.GetVariable(), m_AttributeManager);
 		m_Attribute.PreviewVariable(true, m_AttributeManager);
 		
+		//~ Update discription
+		ShowAttributeDescription();
 		Event_OnAttributeChanged.Invoke();
 	}
 	
@@ -266,15 +279,71 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		
 		m_bIsShowingDescription = true;
 		
-		//If conflicting attribute and not toggled show the conflicting attribute description
+		//~ Always show tickbox description first
 		if (!m_TickBoxAttribute.GetToggled() && m_TickBoxAttribute.IsVisibleAndEnabled())
+		{
 			m_AttributeManager.SetAttributeDescription(m_AttributeManager.GetConflictingAttributeUIInfo(), m_AttributeManager.GetConflictingAttributeUIInfo().GetDescription());
-		else if (m_bIsOverridingDescription)
-			m_AttributeManager.SetAttributeDescription(GetAttribute().GetUIInfo(), m_sOverrideDescriptionCustomDescription, m_sOverrideDescriptionParam1, m_sOverrideDescriptionParam2, m_sOverrideDescriptionParam3);
-		else if (m_bShowButtonDescription)
+			return;
+		}
+		
+		array<SCR_BaseAttributeDynamicDescription> dynamicDescriptionArray = {};
+		m_Attribute.GetDynamicDescriptionArray(dynamicDescriptionArray);
+		
+		//~ Get first valid description
+		SCR_BaseAttributeDynamicDescription dynamicDescription;
+		foreach(SCR_BaseAttributeDynamicDescription discription: dynamicDescriptionArray)
+		{
+			if (discription.IsValid(m_Attribute, this))
+			{
+				dynamicDescription = discription;
+				break;
+			}
+		}
+		
+		//~ Get button dynamic
+		SCR_BaseButtonAttributeDynamicDescription buttonDynamicDescription;
+		if (dynamicDescription)
+		{
+			buttonDynamicDescription = SCR_BaseButtonAttributeDynamicDescription.Cast(dynamicDescription);
+		}
+		
+		//~ Button description
+		if (m_bShowButtonDescription && (!buttonDynamicDescription || !buttonDynamicDescription.HasPriorityOverButton()))
+		{
 			m_AttributeManager.SetAttributeDescription(m_ButtonDescriptionUIInfo, string.Empty, m_sButtonDescriptionParam1);
-		else
-			m_AttributeManager.SetAttributeDescription(GetAttribute().GetUIInfo());
+			return;
+		}
+		
+		//~ Dynamic description	
+		if (dynamicDescription)
+		{
+			SCR_EditorAttributeUIInfo uiInfo;
+			string param1, param2, param3;
+			
+			dynamicDescription.GetDescriptionData(m_Attribute, this, uiInfo, param1, param2, param3);
+			
+			if (!uiInfo)
+			{
+				Print("SCR_BaseEditorAttributeUIComponent 'dynamicDescription' is missing UIInfo this means a dynamic description was added but the UIInfo was not set!", LogLevel.WARNING);
+				m_AttributeManager.SetAttributeDescription(GetAttribute().GetUIInfo());
+				return;
+			}
+			
+			string descr = uiInfo.GetDescription();
+			
+			if (SCR_StringHelper.IsEmptyOrWhiteSpace(descr))
+			{
+				Print("'SCR_BaseEditorAttributeUIComponent' dynamicDescription does not have a description assigned! This means the description is not set!", LogLevel.WARNING);
+				m_AttributeManager.SetAttributeDescription(GetAttribute().GetUIInfo());
+				return;
+			}
+
+			m_AttributeManager.SetAttributeDescription(uiInfo, descr, param1, param2, param3);
+			return;
+		}
+			
+		//~ Default attribute description
+		m_AttributeManager.SetAttributeDescription(GetAttribute().GetUIInfo());
 	}
 	
 	protected void HideAttributeDescription()
@@ -286,36 +355,8 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		m_AttributeManager.SetAttributeDescription(null);
 	}	
 	
-	/*!
-	Override the default tooltip Text
-	\param content text displayed
-	\param icon icon displayed. Hidden if left empty
-	\param param1 param in text
-	\param param2 param in text
-	*/
-	protected void OverrideDescription(bool overrideDescription, string customContent = string.Empty, string param1 = string.Empty, string param2 = string.Empty, string param3 = string.Empty)
-	{	
-		m_bIsOverridingDescription = overrideDescription;
-		
-		if (!m_bIsOverridingDescription && m_bIsShowingDescription)
-		{
-			ShowAttributeDescription();
-			return;
-		}
-		
-		m_sOverrideDescriptionCustomDescription = customContent;
-		m_sOverrideDescriptionParam1 = param1;
-		m_sOverrideDescriptionParam2 = param2;
-		m_sOverrideDescriptionParam3 = param3;
-
-		if (m_bIsShowingDescription)
-			ShowAttributeDescription();
-		else 
-			HideAttributeDescription();
-	}
-	
 	void ShowButtonDescription(SCR_AttributeButtonUIComponent button, bool showButtonDescription, string buttonDescription = string.Empty)
-	{
+	{				
 		//~ If trying to hide description but that description is not active ignore it
 		if (showButtonDescription)
 			m_ActiveButtonDescription = button;
@@ -374,15 +415,8 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	//Sets a default state for the UI and var value if conflicting attribute
 	protected void SetVariableToDefaultValue(SCR_BaseEditorAttributeVar var)
 	{
-		
+		SetFromVarOrDefault();
 	}
-	
-	
-	void OnVarChanged()
-	{
-	
-	}
-	
 	
 	protected void ToggleEnableAttribute(bool enabled)
 	{

@@ -30,4 +30,6 @@ enum BattlEyeKickReason
 	ADMIN_BAN,
 	//! "Admin Kick (REASON)" - the player has been kicked by server administrator
 	ADMIN_KICK,
+	//! "Missing GameID/MasterPort server config settings"
+	INVALID_SERVER_CONFIG,
 }

@@ -566,7 +566,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		WorldEditorAPI api = genericEntity._WB_GetEditorAPI();
 			
 		string uniqueName = string.Empty;
-		uniqueName = api.GetEntityNiceName(api.EntityToSource(owner));
+		uniqueName = api.GenerateDefaultEntityName(api.EntityToSource(owner));
 	
 		api.RenameEntity(owner, uniqueName);
 	}
@@ -616,11 +616,11 @@ class SCR_ScenarioFrameworkPluginTrigger: SCR_ScenarioFrameworkPlugin
 	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(TA_EActivationPresence), category: "Trigger Activation")]
 	protected TA_EActivationPresence	m_eActivationPresence;
 	
-	[Attribute(desc: "If SPECIFIC_CLASS is selected, fill the class name here.", category: "Trigger")]	//TODO: do array of classes
-	protected string 		m_sSpecificClassName;
+	[Attribute(desc: "If SPECIFIC_CLASS is selected, fill the class name here.", category: "Trigger")]
+	protected ref array<string> 	m_aSpecificClassNames;
 	
-	[Attribute(desc: "If SPECIFIC_PREFAB_NAME is selected, fill the class name here.", category: "Trigger")]	//TODO: do array of classes
-	protected ResourceName 	m_sSpecificPrefabName;
+	[Attribute(desc: "If SPECIFIC_PREFAB_NAME is selected, fill the class name here.", category: "Trigger")]
+	protected ref array<ResourceName> 	m_aSpecificPrefabNames;
 	
 	[Attribute("", category: "Trigger Activation")]
  	protected FactionKey 		m_sActivatedByThisFaction;
@@ -630,6 +630,9 @@ class SCR_ScenarioFrameworkPluginTrigger: SCR_ScenarioFrameworkPlugin
 	
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")];
 	protected bool		m_bOnce;
+	
+	[Attribute(defvalue: "1", UIWidgets.Slider, desc: "How frequently is the trigger updated and performing calculations. Lower numbers will decrease performance.", params: "0 86400 1", category: "Trigger")]
+	protected float 	m_fUpdateRate;
 	
 	[Attribute(defvalue: "0", UIWidgets.Slider, desc: "Minimum players needed to activate this trigger when PLAYER Activation presence is selected", params: "0 1 0.01", precision: 2, category: "Trigger")]
 	protected float		m_fMinimumPlayersNeededPercentage;
@@ -656,29 +659,51 @@ class SCR_ScenarioFrameworkPluginTrigger: SCR_ScenarioFrameworkPlugin
 			return;
 
 		super.Init(object);
+		SCR_CharacterTriggerEntity trigger;
 		IEntity entity = object.GetSpawnedEntity();
-		if (!BaseGameTriggerEntity.Cast(entity))
+		
+		SCR_ScenarioFrameworkArea area = SCR_ScenarioFrameworkArea.Cast(object);
+		if (area)
 		{
-			Print("ScenarioFramework: SlotTrigger - The selected prefab is not trigger!", LogLevel.ERROR);
-			return;
+			trigger = SCR_CharacterTriggerEntity.Cast(area.GetTrigger());
 		}
-		BaseGameTriggerEntity.Cast(entity).SetSphereRadius(m_fAreaRadius);
-		SCR_CharacterTriggerEntity trigger = SCR_CharacterTriggerEntity.Cast(entity);
+		else
+		{
+			if (!BaseGameTriggerEntity.Cast(entity))
+			{
+				Print("ScenarioFramework: SlotTrigger - The selected prefab is not trigger!", LogLevel.ERROR);
+				return;
+			}
+			trigger = SCR_CharacterTriggerEntity.Cast(entity);
+		}
+
 		if (trigger)
 		{
+			trigger.SetSphereRadius(m_fAreaRadius);
 			trigger.SetActivationPresence(m_eActivationPresence);
 			trigger.SetOwnerFaction(m_sActivatedByThisFaction);
-			trigger.SetSpecificClass(m_sSpecificClassName);
-			trigger.SetSpecificPrefabName(m_sSpecificPrefabName);
+			trigger.SetSpecificClassName(m_aSpecificClassNames);
+			trigger.SetSpecificPrefabName(m_aSpecificPrefabNames);
 			trigger.SetCustomTriggerConditions(m_aCustomTriggerConditions);
 			trigger.SetOnce(m_bOnce);
+			trigger.SetUpdateRate(m_fUpdateRate);
 			trigger.SetNotificationEnabled(m_bNotificationEnabled);
 			trigger.SetEnableAudio(m_bEnableAudio);
 			trigger.SetMinimumPlayersNeeded(m_fMinimumPlayersNeededPercentage);
 			trigger.SetPlayerActivationNotificationTitle(m_sPlayerActivationNotificationTitle);
 			trigger.SetActivationCountdownTimer(m_fActivationCountdownTimer);
 			trigger.SetCountdownAudio(m_sCountdownAudio);
+			return;
 		}
+		
+		SCR_BaseFactionTriggerEntity factionTrigger = SCR_BaseFactionTriggerEntity.Cast(entity);
+		if (factionTrigger)
+		{
+			factionTrigger.SetSphereRadius(m_fAreaRadius);
+			FactionManager factionManager = GetGame().GetFactionManager();
+			if (factionManager)
+				factionTrigger.SetOwnerFaction(factionManager.GetFactionByKey(m_sActivatedByThisFaction));
+		}	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -689,3 +714,47 @@ class SCR_ScenarioFrameworkPluginTrigger: SCR_ScenarioFrameworkPlugin
 		//src.Set("m_sAreaName", m_fAreaRadius);
 	}
 };
+
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkPluginOnDestroyEvent: SCR_ScenarioFrameworkPlugin
+{
+	[Attribute(UIWidgets.Auto, desc: "What to do once object gets destroyed", category: "OnDestroy")];
+	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnDestroy;
+	
+	protected IEntity m_Asset;
+	
+	//------------------------------------------------------------------------------------------------
+	override void Init(SCR_ScenarioFrameworkLayerBase object)
+	{
+		if (!object)
+			return;
+
+		super.Init(object);
+		SCR_CharacterTriggerEntity trigger;
+		IEntity entity = object.GetSpawnedEntity();
+		if (!entity)
+			return;
+		
+		m_Asset = entity;
+		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(entity.FindComponent(ScriptedDamageManagerComponent));
+		if (objectDmgManager)
+			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);		
+		else
+			PrintFormat("ScenarioFramework: Registering OnDestroy of entity %1 failed! The entity doesn't have damage manager", entity, LogLevel.ERROR);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnObjectDamage(EDamageState state)
+	{
+		if (state != EDamageState.DESTROYED || !m_Asset)
+			return;
+		
+		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(m_Asset.FindComponent(ScriptedDamageManagerComponent));
+		if (objectDmgManager)
+	 		objectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
+		
+		foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnDestroy)
+			action.OnActivate(m_Asset);
+	}
+		
+}

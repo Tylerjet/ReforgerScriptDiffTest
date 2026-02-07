@@ -1,4 +1,4 @@
-//#define PREVIEW_ENTITY_SHOW_REFERENCE
+//#define PREVIEW_ENTITY_SHOW_REFERENCE //--- Don't delete reference entity after transformation ended, to show how it looked like.
 
 [EntityEditorProps(category: "GameScripted/Preview", description: "")]
 class SCR_RefPreviewEntityClass: SCR_EditablePreviewEntityClass
@@ -19,15 +19,6 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 	*/
 	static void SpawnAndApplyReference(SCR_EditableEntityComponent entity, SCR_EditorPreviewParams param)
 	{
-		//--- Reference offset based on vertical mode (without it, the entity would be always spawned on terrain)
-		vector transformRef[4];
-		param.GetWorldTransform(transformRef);
-		if (param.m_VerticalMode == EEditorTransformVertical.TERRAIN)
-		{
-			float surfaceY = SCR_TerrainHelper.GetTerrainY(transformRef[3], null, !param.m_bIsUnderwater);
-			transformRef[3][1] = surfaceY + (transformRef[3][1] - surfaceY) / 2;
-		}
-		
 		ResourceName material;
 #ifdef PREVIEW_ENTITY_SHOW_REFERENCE
 		material = "{D0126AF0E6A27141}Common/Materials/Colors/colorRed.emat";
@@ -35,6 +26,8 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 		EPreviewEntityFlag flags = EPreviewEntityFlag.IGNORE_TERRAIN | EPreviewEntityFlag.IGNORE_PREFAB | EPreviewEntityFlag.ONLY_EDITABLE;
 		
 		SCR_RefPreviewEntity refEntity = SCR_RefPreviewEntity.Cast(SCR_RefPreviewEntity.SpawnPreviewFromEditableEntity(entity, "SCR_RefPreviewEntity", GetGame().GetWorld(), null, material, flags));
+		
+		refEntity.m_EditableEntity = entity;
 		refEntity.SetAsInstant();
 		refEntity.ApplyReference(param);
 		
@@ -174,16 +167,23 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 	}
 	protected void UpdateReference(vector transform[4], EEditorTransformVertical verticalMode, bool isUnderwater)
 	{
+		TraceParam trace;
+		if (verticalMode == EEditorTransformVertical.GEOMETRY)
+		{
+			trace = new TraceParam();
+			trace.ExcludeArray = m_aExcludeArray;
+		}		
+		
 		float currentHeight;
 		if (!SCR_Enum.HasFlag(m_Flags, EPreviewEntityFlag.IGNORE_TERRAIN))
 		{
 			vector currentPos = GetWorldTransformAxis(3);
-			currentHeight = currentPos[1] - SCR_TerrainHelper.GetTerrainY(currentPos, GetWorld(), !SCR_Enum.HasFlag(m_Flags, EPreviewEntityFlag.UNDERWATER));
+			currentHeight = currentPos[1] - SCR_TerrainHelper.GetTerrainY(currentPos, GetWorld(), !SCR_Enum.HasFlag(m_Flags, EPreviewEntityFlag.UNDERWATER), trace);
 		}
-		float height = transform[3][1] - SCR_TerrainHelper.GetTerrainY(transform[3], GetWorld(), !isUnderwater);
+		float height = transform[3][1] - SCR_TerrainHelper.GetTerrainY(transform[3], GetWorld(), !isUnderwater, trace);
 		
 		m_fHeightTerrain = 0;
-		SetPreviewTransform(transform, verticalMode, height - currentHeight, isUnderwater);
+		SetPreviewTransform(transform, verticalMode, height - currentHeight, isUnderwater, trace);
 	}
 	override protected void EOnPreviewInit(SCR_BasePreviewEntry entry, SCR_BasePreviewEntity root)
 	{

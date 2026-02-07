@@ -5,7 +5,7 @@ Do not modify, this script is generated
 */
 
 /*!
-\addtogroup AI\Animals
+\addtogroup AI_Animals
 \{
 */
 

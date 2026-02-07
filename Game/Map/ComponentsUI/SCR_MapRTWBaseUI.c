@@ -17,6 +17,7 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	protected ref array<ref ToolSize> m_aSizesArray;
 	
 	const string BASE_WORLD_TYPE = "Preview";
+	const float CAMERA_VERTICAL_FOV = 43;
 	
 	// configuration
 	protected string WIDGET_NAME;
@@ -111,6 +112,9 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 	//! \param visible is true/false switch
 	protected void SetVisible(bool visible)
 	{
+		if (!m_wFrame)
+			return;
+		
 		if (visible)
 		{			
 			// RTW preview world
@@ -176,7 +180,7 @@ class SCR_MapRTWBaseUI : SCR_MapUIBaseComponent
 		previewWorld.SetCameraType(0, CameraType.PERSPECTIVE);
 		previewWorld.SetCameraNearPlane(0, 0.001);
 		previewWorld.SetCameraFarPlane(0, 50);
-		previewWorld.SetCameraVerticalFOV(0, 30);
+		previewWorld.SetCameraVerticalFOV(0, CAMERA_VERTICAL_FOV);
 		
 						
 		return true;

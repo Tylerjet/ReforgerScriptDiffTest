@@ -317,6 +317,55 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		pos += GetIconPos();
 		return true;
 	}	
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CanDestroy()
+	{
+		set<SCR_EditableEntityComponent> children = new set<SCR_EditableEntityComponent>();
+		GetChildren(children, true);
+		
+		foreach (SCR_EditableEntityComponent child : children)
+		{
+			if (child.CanDestroy())
+				return true;
+		}
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool IsDestroyed()
+	{
+		set<SCR_EditableEntityComponent> children = new set<SCR_EditableEntityComponent>();
+		GetChildren(children, true);
+		
+		foreach (SCR_EditableEntityComponent child : children)
+		{
+			if (!child.IsDestroyed())
+				return false;
+		}
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool Destroy()
+	{
+		if (!IsServer())
+			return false;
+		
+		set<SCR_EditableEntityComponent> children = new set<SCR_EditableEntityComponent>();
+		GetChildren(children, true);
+		
+		bool isDestroyed = true;
+		
+		foreach (SCR_EditableEntityComponent child : children)
+		{
+			isDestroyed &= child.Destroy();
+		}
+		
+		return isDestroyed;
+	}
 	/*
 	override bool CanSetParent(SCR_EditableEntityComponent parentEntity)
 	{

@@ -28,6 +28,8 @@ class BaseCommandHandlerComponent: GameComponent
 	\param owner Entity this component is attached to.
 	*/
 	event protected void OnInit(IEntity owner);
+	event protected void OnCommandActivate(int pCmdId);
+	event protected void OnCommandDeactivate(int pCmdId);
 	/*!
 	Overrides the whole native command handling
 	\param pDt Delta time since last call.

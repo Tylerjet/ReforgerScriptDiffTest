@@ -14,6 +14,8 @@ class SCR_DestructionBaseComponentClass: ScriptedDamageManagerComponentClass
 	float m_fDamageThresholdMaximum;
 	[Attribute("0", desc: "Should children destructible objects also receive the damage dealt to this one?", category: "Destruction Setup")]
 	bool m_bPassDamageToChildren;
+	[Attribute("0", desc: "Should the parent of this object also be destroyed when this object gets destroyed?", category: "Destruction Setup")]
+	bool m_bDestroyParentWhenDestroyed;
 	
 	[Attribute("", UIWidgets.Object, "List of objects (particles, debris, etc) to spawn on destruction of the object", category: "Destruction FX")]
 	ref array<ref SCR_BaseSpawnable> m_DestroySpawnObjects;
@@ -99,6 +101,13 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	bool ShouldDestroyParent()
+	{
+		SCR_DestructionBaseComponentClass prefabData = SCR_DestructionBaseComponentClass.Cast(GetComponentData(GetOwner()));
+		return prefabData && prefabData.m_bDestroyParentWhenDestroyed;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Returns whether the object should disable physics on destruction (before being deleted or changed)
 	bool GetDisablePhysicsOnDestroy()
 	{
@@ -126,9 +135,54 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// Spawns destroy objects of children as well as own
+	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
+	void RPC_DoSpawnAllDestroyEffects()
+	{
+		SpawnDestroyObjects(new SCR_HitInfo());
+		
+		IEntity child = GetOwner().GetChildren();
+		while (child)
+		{
+			SCR_DestructionBaseComponent destructible = SCR_DestructionBaseComponent.Cast(child.FindComponent(SCR_DestructionBaseComponent));
+			if (destructible)
+				destructible.SpawnDestroyObjects(new SCR_HitInfo());
+			
+			child = child.GetSibling();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void DeleteParentWithEffects()
+	{
+		if (GetDestructionBaseData().GetDestructionQueued())
+			return; // Destruction queued already, don't do this.
+		
+		RPC_DoSpawnAllDestroyEffects();
+		Rpc(RPC_DoSpawnAllDestroyEffects);
+		
+		DeleteDestructible();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Used in cases where we don't care about effects or anything, e. g. building destruction
 	void DeleteDestructible()
 	{
+		if (ShouldDestroyParent())
+		{
+			IEntity parent = GetOwner().GetParent();
+			if (parent)
+			{
+				SCR_DestructionBaseComponent destructible = SCR_DestructionBaseComponent.Cast(parent.FindComponent(SCR_DestructionBaseComponent));
+				if (destructible)
+				{
+					destructible.DeleteParentWithEffects();
+					return;
+				}
+			}
+		}
+		
+		GetDestructionBaseData().SetDestructionQueued(true);
 		RegenerateNavmeshDelayed();
 		RplComponent.DeleteRplEntity(GetOwner(), false);
 	}
@@ -186,7 +240,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns objects that are meant to be created when the object is destroyed (particles, debris, etc)
-	void SpawnDestroyObjects()
+	void SpawnDestroyObjects(SCR_HitInfo hitInfo)
 	{
 		Physics ownerPhysics = GetOwner().GetPhysics();
 		
@@ -222,7 +276,10 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	//! Handle destruction
 	void HandleDestruction()
 	{
-		SpawnDestroyObjects();
+		if (GetOwner().IsDeleted())
+			return;
+		
+		SpawnDestroyObjects(null);
 		PlaySound();
 		DeleteDestructible();
 	}
@@ -280,29 +337,9 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		if (!phys)
 			return;
 		
-		// If the object has dynamic physics, pass the parameters
-		if (phys.IsDynamic())
-		{
-			float mass = phys.GetMass();
-			vector velocityLinear = phys.GetVelocity();
-			vector velocityAngular = phys.GetAngularVelocity();
-			
-			phys.Destroy();
-			phys = Physics.CreateDynamic(GetOwner(), mass, -1);
-			if (phys)
-			{
-				phys.SetVelocity(velocityLinear);
-				phys.SetAngularVelocity(velocityAngular);
-			}
-		}
-		else
-		{
-			int responseIndex = phys.GetResponseIndex();
-			phys.Destroy();
-			phys = Physics.CreateStatic(GetOwner(), -1);
-			if (phys)
-				phys.SetResponseIndex(responseIndex);
-		}
+		// Update physics geometries after mesh change
+		if (!phys.UpdateGeometries())
+			phys.Destroy();// No geoms found, destroy physics
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -526,12 +563,19 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		
 		Rpc(RPC_QueueDestroy, destructionHitInfo.m_TotalDestruction, destructionHitInfo.m_LastHealth, destructionHitInfo.m_HitDamage, destructionHitInfo.m_DamageType, destructionHitInfo.m_HitPosition, destructionHitInfo.m_HitDirection, destructionHitInfo.m_HitNormal);
 		
-		SCR_DestructionBaseData data = GetDestructionBaseData();
-		if (!data.GetDestructionQueued())
+		if (!IsDestructionQueued())
 		{
 			GetGame().GetCallqueue().CallLater(HandleDestruction); // Replaces OnFrame call, prevents crash when damage is dealt async/from physics step
+			SCR_DestructionBaseData data = GetDestructionBaseData();
 			data.SetDestructionQueued(true);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsDestructionQueued()
+	{
+		SCR_DestructionBaseData data = GetDestructionBaseData();
+		return data.GetDestructionQueued();
 	}
 	
 	//------------------------------------------------------------------------------------------------

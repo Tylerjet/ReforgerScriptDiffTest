@@ -1,4 +1,4 @@
-/** @ingroup Editor
+/** @ingroup Editor_Entities
 */ 
 
 //! Editor event processed in components.

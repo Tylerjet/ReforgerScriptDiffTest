@@ -109,19 +109,20 @@ class SCR_RequestedTaskSupportEntity : SCR_BaseTaskSupportEntity
 		if (m_sRequestButtonText.IsEmpty())
 			return;
 		
-		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapContextualMenuUI));
-		if (!ctxMenu)
+		SCR_MapRadialUI radialMenu = SCR_MapRadialUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapRadialUI));
+		if (!radialMenu)
 			return;
 				
-		SCR_MapMenuRequestedTaskEntry entry = new SCR_MapMenuRequestedTaskEntry(m_sRequestButtonText);
+		SCR_MapMenuRequestedTaskEntry entry = new SCR_MapMenuRequestedTaskEntry();
 		if (!entry)
 			return;
 		
-		ctxMenu.InsertCustomRadialEntry(entry);
-		
+		entry.SetName(m_sRequestButtonText);
 		entry.SetSupportClass(this);
-		entry.m_OnClick.Insert(Request);
+		entry.GetOnPerform().Insert(Request);
 		//entry.m_OnShow.Insert(OnContextualEntryShow);
+		
+		radialMenu.InsertCustomRadialEntry(entry);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -23,7 +23,7 @@ class ImageSetGenerator: WorkbenchPlugin
 	
 	private string tabs;
 	private int tabsCount;
-	private FileHandle file;
+	private ref FileHandle file;
 	
 	void SetTabs(int tabsCountDelta)
 	{

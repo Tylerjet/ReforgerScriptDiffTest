@@ -17,6 +17,10 @@ class SCR_MeleeHitDataClass
 	vector m_vHitNormal = vector.Zero;
 };
 
+void OnMeleePerformedDelegate(IEntity owner);
+typedef func OnMeleePerformedDelegate;
+typedef ScriptInvokerBase<OnMeleePerformedDelegate> OnMeleePerformedInvoker;
+
 //------------------------------------------------------------------------------------------------
 class SCR_MeleeComponent : ScriptComponent
 {
@@ -33,6 +37,16 @@ class SCR_MeleeComponent : ScriptComponent
 	private bool m_bAttackAlreadyExecuted = false;			//! attack execution limiter
 	private bool m_bMeleeAttackStarted = false;
 	private float m_fMWPWeaponRange = 1;
+	protected ref OnMeleePerformedInvoker m_OnMeleePerformed;
+	
+	//------------------------------------------------------------------------------------------------
+	OnMeleePerformedInvoker GetOnMeleePerformed()
+	{
+		if (!m_OnMeleePerformed)
+			m_OnMeleePerformed = new OnMeleePerformedInvoker;
+		
+		return m_OnMeleePerformed;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called from character command handler, based on user input.
@@ -145,7 +159,7 @@ class SCR_MeleeComponent : ScriptComponent
 	private vector GetPlayersDirection()
 	{
 		vector aimMat[4];
-		Math3D.AnglesToMatrix(CharacterControllerComponent.Cast(GetOwner().FindComponent(CharacterControllerComponent)).GetAimingAngles(), aimMat);
+		Math3D.AnglesToMatrix(CharacterControllerComponent.Cast(GetOwner().FindComponent(CharacterControllerComponent)).GetInputContext().GetAimingAngles() * Math.RAD2DEG, aimMat);
 		return aimMat[2];
 	}
 	
@@ -234,6 +248,9 @@ class SCR_MeleeComponent : ScriptComponent
 		hitPosDirNorm[0] = m_MeleeHitData.m_vHitPosition;
 		hitPosDirNorm[1] = m_MeleeHitData.m_vHitDirection;
 		hitPosDirNorm[2] = m_MeleeHitData.m_vHitNormal;
+		
+		if (m_OnMeleePerformed)
+			m_OnMeleePerformed.Invoke(GetOwner());
 		
 		//! check if the entity has the damage manager component
 		HitZone hitzone;

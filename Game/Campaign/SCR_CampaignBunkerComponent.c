@@ -1,91 +1,125 @@
-[EntityEditorProps(category: "GameScripted/Campaign", description: "Handles additional functionality at bunkers built in campaign.", color: "0 0 255 255")]
-class SCR_CampaignBunkerComponentClass: ScriptComponentClass
+[EntityEditorProps(category: "GameScripted/Campaign", description: "Feeds child SCR_Position entities into SCR_CampaignSpawnPointGroup of SCR_CampaignMilitaryBaseComponent, so players can spawn also on these instead of typical spawn position.", color: "0 0 255 255")]
+class SCR_CampaignBunkerComponentClass : SCR_MilitaryBaseLogicComponentClass
 {
 };
 
 //------------------------------------------------------------------------------------------------
-class SCR_CampaignBunkerComponent : ScriptComponent
+class SCR_CampaignBunkerComponent : SCR_MilitaryBaseLogicComponent
 {
-	[Attribute("150", desc: "Range in which should component search for base.")]
-	protected float m_fBaseSearchDistance;
-	
-	protected SCR_CampaignBase m_Base;
-	protected SCR_CampaignSpawnPointGroup m_SpawnPoint;
-	
+	protected ref array<SCR_Position> m_aChildrenPositions = {};
+	protected ref array<SCR_CampaignSpawnPointGroup> m_aSpawnPoints = {};
+
 	//------------------------------------------------------------------------------------------------
-	protected void AddSpawnPositions()
+	//! Finds all SCR_Positions in hiarchy and registers them to component
+	protected void FindChildrenPositionsInHiearchy()
 	{
-		if (!m_SpawnPoint)
-			return;
-		
 		SCR_Position position;
 
 		IEntity child = GetOwner().GetChildren();
 		while (child)
 		{
 			position = SCR_Position.Cast(child);
-			if (position)
-				m_SpawnPoint.InsertChildrenPosition(position);
-			
+			if (position && !m_aChildrenPositions.Contains(position))
+				m_aChildrenPositions.Insert(position);
+
 			child = child.GetSibling();
 		}
+
+		ApplyChildrenToSpawnPoints();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//! Callback for base search function. Returns true, if no base was found
-	protected bool BaseSearchCallback(IEntity ent)
+	//! Called after Children are already found, will add child positions to known SpawnPositions
+	protected void ApplyChildrenToSpawnPoints()
 	{
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(ent);
-		if (base && base.GetType() != CampaignBaseType.RELAY)
+		foreach (SCR_CampaignSpawnPointGroup spawnPoint : m_aSpawnPoints)
 		{
-			m_Base = base;
-			return false;
+			AddSpawnPositions(spawnPoint);
 		}
-		
-		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	protected void AssignBaseSpawnPoint()
+	//! Add child SCR_Positions into Spawnpoint
+	// \param spawnPoint SpawnPoint to which should children be added or removed from
+	protected void AddSpawnPositions(notnull SCR_CampaignSpawnPointGroup spawnPoint)
 	{
-		if (!m_Base)
-			return;
-		
-		m_SpawnPoint = SCR_CampaignSpawnPointGroup.Cast(m_Base.GetBaseSpawnPoint());
-		if (!m_SpawnPoint)
-			return;
-		
-		AddSpawnPositions();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected override void EOnInit(IEntity owner)
-	{
-		// returns if query was finished without finding base (TEMPORARY, will be changed as soon as Freeform basebuilding is available
-		if (GetGame().GetWorld().QueryEntitiesBySphere(GetOwner().GetOrigin(), m_fBaseSearchDistance, BaseSearchCallback, null, EQueryEntitiesFlags.ALL))
+		foreach (SCR_Position position : m_aChildrenPositions)
 		{
-			Print("Bunker didn't find any base in its vicinity", LogLevel.DEBUG);
-			return;
+			spawnPoint.InsertChildrenPosition(position);
 		}
-		
-		if (!m_Base.GetBaseSpawnPoint())
-			m_Base.m_OnSpawnPointAssigned.Insert(AssignBaseSpawnPoint);
-		else
-			AssignBaseSpawnPoint();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override void OnPostInit(IEntity owner)
+	//! Remove child SCR_Positions into Spawnpoint
+	// \param spawnPoint SpawnPoint to which should children be added or removed from
+	protected void RemoveSpawnPositions(notnull SCR_CampaignSpawnPointGroup spawnPoint)
+	{
+		foreach (SCR_Position position : m_aChildrenPositions)
+		{
+			spawnPoint.RemoveChildrenPosition(position);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnBaseRegistered(notnull SCR_MilitaryBaseComponent base)
+	{
+		super.OnBaseRegistered(base);
+
+		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
+		if (!campaignBase)
+			return;
+
+		SCR_CampaignSpawnPointGroup spawnPoint = SCR_CampaignSpawnPointGroup.Cast(campaignBase.GetSpawnPoint());
+		if (!spawnPoint && m_aSpawnPoints.Contains(spawnPoint))
+			return;
+
+		m_aSpawnPoints.Insert(spawnPoint);
+		
+		if (!m_aChildrenPositions.IsEmpty())
+			ApplyChildrenToSpawnPoints();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnBaseUnregistered(notnull SCR_MilitaryBaseComponent base)
+	{
+		super.OnBaseUnregistered(base);
+
+		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
+		if (!campaignBase)
+			return;
+
+		SCR_CampaignSpawnPointGroup spawnPoint = SCR_CampaignSpawnPointGroup.Cast(campaignBase.GetSpawnPoint());
+		if (spawnPoint && m_aSpawnPoints.Contains(spawnPoint))
+		{
+			RemoveSpawnPositions(spawnPoint);
+			m_aSpawnPoints.RemoveItem(spawnPoint);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void EOnInit(IEntity owner)
+	{
+		SCR_EditorLinkComponent linkComponent = SCR_EditorLinkComponent.Cast(owner.FindComponent(SCR_EditorLinkComponent));
+		if (linkComponent)
+			linkComponent.GetOnLinkedEntitiesSpawned().Insert(FindChildrenPositionsInHiearchy);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnPostInit(IEntity owner)
 	{
 		if (SCR_Global.IsEditMode())
 			return;
-		
+
 		SetEventMask(owner, EntityEvent.INIT);
 	}
+
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_CampaignBunkerComponent()
 	{
-		if (m_SpawnPoint)
-			m_SpawnPoint.RemoveEmptyChildren();
+		foreach (SCR_CampaignSpawnPointGroup spawnPoint : m_aSpawnPoints)
+		{
+			if (spawnPoint)
+				spawnPoint.RemoveEmptyChildren();
+		}
 	}
 };

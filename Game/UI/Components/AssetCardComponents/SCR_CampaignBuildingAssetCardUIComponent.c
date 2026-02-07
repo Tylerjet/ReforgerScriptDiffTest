@@ -1,6 +1,6 @@
 class SCR_CampaignBuildingAssetCardUIComponent : ScriptedWidgetComponent
 {
-	protected SCR_CampaignBase m_Base;
+	protected SCR_CampaignMilitaryBaseComponent m_Base;
 	protected Widget m_wRootWidget;
 	protected SCR_ContentBrowserEditorComponent m_ContentBrowserManager;
 	
@@ -18,7 +18,7 @@ class SCR_CampaignBuildingAssetCardUIComponent : ScriptedWidgetComponent
 		if (!targetEntity)
 			return;
 		
-		m_Base = SCR_CampaignBase.Cast(targetEntity);
+		m_Base = SCR_CampaignMilitaryBaseComponent.Cast(targetEntity.FindComponent(SCR_CampaignMilitaryBaseComponent));
 		if (!m_Base)
 			return;
 		
@@ -27,7 +27,7 @@ class SCR_CampaignBuildingAssetCardUIComponent : ScriptedWidgetComponent
 			return;
 		
 		assetCardUI.GetOnCardInit().Insert(CheckServiceAccessibility);
-		m_Base.s_OnServiceRegistered.Insert(UpdateServiceAccessibility);
+		m_Base.GetOnServiceRegistered().Insert(UpdateServiceAccessibility);
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -62,8 +62,8 @@ class SCR_CampaignBuildingAssetCardUIComponent : ScriptedWidgetComponent
 		if (!entityLabels.Contains(EEditableEntityLabel.TRAIT_SERVICE))
 			return;
 		
-		array<SCR_CampaignServiceComponent> baseServices = {};
-		int count = m_Base.GetAllBaseServices(baseServices);
+		array<SCR_ServicePointComponent> baseServices = {};
+		int count = m_Base.GetServices(baseServices);
 		bool disableCard = false;
 		
 		for (int i = 0; i < count; i++)
@@ -128,6 +128,7 @@ class SCR_CampaignBuildingAssetCardUIComponent : ScriptedWidgetComponent
 		if (assetCardUI)
 			assetCardUI.GetOnCardInit().Remove(CheckServiceAccessibility);
 		
-		m_Base.s_OnServiceRegistered.Remove(UpdateServiceAccessibility);
+		if (m_Base)
+			m_Base.GetOnServiceRegistered().Remove(UpdateServiceAccessibility);
 	}
 };

@@ -20,7 +20,7 @@ class SCR_AITargetReaction_Unknown : SCR_AITargetReactionBase
 	{
 		IEntity targetEntity = baseTarget.GetTargetEntity();
 		if (targetEntity)
-			utility.m_LookAction.LookAt(targetEntity, SCR_AILookAction.PRIO_UNKNOWN_TARGET);
+			utility.m_LookAction.LookAt(targetEntity, SCR_AILookAction.PRIO_UNKNOWN_TARGET, 2.0);
 	}
 };
 
@@ -32,16 +32,15 @@ class SCR_AITargetReaction_Enemy : SCR_AITargetReactionBase
 		if (!baseTarget)
 			return;
 		IEntity target = baseTarget.GetTargetEntity();
+		
 		if (!SCR_AIDamageHandling.IsAlive(target))
-		{
-			SCR_AISendLostMsg(utility, target);
 			return;
-		}
+		
 		if (!target)
 			return;
 		
 		// Terminate retreat action if we had one
-		SCR_AIActionBase retreatAction = utility.FindActionOfType(SCR_AIRetreatFromTargetBehavior);
+		AIActionBase retreatAction = utility.FindActionOfType(SCR_AIRetreatFromTargetBehavior);
 		if (retreatAction)
 			retreatAction.Complete();
 		

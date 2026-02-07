@@ -9,9 +9,8 @@ Do not modify, this script is generated
 \{
 */
 
-class WeaponAttachmentAttributes: BaseItemAttributeData
+class WeaponAttachmentAttributes: AttachmentAttributes
 {
-	proto external BaseAttachmentType GetAttachmentType();
 }
 
 /*!

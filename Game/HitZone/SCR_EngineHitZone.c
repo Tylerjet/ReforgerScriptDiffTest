@@ -13,16 +13,34 @@ class SCR_EngineHitZone : ScriptedHitZone
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
 		super.OnInit(pOwnerEntity, pManagerComponent);
-		
-		SCR_CarControllerComponent controller;
-		BaseVehicleNodeComponent node = BaseVehicleNodeComponent.Cast(pOwnerEntity.FindComponent(BaseVehicleNodeComponent));
-		if (node)
-			controller = SCR_CarControllerComponent.Cast(node.FindComponent(SCR_CarControllerComponent));
-		
-		if (controller)
+				
+		if(GetGame().GetIsClientAuthority())
 		{
-			controller.SetEngineHitZone(this);
-			m_fInitialStartupChance = controller.GetEngineStartupChance();
+			SCR_CarControllerComponent controller;
+			BaseVehicleNodeComponent node = BaseVehicleNodeComponent.Cast(pOwnerEntity.FindComponent(BaseVehicleNodeComponent));
+			if (node)
+				controller = SCR_CarControllerComponent.Cast(node.FindComponent(SCR_CarControllerComponent));
+			
+			if (controller)
+			{
+				controller.SetEngineHitZone(this);
+				m_fInitialStartupChance = controller.GetEngineStartupChance();
+			}
+			
+		}
+		else
+		{
+			SCR_CarControllerComponent_SA controller;
+			BaseVehicleNodeComponent node = BaseVehicleNodeComponent.Cast(pOwnerEntity.FindComponent(BaseVehicleNodeComponent));
+			if (node)
+				controller = SCR_CarControllerComponent_SA.Cast(node.FindComponent(SCR_CarControllerComponent_SA));
+			
+			if (controller)
+			{
+				controller.SetEngineHitZone(this);
+				m_fInitialStartupChance = controller.GetEngineStartupChance();
+			}
+			
 		}
 		
 		SignalsManagerComponent signalsManager = SignalsManagerComponent.Cast(pOwnerEntity.FindComponent(SignalsManagerComponent));
@@ -57,13 +75,27 @@ class SCR_EngineHitZone : ScriptedHitZone
 		if (damage < GetCriticalDamageThreshold()*GetMaxHealth())
 			return;
 		
-		VehicleControllerComponent controller;
-		BaseVehicleNodeComponent node = BaseVehicleNodeComponent.Cast(GetOwner().FindComponent(BaseVehicleNodeComponent));
-		if (node)
-			controller = VehicleControllerComponent.Cast(node.FindComponent(VehicleControllerComponent));
 		
-		if (controller && controller.IsEngineOn())
-			controller.StopEngine(false);
+		BaseVehicleNodeComponent node = BaseVehicleNodeComponent.Cast(GetOwner().FindComponent(BaseVehicleNodeComponent));
+		
+		if(GetGame().GetIsClientAuthority())
+		{
+			VehicleControllerComponent controller;
+			if (node)
+				controller = VehicleControllerComponent.Cast(node.FindComponent(VehicleControllerComponent));
+			
+			if (controller && controller.IsEngineOn())
+				controller.StopEngine(false);
+		}
+		else
+		{
+			VehicleControllerComponent_SA controller;
+			if (node)
+				controller = VehicleControllerComponent_SA.Cast(node.FindComponent(VehicleControllerComponent_SA));
+			
+			if (controller && controller.IsEngineOn())
+				controller.StopEngine(false);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -94,49 +126,114 @@ class SCR_EngineHitZone : ScriptedHitZone
 				signalsManager.SetSignalValue(m_iEngineDamageSignalIdx, 1 - healthEngine);
 		}
 		
-		VehicleControllerComponent controller;
 		BaseVehicleNodeComponent node = BaseVehicleNodeComponent.Cast(owner.FindComponent(BaseVehicleNodeComponent));
-		if (node)
-			controller = VehicleControllerComponent.Cast(node.FindComponent(VehicleControllerComponent));
-		
-		if (!controller)
-			return;
-		
-		float healthStarter = healthEngine;
-		
-		// Battery influence on starter and engine power output
-		SCR_PowerComponent powerComponent = SCR_PowerComponent.Cast(owner.FindComponent(SCR_PowerComponent));
-		if (powerComponent)
+
+		if(GetGame().GetIsClientAuthority())
 		{
-			bool hasPower = powerComponent.HasPower();
+			VehicleControllerComponent controller;
+			if (node)
+				controller = VehicleControllerComponent.Cast(node.FindComponent(VehicleControllerComponent));
 			
-			if (!hasPower)
-				healthStarter = 0;
+			if (!controller)
+				return;
 			
-			if (!hasPower && powerComponent.ShouldApplyNoPowerPenalty())
-				healthEngine *= powerComponent.GetNoPowerMultiplier();
+			float healthStarter = healthEngine;
+			
+			// Battery influence on starter and engine power output
+			SCR_PowerComponent powerComponent = SCR_PowerComponent.Cast(owner.FindComponent(SCR_PowerComponent));
+			if (powerComponent)
+			{
+				bool hasPower = powerComponent.HasPower();
+				
+				if (!hasPower)
+					healthStarter = 0;
+				
+				if (!hasPower && powerComponent.ShouldApplyNoPowerPenalty())
+					healthEngine *= powerComponent.GetNoPowerMultiplier();
+			}
+			
+			// Reduce starter reliability
+			float startupChance = 100;
+			if (healthStarter < 1)
+				startupChance = m_fInitialStartupChance * 0.01 * Math.Lerp(m_fMinimumEngineStartupChance, 100, healthStarter);
+			
+			controller.SetEngineStartupChance(startupChance);
+			
+			// Stop destroyed engine
+			if (state == EDamageState.DESTROYED && controller.IsEngineOn())
+				controller.StopEngine(false);
+			
+			// Reduce power output of damaged engine
+			if(GetGame().GetIsClientAuthority())
+			{
+				VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(owner.FindComponent(VehicleWheeledSimulation));
+				if (!simulation || !simulation.IsValid())
+					return;
+				
+				float peakTorque = simulation.EngineGetPeakTorque();
+				float peakPower  = simulation.EngineGetPeakPower();
+				float powerRatio = 0.01 * Math.Lerp(m_fMinimumEnginePowerScale, 100, healthEngine);
+				simulation.EngineSetPeakTorqueState(peakTorque * powerRatio);
+				simulation.EngineSetPeakPowerState(peakPower * powerRatio);
+			}
+			else
+			{
+				VehicleWheeledSimulation_SA simulation = VehicleWheeledSimulation_SA.Cast(owner.FindComponent(VehicleWheeledSimulation_SA));
+				if (!simulation || !simulation.IsValid())
+					return;
+				
+				float peakTorque = simulation.EngineGetPeakTorque();
+				float peakPower  = simulation.EngineGetPeakPower();
+				float powerRatio = 0.01 * Math.Lerp(m_fMinimumEnginePowerScale, 100, healthEngine);
+				simulation.EngineSetPeakTorqueState(peakTorque * powerRatio);
+				simulation.EngineSetPeakPowerState(peakPower * powerRatio);
+			}
 		}
-		
-		// Reduce starter reliability
-		float startupChance = 100;
-		if (healthStarter < 1)
-			startupChance = m_fInitialStartupChance * 0.01 * Math.Lerp(m_fMinimumEngineStartupChance, 100, healthStarter);
-		
-		controller.SetEngineStartupChance(startupChance);
-		
-		// Stop destroyed engine
-		if (state == EDamageState.DESTROYED && controller.IsEngineOn())
-			controller.StopEngine(false);
-		
-		// Reduce power output of damaged engine
-		VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(owner.FindComponent(VehicleWheeledSimulation));
-		if (!simulation || !simulation.IsValid())
-			return;
-		
-		float peakTorque = simulation.EngineGetPeakTorque();
-		float peakPower  = simulation.EngineGetPeakPower();
-		float powerRatio = 0.01 * Math.Lerp(m_fMinimumEnginePowerScale, 100, healthEngine);
-		simulation.EngineSetPeakTorqueState(peakTorque * powerRatio);
-		simulation.EngineSetPeakPowerState(peakPower * powerRatio);
+		else
+		{
+			VehicleControllerComponent_SA controller;
+			if (node)
+				controller = VehicleControllerComponent_SA.Cast(node.FindComponent(VehicleControllerComponent_SA));
+			
+			if (!controller)
+				return;
+			
+			float healthStarter = healthEngine;
+			
+			// Battery influence on starter and engine power output
+			SCR_PowerComponent powerComponent = SCR_PowerComponent.Cast(owner.FindComponent(SCR_PowerComponent));
+			if (powerComponent)
+			{
+				bool hasPower = powerComponent.HasPower();
+				
+				if (!hasPower)
+					healthStarter = 0;
+				
+				if (!hasPower && powerComponent.ShouldApplyNoPowerPenalty())
+					healthEngine *= powerComponent.GetNoPowerMultiplier();
+			}
+			
+			// Reduce starter reliability
+			float startupChance = 100;
+			if (healthStarter < 1)
+				startupChance = m_fInitialStartupChance * 0.01 * Math.Lerp(m_fMinimumEngineStartupChance, 100, healthStarter);
+			
+			controller.SetEngineStartupChance(startupChance);
+			
+			// Stop destroyed engine
+			if (state == EDamageState.DESTROYED && controller.IsEngineOn())
+				controller.StopEngine(false);
+			
+			// Reduce power output of damaged engine
+			VehicleWheeledSimulation_SA simulation = VehicleWheeledSimulation_SA.Cast(owner.FindComponent(VehicleWheeledSimulation_SA));
+			if (!simulation || !simulation.IsValid())
+				return;
+			
+			float peakTorque = simulation.EngineGetPeakTorque();
+			float peakPower  = simulation.EngineGetPeakPower();
+			float powerRatio = 0.01 * Math.Lerp(m_fMinimumEnginePowerScale, 100, healthEngine);
+			simulation.EngineSetPeakTorqueState(peakTorque * powerRatio);
+			simulation.EngineSetPeakPowerState(peakPower * powerRatio);
+		}
 	}
 };

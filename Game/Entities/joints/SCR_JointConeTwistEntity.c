@@ -68,7 +68,7 @@ class SCR_JointConeTwistEntity: SCR_JointBaseEntity
 	{
 		// Create the joint
 		m_Joint = PhysicsJoint.CreateConeTwist(parent, child, jointMat1, jointMat2, m_CollisionBlocker, -1);
-		PhysicsConeTwistJoint jointConeTwist = (PhysicsConeTwistJoint)m_Joint;
+		PhysicsConeTwistJoint jointConeTwist = m_Joint;
 		jointConeTwist.SetLimits(m_SwingSpanPitch * Math.DEG2RAD, m_SwingSpanYaw * Math.DEG2RAD, m_TwistSpan * Math.DEG2RAD, m_Softness, m_BiasFactor, m_RelaxationFactor);
 	}
 };

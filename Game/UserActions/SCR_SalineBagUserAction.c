@@ -25,25 +25,34 @@ class SCR_SalineBagUserAction : SCR_HealingUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
-		if (!super.CanBePerformedScript(user))
+		// Target character
+		ChimeraCharacter targetCharacter = ChimeraCharacter.Cast(GetOwner());
+		if (!targetCharacter)
 			return false;
 		
+		// Medic character
 		ChimeraCharacter userCharacter = ChimeraCharacter.Cast(user);
 		if (!userCharacter)
 			return false;
-		
-		ChimeraCharacter ownerCharacter = ChimeraCharacter.Cast(GetOwner());
-		if (!ownerCharacter)
-			return false;
-		
-		SCR_CharacterDamageManagerComponent charDamMan = SCR_CharacterDamageManagerComponent.Cast(ownerCharacter.GetDamageManager());
-		if (!charDamMan || charDamMan.GetBloodHitZone().GetHealthScaled() == 1)
-			return false;
-		
+
 		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(userCharacter);
 		if (!consumableComponent)
 			return false;
-				
-		return consumableComponent.GetConsumableType() == EConsumableType.Saline;
+		
+		SCR_ConsumableSalineBag consumableSaline = SCR_ConsumableSalineBag.Cast(consumableComponent.GetConsumableEffect());
+		if (!consumableSaline)
+			return false;
+		
+		int reason;
+		if (consumableSaline.CanApplyEffectToHZ(targetCharacter, userCharacter, m_eHitZoneGroup, reason))
+			return true;
+		
+		if (reason == SCR_EConsumableFailReason.UNDAMAGED)
+			SetCannotPerformReason(m_sNoBloodLoss);
+
+		if (reason == SCR_EConsumableFailReason.ALREADY_APPLIED)
+			SetCannotPerformReason(m_sAlreadyApplied);
+
+		return false;
 	}
 };

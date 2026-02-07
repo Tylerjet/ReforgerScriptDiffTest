@@ -153,7 +153,7 @@ class SCR_PauseSubMenu: SCR_SubMenuBase
 	private void OnRestart()
 	{
 		GetGame().GetMenuManager().CloseAllMenus();
-		ChimeraMenuBase.ReloadCurrentWorld();	
+		GameStateTransitions.RequestScenarioRestart();
 	}
 	
 	//------------------------------------------------------------------------------------------------

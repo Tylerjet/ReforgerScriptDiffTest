@@ -3,10 +3,19 @@ class SCR_ScriptedWidgetComponent : ScriptedWidgetComponent
 {
 	protected Widget m_wRoot;
 
+	ref ScriptInvoker m_OnClick = new ScriptInvoker;
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_wRoot = w;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool OnClick(Widget w, int x, int y, int button)
+	{
+		m_OnClick.Invoke(this);
+		return super.OnClick(w, x, y, button);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -30,5 +39,11 @@ class SCR_ScriptedWidgetComponent : ScriptedWidgetComponent
 		}
 
 		return SCR_ScriptedWidgetComponent.Cast(w.FindHandler(componentType));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	Widget GetRootWidget()
+	{
+		return m_wRoot;
 	}
 };

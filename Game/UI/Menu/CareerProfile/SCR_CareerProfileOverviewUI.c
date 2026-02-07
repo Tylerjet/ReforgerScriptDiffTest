@@ -119,11 +119,11 @@ class SCR_CareerProfileOverviewUI: SCR_SubMenuBase
 			Print("SCR_CareerProfileOverviewUI: Debugging FillHudAndStats!", LogLevel.DEBUG);
 		#endif
 		
-		int Level = m_PlayerData.GetLevelExperience();
+		int Level = m_PlayerData.GetStat(SCR_EDataStats.LEVEL_EXPERIENCE);
 		
 		m_HudHandler.SetPlayerLevel(Level / SCR_PlayerDataConfigs.XP_NEEDED_FOR_LEVEL);
 		m_HudHandler.SetProgressBarValue(Level % SCR_PlayerDataConfigs.XP_NEEDED_FOR_LEVEL);
-		m_HudHandler.SetPlayerRank(m_PlayerData.GetRank());
+		m_HudHandler.SetPlayerRank(m_PlayerData.GetStat(SCR_EDataStats.RANK));
 		m_HudHandler.SetRandomBackgroundPicture();
 		
 		Widget RankStatsWidget = m_wFirstColumnWidget.FindAnyWidget("RankStatEntries");
@@ -140,14 +140,14 @@ class SCR_CareerProfileOverviewUI: SCR_SubMenuBase
 			SCR_CareerUI.CreateProgressionStatEntry(RankStatsWidget, m_ProgressionStatsLayout, "#AR-CareerProfile_TimePlayed", Math.Floor(EarntPoints[SCR_EDataStats.SESSIONDURATION] * warCrimes), Math.Floor(EarntPoints[SCR_EDataStats.SESSIONDURATION]), "#AR-CareerProfile_Minutes", ""+Math.Floor(minutes));	
 		#else
 			int days, hours, minutes, seconds;
-			SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds(m_PlayerData.GetSessionDuration(), days, hours, minutes, seconds);
+			SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds(m_PlayerData.GetStat(SCR_EDataStats.SESSION_DURATION), days, hours, minutes, seconds);
 			
 			SCR_CareerUI.CreateStatEntry(RankStatsWidget, m_StatsLayout, "#AR-CareerProfile_TimePlayed", "#AR-CareerProfile_TimePlayed_TotalValue", ""+days, ""+hours, ""+minutes);
-			SCR_CareerUI.CreateStatEntry(RankStatsWidget, m_StatsLayout, "#AR-CareerProfile_Deaths", "#AR-CareerProfile_Times", ""+Math.Floor(m_PlayerData.GetDeaths()));
+			SCR_CareerUI.CreateStatEntry(RankStatsWidget, m_StatsLayout, "#AR-CareerProfile_Deaths", "#AR-CareerProfile_Times", ""+Math.Floor(m_PlayerData.GetStat(SCR_EDataStats.DEATHS)));
 			SCR_CareerUI.CreateHeaderStatEntry(RankStatsWidget, m_HeaderStatsLayout, "#AR-CareerProfile_Distance");
-			SCR_CareerUI.CreateStatEntry(RankStatsWidget, m_StatsLayout, "#AR-CareerProfile_DistanceTravelled_ByFoot", "#AR-CareerProfile_KMs", ""+Math.Floor(m_PlayerData.GetDistanceWalked()/1000));
-			SCR_CareerUI.CreateStatEntry(RankStatsWidget, m_StatsLayout, "#AR-CareerProfile_DistanceTravelled_AsDriver", "#AR-CareerProfile_KMs", ""+Math.Floor(m_PlayerData.GetDistanceDriven()/1000));
-			SCR_CareerUI.CreateStatEntry(RankStatsWidget, m_StatsLayout, "#AR-CareerProfile_DistanceTravelled_AsPassenger", "#AR-CareerProfile_KMs", ""+Math.Floor(m_PlayerData.GetDistanceAsOccupant()/1000));
+			SCR_CareerUI.CreateStatEntry(RankStatsWidget, m_StatsLayout, "#AR-CareerProfile_DistanceTravelled_ByFoot", "#AR-CareerProfile_KMs", ""+Math.Floor(m_PlayerData.GetStat(SCR_EDataStats.DISTANCE_WALKED)/1000));
+			SCR_CareerUI.CreateStatEntry(RankStatsWidget, m_StatsLayout, "#AR-CareerProfile_DistanceTravelled_AsDriver", "#AR-CareerProfile_KMs", ""+Math.Floor(m_PlayerData.GetStat(SCR_EDataStats.DISTANCE_DRIVEN)/1000));
+			SCR_CareerUI.CreateStatEntry(RankStatsWidget, m_StatsLayout, "#AR-CareerProfile_DistanceTravelled_AsPassenger", "#AR-CareerProfile_KMs", ""+Math.Floor(m_PlayerData.GetStat(SCR_EDataStats.DISTANCE_AS_OCCUPANT)/1000));
 		#endif	
 	}
 	

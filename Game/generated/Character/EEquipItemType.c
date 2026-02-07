@@ -14,8 +14,10 @@ enum EEquipItemType
 	EEquipTypeNone,
 	EEquipTypeGeneric,
 	EEquipTypeWeapon,
-	EEquipTypeUnarmed,
-	EEquipTypeSlinged,
+	EEquipTypeUnarmedDeliberate,
+	// If the player hides the weapon themselves (Tab+Z or dropped).
+	EEquipTypeUnarmedContextual,
+	// If the weapon was hidden because of other action (and will be reequipped when possible).
 	Max,
 }
 

@@ -11,6 +11,7 @@ Do not modify, this script is generated
 
 class ExtBaseCompartmentSlot: ScriptAndConfig
 {
+	proto external int GetAddUserActions(out notnull array<CompartmentUserAction> outAddUserActions);
 	proto external IEntity GetOwner();
 	proto external BaseControllerComponent GetController();
 	// returns door index with entry position that is closest to provided point (in world space)
@@ -43,6 +44,7 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 	proto external bool IsGetInLocked();
 	proto external CompartmentUserAction GetGetInAction();
 	proto external CompartmentUserAction GetGetOutAction();
+	proto external CompartmentUserAction GetJumpOutAction();
 	proto external CompartmentUserAction GetSwitchSeatAction();
 	proto external vector GetPosition();
 

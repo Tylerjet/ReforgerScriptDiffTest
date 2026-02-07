@@ -10,10 +10,16 @@ class SCR_AIIsValidAction : DecoratorScripted
 				return false;
 		}
 		
-		if (!m_Utility.m_ExecutedAction)
+		SCR_AIActionBase executedAction = SCR_AIActionBase.Cast(m_Utility.GetExecutedAction());
+		
+		if (!executedAction)
+			return false;
+		
+		// There seems to be a bug that RunBT node keeps running previous tree if we provide an empty string
+		if (executedAction.m_sBehaviorTree == string.Empty)
 			return false;
 
-		EAIActionState state = m_Utility.m_ExecutedAction.m_eState;
+		EAIActionState state = executedAction.GetActionState();
 		return state != EAIActionState.COMPLETED && state != EAIActionState.FAILED;
 	}
 
@@ -25,5 +31,5 @@ class SCR_AIIsValidAction : DecoratorScripted
 	protected override string GetOnHoverDescription()
 	{
 		return "Test if current action is still valid, or it was already completed or failed";
-	}	
+	}
 };

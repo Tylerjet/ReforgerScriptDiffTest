@@ -16,9 +16,9 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 	protected SCR_SiteSlotEntity m_Slot;
 	protected static const int SLOT_SEARCH_DISTANCE = 5;
 	protected IEntity m_Owner;
-	protected SCR_CampaignBase m_Base;
-	protected ECampaignCompositionType m_CompositionType;
-	protected SCR_CampaignServiceComponent m_Service;
+	protected SCR_CampaignMilitaryBaseComponent m_Base;
+	protected EEditableEntityLabel m_CompositionType;
+	protected SCR_ServicePointComponent m_Service;
 	
 	ref ScriptInvoker Event_EOnServiceDisabled = new ref ScriptInvoker();	
 	ref ScriptInvoker Event_EOnServiceRepaired = new ref ScriptInvoker();
@@ -30,31 +30,6 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 	override void OnPostInit(IEntity owner)
 	{
 		m_Owner = owner;
-		
-		GetGame().GetCallqueue().CallLater(MapMarkerInit, 1000);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void MapMarkerInit()
-	{
-		SCR_GameModeCampaignMP gameModeMP = SCR_GameModeCampaignMP.Cast(GetGame().GetGameMode());
-		
-		if (!gameModeMP)
-			return;
-		
-		GetGame().GetWorld().QueryEntitiesBySphere(m_Owner.GetOrigin(), SLOT_SEARCH_DISTANCE, GetNearestSlot, null, EQueryEntitiesFlags.ALL);
-		
-		if (m_Slot)	
-			m_Base = gameModeMP.GetSlotPresetBase(m_Slot);
-		
-		SCR_CampaignServiceMapDescriptorComponent desc = SCR_CampaignServiceMapDescriptorComponent.Cast(m_Owner.FindComponent(SCR_CampaignServiceMapDescriptorComponent));
-		if (desc)
-		{
-			if (m_Base)
-				desc.SetServiceMarker(m_Base.GetOwningFaction());
-			else
-				desc.SetServiceMarker();
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -67,7 +42,7 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 		// Reduce operability
 	 	m_iServiceOperability -= operability;
 		
-		SCR_CampaignServiceMapDescriptorComponent desc = SCR_CampaignServiceMapDescriptorComponent.Cast(m_Owner.FindComponent(SCR_CampaignServiceMapDescriptorComponent));
+		SCR_ServicePointMapDescriptorComponent desc = SCR_ServicePointMapDescriptorComponent.Cast(m_Owner.FindComponent(SCR_ServicePointMapDescriptorComponent));
 		
 		// Check if the Service was disabled.
 		if (!IsServiceOperable() && isOperableBeforeChange)
@@ -89,25 +64,25 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetCompositionType(ECampaignCompositionType type)
+	void SetCompositionType(EEditableEntityLabel type)
 	{
 		m_CompositionType = type;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetService(SCR_CampaignServiceComponent service)
+	void SetService(SCR_ServicePointComponent service)
 	{
 		m_Service = service;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ECampaignCompositionType GetCompositionType()
+	EEditableEntityLabel GetCompositionType()
 	{
 		return m_CompositionType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_CampaignServiceComponent GetService()
+	SCR_ServicePointComponent GetService()
 	{
 		return m_Service;
 	}

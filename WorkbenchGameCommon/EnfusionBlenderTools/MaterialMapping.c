@@ -3,13 +3,15 @@ class MaterialPreviewRequest: JsonApiStruct
 {
 	ResourceName name;
 	ref array<string> newRelPaths = new array<string>;
-	ref array<string> matNames = new array<string>; 
+	ref array<string> matNames = new array<string>;
+	bool fromXob = true; 
 	
 	void MaterialPreviewRequest()
 	{
 		RegV("name");
 		RegV("newRelPaths");
 		RegV("matNames");
+		RegV("fromXob");
 	}
 };
 
@@ -51,7 +53,7 @@ class MaterialPreviewUtils
 
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
 		MetaFile meta = resourceManager.GetMetaFile(xob);
-		if(meta == false)
+		if(!meta)
 		{
 			mapping.issue = "Missing XOB";
 			return;
@@ -76,25 +78,27 @@ class MaterialPreviewUtils
 				ematPath = sourceMat[i].Substring(sourceMat[i].IndexOf("{"), sourceMat[i].IndexOf(".emat") + 5 - sourceMat[i].IndexOf("{"));
 			}
 			Workbench.GetAbsolutePath(ematPath.GetPath(), absPathEmat);
-			
+			if(!absPathEmat)
+			{
+				mapping.issue = "Emat file " + sourceMat[i].Substring(sourceMat[i].IndexOf("{"), sourceMat[i].IndexOf(".emat") + 5 - sourceMat[i].IndexOf("{")) + " couldn't be found!";
+				return;	
+			}
 			mapping.source_mat += source + ";";
 			mapping.emat_rel_path += ematPath + ";";
-			ReadEmat(ematPath, mapping);
+			mapping.mat_class += ReadEmat(ematPath) + ";";
 		}		
 		return;
 	
 	}
 			
-	void ReadEmat(ResourceName path, MaterialPreviewGetMapping mapping)
+	string ReadEmat(ResourceName path)
 	{
 		BaseContainer ematCont;
 				
 		//Getting ResourceClassName
 		Resource resource = Resource.Load(path);						
 		ematCont = resource.GetResource().ToBaseContainer();		
-		mapping.mat_class += ematCont.GetClassName() + ";";
-
-		return;
+		return(ematCont.GetClassName());
 	}
 	
 };
@@ -114,8 +118,15 @@ class MaterialMapping: NetApiHandler
 		MaterialPreviewGetMapping mapping = new MaterialPreviewGetMapping();
 		MaterialPreviewUtils matutils = new MaterialPreviewUtils();	
 		//Input to variable
-		ResourceName xob = req.name;		
-		matutils.ReadXOB(xob, mapping, req);
+		ResourceName xob = req.name;
+		if(req.fromXob)
+		{
+			matutils.ReadXOB(xob, mapping, req);		
+		}
+		else
+		{
+			mapping.mat_class = matutils.ReadEmat(req.name);
+		}
 
 		return mapping;
 	}

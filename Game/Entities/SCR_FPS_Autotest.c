@@ -168,7 +168,7 @@ class SCR_HeatMap_Autotest: GenericEntity
 		}
 
 		int cur_fps = System.GetFPS();
-		int cur_dir = (int)((m_timer / m_stepWaitTime - Math.Floor(m_timer / m_stepWaitTime)) * 4);
+		int cur_dir = ((m_timer / m_stepWaitTime - Math.Floor(m_timer / m_stepWaitTime)) * 4);
 
 		if (cur_dir != prev_dir)
 		{

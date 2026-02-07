@@ -32,7 +32,11 @@ class SCR_ContainerActionTitle : BaseContainerCustomTitle
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkActionBase
 {	
+	[Attribute(defvalue: "-1", uiwidget: UIWidgets.Graph, params: "-1 10000 1", desc: "How many times this action can be performed if this gets triggered? Value -1 for infinity")];
+	protected int					m_iMaxNumberOfActivations;
+	
 	protected IEntity				m_Entity;
+	protected int					m_iNumberOfActivations;
 	
 	//------------------------------------------------------------------------------------------------
 	void Init(IEntity entity)
@@ -51,7 +55,19 @@ class SCR_ScenarioFrameworkActionBase
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	void OnActivate(IEntity object);
+	bool CanActivate()
+	{
+		if (m_iMaxNumberOfActivations != -1 && m_iNumberOfActivations >= m_iMaxNumberOfActivations)
+			return false;
+		
+		m_iNumberOfActivations++;
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnActivate(IEntity object)
+	{
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void SpawnObjects(notnull array<string> aObjectsNames, SCR_ScenarioFrameworkEActivationType eActivationType)
@@ -97,19 +113,23 @@ class SCR_ScenarioFrameworkActionIncrementCounter : SCR_ScenarioFrameworkActionB
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		IEntity entity = GetGame().GetWorld().FindEntityByName(m_sCounterName);
 		if (!entity)
 			return;
+		
 		SCR_ScenarioFrameworkLogic counter = SCR_ScenarioFrameworkLogic.Cast(entity.FindComponent(SCR_ScenarioFrameworkLogic));
 		if (counter)
 		{
-			counter.OnInput(1);
+			counter.OnInput(1, object);
 			return;
 		}
 		
 		SCR_ScenarioFrameworkLogicCounter logicCounter = SCR_ScenarioFrameworkLogicCounter.Cast(entity);
 		if (logicCounter)
-			logicCounter.OnInput(1);
+			logicCounter.OnInput(1, object);
 	}	
 }
 
@@ -123,6 +143,9 @@ class SCR_ScenarioFrameworkActionSpawnObjects : SCR_ScenarioFrameworkActionBase
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		SpawnObjects(m_aNameOfObjectsToSpawnOnActivation, SCR_ScenarioFrameworkEActivationType.ON_TRIGGER_ACTIVATION);
 	}
 }
@@ -146,6 +169,9 @@ class SCR_ScenarioFrameworkActionSetEntityPosition : SCR_ScenarioFrameworkAction
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		SCR_ScenarioFrameworkParam<IEntity> entityWrapper =  SCR_ScenarioFrameworkParam<IEntity>.Cast(m_EntityGetter.Get());
 		if (!entityWrapper)
 			return;
@@ -182,6 +208,9 @@ class SCR_ScenarioFrameworkActionDeleteEntity : SCR_ScenarioFrameworkActionBase
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		SCR_ScenarioFrameworkParam<IEntity> entityWrapper =  SCR_ScenarioFrameworkParam<IEntity>.Cast(m_Getter.Get());
 		if (!entityWrapper)
 			return;
@@ -207,6 +236,9 @@ class SCR_ScenarioFrameworkActionEndMission : SCR_ScenarioFrameworkActionBase
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
 		if (!manager)
 			return;
@@ -229,11 +261,11 @@ class SCR_ScenarioFrameworkActionWaitAndExecute : SCR_ScenarioFrameworkActionBas
 	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActions;
 	
 	//------------------------------------------------------------------------------------------------
-	void ExecuteActions()
+	void ExecuteActions(IEntity object)
 	{
 		foreach (SCR_ScenarioFrameworkActionBase actions : m_aActions)
 		{
-			actions.OnActivate(null);
+			actions.OnActivate(object);
 		}
 	
 	}
@@ -241,8 +273,11 @@ class SCR_ScenarioFrameworkActionWaitAndExecute : SCR_ScenarioFrameworkActionBas
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+			
 		//Used to delay the call as it is the feature of this action
-		GetGame().GetCallqueue().CallLater(ExecuteActions, m_iDelayInSeconds * 1000, false);
+		GetGame().GetCallqueue().CallLater(ExecuteActions, m_iDelayInSeconds * 1000, false, object);
 	}
 }
 
@@ -266,6 +301,9 @@ class SCR_ScenarioFrameworkActionCompareCounterAndExecute : SCR_ScenarioFramewor
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		IEntity entity = GetGame().GetWorld().FindEntityByName(m_sCounterName);
 		if (!entity)
 			return;
@@ -288,7 +326,7 @@ class SCR_ScenarioFrameworkActionCompareCounterAndExecute : SCR_ScenarioFramewor
 		{
 			foreach (SCR_ScenarioFrameworkActionBase actions : m_aActions)
 			{
-				actions.OnActivate(null);
+				actions.OnActivate(object);
 			}
 		}
 	}
@@ -306,6 +344,9 @@ class SCR_ScenarioFrameworkActionSetMissionEndScreen : SCR_ScenarioFrameworkActi
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
 		if (!manager)
 			return;
@@ -332,6 +373,9 @@ class SCR_ScenarioFrameworkActionShowHint : SCR_ScenarioFrameworkActionBase
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		SCR_HintManagerComponent.ShowCustomHint(m_sText, m_sTitle, m_iTimeout);
 	}
 }
@@ -350,6 +394,9 @@ class SCR_ScenarioFrameworkActionSpawnClosestObjectFromList : SCR_ScenarioFramew
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		if (!m_Getter)
 		{
 			Print("ScenarioFramework: The object the distance is calculated from is missing!", LogLevel.ERROR);
@@ -422,6 +469,83 @@ class SCR_ScenarioFrameworkActionSpawnClosestObjectFromList : SCR_ScenarioFramew
 
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkActionChangeTriggerActivationPresence : SCR_ScenarioFrameworkActionBase
+{
+	[Attribute(desc: "Closest to what - use getter")];
+	protected ref SCR_ScenarioFrameworkGet		m_Getter;
+	
+	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(TA_EActivationPresence), category: "Trigger")]
+	protected TA_EActivationPresence	m_eActivationPresence;
+	
+	//------------------------------------------------------------------------------------------------
+	bool CanActivateTriggerVariant(IEntity object, out SCR_CharacterTriggerEntity trigger)
+	{
+		trigger = SCR_CharacterTriggerEntity.Cast(object);
+		if (m_iMaxNumberOfActivations != -1 && m_iNumberOfActivations >= m_iMaxNumberOfActivations)
+		{
+			if (trigger)
+			{
+				trigger.GetOnActivate().Remove(OnActivate);
+				trigger.GetOnDeactivate().Remove(OnActivate);
+			}
+			
+			return false;
+		}
+		
+		m_iNumberOfActivations++;
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnActivate(IEntity object)
+	{
+		SCR_CharacterTriggerEntity trigger;
+		if (!CanActivateTriggerVariant(object, trigger))
+			return;
+		
+		if (trigger)
+		{
+			trigger.SetActivationPresence(m_eActivationPresence);
+			return;
+		}
+		
+		if (!m_Getter)
+			return;
+
+		SCR_ScenarioFrameworkParam<IEntity> entityWrapper =  SCR_ScenarioFrameworkParam<IEntity>.Cast(m_Getter.Get());
+		if (!entityWrapper)
+			return;
+
+		IEntity entityFrom = IEntity.Cast(entityWrapper.GetValue());
+		if (!entityFrom)
+			return;
+		
+		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(entityFrom.FindComponent(SCR_ScenarioFrameworkLayerBase));
+		if (!layer)
+			return;
+
+		SCR_ScenarioFrameworkArea area = SCR_ScenarioFrameworkArea.Cast(layer);
+		if (area)
+		{
+			trigger = SCR_CharacterTriggerEntity.Cast(area.GetTrigger());
+		}
+		else
+		{
+			IEntity entity = layer.GetSpawnedEntity();
+			if (!BaseGameTriggerEntity.Cast(entity))
+			{
+				Print("ScenarioFramework: SlotTrigger - The selected prefab is not trigger!", LogLevel.ERROR);
+				return;
+			}
+			trigger = SCR_CharacterTriggerEntity.Cast(entity);
+		}
+
+		trigger.SetActivationPresence(m_eActivationPresence);
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkActionPlaySound : SCR_ScenarioFrameworkActionBase
 {
 	[Attribute(desc: "Sound to play.")]		
@@ -430,6 +554,9 @@ class SCR_ScenarioFrameworkActionPlaySound : SCR_ScenarioFrameworkActionBase
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
 		if (!manager)
 			return;
@@ -451,6 +578,9 @@ class SCR_ScenarioFrameworkActionPlaySoundOnEntity : SCR_ScenarioFrameworkAction
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
 		if (!manager)
 			return;
@@ -471,6 +601,9 @@ class SCR_ScenarioFrameworkActionResetCounter : SCR_ScenarioFrameworkActionBase
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		if (!object)
 			return;
 			
@@ -497,6 +630,9 @@ class SCR_ScenarioFrameworkActionExecuteFunction : SCR_ScenarioFrameworkActionBa
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
+		if (!CanActivate())
+			return;
+		
 		SCR_ScenarioFrameworkParam<IEntity> entityWrapper =  SCR_ScenarioFrameworkParam<IEntity>.Cast(m_ObjectToCallTheMethodFrom.Get());
 		if (!entityWrapper)
 			return;

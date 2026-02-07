@@ -79,6 +79,8 @@ class ChimeraGame: Game
 
 	// callbacks
 
+	//! Getter for where authority is for vehicles
+	event bool GetIsClientAuthority();
 	/*!
 	\brief Called when a mission header is set (to both a valid one or to null as well)
 	\param mission can be passed in as null when mission is cleared, make sure to nullptr check!
@@ -92,6 +94,7 @@ class ChimeraGame: Game
 	event protected ref Managed GetPlayerDataStats(int playerID);
 	/*!
 	\brief Called when DS downloads required addons and is ready to run a world
+	FIXME: I'm not named properly!
 	*/
 	event protected string GetMissionName();
 }

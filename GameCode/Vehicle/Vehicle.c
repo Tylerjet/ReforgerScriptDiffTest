@@ -50,6 +50,12 @@ class Vehicle : BaseVehicle
 			return m_pFactionComponent.GetAffiliatedFaction();
 		
 		return null;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_VehicleFactionAffiliationComponent GetFactionAffiliation()
+	{
+		return m_pFactionComponent;
 	}
 	
 	//------------------------------------------------------------------------------------------------

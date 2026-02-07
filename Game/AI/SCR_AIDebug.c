@@ -9,7 +9,7 @@ class SCR_AIDebug : SCR_GameCoreBase
 	
 	protected static ref SCR_AIDebug s_Instance;
 	
-	protected FileHandle m_FileHandle;
+	protected ref FileHandle m_FileHandle;
 	
 	static SCR_AIDebug GetInstance()
 	{

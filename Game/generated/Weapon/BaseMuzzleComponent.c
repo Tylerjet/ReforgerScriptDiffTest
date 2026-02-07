@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class BaseMuzzleComponentClass: GameComponentClass
-{
-}
-
 class BaseMuzzleComponent: GameComponent
 {
 	proto external EMuzzleType GetMuzzleType();
@@ -36,6 +32,8 @@ class BaseMuzzleComponent: GameComponent
 	proto external int GetMaxAmmoCount();
 	proto external BaseMagazineComponent GetMagazine();
 	proto external BaseMagazineWell GetMagazineWell();
+	// Returns ResourceName of default magazine if the muzzle takes magazines or ResourceName of default projectile if muzzle takes projectiles.
+	proto external ResourceName GetDefaultMagazineOrProjectileName();
 	// UI Info
 	proto external UIInfo GetUIInfo();
 }

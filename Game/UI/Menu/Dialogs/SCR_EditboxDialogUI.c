@@ -11,6 +11,9 @@ class SCR_EditboxDialogUi : SCR_ConfigurableDialogUi
 	
 	protected SCR_EditBoxComponent m_Editbox;
 	
+	ref ScriptInvoker<string> m_OnTextChange = new ref ScriptInvoker();
+	ref ScriptInvoker<string> m_OnWriteModeLeave = new ref ScriptInvoker();
+	
 	//-------------------------------------
 	// Override functions 
 	//-------------------------------------
@@ -25,13 +28,36 @@ class SCR_EditboxDialogUi : SCR_ConfigurableDialogUi
 		if (wEditbox)
 		{
 			m_Editbox = SCR_EditBoxComponent.Cast(wEditbox.FindHandler(SCR_EditBoxComponent));
-			
-			GetGame().GetWorkspace().SetFocusedWidget(wEditbox);
 		}
 		
 		m_wWarningMessage = m_wRoot.FindAnyWidget(WIDGET_WARNING);
 		if (m_wWarningMessage)
 			m_wTxtWarningMessage = TextWidget.Cast(m_wWarningMessage.FindAnyWidget(WIDGET_TEXT_WARNING));
+	}
+	
+	//----------------------------------------------------------------------------------------
+	override protected void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
+	{
+		super.OnMenuOpen();
+
+		if (m_Editbox)
+		{
+			GetGame().GetWorkspace().SetFocusedWidget(m_Editbox.GetRootWidget());
+			m_Editbox.m_OnTextChange.Insert(OnTextChange);
+			m_Editbox.m_OnWriteModeLeave.Insert(OnWriteModeLeave);
+		}
+	}
+	
+	//----------------------------------------------------------------------------------------
+	protected void OnWriteModeLeave()
+	{
+		m_OnWriteModeLeave.Invoke(m_Editbox.GetValue());
+	}
+	
+	//----------------------------------------------------------------------------------------
+	protected void OnTextChange(string text)
+	{
+		m_OnTextChange.Invoke(text);
 	}
 	
 	//-------------------------------------

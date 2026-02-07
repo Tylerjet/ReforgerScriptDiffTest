@@ -656,4 +656,10 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	{
 		Print(string.Format("[SCR_ModularButtonComponent] %1: %2", GetRootWidget().GetName(), s));
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetIsFocusOnMouseEnter()
+	{
+		return m_bFocusOnMouseEnter;
+	}
 };

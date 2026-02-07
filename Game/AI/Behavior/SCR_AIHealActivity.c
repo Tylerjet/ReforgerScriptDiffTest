@@ -18,7 +18,7 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 	
 	protected float m_fTimeCheckConditions_world;
 	
-	override float Evaluate()
+	override float CustomEvaluate()
     {
 		float worldTime = GetGame().GetWorld().GetWorldTime();
 		
@@ -45,7 +45,7 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 			// Replan if medic is null or destroyed
 			if (!SCR_AIDamageHandling.IsAlive(m_MedicEntity.m_Value))
 			{
-				SetSuspended(false);
+				SetActionIsSuspended(false);
 			}
 			
 			m_fTimeCheckConditions_world = worldTime;
@@ -64,7 +64,7 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 		
 		
 		
-		return m_fPriority;
+		return GetPriority();
 	}
 	
 	void InitParameters(IEntity entity, array<AIAgent> medicsToExclude, float priorityLevel)
@@ -77,12 +77,13 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 	}	
 	
 	//-------------------------------------------------------------------------------------------------------
-	void SCR_AIHealActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, IEntity ent, float priority = PRIORITY_ACTIVITY_HEAL, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AIHealActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint, IEntity ent, float priority = PRIORITY_ACTIVITY_HEAL, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityHeal.bt";
-		m_fPriority = priority;
+		SetPriority(priority);
 		InitParameters(ent, m_aMedicsExclude, priorityLevel);
-			
+		SetIsUniqueInActionQueue(false);
+		
 		auto game = GetGame();
 		if (game)
 		{
@@ -95,7 +96,7 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 		return this.ToString() + " healing unit " + m_EntityToHeal.ValueToString();
 	}
 	
-	override bool OnInfoMessage(SCR_AIMessageBase msg)
+	override bool OnMessage(AIMessage msg)
 	{
 		SCR_AIMessage_HealFailed healFailed = SCR_AIMessage_HealFailed.Cast(msg);
 		
@@ -113,7 +114,7 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 			#endif
 			
 			// Request re-run of this activity
-			SetSuspended(false);
+			SetActionIsSuspended(false);
 			return true;
 		}
 		
@@ -123,7 +124,7 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 
 class SCR_AIGetHealActivityParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIHealActivity(null, false, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIHealActivity(null, null, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -131,7 +132,7 @@ class SCR_AIGetHealActivityParameters : SCR_AIGetActionParameters
 
 class SCR_AISetHealActivityParameters : SCR_AISetActionParameters
 {
-	protected static ref TStringArray s_aVarsIn = (new SCR_AIHealActivity(null, false, null)).GetPortNames();
+	protected static ref TStringArray s_aVarsIn = (new SCR_AIHealActivity(null, null, null)).GetPortNames();
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	override bool VisibleInPalette() { return true; }
 };

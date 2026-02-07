@@ -29,7 +29,7 @@ class BindingMenuUI: ChimeraMenuBase
 	protected ref array<string> m_ActionNames = new array<string>();
 	protected const string ROW_LAYOUT_PATH = "{C76F51C554AF8F01}UI/layouts/Menus/Binding/actionRow.layout";
 	protected ref InputBinding m_Binding;
-	protected MenuBase m_BindingDialog;
+	protected SCR_ConfigurableDialogUi m_BindingDialog;
 	
 	override void OnMenuInit() 
 	{
@@ -117,10 +117,10 @@ class BindingMenuUI: ChimeraMenuBase
 			if (rowComponent.m_Index < m_ActionNames.Count())
 			{
 				m_Binding.StartCapture(m_ActionNames[rowComponent.m_Index]);
-				m_BindingDialog = GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.SimpleDialog);
-				m_BindingDialog.SetLabel("Title", "Binding '" + m_ActionNames[rowComponent.m_Index] + "'");
-				m_BindingDialog.SetLabel("Text", "Press key");
-				m_BindingDialog.GetItemWidget("Confirm").SetVisible(false);
+				m_BindingDialog = SCR_CommonDialogs.CreateDialog("bind_key");
+				m_BindingDialog.SetTitle("Binding '" + m_ActionNames[rowComponent.m_Index] + "'");
+				m_BindingDialog.SetMessage("Press key");
+				m_BindingDialog.FindButton("confirm").SetVisible(false);
 				GetGame().GetCallqueue().CallLater(CheckBindingStatus, 100, true);
 			}
 			return true;
@@ -145,7 +145,7 @@ class BindingMenuUI: ChimeraMenuBase
 		{
 			GetGame().GetCallqueue().Remove(CheckBindingStatus);
 			m_Binding.SaveCapture();
-			m_BindingDialog.Close();
+			//m_BindingDialog.Close();
 			SetContext(Contexts.GetCurrentItem());
 		}
 	}

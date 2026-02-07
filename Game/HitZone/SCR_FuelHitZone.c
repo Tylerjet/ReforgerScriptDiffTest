@@ -1,9 +1,9 @@
 class SCR_FuelHitZone : ScriptedHitZone
 {
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.Auto, desc: "Fuel Tank ID", category: "Fuel Damage Config")]
-	private int m_iFuelTankID;
+	protected int m_iFuelTankID;
 	
-	private	SCR_FuelNode m_pFuelTank;
+	protected SCR_FuelNode m_FuelTank;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -32,7 +32,7 @@ class SCR_FuelHitZone : ScriptedHitZone
 			scrFuelNode = SCR_FuelNode.Cast(fuelNode);
 			if (scrFuelNode && scrFuelNode.GetFuelTankID() == m_iFuelTankID)
 			{
-				m_pFuelTank = scrFuelNode;
+				m_FuelTank = scrFuelNode;
 				break;
 			}
 		}
@@ -51,10 +51,11 @@ class SCR_FuelHitZone : ScriptedHitZone
 	//------------------------------------------------------------------------------------------------
 	void UpdateFuelTankState()
 	{
+		if (!m_FuelTank)
+			return;
+
 		EDamageState state = GetDamageState();
  		float health = GetDamageStateThreshold(state);
-		
-		if (m_pFuelTank)
-			m_pFuelTank.SetHealth(health);
+		m_FuelTank.SetHealth(health);
 	}
 };

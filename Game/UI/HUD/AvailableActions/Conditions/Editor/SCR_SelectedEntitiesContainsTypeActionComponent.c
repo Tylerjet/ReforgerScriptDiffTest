@@ -17,9 +17,9 @@ class SCR_SelectedEntitiesContainsTypeActionComponent: SCR_AvailableActionCondit
 		foreach (SCR_EditableEntityComponent entity: entities)
 		{
 			if (entity.GetEntityType() == m_EnityType)
-				return GetReturnResult(true));
+				return GetReturnResult(true);
 		}
 		
-		return GetReturnResult(false));
+		return GetReturnResult(false);
 	}
 };

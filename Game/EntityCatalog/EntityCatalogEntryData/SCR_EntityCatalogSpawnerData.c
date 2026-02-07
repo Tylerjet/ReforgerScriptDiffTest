@@ -16,6 +16,9 @@ class SCR_EntityCatalogSpawnerData: SCR_BaseEntityCatalogData
 	[Attribute("-1", desc: "Cost to spawn entity")]
 	protected int m_iSupplyCost;
 	
+	[Attribute(defvalue: "1", params: "1 inf", desc: "Prefab entity count. To be used with prefabs like groups, where spawned logic create additional entities")]
+	protected int m_iEntityCount;
+	
 	[Attribute(desc: "Variants prefab data of entity. These are a diffrent variant of the default")]
 	protected ref array<ref SCR_SpawnerVariantData> m_aVariantData;
 	
@@ -28,6 +31,12 @@ class SCR_EntityCatalogSpawnerData: SCR_BaseEntityCatalogData
 	void SetEnabled(bool enable)
 	{
 		m_bEnabled = enable;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetEntityCount()
+	{
+		return m_iEntityCount;
 	}
 	
 	//--------------------------------- Get Overwrite name ---------------------------------\\
@@ -104,7 +113,7 @@ class SCR_EntityCatalogSpawnerData: SCR_BaseEntityCatalogData
 	/*!
 	Get list of all variant data
 	\param[out] variantData List of variant data
-	\return Lenght of variant data array
+	\return length of variant data array
 	*/
 	int GetVariantDataList(notnull out array<SCR_SpawnerVariantData> variantData)
 	{
@@ -122,7 +131,7 @@ class SCR_EntityCatalogSpawnerData: SCR_BaseEntityCatalogData
 	/*!
 	Get list of all variant prefabs
 	\param[out] variantData List of variant prefabs
-	\return Lenght of variant prefab array
+	\return length of variant prefab array
 	*/
 	int GetVariantPrefabList(notnull out array<ResourceName> variantPrefabs)
 	{

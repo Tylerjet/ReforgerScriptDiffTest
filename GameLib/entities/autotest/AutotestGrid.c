@@ -256,7 +256,7 @@ class AutotestGrid: GenericEntity
 		else
 			m_FPSWidget.SetColor(new Color(0.0, 1.0, 0.0, 1.0));
 		
-		if (m_CurrentRotation >= 0 && g_Game.WaitPreload(100) > 0)
+		if (m_CurrentRotation >= 0 && !g_Game.IsPreloadFinished())
 			return;
 		
 		vector destination;

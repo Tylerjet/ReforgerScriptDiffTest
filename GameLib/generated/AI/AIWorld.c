@@ -26,6 +26,7 @@ class AIWorld: GenericEntity
 	proto external AIFormationDefinition GetFormation(string pName);
 	proto external NavmeshWorldComponent GetNavmeshWorldComponent(string name);
 	proto external void RequestNavmeshRebuild(vector min, vector max);
+	proto external void RequestNavmeshLoad(vector pos);
 
 	// callbacks
 

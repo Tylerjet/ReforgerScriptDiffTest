@@ -46,12 +46,12 @@ class CrossroadEntity : GenericEntity
 	{
 		vector mat[4];
 		auto boneNames = new array<string>;
-		
-		GetBoneNames(boneNames);
+		Animation anim = GetAnimation();
+		anim.GetBoneNames(boneNames);
 		foreach(string bone: boneNames)
 		{
-			int idx = GetBoneIndex(bone);
-			GetBoneMatrix(idx, mat);
+			int idx = anim.GetBoneIndex(bone);
+			anim.GetBoneMatrix(idx, mat);
 			m_Bones.Insert(mat[3]);
 		}
 		

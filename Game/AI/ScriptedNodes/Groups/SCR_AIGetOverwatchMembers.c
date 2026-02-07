@@ -28,7 +28,7 @@ class SCR_AIGetOverwatchMembers: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if (!m_GroupUtilityComponent || !m_GroupUtilityComponent.m_aListOfAIInfo)
+		if (!m_GroupUtilityComponent || !m_GroupUtilityComponent.m_aInfoComponents)
 			return ENodeResult.FAIL;
 
 		ClearVariable(PORT_MOVING_MEMBER_OUT);
@@ -51,7 +51,7 @@ class SCR_AIGetOverwatchMembers: AITaskScripted
 		
 		bool isCoveringPresent = false, isMovingPresent = false, isCoveringSelected = false, isMovingSelected = false;
 		SCR_AIInfoComponent aIInfoComponent;
-		length = m_GroupUtilityComponent.m_aListOfAIInfo.Count();
+		length = m_GroupUtilityComponent.m_aInfoComponents.Count();
 		if (length <= 1)
 			return ENodeResult.FAIL;
 		
@@ -61,11 +61,13 @@ class SCR_AIGetOverwatchMembers: AITaskScripted
 		int selectedIndexForMovementPrevious = m_selectedIndexForMovement;
 		for (int i = 0; i < length; i++)
 		{
-			aIInfoComponent = m_GroupUtilityComponent.m_aListOfAIInfo[i];
+			aIInfoComponent = m_GroupUtilityComponent.m_aInfoComponents[i];
 			if( !aIInfoComponent )
 				continue;
 			
 			// Handeling of fireteams should be reworked so we can have geter for firetam members insted iteration over whole team each time 
+			// todo fix this
+			/*
 			if (aIInfoComponent.GetFireTeam() == teamSelection && aIInfoComponent.HasRole(EUnitRole.RIFLEMAN))
 			{
 				if (aIInfoComponent.GetAIState() == EUnitAIState.AVAILABLE)
@@ -84,6 +86,7 @@ class SCR_AIGetOverwatchMembers: AITaskScripted
 					}
 				}
 			}
+			*/
 		}
 		
 		if (!isMovingPresent)
@@ -103,10 +106,12 @@ class SCR_AIGetOverwatchMembers: AITaskScripted
 			if (indexForCover == m_selectedIndexForMovement)
 				continue;
 			
-			aIInfoComponent = m_GroupUtilityComponent.m_aListOfAIInfo[indexForCover];
+			aIInfoComponent = m_GroupUtilityComponent.m_aInfoComponents[indexForCover];
 			if( !aIInfoComponent )
 				continue;
 
+			// todo fix this
+			/*
 			if (aIInfoComponent.GetFireTeam() == teamSelection && 
 				(aIInfoComponent.HasRole(EUnitRole.RIFLEMAN) || aIInfoComponent.HasRole(EUnitRole.MACHINEGUNNER) || aIInfoComponent.HasUnitState(EUnitState.IN_TURRET)))
 			{
@@ -120,6 +125,7 @@ class SCR_AIGetOverwatchMembers: AITaskScripted
 					break;
 				}
 			}
+			*/
 		}
 		
 		if (!isCoveringPresent)
@@ -134,13 +140,13 @@ class SCR_AIGetOverwatchMembers: AITaskScripted
 			return ENodeResult.RUNNING;
 		}
 		
-		agent = AIAgent.Cast(m_GroupUtilityComponent.m_aListOfAIInfo[m_selectedIndexForMovement].GetOwner());
+		agent = AIAgent.Cast(m_GroupUtilityComponent.m_aInfoComponents[m_selectedIndexForMovement].GetOwner());
 		if (agent)
 			SetVariableOut(PORT_MOVING_MEMBER_OUT,agent);
 		else 
 			return ENodeResult.FAIL;
 		
-		agent = AIAgent.Cast(m_GroupUtilityComponent.m_aListOfAIInfo[m_selectedIndexForCovering].GetOwner());
+		agent = AIAgent.Cast(m_GroupUtilityComponent.m_aInfoComponents[m_selectedIndexForCovering].GetOwner());
 		if (agent)
 			SetVariableOut(PORT_COVERING_MEMBER_OUT,agent);
 		else

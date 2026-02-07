@@ -13,6 +13,9 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 	[RplProp(onRplName: "OnSetPlayerID")]
 	protected int m_iPlayerID;
 	
+	[RplProp()]
+	protected bool m_bIsActive;
+	
 	protected Faction m_CachedFaction;
 	protected IEntity m_TargetPlayer;
 	
@@ -22,6 +25,7 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 		return m_TargetPlayer;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Assign player ID to this respawn point.
 	It will then present itself as the player, and spawning on it will actually spawn the new player on position of assignd player.
@@ -37,18 +41,14 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 		OnSetPlayerID();
 		Replication.BumpMe();
 		
-		//--- Assign player faction only when player entity exists
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		gameMode.GetOnPlayerSpawned().Insert(OnPlayerSpawn);
-		gameMode.GetOnPlayerKilled().Insert(OnPlayerDeath);
-		gameMode.GetOnPlayerDeleted().Insert(OnPlayerDeath);
-		
 		IEntity player = SCR_PossessingManagerComponent.GetPlayerMainEntity(m_iPlayerID);
 		if (player)
-			OnPlayerSpawn(m_iPlayerID, player);
+			EnablePoint(m_iPlayerID, player);
 		else
-			OnPlayerDeath(m_iPlayerID, null);
+			DisablePoint(m_iPlayerID);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get ID of the player this spawn point is assigned to.
 	\return Target player ID
@@ -58,6 +58,7 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 		return m_iPlayerID;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnSetPlayerID()
 	{
 		//--- Link player info
@@ -67,28 +68,43 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 		m_PlayerInfo.SetPlayerID(m_iPlayerID);
 		LinkInfo(m_PlayerInfo);
 	}
-	
-	protected void OnPlayerSpawn(int playerID, IEntity player)
+
+	//------------------------------------------------------------------------------------------------
+	protected override string GetSpawnPointName()
 	{
-		if (playerID != m_iPlayerID)
+		return GetGame().GetPlayerManager().GetPlayerName(m_iPlayerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void EnablePoint(int playerId, IEntity playerEntity)
+	{
+		if (playerId != m_iPlayerID)
+		{
+			Print(string.Format("Couldn't enable point, mismatching playerId(s), expected: %1, got: %2", m_iPlayerID, playerId), LogLevel.WARNING);
 			return;
+		}
 		
-		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
-		m_CachedFaction = respawnSystem.GetPlayerFaction(m_iPlayerID);
-		m_TargetPlayer = player;
-		
+		m_CachedFaction = SCR_FactionManager.SGetPlayerFaction(m_iPlayerID);
+		m_TargetPlayer = playerEntity;
 		ActivateSpawnPoint();
 	}
-	protected void OnPlayerDeath(int playerID, IEntity player)
+	
+	//------------------------------------------------------------------------------------------------
+	void DisablePoint(int playerId)
 	{
-		if (playerID != m_iPlayerID)
+		if (playerId != m_iPlayerID)
+		{
+			Print(string.Format("Couldn't disable point, mismatching playerId(s), expected: %1, got: %2", m_iPlayerID, playerId), LogLevel.WARNING);
 			return;
+		}
 		
 		DeactivateSpawnPoint();
 		
 		m_CachedFaction = null;
 		m_TargetPlayer = null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void ActivateSpawnPoint()
 	{
 		SetFaction(m_CachedFaction);
@@ -97,7 +113,18 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 		//--- Clients cannot access another player's entity directly, because it may not be streamed for them
 		ClearFlags(EntityFlags.STATIC, false);
 		GetGame().GetCallqueue().CallLater(UpdateSpawnPos, m_fUpdateInterval * 1000, true);
+		
+		m_bIsActive = true;
+		Replication.BumpMe();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool IsSpawnPointActive()
+	{
+		return m_bIsActive;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void DeactivateSpawnPoint()
 	{
 		SetFaction(null);
@@ -105,8 +132,12 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 		//--- Stop periodic refresh
 		SetFlags(EntityFlags.STATIC, false);
 		GetGame().GetCallqueue().Remove(UpdateSpawnPos);
+		
+		m_bIsActive = false;
+		Replication.BumpMe();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateSpawnPos()
 	{
 		if (!m_TargetPlayer)
@@ -116,12 +147,15 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 		UpdateSpawnPosBroadcast(pos);
 		Rpc(UpdateSpawnPosBroadcast, pos);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void UpdateSpawnPosBroadcast(vector pos)
 	{
 		SetOrigin(pos);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void GetPositionAndRotation(out vector pos, out vector rot)
 	{
 		super.GetPositionAndRotation(pos, rot);
@@ -136,26 +170,106 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 				rot = m_TargetPlayer.GetAngles();
 		}
 	}
-	override void EOnPlayerSpawn(IEntity entity)
+	
+	//------------------------------------------------------------------------------------------------
+	protected Vehicle GetTargetVehicle()
 	{
-		//--- If spawn point target is sitting in a vehicle, move spawned player inside as well
 		SCR_CompartmentAccessComponent compartmentAccessTarget = SCR_CompartmentAccessComponent.Cast(m_TargetPlayer.FindComponent(SCR_CompartmentAccessComponent));
-		IEntity vehicle = compartmentAccessTarget.GetVehicle();
-		if (vehicle)
-		{
-			SCR_CompartmentAccessComponent compartmentAccessPlayer = SCR_CompartmentAccessComponent.Cast(entity.FindComponent(SCR_CompartmentAccessComponent));
-			GetGame().GetCallqueue().CallLater(compartmentAccessPlayer.MoveInVehicleAny, 1, false, vehicle); //--- Wait for character ownership to be transferred to client
-		}
+		if (!compartmentAccessTarget)
+			return null;
+		
+		return Vehicle.Cast(compartmentAccessTarget.GetVehicle());
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CanReserveFor_S(int playerId)
+	{
+		Vehicle targetVehicle = GetTargetVehicle();
+		if (targetVehicle)
+		{
+			// See if there are any slots left
+			BaseCompartmentManagerComponent compartmentManager = BaseCompartmentManagerComponent.Cast(targetVehicle.FindComponent(BaseCompartmentManagerComponent));
+			array<BaseCompartmentSlot> compartments = {};
+			int count = compartmentManager.GetCompartments(compartments);
+			for (int i = 0; i < count; i++)
+			{
+				BaseCompartmentSlot slot = compartments[i];
+				if (!slot.IsOccupied() && !slot.IsReserved())
+					return true;
+			}
+			
+			// No slots available
+			return false;
+		}
+		
+		// No vehicle, standard behaviour
+		return super.CanReserveFor_S(playerId);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool PrepareSpawnedEntity_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
+	{
+		#ifdef _ENABLE_RESPAWN_LOGS
+		PrintFormat("%1::PrepareSpawnedEntity_S(playerId: %2, data: %3, entity: %4)", Type().ToString(),
+					requestComponent.GetPlayerId(),	data, entity);
+		#endif
+		
+		// Spawned entity must have a compartment access component
+		SCR_CompartmentAccessComponent compartmentAccessPlayer = SCR_CompartmentAccessComponent.Cast(entity.FindComponent(SCR_CompartmentAccessComponent));
+		if (!compartmentAccessPlayer)
+			return false;
+		
+		// Spawning on vehicle; resolve vehicle logic
+		Vehicle targetVehicle = GetTargetVehicle();		
+		if (targetVehicle)
+			return PrepareSpawnedEntityForVehicle_S(requestComponent, data, entity, targetVehicle);
+		
+		// No preparation otherwise?
+		return super.PrepareSpawnedEntity_S(requestComponent, data, entity);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool PrepareSpawnedEntityForVehicle_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity, Vehicle vehicle)
+	{
+		#ifdef _ENABLE_RESPAWN_LOGS
+		PrintFormat("%1::PrepareSpawnedEntityForVehicle_S(playerId: %2, data: %3, entity: %4, vehicle: %5)", Type().ToString(),
+					requestComponent.GetPlayerId(),	data, entity, vehicle);
+		#endif
+		
+		SCR_CompartmentAccessComponent accessComponent = SCR_CompartmentAccessComponent.Cast(entity.FindComponent(SCR_CompartmentAccessComponent));
+		BaseCompartmentManagerComponent compartmentManager = BaseCompartmentManagerComponent.Cast(vehicle.FindComponent(BaseCompartmentManagerComponent));
+		
+		array<BaseCompartmentSlot> compartments = {};
+		int count = compartmentManager.GetCompartments(compartments);
+		for (int i = 0; i < count; i++)
+		{
+			BaseCompartmentSlot slot = compartments[i];
+			if (!slot.IsOccupied() && (!slot.IsReserved() || slot.IsReservedBy(entity)))
+				return accessComponent.MoveInVehicle(vehicle, slot);
+		}
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CanFinalizeSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
+	{
+		// Do not finalize if character is in the middle of entering a vehicle, leave that to be resolved on the authority first
+		SCR_CompartmentAccessComponent accessComponent = SCR_CompartmentAccessComponent.Cast(entity.FindComponent(SCR_CompartmentAccessComponent));
+		if (accessComponent && accessComponent.IsGettingIn())
+			return false;
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnFinalizeSpawnDone_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void ~SCR_PlayerSpawnPoint()
 	{
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (gameMode)
-		{
-			gameMode.GetOnPlayerSpawned().Remove(OnPlayerSpawn);
-			gameMode.GetOnPlayerKilled().Remove(OnPlayerDeath);
-			gameMode.GetOnPlayerDeleted().Remove(OnPlayerDeath);
-		}
 		GetGame().GetCallqueue().Remove(UpdateSpawnPos);
 	}
 };

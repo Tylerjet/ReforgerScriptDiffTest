@@ -18,12 +18,6 @@ class SCR_DateAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 	[Attribute(defvalue: "1.25")]
 	protected float m_fMonthWidgetFill;
 	
-	[Attribute("#AR-Editor_Attribute_Date_Description")]
-	protected LocalizedString m_sDateTooltip;
-	
-	[Attribute("#AR-Editor_Attribute_Date_Description_NoSunSetOrRise")]
-	protected string m_sNoSunriseSunSet;
-	
 	protected TextWidget m_Label0;
 	protected TextWidget m_Label1;
 	protected TextWidget m_Label2;
@@ -143,13 +137,15 @@ class SCR_DateAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 	
 	override void SetFromVar(SCR_BaseEditorAttributeVar var)
 	{
-		if (!var) return;
+		if (!var) 
+			return;
 		
 		vector date = var.GetVector();
 		SetDateComboBoxes(date);
-		UpdateDescription();
 		CreateDayList(GetCorrectComboBox("d"), date[1] +1, m_aYearData.GetEntry(date[2]));
 		UpdateDateMoonPhaseIcon();
+		
+		super.SetFromVar(var);
 	}
 	
 	protected void CreateDayList(SCR_ComboBoxIconComponent comboBox, int currentMonth, int currentYear, bool setMoonIcon = true)
@@ -242,7 +238,6 @@ class SCR_DateAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		year = m_aYearData.GetEntry(GetCorrectComboBox("y").GetCurrentIndex());
 	}
 	
-	
 	protected void FillMonthComboBox(SCR_ComboBoxIconComponent comboBox)
 	{		
 		int count = m_aMonthData.GetCount();
@@ -323,48 +318,6 @@ class SCR_DateAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		
 		OnChange(null, 0, 0, false);
 	}
-	
-	protected void UpdateDescription()
-	{		
-		SCR_BaseEditorAttributeVar dayTimeVar;
-		if (!m_AttributeManager.GetAttributeVariable(SCR_DaytimeEditorAttribute, dayTimeVar))
-			return;
-		
-		float daytime;		
-		int day, month, year;
-		GetCorrectDateTime(daytime, day, month, year);
-		
-		float timeZoneOffset = m_TimeAndWeatherManager.GetTimeZoneOffset();
-		float dstOffset = m_TimeAndWeatherManager.GetDSTOffset();
-		float latitude = m_TimeAndWeatherManager.GetCurrentLatitude();
-		
-		SCR_MoonPhaseUIInfo moonPhaseInfo =  m_TimeAndWeatherManager.GetMoonPhaseInfoForDate(year, month, day, daytime, timeZoneOffset, dstOffset, latitude);
-		
-		float sunRiseTime, sunSetTime;
-		bool hasSunRise = m_TimeAndWeatherManager.GetSunriseHourForDate(year, month, day, m_TimeAndWeatherManager.GetCurrentLatitude(), m_TimeAndWeatherManager.GetCurrentLongitude(), m_TimeAndWeatherManager.GetTimeZoneOffset(),  m_TimeAndWeatherManager.GetDSTOffset(),  sunRiseTime);
-		bool hasSunSet = m_TimeAndWeatherManager.GetSunsetHourForDate(year, month, day, m_TimeAndWeatherManager.GetCurrentLatitude(), m_TimeAndWeatherManager.GetCurrentLongitude(), m_TimeAndWeatherManager.GetTimeZoneOffset(),  m_TimeAndWeatherManager.GetDSTOffset(),  sunSetTime);
-		
-		string sunRiseName, sunSetName;
-		
-		if (!hasSunRise)
-			sunRiseName = m_sNoSunriseSunSet;
-		else 
-			sunRiseName = SCR_Global.GetTimeFormattingHideSeconds(sunRiseTime * 3600, ETimeFormatParam.DAYS);
-		if (!hasSunRise)
-			sunSetName = m_sNoSunriseSunSet;
-		else 
-			sunSetName = SCR_Global.GetTimeFormattingHideSeconds(sunSetTime * 3600, ETimeFormatParam.DAYS);
-		
-		OverrideDescription(true, m_sDateTooltip, sunRiseName, sunSetName, moonPhaseInfo.GetName());
-	}
-	
-	//If enabled UI is focused
-	override bool OnFocus(Widget w, int x, int y)
-	{
-		UpdateDescription();
-		return super.OnFocus(w, x, y);
-	}
-	
 	
 	override void HandlerDeattached(Widget w)
 	{		

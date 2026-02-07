@@ -11,7 +11,10 @@ class SCR_AIDecoIsAboveThreatLevel : DecoratorScripted
 	//------------------------------------------------------------------------------------------------
 	protected override void OnInit(AIAgent owner)
 	{
-		m_InfoComponent = SCR_AIInfoComponent.Cast(owner.FindComponent(SCR_AIInfoComponent));
+		SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(owner);
+		if (!chimeraAgent)
+			SCR_AgentMustChimera(this, owner);
+		m_InfoComponent = chimeraAgent.m_InfoComponent;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -46,7 +49,7 @@ class SCR_AIDecoIsAboveThreatLevel : DecoratorScripted
 		THRESHOLD_PORT
 	};
 	protected override TStringArray GetVariablesIn()
-    {
-        return s_aVarsIn;
-    }
+	{
+		return s_aVarsIn;
+	}
 };

@@ -53,10 +53,16 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		}
 		
 		// Name
+		string title;
 		if (m_Header)
-			m_Widgets.m_NameText.SetText(m_Header.m_sName);
+			title = m_Header.m_sName;
 		else if (m_Scenario)
-			m_Widgets.m_NameText.SetText(m_Scenario.Name());
+			title = m_Scenario.Name();
+
+		//title.ToUpper();
+		m_Widgets.m_NameText.SetText(title);
+		
+		//Print(string.Format("UpdateAllWidgets"), LogLevel.WARNING);
 		
 		// Author name
 		// We don't have author name in scenario header now.

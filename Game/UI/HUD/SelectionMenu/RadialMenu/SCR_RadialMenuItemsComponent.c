@@ -12,7 +12,7 @@ class SCR_RadialMenuItemsComponent : ScriptComponent
 
 	protected const int FIRST_ITEM_SLOT = 4;
 	protected const int SLOT_COUNT = 10;
-
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
@@ -24,9 +24,8 @@ class SCR_RadialMenuItemsComponent : ScriptComponent
 
 		// Will setup radial menu and take control over the menu
 		SetEventMask(owner, EntityEvent.INIT);
-
-		if (m_MenuController)
-			m_MenuController.Control(owner);
+		
+		m_MenuController.GetOnTakeControl().Insert(OnControllerTakeControl);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -37,72 +36,43 @@ class SCR_RadialMenuItemsComponent : ScriptComponent
 
 		m_MenuController.GetOnControllerChanged().Insert(OnControllerChanged);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	protected void OnOpen()
+	protected void OnMenuOpen(SCR_SelectionMenu menu)
 	{
-		if (!m_MenuController)
-			return;
-
-		SCR_RadialMenu radialMenu = m_MenuController.GetRadialMenu();
-		if (!radialMenu)
-			return;
-
-		CreateEntries(radialMenu);
-
-		SetEventMask(GetOwner(), EntityEvent.FIXEDFRAME);
-
-		radialMenu.GetEventOnClose().Insert(OnClose);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnClose()
-	{
-		if (!m_MenuController)
-			return;
-
-		SCR_RadialMenu radialMenu = m_MenuController.GetRadialMenu();
-		if (!radialMenu)
-			return;
-
+		SCR_RadialMenu radialMenu = SCR_RadialMenu.Cast(menu);
+		
 		radialMenu.ClearEntries();
-
-		ClearEventMask(GetOwner(), EntityEvent.FIXEDFRAME);
-
-		radialMenu.GetEventOnClose().Remove(OnClose);
+		CreateEntries(radialMenu);
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	protected void Update(SCR_RadialMenu radialMenu)
+	{
+		radialMenu.UpdateEntries();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnControllerChanged(SCR_RadialMenuController controller, bool hasControl)
+	//! Call this when menu controller starts to control the menu
+	protected void OnControllerTakeControl(SCR_RadialMenuController controller)
 	{
-		if (!controller)
-			return;
-
 		SCR_RadialMenu radialMenu = controller.GetRadialMenu();
 		if (!radialMenu)
 			return;
-
-		radialMenu.GetEventOnOpen().Remove(OnOpen);
-
-		if (hasControl)
-			radialMenu.GetEventOnOpen().Insert(OnOpen);
+		
+		radialMenu.GetOnOpen().Insert(OnMenuOpen);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override void EOnFixedFrame(IEntity owner, float timeSlice)
+	protected void OnControllerChanged(SCR_RadialMenuController controller, bool hasControl)
 	{
-		SCR_RadialMenu radialMenu = m_MenuController.GetRadialMenu();
+		SCR_RadialMenu radialMenu = controller.GetRadialMenu();
 		if (!radialMenu)
-		{
-			ClearEventMask(owner, EntityEvent.FIXEDFRAME);
-			Print("[SCR_RadialMenuItemsComponent] - Radial menu not assigned! Can't update!", LogLevel.WARNING);
 			return;
-		}
-
-		radialMenu.UpdateEntries();
-		radialMenu.Update(timeSlice);
+		
+		radialMenu.GetOnOpen().Remove(OnMenuOpen);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void CreateEntries(notnull SCR_RadialMenu radialMenu)
 	{

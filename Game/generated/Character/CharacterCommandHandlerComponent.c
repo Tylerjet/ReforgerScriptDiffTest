@@ -15,15 +15,12 @@ class CharacterCommandHandlerComponentClass: BaseCommandHandlerComponentClass
 
 class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 {
-	// ---------------------------------------------------------------------------
-	void OnCommandActivate(int pCmdId);
-	void OnCommandDeactivate(int pCmdId);
-
 	//! Returns the current character controller component.
 	proto external CharacterControllerComponent GetControllerComponent();
 	//! gets some basic info about movement
 	proto external void GetMovementState(out notnull CharacterMovementState pMovementState);
 	proto external void AlignNewTurns();
+	proto external bool IsVehicleSwitchingSeats();
 	proto external bool IsWeaponADSAllowed(bool allowSprint);
 	proto external bool IsItemInspectionAllowed();
 	proto external bool IsWeaponInspectionAllowed();
@@ -53,14 +50,15 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external CharacterCommandVehicle	GetCommandVehicle();
 	proto external CharacterCommandLadder	GetCommandLadder();
 	proto external CharacterCommandDeath	GetCommandDeath();
-	proto external CharacterCommandUnconscious	GetCommandUnconscious();
+	proto external CharacterCommandUnconscious	GetCommandModifier_Unconscious();
 	proto external CharacterCommandMelee	GetCommandModifier_Melee();
 	proto external CharacterCommandSwim		GetCommandSwim();
 	proto external CharacterCommandSlide	GetCommandSlide();
 	proto external CharacterCommandDamageFullBody GetCommandDamageFullBody();
 	proto external CharacterCommandDamage	GetCommandModifier_Damage();
 	proto external CharacterCommandWeapon	GetCommandModifier_Weapon();
-	proto external CharacterCommandItem		GetCommandModifier_Item();
+	proto external CharacterCommandItemChange		GetCommandModifier_ItemChange();
+	proto external CharacterCommandItemUse		GetCommandModifier_ItemUse();
 	proto external CharacterCommandGadget	GetCommandModifier_Gadget();
 	proto external CharacterCommandMoveSettings GetDefaultCommandMoveSettings();
 	proto external CharacterCommandMoveSettings GetCurrentCommandMoveSettings();
@@ -116,6 +114,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	*/
 	event bool HandleFinishedCommands(bool pCurrentCommandFinished);
 	event bool HandleDeath(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID, bool pCurrentCommandFinished);
+	event bool HandleUnconscious(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool HandleVehicle(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool HandleSwimming(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool HandleLadders(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
@@ -123,6 +122,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	event bool HandleMelee(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool HandleFalling(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool HandleDamageHit(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
+	event bool HandleSlide(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	/*
 	----------------------------------------------------------------------------
 	 additive handlers
@@ -135,6 +135,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	event bool HandleItemGesture(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool HandleWeaponReloading(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool HandleWeaponADS(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
+	event bool HandleWeaponDeployment(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool HandleWeaponFire(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool HandleWeaponObstruction(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool HandleLeftHandGadget(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
@@ -146,6 +147,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	*/
 	event bool TransitionMove_JumpClimb(CharacterInputContext pInputCtx);
 	event bool TransitionMove_Vehicle(CharacterInputContext pInputCtx);
+	event bool TransitionMove_Swimming(CharacterInputContext pInputCtx);
 	event bool TransitionMove_Ladder(CharacterInputContext pInputCtx);
 	/*
 	----------------------------------------------------------------------------

@@ -21,6 +21,7 @@ class PrefabImporterResponse: JsonApiStruct
 	ref array<string> ids = new array<string>;
 	ref array<string> sourceMat = new array<string>;
 	ref array<string> ematPath = new array<string>;
+	ref array<int> parents = new array<int>;
 	int stopped;
 	int size;
 	
@@ -36,6 +37,7 @@ class PrefabImporterResponse: JsonApiStruct
 		RegV("ematPath");
 		RegV("stopped");
 		RegV("size");
+		RegV("parents");
 	}
 };
 
@@ -59,8 +61,10 @@ class PrefabImporterUtils
 	
 	void GetPrefabParams(IEntitySource prefab, PrefabImporterResponse response)
 	{
+		BaseContainer empty;
 		BaseContainer ancestorSource = prefab.GetAncestor();
 		ResourceName ancestor = ancestorSource.GetResourceName();
+		IEntitySource parent = prefab.GetParent();
 		string pivotID = "";
 		//If null object?
 		if(ancestor == "")
@@ -79,25 +83,9 @@ class PrefabImporterUtils
 			prefabSocket.Get("PivotID", pivotID);
 			pivotID.ToLower();
 			int index = 0;
-			
-			
-			if(!pivotID.Contains("socket_door") && pivotID != "")
+
+			/*if(!pivotID.Contains("socket_door") && pivotID != "")
 			{
-				/*for(int i = 0; i < response.pivots.Count(); i++)
-				{
-					if(response.pivots[i] == pivotID)
-					{
-						index += 1;
-						if(index == 1)
-						{
-							pivotID = pivotID + "." + index.ToString(3);
-						}
-						else
-						{
-							pivotID = pivotID.Substring(0, pivotID.Length() - 3) + index.ToString(3);
-						}
-					}
-				}*/
 				
 				for(int i = 0; i < response.ids.Count(); i++)
 				{
@@ -110,7 +98,7 @@ class PrefabImporterUtils
 				{
 					pivotID = pivotID + "." + index.ToString(3);
 				}
-			}
+			}*/
 			
 			response.ids.Insert(prefab.GetID().ToString());
 			response.pivots.Insert(pivotID);
@@ -122,7 +110,6 @@ class PrefabImporterUtils
 		}
 		//All angles (Cuz every angle is one VarName)
 		array<string> angles = {"angleX","angleY","angleZ"};
-		BaseContainer empty;
 		
 		//<-----------------Getting params----------------->\\
 		string coords;
@@ -136,7 +123,7 @@ class PrefabImporterUtils
 		{
 			coords = "0 0 0";
 		}
-
+		
 		if(prefab.IsVariableSet("scale"))
 		{
 			prefab.Get("scale", scale);
@@ -145,9 +132,6 @@ class PrefabImporterUtils
 		{
 			scale = "1";
 		}
-		response.coords.Insert(coords);
-		response.scales.Insert(scale);
-		
 		string allAngles;
 		for(int j = 0; j < 3; j++)
 		{
@@ -165,10 +149,56 @@ class PrefabImporterUtils
 				allAngles += " 0";
 			}
 		}
-		//Insert string of angles
+		
+		
+		
+		if(parent != empty)
+		{
+			int parentObjectID = GetArrayIndex(parent, "MeshObject");
+			if(parentObjectID != -1)
+			{
+				string parentFbx = GetFBXPath(parent, parentObjectID, "Object", response, false);
+				for(int i = response.fbx.Count() - 1; i > 0; i--)
+				{
+					if(response.fbx.Count() > 1 && parentFbx == response.fbx[i])
+					{
+						response.parents.Insert(i);
+						/*array<string> currentVec = new array<string>;
+						array<string> parentVec = new array<string>;
+						coords.Split(" ", currentVec, true);
+						response.coords[i].Split(" ", parentVec, true);
+						coords = "";
+						for(int x = 0; x < currentVec.Count(); x++)
+						{
+							string coord = (currentVec[x].ToFloat() + parentVec[x].ToFloat()).ToString();
+							coords += coord + " ";
+						}
+						allAngles.Split(" ", currentVec, true);
+						response.angles[i].Split(" ", parentVec, true);
+						allAngles = "";
+						for(int x = 0; x < currentVec.Count(); x++)
+						{
+							string angle = (currentVec[x].ToFloat() + parentVec[x].ToFloat()).ToString();
+							allAngles += angle + " ";
+						}*/
+						break;
+					}
+				}
+			}
+		}
+		
+		//Insert
+		response.coords.Insert(coords);
+		response.scales.Insert(scale);
 		response.angles.Insert(allAngles);
 		//Clear string
 		allAngles = "";
+		
+		
+		if(response.parents.Count() != response.coords.Count())
+		{
+			response.parents.Insert(-1);
+		}
 		//<-----------------Getting params----------------->\\
 		
 		
@@ -194,11 +224,14 @@ class PrefabImporterUtils
 				GetPrefabParams(glassCont, response);
 			}
 		}*/
+
+		
+		
 		
 		int meshObjectID = GetArrayIndex(prefab, "MeshObject");
 		if(meshObjectID != -1)
 		{
-			GetFBXPath(prefab, meshObjectID, "Object", response);
+			response.fbx.Insert(GetFBXPath(prefab, meshObjectID, "Object", response, true));
 			ReadAncestor(ancestorSource, response, true);
 		}
 		else
@@ -213,7 +246,7 @@ class PrefabImporterUtils
 	}
 	
 	
-	void GetFBXPath(IEntitySource prefab, int meshObjectID,string meshVarName, PrefabImporterResponse response)
+	string GetFBXPath(IEntitySource prefab, int meshObjectID,string meshVarName, PrefabImporterResponse response, bool getEmat)
 	{
 		ResourceName absPath, output, relXob, ematPath, absPathEmat;
 		string matName;
@@ -221,18 +254,20 @@ class PrefabImporterUtils
 		Workbench.GetAbsolutePath(prefab.GetResourceName().GetPath(), absPath);
 		BaseContainerList srcList = prefab.GetObjectArray("components");
 		IEntitySource prefabMesh = srcList.Get(meshObjectID);
-		GetPrefabEmat(prefabMesh, response);
+		if(getEmat)
+		{
+			GetPrefabEmat(prefabMesh, response);
+		}
 		prefabMesh.Get(meshVarName,relXob);
 		Workbench.GetAbsolutePath(relXob.GetPath(), output); // Boolean
 		output.Replace("xob","fbx");
-		response.fbx.Insert(output);
 		//This will get me the children of prefab but there is a problem with coords
 		/*for(int i = 0; i < prefab.GetNumChildren(); i++)
 		{
 			IEntitySource child = prefab.GetChild(i).GetAncestor();	
 			GetPrefabParams(child, response);
 		}*/
-		return;
+		return output;
 	}
 	
 	
@@ -347,22 +382,22 @@ class PrefabImporterUtils
 		for(int i = 0; i < smth; i++)
 		{
 			response.fbx.RemoveOrdered(0);
-			//response.ids.RemoveOrdered(i);
 			response.scales.RemoveOrdered(0);
 			response.angles.RemoveOrdered(0);
 			response.coords.RemoveOrdered(0);			
 			response.pivots.RemoveOrdered(0);
+			response.parents.RemoveOrdered(0);
 		}
 				
 		//Odstraním vše co přebývá dokud nemám size na to to poslat
 		while(response.GetSizeOf() > 60000)
 		{
 			response.fbx.RemoveOrdered(response.fbx.Count()-1);
-			//response.ids.RemoveOrdered(response.ids.Count()-backIndex);
 			response.scales.RemoveOrdered(response.scales.Count()-1);
 			response.angles.RemoveOrdered(response.angles.Count()-1);
 			response.coords.RemoveOrdered(response.coords.Count()-1);			
 			response.pivots.RemoveOrdered(response.pivots.Count()-1);
+			response.parents.RemoveOrdered(response.parents.Count()-1);
 		}
 		int lenght = response.fbx.Count() + smth;		
 				
@@ -386,8 +421,8 @@ class PrefabImporter: NetApiHandler
 		PrefabImporterRequest req = PrefabImporterRequest.Cast(request);
 		PrefabImporterResponse response = new PrefabImporterResponse();
 		PrefabImporterUtils utils = new PrefabImporterUtils();
-
 		utils.ReadFirst(req.absPath, response);
+		Print(response.fbx.Count());
 		response.size = response.fbx.Count();
 		response.stopped = utils.ClearJSON(response, req.start);
 		return response;

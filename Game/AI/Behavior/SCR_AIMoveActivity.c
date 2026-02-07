@@ -15,11 +15,11 @@ class SCR_AIMoveActivity : SCR_AIActivityBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_AIMoveActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, vector pos, IEntity ent, bool useVehicles = true, float priority = PRIORITY_ACTIVITY_MOVE, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AIMoveActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint, vector pos, IEntity ent, bool useVehicles = true, float priority = PRIORITY_ACTIVITY_MOVE, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		InitParameters(pos, ent, useVehicles, priorityLevel);
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityMove.bt";
-		m_fPriority = priority;
+		SetPriority(priority);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -34,11 +34,12 @@ class SCR_AIMoveActivity : SCR_AIActivityBase
 		super.OnActionCompleted();
 		if (m_bUseVehicles.m_Value)
 		{
-			SCR_AIGroup group = SCR_AIGroup.Cast(m_Utility.m_OwnerAgent);
+			SCR_AIGroup group = SCR_AIGroup.Cast(m_Utility.GetAIAgent());
 			if (!group)
 				return;
 			group.ReleaseCompartments();
 		}
+		SendCancelMessagesToAllAgents();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -47,17 +48,24 @@ class SCR_AIMoveActivity : SCR_AIActivityBase
 		super.OnActionFailed();
 		if (m_bUseVehicles.m_Value)
 		{
-			SCR_AIGroup group = SCR_AIGroup.Cast(m_Utility.m_OwnerAgent);
+			SCR_AIGroup group = SCR_AIGroup.Cast(m_Utility.GetAIAgent());
 			if (!group)
 				return;
 			group.ReleaseCompartments();
 		}
+		SendCancelMessagesToAllAgents();
+	}
+	
+	override void OnActionDeselected()
+	{
+		super.OnActionDeselected();
+		SendCancelMessagesToAllAgents();
 	}
 };
 
 class SCR_AISeekAndDestroyActivity : SCR_AIMoveActivity
 {
-	void SCR_AISeekAndDestroyActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, vector pos, IEntity ent, bool useVehicles = false, float priority = PRIORITY_ACTIVITY_SEEK_AND_DESTROY, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AISeekAndDestroyActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint, vector pos, IEntity ent, bool useVehicles = false, float priority = PRIORITY_ACTIVITY_SEEK_AND_DESTROY, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		//m_bRemoveOnCompletion = false; removed: after S&D move was not realized, completed S&D was not removed
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivitySeekDestroy.bt";
@@ -74,7 +82,7 @@ class SCR_AIFollowActivity : SCR_AIMoveActivity
 	ref SCR_BTParam<float> m_fCompletionDistance = new SCR_BTParam<float>(SCR_AIActionTask.DESIREDDISTANCE_PORT);
 	
 	// SCR_AIBaseUtilityComponent utility, bool isWaypointRelated, vector pos, float priority = PRIORITY_ACTIVITY_MOVE, IEntity ent = null, bool useVehicles = true
-	void SCR_AIFollowActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, vector pos, IEntity ent, bool useVehicles = false, float priority = PRIORITY_ACTIVITY_FOLLOW, float priorityLevel = PRIORITY_LEVEL_NORMAL, float distance = 1.0)
+	void SCR_AIFollowActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint, vector pos, IEntity ent, bool useVehicles = false, float priority = PRIORITY_ACTIVITY_FOLLOW, float priorityLevel = PRIORITY_LEVEL_NORMAL, float distance = 1.0)
 	{
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityFollow.bt";
 		m_fCompletionDistance.Init(this, distance);

@@ -5,34 +5,55 @@ Scripted base for selection menu used in HUD
 [BaseContainerProps(configRoot: true)]
 class SCR_SelectionMenu
 {
+	protected const int OPEN_DELAY = 200;
+
 	// Attributes
 	[Attribute()]
 	protected ref SCR_SelectionMenuInputs m_Inputs;
 
-	[Attribute("")]
+	[Attribute()]
+	protected string m_sOpenSound;
+
+	[Attribute()]
+	protected string m_sCloseSound;
+
+	[Attribute()]
 	protected string m_sSelectionSound;
 
-	[Attribute("")]
+	[Attribute()]
 	protected string m_sPerformSound;
 
+	[Attribute()]
+	protected string m_sEnterCategorySound;
+
+	[Attribute()]
+	protected string m_sLeaveCategorySound;
+
 	// Variables
+	protected SCR_SelectionMenuDisplay m_Display;
+	
 	protected ref array<ref SCR_SelectionMenuEntry> m_aRootEntries = {}; // 1st layer of entries
 	protected ref array<ref SCR_SelectionMenuEntry> m_aEntries = {}; // Current layer entries
 	protected SCR_SelectionMenuEntry m_SelectedEntry;
+	protected int m_iSelectedEntryId;
 
 	protected ref SCR_SelectionMenuControllerInputs m_ControllerInputs;
 	protected bool m_bOpened;
 	protected bool m_bEntryPerformed;
 	protected bool m_bUsingAlternativeToggle;
+	protected bool m_bClosingMenu;
+	protected bool m_bOpenedForTime;
 
 	// Categories and multi layering
 	protected ref array<SCR_SelectionMenuCategoryEntry> m_aSelectedCategories = {};
 
 	// Events
+	protected ref ScriptInvoker<SCR_SelectionMenu> m_OnBeforeOpen;
 	protected ref ScriptInvoker<SCR_SelectionMenu> m_OnOpen;
 	protected ref ScriptInvoker<SCR_SelectionMenu> m_OnClose;
 	protected ref ScriptInvoker<SCR_SelectionMenu, SCR_SelectionMenuEntry, int> m_OnSelect;
 	protected ref ScriptInvoker<SCR_SelectionMenu, SCR_SelectionMenuEntry> m_OnPerform;
+	protected ref ScriptInvoker<SCR_SelectionMenu, SCR_SelectionMenuCategoryEntry, int> m_OnOpenCategory;
 
 	protected ref ScriptInvoker<SCR_SelectionMenu, SCR_SelectionMenuEntry> m_OnAddEntry;
 	protected ref ScriptInvoker<SCR_SelectionMenu, SCR_SelectionMenuEntry> m_OnRemoveEntry;
@@ -41,14 +62,30 @@ class SCR_SelectionMenu
 	protected ref ScriptInvoker<SCR_SelectionMenu, SCR_SelectionMenuControllerInputs> m_OnControllerChanged;
 
 	//------------------------------------------------------------------------------------------------
-	protected void InvokeEventOnOpen()
+	protected void InvokeOnBeforeOpen()
+	{
+		if (m_OnBeforeOpen)
+			m_OnBeforeOpen.Invoke(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnBeforeOpen()
+	{
+		if (!m_OnBeforeOpen)
+			m_OnBeforeOpen = new ScriptInvoker();
+
+		return m_OnBeforeOpen;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void InvokeOnOpen()
 	{
 		if (m_OnOpen)
 			m_OnOpen.Invoke(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetEventOnOpen()
+	ScriptInvoker GetOnOpen()
 	{
 		if (!m_OnOpen)
 			m_OnOpen = new ScriptInvoker();
@@ -57,14 +94,14 @@ class SCR_SelectionMenu
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void InvokeEventOnClose()
+	protected void InvokeOnClose()
 	{
 		if (m_OnClose)
 			m_OnClose.Invoke(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetEventOnClose()
+	ScriptInvoker GetOnClose()
 	{
 		if (!m_OnClose)
 			m_OnClose = new ScriptInvoker();
@@ -73,14 +110,14 @@ class SCR_SelectionMenu
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void InvokeEventOnSelect(SCR_SelectionMenuEntry entry, int id)
+	protected void InvokeOnSelect(SCR_SelectionMenuEntry entry, int id)
 	{
 		if (m_OnSelect)
 			m_OnSelect.Invoke(this, entry, id);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetEventOnSelect()
+	ScriptInvoker GetOnSelect()
 	{
 		if (!m_OnSelect)
 			m_OnSelect = new ScriptInvoker();
@@ -89,7 +126,7 @@ class SCR_SelectionMenu
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void InvokeEventOnPerform(SCR_SelectionMenuEntry entry)
+	protected void InvokeOnPerform(SCR_SelectionMenuEntry entry)
 	{
 		if (m_OnPerform)
 			m_OnPerform.Invoke(this, entry);
@@ -105,14 +142,30 @@ class SCR_SelectionMenu
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void InvokeEventOnAddEntry(SCR_SelectionMenuEntry entry)
+	protected void InvokeOnOpenCategory(SCR_SelectionMenuCategoryEntry entry, int level)
+	{
+		if (m_OnOpenCategory)
+			m_OnOpenCategory.Invoke(this, entry, level);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnOpenCategory()
+	{
+		if (!m_OnOpenCategory)
+			m_OnOpenCategory = new ScriptInvoker();
+
+		return m_OnOpenCategory;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void InvokeOnAddEntry(SCR_SelectionMenuEntry entry)
 	{
 		if (m_OnAddEntry)
 			m_OnAddEntry.Invoke(this, entry);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetEventOnAddEntry()
+	ScriptInvoker GetOnAddEntry()
 	{
 		if (!m_OnAddEntry)
 			m_OnAddEntry = new ScriptInvoker();
@@ -121,14 +174,14 @@ class SCR_SelectionMenu
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void InvokeEventOnRemoveEntry(SCR_SelectionMenuEntry entry)
+	protected void InvokeOnRemoveEntry(SCR_SelectionMenuEntry entry)
 	{
 		if (m_OnRemoveEntry)
 			m_OnRemoveEntry.Invoke(this, entry);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetEventOnRemoveEntry()
+	ScriptInvoker GetOnRemoveEntry()
 	{
 		if (!m_OnRemoveEntry)
 			m_OnRemoveEntry = new ScriptInvoker();
@@ -137,20 +190,14 @@ class SCR_SelectionMenu
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void InvokeEventOnUpdateEntries(array<ref SCR_SelectionMenuEntry> entries)
+	protected void InvokeOnUpdateEntries(array<ref SCR_SelectionMenuEntry> entries)
 	{
-		foreach (SCR_SelectionMenuEntry entry : m_aEntries)
-		{
-			if (entry)
-				entry.Update();
-		}
-
 		if (m_OnUpdateEntries)
 			m_OnUpdateEntries.Invoke(this, entries);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetEventOnUpdateEntries()
+	ScriptInvoker GetOnUpdateEntries()
 	{
 		if (!m_OnUpdateEntries)
 			m_OnUpdateEntries = new ScriptInvoker();
@@ -181,14 +228,58 @@ class SCR_SelectionMenu
 	//------------------------------------------------------------------------------------------------
 	void Open()
 	{
+		InvokeOnBeforeOpen();
+				
+		// Prevent opening emtpy menu
+		if (m_ControllerInputs.m_bPreventEmptyMenuOpen && m_aEntries.IsEmpty())
+			return;
+		
+		if (m_bOpened)
+			return;
+			
 		m_bOpened = true;
 		m_bEntryPerformed = false;
+		m_bClosingMenu = false;
+		m_bUsingAlternativeToggle = false;
+
+		// Call later to set opened for time to allow closing after reaching the delay
+		m_bOpenedForTime = false;
+		
+		if (!m_ControllerInputs.m_sToggleActionAlternative.IsEmpty())
+			GetGame().GetCallqueue().CallLater(AllowClosing, OPEN_DELAY);
+		else
+			AllowClosing(); // Allow closing immidiatelly when toggle is not set
+
+		// Start on root
+		if (m_ControllerInputs.m_bOpenInRoot)
+			OpenInRoot();
 
 		OnOpen();
 
-		InvokeEventOnOpen();
+		InvokeOnOpen();
+		PlaySound(m_sOpenSound);
+		
+		// Call update in next frame to be sure item preview is prepared 
+		GetGame().GetCallqueue().CallLater(UpdateEntries);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Allow closing after some time in order to have alternative toggle action with double press
+	protected void AllowClosing()
+	{
+		// Set true to state that time for allow closing has already passed
+		m_bOpenedForTime = true;
+
+		// Close menu if closing was requested before it was possible
+		if (m_bClosingMenu && !m_bUsingAlternativeToggle)
+		{
+			Close();
+			return;
+		}
+
+		m_bClosingMenu = false;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Empty method called on open ready for override
 	protected void OnOpen(){}
@@ -197,15 +288,23 @@ class SCR_SelectionMenu
 	//! Callback when close is requested
 	void Close()
 	{
+		m_bClosingMenu = true;
+
+		if (!m_bOpenedForTime)
+			return;
+
 		// Perform
-		if (m_ControllerInputs.m_bPerformOnClose && m_SelectedEntry && !m_bEntryPerformed)
+		if (m_ControllerInputs && m_ControllerInputs.m_bPerformOnClose && m_SelectedEntry && !m_bEntryPerformed)
 			PerformEntry(m_SelectedEntry);
 
 		m_bOpened = false;
 		m_bUsingAlternativeToggle = false;
 		OnClose();
 
-		InvokeEventOnClose();
+		InvokeOnClose();
+
+		if (!m_bEntryPerformed || !m_SelectedEntry)
+			PlaySound(m_sCloseSound);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -261,24 +360,31 @@ class SCR_SelectionMenu
 
 		entry.Perform();
 
-		PlaySound(m_sPerformSound);
-
 		// Generic entry
-		if (!category && m_ControllerInputs.m_bCloseOnPerform)
+		if (!category)
 		{
 			m_bEntryPerformed = true;
-			Close();
+			
+			if (m_ControllerInputs.m_bCloseOnPerform)
+				Close();
 		}
 
 		// Category
 		if (category)
 		{
-			OpenCategoryEntry(category);
-
+			if (!m_bClosingMenu)
+				OpenCategoryEntry(category);
 			// Perform default action on closing
+
+			return;
 		}
 
-		InvokeEventOnPerform(entry);
+		PlaySound(m_sPerformSound);
+
+		InvokeOnPerform(entry);
+		
+		if (!category && !m_bClosingMenu)
+			m_bEntryPerformed = false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -288,26 +394,102 @@ class SCR_SelectionMenu
 		//AddEntries(category.GetEntries(), true);
 
 		m_aSelectedCategories.Insert(category);
-		InvokeEventOnUpdateEntries(category.GetEntries());
+
+		// Repopulate entries
+		m_aEntries.Clear();
+
+		for (int i = 0, count = category.GetEntries().Count(); i < count; i++)
+		{
+			m_aEntries.Insert(category.GetEntries()[i]);
+		}
+
+		// Update
+		InvokeOnOpenCategory(category, m_aSelectedCategories.Count());
+		InvokeOnUpdateEntries(category.GetEntries());
+
+		PlaySound(m_sEnterCategorySound);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Add new empty entry and update all entries if not declined
-	void AddEntry(SCR_SelectionMenuEntry entry = null, bool update = true)
+	protected void LeaveCategory()
+	{
+		SCR_SelectionMenuCategoryEntry category = CurrentCategory();
+		if (!category)
+			return;
+
+		m_aSelectedCategories.RemoveItem(category);
+
+		category = CurrentCategory();
+		m_aEntries.Clear();
+
+		
+		// Repopulate entries with previous entry
+		if (category)
+		{
+			array<ref SCR_SelectionMenuEntry> catEntries = category.GetEntries();
+			
+			// Previous category
+			for (int i = 0, count = catEntries.Count(); i < count; i++)
+			{
+				m_aEntries.Insert(catEntries[i]);
+			}
+		}
+		else
+		{
+			// Root
+			for (int i = 0, count = m_aRootEntries.Count(); i < count; i++)
+			{
+				m_aEntries.Insert(m_aRootEntries[i]);
+			}
+		}
+
+		InvokeOnOpenCategory(category, m_aSelectedCategories.Count());
+		InvokeOnUpdateEntries(m_aEntries);
+
+		PlaySound(m_sLeaveCategorySound);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Clear open categories and use entries from root
+	protected void OpenInRoot()
+	{
+		m_aSelectedCategories.Clear();
+		m_aEntries.Clear();
+
+		for (int i = 0, count = m_aRootEntries.Count(); i < count; i++)
+		{
+			m_aEntries.Insert(m_aRootEntries[i]);
+		}
+
+		InvokeOnOpenCategory(null, 0);
+		InvokeOnUpdateEntries(m_aEntries);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Add new entry into menu root
+	//! Entries update is notified only if menu is opened in root level
+	void AddEntry(SCR_SelectionMenuEntry entry = null)
 	{
 		if (!entry)
+		{
 			SCR_SelectionMenuEntry newEntry = new SCR_SelectionMenuEntry();
+			m_aRootEntries.Insert(newEntry);
+			return;
+		}
 
-		m_aEntries.Insert(entry);
+		m_aRootEntries.Insert(entry);
 
-		InvokeEventOnAddEntry(entry);
-
-		if (update)
-			InvokeEventOnUpdateEntries(m_aEntries);
+		// Update entries
+		if (!CurrentCategory())
+		{
+			m_aEntries.Insert(entry);
+			InvokeOnAddEntry(entry);
+			InvokeOnUpdateEntries(m_aEntries);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// TODO: Category adding logic once categories are ready
+	//! Add empty or custom category entry
 	void AddCategoryEntry(SCR_SelectionMenuCategoryEntry category = null)
 	{
 		SCR_SelectionMenuEntry entry = category;
@@ -325,46 +507,100 @@ class SCR_SelectionMenu
 	{
 		// Clear
 		if (replace)
-			m_aEntries.Clear();
+		{
+			m_aRootEntries.Clear();
+
+			if (!CurrentCategory())
+				m_aEntries.Clear();
+		}
 
 		// Add
 		for (int i = 0, count = entries.Count(); i < count; i++)
-			AddEntry(entries[i], false);
+		{
+			AddEntry(entries[i]);
+		}
 
-		// Stacked update
-		UpdateEntries()
+		if (!CurrentCategory())
+			InvokeOnUpdateEntries(m_aEntries);
+
+		UpdateEntries();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Invoke data update for all entries
 	void UpdateEntries()
 	{
-		InvokeEventOnUpdateEntries(m_aEntries);
+		InvokeOnUpdateEntries(m_aEntries);
+		
+		foreach (SCR_SelectionMenuEntry entry : m_aEntries)
+		{
+			if (entry)
+				entry.Update();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Invoke data update for selected entries
-	void UpdateEntries(notnull array<ref SCR_SelectionMenuEntry> entries)
+	void UpdateSelectedEntries(notnull array<ref SCR_SelectionMenuEntry> entries)
 	{
-		InvokeEventOnUpdateEntries(entries);
+		InvokeOnUpdateEntries(entries);
+		
+		foreach (SCR_SelectionMenuEntry entry : entries)
+		{
+			if (entry)
+				entry.Update();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Remove selected entry and invoke data update
 	void RemoveEntry(notnull SCR_SelectionMenuEntry entry)
 	{
-		m_aEntries.RemoveItem(entry);
-		InvokeEventOnUpdateEntries(m_aEntries);
+		m_aRootEntries.RemoveItem(entry);
+
+		// Update entries
+		if (!CurrentCategory())
+		{
+			m_aEntries.RemoveItem(entry);
+			InvokeOnUpdateEntries(m_aEntries);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Clear all entries and invoke data update
 	void ClearEntries()
 	{
-		m_aEntries.Clear();
-		InvokeEventOnUpdateEntries(m_aEntries);
+		m_aRootEntries.Clear();
+
+		// Update entries
+		if (!CurrentCategory())
+		{
+			m_aEntries.Clear();
+			InvokeOnUpdateEntries(m_aEntries);
+		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Return current opened category entry
+	//! Null means menu is in root
+	SCR_SelectionMenuCategoryEntry CurrentCategory()
+	{
+		if (m_aSelectedCategories.IsEmpty())
+			return null;
+
+		return m_aSelectedCategories[m_aSelectedCategories.Count() - 1];
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Find and setup display used for menu 
+	void SetMenuDisplay(SCR_SelectionMenuDisplay display = null)
+	{
+		m_Display = display;
+		
+		if (display)
+			display.SetupMenu(this);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	// Inputs
 	//------------------------------------------------------------------------------------------------
@@ -390,6 +626,9 @@ class SCR_SelectionMenu
 	//! Remove all action listeners for basic menu control
 	protected void RemoveActionListeners()
 	{
+		if (!m_ControllerInputs || !m_Inputs)
+			return;
+		
 		GetGame().GetInputManager().RemoveActionListener(m_ControllerInputs.m_sOpenAction, EActionTrigger.UP, OnOpenInputRelease);
 		GetGame().GetInputManager().RemoveActionListener(m_ControllerInputs.m_sToggleActionAlternative, EActionTrigger.DOWN, OnAlternativeToggleInput);
 		GetGame().GetInputManager().RemoveActionListener(m_Inputs.m_sPerformAction, EActionTrigger.DOWN, OnPerformInput);
@@ -418,10 +657,18 @@ class SCR_SelectionMenu
 	protected void OnBackInput()
 	{
 		// Prevent entry performing
-		m_bEntryPerformed = true;
+		m_SelectedEntry = null;
 
 		// Should close on top level
-		Close();
+		if (CurrentCategory())
+		{
+			LeaveCategory();
+		}
+		else
+		{
+			// Close on top level
+			Close();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -435,15 +682,22 @@ class SCR_SelectionMenu
 	//------------------------------------------------------------------------------------------------
 
 	//------------------------------------------------------------------------------------------------
+	bool IsOpened()
+	{
+		return m_bOpened;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Set controller entity and controls
 	void SetController(IEntity owner, SCR_SelectionMenuControllerInputs controls)
 	{
+		if (controls)
+			controls.m_Owner = owner;
+
+		if (m_ControllerInputs != controls)
+			InvokeOnControllerChanged(controls);
+		
 		m_ControllerInputs = controls;
-
-		if (m_ControllerInputs)
-			m_ControllerInputs.m_Owner = owner;
-
-		InvokeOnControllerChanged(controls);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -456,6 +710,46 @@ class SCR_SelectionMenu
 	SCR_SelectionMenuEntry GetSelectionEntry()
 	{
 		return m_SelectedEntry;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetSelectedEntryId()
+	{
+		return m_iSelectedEntryId;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetEntryPerformed()
+	{
+		return m_bEntryPerformed;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_SelectionMenuEntry> GetEntries()
+	{
+		array<ref SCR_SelectionMenuEntry> entries = {};
+
+		for (int i = 0, count = m_aEntries.Count(); i < count; i++)
+		{
+			entries.Insert(m_aEntries[i]);
+		}
+
+		return entries;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetEntryCount()
+	{
+		if (!m_aEntries)
+			return 0;
+
+		return m_aEntries.Count();
+	}
+	
+		//------------------------------------------------------------------------------------------------
+	bool HasDisplay()
+	{
+		return m_Display != null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -519,6 +813,12 @@ class SCR_SelectionMenuControllerInputs
 	[Attribute("0", desc: "If this field is checked - Close the menu after performing the entry (selecting enabled entry)")]
 	bool m_bCloseOnPerform;
 
+	[Attribute("1", desc: "Checked - on opening menu is always filled with root entries. Otherwise menu will stay in last category.")]
+	bool m_bOpenInRoot;
+	
+	[Attribute("0", desc: "If checked, menu won't open if there are no entries in the menu")]
+	bool m_bPreventEmptyMenuOpen;
+
 	//------------------------------------------------------------------------------------------------
 	void SCR_SelectionMenuOpening(string openAction = "")
 	{
@@ -556,4 +856,16 @@ class SCR_SelectionMenuData
 
 		return entries;
 	}
+};
+
+//------------------------------------------------------------------------------------------------
+//! Custom seletion menu preview class for indentification
+//! Goal is to specify fov and setup icon size
+class SCR_SelectionMenuPreviewAttributes : BaseItemAttributeData
+{
+	[Attribute("10")]
+	float m_fCustomFov;
+
+	[Attribute("-1", desc: "Adjust how final render preview size should be big by current icon size multiplicaiton")]
+	float m_fIconSizeXMultiplier;
 };

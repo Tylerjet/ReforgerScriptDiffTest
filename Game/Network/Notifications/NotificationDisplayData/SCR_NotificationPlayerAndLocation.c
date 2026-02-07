@@ -15,6 +15,11 @@ class SCR_NotificationPlayerAndLocation : SCR_NotificationPlayer
 		int playerID, param2;
 		data.GetParams(playerID, param2);
 		
+		string playerName;
+		data.GetNotificationTextEntries(playerName);
+		if (!GetPlayerName(playerID, playerName))
+			return string.Empty;
+		
 		float distance = param2;
 		distance = param2 / m_iNumberDivider;
 		
@@ -35,7 +40,7 @@ class SCR_NotificationPlayerAndLocation : SCR_NotificationPlayer
 		else
 			location = SCR_MapEntity.GetGridPos(position);
 		
-		data.SetNotificationTextEntries(GetPlayerName(playerID), distance.ToString(), location);
+		data.SetNotificationTextEntries(playerName, distance.ToString(), location);
 		return super.GetText(data);
 	}
 };

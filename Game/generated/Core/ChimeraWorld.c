@@ -14,6 +14,18 @@ sealed class ChimeraWorld: BaseWorld
 	proto external MusicManager GetMusicManager();
 	proto external SoundWorld GetSoundWorld();
 	/*!
+	Returns server-side timestamp of the world. On server, this is the same as
+	local timestamp. On client, this is a prediction of what current timestamp
+	on server might be, taking into account network latency. This timestamp
+	may jump forward or experience time dilation (slow down or speed up), but
+	it will never go backwards.
+	*/
+	proto external WorldTimestamp GetServerTimestamp();
+	/*!
+	Returns local timestamp of the world. \see BaseWorld.GetTimestamp().
+	*/
+	proto external WorldTimestamp GetLocalTimestamp();
+	/*!
 	Pause game time after the current frame. This will tick only specified entities in the world. This is working only in single-player.
 	Only FRAME and POSTFRAME events will be fired for entities that have been registered to be updated while the game is paused.
 	*/

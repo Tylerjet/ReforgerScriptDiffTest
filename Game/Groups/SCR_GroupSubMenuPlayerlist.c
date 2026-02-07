@@ -22,6 +22,12 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 	protected const string ACCEPT_INVITE = "#AR-DeployMenu_AcceptInvite";
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta)
+	{
+		GetGame().GetInputManager().ActivateContext("GroupMenuContext");
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
 	{
 		super.OnMenuOpen(parentMenu);
@@ -68,19 +74,23 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 		SCR_AIGroup.GetOnPlayerLeaderChanged().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnPrivateGroupChanged().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnCustomNameChanged().Insert(UpdateGroupsMenu);
+		SCR_AIGroup.GetOnFlagSelected().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnCustomDescriptionChanged().Insert(UpdateGroupsMenu);
 		SCR_GroupTileButton.GetOnGroupTileClicked().Insert(UpdateGroupsMenu);
 		SetAcceptButtonStatus();
-	}
-	
+	}	
+		
 	//------------------------------------------------------------------------------------------------
 	void UpdateGroupsMenu()
 	{
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (!playerController || !m_ParentMenu)
 			return;
+		
+		SetAcceptButtonStatus();
+		
 		m_wGridWidget = m_ParentMenu.GetRootWidget().FindAnyWidget("GroupList");
-		SCR_GroupSubMenu.InitGroups(m_wGridWidget, m_AddGroupButton, m_JoinGroupButton, m_GroupSettingsButton, m_ButtonLayout);
+		SCR_GroupSubMenu.InitGroups(m_wGridWidget, m_AddGroupButton, m_JoinGroupButton, m_GroupSettingsButton, m_ButtonLayout, m_ParentMenu);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -98,6 +108,7 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 		SCR_AIGroup.GetOnPlayerRemoved().Remove(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnPlayerLeaderChanged().Remove(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnCustomNameChanged().Remove(UpdateGroupsMenu);
+		SCR_AIGroup.GetOnFlagSelected().Remove(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnCustomDescriptionChanged().Remove(UpdateGroupsMenu);
 		m_PlayerGroupController.GetOnInviteReceived().Remove(SetAcceptButtonStatus);
 		
@@ -143,10 +154,23 @@ class SCR_GroupSubMenuPlayerlist : SCR_SubMenuBase
 	{
 		if (!m_AcceptInviteButton)
 			return;
-		if (m_PlayerGroupController.GetGroupInviteID() == -1 )
+		
+		if (m_PlayerGroupController.GetGroupInviteID() == -1)
+		{
 			m_AcceptInviteButton.SetEnabled(false);
+		}
 		else
+		{
+			SCR_AIGroup group = m_GroupManager.FindGroup(m_PlayerGroupController.GetGroupInviteID());
+			
+			if (!group)
+			{
+				m_AcceptInviteButton.SetEnabled(false);
+				m_PlayerGroupController.SetGroupInviteID(-1);
+				return;	
+			}		
 			m_AcceptInviteButton.SetEnabled(true);	
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

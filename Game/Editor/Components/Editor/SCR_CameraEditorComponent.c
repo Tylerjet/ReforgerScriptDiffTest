@@ -3,6 +3,11 @@ class SCR_CameraEditorComponentClass: SCR_BaseEditorComponentClass
 {
 };
 
+//~ Script Invokers
+void SCR_CameraEditorComponent_OnCameraCreated(SCR_ManualCamera manualCamera);
+typedef func SCR_CameraEditorComponent_OnCameraCreated;
+
+
 /** @ingroup Editor_Components
 */
 class SCR_CameraEditorComponent : SCR_BaseEditorComponent
@@ -28,8 +33,8 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 	protected vector m_vInitCameraTransform[4];
 	protected vector m_vPreActivateCameraTransform[4];
 	protected IEntity m_PreActivateControlledEntity;
-	protected bool m_bIsReplacingCamera;
-	protected ref ScriptInvoker Event_OnCameraCreate = new ScriptInvoker;
+	protected bool m_bIsReplacingCamera;	
+	protected ref ScriptInvokerBase<SCR_CameraEditorComponent_OnCameraCreated> m_OnCameraCreate = new ScriptInvokerBase<SCR_CameraEditorComponent_OnCameraCreated>();
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public Functions
@@ -66,9 +71,9 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 	Get invoker called when new manual camera is created.
 	\return Script invoker
 	*/
-	ScriptInvoker GetOnCameraCreate()
+	ScriptInvokerBase<SCR_CameraEditorComponent_OnCameraCreated> GetOnCameraCreate()
 	{
-		return Event_OnCameraCreate;
+		return m_OnCameraCreate;
 	}
 	/*!
 	Set initial camera transformation.
@@ -178,7 +183,7 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 		if (m_CameraData)
 			m_CameraData.LoadComponents(m_Camera);
 		
-		Event_OnCameraCreate.Invoke(m_Camera);
+		m_OnCameraCreate.Invoke(m_Camera);
 		
 		//--- When opening the editor, move the camera above player
 		if (m_bMoveUpOnInit && !m_bIsReplacingCamera)
@@ -262,6 +267,9 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 	override protected void EOnEditorPostDeactivate()
 	{
 		if (m_Camera)
+		{
+			m_Camera.SwitchToPreviousCamera();
 			delete m_Camera;
+		}
 	}
 };

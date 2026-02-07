@@ -53,6 +53,7 @@ class WidgetAnimationBase
 	
 	protected ref ScriptInvoker m_OnStopped;
 	protected ref ScriptInvoker m_OnCompleted;
+	protected ref ScriptInvoker m_OnCycleCompleted; // When repeat cycle is done
 
 	//------------------------------------------------------------------------------------------------
 	float GetProgressValue(float t)
@@ -178,7 +179,7 @@ class WidgetAnimationBase
 	void Stop()
 	{
 		if (m_OnStopped)
-			m_OnStopped.Invoke();
+			m_OnStopped.Invoke(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -203,6 +204,14 @@ class WidgetAnimationBase
 		return m_OnCompleted;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnCycleCompleted()
+	{
+		if (!m_OnCycleCompleted)
+			m_OnCycleCompleted = new ScriptInvoker();
+		return m_OnCycleCompleted;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void SetCurve(EAnimationCurve curve)
 	{
@@ -256,6 +265,9 @@ class WidgetAnimationBase
 
 		m_fValue = GetProgressValue(m_fCurrentProgress);
 		
+		// Perform widget animation
+		Animate(m_fCurrentProgress == 1);
+		
 		if (m_fCurrentProgress < 1)
 			return false;
 
@@ -263,18 +275,32 @@ class WidgetAnimationBase
 		{
 			m_fCurrentProgress = 0;
 			ReverseDirection();
-			return false;
+			
+			if (m_OnCycleCompleted)
+			{
+				m_OnCycleCompleted.Invoke(this);
+				return false;
+			}
+			
+			// simply stop - item is not supposed to hang here forever without callback
+			m_bRepeat = false;		
 		}
 		
 		// Invoke subscribed changes
 		if (m_OnCompleted)
-			m_OnCompleted.Invoke();
+			m_OnCompleted.Invoke(this);
 		if (m_OnStopped)
-			m_OnStopped.Invoke();
+			m_OnStopped.Invoke(this);
 
 		return true;
 	}
 
+	// Interface method for widget animation
+	//------------------------------------------------------------------------------------------------
+	protected void Animate(bool finished)
+	{
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void WidgetAnimationBase(Widget w, float speed)
 	{

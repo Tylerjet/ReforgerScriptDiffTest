@@ -45,11 +45,24 @@ class BaseSightsComponent: GameComponent
 	*/
 	proto external vector GetSightsDirection(bool localSpace = false, bool normalize = true);
 	/*!
+	Like GetSightsDirection, but ignores and bones associated with the sight points. This is used to get an
+	untransformed vector which might be needed if camera/optic and turret are rotating together.
+	*/
+	proto external vector GetSightsDirectionUntransformed(bool localSpace = false, bool normalize = true);
+	/*!
 	Returns the local sights reference point offset.
 	This corresponds to the set point info in base sights component.
 	Returns zero vector if no point info is present.
 	*/
 	proto external vector GetSightsOffset();
+	/*!
+	Returns the transform matrix of the local sights.
+	This corresponds to the set point info in the base sights component.
+	\param transform output Transformation matrix for the sight point
+	\param localSpace if true, return the local space transformation of the sights. If false, returns the transformation in world space
+	\return true if the point is defined, false otherwise. If this function returns false, the output matrix is undefined
+	*/
+	proto external bool GetSightsTransform(out vector transform[4], bool localSpace = false);
 	/*!
 	Returns current value of field of view.
 	\return Current field of view value in degrees.

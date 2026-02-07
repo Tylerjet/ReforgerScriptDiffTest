@@ -97,6 +97,8 @@ class InventoryStorageManagerComponent: GameComponent
 	proto external int FindItemsWithComponents(out notnull array<IEntity> foundItems, array<typename> componentsQuery, EStoragePurpose purpose = EStoragePurpose.PURPOSE_DEPOSIT);
 	//! Find Items by specifying necessary component types (eg all Entities that contain all of the provided components), returns count of found items
 	proto external int GetMagazineCountByWeapon(BaseWeaponComponent weapon);
+	//! Find Items by specifying necessary component types (eg all Entities that contain all of the provided components), returns count of found items
+	proto external int GetMagazineCountByMuzzle(BaseMuzzleComponent pMuzzle);
 	proto external int GetGrenadesCount();
 
 	// callbacks

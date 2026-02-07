@@ -180,6 +180,8 @@ sealed class BaseWorld: pointer
 	proto external void SetCameraFarPlane(int cam, float farplane);
 	//! set HDR camera exposure (if hdrBrightness > 0, camera is set to manual mode with this exposure, set -1 to enable again auto mode)
 	proto external void SetCameraHDRBrightness(int cam, float hdrBrightness);
+	//! adjust camera EV (light stops), 0 = no adjustment, both positive/negative values are allowed
+	proto external void AdjustCameraEV(int cam, float EV);
 	//! Returns actual camera HDR exposure
 	proto external float GetCameraHDRBrightness(int cam);
 	//! Returns actual camera normalized scene middle brightness
@@ -235,6 +237,8 @@ sealed class BaseWorld: pointer
 	proto external float TraceMove(inout TraceParam param, TraceEntitiesCallback filtercallback);
 	//! Returns current lifetime of the World in milliseconds
 	proto external float GetWorldTime();
+	//! Returns current timestamp of the World.
+	proto external WorldTimestamp GetTimestamp();
 	//! Returns current frame of the World
 	proto external int GetFrameNumber();
 	//! Returns actual time scale of world, can be different from engine time scale

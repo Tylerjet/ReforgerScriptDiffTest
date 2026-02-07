@@ -12,11 +12,11 @@ class SCR_VotingKick: SCR_VotingReferendum
 	
 	protected Faction GetPlayerFaction(int playerID)
 	{
-		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
-		if (respawnSystem)
-			return respawnSystem.GetPlayerFaction(playerID);
-		else
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
 			return null;
+		
+		return factionManager.GetPlayerFaction(playerID);
 	}
 	
 	override bool IsAvailable(int value, bool isOngoing)

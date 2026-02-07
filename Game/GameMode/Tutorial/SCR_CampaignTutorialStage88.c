@@ -14,7 +14,7 @@ class SCR_CampaignTutorialStage88 : SCR_BaseCampaignTutorialStage
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		return (SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_BLUFOR)).GetDeployedMobileAssembly() != null);
+		return (SCR_GameModeCampaign.GetInstance().GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).GetMobileAssembly() != null);
 	}
 	
 	//------------------------------------------------------------------------------------------------

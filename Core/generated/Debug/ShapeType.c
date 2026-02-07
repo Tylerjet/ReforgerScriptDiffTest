@@ -15,7 +15,7 @@ enum ShapeType
 	NONE,
 	//! Just box
 	BBOX,
-	//! One or more lines
+	//! One lines
 	LINE,
 	//! Not implemented
 	BRUSH,
@@ -39,8 +39,10 @@ enum ShapeType
 	PYRAMID,
 	//! Arrow pointing down
 	ARROW,
-	//! list of multiple lines
+	//! List of multiple lines
 	LINE_LIST,
+	//! Multiple lines in a single winding
+	LINE_STRIP,
 }
 
 /*!

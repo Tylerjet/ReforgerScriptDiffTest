@@ -8,22 +8,10 @@ class SCR_GameModeEndData
 	private ref array<int> m_aWinnerIds = {};
 	private ref array<int> m_aWinnerFactionIds = {};
 
-	static const int ENDREASON_UNDEFINED = -1;
-	static const int ENDREASON_TIMELIMIT = -2;
-	static const int ENDREASON_SCORELIMIT = -3;
-	static const int ENDREASON_DRAW = -4;
-	static const int ENDREASON_SERVER_RESTART = -5;
-
-	//Need to be the same values as EGameOverTypes
-	static const int ENDREASON_EDITOR_NEUTRAL = 1000;
-	static const int ENDREASON_EDITOR_FACTION_NEUTRAL = 1001;
-	static const int ENDREASON_EDITOR_FACTION_VICTORY = 1002;
-	static const int ENDREASON_EDITOR_FACTION_DRAW = 1004;
-
 	/*!
 		Creates and returns new end data.
 	*/
-	static SCR_GameModeEndData CreateSimple(int reason = ENDREASON_UNDEFINED, int winnerId = -1, int winnerFactionId = -1)
+	static SCR_GameModeEndData CreateSimple(EGameOverTypes reason = EGameOverTypes.ENDREASON_UNDEFINED, int winnerId = -1, int winnerFactionId = -1)
 	{
 		ref SCR_GameModeEndData data = new SCR_GameModeEndData();
 		data.m_iEndReason = reason;
@@ -45,7 +33,7 @@ class SCR_GameModeEndData
 	/*!
 		Creates and returns new end data with multiple potential winner(s).
 	*/
-	static SCR_GameModeEndData Create(int reason = ENDREASON_UNDEFINED, array<int> winnerIds = null, array<int> winnerFactionIds = null)
+	static SCR_GameModeEndData Create(EGameOverTypes reason = EGameOverTypes.ENDREASON_UNDEFINED, array<int> winnerIds = null, array<int> winnerFactionIds = null)
 	{
 		ref SCR_GameModeEndData data = new SCR_GameModeEndData();
 		data.m_iEndReason = reason;

@@ -1,11 +1,12 @@
-/// @ingroup Editor_Core GameCore Editable_Entities
-
 void ScriptInvoker_EntityCoreBudgetUpdated(EEditableEntityBudget type, int originalBudgetValue, int budgetChange, int updatedBudgetValue, SCR_EditableEntityComponent entity);
 typedef func ScriptInvoker_EntityCoreBudgetUpdated;
 typedef ScriptInvokerBase<ScriptInvoker_EntityCoreBudgetUpdated> ScriptInvoker_EntityCoreBudgetUpdatedEvent;
 
+/// @ingroup Editor_Core GameCore Editable_Entities
 /*!
 Core component to manage SCR_EditableEntityComponent.
+
+The list of editable entities tracked here is local!
 */
 [BaseContainerProps(configRoot: true)]
 class SCR_EditableEntityCore: SCR_GameCoreBase
@@ -247,7 +248,7 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	bool GetEntityCanBeControlled(EEditableEntityType type)
 	{
 		SCR_EditableEntityCoreTypeSetting setting;
-		return m_TypeSettingsMap.Find(type, setting) && setting.GetCanBePlayer());
+		return m_TypeSettingsMap.Find(type, setting) && setting.GetCanBePlayer();
 	}
 	
 	EEditableEntityBudget GetBudgetForEntityType(EEditableEntityType entityType)
@@ -617,8 +618,7 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 			return;
 		
 		// Ignore non-ai characters
-		AIControlComponent aiControl = AIControlComponent.Cast(entity.GetOwner().FindComponent(AIControlComponent));
-		if (aiControl && !aiControl.IsAIActivated())
+		if (entity.GetPlayerID() != 0)
 			return;
 		
 		array<ref SCR_EntityBudgetValue> entityBudgetCosts = {};

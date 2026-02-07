@@ -19,11 +19,11 @@ class SCR_SpawnMusic : ScriptedMusic
 		if (!m_MusicManager)
 			return;
 		
-		SCR_RespawnComponent.s_OnSpawn.Insert(OnPlayerSpawned);
+		SCR_RespawnComponent.SGetOnSpawn().Insert(OnPlayerSpawned);
 	}
 	
 	override void OnDelete()
 	{
-		SCR_RespawnComponent.s_OnSpawn.Remove(OnPlayerSpawned);
+		SCR_RespawnComponent.SGetOnSpawn().Remove(OnPlayerSpawned);
 	}
 }

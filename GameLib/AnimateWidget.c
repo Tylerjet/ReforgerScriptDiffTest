@@ -43,11 +43,10 @@ class AnimateWidget
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Stop animation
-	\param w Target widget
 	\param anim Animation class
 	\return True if the animation was removed
 	*/
-	static bool StopAnimation(Widget w, WidgetAnimationBase anim)
+	static bool StopAnimation(WidgetAnimationBase anim)
 	{
 		if (!s_Instance)
 			return false;
@@ -91,7 +90,37 @@ class AnimateWidget
 		
 		return false;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	static bool IsAnimatingType(Widget w, typename type)
+	{
+		if (!w || !s_Instance)
+			return false;
+		
+		foreach (WidgetAnimationBase animation: s_Instance.m_aAnimations)
+		{
+			if (animation.GetWidget() == w && animation.Type() == type)
+				return true;
+		}
+		
+		return false;
+	}	
 
+	//------------------------------------------------------------------------------------------------
+	static WidgetAnimationBase GetAnimation(Widget w, typename type)
+	{
+		if (!w || !s_Instance)
+			return null;
+		
+		foreach (WidgetAnimationBase animation: s_Instance.m_aAnimations)
+		{
+			if (animation.GetWidget() == w && animation.Type() == type)
+				return animation;
+		}
+		
+		return null;
+	}	
+	
 	/// Is 
 	//------------------------------------------------------------------------------------------------
 	static bool IsActive()
@@ -265,7 +294,7 @@ class AnimateWidget
 			break;
 		}
 
-		// If there is no animation running, ivoke that new animation is ready to run
+		// If there is no animation running, invoke that new animation is ready to run
 		if (!IsActive())
 			s_Instance.m_OnAnimatingStarted.Invoke();
 

@@ -1,19 +1,19 @@
 //------------------------------------------------------------------------------------------------
 class SCR_SelectionMenuEntryIconComponent : SCR_SelectionMenuEntryComponent
 {
-	[Attribute("Size")]
-	protected string m_sSizeLayout;
-	
 	[Attribute("Icon")]
 	protected string m_sIcon;
 	
-	protected Widget m_wSizeLayout;
+	[Attribute("255 255 255 255")]
+	protected ref Color m_cDefaultColor;
+	
+	[Attribute("255 255 255 255")]
+	protected ref Color m_cAltColor;
+	
 	protected ImageWidget m_wIcon;
 	
 	protected ResourceName m_sTexture;
 	protected string m_sImage;
-	
-	protected float m_fOriginalSize;
 	
 	//------------------------------------------------------------------------------------------------
 	// Override
@@ -24,10 +24,7 @@ class SCR_SelectionMenuEntryIconComponent : SCR_SelectionMenuEntryComponent
 	{
 		super.HandlerAttached(w);
 		
-		m_wSizeLayout = m_wRoot.FindAnyWidget(m_sSizeLayout);
 		m_wIcon = ImageWidget.Cast(m_wRoot.FindAnyWidget(m_sIcon));
-		
-		m_fOriginalSize = GetLayoutSize();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -59,7 +56,6 @@ class SCR_SelectionMenuEntryIconComponent : SCR_SelectionMenuEntryComponent
 		m_sTexture = texture;
 		m_sImage = image;
 		
-		Print("m_sTexture: " + m_sTexture + ", m_sImage: " + m_sImage);
 		SCR_WLibComponentBase.SetTexture(m_wIcon, m_sTexture, m_sImage);
 	}
 	
@@ -71,18 +67,21 @@ class SCR_SelectionMenuEntryIconComponent : SCR_SelectionMenuEntryComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	float GetLayoutSize()
+	void SetIconColor(Color color = null)
 	{
-		if (!m_wSizeLayout)
-			return -1;
+		if (!m_wIcon)
+			return;
 		
-		return FrameSlot.GetSize(m_wSizeLayout)[0];
+		if (color == null)
+			m_wIcon.SetColor(m_cDefaultColor);
+		else
+			m_wIcon.SetColor(color);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	float GetOriginalSize()
+	Color GetAltColor()
 	{
-		return m_fOriginalSize;
+		return m_cAltColor;
 	}
 	
 	//------------------------------------------------------------------------------------------------

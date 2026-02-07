@@ -49,7 +49,7 @@ class SCR_AIGetRandomPoint: AITaskScripted
 			{
 				int radius;
 				GetVariableIn(RADIUS_PORT, radius);
-				m_Radius = (float)radius;
+				m_Radius = radius;
 			}
 			else if (GetVariableType(true, RADIUS_PORT) == float)
 			{

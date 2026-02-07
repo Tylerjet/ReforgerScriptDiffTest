@@ -110,6 +110,8 @@ class Class
 
 class Managed
 {
+	//! Return shallow copy of object, or null if it is not allowed (not public constructor)
+	proto external ref Managed Clone();
 }
 
 /*!
@@ -126,6 +128,12 @@ class pointer
 {
 	proto string ToString();
 }
+
+//! Plain 64bit data, no weak pointers, no memory management.
+class handle64: pointer
+{
+}
+
 
 class func
 {
@@ -333,10 +341,7 @@ class array<Class T>: Managed
 		{
 			T item = Get(i);
 
-			if ( item )
-			{
-				PrintFormat("[%1] => %2", i, string.ToString(item));
-			}
+			PrintFormat("[%1] => %2", i, string.ToString(item));
 		}
 	}
 

@@ -246,7 +246,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 			{
 				continue;
 			}
-			float max = (float) maxBudget;
+			float max = maxBudget;
 			// Calculate current budget percentage
 			int currentBudget = GetCurrentBudgetValue(budgetType);
 			float newBudgetPercent;

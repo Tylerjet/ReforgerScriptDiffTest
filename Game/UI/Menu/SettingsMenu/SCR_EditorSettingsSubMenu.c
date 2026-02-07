@@ -38,16 +38,9 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 		if (checkBox)
 		{
 			int value;
-			bool state;
 			editorSettings.Get("m_PreviewVerticalSnap", value);
 			
-			//Set bool value from EEditorTransformSnap
-			if (value == EEditorTransformSnap.TERRAIN)
-				state = true;
-			else 
-				state = false;
-			
-			checkBox.SetCurrentItem(state, false, false);
+			checkBox.SetCurrentItem(value, false, false);
 			checkBox.m_OnChanged.Insert(SetVerticalSnap);
 		}
 		else 
@@ -60,16 +53,9 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 		if (checkBox)
 		{
 			int value;
-			bool state;
 			editorSettings.Get("m_PreviewVerticleMode", value);
 			
-			//Set bool value from EEditorTransformVertical
-			if (value == EEditorTransformVertical.TERRAIN)
-				state = true;
-			else 
-				state = false;
-			
-			checkBox.SetCurrentItem(state, false, false);
+			checkBox.SetCurrentItem(value >> 1, false, false); //--- Shift the value, because it's a flag
 			checkBox.m_OnChanged.Insert(SetVerticalMode);
 		}	
 		else 
@@ -187,38 +173,26 @@ class SCR_EditorSettingsSubMenu: SCR_SettingsSubMenuBase
 		if (!editorSettings) 
 			return;
 		
-		int value;
-		if (state)
-			value =  EEditorTransformSnap.TERRAIN;
-		else 
-			value = EEditorTransformSnap.NONE;
-		
-		editorSettings.Set("m_PreviewVerticalSnap", value);
-		
+		editorSettings.Set("m_PreviewVerticalSnap", state);
 		GetGame().UserSettingsChanged();
 	}
 	
-	void SetVerticalMode(SCR_SelectionWidgetComponent checkBox, bool state)
+	void SetVerticalMode(SCR_SelectionWidgetComponent checkBox, int state)
 	{
 		BaseContainer editorSettings = GetGame().GetGameUserSettings().GetModule("SCR_EditorSettings");
 		if (!editorSettings) 
 			return;
 		
-		int value;
-		if (state)
-			value =  EEditorTransformVertical.TERRAIN;
-		else 
-			value = EEditorTransformVertical.SEA;
+		state = 1 << state; //--- Shift the value, because it's a flag
 		
-		editorSettings.Set("m_PreviewVerticleMode", value);
-		
+		editorSettings.Set("m_PreviewVerticleMode", state);
 		GetGame().UserSettingsChanged();
 		
 		SCR_PreviewEntityEditorComponent previewComponent = SCR_PreviewEntityEditorComponent.Cast(SCR_PreviewEntityEditorComponent.GetInstance(SCR_PreviewEntityEditorComponent));
 		if (!previewComponent) 
 			return;
 		
-		previewComponent.SetVerticalMode(value);
+		previewComponent.SetVerticalMode(state);
 	}
 	
 	//------------------------------------------------------------------------------------------------

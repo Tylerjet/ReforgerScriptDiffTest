@@ -11,16 +11,17 @@ class SCR_DownloadManagerClass: GenericEntityClass
 {
 };
 
+void ScriptInvoker_DownloadManagerAction(SCR_WorkshopItemActionDownload action);
+typedef func ScriptInvoker_DownloadManagerAction;
+
 class SCR_DownloadManager : GenericEntity
 {
-	//! Script invoker for new downloads
-	//! ALways gets called after the new download is registered in the download manager.
-	ref ScriptInvoker m_OnNewDownload = new ScriptInvoker; // (SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
+	protected const int DOWNLOAD_STUCK_DELAY = 60; // Max time in which download needs to progress in seconds
 	
 	protected static SCR_DownloadManager s_Instance;
 	
 	// All download actions
-	protected ref array<ref SCR_DownloadManager_Entry> m_aDownloadActions = new array<ref SCR_DownloadManager_Entry>;
+	protected ref array<ref SCR_DownloadManager_Entry> m_aDownloadActions = new array<ref SCR_DownloadManager_Entry>();
 	
 	// Download queue - it gets empty once all active downloads are complete, but keeps added up if new downloads are started
 	// While previous are in progress.
@@ -28,14 +29,26 @@ class SCR_DownloadManager : GenericEntity
 	protected ref array<ref SCR_WorkshopItemActionDownload> m_aDownloadQueue = new array<ref SCR_WorkshopItemActionDownload>;
 	protected int m_iQueueDownloadsCompleted; // Amount of completed downloads in the queue
 	
+	protected float m_fNoDownloadProgressTimer = 0; // Track how long there was no progress on downloading until stuck delay
+	protected float m_fDownloadQueueSize;
+	protected float m_fDownloadedSize;
+	
 	// Bool to pause all downloads
 	protected bool m_bDownloadsPaused;
 	
 	protected const int FAIL_TIME = 500;
 	protected ref array<ref SCR_WorkshopItemActionDownload> m_aFailedDownloads = {};
+
+	//! Script invoker for new downloads
+	//! ALways gets called after the new download is registered in the download manager.
+	ref ScriptInvoker m_OnNewDownload = new ScriptInvoker; // (SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
 	
 	protected ref ScriptInvoker<> Event_OnDownloadFail;
-
+	ref ScriptInvokerBase<ScriptInvoker_DownloadManagerAction> m_OnDownloadComplete = new ScriptInvokerBase<ScriptInvoker_DownloadManagerAction>();
+	ref ScriptInvokerBase<ScriptInvoker_DownloadManagerAction> m_OnDownloadFailed = new ScriptInvokerBase<ScriptInvoker_DownloadManagerAction>();
+	ref ScriptInvokerBase<ScriptInvoker_DownloadManagerAction> m_OnDownloadCanceled = new ScriptInvokerBase<ScriptInvoker_DownloadManagerAction>();
+	ref ScriptInvoker m_OnDownloadQueueCompleted = new ScriptInvoker();
+	
 	//------------------------------------------------------------------------------------------------
 	void InvokeEventOnDownloadFail()
 	{
@@ -51,6 +64,7 @@ class SCR_DownloadManager : GenericEntity
 
 		return Event_OnDownloadFail;
 	}
+	
 	
 	//-----------------------------------------------------------------------------------------------
 	// 				P U B L I C   A P I 
@@ -240,6 +254,46 @@ class SCR_DownloadManager : GenericEntity
 	}
 	
 	//-----------------------------------------------------------------------------------------------
+	//! Start downloading list of scripted workshop items
+	//! Mainly used for server browser content download
+	array<ref SCR_WorkshopItemActionDownload> DownloadItems(array<ref SCR_WorkshopItem> items)
+	{
+		array<ref SCR_WorkshopItemActionDownload> actions = {};
+		
+		for (int i = 0, count = items.Count(); i < count; i++)
+		{
+			Revision target = items[i].GetDependency().GetRevision();
+			if (!target)
+			{
+				Print("Can't start download due to missing revision - " + items[i].GetName(), LogLevel.WARNING);
+				return null;
+			}
+			
+			// Create download action from dependency and depdency revision
+			SCR_WorkshopItemActionDownload action = items[i].Download(target);
+			actions.Insert(action);	
+			action.Activate();
+		}
+		
+		return actions; 
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	//! Start downloading list of dependencies of given revision
+	//! Mainly used for server browser content download
+	void DownloadDependecies(array<Dependency> dependencies)
+	{
+		for (int i = 0, count = dependencies.Count(); i < count; i++)
+		{
+			SCR_WorkshopItem item = SCR_WorkshopItem.Internal_CreateFromDependency(dependencies[i]);
+			
+			// Create download action from dependency and depdency revision
+			SCR_WorkshopItemActionDownload action = item.Download(dependencies[i].GetRevision());	
+			action.Activate();
+		}
+	}
+	
+	//-----------------------------------------------------------------------------------------------
 	static float GetTotalSizeBytes(array<ref SCR_WorkshopItem> arrayIn, SCR_WorkshopItem extraItem = null)
 	{
 		float sizeOut = 0;
@@ -259,6 +313,17 @@ class SCR_DownloadManager : GenericEntity
 		return sizeOut;
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	protected float DownloadQueueSize()
+	{
+		array<ref SCR_WorkshopItem> downloading = {};
+		for (int i = 0, count = m_aDownloadQueue.Count(); i < count; i++)
+		{
+			downloading.Insert(m_aDownloadQueue[i].m_Wrapper);
+		}
+		
+		return GetTotalSizeBytes(downloading);
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Returns overall progress of all download actions, from 0 to 1
@@ -313,6 +378,72 @@ class SCR_DownloadManager : GenericEntity
 		return progress;
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	array<ref SCR_WorkshopItemActionDownload> GetFailedDownloads()
+	{
+		array<ref SCR_WorkshopItemActionDownload> actions = {};
+		for (int i = 0, count = m_aFailedDownloads.Count(); i < count; i++)
+		{
+			actions.Insert(m_aFailedDownloads[i]);	
+		}
+		
+		return actions;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	void ClearFailedDownloads()
+	{
+		m_aFailedDownloads.Clear();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	void AddDownloadManagerEntry(notnull SCR_WorkshopItem item, notnull SCR_WorkshopItemActionDownload action)
+	{
+		RemoveSameAddonFromDownloads(item);
+		
+		SCR_DownloadManager_Entry entry = new SCR_DownloadManager_Entry(item, action);
+		m_aDownloadActions.Insert(entry);
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	//! Remove previous download action if downloaded addon (item) has same ID as parameter item
+	//! Use to prevent displaying same addon in downloading multiple times
+	protected void RemoveSameAddonFromDownloads(notnull SCR_WorkshopItem item)
+	{
+		// Release download actions
+		for (int i = 0, count = m_aDownloadActions.Count(); i < count; i++)
+		{
+			// Same addon ids?
+			if (m_aDownloadActions[i].m_Item.GetId() == item.GetId())
+			{
+				m_aDownloadActions.Remove(i);
+				break;
+			}
+		}
+		
+		// Release download queue 
+		for (int i = 0, count = m_aDownloadQueue.Count(); i < count; i++)
+		{
+			// Same addon ids?
+			if (m_aDownloadQueue[i].m_Wrapper.GetId() == item.GetId())
+			{
+				m_aDownloadQueue.Remove(i);
+				break;
+			}
+		}
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	float GetDownloadQueueSize()
+	{
+		return m_fDownloadQueueSize;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	float GetDownloadedSize()
+	{
+		return m_fDownloadedSize;
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	//-----------------------------------------------------------------------------------------------
@@ -334,31 +465,55 @@ class SCR_DownloadManager : GenericEntity
 	//-----------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
+		int pausedCount = 0;
+		
 		// Remove failed or canceled actions from the download queue
-		m_iQueueDownloadsCompleted = 0;
 		for (int i = m_aDownloadQueue.Count() - 1; i >= 0; i--)
 		{
 			SCR_WorkshopItemActionDownload action = m_aDownloadQueue[i];
 			
 			if (action.IsCanceled() || action.IsFailed())
-				m_aDownloadQueue.Remove(i);
-			else
 			{
-				if (action.IsCompleted())
-					m_iQueueDownloadsCompleted++;
+				m_aDownloadQueue.Remove(i);
+				
+				// Remove canceled and failed from size count 
+				m_fDownloadQueueSize -= action.GetSizeBytes();
+				m_fDownloadedSize -= action.GetDownloadSize();
 			}
+			
+			if (action.IsPaused())
+				pausedCount++;
+		}
+		
+		// Restart no progress timer check
+		if (pausedCount == m_aDownloadQueue.Count())
+		{
+			m_fNoDownloadProgressTimer = 0;
 		}
 		
 		// If all are completed, clear the queue entirely
 		// And reset 'all downloads paused' state.
-		if (m_iQueueDownloadsCompleted == m_aDownloadQueue.Count())
+		if (!m_aDownloadQueue.IsEmpty() && m_iQueueDownloadsCompleted == m_aDownloadQueue.Count())
 		{
 			m_aDownloadQueue.Clear();
+			m_iQueueDownloadsCompleted = 0;
+			m_fDownloadedSize = 0;
 			m_bDownloadsPaused = false;
+
+			m_OnDownloadQueueCompleted.Invoke();
+			
+			m_fNoDownloadProgressTimer = 0;
+		}
+		else 
+		{
+			// Increase time from last download progress
+			m_fNoDownloadProgressTimer += timeSlice;
+			
+			// Quit downloads if nothing is progressing
+			if (m_fNoDownloadProgressTimer >= DOWNLOAD_STUCK_DELAY)
+				ForceFailRunningDownloads();
 		}
 	}
-	
-	
 	
 	//-----------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
@@ -388,23 +543,39 @@ class SCR_DownloadManager : GenericEntity
 			_print(string.Format("Callback_OnNewDownloadStarted: %1", item.GetName()));
 		#endif
 		
+		RemoveSameAddonFromDownloads(item);
+		
 		// Create a new entry
 		SCR_DownloadManager_Entry entry = new SCR_DownloadManager_Entry(item, action);
 		m_aDownloadActions.Insert(entry);
 		
 		// Add the action to the queue
 		m_aDownloadQueue.Insert(action);
+		m_fDownloadQueueSize = DownloadQueueSize();
 		
 		m_OnNewDownload.Invoke(item, action);
 		
+		action.GetOnDownloadProgress().Insert(OnDownloadProgress);
 		action.m_OnCompleted.Insert(Callback_OnDownloadCompleted);
 		action.m_OnFailed.Insert(Callback_OnFailed);
+		action.m_OnCanceled.Insert(Callback_OnCanceled);
+		
+		m_fNoDownloadProgressTimer = 0;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void OnDownloadProgress(SCR_WorkshopItemActionDownload action, int progressSize)
+	{
+		m_fDownloadedSize += progressSize;
+		
+		// Restart progress timer
+		m_fNoDownloadProgressTimer = 0;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Called from aciton when a download is completed
 	protected void Callback_OnDownloadCompleted(SCR_WorkshopItemActionDownload action)
-	{
+	{	
 		// Check user's settings if we need to enable the addon automatically
 		// Ignore this if it was an update of an addon
 		SCR_WorkshopSettings settings = SCR_WorkshopSettings.Get();
@@ -417,38 +588,35 @@ class SCR_DownloadManager : GenericEntity
 			
 			item.SetEnabled(true);
 		}
+		
+		// Invoke for UI
+		m_iQueueDownloadsCompleted++;
+		m_OnDownloadComplete.Invoke(action);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected void Callback_OnFailed(SCR_WorkshopItemActionDownload action)
-	{
-		if (m_aFailedDownloads.IsEmpty())
-		{
-			// Call later to acumulate other actions failed at beginning
-			// Using call latter since fail suppose to be happening at very beginning
-			// but some repose might come later
-			GetGame().GetCallqueue().CallLater(InvokeEventOnDownloadFail, FAIL_TIME);
-		}
-		
-		m_aFailedDownloads.Insert(action)
+	{	
+		m_aFailedDownloads.Insert(action);
+		SCR_DownloadManager_Dialog.Create();
+		m_OnDownloadFailed.Invoke(action);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	array<ref SCR_WorkshopItemActionDownload> GetFailedDownloads()
-	{
-		array<ref SCR_WorkshopItemActionDownload> actions = {};
-		for (int i = 0, count = m_aFailedDownloads.Count(); i < count; i++)
-		{
-			actions.Insert(m_aFailedDownloads[i]);	
-		}
-		
-		return actions;
+	protected void Callback_OnCanceled(SCR_WorkshopItemActionDownload action)
+	{	
+		m_aFailedDownloads.Insert(action);
+		m_OnDownloadCanceled.Invoke(action);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	void ClearFailedDownloads()
+	//! End all running downloads as fail
+	protected void ForceFailRunningDownloads()
 	{
-		m_aFailedDownloads.Clear();
+		for (int i = 0, count = m_aDownloadQueue.Count(); i < count; i++)
+		{
+			m_aDownloadQueue[i].ForceFail();
+		}
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -493,4 +661,14 @@ class SCR_DownloadManager_Entry
 		m_Item = item;
 		m_Action = action;
 	}
+};
+
+//------------------------------------------------------------------------------------------------
+//! Enum describing current state of downloading action
+enum EDownloadManagerActionState
+{
+	INACTIVE,
+	RUNNING,
+	FAILED,
+	DOWNLOADED,
 };

@@ -117,7 +117,11 @@ class SCR_EditorTask : SCR_BaseTask
 	protected void PopUpNotification(string prefix, bool alwaysInEditor)
 	{
 		//--- Get player faction (prioritize respawn faction, because it's defined even when player is waiting for respawn)
-		Faction playerFaction = SCR_RespawnSystemComponent.GetLocalPlayerFaction();
+		Faction playerFaction;
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+			playerFaction = factionManager.GetLocalPlayerFaction();		
+				
 		if (!playerFaction)
 			playerFaction = SCR_PlayerController.GetLocalMainEntityFaction();
 		
@@ -174,7 +178,13 @@ class SCR_EditorTask : SCR_BaseTask
 	
 	protected override void OnStateChanged(SCR_TaskState previousState, SCR_TaskState newState)
 	{
-		Print(typename.EnumToString(SCR_TaskState, newState));
+		//--- Delete the task once it's finished (ToDo: Keep it, but hide it in the editor once completed tasks can be shown in the task list)
+		RplComponent rplComponent = RplComponent.Cast(FindComponent(RplComponent));
+		if ((!rplComponent || rplComponent.Role() == RplRole.Authority) && (newState == SCR_TaskState.FINISHED || newState == SCR_TaskState.CANCELLED))
+		{
+			if (GetTaskManager())
+				GetTaskManager().DeleteTask(this);
+		}
 	}
 	
 	protected void DelayedPlacedNotification(vector position, int taskID, int factionIndex)

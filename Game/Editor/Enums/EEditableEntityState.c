@@ -31,7 +31,7 @@ graph G {
 			}
 		}
 	}
-};
+}
 \enddot
 */
 enum EEditableEntityState

@@ -10,7 +10,7 @@ class SCR_PlayerTeleportFeedbackUIComponent: ScriptedWidgetComponent
 	protected SCR_FadeUIComponent m_TeleportTextFadeUIComponent;
 	protected Widget m_wRoot;
 	
-	protected void OnPlayerTeleported(bool editorIsOpen, bool longFade)
+	protected void OnPlayerTeleported(bool editorIsOpen, bool longFade, SCR_EPlayerTeleportedReason teleportReason)
 	{
 		if (editorIsOpen)
 			return;
@@ -65,7 +65,7 @@ class SCR_PlayerTeleportFeedbackUIComponent: ScriptedWidgetComponent
 		}
 		
 			
-		playerTeleportedComponent.GetOnPlayerTeleportedByEditor().Insert(OnPlayerTeleported);
+		playerTeleportedComponent.GetOnPlayerTeleported().Insert(OnPlayerTeleported);
 	}
 	override void HandlerDeattached(Widget w)
 	{
@@ -80,7 +80,7 @@ class SCR_PlayerTeleportFeedbackUIComponent: ScriptedWidgetComponent
 		if (!playerTeleportedComponent)
 			return;
 		
-		playerTeleportedComponent.GetOnPlayerTeleportedByEditor().Remove(OnPlayerTeleported);
+		playerTeleportedComponent.GetOnPlayerTeleported().Remove(OnPlayerTeleported);
 		
 	}
 };

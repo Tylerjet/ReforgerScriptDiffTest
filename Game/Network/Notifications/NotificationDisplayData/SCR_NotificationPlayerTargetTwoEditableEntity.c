@@ -13,10 +13,12 @@ class SCR_NotificationPlayerTargetTwoEditableEntity : SCR_NotificationDisplayDat
 		int playerID, firstTargetID, secondTargetID;
 		data.GetParams(playerID, firstTargetID, secondTargetID);
 		
-		string firstEntityName = GetEditableEntityName(firstTargetID);
-		string secondEntityName = GetEditableEntityName(secondTargetID);
+		string playerName, firstEntityName, secondEntityName;
+		data.GetNotificationTextEntries(playerName, firstEntityName, secondEntityName);
+		if (!GetPlayerName(playerID, playerName) || !GetEditableEntityName(firstTargetID, firstEntityName) || !GetEditableEntityName(secondTargetID, secondEntityName))
+			return string.Empty;
 		
-		data.SetNotificationTextEntries(GetPlayerName(playerID), firstEntityName, secondEntityName);
+		data.SetNotificationTextEntries(playerName, firstEntityName, secondEntityName);
 		return super.GetText(data);
 	}
 	

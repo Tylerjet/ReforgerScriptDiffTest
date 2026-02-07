@@ -21,6 +21,10 @@ respawn system context.
 class RespawnComponent: GameComponent
 {
 	/*!
+	Notify the underlying system that this respawn component has spawned/is taking over the provided entity.
+	*/
+	proto external void NotifySpawn(IEntity spawnedEntity);
+	/*!
 	Returns the player controller this respawn component is attached to.
 	*/
 	proto external PlayerController GetPlayerController();
@@ -49,19 +53,6 @@ class RespawnComponent: GameComponent
 	\param timeSlice Delta time since last update.
 	*/
 	event protected void OnFrame(IEntity owner, float timeSlice);
-	/*!
-	Called when player controller request respawn lock is engaged,
-	i.e. a request was fired. Valid until response is received or
-	until timeout. Relevant to the owner client.
-	*/
-	event protected void OnRequestLockEngaged();
-	/*!
-	Called when player controller request respawn lock is disengaged,
-	ie. a response is received from the server or on timeout(s).
-	Relevant to the owner client.
-	\param response The response from the server why the lock was lifted.
-	*/
-	event protected void OnRequestLockDisengaged(ERespawnResult result);
 }
 
 /*!

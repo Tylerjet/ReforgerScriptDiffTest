@@ -44,9 +44,10 @@ class SCR_PagingButtonComponent : SCR_ButtonBaseComponent
 			if (m_bUseActionHint)
 			{
 				m_wText.SetTextFormat("<action name='%1' scale='1.5'>/", m_sActionName);
-				GetGame().GetInputManager().AddActionListener(m_sActionName, EActionTrigger.DOWN, OnMenuSelect);
 			}
 		}
+		
+		SetAction(m_sActionName);
 
 		FlipImage(!m_bIsPositive);
 	}
@@ -88,7 +89,7 @@ class SCR_PagingButtonComponent : SCR_ButtonBaseComponent
 	//------------------------------------------------------------------------------------------------
 	override protected void OnMenuSelect()
 	{
-		super.OnMenuSelect();
+		MenuSelectBase();
 		if (!m_wRoot.IsEnabled())
 			return;
 

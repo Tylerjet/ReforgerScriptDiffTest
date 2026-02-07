@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_IsActionTriggeredCondition : SCR_AvailableActionCondition
-{	
+{
 	[Attribute("")]
 	protected string m_sAction;
 

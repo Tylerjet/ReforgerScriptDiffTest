@@ -1,4 +1,4 @@
-class SCR_ServicePointComponentClass : ScriptComponentClass
+class SCR_ServicePointComponentClass : SCR_MilitaryBaseLogicComponentClass
 {
 };
 
@@ -7,8 +7,11 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 	[Attribute(SCR_EServicePointType.SUPPLY_DEPOT.ToString(), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EServicePointType))]
 	protected SCR_EServicePointType m_eType;
 	
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Type", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.SearchComboBox, desc: "Type", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
 	protected EEditableEntityLabel m_eBuildingLabel;
+	
+	// This var will later represent a service status - functional, broken or any other...
+	protected SCR_EServicePointStatus m_eServiceStatus = SCR_EServicePointStatus.FUNCTIONAL;
 	
 	protected SCR_FactionAffiliationComponent m_FactionControl;
 	
@@ -25,34 +28,14 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnFactionChanged(Faction faction)
+	SCR_EServicePointStatus GetServiceStatus()
 	{
+		return m_eServiceStatus;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnBaseFactionChanged(Faction faction)
+	protected void OnFactionChanged(FactionAffiliationComponent owner, Faction previousFaction, Faction faction)
 	{
-		if (!m_FactionControl)
-			return;
-		
-		m_FactionControl.SetAffiliatedFaction(faction);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnBaseRegistered(notnull SCR_MilitaryBaseComponent base)
-	{
-		super.OnBaseRegistered(base);
-		
-		OnBaseFactionChanged(base.GetFaction());
-		base.GetOnFactionChanged().Insert(OnBaseFactionChanged);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnBaseUnregistered(notnull SCR_MilitaryBaseComponent base)
-	{
-		super.OnBaseUnregistered(base);
-		
-		base.GetOnFactionChanged().Remove(OnBaseFactionChanged);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -68,8 +51,8 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 			if (!faction)
 				faction = m_FactionControl.GetDefaultAffiliatedFaction();
 			
-			OnFactionChanged(faction);
-			m_FactionControl.GetOnFactionUpdate().Insert(OnFactionChanged);
+			OnFactionChanged(null, null, faction);
+			m_FactionControl.GetOnFactionChanged().Insert(OnFactionChanged);
 		}
 	}
 };
@@ -84,4 +67,10 @@ enum SCR_EServicePointType
 	BARRACKS,
 	RADIO_ANTENNA
 	//FUEL_DEPOT
+}
+
+enum SCR_EServicePointStatus
+{
+	FUNCTIONAL,
+	BROKEN
 };

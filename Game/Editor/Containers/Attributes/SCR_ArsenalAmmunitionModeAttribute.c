@@ -1,6 +1,25 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_ArsenalAmmunitionModeAttribute : SCR_BaseFloatValueHolderEditorAttribute
 {
+	//~ Get first arsenal component on child
+	protected SCR_ArsenalComponent GetArsenalFromChildren(IEntity parent)
+	{
+		IEntity child = parent.GetChildren();
+		SCR_ArsenalComponent arsenalComponent;
+		
+		while (child)
+		{
+			arsenalComponent = SCR_ArsenalComponent.Cast(child.FindComponent(SCR_ArsenalComponent));
+			if (arsenalComponent)
+				return arsenalComponent;
+			
+			child = child.GetSibling();
+		}
+		
+		//~ Not found
+		return null;
+	}
+	
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
@@ -9,7 +28,14 @@ class SCR_ArsenalAmmunitionModeAttribute : SCR_BaseFloatValueHolderEditorAttribu
 		
 		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_ArsenalComponent));
 		if (!arsenalComponent)
-			return null;
+		{
+			//~ If vehicle check if arsenal is on children
+			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
+				arsenalComponent = GetArsenalFromChildren(editableEntity.GetOwner());
+			
+			if (!arsenalComponent)
+				return null;
+		}
 		
 		SCR_EArsenalAttributeGroup arsenalGroups = arsenalComponent.GetEditableAttributeGroups();
 		if (!(arsenalGroups & SCR_EArsenalAttributeGroup.AMMUNITION_MODE) || !(arsenalGroups & SCR_EArsenalAttributeGroup.WEAPONS))
@@ -40,7 +66,14 @@ class SCR_ArsenalAmmunitionModeAttribute : SCR_BaseFloatValueHolderEditorAttribu
 		
 		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_ArsenalComponent));
 		if (!arsenalComponent)
-			return;
+		{
+			//~ If vehicle check if arsenal is on children
+			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
+				arsenalComponent = GetArsenalFromChildren(editableEntity.GetOwner());
+				
+			if (!arsenalComponent)
+				return;
+		}
 		
 		SCR_EArsenalItemMode itemMode =  arsenalComponent.GetSupportedArsenalItemModes();
 		

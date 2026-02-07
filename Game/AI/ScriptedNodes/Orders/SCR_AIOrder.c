@@ -26,6 +26,11 @@ class SCR_AIOrderBase : AIOrder // MESSAGE_CLASS()
 		SetText(orderDebugText);
 		SetReceiver(node.m_Receiver);
 	}
+	
+	#ifdef AI_DEBUG
+	// The Behavior Tree which has sent this message
+	string m_sSentFromBt;
+	#endif
 };
 
 class SCR_AIOrder_Stance : SCR_AIOrderBase // MESSAGE_CLASS(GenerateSendOrder, SCR_AISendOrder_Stance)

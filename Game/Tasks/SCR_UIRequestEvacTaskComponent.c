@@ -12,16 +12,7 @@ class SCR_UIRequestEvacTaskComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	static bool IsInRange(Faction requesterFaction, IEntity requesterEntity)
 	{
-		SCR_CampaignFaction campaignFaction = SCR_CampaignFaction.Cast(requesterFaction);
-		
-		if (!campaignFaction)
-			return false;
-		
-		// TODO: Remove these hacked variables
-		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
-		SCR_CampaignBase mainBase = campaignFaction.GetMainBase();
-		
-		return SCR_CampaignBaseManager.GetInstance().IsEntityInFactionRadioSignal(requesterEntity, requesterFaction);
+		return SCR_GameModeCampaign.GetInstance().GetBaseManager().IsEntityInFactionRadioSignal(requesterEntity, requesterFaction);
 	}
 	
 	//------------------------------------------------------------------------------------------------

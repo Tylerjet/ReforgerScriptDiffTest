@@ -78,6 +78,8 @@ class FPS_Autotest: GenericEntity
     
 	override void EOnFrame(IEntity owner, float timeSlice) //!EntityEvent.FRAME
 	{
+		g_Game.GetInputManager().ActivateContext("BlockInputContext");
+		
 		if(m_timer > m_stepWaitTime) //< When camera was still long enough
 		{
 			m_timer = 0;

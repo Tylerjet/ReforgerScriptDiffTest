@@ -6,9 +6,9 @@ class SCR_CampaignRepairEntityUserAction : ScriptedUserAction
 	SCR_CampaignServiceEntityComponent m_ServiceEntityComp;
 	SCR_DestructionMultiPhaseComponent m_DestructionMultiphaseComp;
 	
-	protected SCR_CampaignBase m_CampaignBase;
+	protected SCR_CampaignMilitaryBaseComponent m_CampaignBase;
 	protected SCR_SiteSlotEntity m_Slot;
-	protected ECampaignCompositionType m_CompType;
+	protected EEditableEntityLabel m_CompType;
 	protected const int SLOT_SEARCH_DISTANCE = 5;
 	protected IEntity m_Owner;
 	
@@ -20,7 +20,7 @@ class SCR_CampaignRepairEntityUserAction : ScriptedUserAction
 	
 	//------------------------------------------------------------------------------------------------
 	void CompositionInit()
-	{
+	{/*
 		m_ServiceEntityComp = SCR_CampaignServiceEntityComponent.Cast(m_Owner.FindComponent(SCR_CampaignServiceEntityComponent));
 		m_DestructionMultiphaseComp = SCR_DestructionMultiPhaseComponent.Cast(m_Owner.FindComponent(SCR_DestructionMultiPhaseComponent));
 				
@@ -35,18 +35,24 @@ class SCR_CampaignRepairEntityUserAction : ScriptedUserAction
 			if (serviceCompositionComp)
 			{
 				m_CompType = serviceCompositionComp.GetCompositionType();
-				SCR_CampaignServiceComponent service = serviceCompositionComp.GetService();
+				SCR_ServicePointComponent service = serviceCompositionComp.GetService();
 				if (service)
-					m_CampaignBase = service.GetParentBase();
+				{
+					array<SCR_MilitaryBaseComponent> bases = {};
+					service.GetBases(bases);
+					
+					if (!bases.IsEmpty())
+						m_CampaignBase = SCR_CampaignMilitaryBaseComponent.Cast(bases[0]);
+				}
 			}
 		}
 		
-		SCR_GameModeCampaignMP gameModeMP = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign gameModeMP = SCR_GameModeCampaign.GetInstance();
 		if (!gameModeMP)	
 			return;
 		
 		if (!m_CampaignBase)
-			m_CampaignBase = gameModeMP.GetSlotPresetBase(m_Slot);
+			m_CampaignBase = gameModeMP.GetSlotPresetBase(m_Slot);*/
 	}
 	
 	//------------------------------------------------------------------------------------------------

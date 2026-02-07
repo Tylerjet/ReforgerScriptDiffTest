@@ -4,6 +4,9 @@ class SCR_TaskTextBaseEditorAttribute: SCR_BaseEditorAttribute
 	[Attribute(SCR_Enum.GetDefault(ETaskTextType.NONE), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(ETaskTextType))]
 	protected ETaskTextType m_TextType;
 	
+	[Attribute("#AR-Editor_Attribute_CustomTaskName_LocationPlaceholder", desc: "Param used in the SCR_DropdownWithParamAttributeUIComponent to indicate for the player what will be replaced with the location name", uiwidget: UIWidgets.LocaleEditBox)]
+	protected LocalizedString m_sLocationPlaceholderText;
+	
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
 		SCR_EditableTaskComponent task = SCR_EditableTaskComponent.Cast(item);
@@ -22,6 +25,9 @@ class SCR_TaskTextBaseEditorAttribute: SCR_BaseEditorAttribute
 	}
 	override int GetEntries(notnull array<ref SCR_BaseEditorAttributeEntry> outEntries)
 	{
+		//~ First entry is always the param used in the UI
+		outEntries.Insert(new SCR_BaseEditorAttributeEntryText(m_sLocationPlaceholderText));
+		
 		SCR_TextsTaskManagerComponent textsComponent = SCR_TextsTaskManagerComponent.GetInstance();
 		if (!textsComponent)
 			return 0;

@@ -34,6 +34,8 @@ class AIGroup: AIAgent
 	//Sets a displacement in the formation so that the used offset positions start at the given value
 	proto external void SetFormationDisplacement(int iValue);
 	proto external int GetFormationDisplacement();
+	// Returns center of mass of the group, which is average of all member positions
+	proto external vector GetCenterOfMass();
 	proto external void SetNewLeader(AIAgent newLeader);
 
 	// callbacks
@@ -42,7 +44,7 @@ class AIGroup: AIAgent
 	event protected void OnCurrentWaypointChanged(AIWaypoint currentWP, AIWaypoint prevWP);
 	event protected void OnWaypointCompleted(AIWaypoint wp);
 	event protected void OnWaypointAdded(AIWaypoint wp);
-	event protected void OnWaypointRemoved(AIWaypoint wp);
+	event protected void OnWaypointRemoved(AIWaypoint wp, bool isCurrentWaypoint);
 	event void OnEmpty();
 	event void OnAgentAdded(AIAgent child);
 	event void OnAgentRemoved(AIAgent child);

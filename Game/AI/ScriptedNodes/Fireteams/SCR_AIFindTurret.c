@@ -69,7 +69,7 @@ class SCR_AIFindTurret: AITaskScripted
 				{
 					m_groupOwner.AllocateCompartment(turretComp);
 					//turretComp.GetCompartmentSlotID();
-					m_turretEntity = ent;
+					m_turretEntity = turretComp.GetVehicle();
 					m_turretCompartment = turretComp;
 					return false;
 				}
@@ -80,11 +80,7 @@ class SCR_AIFindTurret: AITaskScripted
 	
 	bool FilterEntities(IEntity ent) 
 	{
-		
-		if (ent.FindComponent(BaseCompartmentManagerComponent))
-			return true;
-		
-		return false;
+		return Turret.Cast(ent) != null;
 	}
 	
 	//------------------------------------------------------------------------------------------------

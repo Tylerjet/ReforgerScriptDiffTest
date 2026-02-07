@@ -1,7 +1,22 @@
 class SCR_HealingUserAction : ScriptedUserAction
 {
 	[Attribute("0", UIWidgets.ComboBox, "Which hitzone group will be checked for conditions", enums:ParamEnumArray.FromEnum(ECharacterHitZoneGroup) )]
-	protected ECharacterHitZoneGroup m_eHitZoneGroup;
+	protected ECharacterHitZoneGroup m_eHitZoneGroup;	
+	
+	[Attribute("0", UIWidgets.ComboBox, "Which consumabletype will be checked for conditions", enums:ParamEnumArray.FromEnum(SCR_EConsumableType) )]
+	protected SCR_EConsumableType m_eConsumableType;
+	
+    [Attribute("#AR-FailReason_AlreadyApplied", UIWidgets.EditBox, "String for already applied healing gadgets")]
+	protected LocalizedString m_sAlreadyApplied;    
+	
+	[Attribute("#AR-FailReason_NotBleeding", UIWidgets.EditBox, "String for when target hitzone isn't bleeding")]
+	protected LocalizedString m_sNotBleeding;	
+	
+	[Attribute("#AR-FailReason_NoBloodLoss", UIWidgets.EditBox, "String for when blood hitzone isn't damaged")]
+	protected LocalizedString m_sNoBloodLoss;	
+	
+	[Attribute("#AR-FailReason_NotDamaged", UIWidgets.EditBox, "String for when target hitzone isn't damaged")]
+	protected LocalizedString m_sNotDamaged;
 
 	//------------------------------------------------------------------------------------------------
 	protected SCR_ConsumableItemComponent GetConsumableComponent(notnull ChimeraCharacter userChar)
@@ -16,14 +31,14 @@ class SCR_HealingUserAction : ScriptedUserAction
 		
 		return SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));;
 	}
-		
-	//------------------------------------------------------------------------------------------------
-	override bool CanBePerformedScript(IEntity user)
+	
+	//------------------------------------------------------------------------------------------------	
+	override bool CanBeShownScript(IEntity user)
 	{
 		// It is not allowed to perform healing useraction on self
 		if (!user || user == GetOwner())
 			return false;
-
+		
 		// Target character
 		ChimeraCharacter targetCharacter = ChimeraCharacter.Cast(GetOwner());
 		if (!targetCharacter)
@@ -33,36 +48,40 @@ class SCR_HealingUserAction : ScriptedUserAction
 		ChimeraCharacter userCharacter = ChimeraCharacter.Cast(user);
 		if (!userCharacter)
 			return false;
-
-		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(userCharacter);
-		if (!consumableComponent || !consumableComponent.GetConsumableEffect())
-			return false;
-		
-		if (!consumableComponent.GetConsumableEffect().CanApplyEffect(GetOwner(), user))
-			return false;
 		
 		// Medics' item use ability check
 		CharacterControllerComponent userController = userCharacter.GetCharacterController();
 		if (!userController || userController.IsUsingItem())
 			return false;
-
 		
+		// Check if character is in a vehicle as whether that disables this useraction
+		if (userCharacter.IsInVehicle() && !HealingAllowedFromSeat(userCharacter))
+			return false;
+
+		// Can only see healing useractions when holding respective consumable
+		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(userCharacter);
+		if (!consumableComponent || consumableComponent.GetConsumableType() != m_eConsumableType)
+			return false;
+		
+		// Cannot see healing useractions on dead people
 		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(targetCharacter.GetDamageManager());
 		if (!damageMan || damageMan.GetState() == EDamageState.DESTROYED)
 			return false;
-			
+		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
+		// Target character
+		ChimeraCharacter targetCharacter = ChimeraCharacter.Cast(GetOwner());
+		if (!targetCharacter)
+			return;
+		
+		// Medic character
 		ChimeraCharacter userCharacter = ChimeraCharacter.Cast(pUserEntity);
 		if (!userCharacter)
-			return;		
-		
-		ChimeraCharacter targetCharacter = ChimeraCharacter.Cast(pOwnerEntity);
-		if (!targetCharacter)
 			return;
 		
 		SCR_CharacterControllerComponent userController = SCR_CharacterControllerComponent.Cast(userCharacter.GetCharacterController());
@@ -96,14 +115,25 @@ class SCR_HealingUserAction : ScriptedUserAction
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	bool HealingAllowedFromSeat(ChimeraCharacter char)
+	{
+		if (!char)
+			return false;
+		
+		CompartmentAccessComponent compartmentAccess = char.GetCompartmentAccessComponent();
+		if (!compartmentAccess)
+			return false;
+		
+		SCR_DoctorCompartmentSlot doctorSlot = SCR_DoctorCompartmentSlot.Cast(compartmentAccess.GetCompartment());
+		if (!doctorSlot)
+			return false;
+		
+		return doctorSlot.AllowHealingFromCompartment();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	ECharacterHitZoneGroup GetUserActionGroup()
 	{
 		return m_eHitZoneGroup;
-	}
-	
-	//------------------------------------------------------------------------------------------------	
-	override bool CanBeShownScript(IEntity user)
-	{
-		return CanBePerformedScript(user);
 	}
 };

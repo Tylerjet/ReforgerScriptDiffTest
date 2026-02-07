@@ -4,6 +4,6 @@ class ReforgerGameSettingsPlugin: WorkbenchPlugin
 	override void Run()
 	{
 		ResourceManager rm = Workbench.GetModule(ResourceManager);
-		rm.SetOpenedResource("$profile:.save/ReforgerGameSettings.conf");
+		rm.SetOpenedResource("$profile:.save/settings/ReforgerGameSettings.conf");
 	}
 };

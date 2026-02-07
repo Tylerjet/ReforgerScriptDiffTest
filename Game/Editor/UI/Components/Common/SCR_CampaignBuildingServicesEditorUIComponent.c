@@ -6,7 +6,8 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 	[Attribute(DEFAULT_VALUE.ToString(), params: "1 inf 1", desc: "Maximum number of icons in the row")]
 	protected int m_iMaxColumns;
 
-	protected ref map<SCR_EServicePointType, SCR_CampaignServiceComponent> m_mServices = new map<EEditableEntityLabel, SCR_CampaignServiceComponent>();
+	protected ref map<SCR_EServicePointType, SCR_ServicePointComponent> m_mServices = new map<EEditableEntityLabel, SCR_ServicePointComponent>();
+
 	protected Widget m_wCampaignBuildingServicesRoot;
 
 	protected const int PADDING_LEFT = 5;
@@ -26,7 +27,7 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 			return;
 
 		// if provider is a base, set services icons
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(buildingEditorComponent.GetProviderEntity());
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(buildingEditorComponent.GetProviderEntity().FindComponent(SCR_CampaignMilitaryBaseComponent));
 		if (!base)
 		{
 			w.SetOpacity(0);
@@ -36,7 +37,7 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 		GetAllServicesUIInfo();
 		SetBaseServices(base);
 
-		base.s_OnServiceRegistered.Insert(SetBaseServices);
+		base.GetOnServiceRegistered().Insert(SetBaseServices);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -80,9 +81,9 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void SetBaseServices(SCR_CampaignBase base)
+	protected void SetBaseServices(SCR_CampaignMilitaryBaseComponent base)
 	{
-		array<SCR_CampaignServiceComponent> built = {};
+		array<SCR_ServicePointComponent> built = {};
 		array<int> allServices = {};
 
 		BaseGameMode gameMode = GetGame().GetGameMode();
@@ -94,14 +95,14 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 		SCR_Enum.GetEnumValues(SCR_EServicePointType, allServices);
 
 		if (base)
-			base.GetAllBaseServices(built);
+			base.GetServices(built);
 
 		foreach (SCR_EServicePointType type : allServices)
 		{
 			m_mServices.Set(buildingManagerComponent.GetEditorServiceEnum(type), null);
 		}
 
-		foreach (SCR_CampaignServiceComponent service : built)
+		foreach (SCR_ServicePointComponent service : built)
 		{
 			m_mServices.Set(service.GetLabel(), service);
 		}
@@ -155,7 +156,7 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 			SetIcon(imgWidget, serviceLabel);
 		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	void SetIcon(ImageWidget widget, EEditableEntityLabel serviceLabel)
 	{
@@ -181,13 +182,13 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 
 		switch (m_mServices.Get(serviceLabel).GetServiceStatus())
 		{
-			case ECampaignServiceStatus.FUNCTIONAL:
+			case SCR_EServicePointStatus.FUNCTIONAL:
 			{
 				img.GetImageWidget().SetColor(Color.White);
 				break;
 			}
 
-			case ECampaignServiceStatus.BROKEN:
+			case SCR_EServicePointStatus.BROKEN:
 			{
 				img.GetImageWidget().SetColor(Color.Red);
 				break;

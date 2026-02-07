@@ -84,7 +84,7 @@ class SCR_AIGetFireTimes: AITaskScripted
 			case EWeaponType.WT_ROCKETLAUNCHER:
 			{
 				ClearVariable(PORT_FIRE_BURST);
-				SetVariableOut(PORT_STABILIZATION,5.0);
+				SetVariableOut(PORT_STABILIZATION,0.5);
 				ClearVariable(PORT_SUPPRESSION);
 				SetVariableOut(PORT_REJECT_TIME,10.0);
 				break;

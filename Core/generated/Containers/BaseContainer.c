@@ -17,6 +17,7 @@ sealed class BaseContainer: BaseResourceObject
 	static proto bool SafeCastType(out typename type, out BaseContainer to, BaseContainer from);
 	proto external string GetClassName();
 	proto external string GetName();
+	proto external void SetName(string name);
 	proto external BaseContainer GetAncestor();
 	proto external void SetAncestor(ResourceName ancestor);
 	proto external void ClearVariable(string varName);

@@ -13,6 +13,6 @@ class SCR_EditorCountOrMoreEntitiesSelectedActionCondition: SCR_AvailableActionC
 		set <SCR_EditableEntityComponent> entities = new set <SCR_EditableEntityComponent>;
 		int count = SCR_BaseEditableEntityFilter.GetEnititiesStatic(entities, EEditableEntityState.SELECTED);
 		
-		return GetReturnResult(count >= m_iCount));
+		return GetReturnResult(count >= m_iCount);
 	}
 };

@@ -42,29 +42,29 @@ class SCR_ContentBrowser_ScenarioLineWidgets
 		m_FavouriteButton = ButtonWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_FavouriteButtonOverlay.m_FavouriteButton"));
 		m_FavouriteButtonComponent = SCR_ModularButtonComponent.Cast(m_FavouriteButton.FindHandler(SCR_ModularButtonComponent));
 
-		m_NameText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.NameOverlay.m_NameText"));
+		m_NameText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.NameSize.NameOverlay.m_NameText"));
 
-		m_LastPlayedText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.LastPlayedOverlay.m_LastPlayedText"));
+		m_LastPlayedText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.LastPlayedSize.LastPlayedOverlay.m_LastPlayedText"));
 
-		m_PlayerCount = HorizontalLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_PlayerCount"));
+		m_PlayerCount = HorizontalLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.PlayerCountSize.m_PlayerCount"));
 
-		m_SinglePlayerImage = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_PlayerCount.m_SinglePlayerImage"));
+		m_SinglePlayerImage = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.PlayerCountSize.m_PlayerCount.m_SinglePlayerImage"));
 
-		m_PlayerCountSeparator = SizeLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_PlayerCount.m_PlayerCountSeparator"));
+		m_PlayerCountSeparator = SizeLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.PlayerCountSize.m_PlayerCount.m_PlayerCountSeparator"));
 
-		m_MultiPlayerImage = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_PlayerCount.m_MultiPlayerImage"));
+		m_MultiPlayerImage = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.PlayerCountSize.m_PlayerCount.m_MultiPlayerImage"));
 
-		m_PlayerCountText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_PlayerCount.m_PlayerCountText"));
+		m_PlayerCountText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.PlayerCountSize.m_PlayerCount.m_PlayerCountText"));
 
-		m_Source = HorizontalLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_Source"));
+		m_Source = HorizontalLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.SourceSize.m_Source"));
 
-		m_SourceImageOfficial = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_Source.m_SourceImageOfficial"));
+		m_SourceImageOfficial = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.SourceSize.m_Source.SourceImagesSize.SourceImagesOverlay.m_SourceImageOfficial"));
 
-		m_SourceImageCommunity = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_Source.m_SourceImageCommunity"));
+		m_SourceImageCommunity = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.SourceSize.m_Source.SourceImagesSize.SourceImagesOverlay.m_SourceImageCommunity"));
 
-		m_SourceNameTextCommunity = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_Source.m_SourceNameTextCommunity"));
+		m_SourceNameTextCommunity = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.SourceSize.m_Source.SourceNameTextOverlay.m_SourceNameTextCommunity"));
 
-		m_SourceNameTextOfficial = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.m_Source.m_SourceNameTextOfficial"));
+		m_SourceNameTextOfficial = TextWidget.Cast(root.FindWidget("LineHeight.Overlay0.LineContent.LineElements.SourceSize.m_Source.SourceNameTextOverlay.m_SourceNameTextOfficial"));
 
 		return true;
 	}

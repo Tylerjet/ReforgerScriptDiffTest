@@ -89,7 +89,7 @@ sealed class FileHandle: Managed
 	*/
 	proto int Write(void data, int length = -1);
 	/*!
-	Write to file and add new line (\r\n).
+	Write to file and add newline (CARRIAGE RETURN + LINE FEED).
 	\param data Value to write
 	*/
 	proto void WriteLine(string data);

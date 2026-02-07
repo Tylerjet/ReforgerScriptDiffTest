@@ -3,23 +3,15 @@ class SCR_AIDecoHasRole : DecoratorScripted
 	[Attribute("0", UIWidgets.ComboBox, "Role to find:", "", ParamEnumArray.FromEnum(EUnitRole) )]
 	private EUnitRole m_eUnitRole;
 		
-	protected SCR_AIInfoComponent m_AIInfoComponent;	
-
-	//-------------------------------------------------------------------
-	override void OnInit(AIAgent owner)
-	{
-		m_AIInfoComponent = SCR_AIInfoComponent.Cast(owner.FindComponent(SCR_AIInfoComponent));
-		if( !m_AIInfoComponent )
-		{
-			NodeError(this, owner, "Agent does not have a valid m_AIInfoComponent");
-			return;
-		}
-	}
-	
 	//-------------------------------------------------------------------
 	protected override bool TestFunction(AIAgent owner)
 	{
-		return m_AIInfoComponent.HasRole(m_eUnitRole);
+		SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(owner);
+		if (!chimeraAgent)
+			SCR_AgentMustChimera(this, owner);
+		if (!chimeraAgent.m_InfoComponent)
+			NodeError(this, owner, "Agent does not have info component!");
+		return chimeraAgent.m_InfoComponent.HasRole(m_eUnitRole);
 	}	
 	
 	//-------------------------------------------------------------------	

@@ -3,7 +3,7 @@
 
 class SCR_DownloadManager_MiniDialogWidgets
 {
-	static const ResourceName s_sLayout = "{101DCF7714EB1AFA}UI/layouts/Menus/ContentBrowser/DownloadManager/DownloadManager_MiniDialog.layout";
+	static const ResourceName s_sLayout = "{09A98AEA00EBCD74}UI/layouts/Menus/ContentBrowser/DownloadManager/DownloadManager_MiniDialog.layout";
 	ResourceName GetLayout() { return s_sLayout; }
 
 	ButtonWidget m_AutoenableAddonsButton;
@@ -35,31 +35,31 @@ class SCR_DownloadManager_MiniDialogWidgets
 
 	bool Init(Widget root)
 	{
-		m_AutoenableAddonsButton = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.ContentSizeConstraints.ContentVerticalLayout.m_AutoenableAddonsButton"));
+		m_AutoenableAddonsButton = ButtonWidget.Cast(root.FindAnyWidget("m_AutoenableAddonsButton"));
 		m_AutoenableAddonsButtonComponent = SCR_ModularButtonComponent.Cast(m_AutoenableAddonsButton.FindHandler(SCR_ModularButtonComponent));
 
-		m_DownloadsList = VerticalLayoutWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.ContentSizeConstraints.ContentVerticalLayout.ScrollSize.Overlay.ScrollLayout.m_DownloadsList"));
+		m_DownloadsList = VerticalLayoutWidget.Cast(root.FindAnyWidget("m_DownloadsList"));
 
-		m_NoItemsText = TextWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.ContentSizeConstraints.ContentVerticalLayout.ScrollSize.Overlay.m_NoItemsText"));
+		m_NoItemsText = TextWidget.Cast(root.FindAnyWidget("m_NoItemsText"));
 
-		m_ProgressBar = ProgressBarWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.ContentSizeConstraints.ContentVerticalLayout.ProgressIndicatorSize.ProgressIndicator.ProgressBar.m_ProgressBar"));
+		m_ProgressBar = ProgressBarWidget.Cast(root.FindAnyWidget("m_ProgressBar"));
 
-		m_StateText = TextWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.ContentSizeConstraints.ContentVerticalLayout.ProgressIndicatorSize.ProgressIndicator.m_StateText"));
+		m_StateText = TextWidget.Cast(root.FindAnyWidget("m_StateText"));
 
-		m_ProgressOverlay = HorizontalLayoutWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.ContentSizeConstraints.ContentVerticalLayout.ProgressIndicatorSize.ProgressIndicator.m_ProgressOverlay"));
+		m_ProgressOverlay = HorizontalLayoutWidget.Cast(root.FindWidget("m_ProgressOverlay"));
 
-		m_ProgressText = TextWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.ContentSizeConstraints.ContentVerticalLayout.ProgressIndicatorSize.ProgressIndicator.m_ProgressOverlay.m_ProgressText"));
+		m_ProgressText = TextWidget.Cast(root.FindAnyWidget("m_ProgressOverlay.m_ProgressText"));
 
-		m_BackButton = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.ContentSizeConstraints.ContentVerticalLayout.Buttons0.m_BackButton"));
+		m_BackButton = ButtonWidget.Cast(root.FindAnyWidget("m_BackButton"));
 		m_BackButtonComponent = SCR_NavigationButtonComponent.Cast(m_BackButton.FindHandler(SCR_NavigationButtonComponent));
 
-		m_PauseButton = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.ContentSizeConstraints.ContentVerticalLayout.Buttons0.m_PauseButton"));
+		m_PauseButton = ButtonWidget.Cast(root.FindAnyWidget("m_PauseButton"));
 		m_PauseButtonComponent = SCR_NavigationButtonComponent.Cast(m_PauseButton.FindHandler(SCR_NavigationButtonComponent));
 
-		m_CancelButton = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.ContentSizeConstraints.ContentVerticalLayout.Buttons0.m_CancelButton"));
+		m_CancelButton = ButtonWidget.Cast(root.FindAnyWidget("m_CancelButton"));
 		m_CancelButtonComponent = SCR_NavigationButtonComponent.Cast(m_CancelButton.FindHandler(SCR_NavigationButtonComponent));
 
-		m_PauseAllButton = ButtonWidget.Cast(root.FindWidget("DialogBase0.VerticalLayout.Content.ContentSizeConstraints.ContentVerticalLayout.Buttons0.m_PauseAllButton"));
+		m_PauseAllButton = ButtonWidget.Cast(root.FindAnyWidget("m_PauseAllButton"));
 		m_PauseAllButtonComponent = SCR_NavigationButtonComponent.Cast(m_PauseAllButton.FindHandler(SCR_NavigationButtonComponent));
 
 		return true;

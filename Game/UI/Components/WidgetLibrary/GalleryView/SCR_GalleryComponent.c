@@ -329,10 +329,10 @@ class SCR_GalleryComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetFocusedItem(int index)
+	void SetFocusedItem(int index, bool force = false)
 	{
 		index = Math.ClampInt(index, 0, m_aWidgets.Count() - 1);
-		if (m_iSelectedItem == index || index < 0)
+		if ((!force && m_iSelectedItem == index) || index < 0)
 			return;
 
 		bool moveRight;

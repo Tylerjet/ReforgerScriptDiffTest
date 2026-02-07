@@ -7,6 +7,7 @@ class SCR_SubMenuBase : ScriptedWidgetComponent
 	protected Widget m_wRoot;
 	protected ref array<SCR_NavigationButtonComponent> m_aNavigationButtons  = new ref array<SCR_NavigationButtonComponent>();
 	protected bool m_bShown;
+	protected bool m_bFocused;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -24,6 +25,13 @@ class SCR_SubMenuBase : ScriptedWidgetComponent
 	{
 		m_ParentMenu = parentMenu;
 
+		//! Invoker for menu focus
+		if(m_ParentMenu)
+		{
+			m_ParentMenu.GetOnMenuFocusGained().Insert(OnMenuFocusGained);
+			m_ParentMenu.GetOnMenuFocusLost().Insert(OnMenuFocusLost);
+		}
+		
 		// Add navigation buttons through parent menu and insert into a listener
 	}
 
@@ -57,6 +65,18 @@ class SCR_SubMenuBase : ScriptedWidgetComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void OnMenuFocusGained()
+	{
+		m_bFocused = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMenuFocusLost()
+	{
+		m_bFocused = false;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	Widget GetRootWidget()
 	{

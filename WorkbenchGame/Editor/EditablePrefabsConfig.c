@@ -426,7 +426,7 @@ class EditablePrefabsConfig
 		//--- Copy meta file (use intermediary file to prevent warning about duplicate GUID)
 		string prevMetaPath = prevPath + META_EXTENSION;
 		string newMetaPath = newPath + META_EXTENSION;
-		if (FileIO.FileExist(prevMetaPath))
+		if (FileIO.FileExists(prevMetaPath))
 		{
 			FileIO.CopyFile(prevMetaPath, newMetaPath + COPY_EXTENSION);
 			FileIO.DeleteFile(prevMetaPath);
@@ -807,7 +807,7 @@ class EditablePrefabsConfig
 		string layerPath = "$profile:" + targetPath + "_default.layer";
 			
 		//--- World file
-		if (!FileIO.FileExist(worldPath))
+		if (!FileIO.FileExists(worldPath))
 		{
 			FileIO.MakeDirectory("$profile:.worlds");
 			FileHandle file = FileIO.OpenFile(worldPath, FileMode.WRITE);

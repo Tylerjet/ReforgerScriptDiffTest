@@ -107,7 +107,10 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 			{
 				ChimeraCharacter char = ChimeraCharacter.Cast(m_ReconnectPlayerList[i].m_ReservedEntity);
 				if (!char || char.GetCharacterController().IsDead())	// entity could have died meanwhile
+				{
+					m_ReconnectPlayerList.Remove(i);
 					return SCR_EReconnectState.ENTITY_DISCARDED;
+				}
 				
 				return SCR_EReconnectState.ENTITY_AVAILABLE;
 			}
@@ -138,7 +141,10 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 			{
 				ChimeraCharacter char = ChimeraCharacter.Cast(m_ReconnectPlayerList[i].m_ReservedEntity);
 				if (!char || char.GetCharacterController().IsDead())	// entity could have died meanwhile
+				{
+					m_ReconnectPlayerList.Remove(i);
 					return SCR_EReconnectState.ENTITY_DISCARDED;
+				}
 				
 				return SCR_EReconnectState.ENTITY_AVAILABLE;
 			}

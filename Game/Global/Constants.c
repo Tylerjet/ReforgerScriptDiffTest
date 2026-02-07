@@ -16,7 +16,8 @@ const int TRACE_LAYER_CAMERA = EPhysicsLayerDefs.Camera;
 class UIColors
 {
 	static const ref Color DARK_SAGE        			= Color.FromSRGBA(86, 92, 84, 255);
-	static const ref Color DARK_GREY        			= Color.FromSRGBA(85, 85, 85, 255);
+	static const ref Color DARK_GREY					= Color.FromSRGBA(85, 85, 85, 255);
+	static const ref Color LIGHT_GREY             		= Color.FromSRGBA(255, 255, 255, 179);
 	static const ref Color CONTRAST_COLOR	 			= Color.FromSRGBA(226, 167, 79, 255);
 	static const ref Color TRANSPARENT      			= Color.FromSRGBA(0, 0, 0, 0);
 
@@ -45,8 +46,42 @@ class UIColors
 	static const ref Color EDITOR_ICON_COLOR_DESTROYED	= Color(0.25, 0.25, 0.25, 1); ///< Colors for Editor Icons when an entity is dead or destroyed
 };
 
+class GUIColors
+{
+	static const ref Color DISABLED 				= Color.FromSRGBA(200, 200, 200, 100);				//WHITE with 30% alpha converted to GREY with 100% alpha
+	static const ref Color DISABLED_GLOW 			= Color.FromSRGBA(0, 0, 0, 100);
+
+	static const ref Color ENABLED 					= Color.FromSRGBA(255, 255, 255, 255);				//WHITE
+	static const ref Color ENABLED_GLOW 			= Color.FromSRGBA(162, 162, 162, 255);				//GREY
+	
+	static const ref Color DEFAULT 					= Color.FromSRGBA(255, 255, 255, 255);				//WHITE
+	static const ref Color DEFAULT_GLOW 			= Color.FromSRGBA(0, 0, 0, 255);						//BLACK																					  
+	//------------------------------------------------------------------------------------------
+
+	static const ref Color ORANGE 					= Color.FromSRGBA(226, 167, 80, 255);				//ORANGE, standard UI orange, warnings
+	static const ref Color ORANGE_BRIGHT 			= Color.FromSRGBA(255, 207, 136, 255);				//ORANGE (bright)
+	static const ref Color ORANGE_BRIGHT2 			= Color.FromSRGBA(255, 233, 200, 255);				//ORANGE (bright++)
+	static const ref Color ORANGE_DARK 				= Color.FromSRGBA(162, 97, 0, 255);					//DARK ORANGE
+
+	static const ref Color RED 						= Color.FromSRGBA(236, 80, 80, 255);					//RED, error states
+	static const ref Color RED_BRIGHT 				= Color.FromSRGBA(255, 134, 134, 255);				//RED (bright)
+	static const ref Color RED_BRIGHT2 				= Color.FromSRGBA(255, 150, 150, 255);				//RED (bright++)
+	static const ref Color RED_DARK 				= Color.FromSRGBA(162, 0, 0, 255);				//DARK RED
+
+	static const ref Color BLUE 					= Color.FromSRGBA(41, 127, 240, 255);				//BLUE
+	static const ref Color BLUE_BRIGHT 				= Color.FromSRGBA(122, 175, 255, 255);				//BLUE (bright)
+	static const ref Color BLUE_BRIGHT2 			= Color.FromSRGBA(184, 212, 255, 255);				//BLUE (bright++)
+	static const ref Color BLUE_DARK 				= Color.FromSRGBA(27, 92, 189, 255);					//DARK BLUE	
+
+	static const ref Color GREEN 					= Color.FromSRGBA(37, 209, 29, 255);					//GREEN
+	static const ref Color GREEN_BRIGHT 			= Color.FromSRGBA(157, 250, 153, 255);				//GREEN (bright)
+	static const ref Color GREEN_BRIGHT2			= Color.FromSRGBA(216, 255, 214, 255);				//GREEN (bright++)
+	static const ref Color GREEN_DARK 				= Color.FromSRGBA(28, 157, 22, 255);					//DARK GREEN
+}
+
 class UIConstants
 {
+	static const float FADE_RATE_INSTANT = 0;
 	static const float FADE_RATE_SUPER_FAST = 20;
 	static const float FADE_RATE_FAST = 10;
 	static const float FADE_RATE_DEFAULT = 5; // Used for near instant actions

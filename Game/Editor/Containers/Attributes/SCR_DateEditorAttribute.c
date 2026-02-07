@@ -70,6 +70,20 @@ class SCR_DateEditorAttribute : SCR_BaseEditorAttribute
 		manager.SetAttributeSelected(SCR_TimePresetsEditorAttribute, false, -1);
 	}
 	
+	/*!
+	Get year array for dynamic description
+	\param[out] yearArray Array of years
+	*/
+	void GetYearArray(notnull out array<int> yearArray)
+	{
+		CreateYearArray();
+		
+		foreach(int year : m_aYearArray)
+		{
+			yearArray.Insert(year);
+		}
+	}
+	
 	protected void CreateYearArray()
 	{
 		if (m_aYearArray.Count() != 0) return;
@@ -91,7 +105,6 @@ class SCR_DateEditorAttribute : SCR_BaseEditorAttribute
 		{
 			m_aYearArray.Insert(y);
 		}
-		
 	}
 	
 	protected int GetYearIndex(int year)

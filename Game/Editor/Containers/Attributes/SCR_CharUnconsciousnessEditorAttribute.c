@@ -3,9 +3,6 @@ class SCR_CharUnconsciousnessEditorAttribute : SCR_BaseEditorAttribute
 {
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
-		//Disabled for now
-		return null;
-		
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
 		if (!editableEntity) 
 			return null;

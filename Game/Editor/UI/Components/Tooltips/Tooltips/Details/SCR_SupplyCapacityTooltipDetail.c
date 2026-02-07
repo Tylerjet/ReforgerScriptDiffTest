@@ -20,10 +20,10 @@ class SCR_SupplyCapacityTooltipDetail: SCR_EntityTooltipDetail
 		if (!editableUiInfo.HasEntityLabel(EEditableEntityLabel.SERVICE_SUPPLY_STORAGE))
 			return false;
 		
-		if (SCR_GameModeCampaignMP.SUPPLY_DEPOT_CAPACITY >= 0)
-			text.SetTextFormat(m_SupplyFormattingPositive, SCR_GameModeCampaignMP.SUPPLY_DEPOT_CAPACITY.ToString());
+		if (SCR_CampaignMilitaryBaseComponent.SUPPLY_DEPOT_CAPACITY >= 0)
+			text.SetTextFormat(m_SupplyFormattingPositive, SCR_CampaignMilitaryBaseComponent.SUPPLY_DEPOT_CAPACITY.ToString());
 		else 
-			text.SetTextFormat(m_SupplyFormattingNegative, SCR_GameModeCampaignMP.SUPPLY_DEPOT_CAPACITY.ToString());
+			text.SetTextFormat(m_SupplyFormattingNegative, SCR_CampaignMilitaryBaseComponent.SUPPLY_DEPOT_CAPACITY.ToString());
 		
 		return true;
 	}

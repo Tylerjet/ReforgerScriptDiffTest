@@ -27,9 +27,10 @@ sealed class World: BaseWorld
 	\param stretch 			stretch of decal
 	\param lifetime			Lifetime in seconds, if created with zero or negative value it's used as static and the pointer to decal is returned
 	\param color				color of decal
+	\param atlasNum			which image num to take in case of atlas
 	\return Decal pointer for static decals or null if the decal is dynamic or wasn't created for some reason (invalid material, NoDecal flag, ...)
 	*/
-	proto external Decal CreateDecal(notnull IEntity entity, vector origin, vector project, float nearclip, float farclip, float angle, float size, float stretch, string materialName, float lifetime, int color);
+	proto external Decal CreateDecal(notnull IEntity entity, vector origin, vector project, float nearclip, float farclip, float angle, float size, float stretch, string materialName, float lifetime, int color, int atlasNum = 0);
 	/*!
 	Creates single visual mark, e.g. from shots, version with exact matrix
 	//when lifetime=0, pointer to decal is returned, that can be removed by RemoveDecal then
@@ -42,9 +43,10 @@ sealed class World: BaseWorld
 	\param stretch 			stretch of decal
 	\param lifetime			Lifetime in seconds, if created with zero or negative value it's used as static and the pointer to decal is returned
 	\param color				color of decal
+	\param atlasNum			which image num to take in case of atlas
 	\return Decal pointer for static decals or null if the decal is dynamic or wasn't created for some reason (invalid material, NoDecal flag, ...)
 	*/
-	proto external Decal CreateDecal2(notnull IEntity entity, vector matrix[4], float nearclip, float farclip, float size, float stretch, string materialName, float lifetime, int color);
+	proto external Decal CreateDecal2(notnull IEntity entity, vector matrix[4], float nearclip, float farclip, float size, float stretch, string materialName, float lifetime, int color, int atlasNum = 0);
 }
 
 /*!

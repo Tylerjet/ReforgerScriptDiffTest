@@ -82,7 +82,7 @@ class SCR_AnalogGauge : SCR_BaseAnalogGauge
 		if (!bSuccess)
 			return false;
 		
-		int sections = (int)(m_fValueRange / m_fSectionEveryNthValue);
+		int sections = (m_fValueRange / m_fSectionEveryNthValue);
 				
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		

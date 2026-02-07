@@ -61,6 +61,8 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 	protected ref SCR_DamagePhaseData m_InitialData;
 	
 	protected VehicleWheeledSimulation m_VehicleWheeledSimulation;
+	protected VehicleWheeledSimulation_SA m_VehicleWheeledSimulation_SA;
+
 	protected int m_iWheelIndex = -1;
 	
 	//------------------------------------------------------------------------------------------------
@@ -68,8 +70,17 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 	void SetWheelIndex(int wheelIndex)
 	{
 		m_iWheelIndex = wheelIndex;
-		if (m_iWheelIndex > -1 && m_VehicleWheeledSimulation && m_iWheelIndex < m_VehicleWheeledSimulation.WheelCount())
-			m_fWheelRadius = m_VehicleWheeledSimulation.WheelGetRadius(m_iWheelIndex);
+		
+		if(GetGame().GetIsClientAuthority())
+		{
+			if (m_iWheelIndex > -1 && m_VehicleWheeledSimulation && m_iWheelIndex < m_VehicleWheeledSimulation.WheelCount())
+				m_fWheelRadius = m_VehicleWheeledSimulation.WheelGetRadius(m_iWheelIndex);
+		}
+		else
+		{
+			if (m_iWheelIndex > -1 && m_VehicleWheeledSimulation_SA && m_iWheelIndex < m_VehicleWheeledSimulation_SA.WheelCount())
+				m_fWheelRadius = m_VehicleWheeledSimulation_SA.WheelGetRadius(m_iWheelIndex);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -93,7 +104,7 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 		
 		for (int i = 0; i < MAX_BONES; i++)
 		{
-			int boneIndex = GetOwner().GetBoneIndex(m_sTireJointNamePrefix + i.ToString());
+			int boneIndex = GetOwner().GetAnimation().GetBoneIndex(m_sTireJointNamePrefix + i.ToString());
 			if (boneIndex > -1)
 				m_WheelBones.Insert(boneIndex);
 		}
@@ -111,20 +122,41 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 			return;
 		
 		// Update the physics wheel radius
-		if (m_VehicleWheeledSimulation && m_fWheelRadius > 0)
+		if(GetGame().GetIsClientAuthority())
 		{
-			float targetWheelRadius = (0.5 + m_fInflation * 0.5) * m_fWheelRadius;
-			if (targetWheelRadius != m_VehicleWheeledSimulation.WheelGetRadius(m_iWheelIndex))
+			if (m_VehicleWheeledSimulation && m_fWheelRadius > 0)
 			{
-				m_VehicleWheeledSimulation.WheelSetRadiusState(m_iWheelIndex, targetWheelRadius);
-				
-				Physics physics = null;
-				auto parent = owner.GetParent();
-				if (parent) physics = parent.GetPhysics();
-				if (physics && !physics.IsActive())
-					physics.SetActive(ActiveState.ACTIVE);
+				float targetWheelRadius = (0.5 + m_fInflation * 0.5) * m_fWheelRadius;
+				if (targetWheelRadius != m_VehicleWheeledSimulation.WheelGetRadius(m_iWheelIndex))
+				{
+					m_VehicleWheeledSimulation.WheelSetRadiusState(m_iWheelIndex, targetWheelRadius);
+					
+					Physics physics = null;
+					auto parent = owner.GetParent();
+					if (parent) physics = parent.GetPhysics();
+					if (physics && !physics.IsActive())
+						physics.SetActive(ActiveState.ACTIVE);
+				}
 			}
 		}
+		else
+		{
+			if (m_VehicleWheeledSimulation_SA && m_fWheelRadius > 0)
+			{
+				float targetWheelRadius = (0.5 + m_fInflation * 0.5) * m_fWheelRadius;
+				if (targetWheelRadius != m_VehicleWheeledSimulation_SA.WheelGetRadius(m_iWheelIndex))
+				{
+					m_VehicleWheeledSimulation_SA.WheelSetRadiusState(m_iWheelIndex, targetWheelRadius);
+					
+					Physics physics = null;
+					auto parent = owner.GetParent();
+					if (parent) physics = parent.GetPhysics();
+					if (physics && !physics.IsActive())
+						physics.SetActive(ActiveState.ACTIVE);
+				}
+			}
+		}
+		
 		
 		// Handle deformation and deflation of the tire
 		vector floorNorm = vector.Up;
@@ -149,7 +181,7 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 		for (int i = 0; i < numBones; i++)
 		{
 			int boneIndex = m_WheelBones.Get(i);
-			owner.GetBoneMatrix(boneIndex, boneMatLocal);
+			owner.GetAnimation().GetBoneMatrix(boneIndex, boneMatLocal);
 			vector boneUp = boneMatLocal[2].Normalized();
 			boneUp = boneUp.Multiply3(wheelMat);
 			float boneFloorDot = Math.Clamp(floorNorm * boneUp, 0, 1);
@@ -180,7 +212,7 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 			localBoneMat[0] = vector.Right * widthScale;
 			localBoneMat[3] = vector.Forward * (heightOffset + squishHeightOffset) + vector.Right * sideOffset;
 			
-			owner.SetBoneMatrix(boneIndex, localBoneMat);
+			owner.GetAnimation().SetBoneMatrix(owner, boneIndex, localBoneMat);
 		}
 	}
 	
@@ -234,7 +266,13 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 		IEntity parent = owner.GetParent();
 		
 		if (parent)
-			m_VehicleWheeledSimulation = VehicleWheeledSimulation.Cast(parent.FindComponent(VehicleWheeledSimulation));
+		{
+			if(GetGame().GetIsClientAuthority())
+				m_VehicleWheeledSimulation = VehicleWheeledSimulation.Cast(parent.FindComponent(VehicleWheeledSimulation));
+			else
+				m_VehicleWheeledSimulation_SA = VehicleWheeledSimulation_SA.Cast(parent.FindComponent(VehicleWheeledSimulation_SA));
+
+		}
 	}
 #endif
 };

@@ -12,6 +12,12 @@ class SCR_EntitySpawnerSlotComponentClass : ScriptComponentClass
 
 	[Attribute(defvalue: "10", params: "0 inf", desc: "Maximum distance for rally point.", category: "Entity Spawner Slot")]
 	protected float m_fMaxRallyPointDistance;
+	
+	[Attribute(defvalue: "30", params: "1 inf", desc: "Maximum distance for teleporting characters out of slot.", category: "Entity Spawner")]
+	protected float m_fTeleportMaxDistance;
+	
+	[Attribute(defvalue: "3", params: "1 inf", desc: "Size of Cylinder used to search empty terrain position. Should be big enough to prevent empty position being too close to slot center.", category: "Entity Spawner")]
+	protected float m_fTeleportSearchSize;
 
 	//------------------------------------------------------------------------------------------------
 	float GetMaxRallyPointDistance()
@@ -36,6 +42,18 @@ class SCR_EntitySpawnerSlotComponentClass : ScriptComponentClass
 	{
 		return m_eSlotType;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetTeleportMaximumDistance()
+	{
+		return m_fTeleportMaxDistance;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetTeleportSearchSize()
+	{
+		return m_fTeleportSearchSize;
+	}
 };
 
 //------------------------------------------------------------------------------------------------
@@ -54,7 +72,8 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 	protected RplComponent m_RplComponent;
 	protected SCR_SpawnerSlotManager m_SlotManager;
 	protected SCR_EntityLabelPointComponent m_RallyPointLabelComponent;
-
+	protected ref array<ChimeraCharacter> m_aCharacterArray;
+	
 	//------------------------------------------------------------------------------------------------
 	//! Returns true, if SCR_EntityLabelPointComponent is in range defined by m_fMaxRallyPointDistance
 	bool IsEntityLabelInRange(notnull SCR_EntityLabelPointComponent labelComp)
@@ -125,7 +144,111 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 
 		return trace.TraceEnt;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	//! Moves away all characters from slot, if there is suitable empty position in vicinity.
+	void MoveCharactersFromSlot()
+	{
+		if (!m_RplComponent || m_RplComponent.IsProxy())
+			return;
+		
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		if (!playerManager)
+			return;
+		
+		SCR_EntitySpawnerSlotComponentClass prefabData = SCR_EntitySpawnerSlotComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!prefabData)
+			return;
+		
+		//Get All characters in slot bounds
+		array<ChimeraCharacter> characterArray = {};
+		GetCharactersInSlot(characterArray);
+		
+		//Obtain all empty terrain positions
+		array <vector> positions = {};
+		if (SCR_WorldTools.FindAllEmptyTerrainPositions(positions, GetOwner().GetOrigin(), prefabData.GetTeleportMaximumDistance(), prefabData.GetTeleportSearchSize()) == 0)
+				return;
+		
+		vector transform[4];
+		PlayerController playerController;
+		SCR_SpawnerRequestComponent requestComp;
+		SCR_EditableEntityComponent editableComp;
+		int playerId;
+		
+		//Move characters to found free empty terrain positions
+		foreach (int i, ChimeraCharacter character : characterArray)
+		{	
+			//If there is not enough Empty terrain positions, stop teleporting characters
+			if (!positions.IsIndexValid(i))
+				break;
+			
+			playerId = playerManager.GetPlayerIdFromControlledEntity(character);	
+			if (playerId > 0)
+			{
+				playerController = playerManager.GetPlayerController(playerId);
+				requestComp = SCR_SpawnerRequestComponent.Cast(playerController.FindComponent(SCR_SpawnerRequestComponent));
+				if (requestComp)
+					requestComp.RequestPlayerTeleport(positions[i]);
+			}
+			else
+			{
+				editableComp = SCR_EditableEntityComponent.Cast(character.FindComponent(SCR_EditableEntityComponent));
+				if (!editableComp)
+					continue;
+		
+				character.GetWorldTransform(transform);
+				transform[3] = positions[i];
+				SCR_TerrainHelper.OrientToTerrain(transform);
+		
+				editableComp.SetTransform(transform);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get all ChimeraCharacters in slot. Returns count.
+	//! \param characterArray outs array containing all ChimeraCharacters in slot
+	int GetCharactersInSlot(out array<ChimeraCharacter> characterArray)
+	{
+		SCR_EntitySpawnerSlotComponentClass prefabData = SCR_EntitySpawnerSlotComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!prefabData)
+			return 0;
+		
+		vector transform[4];
+		GetOwner().GetTransform(transform);
+		
+		m_aCharacterArray = {};
+		GetGame().GetWorld().QueryEntitiesByOBB(prefabData.GetMinBoundsVector(), prefabData.GetMaxBoundsVector(), transform, CharacterFoundCallback, FilterCharactersCallback);
+		characterArray.InsertAll(m_aCharacterArray);
+		
+		m_aCharacterArray = null;
+		return characterArray.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Callback used in GetCharacterInSlot for query. Adds living ChimeraCharacters into array.
+	protected bool CharacterFoundCallback(IEntity ent)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(ent);
+		if (character && m_aCharacterArray)
+		{
+			if (!IsEntityDestroyed(character))
+				m_aCharacterArray.Insert(character);
+		}
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Filtering used in GetCharacterInSlot for query.
+	protected bool FilterCharactersCallback(IEntity ent)
+	{
+		if (ent.IsInherited(ChimeraCharacter))
+			return true;
+		
+		return false;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Callback for TracePosition in IsOccupied. Can be overriden to implement custom conditions for checks in traces
 	protected bool TraceCallback(IEntity ent)
@@ -138,13 +261,13 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 		EntityFlags entityFlags = ent.GetFlags();
 		if (entityFlags & EntityFlags.PROXY)
 			return false;
-
+		
+		if (ent.IsInherited(ChimeraCharacter))
+				return false;
+		
 		// Filter out dead bodies and wrecks
 		if (IsEntityDestroyed(ent))
 		{
-			if (ent.IsInherited(ChimeraCharacter))
-				return false;
-
 			if (ent.IsInherited(Vehicle) && m_RplComponent)
 			{
 				if (!m_RplComponent.IsProxy())
@@ -192,7 +315,7 @@ class SCR_EntitySpawnerSlotComponent : ScriptComponent
 
 		return true;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{

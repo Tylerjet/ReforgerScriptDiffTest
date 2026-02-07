@@ -27,7 +27,12 @@ class SCR_NotificationEditableEntityAndNumber : SCR_NotificationDisplayData
 		float display4 = param4;
 		display4 = param4 / m_iNumberDivider;
 		
-		data.SetNotificationTextEntries(GetEditableEntityName(entityID), display1.ToString(), display2.ToString(), display3.ToString(), display4.ToString());
+		string entityName;
+		data.GetNotificationTextEntries(entityName);
+		if (!GetEditableEntityName(entityID, entityName))
+			return string.Empty;
+		
+		data.SetNotificationTextEntries(entityName, display1.ToString(), display2.ToString(), display3.ToString(), display4.ToString());
 		return super.GetText(data);
 	}
 };

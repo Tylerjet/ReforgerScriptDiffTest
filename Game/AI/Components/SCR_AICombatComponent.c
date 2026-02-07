@@ -43,13 +43,14 @@ class SCR_AICombatComponent : ScriptComponent
 	protected static const int	ENEMIES_SIMPLIFY_THRESHOLD = 12;
 	protected static const float	RIFLE_BURST_RANGE_SQ = 50*50;
 	
-	protected static const float ASSIGNED_TARGETS_SCORE_INCREMENT = 20.0;
+	protected static const float ASSIGNED_TARGETS_SCORE_INCREMENT = 30.0;
+	protected static const float ENDANGERING_TARGETS_SCORE_INCREMENT = 15.0;
 	
 	// The object wrapping the weapon&target selection algorithm
 	protected static const float TARGET_MAX_LAST_SEEN_DIRECT_ATTACK = 1.6;
-	protected static const float TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK = 7.0;
 	protected static const float TARGET_MAX_DISTANCE_INFANTRY = 500.0;
 	protected static const float TARGET_MAX_DISTANCE_VEHICLE = 700.0;
+	protected static const float TARGET_MAX_DISTANCE_DISARMED = 0.0;		// Max distance at which disarmed targets are considered for attack. Now it's 0, so they never shoot disarmed targets
 	protected static const float TARGET_MAX_TIME_SINCE_ENDANGERED = 5.0; 	// Max time since we were endangered to consider the enemy target endangering
 	protected static const float TARGET_INVISIBLE_TIME = 5.0; 				// how long in until invisible target becomes logically invisible
 	protected static const float TARGET_INVESTIGATE_TIME = 7.0;				// how long before investigating the target's location 
@@ -115,6 +116,7 @@ class SCR_AICombatComponent : ScriptComponent
 	private ref BaseTarget	m_SelectedTarget;
 	protected ref BaseTarget m_SelectedRetreatTarget;				// Target we should retreat from
 	protected ref array<IEntity> m_aAssignedTargets = {};			// Array with assigned targets. Their score is increased.
+	protected SCR_AITargetClusterState m_TargetClusterState;		// Assigned target cluster from our group
 	protected EAIUnitType m_eExpectedEnemyType = EAIUnitType.UnitType_Infantry;	// Enemy type we expect to fight
 	protected ResourceName m_SelectedWeaponResource;				// selected weapon handle tree read from config
 
@@ -128,14 +130,7 @@ class SCR_AICombatComponent : ScriptComponent
 	protected EAIUnitType m_eUnitTypesCanAttack;
 	protected BaseCompartmentSlot m_WeaponEvaluationCompartment; // Compartment at previous weapon evaluation
 	
-	// Weapon selection against expected target (SetExpectedEnemyType, etc)
-	protected BaseWeaponComponent m_ExpectedWeaponComp;
-	protected BaseMagazineComponent m_ExpectedMagazineComp;
-	protected int m_iExpectedMuzzle;
-	
 	// Weapon selection updates
-	protected float m_fNextExpectedWeaponEvaluation_ms = 0;
-	protected const float EXPECTED_WEAPON_UPDATE_PERIOD_MS = 10000;
 	protected float m_fNextWeaponTargetEvaluation_ms = 0;
 	protected const float WEAPON_TARGET_UPDATE_PERIOD_MS = 500;
 	
@@ -288,7 +283,18 @@ class SCR_AICombatComponent : ScriptComponent
 		}
 		
 		bool useCompartmentWeapons = m_AIInfo.HasUnitState(EUnitState.IN_TURRET); // True when we are in a turret
-		bool selectedWpnTarget = m_WeaponTargetSelector.SelectWeaponAndTarget(m_aAssignedTargets, ASSIGNED_TARGETS_SCORE_INCREMENT, useCompartmentWeapons, weaponTypesBlacklist: weaponBlacklist);
+		
+		// Which assigned targets array to use?
+		array<IEntity> assignedTargets;
+		if (m_TargetClusterState && m_TargetClusterState.m_Cluster && m_TargetClusterState.m_Cluster.m_aEntities)
+			assignedTargets = m_TargetClusterState.m_Cluster.m_aEntities;
+		else
+			assignedTargets = m_aAssignedTargets;
+		
+		bool selectedWpnTarget = m_WeaponTargetSelector.SelectWeaponAndTarget(assignedTargets,
+			ASSIGNED_TARGETS_SCORE_INCREMENT, ENDANGERING_TARGETS_SCORE_INCREMENT,
+			useCompartmentWeapons, weaponTypesBlacklist: weaponBlacklist);
+		
 		m_eUnitTypesCanAttack = m_WeaponTargetSelector.GetUnitTypesCanAttack();
 		if (selectedWpnTarget)
 		{
@@ -410,21 +416,6 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void EvaluateExpectedWeapon()
-	{
-		float worldTime = GetGame().GetWorld().GetWorldTime();
-		if (worldTime < m_fNextExpectedWeaponEvaluation_ms)
-			return;
-		
-		bool useCompartmentWeapons = m_AIInfo.HasUnitState(EUnitState.IN_TURRET);
-		m_WeaponTargetSelector.SelectWeaponAgainstUnitType(m_eExpectedEnemyType, useCompartmentWeapons);
-		m_WeaponTargetSelector.GetSelectedWeapon(m_ExpectedWeaponComp, m_iExpectedMuzzle, m_ExpectedMagazineComp);
-		
-		// Evaluate it periodically since the situation might change (inventory, surrounding context, etc)
-		m_fNextExpectedWeaponEvaluation_ms = worldTime + EXPECTED_WEAPON_UPDATE_PERIOD_MS;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	// Checks amount of magazines for given weapon, and if low on ammo, reports that to group
 	bool EvaluateLowAmmo(BaseWeaponComponent weaponComp, int muzzleId)
 	{
@@ -504,12 +495,12 @@ class SCR_AICombatComponent : ScriptComponent
 		// If target pos is not provided, find a target which we are going to check against
 		if (!targetPosProvided)
 		{
-			BaseTarget target = m_Perception.GetClosestTarget(ETargetCategory.DETECTED, DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S);
+			BaseTarget target = m_Perception.GetClosestTarget(ETargetCategory.DETECTED, DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S, DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S);
 			if (target)
 				targetPos = target.GetLastDetectedPosition();
 			else
 			{
-				target = m_Perception.GetClosestTarget(ETargetCategory.ENEMY, DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S);
+				target = m_Perception.GetClosestTarget(ETargetCategory.ENEMY, DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S, DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S);
 				if (target)
 					targetPos = target.GetLastSeenPosition();
 			}
@@ -576,7 +567,7 @@ class SCR_AICombatComponent : ScriptComponent
 		
 		if (addGetOut)
 		{
-			SCR_AIActionBase prevGetOutAction = m_Utility.FindActionOfType(SCR_AIGetOutVehicle);
+			AIActionBase prevGetOutAction = m_Utility.FindActionOfType(SCR_AIGetOutVehicle);
 			if (prevGetOutAction)
 				return;
 			
@@ -586,7 +577,7 @@ class SCR_AICombatComponent : ScriptComponent
 		
 		if (addInvestigate)
 		{
-			SCR_AIActionBase prevInvestigate = m_Utility.FindActionOfType(SCR_AIMoveAndInvestigateBehavior);
+			AIActionBase prevInvestigate = m_Utility.FindActionOfType(SCR_AIMoveAndInvestigateBehavior);
 			if (!prevInvestigate)
 			{
 				SCR_AIMoveAndInvestigateBehavior moveAndInvestigateAction = new SCR_AIMoveAndInvestigateBehavior(m_Utility, null, targetPos, SCR_AIActionBase.PRIORITY_BEHAVIOR_DISMOUNT_TURRET_INVESTIGATE, true);
@@ -596,7 +587,7 @@ class SCR_AICombatComponent : ScriptComponent
 		
 		if (addGetIn)
 		{	
-			SCR_AIActionBase prevGetInAction = m_Utility.FindActionOfType(SCR_AIGetInVehicle);
+			AIActionBase prevGetInAction = m_Utility.FindActionOfType(SCR_AIGetInVehicle);
 			if (!prevGetInAction)
 			{
 				SCR_AIGetInVehicle getInAction = new SCR_AIGetInVehicle(m_Utility, null, compartmentSlot.GetVehicle(), ECompartmentType.Turret, SCR_AIActionBase.PRIORITY_BEHAVIOR_DISMOUNT_TURRET_GET_IN);
@@ -753,12 +744,17 @@ class SCR_AICombatComponent : ScriptComponent
 		if (dType != EDamageType.BLEEDING || !m_Utility || !m_Utility.m_AIInfo)
 			return;
 		
+		SCR_AIActionBase currentAction = SCR_AIActionBase.Cast(m_Utility.GetCurrentAction());
+		if (!currentAction)
+			return;
+		float priorityLevelClamped = currentAction.GetRestrictedPriorityLevel();
+		
 		if (m_Utility.m_AIInfo.HasRole(EUnitRole.MEDIC))
 		{
 			if (!m_Utility.HasActionOfType(SCR_AIHealBehavior))
 			{
 				// If we can heal ourselves, add Heal Behavior.
-				SCR_AIHealBehavior behavior = new SCR_AIHealBehavior(m_Utility, null, m_Utility.m_OwnerEntity,true);
+				SCR_AIHealBehavior behavior = new SCR_AIHealBehavior(m_Utility, null, m_Utility.m_OwnerEntity, true, priorityLevel: priorityLevelClamped);
 				m_Utility.AddAction(behavior);
 			}
 		}
@@ -963,7 +959,7 @@ class SCR_AICombatComponent : ScriptComponent
 			if (!friendlyCharacterEnt)
 				continue;
 			
-			if (SCR_AIIsCharacterInCone(friendlyCharacterEnt, muzzleMatrix[3], muzzleMatrix[2], FRIENDLY_AIM_SAFE_DISTANCE))
+			if (Math3D.IntersectionPointCylinder(friendlyCharacterEnt.AimingPosition(), muzzleMatrix[3], muzzleMatrix[2], FRIENDLY_AIM_SAFE_DISTANCE))
 			{
 				return friendlyEntity;
 			}
@@ -973,12 +969,22 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetAssignedTargets(array<IEntity> assignedTargets)
+	//! Either array of targets or target cluster must be provided
+	void SetAssignedTargets(array<IEntity> assignedTargets, SCR_AITargetClusterState clusterState)
 	{
 		m_aAssignedTargets.Clear();
 		
 		if (assignedTargets)
 			m_aAssignedTargets.Copy(assignedTargets);
+		else if (clusterState)
+			m_TargetClusterState = clusterState;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ResetAssignedTargets()
+	{
+		m_aAssignedTargets.Clear();
+		m_TargetClusterState = null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1030,13 +1036,22 @@ class SCR_AICombatComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//! Returns weapon which combat component thinks is expected to be used this situation
 	//! This should be used for selecting fallback weapon in a situation without an actively attacked target
-	void GetExpectedWeapon(out BaseWeaponComponent outWeaponComp, out int outMuzzleId, out BaseMagazineComponent outMagazineComp)
+	void EvaluateExpectedWeapon(out BaseWeaponComponent outWeaponComp, out int outMuzzleId, out BaseMagazineComponent outMagazineComp)
 	{
-		if (m_ExpectedWeaponComp)
+		bool useCompartmentWeapons = m_AIInfo.HasUnitState(EUnitState.IN_TURRET);
+		bool success = m_WeaponTargetSelector.SelectWeaponAgainstUnitType(m_eExpectedEnemyType, useCompartmentWeapons);
+		
+		if (success)
 		{
-			outWeaponComp = m_ExpectedWeaponComp;
-			outMuzzleId = m_iExpectedMuzzle;
-			outMagazineComp = m_ExpectedMagazineComp;
+			BaseWeaponComponent weaponComp;
+			int muzzleId;
+			BaseMagazineComponent magazineComp;
+			
+			m_WeaponTargetSelector.GetSelectedWeapon(weaponComp, muzzleId, magazineComp);
+			
+			outWeaponComp = weaponComp;
+			outMuzzleId = muzzleId;
+			outMagazineComp = magazineComp;
 		}
 		else
 		{
@@ -1094,7 +1109,6 @@ class SCR_AICombatComponent : ScriptComponent
 		{
 			float worldTime = world.GetWorldTime();
 			m_fFriendlyAimNextCheckTime_ms = worldTime + Math.RandomFloat(0, FRIENDLY_AIM_MIN_UPDATE_INTERVAL_MS);
-			m_fNextExpectedWeaponEvaluation_ms = worldTime + Math.RandomFloat(0, EXPECTED_WEAPON_UPDATE_PERIOD_MS);
 			m_fNextWeaponTargetEvaluation_ms = worldTime + Math.RandomFloat(0, WEAPON_TARGET_UPDATE_PERIOD_MS);
 		}
 		
@@ -1117,10 +1131,10 @@ class SCR_AICombatComponent : ScriptComponent
 		AIControlComponent ctrl = AIControlComponent.Cast(owner.FindComponent(AIControlComponent));
 		if (ctrl)
 		{
-			AIAgent agent = ctrl.GetAIAgent();
+			SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(ctrl.GetAIAgent());
 			if (agent)
 			{
-				m_AIInfo = SCR_AIInfoComponent.Cast(agent.FindComponent(SCR_AIInfoComponent));
+				m_AIInfo = agent.m_InfoComponent;
 				m_ConfigComponent = SCR_AIConfigComponent.Cast(agent.FindComponent(SCR_AIConfigComponent));
 				m_Utility = SCR_AIUtilityComponent.Cast(agent.FindComponent(SCR_AIUtilityComponent));
 			}
@@ -1152,8 +1166,10 @@ class SCR_AICombatComponent : ScriptComponent
 	protected void InitWeaponTargetSelector(IEntity owner)
 	{
 		m_WeaponTargetSelector.Init(owner);
-		m_WeaponTargetSelector.SetSelectionProperties(TARGET_MAX_LAST_SEEN_DIRECT_ATTACK, TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK,
-		TARGET_MAX_DISTANCE_INFANTRY, TARGET_MAX_DISTANCE_VEHICLE, TARGET_MAX_TIME_SINCE_ENDANGERED);
+		
+		// maxLastSeenIndirect must be consistent with conditions in ShouldAttackEndForTarget, therefore we use TARGET_INVISIBLE_TIME here
+		m_WeaponTargetSelector.SetSelectionProperties(TARGET_MAX_LAST_SEEN_DIRECT_ATTACK, TARGET_INVISIBLE_TIME,
+		TARGET_MAX_DISTANCE_INFANTRY, TARGET_MAX_DISTANCE_VEHICLE, TARGET_MAX_TIME_SINCE_ENDANGERED, TARGET_MAX_DISTANCE_DISARMED);
 		
 		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_Infantry,			100.0,	-0.1); // At short range we prefer to shoot enemies in vehicle
 		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_VehicleUnarmored,	99.0,	-0.08);
@@ -1234,6 +1250,24 @@ class SCR_AICombatComponent : ScriptComponent
 		Print(string.Format("FindTargetByEntity: did not find target: %1", ent), LogLevel.WARNING);
 		#endif
 		return null;
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	void UpdateLastSeenPosition(IEntity entity, notnull SCR_AITargetInfo targetInfo)
+	{
+		BaseTarget tgt = m_Perception.FindTargetPerceptionObject(entity);
+		if (!tgt)
+			return;
+		
+		if (targetInfo.m_fTimestamp > tgt.GetTimeLastSeen())
+			tgt.UpdateLastSeenPosition(targetInfo.m_vWorldPos, targetInfo.m_fTimestamp);
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	void UpdateLastSeenPosition(notnull BaseTarget tgt, notnull SCR_AITargetInfo targetInfo)
+	{		
+		if (targetInfo.m_fTimestamp > tgt.GetTimeLastSeen())
+			tgt.UpdateLastSeenPosition(targetInfo.m_vWorldPos, targetInfo.m_fTimestamp);
 	}
 	
 	#ifdef AI_DEBUG

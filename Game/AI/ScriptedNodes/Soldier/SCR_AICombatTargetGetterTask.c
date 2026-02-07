@@ -37,11 +37,12 @@ class SCR_AICombatTargetGetterTask : AITaskScripted
 		if (!entEnemy)
 			return Fail();
 		
-		m_TargetInfo = new SCR_AITargetInfo(entEnemy, targetEnemy.GetLastSeenPosition(), targetEnemy.GetTimeLastSeen());
+		m_TargetInfo = new SCR_AITargetInfo();
+		m_TargetInfo.Init(entEnemy, worldPos: targetEnemy.GetLastSeenPosition(), timestamp: targetEnemy.GetTimeLastSeen());
 		
 		SetVariableOut(ENEMY_ENTITY_PORT, entEnemy);
-		SetVariableOut(ENEMY_LAST_SEEN_POS_PORT, m_TargetInfo.m_vLastSeenPosition);
-		SetVariableOut(ENEMY_LAST_SEEN_TIME_PORT, m_TargetInfo.m_fLastSeenTime);
+		SetVariableOut(ENEMY_LAST_SEEN_POS_PORT, m_TargetInfo.m_vWorldPos);
+		SetVariableOut(ENEMY_LAST_SEEN_TIME_PORT, m_TargetInfo.m_fTimestamp);
 		SetVariableOut(ENEMY_TARGET_INFO_PORT, m_TargetInfo);
 		return ENodeResult.SUCCESS;
 	}

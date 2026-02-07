@@ -65,4 +65,24 @@ class SCR_ConfigListComponent : ScriptedWidgetComponent
 		
 		return null;
 	}
+	
+	//-------------------------------------------------------------------------------------------
+	//! Go through list and check if values are correct 
+	//! Return first invalid entry widget  
+	//! Return null if all values are valid
+	Widget GetInvalidEntry()
+	{
+		// Go through entries list
+		for (int i = 0, count = m_aInitialEntryList.Count(); i < count; i++)
+		{
+			if (!m_aInitialEntryList[i].CheckValidity())
+			{
+				// Invalid entry widget
+				return m_aInitialEntryList[i].GetEntryRoot();
+			}
+		}
+		
+		// Is valid
+		return null;
+	}
 };

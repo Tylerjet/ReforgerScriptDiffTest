@@ -53,8 +53,7 @@ class SCR_AdjustSignalAction: ScriptedSignalUserAction
 		if (m_SoundComponent && m_sActionStartSoundEvent != string.Empty)
 			m_SoundComponent.SoundEvent(m_sActionStartSoundEvent);
 				
-		SCR_PlayerController pc = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		m_bIsAdjustedByPlayer = pc && pc.GetMainEntity() == pUserEntity;
+		m_bIsAdjustedByPlayer = SCR_PlayerController.GetLocalControlledEntity() == pUserEntity;
 		
 		if (!m_bIsAdjustedByPlayer)
 			return;

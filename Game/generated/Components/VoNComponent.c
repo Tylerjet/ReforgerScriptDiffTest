@@ -13,6 +13,9 @@ class VoNComponentClass: GameComponentClass
 {
 }
 
+/*!
+Component responsible for recording and playback of voice over network.
+*/
 class VoNComponent: GameComponent
 {
 	/*!
@@ -23,7 +26,7 @@ class VoNComponent: GameComponent
 	//! Sets communication method used.
 	proto external void SetCommMethod(ECommMethod type);
 	proto external ECommMethod GetCommMethod();
-	//! Sets the radio component used for VoN, when SquadRadio is selected
+	//! Sets the transceiver used for VoN transmission
 	proto external void SetTransmitRadio(BaseTransceiver transceiver);
 	proto external BaseTransceiver GetTransmitRadio();
 	//! Transfer AI sound message through VoN.
@@ -32,13 +35,13 @@ class VoNComponent: GameComponent
 	// callbacks
 
 	/*!
-	Event triggered when VoN is capturing
-	\param radio Radio component used. Null for direct.
+	Event polled each frame while component is recording audio
+	\param transmitter Transceiver used. Null if only direct speech.
 	*/
 	event protected void OnCapture(BaseTransceiver transmitter);
 	/*!
-	Event called when VoNComponent receives
-	\param playerId Senders PlayerId matching player in the PlayerManager
+	Event invoked when component receives audio data for playback
+	\param playerId Senders PlayerId
 	\param receiver Receiving transceiver
 	\param frequency Frequency in kHz, on which the transmission came from. Can be different from the frequency which transceiver have set. This is very questionable and could be changed in future.
 	\param quality Value in range <0,1> describing quality of the transmission

@@ -78,6 +78,6 @@ class SCR_ImageSetFormatParam: SCR_BaseFormatParam
 	
 	override string GetParam()
 	{
-		return string.Format("<image set='%1' name='2'/>", m_ImageSet, m_sName);
+		return string.Format("<image set='%1' name='%2'/>", m_ImageSet, m_sName);
 	}
 };

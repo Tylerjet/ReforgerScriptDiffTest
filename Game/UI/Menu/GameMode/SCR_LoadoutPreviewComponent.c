@@ -19,7 +19,7 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	IEntity SetPreviewedLoadout(notnull SCR_BasePlayerLoadout loadout)
+	IEntity SetPreviewedLoadout(notnull SCR_BasePlayerLoadout loadout, PreviewRenderAttributes attributes = null)
 	{
 		if (!m_bReloadLoadout)
 			return null;
@@ -39,7 +39,7 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 		}
 		
 		ResourceName resName = loadout.GetLoadoutResource();
-		m_PreviewManager.SetPreviewItemFromPrefab(m_wPreview, resName);
+		m_PreviewManager.SetPreviewItemFromPrefab(m_wPreview, resName, attributes);
 
 		return m_PreviewManager.ResolvePreviewEntityForPrefab(resName);
 	}
@@ -51,11 +51,11 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetPreviewManagerEntity (ItemPreviewManagerEntity instance)
+	void SetPreviewManagerEntity(ItemPreviewManagerEntity instance)
 	{
 		m_PreviewManager = instance;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	ItemPreviewWidget GetItemPreviewWidget()
 	{

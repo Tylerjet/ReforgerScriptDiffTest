@@ -7,6 +7,8 @@ class SCR_NotificationsComponentClass: ScriptComponentClass
 	//Notification Display Data Map
 	protected ref map<ENotification, ref SCR_NotificationDisplayData> m_mNotificationDisplayDataMap = new map<ENotification, ref SCR_NotificationDisplayData>;
 	
+	protected ref SCR_NotificationConfig notificationConfig;
+	
 	/*!
 	Get notification display data from notification ID
 	\param notificationID ID of notification
@@ -25,34 +27,29 @@ class SCR_NotificationsComponentClass: ScriptComponentClass
 		return notificationData;
 	}
 	
+	
+	array<string> GetStickyNotifications()
+	{
+		return notificationConfig.GetStickyNotifications();
+	}
+	
+	array<ref SCR_NotificationDisplayColor> GetNotificationDisplayColor()
+	{
+		return notificationConfig.GetNotificationDisplayColor();
+	}
+	
 	//~ Constructor creates notification map for the system to get the notification data for each ENotification
 	void SCR_NotificationsComponentClass(BaseContainer prefab)
 	{
 		//~ Notification map already filled
 		if (!m_mNotificationDisplayDataMap.IsEmpty())
 			return;
-		
-		//~ Load resource
-		Resource configResource = Resource.Load(m_sNotificationConfig);
-		if (!configResource)
-		{
-			Print(string.Format("'SCR_NotificationsComponentClass' failed to load notifications config: '%1' at the Resource.Load step!", m_sNotificationConfig), LogLevel.ERROR);
-			return;
-		}
-		
-		//~ Get base container
-		BaseContainer configBaseContainer = configResource.GetResource().ToBaseContainer();
-		if (!configBaseContainer)
-		{
-			Print(string.Format("'SCR_NotificationsComponentClass' failed to load notifications config: '%1' at the BaseContainer step!", m_sNotificationConfig), LogLevel.ERROR);
-			return;
-		}
-		
+
 		//~ Get config
-		SCR_NotificationConfig notificationConfig = SCR_NotificationConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(configBaseContainer));
+		notificationConfig = SCR_NotificationConfig.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sNotificationConfig, true));
 		if (!notificationConfig)
 		{
-			Print(string.Format("'SCR_NotificationsComponentClass' failed to load notifications config: '%1' at the create instance step!", m_sNotificationConfig), LogLevel.ERROR);
+			Print("'SCR_NotificationsComponentClass' failed to load notifications config!", LogLevel.ERROR);
 			return;
 		}
 		
@@ -66,7 +63,7 @@ class SCR_NotificationsComponentClass: ScriptComponentClass
 			if (!m_mNotificationDisplayDataMap.Contains(data[i].m_NotificationKey))
             	m_mNotificationDisplayDataMap.Set(data[i].m_NotificationKey, data[i]);
 			else
-				Print("Notification data in 'SCR_NotificationsLogComponent' has duplicate notification info key: '" + typename.EnumToString(ENotification, data[i].m_NotificationKey) + "'. There should only be one of each key!", LogLevel.WARNING);
+				Print("Notification data in 'SCR_NotificationsLogDisplay' has duplicate notification info key: '" + typename.EnumToString(ENotification, data[i].m_NotificationKey) + "'. There should only be one of each key!", LogLevel.WARNING);
         }
 	}		
 };
@@ -86,7 +83,7 @@ class SCR_NotificationsComponent : ScriptComponent
 	static const int NOTIFICATION_DELETE_TIME = 30;
 	
 	//How many notifications are remembered in history.
-	static const int NOTIFICATION_HISTORY_LENGHT = 10;
+	static const int NOTIFICATION_HISTORY_LENGTH = 10;
 	
 	//Hot fix for when player names cannot be found
 	protected ref map <int, string> m_mPlayerNameHistory = new ref map <int, string>;
@@ -950,7 +947,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		
 		//--- Save to history
 		m_aHistory.InsertAt(entry, 0);
-		m_aHistory.Resize(Math.Min(m_aHistory.Count(), NOTIFICATION_HISTORY_LENGHT));
+		m_aHistory.Resize(Math.Min(m_aHistory.Count(), NOTIFICATION_HISTORY_LENGTH));
 		
 		//--- Trigger event to be captured by other systems
 		Event_OnNotification.Invoke(entry);
@@ -965,6 +962,32 @@ class SCR_NotificationsComponent : ScriptComponent
 		//Start updating notification times if not yet done
 		if (!m_bIsUpdatingNotificationData)
 			UpdateNotificationData(true, GetOwner());
+	}
+	
+	/*!
+	Get Sticky notificatons Widget names from Config
+	\retrun String array
+	!*/
+	array<string> GetStickyNotifications()
+	{
+		SCR_NotificationsComponentClass notificationClass = SCR_NotificationsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!notificationClass)
+			return null;
+		
+		return notificationClass.GetStickyNotifications();
+	}
+	
+	/*!
+	Get Notification colors
+	\retrun SCR_NotificationDisplayColor array
+	!*/
+	array<ref SCR_NotificationDisplayColor> GetNotificationDisplayColor()
+	{
+		SCR_NotificationsComponentClass notificationClass = SCR_NotificationsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!notificationClass)
+			return null;
+		
+		return notificationClass.GetNotificationDisplayColor();
 	}
 	
 	//======================== GET NOTIFICATION DISPLAY DATA ========================\\

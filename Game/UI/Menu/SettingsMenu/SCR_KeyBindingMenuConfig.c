@@ -10,6 +10,12 @@ class SCR_KeyBindingMenuConfig : Managed
 {			
 	[Attribute("", UIWidgets.Object, "Description", "")]
 	ref array<ref SCR_KeyBindingCategory> keyBindingCategories;
+	
+	[Attribute("", UIWidgets.Object, "Input filters available", "")]
+	ref array<ref SCR_KeyBindingFilter> inputFilters;
+	
+	[Attribute("", UIWidgets.Object, "Addition binds able to be manually bound", "")]
+	ref array<ref SCR_KeyBindingBind> inputBinds;
 };
 
 
@@ -37,6 +43,24 @@ class SCR_KeyBindingCategory
 	
 	[Attribute("", UIWidgets.Object, "Description", "")]
 	ref array<ref SCR_KeyBindingEntry> keyBindingEntries;
-	
-	
 };
+
+[BaseContainerProps("", "Input filters"), BaseContainerCustomTitleField("name")]
+class SCR_KeyBindingFilter
+{	
+	[Attribute("", UIWidgets.Auto, "Name of the filter use the same name as defined in enfusion", "")]
+	string filterString;
+	
+	[Attribute("", UIWidgets.Auto, "Display name of filter", "")]
+	string filterDisplayName;
+}
+
+[BaseContainerProps("", "Custom keybinds"), BaseContainerCustomTitleField("name")]
+class SCR_KeyBindingBind
+{	
+	[Attribute("", UIWidgets.Auto, "Name of the bind use the same name as defined in enfusion", "")]
+	string bindString;
+	
+	[Attribute("", UIWidgets.Auto, "Display name of bind", "")]
+	string bindDisplayName;
+}

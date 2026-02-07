@@ -1,4 +1,4 @@
-enum EIconType
+enum SCR_EIconType
 {
 	NONE,
 	BASE,
@@ -11,26 +11,23 @@ enum EIconType
 
 class SCR_MapUIElement : ScriptedWidgetComponent
 {
+	protected SCR_MapUIElementContainer m_Parent;
 	protected static SCR_MapUIElement s_SelectedElement;
-	protected SCR_MapCampaignUI m_Par;
-	protected MapItem m_MapItem;
+
 	protected Widget m_wRoot;
-	protected Widget m_wBaseFrame;
+
+	protected MapItem m_MapItem; // todo@lk: delet
+
 	protected ImageWidget m_wImage;
-	protected Widget m_wBaseIcon;
 	protected ImageWidget m_wGradient;
 	protected ImageWidget m_wSelectImg;
 	protected ImageWidget m_wHighlightImg;
-	protected Widget m_wAntennaImg;
+
 	protected bool m_bIsSelected;
-	protected bool m_bIsHovering;
 	protected const float ANIM_SPEED = 20;
-	protected EIconType m_eIconType;
+	protected SCR_EIconType m_eIconType;
 	protected bool m_bVisible = false;
 
-	[Attribute("{F7E8D4834A3AFF2F}UI/Imagesets/Conflict/conflict-icons-bw.imageset")]
-	protected ResourceName m_sImageSet;
-	
 	[Attribute("{8479B3B5347DF5CF}UI/Imagesets/MilitarySymbol/ID_D.imageset")]
 	protected ResourceName m_sImageSetARO;
 	
@@ -42,26 +39,44 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 
 	[Attribute(SCR_SoundEvent.SOUND_MAP_HOVER_BASE)]
 	protected string m_sSoundBase;
+
 	[Attribute(SCR_SoundEvent.SOUND_MAP_HOVER_ENEMY)]
 	protected string m_sSoundEnemyBase;
+
 	[Attribute(SCR_SoundEvent.SOUND_MAP_HOVER_TRANS_TOWER)]
 	protected string m_sSoundRelay;
+
 	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_HOVER)]
-	protected string m_sSoundTask;	
+	protected string m_sSoundTask;
+
 	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_HOVER)]
 	protected string m_sSoundService;
+
 	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_HOVER)]
-	protected string m_sSoundHover;	
+	protected string m_sSoundHover;
+
 	[Attribute()]
 	ref Color m_UnknownFactionColor;
+
 	protected string m_sName;
 
-	static ref ScriptInvoker Event_OnPointSelected = new ScriptInvoker();
+	//------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		m_wRoot = w;
+
+		m_wImage = ImageWidget.Cast(w.FindAnyWidget("Image"));
+		m_wSelectImg = ImageWidget.Cast(w.FindAnyWidget("Corners"));
+		m_wHighlightImg = ImageWidget.Cast(w.FindAnyWidget("Highlight"));
+
+		if (m_bUseBackgroundGradient)
+			m_wGradient = ImageWidget.Cast(w.FindAnyWidget("BackgroundGradient"));
+	}
 
 	//------------------------------------------------------------------------------
-	void SetParent(SCR_MapCampaignUI parent)
+	void SetParent(SCR_MapUIElementContainer parent)
 	{
-		m_Par = parent;
+		m_Parent = parent;
 	}
 
 	//------------------------------------------------------------------------------
@@ -89,71 +104,37 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------
-	void SetOpacity(float val)
-	{
-		m_wRoot.SetOpacity(val);
-	}
-
-	//------------------------------------------------------------------------------
-	void SetIconSize(float val)
-	{
-		FrameSlot.SetSize(m_wRoot, val, val);
-	}
-
-	//------------------------------------------------------------------------------
 	Widget GetRoot()
 	{
 		return m_wRoot;
 	}
 
-	//------------------------------------------------------------------------------
-	vector GetIconSize()
-	{
-		return FrameSlot.GetSize(m_wBaseFrame);
-	}
 
-	//------------------------------------------------------------------------------
-	override void HandlerAttached(Widget w)
-	{
-		m_wRoot = w;
+	// //------------------------------------------------------------------------------
+	// override bool OnMouseEnter(Widget w, int x, int y)
+	// {
 
-		m_wBaseFrame = w.FindAnyWidget("BaseFrame");
-		m_wBaseIcon = Widget.Cast(w.FindAnyWidget("SideSymbol"));
-		m_wImage = ImageWidget.Cast(w.FindAnyWidget("Image"));
-		m_wSelectImg = ImageWidget.Cast(w.FindAnyWidget("Corners"));
-		m_wHighlightImg = ImageWidget.Cast(w.FindAnyWidget("Highlight"));
-		m_wAntennaImg = w.FindAnyWidget("AntenaOff");
-		if (m_bUseBackgroundGradient)
-			m_wGradient = ImageWidget.Cast(w.FindAnyWidget("BackgroundGradient"));
-	}
+	// 	return false;
+	// }
 
-	//------------------------------------------------------------------------------
-	override bool OnMouseEnter(Widget w, int x, int y)
-	{
-		m_bIsHovering = true;
+	// //------------------------------------------------------------------------------
+	// override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
+	// {
 
-		return false;
-	}
-
-	//------------------------------------------------------------------------------
-	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
-	{
-		m_bIsHovering = false;
-
-		return false;
-	}
+	// 	return false;
+	// }
 
 	// ------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
-		if(m_bVisible)
+		if (m_bVisible)
 			SelectIcon();
 
 		return false;
 	}
 
 	// ------------------------------------------------------------------------------
-	void SelectIcon()
+	void SelectIcon(bool invoke = true)
 	{
 	}
 
@@ -197,17 +178,11 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------
 	vector GetPos()
 	{
-		if (!m_MapItem)
-			return vector.Zero;
-
-		return m_MapItem.GetPos();
 	}
 
 	//------------------------------------------------------------------------------
-	void SetImage(string image)
+	protected void SetImage(string image)
 	{
-		if (m_wImage)
-			m_bVisible = m_wImage.LoadImageFromSet(0, m_sImageSet, image);
 	}
 
 	//------------------------------------------------------------------------------
@@ -222,5 +197,11 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 			return m_UnknownFactionColor;
 
 		return faction.GetFactionColor();
+	}
+	
+	//------------------------------------------------------------------------------
+	RplId GetSpawnPointId()
+	{
+		return RplId.Invalid();
 	}
 };

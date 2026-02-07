@@ -18,13 +18,13 @@ class SCR_CampaignTutorialStage84 : SCR_BaseCampaignTutorialStage
 			comp.m_OnItemAddedInvoker.Insert(m_TutorialComponent.CheckRadioPickup);
 		}
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
 		if (!campaign)
 			return;
 		
-		while (campaign.GetActiveRespawnRadiosCount(campaign.FACTION_BLUFOR) > 0)
-			campaign.RemoveActiveRespawnRadio(campaign.FACTION_BLUFOR);
+		while (campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).GetActiveRespawnRadios() > 0)
+			campaign.RemoveActiveRespawnRadio(campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
 	}
 	
 	//------------------------------------------------------------------------------------------------

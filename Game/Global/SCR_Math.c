@@ -1,5 +1,8 @@
 class SCR_Math
 {
+	//~ Random generator used in scripted Math functions
+	protected const static ref RandomGenerator RANDOM_GENERATOR = new RandomGenerator();
+	
 	//------------------------------------------------------------------------------------------------
 	//! Takes two floats and returns the remainder after division
 	static float fmod(float dividend, float divisor)
@@ -93,5 +96,15 @@ class SCR_Math
 		speed += additionalSpeed;
 
 		return speed;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get the math random Generator
+	\return Random Generator
+	*/
+	static RandomGenerator GetMathRandomGenerator()
+	{
+		return RANDOM_GENERATOR;
 	}
 };

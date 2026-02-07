@@ -17,9 +17,11 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	protected SCR_MeleeComponent m_MeleeComponent;
 	protected bool m_bOverrideActions = true;
 	protected bool m_bInspectionFocus;
+	protected ref SCR_ScriptedCharacterInputContext m_pScrInputContext;
 
 	// Character event invokers
 	ref ScriptInvoker m_OnPlayerDeath = new ScriptInvoker();
+	ref ScriptInvoker m_OnLifeStateChanged = new ScriptInvoker();
 	ref ScriptInvoker<SCR_CharacterControllerComponent, IEntity> m_OnPlayerDeathWithParam = new ScriptInvoker();
 	ref ScriptInvoker<IEntity, bool> m_OnControlledByPlayer = new ScriptInvoker();
 
@@ -58,8 +60,34 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		
 		if (IsUsingItem())
 			return false;
+
+		if (GetIsWeaponDeployed())
+			return false;
 		
 		return true;
+	}
+	
+	protected void OnConsciousnessChanged(bool conscious)
+	{
+		OnLifeStateChanged(GetLifeState());
+		
+		if (conscious)
+			return;
+
+		if (IsDead())
+			return;
+
+		AIControlComponent aiControl = AIControlComponent.Cast(GetOwner().FindComponent(AIControlComponent));
+		if (!aiControl || !aiControl.IsAIActivated())
+			return;
+		
+		IEntity currentWeapon;
+		BaseWeaponManagerComponent wpnMan = GetWeaponManagerComponent();
+		if (wpnMan && wpnMan.GetCurrentWeapon())
+			currentWeapon = wpnMan.GetCurrentWeapon().GetOwner();
+
+		if (currentWeapon)
+			TryEquipRightHandItem(null, EEquipItemType.EEquipTypeUnarmedContextual, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -114,7 +142,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 				return ECharacterLifeState.DEAD;
 		}
 
-		if (IsUnconscious())
+		if (char.GetCharacterController().GetInputContext().IsUnconscious())
 			return ECharacterLifeState.INCAPACITATED;
 
 		return ECharacterLifeState.ALIVE;
@@ -129,6 +157,8 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (m_OnPlayerDeathWithParam)
 			m_OnPlayerDeathWithParam.Invoke(this, instigator);
 
+		OnLifeStateChanged(GetLifeState());
+		
 		SCR_PlayerController pc = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (pc && m_CameraHandler && m_CameraHandler.IsInThirdPerson())
 			pc.m_bRetain3PV = true;
@@ -159,6 +189,27 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 
 			garbageManager.Insert(weaponEntity);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnLifeStateChanged(ECharacterLifeState lifeState)
+	{
+		if (m_OnLifeStateChanged)
+			m_OnLifeStateChanged.Invoke(lifeState);
+		
+		ChimeraCharacter char = GetCharacter();
+		if (!char)
+			return;
+		
+		IEntity vehicle = CompartmentAccessComponent.GetVehicleIn(char);
+		if (!vehicle)
+			return;
+		
+		SCR_VehicleFactionAffiliationComponent vehicleFactionAff = SCR_VehicleFactionAffiliationComponent.Cast(vehicle.FindComponent(SCR_VehicleFactionAffiliationComponent));
+		if (!vehicleFactionAff)
+			return;
+		
+		vehicleFactionAff.OnOccupantLifeStateChanged(lifeState);	
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -212,6 +263,80 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (!m_AnimComponent)
 			m_AnimComponent = CharacterAnimationComponent.Cast(character.FindComponent(CharacterAnimationComponent));
 		#endif
+		
+		m_pScrInputContext = new SCR_ScriptedCharacterInputContext();
+
+		EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(owner.FindComponent(EventHandlerManagerComponent));
+		if (eventHandlerManager)
+		{
+			eventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	protected override void OnApplyControls(IEntity owner, float timeSlice)
+	{
+		if (GetScrInputContext().m_iLoiteringType >= 0)
+		{
+			SCR_CharacterCommandHandlerComponent handler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
+			if (!handler.IsLoitering())
+			{
+				if (TryStartLoiteringInternal())
+					return;
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------ 
+	override bool ShouldAligningAdjustAimingAngles()
+	{
+		return IsAligningBeforeLoiter();
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	bool IsAligningBeforeLoiter()
+	{
+		return GetScrInputContext().m_bLoiteringShouldAlignCharacter && GetScrInputContext().m_bLoiteringShouldAlignCharacter && GetAnimationComponent().GetHeadingComponent().IsAligning();
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	override bool SCR_GetDisableMovementControls()
+	{
+		SCR_CharacterCommandHandlerComponent handler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
+		if (!handler)
+			return false;
+		
+		if (GetScrInputContext().m_iLoiteringType > 0)
+		{
+			bool isAligningBeforeLoiter = IsAligningBeforeLoiter();
+			bool isHolsteringBeforeLoiter = GetScrInputContext().m_iLoiteringShouldHolsterWeapon && IsChangingItem();
+			
+			if (isAligningBeforeLoiter || isHolsteringBeforeLoiter)
+				return true;
+		}
+		
+		return handler.IsLoitering();
+	}
+
+	//------------------------------------------------------------------------------------------------ 
+	override void SCR_OnDisabledJumpAction()
+	{
+		SCR_CharacterCommandHandlerComponent handler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
+		if (!handler)
+			return;
+		
+		if (handler.IsLoitering())
+			StopLoitering(false);
+		
+		if (IsAligningBeforeLoiter())
+		{
+			CharacterHeadingAnimComponent headingComponent = GetAnimationComponent().GetHeadingComponent();
+			if (headingComponent)
+			{
+				headingComponent.ResetAligning();
+				GetScrInputContext().m_iLoiteringType = -1;
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -246,7 +371,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 				vector pos = character.GetOrigin();
 				vector rot = character.GetYawPitchRoll();
 				float scale = character.GetScale();
-				vector aimRot = GetAimingAngles();
+				vector aimRot = GetInputContext().GetAimingAngles();
 				string strPosition = string.Format(CHAR_POS, pos[0].ToString(), pos[1].ToString(), pos[2].ToString());
 				string strRotation = string.Format(CHAR_ROT, rot[1].ToString(), rot[0].ToString(), rot[2].ToString());
 				string strScale = string.Format(CHAR_SCALE, scale.ToString());
@@ -485,9 +610,34 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 
 	override void OnPrepareControls(IEntity owner, ActionManager am, float dt, bool player)
 	{
+		if (am.GetActionTriggered("JumpOut") && CanJumpOutVehicleScript())
+		{
+			ChimeraCharacter character = ChimeraCharacter.Cast(owner);
+			CompartmentAccessComponent compAccess = character.GetCompartmentAccessComponent();
+			
+			BaseCompartmentSlot compartment = compAccess.GetCompartment();
+			if (compartment)
+			{
+				CompartmentUserAction action = compartment.GetJumpOutAction();
+				if (action && action.CanBePerformed(GetOwner()))
+				{
+					action.PerformAction(compartment.GetOwner(), GetOwner());
+					return;
+				}
+
+				// Add the following once the correct action exists
+				//if (!action && compAccess.CanGetOutVehicle())
+				//{
+				//	compAccess.GetOutVehicle(-1);
+				//}
+			}			
+		}
+		
 		if (am.GetActionTriggered("GetOut") && CanGetOutVehicleScript())
 		{
-			CompartmentAccessComponent compAccess = CompartmentAccessComponent.Cast(owner.FindComponent(CompartmentAccessComponent));
+			ChimeraCharacter character = ChimeraCharacter.Cast(owner);
+			CompartmentAccessComponent compAccess = character.GetCompartmentAccessComponent();
+			
 			BaseCompartmentSlot compartment = compAccess.GetCompartment();
 			if (compartment)
 			{
@@ -634,6 +784,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			GetGame().GetInputManager().AddActionListener("CharacterDropItem", EActionTrigger.DOWN, ActionDropItem);
 			GetGame().GetInputManager().AddActionListener("CharacterWeaponLowReady", EActionTrigger.DOWN, ActionWeaponLowReady);
 			GetGame().GetInputManager().AddActionListener("CharacterWeaponRaised", EActionTrigger.DOWN, ActionWeaponRaised);
+			GetGame().GetInputManager().AddActionListener("CharacterWeaponBipod", EActionTrigger.DOWN, ActionWeaponBipod);
 
 			// TODO: This should be handled by camera handler itself
 			if (m_CameraHandler)
@@ -645,6 +796,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			GetGame().GetInputManager().RemoveActionListener("CharacterDropItem", EActionTrigger.DOWN, ActionDropItem);
 			GetGame().GetInputManager().RemoveActionListener("CharacterWeaponLowReady", EActionTrigger.DOWN, ActionWeaponLowReady);
 			GetGame().GetInputManager().RemoveActionListener("CharacterWeaponRaised", EActionTrigger.DOWN, ActionWeaponRaised);
+			GetGame().GetInputManager().RemoveActionListener("CharacterWeaponBipod", EActionTrigger.DOWN, ActionWeaponBipod);
 
 			// TODO: This should be handled by camera handler itself
 			if (m_CameraHandler)
@@ -704,6 +856,23 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 
 		if (IsPartiallyLowered())
 			SetPartialLower(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ActionWeaponBipod(float value = 0.0, EActionTrigger trigger = 0)
+	{
+		BaseWeaponManagerComponent weaponManager = GetWeaponManagerComponent();
+		if (!weaponManager)
+			return;
+
+		BaseWeaponComponent weapon = weaponManager.GetCurrentWeapon();
+		if (!weapon || !weapon.HasBipod())
+			return;
+
+		if (GetIsWeaponDeployed() || GetIsWeaponDeployedBipod())
+			StopDeployment();
+
+		weapon.SetBipod(!weapon.GetBipod());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -791,7 +960,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		}
 
 		int nonEmptyCount = contexts.Count();
-		m_iTargetContext = (int)Math.Repeat(m_iTargetContext, nonEmptyCount);
+		m_iTargetContext = Math.Repeat(m_iTargetContext, nonEmptyCount);
 
 
 		if (nonEmptyCount == 0)
@@ -816,6 +985,74 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		targetAngles = Vector(lookYaw, lookPitch, 0) * Math.RAD2DEG;
 
 		return 4.30; // speed
+	}
+	
+	SCR_ScriptedCharacterInputContext GetScrInputContext()
+	{
+		return m_pScrInputContext;
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	protected void StartLoitering(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4] = {"1 0 0", "0 1 0", "0 0 1", "0 0 0"})
+	{
+		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
+		if (!scrCmdHandler)
+			return;
+		if (scrCmdHandler.IsLoitering())
+			return;
+		
+		m_pScrInputContext.m_iLoiteringType = loiteringType;
+		m_pScrInputContext.m_iLoiteringShouldHolsterWeapon = holsterWeapon;
+		m_pScrInputContext.m_bLoiteringShouldAlignCharacter = alignToPosition;
+		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
+		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
+		
+		if (alignToPosition)
+			AlignToPositionFromCurrentPosition(targetPosition);
+		
+		TryStartLoiteringInternal();
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	protected void AlignToPositionFromCurrentPosition(vector targetPosition[4])
+	{
+		vector currentTransform[4];
+		GetCharacter().GetWorldTransform(currentTransform);
+		CharacterHeadingAnimComponent headingComponent = GetAnimationComponent().GetHeadingComponent();
+		if (headingComponent)
+			headingComponent.AlignPosDirWS(currentTransform[3], currentTransform[2], targetPosition[3], targetPosition[2]); 
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	protected bool TryStartLoiteringInternal()
+	{
+		CharacterHeadingAnimComponent headingComponent = GetAnimationComponent().GetHeadingComponent();
+		if (IsChangingItem())
+			return false;
+		
+		if (GetScrInputContext().m_iLoiteringShouldHolsterWeapon && GetCurrentItemInHands() != null)
+		{
+			TryEquipRightHandItem(null, EEquipItemType.EEquipTypeUnarmedContextual);
+			return false;
+		}
+		
+		if (headingComponent && headingComponent.IsAligning())
+		{
+			AlignToPositionFromCurrentPosition(GetScrInputContext().m_mLoiteringPosition);
+			return false;
+		}
+		
+		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
+		scrCmdHandler.StartCommandLoitering();
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	//terminateFast should be true when we are going into alerted or combat state.
+	protected void StopLoitering(bool terminateFast)
+	{
+		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
+		scrCmdHandler.StopLoitering(terminateFast);
 	}
 };
 

@@ -4,7 +4,7 @@ class SCR_SightsHasIlluminationCondition : SCR_AvailableActionCondition
 {
 	[Attribute("0", UIWidgets.CheckBox, desc: "True - find illumination of controlled turret | False - find current weapon in hand illumination")]
 	protected bool m_bCheckTurret;
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Return true if currently controlled vehicle turret has illumination for sights
 	override bool IsAvailable(SCR_AvailableActionsConditionData data)
@@ -13,7 +13,7 @@ class SCR_SightsHasIlluminationCondition : SCR_AvailableActionCondition
 			return false;
 
 		SCR_2DOpticsComponent sights = null;
-		
+
 		if (m_bCheckTurret)
 		{
 			sights = CurrentTurretSight(data);
@@ -22,54 +22,54 @@ class SCR_SightsHasIlluminationCondition : SCR_AvailableActionCondition
 		{
 			sights = CurrentWeaponSights(data);
 		}
-		
+
 		if (!sights)
 			return false;
-		
-		// Has illumination 
+
+		// Has illumination
 		return GetReturnResult(sights.HasIllumination());
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected SCR_2DOpticsComponent CurrentWeaponSights(SCR_AvailableActionsConditionData data)
-	{	
+	{
 		IEntity controlledEntity = SCR_PlayerController.GetLocalControlledEntity();
 		if (!controlledEntity)
 			return null;
-		
+
 		ChimeraCharacter character = ChimeraCharacter.Cast(controlledEntity);
 		if (!character)
 			return null;
-		
+
 		BaseWeaponManagerComponent weaponManager = character.GetCharacterController().GetWeaponManagerComponent();
 		if (!weaponManager)
 			return null;
-		
+
 		BaseSightsComponent currentSights = weaponManager.GetCurrentSights();
 		if (!currentSights)
 			return null;
 
-		return SCR_2DOpticsComponent.Cast(currentSights);;
+		return SCR_2DOpticsComponent.Cast(currentSights);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected SCR_2DOpticsComponent CurrentTurretSight(SCR_AvailableActionsConditionData data)
 	{
-		// Current vehicle controller   
+		// Current vehicle controller
 		BaseControllerComponent controller = data.GetCurrentVehicleController();
 		if (!controller)
 			return null;
-		
+
 		// Turret
 		IEntity turretEntity = controller.GetOwner();
 		if (!turretEntity)
 			return null;
-		
+
 		TurretComponent turret = TurretComponent.Cast(turretEntity.FindComponent(TurretComponent));
 		if (!turret)
 			return null;
-		
-		// Sights 
+
+		// Sights
 		return SCR_2DOpticsComponent.Cast(turret.FindComponent(SCR_2DOpticsComponent));
 	}
 };

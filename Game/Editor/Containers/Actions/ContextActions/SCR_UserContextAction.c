@@ -36,7 +36,7 @@ class SCR_UserContextAction: SCR_BaseContextAction
 	}
 	override bool CanBePerformed(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
-		return true;
+		return CanBeShown(hoveredEntity, selectedEntities, cursorWorldPosition, flags);
 	}
 	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags, int param = -1)
 	{

@@ -54,13 +54,13 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 				return;
 			
 			vector date = dateVar.GetVector();
-			weatherTransitionManager.SetDateTimePreview(true, dateAttribute.GetYearByIndex(date[2]), date[1] +1, date[0] +1, daytime / 24);
+			timeManager.SetDateTimePreview(true, dateAttribute.GetYearByIndex(date[2]), date[1] +1, date[0] +1, daytime / 24);
 			
 			return;
 		}
 		
 		if (weatherTransitionManager.IsPreviewingDateTime())
-			weatherTransitionManager.SetDateTimePreview(false);
+			timeManager.SetDateTimePreview(false);
 		
 		timeManager.SetTimeOfTheDay(daytime);
 		
@@ -89,7 +89,13 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 			
 			//Remove preview
 			if (weatherTransitionManager.IsPreviewingDateTime())
-				weatherTransitionManager.SetDateTimePreview(false);
+				weatherManager.SetDateTimePreview(false);
 		}
+	}
+	
+	override int GetEntries(notnull array<ref SCR_BaseEditorAttributeEntry> outEntries)
+	{
+		outEntries.Insert(new SCR_BaseEditorAttributeEntryTimeSlider(1, true));
+		return super.GetEntries(outEntries);
 	}
 };

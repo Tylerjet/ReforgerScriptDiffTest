@@ -51,7 +51,7 @@ class SCR_AIGetInVehicle : SCR_AIVehicleBehavior
 		InitParameters(role, slot);
 		
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/GetInVehicle.bt";
-		m_fPriority = priority;
+		SetPriority(priority);
 		m_fPriorityLevel.m_Value = priorityLevel;
 		if (vehicleEntity)
 		{
@@ -121,7 +121,7 @@ class SCR_AIGetOutVehicle : SCR_AIVehicleBehavior
 	void SCR_AIGetOutVehicle(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, IEntity vehicleEntity, float priority = PRIORITY_BEHAVIOR_GET_OUT_VEHICLE, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/GetOutVehicle.bt";
-		m_fPriority = priority;
+		SetPriority(priority);
 		m_fPriorityLevel.m_Value = priorityLevel;
 	}
 	

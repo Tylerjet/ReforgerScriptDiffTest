@@ -52,6 +52,7 @@ class SCR_SoundEvent
 	static const string SOUND_HQ_RCR = "SOUND_HQ_RCR";
 	static const string SOUND_SL_CHR = "SOUND_SL_CHR";
 	static const string SOUND_HQ_BAL = "SOUND_HQ_BAL";
+	static const string SOUND_HQ_CTL = "SOUND_HQ_CTL";
 	static const string SOUND_HQ_BUA = "SOUND_HQ_BUA";
 	static const string SOUND_HQ_BAA = "SOUND_HQ_BAA";
 	static const string SOUND_HQ_BFA = "SOUND_HQ_BFA";
@@ -121,6 +122,7 @@ class SCR_SoundEvent
 	static const string TASK_FAILED = "SOUND_HUD_TASK_FAILED";
 	static const string TASK_CANCELED = "SOUND_HUD_TASK_CANCELED";
 	static const string HINT = "SOUND_HUD_NOTIFICATION";
+	static const string TASK_ACCEPT = "SOUND_HUD_TASK_ACCEPT";
 
 	static const string ITEM_SELECTED = "SOUND_HUD_GADGET_SELECT";
 	static const string ITEM_CONFIRMED = "SOUND_HUD_GADGET_CONFIRM";
@@ -140,6 +142,13 @@ class SCR_SoundEvent
 	static const string SOUND_MAP_HOVER_BASE = "SOUND_MAP_HOVER_BASE";
 	static const string SOUND_MAP_HOVER_ENEMY = "SOUND_MAP_HOVER_ENEMY";
 	static const string SOUND_MAP_HOVER_TRANS_TOWER = "SOUND_MAP_HOVER_TRANS_TOWER";
+	static const string SOUND_MAP_GADGET_SHOW = "SOUND_MAP_GADGET_SHOW";
+	static const string SOUND_MAP_GADGET_HIDE  = "SOUND_MAP_GADGET_HIDE";
+	static const string SOUND_MAP_GADGET_GRAB  = "SOUND_MAP_GADGET_GRAB";
+	static const string SOUND_MAP_GADGET_RELEASE  = "SOUND_MAP_GADGET_RELEASE";
+	static const string SOUND_MAP_GADGET_MARKER_DRAW_START  = "SOUND_MAP_GADGET_MARKER_DRAW_START";
+	static const string SOUND_MAP_GADGET_MARKER_DRAW_STOP  = "SOUND_MAP_GADGET_MARKER_DRAW_STOP";
+	static const string SOUND_MAP_GADGET_MARKER_REMOVE  = "SOUND_MAP_GADGET_MARKER_REMOVE";
 	static const string SOUND_HUD_TASK_MENU_OPEN = "SOUND_HUD_TASK_MENU_OPEN";
 	static const string SOUND_HUD_TASK_MENU_CLOSE = "SOUND_HUD_TASK_MENU_CLOSE";
 	static const string SOUND_FE_HUD_PAUSE_MENU_OPEN = "SOUND_FE_HUD_PAUSE_MENU_OPEN";
@@ -252,6 +261,9 @@ class SCR_SoundEvent
 	static const string SOUND_PLAY_INSTRUMENT = "SOUND_PLAY_INSTRUMENT";
 	static const string SOUND_RADIO_CHANGEFREQUENCY_ERROR = "SOUND_RADIO_CHANGEFREQUENCY_ERROR";
 	static const string SOUND_RADIO_CHANGEFREQUENCY = "SOUND_RADIO_CHANGEFREQUENCY";
+	static const string SOUND_RADIO_TURN_ON = "SOUND_RADIO_TURN_ON";
+	static const string SOUND_RADIO_TURN_OFF = "SOUND_RADIO_TURN_OFF";
+	static const string SOUND_RADIO_FREQUENCY_CYCLE = "SOUND_RADIO_FREQUENCY_CYCLE";
 
 	//Destruction
 	static const string SOUND_BUILDING_CRACK = "SOUND_BUILDING_CRACK";

@@ -252,7 +252,6 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 			
 			//~ Set light intensity depending on distance
 			float lightIntensity =  Math.Lerp(m_fPointingLightIntesityMin, m_fPointingLightIntesityMax, Math3D.Curve(ECurveType.CurveProperty2D, Math.Clamp((distanceSq - lightDetachDistanceSq) / (m_fPointingLightIntensityMaxDistance - lightDetachDistanceSq), 0, 1), m_cPointingLightIntensityCurve)[1]);
-			Print(lightIntensity);
 			m_PointingLight.SetColor(m_cPointingLightColor, Math.Clamp(lightIntensity, m_fLightMinLV, m_fLightMaxLV));						
 		}
 		//~ Delete the light if there is any

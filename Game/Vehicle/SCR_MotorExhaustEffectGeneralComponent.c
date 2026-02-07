@@ -9,7 +9,9 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 	private bool								m_bIsUnderwater;
 	private SCR_ParticleEmitter					m_pDmgParticleEmitter; //Damage particle emitter
 	private VehicleWheeledSimulation			m_pVehicleWheeledSimulation;
+	private VehicleWheeledSimulation_SA			m_pVehicleWheeledSimulation_SA;
 	private SCR_CarControllerComponent			m_pCarController;
+	private SCR_CarControllerComponent_SA		m_pCarController_SA;
 	private SignalsManagerComponent				m_pSignalsManagerComponent;
 	private IEntity								m_pOwner;
 	private IEntity								m_pExhaustEffect; // Particles we are working with
@@ -50,7 +52,10 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 		}
 		
 		m_pOwner = owner;
-		m_pVehicleWheeledSimulation = VehicleWheeledSimulation.Cast(m_pOwner.FindComponent(VehicleWheeledSimulation));
+		if(GetGame().GetIsClientAuthority())
+			m_pVehicleWheeledSimulation = VehicleWheeledSimulation.Cast(m_pOwner.FindComponent(VehicleWheeledSimulation));
+		else
+			m_pVehicleWheeledSimulation_SA = VehicleWheeledSimulation_SA.Cast(m_pOwner.FindComponent(VehicleWheeledSimulation_SA)); 
 				
 		m_pSignalsManagerComponent = SignalsManagerComponent.Cast(m_pOwner.FindComponent(SignalsManagerComponent));
 		if (m_pSignalsManagerComponent)
@@ -59,8 +64,17 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 		}
 		
 		BaseVehicleNodeComponent node = BaseVehicleNodeComponent.Cast(m_pOwner.FindComponent(BaseVehicleNodeComponent));
-		if (node)
-			m_pCarController = SCR_CarControllerComponent.Cast(node.FindComponent(SCR_CarControllerComponent));
+		if(GetGame().GetIsClientAuthority())
+		{
+			if (node)
+				m_pCarController = SCR_CarControllerComponent.Cast(node.FindComponent(SCR_CarControllerComponent));
+		}
+		else
+		{
+			if (node)
+				m_pCarController_SA = SCR_CarControllerComponent_SA.Cast(node.FindComponent(SCR_CarControllerComponent_SA));
+		}
+		
 	}
 	
 	// Parses an emitter name and returns a number of a stage the emitter belongs to.
@@ -172,8 +186,16 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 			// Prepare values which will be used for particle calculations later in OnUpdateEffect(...)
 			m_fThrust = GetSignalThrust();
 
-			if(m_pVehicleWheeledSimulation)
-				m_fCarSpeedKMH = Math.AbsFloat( m_pVehicleWheeledSimulation.GetSpeedKmh() );
+			if(GetGame().GetIsClientAuthority())
+			{
+				if(m_pVehicleWheeledSimulation)
+					m_fCarSpeedKMH = Math.AbsFloat( m_pVehicleWheeledSimulation.GetSpeedKmh() );
+			}
+			else
+			{
+				if(m_pVehicleWheeledSimulation_SA)
+					m_fCarSpeedKMH = Math.AbsFloat( m_pVehicleWheeledSimulation_SA.GetSpeedKmh() );
+			}
 
 			float RPM_acceleration = (m_fRPMScaled - m_fRPMScaledOld) * 1000 * timeSlice;
 			m_fRPMScaledOld = m_fRPMScaled;
@@ -228,7 +250,10 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 			}
 			else
 			{
-				isDefective = m_pCarController && m_pCarController.IsEngineDefective();
+				if(GetGame().GetIsClientAuthority())
+					isDefective = m_pCarController && m_pCarController.IsEngineDefective();
+				else
+					isDefective = m_pCarController_SA && m_pCarController_SA.IsEngineDefective();
 			}
 		}
 

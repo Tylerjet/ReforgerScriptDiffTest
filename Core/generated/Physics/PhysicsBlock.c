@@ -10,7 +10,7 @@ Do not modify, this script is generated
 */
 
 /*!
-\brief Disables collisions between two entities
+Disables collisions between two entities.
 */
 sealed class PhysicsBlock: pointer
 {

@@ -1,5 +1,6 @@
 class SCR_TerrainHelper
 {
+	protected static const float MAX_TRACE_LENGTH = 100; //--- How far to search for geometry below given position
 
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -7,18 +8,36 @@ class SCR_TerrainHelper
 	\param[out] pos World position
 	\param world World to be checked (default world is used when undefined)
 	\param noUnderwater When true, sea surface will be used instead of seabed
+	\trace When defined, use this trace to check surface intersection (useful for setting custom trace flags or ignored entities)
 	\return Position above sea
 	*/
-	static float GetTerrainY(vector pos, BaseWorld world = null, bool noUnderwater = false)
+	static float GetTerrainY(vector pos, BaseWorld world = null, bool noUnderwater = false, TraceParam trace = null)
 	{
 		if (!world)
 			world = GetGame().GetWorld();
 		if (!world)
 			return 0;
 
-		float surfaceY = world.GetSurfaceY(pos[0], pos[2]);
+		float surfaceY;
+		if (trace)
+		{
+			trace.Start = pos;
+			trace.End = Vector(pos[0], pos[1] - MAX_TRACE_LENGTH, pos[2]);
+			
+			if (trace.Flags == 0)
+				trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+			
+			float traceCoef = world.TraceMove(trace, null);
+			if (traceCoef < 1)
+				surfaceY = trace.Start[1] - (trace.Start[1] - trace.End[1]) * traceCoef;
+		}
+		
+		if (surfaceY == 0)
+			surfaceY = world.GetSurfaceY(pos[0], pos[2]);
+		
 		if (noUnderwater)
 			surfaceY = Math.Max(surfaceY, 0);
+		
 		return surfaceY;
 	}
 
@@ -28,19 +47,12 @@ class SCR_TerrainHelper
 	\param[out] pos World position
 	\param world World to be checked (default world is used when undefined)
 	\param noUnderwater When true, sea surface will be used instead of seabed
+	\trace When defined, use this trace to check surface intersection (useful for setting custom trace flags or ignored entities)
 	\return Position above terrain
 	*/
-	static float GetHeightAboveTerrain(vector pos, BaseWorld world = null, bool noUnderwater = false)
+	static float GetHeightAboveTerrain(vector pos, BaseWorld world = null, bool noUnderwater = false, TraceParam trace = null)
 	{
-		if (!world)
-			world = GetGame().GetWorld();
-		if (!world)
-			return 0;
-
-		float surfaceY = world.GetSurfaceY(pos[0], pos[2]);
-		if (noUnderwater)
-			surfaceY = Math.Max(surfaceY, 0);
-		return pos[1] - surfaceY;
+		return pos[1] - GetTerrainY(pos, world, noUnderwater, trace);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -49,33 +61,61 @@ class SCR_TerrainHelper
 	\param[out] pos World position, its vertical axis will be modified to be the surface height
 	\param world World to be checked (default world is used when undefined)
 	\param noUnderwater When true, sea surface will be used instead of seabed
+	\trace When defined, use this trace to check surface intersection (useful for setting custom trace flags or ignored entities)
 	\return Normal vector
 	*/
-	static vector GetTerrainNormal(out vector pos, BaseWorld world = null, bool noUnderwater = false)
+	static vector GetTerrainNormal(out vector pos, BaseWorld world = null, bool noUnderwater = false, TraceParam trace = null)
 	{
 		//--- Get world
 		if (!world)
 			world = GetGame().GetWorld();
 		if (!world)
 			return vector.Zero;
-
-		//--- Get surface position
-		float surfaceY = world.GetSurfaceY(pos[0], pos[2]);
-		if (noUnderwater && surfaceY < 0)
+		
+		//--- Trace defined, use it to calculate intersection
+		if (trace)
 		{
-			pos[1] = Math.Max(surfaceY, 0);
+			//--- Make sure that trace does not start underground
+			pos[1] = Math.Max(pos[1], world.GetSurfaceY(pos[0], pos[2]) + 0.01);
+			
+			trace.Start = pos;
+			trace.End = Vector(pos[0], pos[1] - MAX_TRACE_LENGTH, pos[2]);
+			
+			if (trace.Flags == 0)
+				trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+			
+			float traceCoef = world.TraceMove(trace, null);
+			if (traceCoef < 1)
+			{
+				pos[1] = trace.Start[1] - (trace.Start[1] - trace.End[1]) * traceCoef;
+				if (noUnderwater && pos[1] < world.GetOceanBaseHeight())
+				{
+					//--- Underwater, use ocean surface normal (always up)
+					pos[1] = Math.Max(pos[1], world.GetOceanBaseHeight());
+					return vector.Up;
+				}
+				return trace.TraceNorm;
+			}
+			return vector.Up; //--- Default is up, not zero, as that could break calculations like vector.Dot
+		}
+		
+		//--- Simplified calculation without custom trace
+		float surfaceY = world.GetSurfaceY(pos[0], pos[2]);
+		if (noUnderwater && surfaceY < world.GetOceanBaseHeight())
+		{
+			pos[1] = Math.Max(surfaceY, world.GetOceanBaseHeight());
 			return vector.Up;
 		}
-
+		
 		//--- Get surface normal
 		pos[1] = surfaceY;
-		TraceParam trace = new TraceParam;
-		trace.Start = pos + vector.Up;
-		trace.End = pos - vector.Up;
-		trace.Flags = TraceFlags.WORLD;
-		world.TraceMove(trace, null);
+		TraceParam traceRef = new TraceParam();
+		traceRef.Start = pos + vector.Up;
+		traceRef.End = pos - vector.Up;
+		traceRef.Flags = TraceFlags.WORLD;
+		world.TraceMove(traceRef, null);
 
-		return trace.TraceNorm;
+		return traceRef.TraceNorm;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -85,11 +125,12 @@ class SCR_TerrainHelper
 	\param[out] result Matrix to be filled with basis vectors
 	\param world World to be checked (default world is used when undefined)
 	\param noUnderwater When true, sea surface will be used instead of seabed
+	\trace When defined, use this trace to check surface intersection (useful for setting custom trace flags or ignored entities)
 	\return True if the basis was defined successfully
 	*/
-	static bool GetTerrainBasis(vector pos, out vector result[4], BaseWorld world = null, bool noUnderwater = false)
+	static bool GetTerrainBasis(vector pos, out vector result[4], BaseWorld world = null, bool noUnderwater = false, TraceParam trace = null)
 	{
-		vector normal = GetTerrainNormal(pos, world, noUnderwater);
+		vector normal = GetTerrainNormal(pos, world, noUnderwater, trace);
 		if (normal == vector.Zero)
 			return false;
 
@@ -114,9 +155,10 @@ class SCR_TerrainHelper
 	\param[out] transform Matrix to be modified
 	\param world World to be checked (default world is used when undefined)
 	\param noUnderwater When true, sea surface will be used instead of seabed
+	\trace When defined, use this trace to check surface intersection (useful for setting custom trace flags or ignored entities)
 	\return True if the operation was performed successfully
 	*/
-	static bool SnapToTerrain(out vector transform[4], BaseWorld world = null, bool noUnderwater = false)
+	static bool SnapToTerrain(out vector transform[4], BaseWorld world = null, bool noUnderwater = false, TraceParam trace = null)
 	{
 		//--- Get world
 		if (!world)
@@ -127,7 +169,7 @@ class SCR_TerrainHelper
 
 		//--- Get surface basis
 		vector surfaceBasis[4];
-		if (!SCR_TerrainHelper.GetTerrainBasis(transform[3], surfaceBasis, world, noUnderwater))
+		if (!GetTerrainBasis(transform[3], surfaceBasis, world, noUnderwater, trace))
 			return false;
 
 		//--- Set position to surface
@@ -141,9 +183,10 @@ class SCR_TerrainHelper
 	\param[out] transform Matrix to be modified
 	\param world World to be checked (default world is used when undefined)
 	\param noUnderwater When true, sea surface will be used instead of seabed
+	\trace When defined, use this trace to check surface intersection (useful for setting custom trace flags or ignored entities)
 	\return True if the operation was performed successfully
 	*/
-	static bool OrientToTerrain(out vector transform[4], BaseWorld world = null, bool noUnderwater = false)
+	static bool OrientToTerrain(out vector transform[4], BaseWorld world = null, bool noUnderwater = false, TraceParam trace = null)
 	{
 		//--- Get world
 		if (!world)
@@ -154,7 +197,7 @@ class SCR_TerrainHelper
 
 		//--- Get surface basis
 		vector surfaceBasis[4];
-		if (!SCR_TerrainHelper.GetTerrainBasis(transform[3], surfaceBasis, world, noUnderwater))
+		if (!GetTerrainBasis(transform[3], surfaceBasis, world, noUnderwater, trace))
 			return false;
 
 		//--- Reset pitch and roll, but preserve yaw
@@ -173,9 +216,10 @@ class SCR_TerrainHelper
 	\param[out] transform Matrix to be modified
 	\param world World to be checked (default world is used when undefined)
 	\param noUnderwater When true, sea surface will be used instead of seabed
+	\trace When defined, use this trace to check surface intersection (useful for setting custom trace flags or ignored entities)
 	\return True if the operation was performed successfully
 	*/
-	static bool SnapAndOrientToTerrain(out vector transform[4], BaseWorld world = null, bool noUnderwater = false, float height = 0)
+	static bool SnapAndOrientToTerrain(out vector transform[4], BaseWorld world = null, bool noUnderwater = false, TraceParam trace = null)
 	{
 		//--- Get world
 		if (!world)
@@ -186,7 +230,7 @@ class SCR_TerrainHelper
 
 		//--- Get surface basis
 		vector surfaceBasis[4];
-		if (!SCR_TerrainHelper.GetTerrainBasis(transform[3], surfaceBasis, world, noUnderwater))
+		if (!GetTerrainBasis(transform[3], surfaceBasis, world, noUnderwater, trace))
 			return false;
 
 		//--- Set position to surface

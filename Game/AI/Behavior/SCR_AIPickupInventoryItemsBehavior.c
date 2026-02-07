@@ -19,17 +19,17 @@ class SCR_AIPickupInventoryItemsBehavior : SCR_AIBehaviorBase
 	void SCR_AIPickupInventoryItemsBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity,
 		vector pickupPosition, typename magazineWellType, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
-		m_fPriority = SCR_AIActionBase.PRIORITY_BEHAVIOR_PICKUP_INVENTORY_ITEMS;
+		SetPriority(SCR_AIActionBase.PRIORITY_BEHAVIOR_PICKUP_INVENTORY_ITEMS);
 		m_fPriorityLevel.m_Value = priorityLevel;
 		m_sBehaviorTree = "{8522FD17F6E08C47}AI/BehaviorTrees/Chimera/Soldier/PickupInventoryItems.bt";
 		
-		m_bUniqueInActionQueue = true;
+		SetIsUniqueInActionQueue(true);
 		InitProperties(pickupPosition, magazineWellType);
 				
 		if (!utility)
 			return;
 		
-		float movePriority = m_fPriority + 0.1;
+		float movePriority = GetPriority() + 0.1;
 		m_MoveBehavior = new SCR_AIMoveIndividuallyBehavior(utility, groupActivity, pickupPosition, priority: movePriority, priorityLevel: priorityLevel, radius: 0.3);
 		utility.AddAction(m_MoveBehavior);
 	}

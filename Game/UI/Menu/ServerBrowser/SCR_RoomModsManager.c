@@ -31,6 +31,9 @@ class RoomModsCallback : SCR_OnlineServiceBackendCallbacks
 		#ifdef SB_DEBUG
 		Print("ServerAddonsCallback - TimeOut");
 		#endif
+		
+		if (m_ui)
+			m_ui.OnLoadingModsFail();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -382,7 +385,16 @@ class SCR_RoomModsManager
 		m_iDebugModCount = 0;
 		
 		if (!m_Room)
+		{
+			OnLoadingModsFail();
 			return;
+		}
+		
+		if (!m_Room.IsAuthorized())
+		{
+			OnLoadingModsFail();
+			return;
+		}
 		
 		array<Dependency> deps = new array<Dependency>;
 		m_Room.AllItems(deps);
@@ -401,14 +413,11 @@ class SCR_RoomModsManager
 		// Clear mod callbacks 
 		m_aModsCallbacks.Clear();
 		
-		//Print("[SCR_RoomModsManager.AddonsFullList] dependencies for: " + m_Room.Name());
-		
 		// Go through mods dependecies if their items were loaded 
 		foreach (Dependency dep : m_aRoomDependencies)
 		{
 			// Is item loaded 
 			WorkshopItem item = dep.GetCachedItem();
-			//Print(item);
 			
 			if (item)
 			{
@@ -421,6 +430,8 @@ class SCR_RoomModsManager
 			// Set invoker actions 
 			SCR_OnlineServiceBackendCallbacks modCallback = new SCR_OnlineServiceBackendCallbacks;
 			modCallback.m_OnItem.Insert(OnLoadingModItem);
+			modCallback.m_OnError.Insert(OnLoadingModsFail);
+			modCallback.m_OnTimeout.Insert(OnLoadingModsFail);
 			
 			// Add callbacks 
 			m_aModsCallbacks.Insert(modCallback);
@@ -447,8 +458,7 @@ class SCR_RoomModsManager
 	protected void OnLoadingModItem()
 	{
 		m_iDebugModCount++;
-		//Print("Loading mod success: " + m_iDebugModCount);
-		
+
 		// Empty room dependencies check - safe check, sholdn't be happenning with proper use 
 		if (m_aRoomDependencies.IsEmpty())
 		{
@@ -461,31 +471,7 @@ class SCR_RoomModsManager
 		// Check loaded items 
 		if (m_aRoomDependencies.Count() < m_iLoadedModItemsCount)
 			return;
-		
-		/*Dependency dep = m_aRoomDependencies[m_iLoadedModItemsCount];
-		
-		if (!dep)
-			return;
-
-		if (dep.GetCachedItem())
-		{
-			// Register item as loaded 
-			m_iLoadedModItemsCount++;
-			//Print("		Loaded mods: " + m_iLoadedModItemsCount);
-		}
-		else 
-		{
-			// Add to list for items to be loaded 
-			m_aRoomDependencies[m_iLoadedModItemsCount].LoadItem(m_ModsCallback);
-		}*/
-		
 		m_iLoadedModItemsCount++;
-		
-		// TODO: remove when done with debug 
-		if (m_iDebugModCount == m_aRoomDependencies.Count() && m_iLoadedModItemsCount < m_aRoomDependencies.Count())
-		{
-			//Print("Not all mods loaded");
-		}
 		
 		// Is loading done 
 		if (m_iLoadedModItemsCount >= m_aRoomDependencies.Count())
@@ -566,6 +552,18 @@ class SCR_RoomModsManager
 	
 	//------------------------------------------------------------------------------------------------
 	void SetDownloadActions(array<ref SCR_WorkshopItemActionDownload> downloads) { m_aDownloads = downloads; }
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_WorkshopItemActionDownload> GetDownloadActions()
+	{
+		array<ref SCR_WorkshopItemActionDownload> actions = {};
+		foreach(SCR_WorkshopItemActionDownload download : m_aDownloads)
+		{
+			actions.Insert(download);
+		}
+		
+		return actions;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Progress of mod to download

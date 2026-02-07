@@ -5,34 +5,47 @@ class SCR_PlayerTeleportedFeedbackComponentClass: ScriptComponentClass
 
 class SCR_PlayerTeleportedFeedbackComponent: ScriptComponent
 {
-	protected ref ScriptInvoker Event_OnPlayerTeleportedByEditor = new ScriptInvoker; //param int GM that teleported the player
+	protected ref ScriptInvoker m_OnPlayerTeleported = new ScriptInvoker; //param int GM that teleported the player
 	protected PlayerManager m_PlayerManager;
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
-	Get on player Teleported by editor script invoker. 
+	Get on player Teleported script invoker. 
 	*/
-	ScriptInvoker GetOnPlayerTeleportedByEditor()
+	ScriptInvoker GetOnPlayerTeleported()
 	{
-		return Event_OnPlayerTeleportedByEditor;
+		return m_OnPlayerTeleported;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	On player teleported send a notification and event that the local player character is teleported
-	Will only send event if editor is open
 	*/
-	void TeleportedByEditor(SCR_EditableCharacterComponent character, bool isLongFade)
+	void PlayerTeleported(IEntity character, bool isLongFade, SCR_EPlayerTeleportedReason teleportReason)
 	{
 		bool editorIsOpen = SCR_EditorManagerEntity.IsOpenedInstance();
 		
-		Event_OnPlayerTeleportedByEditor.Invoke(editorIsOpen, isLongFade);
+		m_OnPlayerTeleported.Invoke(editorIsOpen, isLongFade, teleportReason);
 		
-		int id = Replication.FindId(character);
-		
-		//~ Only show notification if editor is closed
-		if (!editorIsOpen)
-			SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_GM_TELEPORTED_PLAYER, id);
-		
+		//~ Player teleported by GM
+		if (teleportReason == SCR_EPlayerTeleportedReason.EDITOR)
+		{			
+			//~ Only show notification if editor is closed
+			if (!editorIsOpen)
+				SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_GM_TELEPORTED_PLAYER);	
+		}
+		//~ Player teleported as blocking spawner
+		else if (teleportReason == SCR_EPlayerTeleportedReason.BLOCKING_SPAWNER)
+		{
+			SCR_NotificationsComponent.SendLocal(ENotification.TELEPORTED_PLAYER_BLOCKING_SPAWNER);
+		}
 	}
-	
+};
 
+//------------------------------------------------------------------------------------------------
+enum SCR_EPlayerTeleportedReason
+{
+	DEFAULT,
+	EDITOR,
+	BLOCKING_SPAWNER,
 };

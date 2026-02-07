@@ -8,11 +8,14 @@ class SCR_SelectionMenuEntry : SCR_UIInfo
 {
 	const string DEFAULT_IMAGE_SET = "{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
 
-	[Attribute("", desc: "Entry name used for searching and definition")]
+	[Attribute(desc: "Entry name used for searching and definition")]
 	protected string m_sId;
 
 	[Attribute("1")]
 	protected bool m_bEnabled;
+	
+	[Attribute(desc: "Action name use as input shortcut for entry")]
+	protected string m_sInputAction;
 
 	[Attribute("", ".layout", desc: "By default menu has predefined layouts. Use only if specific layout for entry is needed")]
 	protected ResourceName m_sCustomLayout;
@@ -108,6 +111,9 @@ class SCR_SelectionMenuEntry : SCR_UIInfo
 	void Enable(bool enable)
 	{
 		m_bEnabled = enable;
+		
+		if (m_EntryComponent)
+			m_EntryComponent.SetEnabled(enable);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -187,14 +193,14 @@ class SCR_SelectionMenuEntry : SCR_UIInfo
 	{
 		// Clear
 		if (m_EntryComponent)
-			m_EntryComponent.GetEventOnClick().Clear();
+			m_EntryComponent.GetOnClick().Clear();
 
 
 		m_EntryComponent = entryComponent;
 
 		// Setup invokers
 		if (m_EntryComponent)
-			m_EntryComponent.GetEventOnClick().Insert(OnEntryClick);
+			m_EntryComponent.GetOnClick().Insert(OnEntryClick);
 
 
 		// Setup icons - TODO: probably can be moved to seperate component
@@ -216,6 +222,18 @@ class SCR_SelectionMenuEntry : SCR_UIInfo
 	{
 		return m_bEnabled;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetInputAction(string action)
+	{
+		m_sInputAction = action;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetInputAction()
+	{
+		return m_sInputAction;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	// Constructor
@@ -225,5 +243,8 @@ class SCR_SelectionMenuEntry : SCR_UIInfo
 	void SCR_SelectionMenuEntry()
 	{
 		m_bEnabled = true;
+		
+		if (Icon.IsEmpty())
+			Icon = DEFAULT_IMAGE_SET;
 	}
 };

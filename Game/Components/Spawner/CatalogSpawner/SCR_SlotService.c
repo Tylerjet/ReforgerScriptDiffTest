@@ -110,6 +110,8 @@ class SCR_SlotServiceComponent : SCR_ServicePointComponent
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnInit(IEntity owner)
 	{
+		super.EOnInit(owner);
+		
 		m_SlotManager = SCR_SpawnerSlotManager.GetInstance();
 		if (!m_SlotManager)
 		{

@@ -4,6 +4,9 @@
 // *************************************************************************************
 class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 {
+	protected IEntity m_OwnerVehicle;
+	protected float m_fAngleFirstPerson;
+
 	//-----------------------------------------------------------------------------
 	void CharacterCamera1stPersonVehicle(CameraHandlerComponent pCameraHandler)
 	{
@@ -29,8 +32,6 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 			BaseCompartmentSlot compartment = m_pCompartmentAccess.GetCompartment();
 			if (compartment)
 			{
-				ForceFreelook(compartment.GetForceFreeLook());
-				
 				m_OwnerVehicle = compartment.GetOwner();
 				
 				if (m_OwnerVehicle)
@@ -40,6 +41,7 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 					{
 						m_fRollFactor = vehicleCamData.m_fRollFactor;
 						m_fPitchFactor = vehicleCamData.m_fPitchFactor;
+						m_fAngleFirstPerson = vehicleCamData.m_fAngleFirstPerson * Math.DEG2RAD;
 					}
 				}
 			}
@@ -55,6 +57,47 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 		super.OnUpdate(pDt, pOutResult);
 		pOutResult.m_fUseHeading = 0.0;	
 		AddVehiclePitchRoll(m_OwnerVehicle, pDt, pOutResult.m_CameraTM);
+		
+		// Specific case for character lying down, where assumption for world-up fails
+		// If we want to allow such cases on a 'daily basis', reconsider how seating
+		// and vehicle cameras work in first person :)
+		if (sm_TagLyingCamera != -1 && sm_TagItemUpdateCols != -1)
+		{
+			CharacterAnimationComponent characterAnimationComponent = m_OwnerCharacter.GetAnimationComponent();
+			if (characterAnimationComponent && characterAnimationComponent.IsPrimaryTag(sm_TagLyingCamera))
+			{
+				// The character has very odd orientation in this case, the entity transformation retains its world up relation,
+				// but the character body is not lying flat, just chilling, so let's deploy some quick magic here:
+				pOutResult.m_vBaseAngles 		= m_CharacterHeadAimingComponent.GetAimingRotation();
+				pOutResult.m_fUseHeading 		= 0.0;
+				pOutResult.m_iDirectBoneMode 	= EDirectBoneMode.RelativePosition;
+				pOutResult.m_iDirectBone 		= GetCameraBoneIndex();
+				pOutResult.m_bAllowInterpolation = true;
+				
+				vector additiveRotation = "0 0 0";
+				vector offset = m_OffsetLS;
+				m_CharacterHeadAimingComponent.GetLookTransformationLS(pOutResult.m_iDirectBone, pOutResult.m_iDirectBoneMode, offset, additiveRotation, pOutResult.m_CameraTM);
+				if( m_ApplyHeadBob )
+					m_CharacterCameraHandler.AddViewBobToTransform(pOutResult.m_CameraTM, 1, false);
+				
+				vector rotMat[3];
+				if (!characterAnimationComponent.IsPrimaryTag(sm_TagItemUpdateCols))
+					Math3D.AnglesToMatrix(Vector(0, 90, 0), rotMat);	// Already laying
+				else
+				{
+					vector camMatrix[4];	// Entering, exiting
+					m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_OwnerCharacter.GetAnimation().GetBoneIndex("Head"), camMatrix);
+					vector camAngles = Math3D.MatrixToAngles(camMatrix);
+					Math3D.AnglesToMatrix(Vector(0, -camAngles[1], 0), rotMat);
+				}
+				
+				//Math3D.AnglesToMatrix(Vector(0, -camAngles[1], 0), rotMat);
+				Math3D.MatrixMultiply3(rotMat, pOutResult.m_CameraTM, pOutResult.m_CameraTM);
+				return;
+			}
+		}
+
+		SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleFirstPerson, pOutResult.m_CameraTM);
 	}
 	
 	//-----------------------------------------------------------------------------
@@ -71,18 +114,35 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 		
 		return cameraManager.GetVehicleFOV();
 	}
-	
-	private IEntity m_OwnerVehicle;
 };
 // *************************************************************************************
 // ! CharacterCamera1stPersonVehicleTransition - 1st person camera when character is getting in/out vehicle
 // ************************************************************************************
 class CharacterCamera1stPersonVehicleTransition extends CharacterCamera1stPersonVehicle
 {
-		//-----------------------------------------------------------------------------
+	private bool m_isExiting = false;
+
+	//-----------------------------------------------------------------------------
 	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
 	{
 		super.OnActivate(pPrevCamera, pPrevCameraResult);
 		m_bCameraTransition = true;
+		m_isExiting = false;
+	}
+	
+	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
+	{
+		super.OnUpdate(pDt, pOutResult);
+		if (m_pCompartmentAccess)
+		{
+			if (m_pCompartmentAccess.IsGettingOut())
+				m_isExiting = true;
+			
+			if (!m_pCompartmentAccess.IsInCompartment() && m_isExiting)
+			{
+				pOutResult.m_bAllowInterpolation = false;
+				pOutResult.m_fUseHeading		 = 1.0;
+			}
+		}
 	}
 };

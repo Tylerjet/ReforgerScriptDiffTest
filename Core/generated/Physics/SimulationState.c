@@ -11,8 +11,8 @@ Do not modify, this script is generated
 
 /*!
 State/presence of the physics controller in physics world.
-When it's created as static, only SimState::NONE or SimState::COLLISION
-can be used. For dynamic ones, there is also SimState::SIMULATION for
+When it's created as static, only SimulationState::NONE or SimulationState::COLLISION
+can be used. For dynamic ones, there is also SimulationState::SIMULATION for
 full dynamic simulation.
 */
 enum SimulationState

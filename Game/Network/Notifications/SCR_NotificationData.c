@@ -97,7 +97,7 @@ class SCR_NotificationData
 		{
 			if (m_iPrevPositionUpdated != (int)m_fNotificationTimeLeft)
 			{
-				m_iPrevPositionUpdated = (int)m_fNotificationTimeLeft;
+				m_iPrevPositionUpdated = m_fNotificationTimeLeft;
 				m_DisplayData.SetPosition(this);
 			}
 		}
@@ -157,7 +157,7 @@ class SCR_NotificationData
 	\param out entry5
 	\param out entry6
 	*/
-	void GetNotificationTextEntries(out string entry1, out string entry2, out string entry3, out string entry4, out string entry5, out string entry6)
+	void GetNotificationTextEntries(out string entry1 = string.Empty, out string entry2 = string.Empty, out string entry3 = string.Empty, out string entry4 = string.Empty, out string entry5 = string.Empty, out string entry6 = string.Empty)
 	{
 		entry1 = notificationEntry1;
 		entry2 = notificationEntry2;
@@ -165,8 +165,7 @@ class SCR_NotificationData
 		entry4 = notificationEntry4;
 		entry5 = notificationEntry5;
 		entry6 = notificationEntry6;
-	}
-	
+	}	
 
 	/*!
 	Set the faction color. 

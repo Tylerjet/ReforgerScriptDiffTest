@@ -14,7 +14,7 @@ sealed class BaseResourceObject: pointer
 	proto external BaseContainer ToBaseContainer();
 	proto external IEntitySource ToEntitySource();
 	proto external MeshObject ToMeshObject();
-	proto external Animation ToAnimation();
+	proto external AnimationSource ToAnimation();
 	proto external VObject ToVObject();
 	/*!
 	Release object. When there are not any other references, object is stored into cache and ready to be victed if necessary.

@@ -54,10 +54,16 @@ class SCR_VehicleTagData : SCR_NameTagData
 		{
 			m_aPassengers[0].GetName(m_sName, nameParams);
 
+			if (m_sName == string.Empty)	// passenger tag might need entity update in case of lost connection 
+			{
+				m_aPassengers[0].UpdateEntityType();
+				m_aPassengers[0].GetName(m_sName, nameParams);
+			}
+			
 			if (count > 1)
 				m_sName = m_sName + "  (+" + (count - 1).ToString() + ")";
 		}
-		
+			
 		name = m_sName;
 	}
 	

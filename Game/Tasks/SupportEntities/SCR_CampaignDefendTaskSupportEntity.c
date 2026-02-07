@@ -24,7 +24,7 @@ class SCR_CampaignDefendTaskSupportEntity : SCR_RequestedTaskSupportEntity
 	
 	protected ref ScriptInvoker m_OnCharacterDeath;
 	
-	protected SCR_CampaignBase m_ClosestBase;
+	protected SCR_CampaignMilitaryBaseComponent m_ClosestBase;
 	
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnCharacterDeath()
@@ -78,7 +78,7 @@ class SCR_CampaignDefendTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		if (!task)
 			return;
 		
-		SCR_CampaignBase base = SCR_CampaignBaseManager.FindBaseByID(baseID);
+		SCR_CampaignMilitaryBaseComponent base = SCR_GameModeCampaign.GetInstance().GetBaseManager().FindBaseByCallsign(baseID);
 		if (!base)
 			return;
 		
@@ -86,7 +86,7 @@ class SCR_CampaignDefendTaskSupportEntity : SCR_RequestedTaskSupportEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetTargetBase(notnull SCR_CampaignBaseTask task, notnull SCR_CampaignBase base)
+	void SetTargetBase(notnull SCR_CampaignBaseTask task, notnull SCR_CampaignMilitaryBaseComponent base)
 	{
 		if (!GetTaskManager())
 			return;
@@ -94,14 +94,14 @@ class SCR_CampaignDefendTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		int taskID, baseID;
 		
 		taskID = task.GetTaskID();
-		baseID = base.GetBaseID();
+		baseID = base.GetCallsign();
 		
 		Rpc(RPC_SetTargetBase, taskID, baseID);
 		RPC_SetTargetBase(taskID, baseID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void CreateCampaignDefendTask(SCR_CampaignBase targetBase, Faction targetFaction)
+	void CreateCampaignDefendTask(SCR_CampaignMilitaryBaseComponent targetBase, Faction targetFaction)
 	{
 		if (!GetTaskManager())
 			return;

@@ -16,7 +16,6 @@ class SCR_HideHUDManualCameraComponent : SCR_BaseManualCameraComponent
 		if (!hudManager) return false;
 		
 		hudManager.SetVisibleLayers(m_LayersWhitelist);
-		
 		return false;
 	}
 	override void EOnCameraExit()

@@ -59,7 +59,7 @@ class SCR_InventorySlotWeaponSlotsUI : SCR_InventorySlotUI
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_InventorySlotWeaponSlotsUI( InventoryItemComponent pComponent = null, SCR_InventoryStorageBaseUI pStorageUI = null, bool bVisible = true, int iQuickSlotIndex = -1, SCR_ItemAttributeCollection pAttributes = null, int iWeaponSlotIndex = 0, string sWeaponSlotType = "" )
+	void SCR_InventorySlotWeaponSlotsUI( InventoryItemComponent pComponent = null, SCR_InventoryStorageBaseUI pStorageUI = null, bool bVisible = true, int iSlotIndex = -1, SCR_ItemAttributeCollection pAttributes = null, int iWeaponSlotIndex = 0, string sWeaponSlotType = "" )
 	{
 		m_iQuickSlotIndex = iSlotIndex;
 		m_iWeaponSlotIndex = iWeaponSlotIndex;

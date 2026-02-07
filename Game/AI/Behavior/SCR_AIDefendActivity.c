@@ -15,11 +15,11 @@ class SCR_AIDefendActivity : SCR_AIActivityBase
 	}
 	
 	//-------------------------------------------------------------------------------------------------
-	void SCR_AIDefendActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, AIWaypoint waypoint, vector attackLocation, float priority = PRIORITY_ACTIVITY_DEFEND, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AIDefendActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint, AIWaypoint waypoint, vector attackLocation, float priority = PRIORITY_ACTIVITY_DEFEND, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		InitParameters(waypoint, priorityLevel);
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityDefend.bt";
-		m_fPriority = priority;
+		SetPriority(priority);
 		if (!waypoint) 
 		{
 			m_vAttackLocation.m_Value = attackLocation;
@@ -74,5 +74,23 @@ class SCR_AIDefendActivity : SCR_AIActivityBase
 	override string GetActionDebugInfo()
 	{
 		return this.ToString() + " defending area of " + m_Waypoint.ToString();
+	}
+	
+	//-------------------------------------------------------------------------------------------------
+	override void OnActionDeselected()
+	{
+		SendCancelMessagesToAllAgents();
+	}
+	
+	//-------------------------------------------------------------------------------------------------
+	override void OnActionFailed()
+	{
+		SendCancelMessagesToAllAgents();
+	}
+	
+	//-------------------------------------------------------------------------------------------------
+	override void OnActionCompleted()
+	{
+		SendCancelMessagesToAllAgents();
 	}
 };

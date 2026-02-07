@@ -15,7 +15,7 @@ class SCR_ServerHostingSettingsSubMenu : SCR_SubMenuBase
 		
 		subMenu.SetParentMenuComponent(superMenu);
 		
-		m_NavHost = CreateNavigationButton("DialogConfirm", "#AR-ServerHosting_HostLocally", true);
+		m_NavHost = CreateNavigationButton("MenuSelectHold", "#AR-ServerHosting_HostLocally", true);
 		
 		// Tempory disabled saving
 		if (!GetGame().IsPlatformGameConsole())

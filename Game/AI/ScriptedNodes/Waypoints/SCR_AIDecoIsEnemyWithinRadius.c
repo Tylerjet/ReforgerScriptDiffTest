@@ -22,31 +22,21 @@ class SCR_AIDecoIsEnemyWithinRadius : DecoratorScripted
     }
 	
 	//---------------------------------------------------------------------------------------------------
+	// Checks if at least one enemy known to group is within the completion radius
 	bool TestLocationOfKnownEnemies(SCR_AIGroupUtilityComponent groupUtility, AIWaypoint waypoint)
-	{ // at least one enemy known to group is within the completion radius?
-		ChimeraCharacter character;
-		DamageManagerComponent damageManager;
+	{
 		float waypointRadiusSq = waypoint.GetCompletionRadius() * waypoint.GetCompletionRadius();
-		vector positionInWaypoint;
 		
-		foreach (int index, IEntity enemy  : groupUtility.m_aTargetEntities)
+		vector wpOrigin = waypoint.GetOrigin();
+		
+		foreach (SCR_AITargetInfo tgtInfo : groupUtility.m_Perception.m_aTargets)
 		{
-			if (!enemy)
+			if (tgtInfo.m_eCategory == EAITargetInfoCategory.DESTROYED)
 				continue;
 			
-			character = ChimeraCharacter.Cast(enemy);
-			if (character)
-				damageManager = character.GetDamageManager();
-			else
-			 	damageManager = DamageManagerComponent.Cast(enemy.FindComponent(DamageManagerComponent));
-			
-			if (damageManager && damageManager.GetState() == EDamageState.DESTROYED)
-				continue;
-			
-			positionInWaypoint = groupUtility.m_aTargetInfos[index].m_vLastSeenPosition;
-			if (vector.DistanceSq(positionInWaypoint,waypoint.GetOrigin()) < waypointRadiusSq)
+			if (vector.DistanceSq(tgtInfo.m_vWorldPos, wpOrigin) < waypointRadiusSq)
 			{
-				SetVariableOut(LOCATION_PORT, positionInWaypoint);
+				SetVariableOut(LOCATION_PORT, tgtInfo.m_vWorldPos);
 				return true;
 			}
 		}

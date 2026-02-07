@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-class SCR_BaseFactionCheckUserAction : ScriptedUserAction
+class SCR_BaseFactionCheckUserAction : SCR_BaseAudioScriptedUserAction
 {
 	[Attribute("3", desc: "Set faction of user that can use the action, will be ignored if non are selected. Requires a 'FactionAffiliationComponent' on the Owner or parent. It will always allow interaction if user does not have 'FactionAffiliationComponent'. Default faction is the faction associated with the Initial Owner faction. Flags are checked in order. DISALLOW ON NULL is only checked when Default faction check is not set.", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(EActionFactionUsage), category: "Faction Settings")]
 	protected EActionFactionUsage m_eFactionUsageCheck;
@@ -7,7 +7,7 @@ class SCR_BaseFactionCheckUserAction : ScriptedUserAction
 	[Attribute("#AR-ActionInvalid_HostileFaction", desc: "Faction invalid faction for the user that tries to use the action (By default this means faction is hostile, replace if there is a diffrent meaning)")]
 	protected LocalizedString m_sInvalidFactionCannotPerform;
 	
-	[Attribute("1", "If entity itself does not have faction affiliation component then it will try to get the parents faction affiliation component if this is true")]
+	[Attribute("0", desc: "If entity itself does not have faction affiliation component then it will try to get the parents faction affiliation component if this is true")]
 	protected bool m_bAllowGetFactionOfParent;
 	
 	protected FactionAffiliationComponent m_OwnerFactionAffiliation;

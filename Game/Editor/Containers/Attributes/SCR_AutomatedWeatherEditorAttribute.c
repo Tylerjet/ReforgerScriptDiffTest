@@ -60,7 +60,7 @@ class SCR_AutomatedWeatherEditorAttribute : SCR_BaseEditorAttribute
 
 		//Remove preview if any was set
 		if (weatherTransitionManager.IsPreviewingState())
-			weatherTransitionManager.SetStatePreview(false);
+			weatherManager.SetWeatherStatePreview(false);
 		
 		//~ Set looping false
 		if (setAutomatic)
@@ -99,7 +99,7 @@ class SCR_AutomatedWeatherEditorAttribute : SCR_BaseEditorAttribute
 			
 			//Remove preview if any was set
 			if (weatherTransitionManager.IsPreviewingState())
-				weatherTransitionManager.SetStatePreview(false);
+				weatherManager.SetWeatherStatePreview(false);
 		}
 		else 
 		{

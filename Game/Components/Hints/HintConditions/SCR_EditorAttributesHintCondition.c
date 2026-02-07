@@ -10,7 +10,7 @@ class SCR_EditorAttributesHintCondition: SCR_BaseEditorHintCondition
 		if (attributesManager)
 		{
 			array<Managed> items = {};
-			if (attributesManager.GetEditedItems(items) == 0)
+			if (attributesManager.GetEditedItems(items) == 0 || !items[0])
 				return;
 			
 			typename type;

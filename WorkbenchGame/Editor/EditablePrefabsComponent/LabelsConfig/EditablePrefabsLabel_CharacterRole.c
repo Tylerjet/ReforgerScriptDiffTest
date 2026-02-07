@@ -213,8 +213,8 @@ class EditablePrefabsLabel_CharacterRole : EditablePrefabsLabel_Base
 					BaseContainer consumableEffect = consumableComponentSource.GetObject("m_ConsumableEffect");
 					if (consumableEffect)
 					{
-						EConsumableType consumableType;
-						if (consumableEffect.Get("m_eConsumableType", consumableType) && consumableType == EConsumableType.Bandage)
+						SCR_EConsumableType consumableType;
+						if (consumableEffect.Get("m_eConsumableType", consumableType) && consumableType == SCR_EConsumableType.BANDAGE)
 						{
 							medicItemCount++;
 						}

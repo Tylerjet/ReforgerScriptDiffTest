@@ -13,21 +13,62 @@ class SCR_AISendMessageGenerated : AITaskScripted
 			return null;
 		
 		if (SCR_AIGroup.Cast(owner))
-			return SCR_AIActivityBase.Cast(utilityComp.GetCurrentAction());
+			return SCR_AIActivityBase.Cast(utilityComp.GetExecutedAction());
 		else
-			return SCR_AIBehaviorBase.Cast(utilityComp.GetCurrentAction()).m_RelatedGroupActivity;
+		{
+			SCR_AIBehaviorBase behavior = SCR_AIBehaviorBase.Cast(utilityComp.GetExecutedAction());
+			if (behavior)
+				return SCR_AIActivityBase.Cast(behavior.GetRelatedGroupActivity());
+			else
+				return null;
+		}
 		
 		return null;
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------------------------------------
-	protected bool SendMessage(AIAgent owner, AIAgent receiver, AIMessage msg)
+	protected AIWaypoint GetRelatedWaypoint(AIAgent owner)
+	{
+		AIGroup group = AIGroup.Cast(owner);
+		if (!group)
+			return null;
+		return group.GetCurrentWaypoint();
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------------------------------------------
+	protected bool SendMessage(AIAgent owner, AIAgent receiver, SCR_AIMessageBase msg)
 	{
 		AICommunicationComponent comms = owner.GetCommunicationComponent();
 		if (!comms || !receiver)
 			return false;
 		
+		#ifdef AI_DEBUG
+		InitDebugData(msg.m_sSentFromBt);
+		#endif
+		
 		return comms.RequestBroadcast(msg, receiver);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------------------------------------------
+	protected bool SendMessage(AIAgent owner, AIAgent receiver, SCR_AIOrderBase msg)
+	{
+		AICommunicationComponent comms = owner.GetCommunicationComponent();
+		if (!comms || !receiver)
+			return false;
+		
+		#ifdef AI_DEBUG
+		InitDebugData(msg.m_sSentFromBt);
+		#endif
+		
+		return comms.RequestBroadcast(msg, receiver);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------------------------------------------
+	protected void InitDebugData(out string outSentFromBt)
+	{
+		string parentTreeName;
+		GetParentTreeName(parentTreeName);
+		outSentFromBt = string.Format("%1, node: %2 %3", parentTreeName, GetNodeID(), this.Type());
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------------------------------------

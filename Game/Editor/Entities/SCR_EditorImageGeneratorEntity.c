@@ -165,7 +165,7 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 				//--- Validate screenshot extension
 				if (!m_bDebugMode)
 				{
-					bool exists = FileIO.FileExist(FilePath.AppendExtension(testFilePath, "png"));
+					bool exists = FileIO.FileExists(FilePath.AppendExtension(testFilePath, "png"));
 					FileIO.DeleteFile(FilePath.AppendExtension(testFilePath, "png"));
 					FileIO.DeleteFile(FilePath.AppendExtension(testFilePath, "bmp"));
 					if (!exists)

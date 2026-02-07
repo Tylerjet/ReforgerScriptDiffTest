@@ -17,6 +17,10 @@ class VehicleBaseSimulation: GameComponent
 {
 	//! Returns true if this component was properly initialized.
 	proto external bool IsValid();
+	//! Returns the acceleration of the vehicle produced by mechanical forces.
+	proto external vector GetGForce();
+	//! Returns the total amount of acceleration of the vehicle produced by mechanical forces.
+	proto external float GetGForceMagnitude();
 
 	// callbacks
 

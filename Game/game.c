@@ -42,9 +42,10 @@ class ArmaReforgerScripted : ChimeraGame
 	protected SCR_HUDManagerComponent		m_HUDManager;
 	protected ScriptedChatEntity			m_ChatEntity;
 	protected ref SCR_GameCoresManager		m_CoresManager;
-	protected Widget 						m_wWatermark;
 	protected ref SCR_SettingsManager		m_SettingsManager;
+	protected SCR_SaveManagerCore			m_SaveManagerCore;
 	protected SCR_BuildingDestructionManagerComponent m_BuildingDestructionManager;
+	protected SCR_SpawnerAIGroupManagerComponent m_SpawnerAIGroupManager;
 	protected bool							m_bHasKeyboard;
 
 
@@ -71,6 +72,7 @@ class ArmaReforgerScripted : ChimeraGame
 	protected ref ScriptInvoker m_OnInputDeviceUserChangedInvoker = new ScriptInvoker();
 	protected ref ScriptInvoker m_OnInputDeviceIsGamepadInvoker = new ScriptInvoker();
 	protected ref ScriptInvoker m_OnWorldSimulatePhysicsInvoker = new ScriptInvoker();
+	protected ref ScriptInvoker<int, int, bool> m_OnWindowResizeInvoker = new ScriptInvoker();
 	protected ref ScriptCallQueue m_Callqueue = new ScriptCallQueue();
 
 	//ref SCR_RCONCommander m_dsCommander;
@@ -98,7 +100,7 @@ class ArmaReforgerScripted : ChimeraGame
 		
 		m_DataCollectorComponent = instance;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	void UnregisterBuildingDestructionManager(notnull SCR_BuildingDestructionManagerComponent manager)
 	{
@@ -166,6 +168,12 @@ class ArmaReforgerScripted : ChimeraGame
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	SCR_SaveManagerCore GetSaveManager()
+	{
+		return m_SaveManagerCore;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	bool GetHasKeyboard()
 	{
 		return m_bHasKeyboard;
@@ -199,6 +207,18 @@ class ArmaReforgerScripted : ChimeraGame
 	ScriptInvoker OnWorldSimulatePhysicsInvoker()
 	{
 		return m_OnWorldSimulatePhysicsInvoker;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker OnWindowResizeInvoker()
+	{
+		return m_OnWindowResizeInvoker;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool GetIsClientAuthority()
+	{
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -312,6 +332,7 @@ class ArmaReforgerScripted : ChimeraGame
 					case BattlEyeKickReason.GLOBAL_BAN: reason = "GLOBAL_BAN"; return true;
 					case BattlEyeKickReason.ADMIN_BAN: reason = "ADMIN_BAN"; return true;
 					case BattlEyeKickReason.ADMIN_KICK: reason = "ADMIN_KICK"; return true;
+					case BattlEyeKickReason.INVALID_SERVER_CONFIG: reason = "INVALID_SERVER_CONFIG"; return true;
 				}
 			break;
 
@@ -324,6 +345,7 @@ class ArmaReforgerScripted : ChimeraGame
 					case DataError.SCRIPT_MISMATCH: reason = "SCRIPT_MISMATCH"; return true;
 					case DataError.WORLD_LOAD_ERROR: reason = "WORLD_LOAD_ERROR"; return true;
 					case DataError.WORLD_LOAD_INCONSISTENCY: reason = "WORLD_LOAD_INCONSISTENCY"; return true;
+					case DataError.ADDON_LOAD_ERROR: reason = "ADDON_LOAD_ERROR"; return true;
 				}
 			break;
 
@@ -383,6 +405,9 @@ class ArmaReforgerScripted : ChimeraGame
 	//! Event called once loading of all entities of the world have been finished. (still within the loading)
 	protected override void OnWorldPostProcess(World world)
 	{
+		if (m_CoresManager)
+			m_CoresManager.OnWorldPostProcess(world);
+		
 		if (GetGameMode())
 			GetGameMode().OnWorldPostProcess(world);
 	}
@@ -503,6 +528,8 @@ class ArmaReforgerScripted : ChimeraGame
 			}
 		}
 		m_CoresManager = SCR_GameCoresManager.CreateCoresManager();
+		m_SaveManagerCore = SCR_SaveManagerCore.Cast(m_CoresManager.GetCore(SCR_SaveManagerCore));
+		
 		WidgetManager.SetCursor(0);
 	}
 
@@ -517,9 +544,9 @@ class ArmaReforgerScripted : ChimeraGame
 
 
 		// Game
-		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_COPY_ENF_VIEW_LINK, "lctrl+lshift+l", "Copy view link", "Game");
-		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CURSOR_TARGET_PREFAB_DIAG, "", "Show cursor target info", "Game");
-		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_BOUNDS_OVERLAP_PREFAB_DIAG, "", "Show bounds overlap target info", "Game");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_GAME_BOUNDS_OVERLAP_PREFAB, "", "Show bounds overlap target info", "Game");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_GAME_CURSOR_TARGET_PREFAB, "", "Show cursor target info", "Game");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_GAME_COPY_ENF_VIEW_LINK, "lctrl+lshift+l", "Copy view link", "Game");
 
 		// UI
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_UI_CLOSE_ALL_MENUS, "", "Close All Menus", "UI");
@@ -532,22 +559,14 @@ class ArmaReforgerScripted : ChimeraGame
 			m_bAreGameFlagsObtained = true;
 			InvokeGameFlags();
 		}
-
-		InputManager inputManager = GetInputManager();
-		inputManager.AddActionListener("ShowScoreboard", EActionTrigger.DOWN, OnShowPlayerList);
-		inputManager.AddActionListener("InstantVote", EActionTrigger.DOWN, OnInstantVote);
-		inputManager.AddActionListener("MenuOpen", EActionTrigger.DOWN, OnMenuOpen);
-		#ifdef WORKBENCH
-			inputManager.AddActionListener("MenuOpenWB", EActionTrigger.DOWN, OnMenuOpen);
-		#endif
+		
+		AddActionListeners();
 
 		if (m_CoresManager)
 			m_CoresManager.OnGameStart();
 
 		m_SessionErrorHandler = new RplSessionErrorHandler();
 
-		// Init early access watermark:
-		m_wWatermark = GetGame().GetWorkspace().CreateWidgets("{B7A765172F0BD4D9}UI/layouts/Common/EarlyAccessWatermark.layout", GetGame().GetWorkspace());
 
 #ifndef PLATFORM_CONSOLE
 		if (System.IsCLIParam("listScenarios"))
@@ -558,7 +577,6 @@ class ArmaReforgerScripted : ChimeraGame
 		
 #ifdef PLATFORM_CONSOLE
 		SCR_SettingsManager settingsManager = GetSettingsManager();
-		
 		//by default we do not expect console to have keyboard
 		m_bHasKeyboard = false;
 		
@@ -567,18 +585,27 @@ class ArmaReforgerScripted : ChimeraGame
 		//setup default quality settings for series S and series X xbox
 		if (settingsManager)
 		{
-			int lastUsedPresetID = -1;
-			BaseContainer videoSettings = GetGame().GetGameUserSettings().GetModule("SCR_VideoSettings");
-			if (videoSettings)
+			SCR_SettingsManagerVideoModule settingsVideoModule = SCR_SettingsManagerVideoModule.Cast(settingsManager.GetModule(ESettingManagerModuleType.SETTINGS_MANAGER_VIDEO));
+			
+			//by default we do not expect console to have keyboard
+			m_bHasKeyboard = false;
+			
+			//setup default quality settings for series S and series X xbox
+			if (settingsVideoModule)
 			{
-				videoSettings.Get("m_iLastUsedPreset", lastUsedPresetID);
-				if (lastUsedPresetID == -1 && System.GetPlatform() == EPlatform.XBOX_SERIES_S)
-					settingsManager.SetConsolePreset(EVideoQualityPreset.SERIES_S_PRESET_QUALITY);
-				else if (lastUsedPresetID == -1 && System.GetPlatform() == EPlatform.XBOX_SERIES_X)
-					settingsManager.SetConsolePreset(EVideoQualityPreset.SERIES_X_PRESET_QUALITY);
-				
-				if (lastUsedPresetID != -1)
-					settingsManager.SetConsolePreset(lastUsedPresetID);
+				int lastUsedPresetID = -1;
+				BaseContainer videoSettings = GetGame().GetGameUserSettings().GetModule("SCR_VideoSettings");
+				if (videoSettings)
+				{
+					videoSettings.Get("m_iLastUsedPreset", lastUsedPresetID);
+					if (lastUsedPresetID == -1 && System.GetPlatform() == EPlatform.XBOX_SERIES_S)
+						settingsVideoModule.SetConsolePreset(EVideoQualityPreset.SERIES_S_PRESET_QUALITY);
+					else if (lastUsedPresetID == -1 && System.GetPlatform() == EPlatform.XBOX_SERIES_X)
+						settingsVideoModule.SetConsolePreset(EVideoQualityPreset.SERIES_X_PRESET_QUALITY);
+					
+					if (lastUsedPresetID != -1)
+						settingsVideoModule.SetConsolePreset(lastUsedPresetID);
+				}
 			}
 		}
 #endif
@@ -604,6 +631,12 @@ class ArmaReforgerScripted : ChimeraGame
 			return;
 
 		OpenPlayerList();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void OnShowGroupMenu()
+	{
+		OpenGroupMenu();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -634,8 +667,36 @@ class ArmaReforgerScripted : ChimeraGame
 		MenuBase menu = menuManager.FindMenuByPreset(ChimeraMenuPreset.PlayerListMenu);
 		if (!menu)
 			menu = menuManager.OpenMenu(ChimeraMenuPreset.PlayerListMenu);
-
+		
 		return SCR_PlayerListMenu.Cast(menu);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static SCR_GroupMenu OpenGroupMenu()
+	{
+		SCR_Faction playerFaction;
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+			playerFaction = SCR_Faction.Cast(factionManager.GetLocalPlayerFaction());
+		
+		if (!playerFaction)
+			return null;
+		
+		MenuManager menuManager = GetGame().GetMenuManager();
+		if (menuManager.IsAnyDialogOpen())
+			return null; // We don't want to open this menu behind any dialogs.
+
+		MenuBase menu = MenuBase.Cast(menuManager.FindMenuByPreset(ChimeraMenuPreset.GroupMenu));
+		MenuBase playerMenu = MenuBase.Cast(menuManager.FindMenuByPreset(ChimeraMenuPreset.PlayerListMenu));
+		if (playerMenu)
+			return null;
+		
+		if (!menu)
+			GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.GroupMenu, 0, false, false);
+		else	
+			GetGame().GetMenuManager().CloseMenu(menu);
+		
+		return SCR_GroupMenu.Cast(menu);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -644,8 +705,8 @@ class ArmaReforgerScripted : ChimeraGame
 		m_bAreGameFlagsObtained = false;
 		Event_OnObtainedGameFlags.Clear();
 		GetGame().GetMenuManager().CloseAllMenus();
-		if (m_wWatermark)
-			m_wWatermark.RemoveFromHierarchy();
+		
+		RemoveActionListeners();
 
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGameMode());
 		if (gameMode)
@@ -681,6 +742,40 @@ class ArmaReforgerScripted : ChimeraGame
 	override void OnWorldSimulatePhysics(float timeSlice)
 	{
 		m_OnWorldSimulatePhysicsInvoker.Invoke(timeSlice);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override event void OnWindowResize(int w, int h, bool windowed)
+	{
+		m_OnWindowResizeInvoker.Invoke(w, h, windowed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddActionListeners()
+	{
+		InputManager inputManager = GetInputManager();
+		inputManager.AddActionListener("ShowScoreboard", EActionTrigger.DOWN, OnShowPlayerList);
+		inputManager.AddActionListener("ShowGroupMenu", EActionTrigger.DOWN, OnShowGroupMenu);
+		inputManager.AddActionListener("InstantVote", EActionTrigger.DOWN, OnInstantVote);
+		inputManager.AddActionListener("MenuOpen", EActionTrigger.DOWN, OnMenuOpen);
+		
+		#ifdef WORKBENCH
+			inputManager.AddActionListener("MenuOpenWB", EActionTrigger.DOWN, OnMenuOpen);
+		#endif
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveActionListeners()
+	{
+		InputManager inputManager = GetInputManager();
+		inputManager.RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, OnShowPlayerList);
+		inputManager.RemoveActionListener("ShowGroupMenu", EActionTrigger.DOWN, OnShowGroupMenu);
+		inputManager.RemoveActionListener("InstantVote", EActionTrigger.DOWN, OnInstantVote);
+		inputManager.RemoveActionListener("MenuOpen", EActionTrigger.DOWN, OnMenuOpen);
+		
+		#ifdef WORKBENCH
+			inputManager.RemoveActionListener("MenuOpenWB", EActionTrigger.DOWN, OnMenuOpen);
+		#endif
 	}
 
 	#ifdef ENABLE_DIAG
@@ -745,7 +840,7 @@ class ArmaReforgerScripted : ChimeraGame
 
 		// Check clipboard link diag
 		#ifdef ENABLE_DIAG
-		bool bGetEnfLinkToClipboard = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_COPY_ENF_VIEW_LINK);
+		bool bGetEnfLinkToClipboard = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_GAME_COPY_ENF_VIEW_LINK);
 		if (bGetEnfLinkToClipboard)
 		{
 			// Out to clip
@@ -753,10 +848,10 @@ class ArmaReforgerScripted : ChimeraGame
 			world.GetCurrentCamera(cameraTransform);
 			System.ExportToClipboard(GetWorldEditorLink(cameraTransform));
 			// Reset
-			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_COPY_ENF_VIEW_LINK, 0);
+			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_GAME_COPY_ENF_VIEW_LINK, 0);
 		}
 
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CURSOR_TARGET_PREFAB_DIAG))
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_GAME_CURSOR_TARGET_PREFAB))
 		{
 			CameraManager cameraManager = GetGame().GetCameraManager();
 			if (cameraManager)
@@ -768,19 +863,41 @@ class ArmaReforgerScripted : ChimeraGame
 					IEntity ent = current.GetCursorTarget();
 					if (ent)
 					{
+						// Position
+						vector pos = ent.GetOrigin();
+
 						// Name
 						string name = ent.GetName();
-						// Draw text
-						DbgUI.Text("Name: " + name);
 						string pname;
+						if( name.IsEmpty() )
+							pname = "Unnamed entity";
+						else
+							pname = "Name: " + name;
+							
+						// Draw text
+						DbgUI.Text(pname);
+
+						string prfab;
 						string ptree;
-						if (GetQueryTargetInfo(ent, pname, ptree))
+						string pepos;
+						if (GetQueryTargetInfo(ent, prfab, ptree))
 						{
-							DbgUI.Text("Prefab: " + pname);
+							pepos = "Position: <" + pos[0] + ", " + pos[1] + ", " + pos[2] + ">";						
+							
+							Physics phys = ent.GetPhysics();
+							if( phys && phys.GetVelocity().Length() > 0 )
+							{
+								string pevel = "Velocity: " + phys.GetVelocity().Length();
+								pepos += ", ";
+								pepos += pevel;
+							}
+							DbgUI.Text(pepos);
+								
+							DbgUI.Text("Prefab: " + prfab);
 							DbgUI.Text("Prefab Inheritance Tree: " + ptree);
 						}
 						DbgUI.Spacer(32);
-						string infoText = string.Format("Name=\"%1\"\nPrefab=\"%2\"\nTree=\"%3\"", name, pname, ptree);
+						string infoText = string.Format("%1\n%2\nPrefab: \"%3\"\nPrefab Inheritance Tree: \"%4\"", pname, pepos, prfab, ptree);
 						
 						if (DbgUI.Button("Copy to clipboard"))
 						{
@@ -793,7 +910,6 @@ class ArmaReforgerScripted : ChimeraGame
 						ref Shape boundingFill = Shape.Create(ShapeType.BBOX, ARGB(5, 0, 255, 0), ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP, mins, maxs);
 						ref Shape boundingWire = Shape.Create(ShapeType.BBOX, ARGB(200, 0, 255, 255), ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.WIREFRAME | ShapeFlags.TRANSP, mins, maxs);
 
-						vector pos = ent.GetOrigin();
 						DebugTextWorldSpace.Create(current.GetWorld(), infoText, DebugTextFlags.FACE_CAMERA | DebugTextFlags.CENTER | DebugTextFlags.ONCE, pos[0], maxs[1] + 0.5, pos[2], 8, ARGB(255, 0, 255, 255), ARGB(64, 0, 0, 0));
 					}
 					DbgUI.End();
@@ -801,7 +917,7 @@ class ArmaReforgerScripted : ChimeraGame
 			}
 		}
 
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_BOUNDS_OVERLAP_PREFAB_DIAG))
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_GAME_BOUNDS_OVERLAP_PREFAB))
 		{
 			CameraManager cameraManager = GetGame().GetCameraManager();
 			if (cameraManager)
@@ -818,20 +934,41 @@ class ArmaReforgerScripted : ChimeraGame
 					IEntity ent = m_pQueryTargetDiag.GetClosestEntity(cameraMat[3]);
 					if (ent)
 					{
+						// Position
+						vector pos = ent.GetOrigin();
+
 						// Name
 						string name = ent.GetName();
-						// Draw text
-						DbgUI.Text("Name: " + name);
 						string pname;
+						if( name.IsEmpty() )
+							pname = "Unnamed entity";
+						else
+							pname = "Name: " + name;
+							
+						// Draw text
+						DbgUI.Text(pname);
+
+						string prfab;
 						string ptree;
-						if (GetQueryTargetInfo(ent, pname, ptree))
+						string pepos;
+						if (GetQueryTargetInfo(ent, prfab, ptree))
 						{
-							DbgUI.Text("Prefab: " + pname);
+							pepos = "Position: <" + pos[0] + ", " + pos[1] + ", " + pos[2] + ">";						
+							
+							Physics phys = ent.GetPhysics();
+							if( phys && phys.GetVelocity().Length() > 0 )
+							{
+								string pevel = "Velocity: " + phys.GetVelocity().Length();
+								pepos += ", ";
+								pepos += pevel;
+							}
+							DbgUI.Text(pepos);
+								
+							DbgUI.Text("Prefab: " + prfab);
 							DbgUI.Text("Prefab Inheritance Tree: " + ptree);
 						}
 						DbgUI.Spacer(32);
-						string infoText = string.Format("Name=\"%1\"\nPrefab=\"%2\"\nTree=\"%3\"", name, pname, ptree);
-						
+						string infoText = string.Format("%1\n%2\nPrefab: \"%3\"\nPrefab Inheritance Tree: \"%4\"", pname, pepos, prfab, ptree);
 						if (DbgUI.Button("Copy to clipboard"))
 						{
 							System.ExportToClipboard(infoText);
@@ -843,7 +980,6 @@ class ArmaReforgerScripted : ChimeraGame
 						ref Shape boundingFill = Shape.Create(ShapeType.BBOX, ARGB(5, 0, 255, 0), ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP, mins, maxs);
 						ref Shape boundingWire = Shape.Create(ShapeType.BBOX, ARGB(200, 0, 255, 255), ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.WIREFRAME | ShapeFlags.TRANSP, mins, maxs);
 
-						vector pos = ent.GetOrigin();
 						DebugTextWorldSpace.Create(current.GetWorld(), infoText, DebugTextFlags.FACE_CAMERA | DebugTextFlags.CENTER | DebugTextFlags.ONCE, pos[0], maxs[1] + 0.5, pos[2], 8, ARGB(255, 0, 255, 255), ARGB(64, 0, 0, 0));
 					}
 					DbgUI.End();
@@ -1017,25 +1153,20 @@ class ArmaReforgerScripted : ChimeraGame
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void PlayMission(SCR_MissionHeader header)
+	override void PlayGameConfig(ResourceName sResource, string addonsList)
 	{
-		if (!header)
-			return;
-		Print(string.Format("Play mission: %1", header.m_sName));
+		Print(string.Format("PlayGameConfig {Resource: %1; Addons: %2}", sResource, addonsList));
 
-		if (GameStateTransitions.RequestMissionChangeTransition(header))
+		if (sResource.Empty)
+		{
+			Print(string.Format("PlayGameConfig: Empty resource passed!"));
+			return;
+		}
+		
+		if (GameStateTransitions.RequestScenarioChangeTransition(sResource, addonsList))
 			GetGame().GetMenuManager().CloseAllMenus();
 		else
-			Print(string.Format("Failed to start mission: %1", header.m_sName), LogLevel.ERROR);
-
-		// TODO: Show invalid mission dialog
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void PlayGameConfig(ResourceName sResource)
-	{
-		ref SCR_MissionHeader header = SCR_MissionHeader.Cast(SCR_MissionHeader.ReadMissionHeader(sResource));
-		PlayMission(header);
+			Print(string.Format("Failed to start scenario."), LogLevel.ERROR);
 	}
 
 

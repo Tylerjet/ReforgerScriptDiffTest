@@ -52,13 +52,6 @@ class JsonApiStruct : Managed
 	}
 
 	/**
-	\brief Verification event after successfull JSON packing
-	*/
-	void OnBufferReady()
-	{
-	}
-
-	/**
 	\brief Event called when pending store operation is finished - callback from JsonApiHandle before handle release
 	*/
 	void OnSuccess( int errorCode )
@@ -106,11 +99,16 @@ class JsonApiStruct : Managed
 	\brief Register script variable for auto-feature
 	*/
 	proto native void RegV( string name );
-
 	/**
 	\brief Unregister script variable for auto-feature
 	*/
 	proto native void UnregV( string name );
+	/**
+	\brief Register all variable present on object for auto-feature (it is not recursive!)
+	*/
+	proto native void RegAll();
+
+
 	/**
 	\brief Push object to parse (only during parse operation)
 	*/
@@ -226,6 +224,11 @@ class JsonApiStruct : Managed
 	*/
 	proto native string AsString();
 
+	/**
+	\brief Return true if there are present JSON data which can be expanded on script object (typically you check this after load of file)
+	*/
+	proto native bool HasData();
+	
 	/**
 	\brief Pack() and save JSON to file
 	*/

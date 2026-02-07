@@ -8,6 +8,7 @@ Preview entity created from existing editable entities.
 class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 {
 	protected SCR_EditableEntityComponent m_EditableEntity;
+	protected ref array<IEntity> m_aExcludeArray; //--- Entities excluded when tracing terrain. Must be here, trace does not hold own reference.
 	
 	/*!
 	Spawn preview entity from existing owner of editable entity.
@@ -66,6 +67,11 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 		if (!spawnParamsLocal)
 			spawnParamsLocal = new EntitySpawnParams();
 		
+		TraceParam trace;
+		array<IEntity> excludeArray = {};
+		if (SCR_Enum.HasFlag(flags, EPreviewEntityFlag.GEOMETRY))
+			trace = new TraceParam();
+		
 		array<ref SCR_BasePreviewEntry> entries = {};
 		set<SCR_EditableEntityComponent> entitiesCopy = new set<SCR_EditableEntityComponent>;
 		entitiesCopy.Copy(entities);
@@ -82,7 +88,7 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 			}
 			else
 			{
-				GetPreviewEntries(entity, entries, spawnParamsLocal.Transform, -1, flags);
+				GetPreviewEntries(entity, entries, spawnParamsLocal.Transform, -1, flags, trace);
 				entitiesCopy.Remove(index);
 				index = 0;
 			}
@@ -102,8 +108,12 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 		if (!spawnParams)
 			spawnParams = new EntitySpawnParams();
 		
+		TraceParam trace;
+		if (SCR_Enum.HasFlag(flags, EPreviewEntityFlag.GEOMETRY))
+			trace = new TraceParam();
+		
 		array<ref SCR_BasePreviewEntry> entries = {};
-		GetPreviewEntries(entity, entries, spawnParams.Transform, -1, flags);
+		GetPreviewEntries(entity, entries, spawnParams.Transform, -1, flags, trace);
 		return entries;
 	}
 	
@@ -113,7 +123,7 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 	\param[out] outEntries Array to be filled with entity entries
 	\param[out] rootTransform Center pivot of the preview. When zero, transformation of the first entity will be used
 	*/
-	static void GetPreviewEntries(SCR_EditableEntityComponent entity, out notnull array<ref SCR_BasePreviewEntry> outEntries, out vector rootTransform[4], int parentID = -1, EPreviewEntityFlag flags = 0)
+	static void GetPreviewEntries(SCR_EditableEntityComponent entity, out notnull array<ref SCR_BasePreviewEntry> outEntries, out vector rootTransform[4], int parentID = -1, EPreviewEntityFlag flags = 0, TraceParam trace = null)
 	{
 		IEntity owner = entity.GetOwner();
 		vector transform[4];
@@ -128,13 +138,23 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 			if (entity.HasEntityFlag(EEditableEntityFlag.IGNORE_LAYERS))
 				return;
 			
-			//--- Skip entities with mesh that are not visible, as well as entities not intended for play mode
-			if ((owner.GetVObject() && !(owner.GetFlags() & EntityFlags.VISIBLE)) || (owner.GetFlags() & EntityFlags.EDITOR_ONLY))
+			//--- Skip the entity if...
+			if (
+				//--- ... it has an object (e.g., not a composition folder)...
+				owner.GetVObject()
+				&&
+				(
+					//--- ... but the object does not have a mesh (e.g., particle effect)...
+					(!owner.GetVObject().ToMeshObject())
+					||
+					//--- ... or the object is not visible or is not intended for play mode
+					(!(owner.GetFlags() & EntityFlags.VISIBLE) || (owner.GetFlags() & EntityFlags.EDITOR_ONLY))
+				)
+			)
 				return;
 			
 			entity.GetLocalTransform(transform);
 		}
-
 		
 		SCR_BasePreviewEntry entry = new SCR_BasePreviewEntry(true);
 		entry.m_iParentID = parentID;
@@ -142,11 +162,13 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 		
 		entry.m_Entity = owner;
 		entry.SaveTransform(transform);
-		entry.m_fScale = GetLocalScale(entry.m_Entity);
+		entry.SetScale(GetLocalScale(entry.m_Entity));
 		entry.m_iPivotID = GetPivotName(entry.m_Entity);
 		
 		if (GetMesh(entry.m_Entity, flags, entry, outEntries))
 			return;
+		
+		entry.m_Flags |= EPreviewEntityFlag.EDITABLE;
 		
 		if (entity.HasEntityFlag(EEditableEntityFlag.HORIZONTAL))
 			entry.m_Flags |= EPreviewEntityFlag.HORIZONTAL;
@@ -157,7 +179,7 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 		if (!SCR_Enum.HasFlag(flags, EPreviewEntityFlag.IGNORE_TERRAIN))
 		{
 			bool isUnderwater = SCR_Enum.HasFlag(flags, EPreviewEntityFlag.UNDERWATER);
-			SaveTerrainTransform(entry.m_Entity, entry, isUnderwater);
+			SaveTerrainTransform(entry.m_Entity, entry, isUnderwater, trace);
 		}
 		else
 		{
@@ -208,6 +230,14 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 	{
 		return m_EditableEntity;
 	}
+	/*!
+	Get array of entities to be excluded when checking for GEOMETRY intersection for the preview.
+	\return Array of entities
+	*/
+	array<IEntity> GetExcludeArray()
+	{
+		return m_aExcludeArray;
+	}
 	
 	protected override void EOnPreviewInit(SCR_BasePreviewEntry entry, SCR_BasePreviewEntity root)
 	{
@@ -225,6 +255,14 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 				else
 					previewEditableEntity.InitFromSource(SCR_BaseContainerTools.FindComponentSource(entry.m_EntitySource, SCR_EditableEntityComponent));
 			}
+		}
+	}
+	override protected void EOnRootPreviewInit(array<ref SCR_BasePreviewEntry> entries)
+	{
+		m_aExcludeArray = {};
+		foreach (SCR_BasePreviewEntry entry: entries)
+		{
+			m_aExcludeArray.Insert(entry.m_Entity);
 		}
 	}
 };

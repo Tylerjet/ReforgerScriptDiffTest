@@ -6,6 +6,8 @@ class SCR_DropdownEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 	protected ref SCR_BaseEditorAttributeFloatStringValues m_comboboxData;
 	protected bool m_bInitCalled;
 	
+	protected ref array<string> m_aDropdownArray = {};
+	
 	override void Init(Widget w, SCR_BaseEditorAttribute attribute)
 	{
 		Widget comboBoxWidget = w.FindAnyWidget(m_sUiComponentName);
@@ -50,12 +52,42 @@ class SCR_DropdownEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 				{
 					SCR_BaseEditorAttributeEntryText entry = SCR_BaseEditorAttributeEntryText.Cast(entries[i]);
 					if (entry) 
-						m_ComboBoxComponent.AddItem(entry.GetText());
+						m_aDropdownArray.Insert(entry.GetText());
 				}
 			}
 		}
 		
+		//~ Create the entries
+		CreateDropdownEntries();
+		
 		super.Init(w, attribute);
+	}
+	
+	//~ Create the actual dropdown array
+	protected void CreateDropdownEntries()
+	{
+		if (!m_ComboBoxComponent)
+			return;
+		
+		foreach(string entry : m_aDropdownArray)
+		{
+			m_ComboBoxComponent.AddItem(GetFullDropdownEntryText(entry));
+		}
+	}
+	
+	//~ Override for any additional functionality for the text entries
+	protected string GetFullDropdownEntryText(string text)
+	{
+		return text;
+	}
+	
+	/*!
+	Get ComboBoxData from the drop down UI Attribute
+	\return Combobox data
+	*/
+	SCR_BaseEditorAttributeFloatStringValues GetComboBoxData()
+	{
+		return m_comboboxData;
 	}
 	
 	//Sets a default state for the UI and var value if conflicting attribute

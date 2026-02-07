@@ -21,7 +21,7 @@ class SCR_EditableEntityCustomSlotUIComponent: SCR_EditableEntitySceneSlotUIComp
 		if (m_Entity)
 		{
 			vector transform[4];
-			m_Owner.GetBoneMatrix(m_iBoneIndex, transform);
+			m_Owner.GetAnimation().GetBoneMatrix(m_iBoneIndex, transform);
 			
 			vector posWorld = m_Owner.CoordToParent(transform[3] + m_vOffset);
 			vector pos = m_Workspace.ProjWorldToScreen(posWorld, m_World);
@@ -66,7 +66,7 @@ class SCR_EditableEntityCustomSlotUIComponent: SCR_EditableEntitySceneSlotUIComp
 		m_CameraManager = GetGame().GetCameraManager();
 		
 		m_Owner = m_Entity.GetOwner();
-		m_iBoneIndex = m_Owner.GetBoneIndex(m_sBoneName);
+		m_iBoneIndex = m_Owner.GetAnimation().GetBoneIndex(m_sBoneName);
 		
 		FrameSlot.SetAlignment(m_Widget, 0.5, 0.5);
 	}

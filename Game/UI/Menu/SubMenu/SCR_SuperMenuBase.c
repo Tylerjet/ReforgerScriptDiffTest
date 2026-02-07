@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-class SCR_SuperMenuBase: ChimeraMenuBase
+class SCR_SuperMenuBase : MenuRootBase //ChimeraMenuBase
 {
 	protected ResourceName m_sNavigationButtonLayout = "{08CF3B69CB1ACBC4}UI/layouts/WidgetLibrary/WLib_NavigationButton.layout";
 	protected Widget m_wFooterLeft;
@@ -12,7 +12,6 @@ class SCR_SuperMenuBase: ChimeraMenuBase
 	protected SCR_TabViewComponent m_TabViewComponent;
 	protected SCR_SubMenuBase m_OpenedSubmenu;
 	protected ref array<SCR_SubMenuBase> m_aSubMenus = new ref array<SCR_SubMenuBase>;
-	
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
@@ -146,7 +145,17 @@ class SCR_SuperMenuBase: ChimeraMenuBase
 		if (!w)
 			return null;
 		
-		HorizontalLayoutSlot.SetPadding(w, 0, 0, 8, 0);
+		//Handle padding
+		float padding, paddingLeft, paddingRight;
+		float a, b, c;
+		AlignableSlot.GetPadding(w, a, b, padding, c);
+		if(rightFooter)
+			paddingLeft = padding;
+		else 
+			paddingRight = padding;
+		
+		AlignableSlot.SetPadding(w, paddingLeft, 0.0, paddingRight, 0.0);
+		
 		
 		SCR_NavigationButtonComponent comp = SCR_NavigationButtonComponent.Cast(w.FindHandler(SCR_NavigationButtonComponent));
 		if (!comp)

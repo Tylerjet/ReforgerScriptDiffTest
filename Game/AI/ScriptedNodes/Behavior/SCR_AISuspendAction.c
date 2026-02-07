@@ -9,7 +9,7 @@ class SCR_AISuspendAction : SCR_AIActionTask
 		if (!action)
 			return ENodeResult.FAIL;
 		
-		action.SetSuspended(true);
+		action.SetActionIsSuspended(true);
 		return ENodeResult.SUCCESS;
 	}
 

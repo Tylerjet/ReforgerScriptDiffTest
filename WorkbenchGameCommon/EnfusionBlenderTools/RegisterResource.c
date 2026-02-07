@@ -26,7 +26,7 @@ class RegisterResourceUtils
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
 		MetaFile meta = resourceManager.RegisterResourceFile(absPath);
 		//Check if metafile was created
-		if (meta == false)
+		if (!meta)
 		{
 			response.Output = false;
 			return;
@@ -54,7 +54,6 @@ class RegisterResource: NetApiHandler
 		//To fbx which is in WB files
 		for(int i = 0; i < req.path.Count(); i++)
 		{
-			Print(req.path[i]);
 			utils.Register(req.path[i], response);
 		}
 		return response;

@@ -32,6 +32,6 @@ class SCR_EditorLessThenCountWaypointsActionCondition: SCR_AvailableActionCondit
 			}			
 		}
 		
-		return GetReturnResult(maxCount <= m_iCount));
+		return GetReturnResult(maxCount <= m_iCount);
 	}
 };

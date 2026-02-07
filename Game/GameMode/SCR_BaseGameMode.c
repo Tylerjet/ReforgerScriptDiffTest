@@ -1,6 +1,3 @@
-void SCR_BaseGameMode_OnPlayerDisconnected(int playerId, KickCauseCode cause = KickCauseCode.NONE, int timeout = -1);
-typedef func SCR_BaseGameMode_OnPlayerDisconnected;
-
 /**
 @defgroup GameMode Game Mode
 Game modes.
@@ -100,11 +97,38 @@ Important:
 		In additionaly as implemented in this class it will automatically call OnGameModeStart() and OnGameModeEnd()
 		based on the state the game is transitioning into.
 */
-//------------------------------------------------------------------------------------------------
 
+//------------------------------------------------------------------------------------------------
+//~ ScriptInvokers
+void SCR_BaseGameMode_OnPlayerDisconnected(int playerId, KickCauseCode cause = KickCauseCode.NONE, int timeout = -1);
+typedef func SCR_BaseGameMode_OnPlayerDisconnected;
+
+void SCR_BaseGameMode_OnPlayerKilled(int playerId, IEntity player, IEntity killer);
+typedef func SCR_BaseGameMode_OnPlayerKilled;
+
+//~ Generic Event that sends over player ID
+void SCR_BaseGameMode_PlayerId(int playerId);
+typedef func SCR_BaseGameMode_PlayerId;
+
+//~ Generic event that sends over player ID and Entity
+void SCR_BaseGameMode_PlayerIdAndEntity(int playerId, IEntity player);
+typedef func SCR_BaseGameMode_PlayerIdAndEntity;
+
+//~ On Player role changed
+void SCR_BaseGameMode_OnPlayerRoleChanged(int playerId, EPlayerRole roleFlags);
+typedef func SCR_BaseGameMode_OnPlayerRoleChanged;
+
+void OnPreloadFinished();
+typedef func OnPreloadFinished;
+typedef ScriptInvokerBase<OnPreloadFinished> OnPreloadFinishedInvoker;
+
+
+//------------------------------------------------------------------------------------------------
 class SCR_BaseGameMode : BaseGameMode
 {
+	#ifdef ENABLE_DIAG
 	#define GAME_MODE_DEBUG
+	#endif
 
 	#ifdef GAME_MODE_DEBUG
 		static bool s_DebugRegistered = false;
@@ -113,24 +137,27 @@ class SCR_BaseGameMode : BaseGameMode
 	const static string WB_GAME_MODE_CATEGORY = "Game Mode";
 
 	protected ref ScriptInvoker Event_OnGameStart = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnGameEnd = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnPlayerAuditSuccess = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnPlayerAuditFail = new ScriptInvoker();
-	protected ref ScriptInvoker<int> Event_OnPlayerAuditTimeouted = new ScriptInvoker();
-	protected ref ScriptInvoker<int> Event_OnPlayerAuditRevived = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnPlayerConnected = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnPlayerRegistered = new ScriptInvoker();
-	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> Event_OnPlayerDisconnected = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected>();
-	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> Event_OnPostCompPlayerDisconnected = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected>(); //~ Called after the GameMode Components are notified that a player was disconnected
-	protected ref ScriptInvoker Event_OnPlayerSpawned = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnPlayerKilled = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnPlayerDeleted = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnPlayerRoleChange = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnWorldPostProcess = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnControllableSpawned = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnControllableDestroyed = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnControllableDeleted = new ScriptInvoker();
-	protected ref ScriptInvoker Event_OnGameModeEnd = new ref ScriptInvoker();
+	protected ref ScriptInvoker m_OnGameEnd = new ScriptInvoker();
+	
+	//~ Player events
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_PlayerId> m_OnPlayerAuditSuccess = new ScriptInvokerBase<SCR_BaseGameMode_PlayerId>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_PlayerId> m_OnPlayerAuditFail = new ScriptInvokerBase<SCR_BaseGameMode_PlayerId>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_PlayerId> m_OnPlayerAuditTimeouted = new ScriptInvokerBase<SCR_BaseGameMode_PlayerId>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_PlayerId> m_OnPlayerAuditRevived = new ScriptInvokerBase<SCR_BaseGameMode_PlayerId>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_PlayerId> m_OnPlayerConnected = new ScriptInvokerBase<SCR_BaseGameMode_PlayerId>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_PlayerId> m_OnPlayerRegistered = new ScriptInvokerBase<SCR_BaseGameMode_PlayerId>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> m_OnPlayerDisconnected = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> m_OnPostCompPlayerDisconnected = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected>(); //~ Called after the GameMode Components are notified that a player was disconnected
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_PlayerIdAndEntity> m_OnPlayerSpawned = new ScriptInvokerBase<SCR_BaseGameMode_PlayerIdAndEntity>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerKilled> m_OnPlayerKilled = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerKilled>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_PlayerIdAndEntity> m_OnPlayerDeleted = new ScriptInvokerBase<SCR_BaseGameMode_PlayerIdAndEntity>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerRoleChanged> m_OnPlayerRoleChange = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerRoleChanged>();
+	
+	protected ref ScriptInvoker m_OnWorldPostProcess = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnControllableSpawned = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnControllableDestroyed = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnControllableDeleted = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnGameModeEnd = new ref ScriptInvoker();
 
 	//-----------------------------------------
 	//
@@ -141,6 +168,9 @@ class SCR_BaseGameMode : BaseGameMode
 
 	[Attribute("1", uiwidget: UIWidgets.CheckBox, "When false, then Game mode need to handle its very own spawning. If true, then simple default logic is used to spawn and respawn automatically.", category: WB_GAME_MODE_CATEGORY)]
 	protected bool m_bAutoPlayerRespawn;
+	
+	[Attribute("1", uiwidget: UIWidgets.CheckBox, "When true, allows players to freely swap their faction after initial assignment.", category: WB_GAME_MODE_CATEGORY)]
+	protected bool m_bAllowFactionChange;
 	
 	[Attribute("0", UIWidgets.Slider, params: "0 300 0.1", desc: "Time in seconds after which session is restarted upon completion or 0 if none.", category: WB_GAME_MODE_CATEGORY)]
 	private float m_fAutoReloadTime;
@@ -185,7 +215,6 @@ class SCR_BaseGameMode : BaseGameMode
 	protected RplComponent m_RplComponent;
 	protected SCR_GameModeHealthSettings m_pGameModeHealthSettings;
 	protected SCR_RespawnSystemComponent m_pRespawnSystemComponent;
-	protected SCR_RespawnHandlerComponent m_pRespawnHandlerComponent;
 	protected SCR_BaseScoringSystemComponent m_ScoringSystemComponent;
 	protected SCR_RespawnTimerComponent m_RespawnTimerComponent;
 
@@ -200,6 +229,19 @@ class SCR_BaseGameMode : BaseGameMode
 	//! Map of components per state.
 	protected ref map<SCR_EGameModeState, SCR_BaseGameModeStateComponent> m_mStateComponents = new map<SCR_EGameModeState, SCR_BaseGameModeStateComponent>();
 
+	//! Spawn location preload
+	[Attribute("1", category: WB_GAME_MODE_CATEGORY)]
+	protected bool m_bUseSpawnPreload;
+
+	protected ref SCR_SpawnPreload m_SpawnPreload;
+	protected ref OnPreloadFinishedInvoker m_OnPreloadFinished;
+
+	bool IsSpawnPreloadEnabled()
+	{
+		return m_bUseSpawnPreload;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns whether current game mode is running its game loop.
 		\return True in case gamemode is running, false if it is over.
@@ -209,6 +251,7 @@ class SCR_BaseGameMode : BaseGameMode
 		return m_eGameState == SCR_EGameModeState.GAME;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns current game state. See SCR_GameModeState for more details.
 		\return Current game state.
@@ -218,6 +261,7 @@ class SCR_BaseGameMode : BaseGameMode
 		return m_eGameState;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns whether the owner of this instance is authority or not.
 	*/
@@ -226,6 +270,7 @@ class SCR_BaseGameMode : BaseGameMode
 		return (!m_RplComponent || m_RplComponent.IsMaster());
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns elapsed time from the start of this game in seconds.
 		\return Elapsed time in seconds.
@@ -235,6 +280,7 @@ class SCR_BaseGameMode : BaseGameMode
 		return m_fTimeElapsed;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns the game duration from the start of game in seconds or 0 if none.
 		\return Maximum time in seconds or 0 if infinite.
@@ -248,6 +294,7 @@ class SCR_BaseGameMode : BaseGameMode
 		return 0.0;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns the remaining time of this game in seconds or -1 if none or undefined.
 		\return Remaining time of this game.
@@ -310,6 +357,7 @@ class SCR_BaseGameMode : BaseGameMode
 		m_mPlayerSpawnPosition.Set(playerID, position);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns respawn system component attached to this gamemode.
 		\return Returns attached respawn system instance or null if none.
@@ -319,20 +367,13 @@ class SCR_BaseGameMode : BaseGameMode
 		return m_pRespawnSystemComponent;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	SCR_GameModeHealthSettings GetGameModeHealthSettings()
 	{
 		return m_pGameModeHealthSettings;
 	}
 
-	/*!
-		Returns respawn handler component attached to this gamemode.
-		\return Returns attached respawn handler instance or null
-	*/
-	SCR_RespawnHandlerComponent GetRespawnHandlerComponent()
-	{
-		return m_pRespawnHandlerComponent;
-	}
-
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns scoring system component attached to this game mode or null if none.
 		\return Returns attached scoring system instance or null if none.
@@ -340,12 +381,6 @@ class SCR_BaseGameMode : BaseGameMode
 	SCR_BaseScoringSystemComponent GetScoringSystemComponent()
 	{
 		return m_ScoringSystemComponent;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Called when a spawnpoint is used to respawn
-	void OnSpawnPointUsed(SCR_SpawnPoint spawnPoint, int playerId)
-	{
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -440,35 +475,35 @@ class SCR_BaseGameMode : BaseGameMode
 	}
 	ScriptInvoker GetOnGameEnd()
 	{
-		return Event_OnGameEnd;
+		return m_OnGameEnd;
 	}
-	ScriptInvoker GetOnPlayerAuditSuccess()
+	ScriptInvokerBase<SCR_BaseGameMode_PlayerId> GetOnPlayerAuditSuccess()
 	{
-		return Event_OnPlayerAuditSuccess;
+		return m_OnPlayerAuditSuccess;
 	}
-	ScriptInvoker GetOnPlayerAuditFail()
+	ScriptInvokerBase<SCR_BaseGameMode_PlayerId> GetOnPlayerAuditFail()
 	{
-		return Event_OnPlayerAuditFail;
+		return m_OnPlayerAuditFail;
 	}
-	ScriptInvoker GetOnPlayerAuditTimeouted()
+	ScriptInvokerBase<SCR_BaseGameMode_PlayerId> GetOnPlayerAuditTimeouted()
 	{
-		return Event_OnPlayerAuditTimeouted;
+		return m_OnPlayerAuditTimeouted;
 	}
-	ScriptInvoker GetOnPlayerAuditRevived()
+	ScriptInvokerBase<SCR_BaseGameMode_PlayerId> GetOnPlayerAuditRevived()
 	{
-		return Event_OnPlayerAuditRevived;
+		return m_OnPlayerAuditRevived;
 	}
-	ScriptInvoker GetOnPlayerConnected()
+	ScriptInvokerBase<SCR_BaseGameMode_PlayerId> GetOnPlayerConnected()
 	{
-		return Event_OnPlayerConnected;
+		return m_OnPlayerConnected;
 	}
-	ScriptInvoker GetOnPlayerRegistered()
+	ScriptInvokerBase<SCR_BaseGameMode_PlayerId> GetOnPlayerRegistered()
 	{
-		return Event_OnPlayerRegistered;
+		return m_OnPlayerRegistered;
 	}
 	ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> GetOnPlayerDisconnected()
 	{
-		return Event_OnPlayerDisconnected;
+		return m_OnPlayerDisconnected;
 	}
 	/*!
 	Called on player disconnect and after Gamemode components are notified
@@ -476,39 +511,39 @@ class SCR_BaseGameMode : BaseGameMode
 	*/
 	ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> GetOnPostCompPlayerDisconnected()
 	{
-		return Event_OnPostCompPlayerDisconnected;
+		return m_OnPostCompPlayerDisconnected;
 	}
-	ScriptInvoker GetOnPlayerSpawned()
+	ScriptInvokerBase<SCR_BaseGameMode_PlayerIdAndEntity> GetOnPlayerSpawned()
 	{
-		return Event_OnPlayerSpawned;
+		return m_OnPlayerSpawned;
 	}
-	ScriptInvoker GetOnPlayerKilled()
+	ScriptInvokerBase<SCR_BaseGameMode_OnPlayerKilled> GetOnPlayerKilled()
 	{
-		return Event_OnPlayerKilled;
+		return m_OnPlayerKilled;
 	}
-	ScriptInvoker GetOnPlayerDeleted()
+	ScriptInvokerBase<SCR_BaseGameMode_PlayerIdAndEntity> GetOnPlayerDeleted()
 	{
-		return Event_OnPlayerDeleted;
+		return m_OnPlayerDeleted;
 	}
-	ScriptInvoker GetOnPlayerRoleChange()
+	ScriptInvokerBase<SCR_BaseGameMode_OnPlayerRoleChanged> GetOnPlayerRoleChange()
 	{
-		return Event_OnPlayerRoleChange;
+		return m_OnPlayerRoleChange;
 	}
 	ScriptInvoker GetOnWorldPostProcess()
 	{
-		return Event_OnWorldPostProcess;
+		return m_OnWorldPostProcess;
 	}
 	ScriptInvoker GetOnControllableSpawned()
 	{
-		return Event_OnControllableSpawned;
+		return m_OnControllableSpawned;
 	}
 	ScriptInvoker GetOnControllableDestroyed()
 	{
-		return Event_OnControllableDestroyed;
+		return m_OnControllableDestroyed;
 	}
 	ScriptInvoker GetOnControllableDeleted()
 	{
-		return Event_OnControllableDeleted;
+		return m_OnControllableDeleted;
 	}
 	/*!
 	Get on game end script invoker called on every machine
@@ -516,7 +551,7 @@ class SCR_BaseGameMode : BaseGameMode
 	*/
 	ScriptInvoker GetOnGameModeEnd()
 	{
-		return Event_OnGameModeEnd;
+		return m_OnGameModeEnd;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -545,7 +580,7 @@ class SCR_BaseGameMode : BaseGameMode
 	*/
 	protected void OnGameModeEnd(SCR_GameModeEndData endData)
 	{
-		Event_OnGameModeEnd.Invoke(endData);
+		m_OnGameModeEnd.Invoke(endData);
 
 		#ifdef GMSTATS
 		if (IsGameModeStatisticsEnabled())
@@ -626,12 +661,18 @@ class SCR_BaseGameMode : BaseGameMode
 	//------------------------------------------------------------------------------------------------
 	void OnGameEnd()
 	{
-		Event_OnGameEnd.Invoke();
+		m_OnGameEnd.Invoke();
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
 			comp.OnGameEnd();
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsFactionChangeAllowed()
+	{
+		return m_bAllowFactionChange;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -642,10 +683,7 @@ class SCR_BaseGameMode : BaseGameMode
 	#endif
 
 		super.OnPlayerAuditSuccess(iPlayerID);
-		Event_OnPlayerAuditSuccess.Invoke(iPlayerID);
-
-		if (m_pRespawnSystemComponent)
-			m_pRespawnSystemComponent.OnPlayerConnected(iPlayerID);
+		m_OnPlayerAuditSuccess.Invoke(iPlayerID);
 		
 		// Dispatch event to child components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
@@ -662,10 +700,7 @@ class SCR_BaseGameMode : BaseGameMode
 	#endif
 
 		super.OnPlayerAuditFail(iPlayerID);
-		Event_OnPlayerAuditFail.Invoke(iPlayerID);
-
-		if (m_pRespawnSystemComponent)
-			m_pRespawnSystemComponent.OnPlayerConnected(iPlayerID);
+		m_OnPlayerAuditFail.Invoke(iPlayerID);
 		
 		// Dispatch event to child components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
@@ -678,7 +713,7 @@ class SCR_BaseGameMode : BaseGameMode
 	override void OnPlayerAuditTimeouted( int iPlayerID) 
 	{
 		super.OnPlayerAuditTimeouted(iPlayerID);
-		Event_OnPlayerAuditTimeouted.Invoke(iPlayerID);
+		m_OnPlayerAuditTimeouted.Invoke(iPlayerID);
 		
 		// Dispatch event to child components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
@@ -691,7 +726,7 @@ class SCR_BaseGameMode : BaseGameMode
 	override void OnPlayerAuditRevived( int iPlayerID) 
 	{
 		super.OnPlayerAuditRevived(iPlayerID);
-		Event_OnPlayerAuditRevived.Invoke(iPlayerID);
+		m_OnPlayerAuditRevived.Invoke(iPlayerID);
 		
 		// Dispatch event to child components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
@@ -708,7 +743,7 @@ class SCR_BaseGameMode : BaseGameMode
 	override void OnPlayerConnected(int playerId)
 	{
 		super.OnPlayerConnected(playerId);
-		Event_OnPlayerConnected.Invoke(playerId);
+		m_OnPlayerConnected.Invoke(playerId);
 		
 		// TODO: Please revisit and adjust this, this check results in some nasty branching and possible oversights/errors
 		// Wait for backend response if dedicated server is used and is not run without backend functionality
@@ -717,8 +752,6 @@ class SCR_BaseGameMode : BaseGameMode
 		#ifdef RESPAWN_COMPONENT_VERBOSE
 			Print("SCR_BaseGameMode::OnPlayerConnected - playerId: " + playerId, LogLevel.DEBUG);
 		#endif
-
-			m_pRespawnSystemComponent.OnPlayerConnected(playerId);
 		}
 
 		// Dispatch event to child components
@@ -747,17 +780,19 @@ class SCR_BaseGameMode : BaseGameMode
 	protected override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
 		super.OnPlayerDisconnected(playerId, cause, timeout);
-		Event_OnPlayerDisconnected.Invoke(playerId, cause, timeout);
-
-		if (m_pRespawnSystemComponent)
-			m_pRespawnSystemComponent.OnPlayerDisconnected(playerId);
+		m_OnPlayerDisconnected.Invoke(playerId, cause, timeout);
+		
+		// RespawnSystemComponent is not a SCR_BaseGameModeComponent, so for now we have to
+		// propagate these events manually. 
+		if (IsMaster())
+			m_pRespawnSystemComponent.OnPlayerDisconnected_S(playerId, cause, timeout);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
 			comp.OnPlayerDisconnected(playerId, cause, timeout);
 		}
 		
-		Event_OnPostCompPlayerDisconnected.Invoke(playerId, cause, timeout);
+		m_OnPostCompPlayerDisconnected.Invoke(playerId, cause, timeout);
 
 		if (IsMaster())
 		{
@@ -780,11 +815,23 @@ class SCR_BaseGameMode : BaseGameMode
 							BaseCompartmentSlot compartment = compAccess.GetCompartment();
 							if (compartment)
 							{
-								CarControllerComponent carController = CarControllerComponent.Cast(compartment.GetVehicle().FindComponent(CarControllerComponent));
-								if (carController)
+								if(GetGame().GetIsClientAuthority())
 								{
-									carController.Shutdown();
-									carController.StopEngine(false);
+									CarControllerComponent carController = CarControllerComponent.Cast(compartment.GetVehicle().FindComponent(CarControllerComponent));
+									if (carController)
+									{
+										carController.Shutdown();
+										carController.StopEngine(false);
+									}
+								}
+								else
+								{
+									CarControllerComponent_SA carController = CarControllerComponent_SA.Cast(compartment.GetVehicle().FindComponent(CarControllerComponent_SA));
+									if (carController)
+									{
+										carController.Shutdown();
+										carController.StopEngine(false);
+									}
 								}
 							}
 						}
@@ -806,7 +853,12 @@ class SCR_BaseGameMode : BaseGameMode
 	protected override void OnPlayerRegistered(int playerId)
 	{
 		super.OnPlayerRegistered(playerId);
-		Event_OnPlayerRegistered.Invoke(playerId);
+		m_OnPlayerRegistered.Invoke(playerId);
+		
+		// RespawnSystemComponent is not a SCR_BaseGameModeComponent, so for now we have to
+		// propagate these events manually. 
+		if (IsMaster())
+			m_pRespawnSystemComponent.OnPlayerRegistered_S(playerId);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
@@ -825,10 +877,11 @@ class SCR_BaseGameMode : BaseGameMode
 		\param playerId PlayerId of spawned player.
 		\param controlledEntity Spawned entity for this player.
 	*/
+	[Obsolete("Use SCR_BaseGameMode.OnPlayerSpawnFinalize_S")]
 	protected override void OnPlayerSpawned(int playerId, IEntity controlledEntity)
 	{
 		super.OnPlayerSpawned(playerId, controlledEntity);
-		Event_OnPlayerSpawned.Invoke(playerId, controlledEntity);
+		m_OnPlayerSpawned.Invoke(playerId, controlledEntity);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
@@ -843,29 +896,36 @@ class SCR_BaseGameMode : BaseGameMode
 		}
 		#endif
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Called after a player gets killed.
-		\param playerId PlayerId of victim player.
-		\param player Entity of victim player if any.
-		\param killer Entity of killer instigator if any.
-	*/
-	protected bool IsPlayerKilled(int playerId)
+	protected override bool HandlePlayerKilled(int playerId, IEntity player, IEntity killer)
 	{
-		return true;
-	}
-	protected override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
-	{
-		//--- Check if player was killed (could have been possessed entity, e.g., Game Master-controlled AI or unammed vehicle)
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
-			if (comp.GetPlayerID(player, playerId) && playerId == 0)
-				return;
+			// First component that returns false overrides the behaviour and can handle
+			// the kill based on their respective needs
+			if (!comp.HandlePlayerKilled(playerId, player, killer))
+			{
+				OnPlayerKilledHandled(playerId, player, killer);
+				return false;
+			}
 		}
-
+		
+		// Handle automatically
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Default player kill behaviour. Called when a player is killed (and HandlePlayerKilled returns true).
+	protected override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	{
 		super.OnPlayerKilled(playerId, player, killer);
-		Event_OnPlayerKilled.Invoke(playerId, player, killer);
+		m_OnPlayerKilled.Invoke(playerId, player, killer);
+		
+		// RespawnSystemComponent is not a SCR_BaseGameModeComponent, so for now we have to
+		// propagate these events manually. 
+		if (IsMaster())
+			m_pRespawnSystemComponent.OnPlayerKilled_S(playerId, player, killer);
 
 		// Dispatch events to children components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
@@ -878,17 +938,25 @@ class SCR_BaseGameMode : BaseGameMode
 			SCR_GameModeStatistics.RecordDeath(player, killer);
 		#endif
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Called after player kill behaviour is handled by a component overriding the generic logic.
+	protected void OnPlayerKilledHandled(int playerId, IEntity player, IEntity killer)
+	{
+		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+			comp.OnPlayerKilledHandled(playerId, player, killer);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected /*override*/ void OnPlayerDeleted(int playerId, IEntity player)
 	{
-		//--- Check if player was killed (could have been possessed entity, e.g., Game Master-controlled AI or unammed vehicle)
-		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
-		{
-			if (comp.GetPlayerID(player, playerId) && playerId == 0)
-				return;
-		}
+		// RespawnSystemComponent is not a SCR_BaseGameModeComponent, so for now we have to
+		// propagate these events manually. 
+		if (IsMaster())
+			m_pRespawnSystemComponent.OnPlayerDeleted_S(playerId);
 
 		//super.OnPlayerDeleted(playerId, player);
-		Event_OnPlayerDeleted.Invoke(playerId, player);
+		m_OnPlayerDeleted.Invoke(playerId, player);
 
 		// Dispatch events to children components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
@@ -906,7 +974,7 @@ class SCR_BaseGameMode : BaseGameMode
 	protected override void OnPlayerRoleChange(int playerId, EPlayerRole roleFlags)
 	{
 		super.OnPlayerRoleChange(playerId, roleFlags);
-		Event_OnPlayerRoleChange.Invoke(playerId, roleFlags);
+		m_OnPlayerRoleChange.Invoke(playerId, roleFlags);
 
 		// Dispatch events to children components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
@@ -923,7 +991,7 @@ class SCR_BaseGameMode : BaseGameMode
 	override event void OnWorldPostProcess(World world)
 	{
 		super.OnWorldPostProcess(world);
-		Event_OnWorldPostProcess.Invoke(world);
+		m_OnWorldPostProcess.Invoke(world);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
@@ -939,7 +1007,7 @@ class SCR_BaseGameMode : BaseGameMode
 	protected override void OnControllableSpawned(IEntity entity)
 	{
 		super.OnControllableSpawned(entity);
-		Event_OnControllableSpawned.Invoke(entity);
+		m_OnControllableSpawned.Invoke(entity);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
@@ -960,7 +1028,7 @@ class SCR_BaseGameMode : BaseGameMode
 	protected override void OnControllableDestroyed(IEntity entity, IEntity instigator)
 	{
 		super.OnControllableDestroyed(entity, instigator);
-		Event_OnControllableDestroyed.Invoke(entity, instigator);
+		m_OnControllableDestroyed.Invoke(entity, instigator);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
@@ -973,18 +1041,8 @@ class SCR_BaseGameMode : BaseGameMode
 
 		//--- If the entity is player, call OnPlayerKilled (only when it wasn't player to begin with, in which case OnPlayerKilled is called by game code)
 		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity);
-		if (playerID == 0)
-		{
-			foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
-			{
-				bool isOverride = comp.GetPlayerID(entity, playerID);
-				if (isOverride && playerID > 0)
-				{
-					OnPlayerKilled(playerID, entity, instigator);
-					break;
-				}
-			}
-		}
+		//if (HandlePlayerKilled(playerID, entity, instigator))
+		//	OnPlayerKilled(playerID, entity, instigator);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -997,74 +1055,150 @@ class SCR_BaseGameMode : BaseGameMode
 	protected override void OnControllableDeleted(IEntity entity)
 	{
 		super.OnControllableDeleted(entity);
-		Event_OnControllableDeleted.Invoke(entity);
+		m_OnControllableDeleted.Invoke(entity);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
 			comp.OnControllableDeleted(entity);
 		}
-
-		//--- If the entity is player, call OnPlayerDeleted
-		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity);
-		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		
+		// Ensure that controlled entity is a player
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity);
+		if (playerId > 0)
+			OnPlayerDeleted(playerId, entity);
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Authority:
+			Callback raised when the spawn process failed.
+			In cases where an entity is spawned, it might be desirable to dispose of it or handle specific
+			related game logic if it e.g. cannot be prepared, or assigned to the target player.
+			\param entity The entity that should be spawned, but could not be given over (prepared, assigned, ..)
+	*/
+	void OnSpawnPlayerEntityFailure_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, IEntity entity, SCR_SpawnData data, SCR_ESpawnResult reason)
+	{
+		foreach (SCR_BaseGameModeComponent component : m_aAdditionalGamemodeComponents)
+			component.OnSpawnPlayerEntityFailure_S(requestComponent, handlerComponent, entity, data, reason);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Authority:
+			Callback raised when the spawn system causes provided player's controlled entity to change.
+	*/
+	void OnPlayerEntityChanged_S(int playerId, IEntity previousEntity, IEntity newEntity)
+	{
+	}
+	
+	/*!
+		Authority only:
+			During the spawn process (after validation pass), the SCR_SpawnHandlerComponent can opt to prepare
+			spawned entity. This process first happens on affiliated SCR_SpawnHandlerComponent and if it succeeds,
+			it additionally raises this method, which can prepare entity on a global scale. (E.g. game mode logic)
+			Preparation can still fail (e.g. desire to seat a character, but an error occurs) and by returning false
+			the sender is informed of such failure and can respond accordingly.
+			\param requestComponent Instigator of the request.
+			\param handlerComponent Handler that processed the request.
+			\param data The payload of the request.
+			\param entity Spawned (or generally assigned) entity to be prepared.
+			\return True on success (continue to next step), fail on failure (terminate spawn process).
+	*/
+	bool PreparePlayerEntity_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
+	{
+		// Example(s):
+		//	- load some data from storage, fill inventory with stored items
+		//  - apply loaded data by setting provided entity to bleed for a certain amount
+		//  - drop character unconscious?
+		
+		foreach (SCR_BaseGameModeComponent component : m_aAdditionalGamemodeComponents)
 		{
-			if (comp.GetPlayerID(entity, playerID) && playerID > 0)
-			{
-				OnPlayerDeleted(playerID, entity);
-				break;
-			}
+			if (!component.PreparePlayerEntity_S(requestComponent, handlerComponent, data, entity))
+				return false;
 		}
+		
+		// Entity preparation has succeeded
+		return true;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	//! What happens when a player is assigned a lodout
-	//! Called from SCR_RespawnSystemComponent
-	//! \param playerID the id of the target player
-	//! \param assignedLoadout the faction that player was assigned or null if none
-	void HandleOnLoadoutAssigned(int playerID, SCR_BasePlayerLoadout assignedLoadout)
+	/*!
+		Authority only:
+			Whenever a SCR_SpawnHandlerComponent processes a spawn request and finished the finalization stage
+			(awaits finalization, passes control to client) this method is called. This is the final step in the respawn
+			process and after this point the owner of SCR_SpawnRequestComponent is spawned.
+			\param requestComponent Instigator of the request.
+			\param handlerComponent Handler that processed the request.
+			\param data The payload of the request.
+			\param entity Spawned (or generally assigned) entity.
+	*/
+	void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
 	{
-		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		SCR_SpawnPointSpawnData spawnPointData = SCR_SpawnPointSpawnData.Cast(data);
+		if (spawnPointData)
 		{
-			comp.HandleOnLoadoutAssigned(playerID, assignedLoadout);
+			OnPlayerSpawnOnPoint_S(requestComponent, handlerComponent, entity, spawnPointData);
 		}
-	}
+		
+		foreach (SCR_BaseGameModeComponent component : m_aAdditionalGamemodeComponents)
+			component.OnPlayerSpawnFinalize_S(requestComponent, handlerComponent, data, entity);
 
+		SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(requestComponent.GetPlayerController().FindComponent(SCR_PlayerLoadoutComponent));
+		if (loadoutComp && loadoutComp.GetLoadout())
+			loadoutComp.GetLoadout().OnLoadoutSpawned(GenericEntity.Cast(entity), requestComponent.GetPlayerId());		
+		
+		m_OnPlayerSpawned.Invoke(requestComponent.GetPlayerId(), entity);
+	}
+	
 	//------------------------------------------------------------------------------------------------
-	//! What happens when a player is assigned a faction
-	//! Called from SCR_RespawnSystemComponent
-	//! \param playerID the id of the target player
-	//! \param assignedFaction the faction that player was assigned or null if none
-	void HandleOnFactionAssigned(int playerID, Faction assignedFaction)
+	/*!
+		Authority:
+			Callback raised when the spawn system causes provided player to spawn with an entity at given spawn point.
+			See: SCR_BaseGameMode.OnPlayerSpawnFinalize_S
+	*/
+	void OnPlayerSpawnOnPoint_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, IEntity entity, SCR_SpawnPointSpawnData spawnPointData)
 	{
-		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Authority:
+			Callback raised when provided player (SCR_PlayerLoadoutComponent.GetPlayerController()) has their loadout set.
+	*/
+	void OnPlayerLoadoutSet_S(SCR_PlayerLoadoutComponent loadoutComponent, SCR_BasePlayerLoadout loadout)
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Authority:
+			Callback raised when provided player (SCR_PlayerFactionAffiliationComponent.GetPlayerController()) has their faction set.
+	*/
+	void OnPlayerFactionSet_S(SCR_PlayerFactionAffiliationComponent factionComponent, Faction faction)
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Authority:
+			Override and implement logic for whether provided player can spawn.
+			\param requestComponent The player request component instigating this spawn.
+			\param handlerComponent The spawn handler component handling this spawn.
+			\param data The request payload.
+			\return True when spawn is allowed, false otherwise. 
+	*/
+	bool CanPlayerSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data)
+	{
+		if (m_RespawnTimerComponent) 
 		{
-			comp.HandleOnFactionAssigned(playerID, assignedFaction);
+			int playerId = requestComponent.GetPlayerId();
+			
+			// If player has not been enqueued yet, ignore the spawn timer
+			if (m_RespawnTimerComponent.IsPlayerEnqueued(playerId))
+				return m_RespawnTimerComponent.GetCanPlayerSpawn(playerId);
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! What happens when a player is assigned a spawn point
-	//! Called from SCR_RespawnSystemComponent
-	//! \param playerID the id of the target player
-	//! \param assignedSpawnPoint the spawn point that player was assigned or null if none
-	void HandleOnSpawnPointAssigned(int playerID, SCR_SpawnPoint spawnPoint)
-	{
-		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
-			comp.HandleOnSpawnPointAssigned(playerID, spawnPoint);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Override and implement logic of when player can or can not respawn
-	bool CanPlayerRespawn(int playerID)
-	{
-		// Handler has prio in spawn logic
-		if (m_pRespawnHandlerComponent && !m_pRespawnHandlerComponent.CanPlayerSpawn(playerID))
-			return false;
-
-		// Respawn timers
-		if (m_RespawnTimerComponent)
-			return m_RespawnTimerComponent.GetCanPlayerSpawn(playerID);
-
+		
 		return true;
 	}
 
@@ -1077,15 +1211,6 @@ class SCR_BaseGameMode : BaseGameMode
 			return m_RespawnTimerComponent.GetPlayerRemainingTime(playerID);
 
 		return 0;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Inform the gamemode that we want to request a respawn screen
-	//! This request might be instantly processed or may want to be handled only if player is dead, etc.
-	//! Override and implement based on needs
-	void RequestPlayerRespawnSelection()
-	{
-
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1109,198 +1234,211 @@ class SCR_BaseGameMode : BaseGameMode
 	}
 
 	#ifdef GAME_MODE_DEBUG
-	static bool s_bDrawPlayerInfo = false;
-	static bool s_bDrawSelectionInfo = false;
-	static bool s_bDrawComponents = false;
-	static int s_iLoadout;
-	static int s_iFaction;
+	
 	//------------------------------------------------------------------------------------------------
-	void DrawSelectionInfo()
+	/*! Draws diagnostic informations about all available players. */
+	void Diag_DrawPlayersWindow()
 	{
-		DbgUI.Begin("RespawnSelection:");
-		{
-			SCR_RespawnComponent rc = SCR_RespawnComponent.Cast(GetGame().GetPlayerController().GetRespawnComponent());
-			DbgUI.InputInt("LoadoutIdx", s_iLoadout, 300);
-			if (DbgUI.Button("Req. Loadout"))
-				rc.RequestPlayerLoadout(m_pRespawnSystemComponent.GetLoadoutByIndex(s_iLoadout));
-
-			DbgUI.InputInt("FactionIdx", s_iFaction, 300);
-			if (DbgUI.Button("Req. Faction"))
-				rc.RequestPlayerFaction(m_pRespawnSystemComponent.GetFactionByIndex(s_iFaction));
-
-		}
-		DbgUI.End();
-	}
-	//------------------------------------------------------------------------------------------------
-	void DrawPlayerDebugInfo()
-	{
-		DbgUI.Begin("RespawnSystemComponent data:");
-
-		array<int> players = {};
-		PlayerManager pm = GetGame().GetPlayerManager();
-		pm.GetAllPlayers(players);
-
-		string currentPlayerStr = string.Empty;
-		foreach (int playerId : players)
-		{
-			Faction faction = m_pRespawnSystemComponent.GetPlayerFaction(playerId);
-			SCR_BasePlayerLoadout loadout = m_pRespawnSystemComponent.GetPlayerLoadout(playerId);
-			SCR_SpawnPoint spawn = m_pRespawnSystemComponent.GetPlayerSpawnPoint(playerId);
-
-			string factionStr = "None";
-			if (faction)
-				factionStr = faction.GetFactionKey();
-
-			string loadoutStr = "None";
-			if (loadout)
-				loadoutStr = loadout.GetLoadoutName();
-
-			string spawnPointStr = "None";
-			if (spawn)
-				spawnPointStr = string.Format("Spawn(rplId=%1)", SCR_SpawnPoint.GetSpawnPointRplId(spawn));
-
-			currentPlayerStr = string.Format("Player: %1, Connected: %2, Faction: %3, Loadout: %4, SpawnPoint: %5",
-				pm.GetPlayerName(playerId),
-				pm.IsPlayerConnected(playerId),
-				factionStr,
-				loadoutStr,
-				spawnPointStr
-			);
-
-			DbgUI.Text(currentPlayerStr);
-		}
-
-		DbgUI.Text(" "); // spacer doesnt work lol
-
-		DbgUI.End();
-	}
-	//------------------------------------------------------------------------------------------------
-	void DrawDebugInfo()
-	{
-		// Get lobby
-		// Match lobby indexes to m_aPlayerControlledEntities
-		// Display ID : Player Name : Entity Pointer
-
-		ArmaReforgerScripted game = GetGame();
-		PlayerManager playerManager = GetGame().GetPlayerManager();
-
-		// Draw a list of players, their ID, their controlled entity (as in gamemode) and their controlled entity (as in lobby)
-		const string DEBUG_ENTITIES_HEADER = "[playerId] [controlledEntity] [isConnected]";
-		const string DEBUG_ENTITIES_FORMAT = "%1 | %2 | %3";
-
-		DbgUI.Begin("Game Mode Diag Menu");
-		DbgUI.Text(DEBUG_ENTITIES_HEADER);
-		array<int> players = {};
-		playerManager.GetAllPlayers(players);
-
-		foreach (int playerId : players)
-		{
-			IEntity controlledEntity = playerManager.GetPlayerControlledEntity(playerId);
-			bool isConnected = playerManager.IsPlayerConnected(playerId);
-			string text = string.Format(DEBUG_ENTITIES_FORMAT, playerId, controlledEntity, isConnected);
-			DbgUI.Text(text);
-		}
-
-		// Draw elapsed time
-		const string ELAPSED_TIME_STR = "ElapsedTime: %1";
-		DbgUI.Text(string.Format(ELAPSED_TIME_STR, GetElapsedTime()));
-
-		const string IS_RUNNING_STR = "IsRunning: %1";
-		DbgUI.Text(string.Format(IS_RUNNING_STR, IsRunning()));
-
-
-		string gameState;
-		switch (GetState())
-		{
-			case SCR_EGameModeState.PREGAME:
-				gameState = "Pre-Game";
-				break;
-
-			case SCR_EGameModeState.GAME:
-				gameState = "Game";
-				break;
-
-			case SCR_EGameModeState.POSTGAME:
-				gameState = "Post-Game";
-				break;
-
-			default:
-				gameState = "undefined";
-				break;
-		}
-
-		const string GAME_STATE_STR = "GameState: %1!";
-		DbgUI.Text(string.Format(IS_RUNNING_STR, gameState));
-
-		// Draw what flags are set for this game mode
-		const string DEBUG_FLAGS_SET = "ETestFlags: %1";
-		DbgUI.Text(string.Format(DEBUG_FLAGS_SET, m_eTestGameFlags.ToString()));
+		//DbgUI.Begin("SCR_BaseGameMode: Players Diag");
+		array<int> connectedPlayers = {};		
+		GetGame().GetPlayerManager().GetPlayers(connectedPlayers);
 		
-		// :)
-		DbgUI.Check("Draw RespawnSystemComponent Info", s_bDrawPlayerInfo);
-		DbgUI.Check("Draw RespawnSelection Info", s_bDrawSelectionInfo);
-		DbgUI.Check("Draw Components Info", s_bDrawComponents);
-		
-		
-		if (s_bDrawComponents)
+		array<int> disconnectedPlayers = {};
+		GetGame().GetPlayerManager().GetDisconnectedPlayers(disconnectedPlayers);	
+
+		DbgUI.Begin("SCR_BaseGameMode: Connected players");
 		{
-			// Draw info about additional components
-			const string DEBUG_ADDITIONAL_GAMEMODE_COMPONENTS = "GameModeComponent Count: %1";
-			int compCount = 0;
-			if (m_aAdditionalGamemodeComponents)
-				compCount = m_aAdditionalGamemodeComponents.Count();
-			
-			DbgUI.Text(string.Format(DEBUG_ADDITIONAL_GAMEMODE_COMPONENTS, compCount.ToString()));
-			if (compCount != 0)
+			for (int i = 0, cnt = connectedPlayers.Count(); i < cnt; i++)
 			{
-				const string DEBUG_ADDITIONAL_COMPONENT = "GameModeComponent: %1";
-				foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
-				{
-					DbgUI.Text(string.Format(DEBUG_ADDITIONAL_COMPONENT, comp));
-				}
+				int playerId = connectedPlayers[i];
+				Diag_DrawPlayerInfo(playerId);
 			}
 		}
-
-		
-		if (IsMaster())
+		DbgUI.End();
+		DbgUI.Begin("SCR_BaseGameMode: Disconnected players");
 		{
-			const string DEBUG_AUTO_RESTART = "AutoReload: %1";
-			DbgUI.Text(string.Format(DEBUG_AUTO_RESTART, IsAutoReload()));
-			
-			const string DEBUG_AUTO_RESTART_DELAY = "AutoReload Duration: %1";
-			DbgUI.Text(string.Format(DEBUG_AUTO_RESTART_DELAY, GetAutoReloadDelay()));
-			
-			if (DbgUI.Button("End Session"))
-				EndGameMode(SCR_GameModeEndData.CreateSimple(SCR_GameModeEndData.ENDREASON_EDITOR_FACTION_DRAW));
-			
-			if (DbgUI.Button("Restart Session"))
-				RestartSession();
+			for (int i = 0, cnt = disconnectedPlayers.Count(); i < cnt; i++)
+			{
+				int playerId = disconnectedPlayers[i];
+				Diag_DrawPlayerInfo(playerId);
+			}
 		}
-
-
-		// End
+		DbgUI.End();		
+	}	
+	/*! Draws information about provided player (if valid). */
+	void Diag_DrawPlayerInfo(int playerId)
+	{
+		string tmp = string.Format("Player %1: (name: %2)", playerId, GetGame().GetPlayerManager().GetPlayerName(playerId));
+		array<string> extra = {};		
+		
+		// Fetch faction info (if present)
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+		{
+			string factionKey = "None";
+			Faction faction = factionManager.GetPlayerFaction(playerId);
+			if (faction)
+			{
+				factionKey = faction.GetFactionKey();
+			}
+			
+			extra.Insert(string.Format("Faction: %1", factionKey));
+		}
+		
+		// Fetch loadout info (if present)
+		SCR_LoadoutManager loadoutManager = SCR_LoadoutManager.Cast(GetGame().GetLoadoutManager());
+		if (loadoutManager)
+		{
+			string loadoutKey = "None";
+			SCR_BasePlayerLoadout loadout = loadoutManager.GetPlayerLoadout(playerId);
+			if (loadout)
+			{
+				loadoutKey = loadout.GetLoadoutName();
+			}
+			
+			extra.Insert(string.Format("Loadout: %1", loadoutKey));
+		}
+		
+		// If any additional info is present, start formatting
+		if (!extra.IsEmpty())
+		{
+			const string separator = "\n   ";
+			for (int i = 0, count = extra.Count(); i < count; i++)
+			{
+				tmp += string.Format("%1%2", separator, extra[i] );
+			}
+		}
+		
+		DbgUI.Text(tmp);
+	}
+	//------------------------------------------------------------------------------------------------
+	/*! Draws information about controlled entities. */
+	void Diag_DrawControlledEntitiesWindow()
+	{
+		array<int> allPlayers = {};
+		GetGame().GetPlayerManager().GetAllPlayers(allPlayers);
+	
+		DbgUI.Begin("SCR_BaseGameMode: Controlled Entities");	
+		{
+			for (int i = 0, cnt = allPlayers.Count(); i < cnt; i++)
+			{
+				int playerId = allPlayers[i];
+				Diag_DrawControlledEntityInfo(playerId);
+			}
+		}
+		DbgUI.End();
+	}
+	//------------------------------------------------------------------------------------------------
+	/*! Draws information about controlled entity of provided player (if any). */
+	void Diag_DrawControlledEntityInfo(int playerId)
+	{
+		string tmp = string.Format("Player %1: (name: %2)", playerId, GetGame().GetPlayerManager().GetPlayerName(playerId));
+		array<string> extra = {};
+		
+		// IsConnected?
+		if (GetGame().GetPlayerManager().IsPlayerConnected(playerId))
+		{
+			extra.Insert("IsConnected: True");
+		}
+		else
+			extra.Insert("IsConnected: False");
+		
+		// Controlled entity
+		IEntity controlledEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
+		if (controlledEntity)
+		{
+			extra.Insert(string.Format("Entity: %1", controlledEntity));
+			
+			RplComponent rplComponent = RplComponent.Cast(controlledEntity.FindComponent(RplComponent));
+			if (rplComponent)
+			{
+				extra.Insert(string.Format("RplId: %1", rplComponent.Id()));
+			}
+		}
+		else
+		{
+			extra.Insert("Entity: None");
+		}
+		
+		
+		// If any additional info is present, start formatting
+		if (!extra.IsEmpty())
+		{
+			const string separator = "\n   ";
+			for (int i = 0, count = extra.Count(); i < count; i++)
+			{
+				tmp += string.Format("%1%2", separator, extra[i] );
+			}
+		}
+		
+		DbgUI.Text(tmp);
+	}
+	//------------------------------------------------------------------------------------------------
+	/*! Draws information about game mode component(s) */
+	void Diag_DrawComponentsWindow()
+	{
+		DbgUI.Begin("SCR_BaseGameMode: Components");
+		{
+			int numComponents = m_aAdditionalGamemodeComponents.Count();
+			DbgUI.Text(string.Format("NumComponents: %1", numComponents));
+			
+			for (int i = 0; i < numComponents; i++)
+			{
+				Diag_DrawComponentInfo(i, m_aAdditionalGamemodeComponents[i]);
+			}
+		}
+		DbgUI.End();
+	}
+	//------------------------------------------------------------------------------------------------
+	/*! Draw diagnostics for provided component (if any). */
+	void Diag_DrawComponentInfo(int index, SCR_BaseGameModeComponent component)
+	{
+		DbgUI.Text(string.Format("%1: %2", index, component));
+	}
+	//------------------------------------------------------------------------------------------------
+	void Diag_DrawGameModeWindow()
+	{
+		DbgUI.Begin("SCR_BaseGameMode");
+		{
+			string elapsedTime = string.Format("Elapsed time: %1 s", GetElapsedTime());
+			DbgUI.Text(elapsedTime);
+			
+			string running = string.Format("IsRunning: %1", IsRunning());
+			DbgUI.Text(running);
+			
+			string state = string.Format("State: %1", SCR_Enum.GetEnumName(SCR_EGameModeState, GetState()));
+			DbgUI.Text(state);
+			
+			string flags = string.Format("TestFlags: %1 (%2)", SCR_Enum.FlagsToString(EGameFlags, m_eGameState), m_eGameState);
+			DbgUI.Text(flags);
+			
+			if (IsMaster())
+			{
+				DbgUI.Spacer(16);
+				DbgUI.Text("Authority details:");
+				
+				string autoReload = string.Format("Auto reload: %1", IsAutoReload());
+				DbgUI.Text(autoReload);
+				
+				string autoReloadDuration = string.Format("Auto reload duration: %1 s", GetAutoReloadDelay());
+				DbgUI.Text(autoReloadDuration);
+				
+				DbgUI.Spacer(16);
+				
+				if (DbgUI.Button("End Session"))
+					EndGameMode(SCR_GameModeEndData.CreateSimple(EGameOverTypes.FACTION_DRAW));
+				
+				if (DbgUI.Button("Restart Session"))
+					RestartSession();
+			}
+		}
 		DbgUI.End();
 	}
 	#endif
-
-	//------------------------------------------------------------------------------------------------
-	override void EOnPostFrame(IEntity owner, float timeSlice)
-	{		
-	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//Called once tasks are initialized
 	void HandleOnTasksInitialized()
-	{
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void HandleOnCharacterCreated(ChimeraCharacter character)
-	{
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void HandleOnCharacterDeath(notnull CharacterControllerComponent characterController, IEntity instigator)
 	{
 	}
 
@@ -1372,6 +1510,7 @@ class SCR_BaseGameMode : BaseGameMode
 	}
 	#endif
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns true if controls for local player should be disabled.
 	*/
@@ -1380,6 +1519,7 @@ class SCR_BaseGameMode : BaseGameMode
 		return m_bAllowControls;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns the desired target for the authority of whether controls should
 		be disabled or not, based on the current state, if any.
@@ -1393,15 +1533,17 @@ class SCR_BaseGameMode : BaseGameMode
 		return true;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns state component for provided state or null if none.
 	*/
 	SCR_BaseGameModeStateComponent GetStateComponent(SCR_EGameModeState state)
 	{
-		if (!m_mStateComponents.Contains(state))
-			return null;
+		SCR_BaseGameModeStateComponent stateComponent;
+		if (m_mStateComponents.Find(state, stateComponent))
+			return stateComponent;
 
-		return m_mStateComponents[state];
+		return null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1413,6 +1555,9 @@ class SCR_BaseGameMode : BaseGameMode
 		if (IsGameModeStatisticsEnabled())
 			UpdateStatistics(owner);
 		#endif
+
+		if (m_bUseSpawnPreload && m_SpawnPreload)
+			HandleSpawnPreload(timeSlice);
 
 		// Allow to accumulate time in pre-game too.
  		SCR_BaseGameModeStateComponent pregameComponent = GetStateComponent(SCR_EGameModeState.PREGAME);
@@ -1490,11 +1635,10 @@ class SCR_BaseGameMode : BaseGameMode
 		#ifdef GAME_MODE_DEBUG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_GAME_MODE))
 		{
-			DrawDebugInfo();
-			if (s_bDrawPlayerInfo)
-				DrawPlayerDebugInfo();
-			if (s_bDrawSelectionInfo)
-				DrawSelectionInfo();
+			Diag_DrawGameModeWindow();
+			Diag_DrawComponentsWindow();
+			Diag_DrawPlayersWindow();
+			Diag_DrawControlledEntitiesWindow();			
 		}
 		#endif
 	}
@@ -1512,19 +1656,16 @@ class SCR_BaseGameMode : BaseGameMode
 
 		// Find required components
         m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
-		m_pRespawnSystemComponent = SCR_RespawnSystemComponent.Cast(owner.FindComponent(SCR_RespawnSystemComponent));
-		m_pRespawnHandlerComponent = SCR_RespawnHandlerComponent.Cast(owner.FindComponent(SCR_RespawnHandlerComponent));
+		m_pRespawnSystemComponent = SCR_RespawnSystemComponent.Cast(owner.FindComponent(SCR_RespawnSystemComponent));		
 		m_RespawnTimerComponent = SCR_RespawnTimerComponent.Cast(owner.FindComponent(SCR_RespawnTimerComponent));
 		m_ScoringSystemComponent = SCR_BaseScoringSystemComponent.Cast(owner.FindComponent(SCR_BaseScoringSystemComponent));
 		m_pGameModeHealthSettings = SCR_GameModeHealthSettings.Cast(owner.FindComponent(SCR_GameModeHealthSettings));
 
 		if (!m_RplComponent)
-			Print("SCR_BaseGameMode is missing RplComponent! Game functionality might be broken!", LogLevel.ERROR);
+			Print("SCR_BaseGameMode is missing RplComponent!", LogLevel.ERROR);
 		if (!m_pRespawnSystemComponent)
-			Print("SCR_BaseGameMode is missing SCR_RespawnSystemComponent! Respawning functionality might be broken!", LogLevel.ERROR);
-		if (!m_pRespawnHandlerComponent)
-			Print("SCR_BaseGameMode is missing SCR_RespawnHandlerComponent! Respawning functionality might be broken!", LogLevel.ERROR);
-
+			Print("SCR_BaseGameMode is missing SCR_RespawnSystemComponent!", LogLevel.WARNING);
+		
 		if (!m_aAdditionalGamemodeComponents)
 			m_aAdditionalGamemodeComponents = new ref array<SCR_BaseGameModeComponent>();
 
@@ -1562,6 +1703,36 @@ class SCR_BaseGameMode : BaseGameMode
 			m_mStateComponents.Insert(state, stateComponent);
 		}
 	}
+	
+	/*
+		Preload handling.
+	*/
+	OnPreloadFinishedInvoker GetOnPreloadFinished()
+	{
+		if (!m_OnPreloadFinished)
+			m_OnPreloadFinished = new OnPreloadFinishedInvoker();
+		
+		return m_OnPreloadFinished;
+	}
+		
+	void StartSpawnPreload(vector position)
+	{
+		m_SpawnPreload = SCR_SpawnPreload.PreloadSpawnPosition(position);
+		if (!m_SpawnPreload && m_OnPreloadFinished)
+			m_OnPreloadFinished.Invoke();
+
+	}
+	
+	protected void HandleSpawnPreload(float timeSlice)
+	{
+		bool finished = m_SpawnPreload.Update(timeSlice);
+		if (finished)
+		{
+			m_SpawnPreload = null;
+			if (m_OnPreloadFinished)
+				m_OnPreloadFinished.Invoke();
+		}
+	}	
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_BaseGameMode(IEntitySource src, IEntity parent)
@@ -1569,7 +1740,8 @@ class SCR_BaseGameMode : BaseGameMode
 		#ifdef GAME_MODE_DEBUG
 		if (!s_DebugRegistered)
 		{
-			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_GAME_MODE, "", "Game Mode Diag", "Network");
+			DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_GAME_MODE_MENU, "GameMode", "");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_GAME_MODE, "", "Game Mode", "GameMode");
 			s_DebugRegistered = true;
 		}
 		#endif
@@ -1591,6 +1763,31 @@ class SCR_BaseGameMode : BaseGameMode
 			SCR_GameModeStatistics.StopRecording();
 		#endif
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	[Obsolete()]
+	void HandleOnLoadoutAssigned(int playerID, SCR_BasePlayerLoadout assignedLoadout);
+	//------------------------------------------------------------------------------------------------
+	[Obsolete()]
+	void HandleOnFactionAssigned(int playerID, Faction assignedFaction);
+	//------------------------------------------------------------------------------------------------
+	[Obsolete()]
+	void HandleOnSpawnPointAssigned(int playerID, SCR_SpawnPoint spawnPoint);
+	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_BaseGameMode.CanPlayerSpawn_S instead!")];
+	bool CanPlayerRespawn(int playerID);
+	//------------------------------------------------------------------------------------------------
+	[Obsolete("Don't use this at all!")]
+	void RequestPlayerRespawnSelection();
+	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_BaseGameMode.OnPlayerSpawnOnPoint_S instead!")];
+	void OnSpawnPointUsed(SCR_SpawnPoint spawnPoint, int playerId);
+	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use OnControllableSpawned instead")]
+	void HandleOnCharacterCreated(ChimeraCharacter character);
+	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use OnControllableDestroyed instead")]
+	void HandleOnCharacterDeath(notnull CharacterControllerComponent characterController, IEntity instigator);
 
 	#ifdef GMSTATS
 	//! Should gamemode diagnostic statistics be enabled?

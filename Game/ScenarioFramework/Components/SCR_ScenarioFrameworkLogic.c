@@ -22,10 +22,10 @@ class SCR_ScenarioFrameworkLogicInput
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnActivate(bool bSignal)
+	void OnActivate(bool bSignal, IEntity entity)
 	{
 		if (m_MasterLogic)
-			m_MasterLogic.OnInput(bSignal);
+			m_MasterLogic.OnInput(bSignal, entity);
 	}
 };
 
@@ -69,14 +69,23 @@ class SCR_ScenarioFrameworkLogic: GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnInput(bool pSignal = true);
+	void OnInput(bool pSignal = true, IEntity entity = null);
 	
 	//------------------------------------------------------------------------------------------------
-	void OnActivate()
+	void OnActivate(IEntity entity)
 	{
 		foreach (SCR_ScenarioFrameworkActionBase action : m_aActions)
-			action.OnActivate(null);
+			action.OnActivate(entity);
 	}
+	
+#ifdef WORKBENCH	
+	//------------------------------------------------------------------------------------------------
+	override void _WB_OnCreate(IEntitySource src)
+	{
+		WorldEditorAPI api = _WB_GetEditorAPI();
+		api.RenameEntity(this, api.GenerateDefaultEntityName(api.EntityToSource(this)));
+	}
+#endif
 };
 
 //------------------------------------------------------------------------------------------------
@@ -96,9 +105,9 @@ class SCR_ScenarioFrameworkLogicCounter : SCR_ScenarioFrameworkLogic
 	int 							m_iCnt = 0;
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnInput(bool pSignal = true)
+	override void OnInput(bool pSignal = true, IEntity entity = null)
 	{
-		Increase();
+		Increase(entity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -114,17 +123,17 @@ class SCR_ScenarioFrameworkLogicCounter : SCR_ScenarioFrameworkLogic
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Increase()
+	void Increase(IEntity entity)
 	{
 		m_iCnt++;
 		if (m_iCnt == m_iCountTo)
 		{
-			OnActivate();
+			OnActivate(entity);
 		}
 		else
 		{
 			foreach (SCR_ScenarioFrameworkActionBase increaseAction : m_aOnIncreaseActions)
-				increaseAction.OnActivate(null);
+				increaseAction.OnActivate(entity);
 		}
 	}
 	
@@ -147,7 +156,7 @@ class SCR_ScenarioFrameworkLogicOR : SCR_ScenarioFrameworkLogic
 	protected int			m_iActivations = 0;
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnInput(bool pSignal = true)
+	override void OnInput(bool pSignal = true, IEntity entity = null)
 	{
 		if (pSignal)
 			m_iActivations = Math.Min(++m_iActivations, m_aInputs.Count());

@@ -481,29 +481,6 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void Show()
-	{
-		if (!m_wRoot)
-			return;
-		
-		m_bShowLocal = true;
-		
-		if (m_bShowGlobal)
-			m_wRoot.SetVisible(true);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void Hide()
-	{
-		if (!m_wRoot)
-			return;
-		
-		m_bShowLocal = false;
-
-		m_wRoot.SetVisible(false);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected bool GetSafeZone(vector worldPosition, vector screenPosition, vector min01, vector max01, out vector clampedPosition)
 	{
 		WorkspaceWidget workspace = m_wActionMenu.GetWorkspace();
@@ -642,7 +619,7 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 		if (!m_wActionMenu)
 			return;
 
-		float fCurrentScroll = (float)iCurrentScroll;
+		float fCurrentScroll = iCurrentScroll;
 
 		// Reset action list to initial position
 		if (fTimeSlice == 0)
@@ -778,7 +755,9 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 		// Need data to update
 		if (!m_pLastData || !m_pLastData.pSelectedAction) 
 		{
-			Hide();
+			if (m_bShown)
+				Show(false);
+			
 			return;
 		}
 
@@ -788,10 +767,14 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 		// Toggle visibility
 		if (!succeeded)
 		{
-			Hide();
+			if (m_bShown)
+				Show(false);
+
 			return;
 		}
-		Show();
+		
+		if (!m_bShown)
+			Show(true);
 		
 		// Update current widget context position
 		UserActionContext lastContext = m_pLastData.pCurrentContext;
@@ -819,6 +802,8 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	{
 		super.DisplayStartDraw(owner);
 		Create();
+		
+		Show(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -834,10 +819,7 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	{
 		super.ShowDisplay();
 		
-		m_bShowLocal = true;
-		
-		if (m_wRoot && m_bShowGlobal)
-			m_wRoot.SetVisible(true);
+		Show(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -846,10 +828,7 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	{
 		m_pLastData = null;
 		
-		m_bShowLocal = false;
-		
-		if (m_wRoot)
-			m_wRoot.SetVisible(false);
+		Show(false);
 		
 		super.HideDisplay();
 	}

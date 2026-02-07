@@ -100,6 +100,8 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 			providerEntity = GetTemporaryProvider();
 			SetTemporaryProvider(null);
 		}
+		else
+			SetTemporaryProvider(null);
 
 		if (!providerEntity)
 			return false;
@@ -129,7 +131,6 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 
 		IEntity entityOwner = entity.GetOwnerScripted();
 		SCR_CampaignSuppliesComponent suppliesComponent;
-		IEntity providerEntity;
 		if (!GetProviderEntity(entityOwner, suppliesComponent))
 			return;
 

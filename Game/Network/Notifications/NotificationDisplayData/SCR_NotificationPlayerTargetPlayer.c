@@ -14,7 +14,12 @@ class SCR_NotificationPlayerTargetPlayer : SCR_NotificationDisplayData
 		int playerID, playerTargetID;
 		data.GetParams(playerID, playerTargetID);
 		
-		data.SetNotificationTextEntries(GetPlayerName(playerID), GetPlayerName(playerTargetID));
+		string playerName, playerTargetName;
+		data.GetNotificationTextEntries(playerName, playerTargetName);
+		if (!GetPlayerName(playerID, playerName) || !GetPlayerName(playerTargetID, playerTargetName))
+			return string.Empty;
+		
+		data.SetNotificationTextEntries(playerName, playerTargetName);
 		return super.GetText(data);
 	}
 	

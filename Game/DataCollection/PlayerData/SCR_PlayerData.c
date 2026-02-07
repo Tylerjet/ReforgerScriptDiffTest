@@ -1,53 +1,85 @@
 //------------------------------------------------------------------------------------------------
 class SCR_PlayerData : JsonApiStruct
 {
-	/********************/
-	//BACKEND CONNECTION//
-	/********************/
-
 	protected int m_iPlayerID;
 
-	//Stats that we keep updating
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Stats that we keep updating
+	*/
 	protected ref array<float> m_aStats = {};
 
-	//Original stats
-	protected ref array<float> m_aPreviousStats = {};
-	
-	/*TODO: Finish development of Proportionality principle
-	//Possibly criminal stats - We use this to accumulate actions and afterwards decide whether they are criminal or not.
-	protected ref array<float> m_aAccumulatedActions = {};
-	protected float m_fTimerAccumulateActions = 0;
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Original stats
 	*/
+	protected ref array<float> m_aPreviousStats = {};
 
-	//Stats difference - We need this variable because we need a pointer for it to be used on TD from C++ side
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Possibly criminal stats - We use this to accumulate actions and afterwards decide whether they are criminal or not.
+	*/
+	protected ref array<float> m_aAccumulatedActions = {};
+	protected int m_iAccumulatedActionsTick;
+	protected int m_iLatestActionTick;
+	protected int m_iLatestCriminalScoreUpdateTick;
+	protected float m_fCriminalScore;
+
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Stats difference - We need this variable because we need a pointer for it to be used on TD from C++ side
+	*/
 	protected ref array<float> m_aStatsGained = {};
 
-	//DataEvent to send stats to the database for tracking purposes
+	//------------------------------------------------------------------------------------------------
+	/*!
+	DataEvent to send stats to the database for tracking purposes
+	*/
 	ref SCR_PlayerDataEvent dataEvent = new SCR_PlayerDataEvent;
 
-	//We store in m_aEarnt the number of points provided by each of the fields to the specializations, and the total sum for each specialization in the corresponding field (sp0, sp1, etc)
+	//------------------------------------------------------------------------------------------------
+	/*!
+	We store in m_aEarnt the number of points provided by each of the fields to the specializations, and the total sum for each specialization in the corresponding field (sp0, sp1, etc)
+	*/
 	protected ref array<float> m_aEarnt = {};
 
-	//Backend callbacks necessary to make the request to load and store the characterdata from the player's profile
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Backend callbacks necessary to make the request to load and store the characterdata from the player's profile
+	*/
 	protected ref CharacterDataLoadingCallback m_CharacterDataCallback = new CharacterDataLoadingCallback(this);
 	protected ref BackendCallback m_StoringCallback = new BackendCallback();
 
-	//Starting session tick to calculate session duration
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Starting session tick to calculate session duration
+	*/
 	protected int m_iSessionStartedTickCount;
 
-	//Empty Profile
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Empty Profile
+	*/
 	protected bool m_bIsEmptyProfile;
 
-	//Invoker that notifies UI screens listening to it that the data object is ready
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Invoker that notifies UI screens listening to it that the data object is ready
+	*/
 	protected ref ScriptInvoker m_OnDataReady = new ScriptInvoker();
+	
+	static ref ScriptInvoker s_OnStatAdded = new ScriptInvoker();
 
-	/*********************/
-	//STATS CONFIGURATION//
-	/*********************/
-
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Stats configs
+	*/
 	protected ref SCR_PlayerDataConfigs m_Configs;
-	/* TODO: Finish rework of player data. These two will go to the DataCollector or to a Module from the data collector instead */
-	protected bool m_bWarCrimesEnabled, m_bWarCrimesProportionalityPrincipleEnabled;
+	
+	/* TODO: Finish rework of player data using StoreDataModule */
+	
+	bool accumulationEnabled = false;
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_PlayerData (int id, bool hasPlayerBeenAuditted, bool requestFromBackend = true)
@@ -59,13 +91,21 @@ class SCR_PlayerData : JsonApiStruct
 
 		m_Configs = SCR_PlayerDataConfigs.GetInstance();
 		m_iPlayerID = id;
-		
+
 		m_iSessionStartedTickCount = System.GetTickCount();
+
+		typename tEnum = SCR_EDataStats;
+		for (int i = tEnum.GetVariableCount(); i > 0; i--)
+		{
+			m_aAccumulatedActions.Insert(0);
+		}
 
 		if (requestFromBackend)
 			RequestLoadData(hasPlayerBeenAuditted);
 		else if (!hasPlayerBeenAuditted)
 			LoadEmptyProfile();
+		
+		accumulationEnabled = GetGame().GetDataCollector().FindModule(SCR_DataCollectorCrimesModule) != null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -103,7 +143,7 @@ class SCR_PlayerData : JsonApiStruct
 
 		if (!ba)
 		{
-			Print("SCR_PlayerData:RequestLoadData: Backend api is null!", LogLevel.ERROR);
+			Print("SCR_PlayerData:RequestLoadData: Backend api is null!", LogLevel.WARNING);
 			m_bIsEmptyProfile = true;
 			return;
 		}
@@ -117,20 +157,20 @@ class SCR_PlayerData : JsonApiStruct
 
 		if (!m_CharacterDataCallback)
 		{
-			Print("SCR_PlayerData:RequestLoadData: The character data callback is null", LogLevel.ERROR);
+			Print("SCR_PlayerData:RequestLoadData: The character data callback is null", LogLevel.WARNING);
 			m_bIsEmptyProfile = true;
 			return;
 		}
 
 		if (ba.IsAuthenticated())
 		{
-				Print("Making menuCallback request for PlayerData", LogLevel.DEBUG);
+				Print("Making menuCallback request for PlayerData", LogLevel.VERBOSE);
 				ba.PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterGet, m_CharacterDataCallback, this, m_iPlayerID); //ID 0 refers to the local player
 				//The callback has a reference to this instance so it will automatically call the BackendDataReady or the LoadEmptyProfile methods
 		}
 		else
 		{
-			Print("SCR_PlayerData:RequestLoadData: Requesting data before player has been authenticated!", LogLevel.ERROR);
+			Print("SCR_PlayerData:RequestLoadData: Requesting data before player has been authenticated!", LogLevel.WARNING);
 			m_bIsEmptyProfile = true;
 		}
 	}
@@ -148,15 +188,20 @@ class SCR_PlayerData : JsonApiStruct
 
 		if (m_aStats.Count() != characterDataEnum.GetVariableCount())
 		{
-			Print("SCR:PlayerDataStats:FillWithProfile: The CharacterData from this player seems incomplete or empty. A full profile should have "+characterDataEnum.GetVariableCount()+" stats, but this one has "+m_aStats.Count()+". Is it a new player?", LogLevel.WARNING);
+			Print("SCR:PlayerDataStats:FillWithProfile: The CharacterData from this player seems incomplete or empty. A full profile should have "+characterDataEnum.GetVariableCount()+" stats, but this one has "+m_aStats.Count()+". Is it a new player?", LogLevel.VERBOSE);
+		
+			if (!m_aStats.IsEmpty())
+			{
+				Print("SCR_PlayerData of this player is not empty, but the size is not correct either. We will override their profile with a new one, which will erase their old profile.", LogLevel.DEBUG);
+			}
+			
 			LoadEmptyProfile();
+			return;
 		}
-		else
-		{
-			m_bIsEmptyProfile = false;
-			m_aPreviousStats.InsertAll(m_aStats);
-			m_OnDataReady.Invoke();
-		}
+		
+		m_bIsEmptyProfile = false;
+		m_aPreviousStats.InsertAll(m_aStats);
+		m_OnDataReady.Invoke();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -164,13 +209,18 @@ class SCR_PlayerData : JsonApiStruct
 	{
 		typename characterDataEnum = SCR_EDataStats;
 		int count = characterDataEnum.GetVariableCount();
+		
+		m_aStats.Clear();
 
 		for (int i = 0; i < count; i++)
 		{
 			if (i == SCR_EDataStats.LEVEL_EXPERIENCE)
 				m_aStats.Insert(m_Configs.XP_NEEDED_FOR_LEVEL);
+			else if (i == SCR_EDataStats.CRIME_ACCELERATION)
+				m_aStats.Insert(m_Configs.GetMinAcceleration());
 			else
 				m_aStats.Insert(0);
+				
 		}
 
 		m_bIsEmptyProfile = true;
@@ -209,13 +259,13 @@ class SCR_PlayerData : JsonApiStruct
 	{
 		if (!IsDataProgressionReady() || m_aStatsGained.IsEmpty())
 		{
-			Print("Error: DataProgression is not ready but the TD event was requested", LogLevel.ERROR);
-			return null;
+			Print("Maybe a problem: DataProgression is not ready but the analytics event was requested", LogLevel.WARNING);
+			CalculateStatsChange();
 		}
 
 		dataEvent.amt_time_mission = m_aStatsGained[SCR_EDataStats.SESSION_DURATION];
-		dataEvent.amt_distance_on_foot = m_aStatsGained[SCR_EDataStats.METERS_WALKED];
-		dataEvent.amt_distance_vehicle = m_aStatsGained[SCR_EDataStats.METERS_DRIVEN];
+		dataEvent.amt_distance_on_foot = m_aStatsGained[SCR_EDataStats.DISTANCE_WALKED];
+		dataEvent.amt_distance_vehicle = m_aStatsGained[SCR_EDataStats.DISTANCE_DRIVEN];
 		dataEvent.kills = m_aStatsGained[SCR_EDataStats.KILLS];
 		//dataEvent.kills_from_over_25m;
 		//dataEvent.kills_from_over_50m;
@@ -260,7 +310,7 @@ class SCR_PlayerData : JsonApiStruct
 		dataEvent.gt2_total_points = m_aStats[SCR_EDataStats.SPPOINTS1];
 		dataEvent.gt3_points = m_aStatsGained[SCR_EDataStats.SPPOINTS2];
 		dataEvent.gt3_total_points = m_aStats[SCR_EDataStats.SPPOINTS2];
-		dataEvent.gt_global_points = ( m_aStatsGained[SCR_EDataStats.SPPOINTS0] + m_aStatsGained[SCR_EDataStats.SPPOINTS1] + m_aStatsGained[SCR_EDataStats.SPPOINTS2] );
+		dataEvent.gt_global_points = (m_aStatsGained[SCR_EDataStats.SPPOINTS0] + m_aStatsGained[SCR_EDataStats.SPPOINTS1] + m_aStatsGained[SCR_EDataStats.SPPOINTS2]);
 
 		return dataEvent;
 	}
@@ -270,23 +320,19 @@ class SCR_PlayerData : JsonApiStruct
 	{
 		Print("SCR_PlayerData:DebugCalculateStats: This method calls calculateStatsChange providing fake stats for debugging purposes.", LogLevel.DEBUG);
 
-		m_aStats[SCR_EDataStats.SESSION_DURATION] = m_aStats[SCR_EDataStats.SESSION_DURATION] + 7200;
-		m_aStats[SCR_EDataStats.METERS_WALKED] = m_aStats[SCR_EDataStats.METERS_WALKED] + 20000;
-		m_aStats[SCR_EDataStats.KILLS] = m_aStats[SCR_EDataStats.KILLS] + 20;
-		m_aStats[SCR_EDataStats.AI_KILLS] = m_aStats[SCR_EDataStats.AI_KILLS] + 50;
-		m_aStats[SCR_EDataStats.SHOTS] = m_aStats[SCR_EDataStats.SHOTS] + 800;
-		m_aStats[SCR_EDataStats.GRENADES_THROWN] = m_aStats[SCR_EDataStats.GRENADES_THROWN] + 10;
-		m_aStats[SCR_EDataStats.METERS_DRIVEN] = m_aStats[SCR_EDataStats.METERS_DRIVEN] + 50000;
-		m_aStats[SCR_EDataStats.FRIENDLY_KILLS] = m_aStats[SCR_EDataStats.FRIENDLY_KILLS] + 30;
+		AddStat(SCR_EDataStats.SESSION_DURATION, 7200);
+		AddStat(SCR_EDataStats.DISTANCE_WALKED, 20000);
+		AddStat(SCR_EDataStats.KILLS, 20);
+		AddStat(SCR_EDataStats.AI_KILLS, 20);
+		AddStat(SCR_EDataStats.SHOTS, 800);
+		AddStat(SCR_EDataStats.GRENADES_THROWN, 10);
+		AddStat(SCR_EDataStats.DISTANCE_DRIVEN, 50000);
+		AddStat(SCR_EDataStats.FRIENDLY_KILLS, 30);
+		AddStat(SCR_EDataStats.BANDAGE_SELF, 30);
+		AddStat(SCR_EDataStats.BANDAGE_FRIENDLIES, 10);
+		AddStat(SCR_EDataStats.TOURNIQUET_SELF, 30);
+		AddStat(SCR_EDataStats.TOURNIQUET_FRIENDLIES, 10);
 
-		m_aStats[SCR_EDataStats.BANDAGE_SELF] = m_aStats[SCR_EDataStats.BANDAGE_SELF] + 30;
-		m_aStats[SCR_EDataStats.BANDAGE_FRIENDLIES] = m_aStats[SCR_EDataStats.BANDAGE_FRIENDLIES] + 10;
-		m_aStats[SCR_EDataStats.TOURNIQUET_SELF] = m_aStats[SCR_EDataStats.TOURNIQUET_SELF] + 30;
-		m_aStats[SCR_EDataStats.TOURNIQUET_FRIENDLIES] = m_aStats[SCR_EDataStats.TOURNIQUET_FRIENDLIES] + 10;
-		m_aStats[SCR_EDataStats.SALINE_SELF] = m_aStats[SCR_EDataStats.SALINE_SELF] + 30;
-		m_aStats[SCR_EDataStats.SALINE_FRIENDLIES] = m_aStats[SCR_EDataStats.SALINE_FRIENDLIES] + 10;
-		m_aStats[SCR_EDataStats.MORPHINE_SELF] = m_aStats[SCR_EDataStats.MORPHINE_SELF] + 30;
-		m_aStats[SCR_EDataStats.MORPHINE_FRIENDLIES] = m_aStats[SCR_EDataStats.MORPHINE_FRIENDLIES] + 10;
 		if (!IsDataProgressionReady())
 			CalculateStatsChange();
 	}
@@ -299,14 +345,16 @@ class SCR_PlayerData : JsonApiStruct
 		m_aStatsGained = CalculateStatsDifference();
 
 		for (int i = m_aStatsGained.Count()-1; i >= 0; i--)
+		{
 			m_aEarnt.Insert(0);
+		}
 
 		if (m_aStatsGained[SCR_EDataStats.SESSION_DURATION] < 1)
 			return;
 
 		//Little assert
 		if (m_aStatsGained[SCR_EDataStats.SPPOINTS0] != 0 || m_aStatsGained[SCR_EDataStats.SPPOINTS1] != 0 || m_aStatsGained[SCR_EDataStats.SPPOINTS2] != 0|| m_aStatsGained[SCR_EDataStats.RANK] != 0 || m_aStatsGained[SCR_EDataStats.LEVEL_EXPERIENCE] != 0)
-			Print("SCR_PlayerData:CalculateStatsChange: Specialization stats, experience or rank stats were modified prematurely. The career data for this session might be compromised", LogLevel.ERROR);
+			Print("SCR_PlayerData:CalculateStatsChange: Specialization stats, experience or rank stats were modified prematurely. The career data for this session might be compromised", LogLevel.WARNING);
 
 		//CALCULATE STATS ADDITIONS TO THE SPECIALIZATIONS, THEN WAR CRIMES, THEN SPECIALIZATION POINTS, AND THEN LEVEL OF EXPERIENCE AND RANK
 
@@ -317,16 +365,15 @@ class SCR_PlayerData : JsonApiStruct
 		//Infantry
 		if (m_aStats[SCR_EDataStats.SPPOINTS0] < m_Configs.SPECIALIZATION_MAX)
 		{
-			m_aEarnt[SCR_EDataStats.METERS_WALKED] = m_aStatsGained[SCR_EDataStats.METERS_WALKED] * m_Configs.MODIFIER_METERS_WALKED;
+			m_aEarnt[SCR_EDataStats.DISTANCE_WALKED] = m_aStatsGained[SCR_EDataStats.DISTANCE_WALKED] * m_Configs.MODIFIER_DISTANCE_WALKED;
 			m_aEarnt[SCR_EDataStats.KILLS] = m_aStatsGained[SCR_EDataStats.KILLS] * m_Configs.MODIFIER_KILLS;
 			m_aEarnt[SCR_EDataStats.AI_KILLS] = m_aStatsGained[SCR_EDataStats.AI_KILLS] * m_Configs.MODIFIER_AI_KILLS;
 
 			if (m_aStatsGained[SCR_EDataStats.SHOTS] <= 0)
 				m_aEarnt[SCR_EDataStats.SHOTS] = 0;
 			else
-				//We should not use ROADKILLS yet
-				//Also this title is misleading: We are treating shots as "precision in killing" of sorts
-				m_aEarnt[SCR_EDataStats.SHOTS] = ( (m_aStatsGained[SCR_EDataStats.KILLS] /*- m_aStatsGained[SCR_EDataStats.ROADKILLS]*/ + m_aStatsGained[SCR_EDataStats.AI_KILLS] /*- m_aStatsGained[SCR_EDataStats.AIROADKILLS]*/) / m_aStatsGained[SCR_EDataStats.SHOTS] ) * m_Configs.MODIFIER_PRECISION;
+				//This title is misleading: We are treating shots as "precision in killing" of sorts
+				m_aEarnt[SCR_EDataStats.SHOTS] = ((m_aStatsGained[SCR_EDataStats.KILLS] - m_aStatsGained[SCR_EDataStats.ROADKILLS] + m_aStatsGained[SCR_EDataStats.AI_KILLS] - m_aStatsGained[SCR_EDataStats.AI_ROADKILLS]) / m_aStatsGained[SCR_EDataStats.SHOTS]) * m_Configs.MODIFIER_PRECISION;
 
 			/* We should not use GRENADESTHROWN yet
 			if (m_aStatsGained[SCR_EDataStats.GRENADESTHROWN] <= 0)
@@ -335,7 +382,7 @@ class SCR_PlayerData : JsonApiStruct
 				m_aEarnt[SCR_EDataStats.GRENADESTHROWN] = (m_aStatsGained[SCR_EDataStats.KILLS] / m_aStatsGained[SCR_EDataStats.GRENADESTHROWN]) * m_Configs.MODIFIERPRECISION;
 			*/
 
-			m_aEarnt[SCR_EDataStats.SPPOINTS0] = m_aEarnt[SCR_EDataStats.METERS_WALKED] + m_aEarnt[SCR_EDataStats.KILLS] + m_aEarnt[SCR_EDataStats.AI_KILLS] + m_aEarnt[SCR_EDataStats.SHOTS]; /*+ m_aEarnt[SCR_EDataStats.GRENADES_THROWN];*/
+			m_aEarnt[SCR_EDataStats.SPPOINTS0] = m_aEarnt[SCR_EDataStats.DISTANCE_WALKED] + m_aEarnt[SCR_EDataStats.KILLS] + m_aEarnt[SCR_EDataStats.AI_KILLS] + m_aEarnt[SCR_EDataStats.SHOTS]; /*+ m_aEarnt[SCR_EDataStats.GRENADES_THROWN]; */
 		}
 		else
 			m_aEarnt[SCR_EDataStats.SPPOINTS0] = 0;
@@ -348,12 +395,12 @@ class SCR_PlayerData : JsonApiStruct
 		//Logistics
 		if (m_aStats[SCR_EDataStats.SPPOINTS1] < m_Configs.SPECIALIZATION_MAX)
 		{
-			m_aEarnt[SCR_EDataStats.METERS_DRIVEN] = m_aStatsGained[SCR_EDataStats.METERS_DRIVEN] * m_Configs.MODIFIER_METERS_DRIVEN;
+			m_aEarnt[SCR_EDataStats.DISTANCE_DRIVEN] = m_aStatsGained[SCR_EDataStats.DISTANCE_DRIVEN] * m_Configs.MODIFIER_DISTANCE_DRIVEN;
 			m_aEarnt[SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS] = m_aStatsGained[SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS];
 
 			m_aEarnt[SCR_EDataStats.PLAYERS_DIED_IN_VEHICLE] = -1 * Math.Min(m_aStatsGained[SCR_EDataStats.PLAYERS_DIED_IN_VEHICLE] * m_Configs.MODIFIER_PLAYERS_DIED_IN_VEHICLE, m_Configs.MAX_PLAYERS_DIED_IN_VEHICLE_PENALTY);
 
-			m_aEarnt[SCR_EDataStats.SPPOINTS1] = m_aEarnt[SCR_EDataStats.METERS_DRIVEN] + m_aEarnt[SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS] + m_aEarnt[SCR_EDataStats.PLAYERS_DIED_IN_VEHICLE];
+			m_aEarnt[SCR_EDataStats.SPPOINTS1] = m_aEarnt[SCR_EDataStats.DISTANCE_DRIVEN] + m_aEarnt[SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS] + m_aEarnt[SCR_EDataStats.PLAYERS_DIED_IN_VEHICLE];
 
 			if (m_aEarnt[SCR_EDataStats.SPPOINTS1] <= 0)
 				m_aEarnt[SCR_EDataStats.SPPOINTS1] = 0;
@@ -369,6 +416,9 @@ class SCR_PlayerData : JsonApiStruct
 		//Medical
 		if (m_aStats[SCR_EDataStats.SPPOINTS2] < m_Configs.SPECIALIZATION_MAX)
 		{
+
+			//TODO: transform these into m_aEarnt[i] = m_aStatsGained[i] * m_Configs[i] if possible
+			
 			m_aEarnt[SCR_EDataStats.BANDAGE_SELF] = m_aStatsGained[SCR_EDataStats.BANDAGE_SELF] * m_Configs.MODIFIER_BANDAGE_SELF;
 			m_aEarnt[SCR_EDataStats.BANDAGE_FRIENDLIES] = m_aStatsGained[SCR_EDataStats.BANDAGE_FRIENDLIES] * m_Configs.MODIFIER_BANDAGE_FRIENDLIES;
 			m_aEarnt[SCR_EDataStats.TOURNIQUET_SELF] = m_aStatsGained[SCR_EDataStats.TOURNIQUET_SELF] * m_Configs.MODIFIER_TOURNIQUET_SELF;
@@ -386,20 +436,10 @@ class SCR_PlayerData : JsonApiStruct
 		m_aStatsGained[SCR_EDataStats.SPPOINTS2] = m_aEarnt[SCR_EDataStats.SPPOINTS2];
 		totalSpecializationPointsGain += m_aStatsGained[SCR_EDataStats.SPPOINTS2];
 
-		if (m_bWarCrimesEnabled)
-		{
-			//NOW ADD INDIVIDUAL WAR CRIMES
-			m_aStats[SCR_EDataStats.WARCRIME_HARMING_FRIENDLIES] = m_aStats[SCR_EDataStats.WARCRIME_HARMING_FRIENDLIES] + m_aStatsGained[SCR_EDataStats.FRIENDLY_KILLS] * m_Configs.MODIFIER_FRIENDLY_KILLS + m_aStatsGained[SCR_EDataStats.FRIENDLY_AI_KILLS] * m_Configs.MODIFIER_FRIENDLY_AI_KILLS;
-
-			//WE PUT THEM TOGETHER TO CALCULATE EARNT WAR CRIMES
-			//There's only one war crime at the moment: WARCRIMEHARMINGFRIENDLIES
-			m_aStats[SCR_EDataStats.WARCRIMES] = m_aStats[SCR_EDataStats.WARCRIMES] + m_aStats[SCR_EDataStats.WARCRIME_HARMING_FRIENDLIES];
-		}
-		
 		//CALCULATE QUALITYTIME RATIO
 		//qualityTimeRatio is calculated as the ratio between (ExpectedPointsPerHour * HoursPlayed) and ObtainedPoints.
 		//For expected points, I use m_fSTDPointsQualityTime as the expected growth per specialization and 2.5 as the number of specializations with it as an accurate simplification
-		float qualityTimeRatio = totalSpecializationPointsGain / (1+(m_Configs.s_fSTDPointsQualityTime * 2.5 * (m_aStatsGained[SCR_EDataStats.SESSION_DURATION] / 3600)));
+		float qualityTimeRatio = totalSpecializationPointsGain / (1 +(m_Configs.STD_POINTS_QUALITY_TIME * 2.5 * (m_aStatsGained[SCR_EDataStats.SESSION_DURATION] / 3600)));
 
 		//Little assert on the qualityTimeRatio to check player didn't perform abnormaly well
 		if (qualityTimeRatio > 1.5)
@@ -408,10 +448,10 @@ class SCR_PlayerData : JsonApiStruct
 			Print("SCR_PlayerData:CalculateStatsChange: QualityTimeRatio (aka how well player performed) is: " + qualityTimeRatio, LogLevel.DEBUG);
 
 		//LOWER WAR CRIMES IF THERE'S ANY
-		if (m_bWarCrimesEnabled && m_aStats[SCR_EDataStats.WARCRIMES] > 0)
+		if (m_aStats[SCR_EDataStats.WARCRIMES] > 0)
 		{
 			// WarCrimes go down by m_fWarCrimesDecreaseRatePerHour * qualityTimeRatio * time
-			int warCrimesDown = qualityTimeRatio * m_aStatsGained[SCR_EDataStats.SESSION_DURATION]/3600 * m_Configs.WARCRIMES_DECREASE_PER_HOUR;
+			int warCrimesDown = qualityTimeRatio * (m_aStatsGained[SCR_EDataStats.SESSION_DURATION]/ 3600) * m_Configs.WARCRIMES_DECREASE_PER_HOUR;
 
 			//All war crimes go down equitatively by amountToDecrease / numberOfNonZeroWarCrimes amount
 			int amountToDecrease = (m_aStats[SCR_EDataStats.WARCRIME_HARMING_FRIENDLIES]) * warCrimesDown / m_aStats[SCR_EDataStats.WARCRIMES];
@@ -456,14 +496,17 @@ class SCR_PlayerData : JsonApiStruct
 				continue;
 
 			//Punish the specialization growth if there are war crimes
-			if (m_bWarCrimesEnabled && m_aStats[SCR_EDataStats.WARCRIMES] > 0)
+			if (m_aStats[SCR_EDataStats.WARCRIMES] > 0)
 				gainedRawPoints *= (1 - m_Configs.WARCRIMES_PUNISHMENT);
 
 			while (j < m_Configs.INTERVALS_COUNT && m_Configs.INTERVALS_END[j] < currentSpPoints)
+			{
 				j++;
+			}
+			
 			if (j >= m_Configs.INTERVALS_COUNT)
 			{
-				Print ("SCR_PlayerData:CalculateStatsChange: currentSpPoints outside of the accepted ranges.", LogLevel.ERROR);
+				Print ("SCR_PlayerData:CalculateStatsChange: currentSpPoints outside of the accepted ranges.", LogLevel.WARNING);
 				continue;
 			}
 
@@ -485,7 +528,7 @@ class SCR_PlayerData : JsonApiStruct
 		m_aEarnt[SCR_EDataStats.SESSION_DURATION] = m_aStatsGained[SCR_EDataStats.SESSION_DURATION] * qualityTimeRatio;
 		m_aEarnt[SCR_EDataStats.LEVEL_EXPERIENCE] = m_aEarnt[SCR_EDataStats.SESSION_DURATION] + totalSpecializationPointsGain * m_Configs.MODIFIER_SPECIALIZATIONS;
 
-		if (m_bWarCrimesEnabled && m_aStats[SCR_EDataStats.WARCRIMES] > 0)
+		if (m_aStats[SCR_EDataStats.WARCRIMES] > 0)
 		{
 			m_aEarnt[SCR_EDataStats.LEVEL_EXPERIENCE] = m_aEarnt[SCR_EDataStats.LEVEL_EXPERIENCE] * (1 - m_Configs.WARCRIMES_PUNISHMENT);
 		}
@@ -532,6 +575,7 @@ class SCR_PlayerData : JsonApiStruct
 		array<float> StatsToReturn = {};
 
 		int count = m_aStats.Count();
+		CalculateSessionDuration();
 
 		for (int i = 0; i < count; i++)
 		{
@@ -559,7 +603,7 @@ class SCR_PlayerData : JsonApiStruct
 					return m_aStats[SCR_EDataStats.SPPOINTS2];
 			}
 
-			Print ("SCR_PlayerData:GetSpecializationPoints: WRONG SPECIALIZATION ID.", LogLevel.ERROR);
+			Print ("SCR_PlayerData:GetSpecializationPoints: WRONG SPECIALIZATION ID.", LogLevel.WARNING);
 			return 0;
 		}
 
@@ -576,7 +620,7 @@ class SCR_PlayerData : JsonApiStruct
 				return m_aPreviousStats[SCR_EDataStats.SPPOINTS2];
 		}
 
-		Print ("SCR_PlayerData:GetSpecializationPoints: WRONG SPECIALIZATION ID.", LogLevel.ERROR);
+		Print ("SCR_PlayerData:GetSpecializationPoints: WRONG SPECIALIZATION ID.", LogLevel.WARNING);
 		return 0;
 	}
 
@@ -598,33 +642,34 @@ class SCR_PlayerData : JsonApiStruct
 				m_aStats[SCR_EDataStats.SPPOINTS2] = Math.Min(m_aStats[SCR_EDataStats.SPPOINTS2] + value, m_Configs.SPECIALIZATION_MAX);
 				return;
 		}
-		Print ("SCR_PlayerData:AddPointsToSpecialization: WRONG SPECIALIZATION ID.", LogLevel.ERROR);
+		Print ("SCR_PlayerData:AddPointsToSpecialization: WRONG SPECIALIZATION ID.", LogLevel.WARNING);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//This method sets the SCR_PlayerDataSpecializationDisplay arrays from the PlayerDataConfigs. Typically the Career Menu will use this
+	//! This method sets the SCR_PlayerDataSpecializationDisplay arrays from the PlayerDataConfigs. Typically the Career Menu will use this
 	void PrepareSpecializationStatsDisplay()
 	{
-		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.METERS_WALKED].SetValue(GetDistanceWalked() * m_Configs.MetersToKilometersConversion);
-		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.PLAYER_KILLS].SetValue(GetPlayerKills());
-		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.AI_KILLS].SetValue(GetAIKills());
-		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.SHOTS].SetValue(GetBulletsShot());
+		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.DISTANCE_WALKED].SetValue(GetStat(SCR_EDataStats.DISTANCE_WALKED) * m_Configs.MetersToKilometersConversion);
+		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.PLAYER_KILLS].SetValue(GetStat(SCR_EDataStats.KILLS));
+		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.AI_KILLS].SetValue(GetStat(SCR_EDataStats.AI_KILLS));
+		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.SHOTS].SetValue(GetStat(SCR_EDataStats.SHOTS));
 
-		m_Configs.m_aSpecialization1[SCR_ESpecialization1Display.METERS_DRIVEN].SetValue(GetDistanceDriven() * m_Configs.MetersToKilometersConversion);
-		m_Configs.m_aSpecialization1[SCR_ESpecialization1Display.METERS_AS_OCCUPANT].SetValue(GetDistanceAsOccupant() * m_Configs.MetersToKilometersConversion);
-		m_Configs.m_aSpecialization1[SCR_ESpecialization1Display.POINTS_DRIVING_PEOPLE].SetValue(GetPointsAsDriverOfPlayers());
+		m_Configs.m_aSpecialization1[SCR_ESpecialization1Display.DISTANCE_DRIVEN].SetValue(GetStat(SCR_EDataStats.DISTANCE_DRIVEN) * m_Configs.MetersToKilometersConversion);
+		m_Configs.m_aSpecialization1[SCR_ESpecialization1Display.DISTANCE_AS_OCCUPANT].SetValue(GetStat(SCR_EDataStats.DISTANCE_AS_OCCUPANT) * m_Configs.MetersToKilometersConversion);
+		m_Configs.m_aSpecialization1[SCR_ESpecialization1Display.POINTS_DRIVING_PEOPLE].SetValue(GetStat(SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS));
 
-		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.BANDAGE_SELF].SetValue(GetBandageSelf());
-		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.BANDAGE_FRIENDLIES].SetValue(GetBandageFriends());
-		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.TOURNIQUET_SELF].SetValue(GetTourniquetSelf());
-		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.TOURNIQUET_FRIENDLIES].SetValue(GetTourniquetFriends());
-		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.SALINE_SELF].SetValue(GetSelineSelf());
-		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.SALINE_FRIENDLIES].SetValue(GetSelineFriends());
-		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.MORPHINE_SELF].SetValue(GetMorphineSelf());
-		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.MORPHINE_FRIENDLIES].SetValue(GetMorphineFriends());
+		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.BANDAGE_SELF].SetValue(GetStat(SCR_EDataStats.BANDAGE_SELF));
+		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.BANDAGE_FRIENDLIES].SetValue(GetStat(SCR_EDataStats.BANDAGE_FRIENDLIES));
+		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.TOURNIQUET_SELF].SetValue(GetStat(SCR_EDataStats.TOURNIQUET_SELF));
+		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.TOURNIQUET_FRIENDLIES].SetValue(GetStat(SCR_EDataStats.TOURNIQUET_FRIENDLIES));
+		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.SALINE_SELF].SetValue(GetStat(SCR_EDataStats.SALINE_SELF));
+		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.SALINE_FRIENDLIES].SetValue(GetStat(SCR_EDataStats.SALINE_FRIENDLIES));
+		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.MORPHINE_SELF].SetValue(GetStat(SCR_EDataStats.MORPHINE_SELF));
+		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.MORPHINE_FRIENDLIES].SetValue(GetStat(SCR_EDataStats.MORPHINE_FRIENDLIES));
 	}
 
-	//This method sets the SCR_PlayerDataSpecializationDisplay arrays from the PlayerDataConfigs. Typically the Debrief screen will use this
+	//------------------------------------------------------------------------------------------------
+	//! This method sets the SCR_PlayerDataSpecializationDisplay arrays from the PlayerDataConfigs. Typically the Debrief screen will use this
 	void PrepareSpecializationProgressionStatsDisplay()
 	{
 		if (m_aStatsGained.IsEmpty())
@@ -633,13 +678,13 @@ class SCR_PlayerData : JsonApiStruct
 			m_aStatsGained = CalculateStatsDifference();
 		}
 
-		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.METERS_WALKED].SetValue(m_aStatsGained[SCR_EDataStats.METERS_WALKED] * m_Configs.MetersToKilometersConversion);
+		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.DISTANCE_WALKED].SetValue(m_aStatsGained[SCR_EDataStats.DISTANCE_WALKED] * m_Configs.MetersToKilometersConversion);
 		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.PLAYER_KILLS].SetValue(m_aStatsGained[SCR_EDataStats.KILLS]);
 		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.AI_KILLS].SetValue(m_aStatsGained[SCR_EDataStats.AI_KILLS]);
 		m_Configs.m_aSpecialization0[SCR_ESpecialization0Display.SHOTS].SetValue(m_aStatsGained[SCR_EDataStats.SHOTS]);
 
-		m_Configs.m_aSpecialization1[SCR_ESpecialization1Display.METERS_DRIVEN].SetValue(m_aStatsGained[SCR_EDataStats.METERS_DRIVEN] * m_Configs.MetersToKilometersConversion);
-		m_Configs.m_aSpecialization1[SCR_ESpecialization1Display.METERS_AS_OCCUPANT].SetValue(m_aStatsGained[SCR_EDataStats.METERS_AS_OCCUPANT] * m_Configs.MetersToKilometersConversion);
+		m_Configs.m_aSpecialization1[SCR_ESpecialization1Display.DISTANCE_DRIVEN].SetValue(m_aStatsGained[SCR_EDataStats.DISTANCE_DRIVEN] * m_Configs.MetersToKilometersConversion);
+		m_Configs.m_aSpecialization1[SCR_ESpecialization1Display.DISTANCE_AS_OCCUPANT].SetValue(m_aStatsGained[SCR_EDataStats.DISTANCE_AS_OCCUPANT] * m_Configs.MetersToKilometersConversion);
 		m_Configs.m_aSpecialization1[SCR_ESpecialization1Display.POINTS_DRIVING_PEOPLE].SetValue(m_aStatsGained[SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS]);
 
 		m_Configs.m_aSpecialization2[SCR_ESpecialization2Display.BANDAGE_SELF].SetValue(m_aStatsGained[SCR_EDataStats.BANDAGE_SELF]);
@@ -657,17 +702,6 @@ class SCR_PlayerData : JsonApiStruct
 	{
 		return m_bIsEmptyProfile;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//TODO: THIS SHOULD GO TO THE DATA COLLECTOR OR ONE OF THE MODULES.
-	void ActivateWarCrimesDetection(bool warcrimes, bool proportionalityPrinciple)
-	{
-		if (!warcrimes && proportionalityPrinciple)
-			Print("War crimes are disabled but the Proportionality principle is enabled. That doesn't make a lot of sense...", LogLevel.WARNING);
-		
-		m_bWarCrimesEnabled = warcrimes;
-		m_bWarCrimesProportionalityPrincipleEnabled = proportionalityPrinciple;
-	}
 
 	//m_aStats and m_aPreviousStats must not be accessed from outside of this class.
 	//That is why there are getters and setters for their attributes, but not for their instances
@@ -675,52 +709,115 @@ class SCR_PlayerData : JsonApiStruct
 	//
 	//
 	//SETTERS:
+
+	//------------------------------------------------------------------------------------------------
+	//! temp:
+	//! True: The stat should be added to temporary actions that might be evaluated further by a module
+	//! False: The stat is final. Add it to this player session's stats
+	void AddStat(SCR_EDataStats stat, float amount = 1, bool temp = true)
+	{
+		if (!accumulationEnabled)
+			temp = false;
+		
+		if (temp)
+		{
+			m_iLatestActionTick = System.GetTickCount();
+			if (m_iAccumulatedActionsTick == 0)
+				m_iAccumulatedActionsTick = m_iLatestActionTick;
+			
+			m_aAccumulatedActions[stat] = m_aAccumulatedActions[stat] + amount;
+		}
+		else
+		{
+			m_aStats[stat] = m_aStats[stat] + amount;
+		}
+		
+		s_OnStatAdded.Invoke(m_iPlayerID, stat, amount, temp);
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	void AddStat(SCR_EDataStats stat, int amount = 1)
+	//USE WITH CARE AND ONLY IN SPECIAL CIRCUMSTANCES!
+	void OverrideStat(SCR_EDataStats stat, float amount = 1)
 	{
-		m_aStats[stat] = m_aStats[stat] + amount;
-		//TODO: DON'T ADD IT TO STATS, ADD IT TO TEMP_STATS AND MANAGE TEMP_STATS FROM DATACOLLECTOR EVERY X SECONDS
-		//THAT CAN DECIDE TO NOTIFY THE ONCRIMEMODULE OR NOT AND WOULD ALSO ACT AS THE PROPORTIONALITY BUFFER
+		m_aStats[stat] = amount;
 	}
 
 	//GETTERS:
+
+	//------------------------------------------------------------------------------------------------
+	float GetStat(SCR_EDataStats stat, bool newStat = true)
+	{
+		if (newStat)
+			return m_aStats[stat];
+
+		return m_aPreviousStats[stat];
+	}
+
+	///////////
+	//Generic//
+	///////////
+
+	//------------------------------------------------------------------------------------------------
+	int GetAccumulatedActionsTick()
+	{
+		return m_iAccumulatedActionsTick;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetLatestActionTick()
+	{
+		return m_iLatestActionTick;
+	}
 	
-	/******************/
-	//Rank and Generic//
-	/******************/
-
-	//------------------------------------------------------------------------------------------------
-	float GetLevelExperience(bool newStats = true)
+	int GetLatestCriminalScoreUpdateTick()
 	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.LEVEL_EXPERIENCE];
-
-		return m_aPreviousStats[SCR_EDataStats.LEVEL_EXPERIENCE];
+		return m_iLatestCriminalScoreUpdateTick;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	float GetRank(bool newStats = true)
+	SCR_PlayerDataConfigs GetConfigs()
 	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.RANK];
-
-		return m_aPreviousStats[SCR_EDataStats.RANK];
+		return m_Configs;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	float GetSessionDuration(bool newStats = true)
+	array<float> GetAccumulatedActions()
 	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.SESSION_DURATION];
+		array<float> copy = {};
+		copy.Copy(m_aAccumulatedActions);
+		return copy;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetCriminalScore()
+	{
+		return m_fCriminalScore;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCriminalScore(float score)
+	{
+		m_iLatestCriminalScoreUpdateTick = System.GetTickCount();
+		m_fCriminalScore = score;
+	}
 
-			return m_aPreviousStats[SCR_EDataStats.SESSION_DURATION];
+	//------------------------------------------------------------------------------------------------
+	void ResetAccumulatedActions()
+	{
+		for (int i = 0, count = m_aAccumulatedActions.Count(); i < count; i++)
+		{
+			m_aAccumulatedActions[i] = 0;
+		}
+		
+		m_iAccumulatedActionsTick = 0;
+		
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void CalculateSessionDuration()
 	{
-		m_aStats[SCR_EDataStats.SESSION_DURATION] = m_aStats[SCR_EDataStats.SESSION_DURATION] + (System.GetTickCount() - m_iSessionStartedTickCount)/1000;
+		m_aStats[SCR_EDataStats.SESSION_DURATION] = m_aStats[SCR_EDataStats.SESSION_DURATION] + (System.GetTickCount() - m_iSessionStartedTickCount) * 0.001;
+		m_iSessionStartedTickCount = System.GetTickCount();
 	}
 
 	/*****************/
@@ -737,500 +834,6 @@ class SCR_PlayerData : JsonApiStruct
 			case 2: return m_Configs.SPECIALIZATION_2_COUNT;
 		}
 		return -1;
-	}
-
-	/************/
-	//War Crimes//
-	/************/
-
-	//------------------------------------------------------------------------------------------------
-	float GetWarCrimesAmount(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.WARCRIMES];
-
-		return m_aPreviousStats[SCR_EDataStats.WARCRIMES];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	bool GetWarCrimes(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.WARCRIMES] != 0;
-
-		return m_aPreviousStats[SCR_EDataStats.WARCRIMES] != 0;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetWarCrimesHarmingFriendlies(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.WARCRIME_HARMING_FRIENDLIES];
-
-		return m_aPreviousStats[SCR_EDataStats.WARCRIME_HARMING_FRIENDLIES];
-	}
-
-	/**********************/
-	//DATACOLLECTORMODULES//
-	/**********************/
-
-	/********************/
-	//BasicActionsModule//
-	/********************/
-
-	//------------------------------------------------------------------------------------------------
-	int GetDistanceWalked(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.METERS_WALKED];
-
-		return m_aPreviousStats[SCR_EDataStats.METERS_WALKED];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetCurrentDistanceWalked(bool newStats = true)
-	{
-		return m_aStats[SCR_EDataStats.METERS_WALKED] - m_aPreviousStats[SCR_EDataStats.METERS_WALKED];
-	}
-
-	/****************/
-	//ShootingModule//
-	/****************/
-
-	//------------------------------------------------------------------------------------------------
-	float GetDeaths(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.DEATHS];
-
-		return m_aPreviousStats[SCR_EDataStats.DEATHS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentDeaths()
-	{
-		return m_aStats[SCR_EDataStats.DEATHS] - m_aPreviousStats[SCR_EDataStats.DEATHS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetPlayerKills(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.KILLS];
-
-		return m_aPreviousStats[SCR_EDataStats.KILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentPlayerKills()
-	{
-		return m_aStats[SCR_EDataStats.KILLS] - m_aPreviousStats[SCR_EDataStats.KILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetAIKills(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.AI_KILLS];
-
-		return m_aPreviousStats[SCR_EDataStats.AI_KILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentAIKills()
-	{
-		return m_aStats[SCR_EDataStats.AI_KILLS] - m_aPreviousStats[SCR_EDataStats.AI_KILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetFriendlyPlayerKills(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.FRIENDLY_KILLS];
-
-		return m_aPreviousStats[SCR_EDataStats.FRIENDLY_KILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentFriendlyPlayerKills()
-	{
-		return m_aStats[SCR_EDataStats.FRIENDLY_KILLS] - m_aPreviousStats[SCR_EDataStats.FRIENDLY_KILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetFriendlyAIKills(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.FRIENDLY_AI_KILLS];
-
-		return m_aPreviousStats[SCR_EDataStats.FRIENDLY_AI_KILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentFriendlyAIKills()
-	{
-		return m_aStats[SCR_EDataStats.FRIENDLY_AI_KILLS] - m_aPreviousStats[SCR_EDataStats.FRIENDLY_AI_KILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetBulletsShot(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.SHOTS];
-
-		return m_aPreviousStats[SCR_EDataStats.SHOTS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentBulletsShot()
-	{
-		return m_aStats[SCR_EDataStats.SHOTS] - m_aPreviousStats[SCR_EDataStats.SHOTS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetGrenadesThrown(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.GRENADES_THROWN];
-
-		return m_aPreviousStats[SCR_EDataStats.GRENADES_THROWN];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentGrenadesThrown()
-	{
-		return m_aStats[SCR_EDataStats.GRENADES_THROWN] - m_aPreviousStats[SCR_EDataStats.GRENADES_THROWN];
-	}
-
-	/****************/
-	//DriverModule//
-	/****************/
-
-	//------------------------------------------------------------------------------------------------
-	void AddPointsAsDriverOfPlayers(float meters, float players)
-	{
-		m_aStats[SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS] = m_aStats[SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS] + meters * players * m_Configs.MODIFIER_DRIVER_OF_PLAYERS;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetPointsAsDriverOfPlayers(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS];
-
-		return m_aPreviousStats[SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentPointsAsDriverOfPlayers()
-	{
-		return m_aStats[SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS] - m_aPreviousStats[SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetDistanceDriven(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.METERS_DRIVEN];
-
-		return m_aPreviousStats[SCR_EDataStats.METERS_DRIVEN];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentDistanceDriven()
-	{
-		return m_aStats[SCR_EDataStats.METERS_DRIVEN] - m_aPreviousStats[SCR_EDataStats.METERS_DRIVEN];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetDistanceAsOccupant(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.METERS_AS_OCCUPANT];
-
-		return m_aPreviousStats[SCR_EDataStats.METERS_AS_OCCUPANT];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentDistanceAsOccupant()
-	{
-		return m_aStats[SCR_EDataStats.METERS_AS_OCCUPANT] - m_aPreviousStats[SCR_EDataStats.METERS_AS_OCCUPANT];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetRoadKills(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.ROADKILLS];
-
-		return m_aPreviousStats[SCR_EDataStats.ROADKILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentRoadKills()
-	{
-		return m_aStats[SCR_EDataStats.ROADKILLS] - m_aPreviousStats[SCR_EDataStats.ROADKILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetAIRoadKills(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.AI_ROADKILLS];
-
-		return m_aPreviousStats[SCR_EDataStats.AI_ROADKILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentAIRoadKills()
-	{
-		return m_aStats[SCR_EDataStats.AI_ROADKILLS] - m_aPreviousStats[SCR_EDataStats.AI_ROADKILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetFriendlyRoadKills(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.FRIENDLY_ROADKILLS];
-
-		return m_aPreviousStats[SCR_EDataStats.FRIENDLY_ROADKILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentFriendlyRoadKills(bool newStats = true)
-	{
-		return m_aStats[SCR_EDataStats.FRIENDLY_ROADKILLS] - m_aPreviousStats[SCR_EDataStats.FRIENDLY_ROADKILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetFriendlyAIRoadKills(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.FRIENDLY_AI_ROADKILLS];
-
-		return m_aPreviousStats[SCR_EDataStats.FRIENDLY_AI_ROADKILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentFriendlyAIRoadKills()
-	{
-		return m_aStats[SCR_EDataStats.FRIENDLY_AI_ROADKILLS] - m_aPreviousStats[SCR_EDataStats.FRIENDLY_AI_ROADKILLS];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetPlayersDiedInVehicle(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.PLAYERS_DIED_IN_VEHICLE];
-
-		return m_aPreviousStats[SCR_EDataStats.PLAYERS_DIED_IN_VEHICLE];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentPlayersDiedInVehicle()
-	{
-		return m_aStats[SCR_EDataStats.PLAYERS_DIED_IN_VEHICLE] - m_aPreviousStats[SCR_EDataStats.PLAYERS_DIED_IN_VEHICLE];
-	}
-
-	/*************************/
-	//SupplyTruckDriverModule//
-	/*************************/
-
-	/*
-	//------------------------------------------------------------------------------------------------
-	void AddTraveledTimeSupplyVehicle(float time)
-	{
-		m_aStats[SCR_EDataStats.TRAVELEDTIMESUPPLYVEHICLE] = m_aStats[SCR_EDataStats.TRAVELEDTIMESUPPLYVEHICLE] + time;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void AddTraveledDistanceSupplyVehicle(float distance)
-	{
-		m_aStats[SCR_EDataStats.TRAVELEDDISTANCESUPPLYVEHICLE] = m_aStats[SCR_EDataStats.TRAVELEDDISTANCESUPPLYVEHICLE] + distance;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetTraveledDistanceSupplyVehicle(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.TRAVELEDDISTANCESUPPLYVEHICLE];
-
-		return m_aPreviousStats[SCR_EDataStats.TRAVELEDDISTANCESUPPLYVEHICLE];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentTraveledDistanceSupplyVehicle()
-	{
-		return m_aStats[SCR_EDataStats.TRAVELEDDISTANCESUPPLYVEHICLE] - m_aPreviousStats[SCR_EDataStats.TRAVELEDDISTANCESUPPLYVEHICLE];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetTraveledTimeSupplyVehicle(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.TRAVELEDTIMESUPPLYVEHICLE];
-
-		return m_aPreviousStats[SCR_EDataStats.TRAVELEDTIMESUPPLYVEHICLE];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetCurrentTraveledTimeSupplyVehicle()
-	{
-		return m_aStats[SCR_EDataStats.TRAVELEDTIMESUPPLYVEHICLE] - m_aPreviousStats[SCR_EDataStats.TRAVELEDTIMESUPPLYVEHICLE];
-	}
-
-	*/
-
-	/********************/
-	//HealingItemsModule//
-	/********************/
-
-	//------------------------------------------------------------------------------------------------
-	void AddBandageUse(bool selfTarget)
-	{
-		if (selfTarget)
-			m_aStats[SCR_EDataStats.BANDAGE_SELF] = m_aStats[SCR_EDataStats.BANDAGE_SELF]+1;
-		else
-			m_aStats[SCR_EDataStats.BANDAGE_FRIENDLIES] = m_aStats[SCR_EDataStats.BANDAGE_FRIENDLIES] + 1;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void AddTourniquetUse(bool selfTarget)
-	{
-		if (selfTarget)
-			m_aStats[SCR_EDataStats.TOURNIQUET_SELF] = m_aStats[SCR_EDataStats.TOURNIQUET_SELF] + 1;
-		else
-			m_aStats[SCR_EDataStats.TOURNIQUET_FRIENDLIES] = m_aStats[SCR_EDataStats.TOURNIQUET_FRIENDLIES] + 1;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void AddSalineUse(bool selfTarget)
-	{
-		if (selfTarget)
-			m_aStats[SCR_EDataStats.SALINE_SELF] = m_aStats[SCR_EDataStats.SALINE_SELF] + 1;
-		else
-			m_aStats[SCR_EDataStats.SALINE_FRIENDLIES] = m_aStats[SCR_EDataStats.SALINE_FRIENDLIES] + 1;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void AddMorphineUse(bool selfTarget)
-	{
-		if (selfTarget)
-			m_aStats[SCR_EDataStats.MORPHINE_SELF] = m_aStats[SCR_EDataStats.MORPHINE_SELF] + 1;
-		else
-			m_aStats[SCR_EDataStats.MORPHINE_FRIENDLIES] = m_aStats[SCR_EDataStats.MORPHINE_FRIENDLIES] + 1;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetBandageFriends(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.BANDAGE_FRIENDLIES];
-		return m_aPreviousStats[SCR_EDataStats.BANDAGE_FRIENDLIES];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetCurrentBandageFriends()
-	{
-		return m_aStats[SCR_EDataStats.BANDAGE_FRIENDLIES] - m_aPreviousStats[SCR_EDataStats.BANDAGE_FRIENDLIES];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetBandageSelf(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.BANDAGE_SELF];
-		return m_aPreviousStats[SCR_EDataStats.BANDAGE_SELF];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetCurrentBandageSelf()
-	{
-		return m_aStats[SCR_EDataStats.BANDAGE_SELF] - m_aPreviousStats[SCR_EDataStats.BANDAGE_SELF];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetTourniquetFriends(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.TOURNIQUET_FRIENDLIES];
-		return m_aPreviousStats[SCR_EDataStats.TOURNIQUET_FRIENDLIES];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetCurrentTourniquetFriends()
-	{
-		return m_aStats[SCR_EDataStats.TOURNIQUET_FRIENDLIES] - m_aPreviousStats[SCR_EDataStats.TOURNIQUET_FRIENDLIES];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetTourniquetSelf(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.TOURNIQUET_SELF];
-		return m_aPreviousStats[SCR_EDataStats.TOURNIQUET_SELF];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetCurrentTourniquetSelf()
-	{
-		return m_aStats[SCR_EDataStats.TOURNIQUET_SELF] - m_aPreviousStats[SCR_EDataStats.TOURNIQUET_SELF];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetSelineFriends(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.SALINE_FRIENDLIES];
-		return m_aPreviousStats[SCR_EDataStats.SALINE_FRIENDLIES];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetCurrentSelineFriends()
-	{
-		return m_aStats[SCR_EDataStats.SALINE_FRIENDLIES] - m_aPreviousStats[SCR_EDataStats.SALINE_FRIENDLIES];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetSelineSelf(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.SALINE_SELF];
-		return m_aPreviousStats[SCR_EDataStats.SALINE_SELF];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetCurrentSelineSelf()
-	{
-		return m_aStats[SCR_EDataStats.SALINE_SELF] - m_aPreviousStats[SCR_EDataStats.SALINE_SELF];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetMorphineFriends(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.MORPHINE_FRIENDLIES];
-		return m_aPreviousStats[SCR_EDataStats.MORPHINE_FRIENDLIES];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetCurrentMorphineFriends()
-	{
-		return m_aStats[SCR_EDataStats.MORPHINE_FRIENDLIES] - m_aPreviousStats[SCR_EDataStats.MORPHINE_FRIENDLIES];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetMorphineSelf(bool newStats = true)
-	{
-		if (newStats)
-			return m_aStats[SCR_EDataStats.MORPHINE_SELF];
-		return m_aPreviousStats[SCR_EDataStats.MORPHINE_SELF];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetCurrentMorphineSelf()
-	{
-		return m_aStats[SCR_EDataStats.MORPHINE_SELF] - m_aPreviousStats[SCR_EDataStats.MORPHINE_SELF];
 	}
 };
 
@@ -1279,36 +882,43 @@ class CharacterDataLoadingCallback : BackendCallback
 //------------------------------------------------------------------------------------------------
 enum SCR_EDataStats
 {
-	RANK,
-	LEVEL_EXPERIENCE,
-	SESSION_DURATION,
-	SPPOINTS0, //INFANTRY
-	SPPOINTS1, //LOGISTICS
-	SPPOINTS2, //MEDICAL
-	WARCRIMES,
-	METERS_WALKED,
-	KILLS,
-	AI_KILLS,
-	SHOTS,
-	GRENADES_THROWN,
-	FRIENDLY_KILLS,
-	FRIENDLY_AI_KILLS,
-	DEATHS,
-	METERS_DRIVEN,
-	POINTS_AS_DRIVER_OF_PLAYERS,
-	PLAYERS_DIED_IN_VEHICLE,
-	ROADKILLS,
-	FRIENDLY_ROADKILLS,
-	AI_ROADKILLS,
-	FRIENDLY_AI_ROADKILLS,
-	METERS_AS_OCCUPANT,
-	BANDAGE_SELF,
-	BANDAGE_FRIENDLIES,
-	TOURNIQUET_SELF,
-	TOURNIQUET_FRIENDLIES,
-	SALINE_SELF,
-	SALINE_FRIENDLIES,
-	MORPHINE_SELF,
-	MORPHINE_FRIENDLIES,
-	WARCRIME_HARMING_FRIENDLIES //Harming friendlies
+	RANK,//!< Rank of the player
+	LEVEL_EXPERIENCE, //!< XP points
+	SESSION_DURATION, //!< Total duration of sessions
+	SPPOINTS0, //!< INFANTRY
+	SPPOINTS1, //!< LOGISTICS
+	SPPOINTS2, //!< MEDICAL
+	WARCRIMES, //!< War criminal points
+	DISTANCE_WALKED, //!< Distance walked on foot
+	KILLS, //!< Enemies killed
+	AI_KILLS, //!< AI enemies killed
+	SHOTS, //!< Bullets shot
+	GRENADES_THROWN, //!< Grenades thrown
+	FRIENDLY_KILLS, //!< Friendly human kills
+	FRIENDLY_AI_KILLS, //!< Friendly AI kills
+	DEATHS, //!< Deaths
+	DISTANCE_DRIVEN, //!< Distance driven with a vehicle
+	POINTS_AS_DRIVER_OF_PLAYERS, //!< Points obtained for driving players around
+	PLAYERS_DIED_IN_VEHICLE, //!< Players that died inside a vehicle while the player drives it
+	ROADKILLS, //!< Human enemies killed with a vehicle
+	FRIENDLY_ROADKILLS, //!< Human friendlies killed with a vehicle
+	AI_ROADKILLS, //!< AI enemies killed with a vehicle
+	FRIENDLY_AI_ROADKILLS, //!< AI friendlies killed with a vehicle
+	DISTANCE_AS_OCCUPANT, //!< Distance the player was driven around with a vehicle
+	BANDAGE_SELF, //!< Number of times player bandaged themself
+	BANDAGE_FRIENDLIES, //!< Number of times player bandaged friendlies (not including themself)
+	TOURNIQUET_SELF, //!< Number of times player tourniquetted themself
+	TOURNIQUET_FRIENDLIES, //!< Number of times player tourniquetted friendlies (not including themself)
+	SALINE_SELF, //!< Number of times player salined themself
+	SALINE_FRIENDLIES, //!< Number of times player salined friendlies (not including themself)
+	MORPHINE_SELF, //!< Number of times player morphined themself
+	MORPHINE_FRIENDLIES, //!< Number of times player morphined friendlies (not including themself)
+	WARCRIME_HARMING_FRIENDLIES, //!< Harming friendlies
+	CRIME_ACCELERATION, //!< Kick & Ban acceleration
+	KICK_SESSION_DURATION, //!< Session duration at the time player was kicked the last time
+	KICK_STREAK, //!< How many times was the player kicked in a row after last kick in a short succession
+	LIGHTBAN_SESSION_DURATION, //!< Session duration at the time player was lightbanned the last time
+	LIGHTBAN_STREAK, //!< How many times was the player lightbanned in a row after the last lightban in a short succession
+	HEAVYBAN_SESSION_DURATION, //!< Session duration at the time player was heavybanned the last time
+	HEAVYBAN_STREAK //!< How many times was the player heavybanned in a row after the last heavyban in a short succession
 };

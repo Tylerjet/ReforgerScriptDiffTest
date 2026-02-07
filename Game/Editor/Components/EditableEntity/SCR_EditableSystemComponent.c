@@ -14,7 +14,7 @@ class SCR_EditableSystemComponent: SCR_EditableEntityComponent
 	protected SCR_FactionAffiliationComponent m_FactionAffiliationComponent;
 	protected ref ScriptInvoker Event_OnUIRefresh = new ref ScriptInvoker;
 	
-	protected void OnFactionChanged()
+	protected void OnFactionChanged(FactionAffiliationComponent owner, Faction previousFaction, Faction newFaction)
 	{
 		Event_OnUIRefresh.Invoke();
 	}
@@ -47,7 +47,7 @@ class SCR_EditableSystemComponent: SCR_EditableEntityComponent
 		m_FactionAffiliationComponent = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
 		if (m_FactionAffiliationComponent)
 		{
-			m_FactionAffiliationComponent.GetOnFactionUpdate().Insert(OnFactionChanged);
+			m_FactionAffiliationComponent.GetOnFactionChanged().Insert(OnFactionChanged);
 		}
 	}
 	
@@ -55,7 +55,7 @@ class SCR_EditableSystemComponent: SCR_EditableEntityComponent
 	{
 		if (m_FactionAffiliationComponent)
 		{
-			m_FactionAffiliationComponent.GetOnFactionUpdate().Insert(OnFactionChanged);
+			m_FactionAffiliationComponent.GetOnFactionChanged().Insert(OnFactionChanged);
 		}
 	}
 };

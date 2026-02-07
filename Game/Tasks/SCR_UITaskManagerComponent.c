@@ -239,8 +239,13 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		SCR_BaseTaskExecutor localTaskExecutor = SCR_BaseTaskExecutor.GetLocalExecutor();
 		if (!localTaskExecutor)
 			return;
+		
+		
 
-		Faction faction = SCR_RespawnSystemComponent.GetLocalPlayerFaction();
+		Faction faction;
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+			faction = factionManager.GetLocalPlayerFaction();
 
 		array<SCR_BaseTask> tasks = {};
 		GetTaskManager().GetFilteredTasks(tasks, faction);
@@ -552,7 +557,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			return;
 		
 		if (!m_bVisible)
-			Action_ShowTasks();
+			Action_ShowTasks(GetRootWidget());
 		else
 			Action_TasksClose();
 	}
@@ -641,12 +646,12 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 		if (curTask && curTask == m_SelectedTask)
 		{
-			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.CLICK_CANCEL);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.TASK_CANCELED);
 			taskNetworkComp.AbandonTask(taskId);
 		}
 		else
 		{
-			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.CLICK);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.TASK_ACCEPT);
 			taskNetworkComp.RequestAssignment(taskId);
 		}
 	}
@@ -708,7 +713,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		if (cfg.MapEntityMode == EMapEntityMode.EDITOR)
 			return;
 		
-		if (!SCR_PlayerController.GetLocalControlledEntity() || !m_bOpenTaskListOnMapOpen || SCR_SelectSpawnPointSubMenu.GetInstance())
+		if (!SCR_PlayerController.GetLocalControlledEntity() || !m_bOpenTaskListOnMapOpen) 
 			return;
 			
 		if (m_bShowSelectedTaskOnMap && m_LastSelectedTask)
@@ -733,13 +738,20 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void Action_ShowTasks(SCR_BaseTask taskToFocus = null)
+	void Action_ShowTasks(Widget targetWidget = null, SCR_BaseTask taskToFocus = null)
 	{
 		ClearUI();
 		m_bVisible = true;
 		
-		GenerateUI(GetRootWidget(), taskToFocus);
-		m_wUI.SetVisible(true);
+		if (!targetWidget)
+			targetWidget = GetRootWidget();
+		
+		m_wUI = targetWidget;
+		
+		GenerateUI(targetWidget, taskToFocus);
+		if (m_wUI)
+			m_wUI.SetVisible(true);
+		
 		s_OnTaskListVisible.Invoke(true);
 		
 		if (m_wWidgetToFocus)
@@ -914,7 +926,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 		SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
 		SCR_MapEntity.GetOnMapClose().Insert(OnMapClose);
-		SCR_RespawnSuperMenu.Event_OnMenuOpen.Insert(OnMapClose);
+//		SCR_RespawnSuperMenu.Event_OnMenuOpen.Insert(OnMapClose);
 		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (!gameMode)

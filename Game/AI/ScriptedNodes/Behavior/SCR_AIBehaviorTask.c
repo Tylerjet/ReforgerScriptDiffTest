@@ -47,6 +47,6 @@ class SCR_AIActionTask : AITaskScripted
 		if (!m_UtilityComp)
 			return null;
 		
-		return m_UtilityComp.m_ExecutedAction;
+		return SCR_AIActionBase.Cast(m_UtilityComp.GetExecutedAction());
 	}
 };

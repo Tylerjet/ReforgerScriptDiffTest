@@ -5,7 +5,8 @@ class SCR_VehicleFactionAffiliationComponentClass: SCR_FactionAffiliationCompone
 
 class SCR_VehicleFactionAffiliationComponent: SCR_FactionAffiliationComponent
 {
-	private int m_iOccupantCount;
+	protected int m_iOccupantCount;
+	protected int m_iAliveOccupantCount;
 	
 	//--------------------------------------------------------------------------------------------------------------------------
 	override event void OnPostInit(IEntity owner)
@@ -14,30 +15,74 @@ class SCR_VehicleFactionAffiliationComponent: SCR_FactionAffiliationComponent
 	}
 	
 	//--------------------------------------------------------------------------------------------------------------------------
+	//! Check if there are any occupants regardless of life state
 	bool IsVehicleOccupied()
 	{
 		return m_iOccupantCount > 0;
+	}	
+	
+	//--------------------------------------------------------------------------------------------------------------------------
+	//! Check if there are any conscious and alive occupants among the occupants 
+	bool IsVehicleActive()
+	{
+		return m_iAliveOccupantCount > 0;
 	}
 	
 	//--------------------------------------------------------------------------------------------------------------------------
-	override protected void OnCompartmentEntered(IEntity vehicle, IEntity occupant, BaseCompartmentSlot compartment, bool move)
+	override protected void OnCompartmentEntering(IEntity vehicle, IEntity occupant, BaseCompartmentSlot compartment, bool move)
 	{
 		if (move) // moving only between compartments
 			return;
+
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(occupant);
 		if(!character)
 			return;
-		CharacterControllerComponent controller = character.GetCharacterController();
-		if(controller.IsDead())
-			return;
 		
 		Faction characterFaction = character.GetFaction();
-		if (characterFaction != null && !characterFaction.IsFactionFriendly(GetAffiliatedFaction())) // null faction is not friendly 
+		Faction vehicleFaction = GetAffiliatedFaction();
+		
+		// This used to always overwrite the faction, but in case some other character entered
+		// with another faction, we'd overwrite that one, so we check for !vehicleFaction and only
+		// set faction to the new one if the vehicle has no faction or the faction is truly friendly,
+		// and the latter only if no one else is in the vehicle anymore.
+		if (characterFaction && !vehicleFaction) 
 		{
+			// No faction on the vehicle, just set the occupant's faction
 			SetAffiliatedFaction(characterFaction);
+		}
+		else if (characterFaction && !characterFaction.IsFactionFriendly(GetAffiliatedFaction()))
+		{
+			// There is vehicleFaction set. Only overwrite it when there are no further SCR_SpawnOccupantsContextAction
+			if (!IsVehicleOccupied())
+			{
+				SetAffiliatedFaction(characterFaction);
+			}
 		};
-		m_iOccupantCount++;
 	}	
+
+	//--------------------------------------------------------------------------------------------------------------------------
+	override protected void OnCompartmentEntered(IEntity vehicle, IEntity occupant, BaseCompartmentSlot compartment, bool move)
+	{
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(occupant);
+		if(!character)
+			return;
+	
+		// Test if the faction of the vehicle and the newly mounted passenger match.
+		// If not, we'll eject the new passenger
+		Faction characterFaction = character.GetFaction();
+		Faction vehicleFaction = GetAffiliatedFaction();
+		
+		if (vehicleFaction && characterFaction.IsFactionEnemy(vehicleFaction))
+		{
+			CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
+			compartmentAccess.EjectOutOfVehicle();
+			// Drop through, we need to account for this new occupant still
+		};
+		
+		// Make us count.
+		m_iOccupantCount++;
+		UpdateOccupantsCount();
+	}
 		
 		
 	//--------------------------------------------------------------------------------------------------------------------------
@@ -45,10 +90,54 @@ class SCR_VehicleFactionAffiliationComponent: SCR_FactionAffiliationComponent
 	{
 		if (move) // moving only between compartments
 			return;
+
 		m_iOccupantCount--;
-		if (!IsVehicleOccupied())
-		{
-			ClearAffiliatedFaction();
-		}
+		UpdateOccupantsCount(occupant);
 	}
+	
+	//--------------------------------------------------------------------------------------------------------------------------
+	void UpdateOccupantsCount(IEntity ignoreOccupant = null)
+	{
+		SCR_BaseCompartmentManagerComponent baseCompMan = SCR_BaseCompartmentManagerComponent.Cast(GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent));
+		if (!baseCompMan)
+			return;
+		
+		array<IEntity> occupants = {};
+		baseCompMan.GetOccupants(occupants);
+		int aliveOccupants;
+		int allOccupants;
+		ECharacterLifeState state;
+		foreach(IEntity occupant : occupants)
+		{
+			if ((ignoreOccupant == occupant))
+				continue;
+			
+			ChimeraCharacter char = ChimeraCharacter.Cast(occupant);
+			if (!char)
+				continue;
+			
+			SCR_CharacterControllerComponent contr = SCR_CharacterControllerComponent.Cast(char.GetCharacterController());
+			if (!contr)
+				continue;
+			
+			state = contr.GetLifeState();
+			if (state == ECharacterLifeState.ALIVE)
+				aliveOccupants++;
+			
+			if (state != ECharacterLifeState.DEAD)
+				allOccupants++;
+		}
+		
+		m_iAliveOccupantCount = aliveOccupants;
+		m_iOccupantCount = allOccupants;
+		
+		if (m_iOccupantCount < 1)
+			ClearAffiliatedFaction();
+	}
+	
+	//--------------------------------------------------------------------------------------------------------------------------
+	void OnOccupantLifeStateChanged(ECharacterLifeState lifeState)
+	{
+		UpdateOccupantsCount();
+	}	
 };

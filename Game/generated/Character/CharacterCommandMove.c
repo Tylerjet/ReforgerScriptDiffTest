@@ -13,7 +13,6 @@ Do not modify, this script is generated
 class CharacterCommandMove: CharacterCommand
 {
 	proto external float GetAdjustedStanceAmount();
-	proto external bool IsStanceAdjustedByMovement();
 	/*!
 	direction held on keyboard/controller
 	-180 -90 0 90 180 angles of input movement (no filtering, no postprocesses)
@@ -25,6 +24,7 @@ class CharacterCommandMove: CharacterCommand
 	//! 0,1,2..3 idle, walk, run, sprint
 	proto external float GetCurrentMovementSpeed();
 	proto external float GetMovementSlopeAngle();
+	proto external float GetLateralSlopeAngle();
 	proto external bool IsRolling();
 	proto external bool IsBlendingOutRoll();
 }

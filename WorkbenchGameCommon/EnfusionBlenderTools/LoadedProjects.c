@@ -18,6 +18,7 @@ class LoadedProjectsResponse: JsonApiStruct
 	}
 };
 
+
 class LoadedProjects: NetApiHandler
 {
 	override JsonApiStruct GetRequest()
@@ -25,12 +26,8 @@ class LoadedProjects: NetApiHandler
 		return new LoadedProjectsRequest();
 	}
 	
-	override JsonApiStruct GetResponse(JsonApiStruct request)
+	static bool InLoadedProjects(string fbxPath)
 	{
-		LoadedProjectsRequest req = LoadedProjectsRequest.Cast(request);
-		LoadedProjectsResponse response = new LoadedProjectsResponse();		
-		//Default as false
-		response.resourceInProject = false;
 		array<string> addons = new array<string>;
 		//Get GUIDs of loaded addons
 		GameProject.GetLoadedAddons(addons);
@@ -44,13 +41,31 @@ class LoadedProjects: NetApiHandler
 			Workbench.GetAbsolutePath("$" + addonName + ":", absPath, false);
 			//TotalCommander uses small letters for disks so the path would be in lowercase as well
 			absPath.ToLower();
-			req.fbxPath.ToLower();
-			//If fbx path contains the gproj path
-			if(req.fbxPath.Contains(absPath) && absPath != "")
+			fbxPath.ToLower();
+			if(absPath != "")
 			{
-				response.resourceInProject = true;
+				absPath = absPath.Substring(0, absPath.Length() - 1);
+			}
+			//If fbx path contains the gproj path
+			if(fbxPath.Contains(absPath) && absPath != "")
+			{
+				return(true);
+			}
+			absPath.Replace("/","\\");
+			if(fbxPath.Contains(absPath) && absPath != "")
+			{
+				return(true);
 			}
 		}
+		return(false);
+	
+	}
+	
+	override JsonApiStruct GetResponse(JsonApiStruct request)
+	{
+		LoadedProjectsRequest req = LoadedProjectsRequest.Cast(request);
+		LoadedProjectsResponse response = new LoadedProjectsResponse();	
+		response.resourceInProject = InLoadedProjects(req.fbxPath);	
 		return response;
 	}
 

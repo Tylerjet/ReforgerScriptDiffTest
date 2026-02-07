@@ -1,14 +1,8 @@
 class SCR_GroupFlagSelectionMenu : DialogUI
 {		
-	protected const int MAX_COLUMNS = 5; 
+	protected const int MAX_COLUMNS = 3; 
 	
-	[Attribute("160")]
-	protected float m_fImgWidht;
-	
-	[Attribute("90")]
-	protected float m_fImgHeight;
-	
-	protected const ResourceName BUTTON_IMAGE = "{4A119D28E23A3999}UI/layouts/WidgetLibrary/Buttons/WLib_ButtonImage.layout";			
+	protected const ResourceName BUTTON_IMAGE = "{6090F995F3E00970}UI/layouts/WidgetLibrary/Groups/WLib_GroupFlagButtonImage.layout";	
 		
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
@@ -33,31 +27,97 @@ class SCR_GroupFlagSelectionMenu : DialogUI
 		int row = 1;
 		int col = 1;	
 		
-		array<ResourceName> flags = {};
-		groupManager.GetGroupFlags(flags);
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return;
 		
-		foreach(ResourceName flag : flags)
-		{		
-			GridLayoutWidget content = GridLayoutWidget.Cast( GetRootWidget().FindAnyWidget("Content"));				
+		SCR_Faction playerFaction = SCR_Faction.Cast(factionManager.GetLocalPlayerFaction());
+		if (!playerFaction)
+			return;	
+				
+		OverlayWidget con = OverlayWidget.Cast(GetRootWidget().FindAnyWidget("Content"));
+		
+		GridLayoutWidget content = GridLayoutWidget.Cast(con.FindAnyWidget("ContentGrid"));				
+		if (!content)
+			return;		
+		
+		ResourceName imageSet = playerFaction.GetGroupFlagImageSet();
+		array<ResourceName> textures = {};
+		playerFaction.GetGroupFlagTextures(textures);
 						
-			Widget testButton = GetGame().GetWorkspace().CreateWidgets(widget, content);		
-			SCR_ButtonImageComponent imageButton = SCR_ButtonImageComponent.Cast(testButton.FindHandler(SCR_ButtonImageComponent));	
+		if (!textures.IsEmpty())
+		{
+			for(int i = 0, count = textures.Count(); i < count; i++)
+			{	
+				Widget contentButton = GetGame().GetWorkspace().CreateWidgets(widget, content);		
+				if (!contentButton)
+					continue;
+		
+				SCR_GroupFlagImageComponent imageButton = SCR_GroupFlagImageComponent.Cast(contentButton.FindHandler(SCR_GroupFlagImageComponent));	
+				if (!imageButton)
+					continue;
+				
+				if (col > maxColumns)
+				{
+					row++;
+					col = 1;
+				}
 			
-			if (col > maxColumns)
-			{
-				row++;
-				col = 1;
+				GridSlot.SetRow(contentButton, row);
+				GridSlot.SetColumn(contentButton, col);
+			
+				ResourceName resource = textures[i];	
+				if (resource.IsEmpty())
+					continue;						
+						
+				imageButton.GetImageWidget().LoadImageTexture(0, textures[i]);	
+				imageButton.Resize();
+				imageButton.m_OnClicked.Insert(SetGroupFlag);
+				imageButton.SetImageID(i);
+				imageButton.SetIsFromImageset(false);
+				
+				col++;
+			}			
+		}	
+		
+		if (!imageSet.IsEmpty())
+		{
+			array<string> flagNames = {};
+			playerFaction.GetFlagNames(flagNames);
+		
+			for(int i = 0; i < flagNames.Count(); i++)
+			{		
+				Widget contentButton = GetGame().GetWorkspace().CreateWidgets(widget, content);		
+				if (!contentButton)
+					continue;
+		
+				SCR_GroupFlagImageComponent imageButton = SCR_GroupFlagImageComponent.Cast(contentButton.FindHandler(SCR_GroupFlagImageComponent));	
+				if (!imageButton)
+					continue;
+						
+				if (col > maxColumns)
+				{
+					row++;
+					col = 1;
+				}
+			
+				GridSlot.SetRow(contentButton, row);
+				GridSlot.SetColumn(contentButton, col);
+			
+				ResourceName resource = playerFaction.GetGroupFlagImageSet();	
+				if (resource.IsEmpty())
+					continue;						
+						
+				imageButton.GetImageWidget().LoadImageFromSet(0, resource, flagNames[i]);
+				imageButton.Resize();
+				imageButton.m_OnClicked.Insert(SetGroupFlag);
+				imageButton.SetImageID(i);
+				imageButton.SetImageSet(flagNames[i]);
+				imageButton.SetIsFromImageset(true);
+				col++;
 			}
-			
-			GridSlot.SetRow(testButton, row);
-			GridSlot.SetColumn(testButton, col);
-			
-			imageButton.SetImage(flag);
-			imageButton.GetImageWidget().SetSize(m_fImgWidht, m_fImgHeight);			
-			imageButton.m_OnClicked.Insert(SetGroupFlag);
-			
-			col++;
-		}			
+		}
+					
 		
 		Widget cancelButton = GetRootWidget().FindAnyWidget("Cancel");		
 		
@@ -73,15 +133,21 @@ class SCR_GroupFlagSelectionMenu : DialogUI
 		if(!groupManager)
 			return;
 			
-		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();		
-		SCR_AIGroup group =  groupManager.FindGroup(playerGroupController.GetGroupID());
+		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();	
+		if (!playerGroupController)
+			return;
+			
+		SCR_AIGroup group =  groupManager.FindGroup(playerGroupController.GetGroupID());		
+		if (!group)
+			return;
+				
+		SCR_GroupFlagImageComponent imageButton = SCR_GroupFlagImageComponent.Cast(button.GetRootWidget().FindHandler(SCR_GroupFlagImageComponent));	
+		if (!imageButton)
+			return;
 		
-		array<ResourceName> flags = {};
-		groupManager.GetGroupFlags(flags);
-		
-		SCR_ButtonImageComponent imageButton = SCR_ButtonImageComponent.Cast(button.GetRootWidget().FindHandler(SCR_ButtonImageComponent));					
-		playerGroupController.RequestSetGroupFlag(group.GetGroupID(), flags.Find(imageButton.m_sTexture));			
-		
+		bool isFromImageset = imageButton.GetIsFromImageset();
+		playerGroupController.RequestSetGroupFlag(group.GetGroupID(), imageButton.GetImageID(), isFromImageset);			
+				
 		CloseAnimated();				
 	}
 }

@@ -9,20 +9,15 @@ class SCR_CampaignTutorialStage90 : SCR_BaseCampaignTutorialStage
 	override protected void Setup()
 	{
 		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_SeizeHQ", duration: 60);
-		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		
-		if (campaign)
-			campaign.SetIsTutorial(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		SCR_CampaignBase HQ = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("MainBaseLevie"));
+		SCR_CampaignMilitaryBaseComponent HQ = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("MainBaseLevie").FindComponent(SCR_CampaignMilitaryBaseComponent));
 				
 		if (HQ)
-			return (HQ.GetOwningFaction() == GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_BLUFOR));
+			return (HQ.GetFaction() == SCR_GameModeCampaign.GetInstance().GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
 		else
 			return true;
 	}

@@ -12,6 +12,9 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	[Attribute("{54764D4E706F348B}Configs/Commanding/Commands.conf")]
 	protected ResourceName m_sCommandsConfigPath;
 	
+	[Attribute(defvalue: "8", UIWidgets.EditBox, desc: "How many AI soldiers can be recruited into single player group")]
+	protected int m_iMaxAIPerGroup;
+	
 	protected SCR_PlayerCommandsConfig m_CommandsConfig;
 	
 	protected static SCR_CommandingManagerComponent s_Instance;
@@ -209,5 +212,17 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 		
 		m_CommandsConfig = commandsConfig;
 		return m_CommandsConfig;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetMaxAIPerGroup()
+	{
+		return m_iMaxAIPerGroup;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetMaxAIPerGroup(int max)
+	{
+		m_iMaxAIPerGroup = max;
 	}
 }

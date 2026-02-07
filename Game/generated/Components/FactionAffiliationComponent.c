@@ -40,9 +40,10 @@ class FactionAffiliationComponent: GameComponent
 	\param owner Entity this component is attached to.
 	*/
 	event protected void OnPostInit(IEntity owner);
+	event protected void OnCompartmentEntering(IEntity vehicle, IEntity occupant, BaseCompartmentSlot compartment, bool move);
 	event protected void OnCompartmentEntered(IEntity vehicle, IEntity occupant, BaseCompartmentSlot compartment, bool move);
 	event protected void OnCompartmentLeft(IEntity vehicle, IEntity occupant, BaseCompartmentSlot compartment, bool move);
-	event protected void OnFactionChanged();
+	event protected void OnFactionChanged(Faction previous, Faction current);
 }
 
 /*!

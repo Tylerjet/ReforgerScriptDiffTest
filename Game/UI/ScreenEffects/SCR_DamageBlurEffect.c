@@ -27,7 +27,6 @@ class SCR_DamageBlurEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStartDraw(IEntity owner)
 	{
-		m_pCharacterEntity = ChimeraCharacter.Cast(owner);
 	}
 
 	//------------------------------------------------------------------------------------------------

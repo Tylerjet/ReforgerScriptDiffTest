@@ -69,7 +69,27 @@ class BaseGameMode: GenericEntity
 	*/
 	event protected void OnPlayerSpawned(int playerId, IEntity controlledEntity);
 	/*!
-	Called after a player gets killed.
+	Called after a player is killed, but before 'OnPlayerKilled'.
+
+	The default behavior is such that this method returns true, therefore each kill is handled automatically, resulting
+	in a 'OnPlayerKilled' callback. When this method is overridden to return false, the callback is not called automatically.
+
+	This custom behavior can be used to suppress 'OnPlayerKilled' callbacks in specific scenarios, e.g. when a player is
+	possessing an AI, in which case it might not be desirable to raise this callback, but rather handle the kill manually,
+	by the user: e.g. by returning the player's control of their previous entity.
+
+	Return true to handle kill automatically, resulting in an immediate 'OnPlayerKilled' callback,
+	otherwise the kill callback is suppressed, allowing custom user handling.
+
+	\param playerId PlayerId of victim player.
+	\param player Entity of victim player (if any).
+	\param killer Entity of killer instigator (if any).
+
+	\return True to handle kill automatically (raise 'OnPlayerKilled'), false to not handle automatically (don't raise).
+	*/
+	event protected bool HandlePlayerKilled(int playerId, IEntity player, IEntity killer) { return true; };
+	/*!
+	Called after a player gets killed (but only after 'SCR_HandlePlayerKilled' returns true).
 	\param playerId PlayerId of victim player.
 	\param player Entity of victim player if any.
 	\param killer Entity of killer instigator if any.

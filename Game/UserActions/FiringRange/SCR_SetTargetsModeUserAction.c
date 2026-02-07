@@ -28,7 +28,7 @@ class SCR_SetTargetsModeUserAction : ScriptedUserAction
 		if (!playerController)
 			return;
 		
-		// Find campaign network entity to send RPC to server		
+		// Find conflict network entity to send RPC to server		
 		SCR_FiringRangeNetworkEntity firingRangeNetworkEntity = SCR_FiringRangeNetworkEntity.GetInstance();
 		if (!firingRangeNetworkEntity)
 			return;

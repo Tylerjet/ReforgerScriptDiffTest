@@ -10,6 +10,6 @@ class SCR_EditorFilterActionCondition: SCR_AvailableActionCondition
 		if (!data)
 			return false;
 		
-		return GetReturnResult(SCR_BaseEditableEntityFilter.GetFirstEntity(m_State) != null));
+		return GetReturnResult(SCR_BaseEditableEntityFilter.GetFirstEntity(m_State) != null);
 	}
 };

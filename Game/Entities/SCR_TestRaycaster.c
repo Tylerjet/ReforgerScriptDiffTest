@@ -89,7 +89,7 @@ class SCR_TestRaycaster : GenericEntity
 		break;
 		case ETestRaycaster.SPHERE:
 			DoTraceSphere();
-		break:
+		break;
 		default:
 		break;
 		}

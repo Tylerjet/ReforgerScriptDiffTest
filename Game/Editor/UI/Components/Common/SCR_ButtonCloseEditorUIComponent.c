@@ -37,11 +37,11 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		}
 		
 		//--- 'Return to respawn menu' button based on available spawn points
-		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
-		if (respawnSystem)
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
 		{
 			int spawnPointCount;
-			Faction playerFaction = respawnSystem.GetPlayerFaction(SCR_PlayerController.GetLocalPlayerId());
+			Faction playerFaction = factionManager.GetPlayerFaction(SCR_PlayerController.GetLocalPlayerId());
 			if (playerFaction)
 			{
 				//--- Player has faction - return its spawn points
@@ -75,6 +75,17 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		m_ButtonRespawnMenuDisabled.SetVisible(showButton == BUTTON_RESPAWN_MENU_DISABLED);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	{
+		Refresh();
+	}
+	
+	protected void OnPlayerSpawnedOrDeleted(int playerId, IEntity player)
+	{
+		Refresh();
+	}
+	
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -96,9 +107,9 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
 		{
-			gameMode.GetOnPlayerSpawned().Insert(Refresh);
-			gameMode.GetOnPlayerKilled().Insert(Refresh);
-			gameMode.GetOnPlayerDeleted().Insert(Refresh);
+			gameMode.GetOnPlayerSpawned().Insert(OnPlayerSpawnedOrDeleted);
+			gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
+			gameMode.GetOnPlayerDeleted().Insert(OnPlayerSpawnedOrDeleted);
 		}
 		
 		SCR_SpawnPoint.Event_OnSpawnPointCountChanged.Insert(Refresh);
@@ -110,9 +121,9 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
 		{
-			gameMode.GetOnPlayerSpawned().Remove(Refresh);
-			gameMode.GetOnPlayerKilled().Remove(Refresh);
-			gameMode.GetOnPlayerDeleted().Remove(Refresh);
+			gameMode.GetOnPlayerSpawned().Remove(OnPlayerSpawnedOrDeleted);
+			gameMode.GetOnPlayerKilled().Remove(OnPlayerKilled);
+			gameMode.GetOnPlayerDeleted().Remove(OnPlayerSpawnedOrDeleted);
 		}
 		
 		SCR_SpawnPoint.Event_OnSpawnPointCountChanged.Remove(Refresh);

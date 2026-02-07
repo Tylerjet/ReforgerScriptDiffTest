@@ -130,9 +130,22 @@ class SCR_NewsTileComponent : SCR_TileBaseComponent
 			m_wDate.SetText(entry.m_Item.Date());
 
 		
-		string imagePreview; // TODO: Will be implemented later
+		string imagePreview = entry.m_Item.Path();
+		
 		if (m_wImage && !imagePreview.IsEmpty())
-			m_wImage.LoadImageTexture(0, imagePreview);
+		{
+			// Try to load image
+			bool loaded = m_wImage.LoadImageTexture(1, imagePreview);
+			
+			// Set image 0 - Placeholder if load image failed
+			// Set image 1 - Downloaded image
+			m_wImage.SetImage(loaded); 
+			
+			// Refresh the size
+			int sx, sy;
+			m_wImage.GetImageSize(loaded, sx, sy);
+			m_wImage.SetSize(sx, sy);
+		}
 		
 		if (m_wUnreadImage)
 			m_wUnreadImage.SetOpacity(!entry.m_bRead);

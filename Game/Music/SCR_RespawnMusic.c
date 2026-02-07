@@ -1,12 +1,14 @@
 class SCR_RespawnMusic : ScriptedMusic
 {
-	MusicManager m_MusicManager;
+	protected MusicManager m_MusicManager;
+	protected bool m_bIsPlaying;
 	
 	protected void OnRespawnMenuOpen()
-	{		
-		m_MusicManager.Play(SCR_SoundEvent.SOUND_RESPAWNMENU);
+	{
+		if (!m_bIsPlaying)
+			m_MusicManager.Play(SCR_SoundEvent.SOUND_RESPAWNMENU);
 	}
-		
+
 	protected void OnRespawnMenuClosed()
 	{
 		m_MusicManager.Stop(SCR_SoundEvent.SOUND_RESPAWNMENU);
@@ -23,16 +25,24 @@ class SCR_RespawnMusic : ScriptedMusic
 		if (!m_MusicManager)
 			return;
 		
-			// Register respawn menu screen events
-		SCR_RespawnSuperMenu.Event_OnMenuShow.Insert(OnRespawnMenuOpen);
-		SCR_RespawnSuperMenu.Event_OnMenuHide.Insert(OnRespawnMenuClosed);
-		SCR_RespawnSuperMenu.Event_OnMenuClose.Insert(OnRespawnMenuClosed);
+		// Register respawn menu screen events
+		SCR_DeployMenuBase.SGetOnMenuOpen().Insert(OnRespawnMenuOpen);
+		SCR_PlayerDeployMenuHandlerComponent.SGetOnMenuClosed().Insert(OnRespawnMenuClosed);
 	}
 	
 	override void OnDelete()
 	{
-		SCR_RespawnSuperMenu.Event_OnMenuShow.Remove(OnRespawnMenuOpen);
-		SCR_RespawnSuperMenu.Event_OnMenuHide.Remove(OnRespawnMenuClosed);
-		SCR_RespawnSuperMenu.Event_OnMenuClose.Remove(OnRespawnMenuClosed);
+		SCR_DeployMenuBase.SGetOnMenuOpen().Remove(OnRespawnMenuOpen);
+		SCR_PlayerDeployMenuHandlerComponent.SGetOnMenuClosed().Remove(OnRespawnMenuClosed);		
+	}
+	
+	override void OnPlay()
+	{
+		m_bIsPlaying = true;
+	}
+	
+	override void OnStop()
+	{
+		m_bIsPlaying = false;
 	}
 }

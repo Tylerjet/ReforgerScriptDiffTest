@@ -9,7 +9,7 @@ class SCR_CampaignBarracksComponent: SCR_BarracksComponent
 	protected SCR_CampaignSuppliesComponent m_SuppliesComponent;
 	protected int m_iDeadOnDespawn;
 	protected bool m_bInitialized;
-	protected SCR_CampaignBase m_Base;
+	protected SCR_CampaignMilitaryBaseComponent m_Base;
 	
 	[Attribute("25", UIWidgets.Auto, "How much it cost to spawn one soldier?", category: "Campaign")]
 	protected int m_iUnitCost;
@@ -65,17 +65,22 @@ class SCR_CampaignBarracksComponent: SCR_BarracksComponent
 		if (!comp)
 			return;
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
 		if (!campaign)
 			return;
 		
-		ScriptInvoker onEnemyDetected = comp.GetOnEnemyDetected();
+		SCR_CampaignMilitaryBaseManager baseManager = campaign.GetBaseManager();
+		
+		if (!baseManager)	
+			return;
+		
+		ScriptInvokerBase<SCR_AIGroupPerceptionOnEnemyDetected> onEnemyDetected = comp.m_Perception.GetOnEnemyDetected();
 		
 		if (!onEnemyDetected)
 			return;
 		
-		onEnemyDetected.Insert(campaign.OnEnemyDetectedByDefenders);
+		onEnemyDetected.Insert(baseManager.OnEnemyDetectedByDefenders);
 		
 		if (m_Base)
 			m_Base.SetDefendersGroup(grp);
@@ -90,7 +95,7 @@ class SCR_CampaignBarracksComponent: SCR_BarracksComponent
 		if (!m_SuppliesComponent)
 			return;
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
 		if (!campaign || campaign.IsTutorial())
 			return;
@@ -121,7 +126,7 @@ class SCR_CampaignBarracksComponent: SCR_BarracksComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetBase(SCR_CampaignBase base)
+	void SetBase(SCR_CampaignMilitaryBaseComponent base)
 	{
 		m_Base = base;
 	}

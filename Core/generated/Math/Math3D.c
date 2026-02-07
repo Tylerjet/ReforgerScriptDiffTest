@@ -14,7 +14,7 @@ sealed class Math3D
 	private void Math3D();
 	private void ~Math3D();
 
-	static proto float IntersectRayBox(vector start, vector end, vector mins, vector maxs);
+	static proto float IntersectionRayBox(vector start, vector end, vector mins, vector maxs);
 	/*!
 	Tests whether intersection of ray and sphere exists and returns distance to intersection
 	from `raybase` and `raycos` (`I{01} = P + dir*t{01}`).
@@ -23,7 +23,7 @@ sealed class Math3D
 	\param center sphere center
 	\param radius radius of sphere
 	*/
-	static proto float IntersectRaySphere(vector raybase, vector raycos, vector center, float radius);
+	static proto float IntersectionRaySphere(vector raybase, vector raycos, vector center, float radius);
 	/*!
 	Tests whether sphere is intersecting cone.
 	\param origin Origin of sphere
@@ -44,6 +44,15 @@ sealed class Math3D
 	\return `true` when intersects
 	*/
 	static proto bool IntersectionWholeSphereCone(vector origin, float radius, vector conepos, vector axis, float angle);
+	/*!
+	Tests whether point is intersecting cylinder.
+	\param origin Origin of point
+	\param cylinderTip Tip of cylinder
+	\param cylinderAxis Axis of cylinder
+	\param cylinderRadius Radius of cylinder
+	\return `true` when intersects
+	*/
+	static proto bool IntersectionPointCylinder(vector origin, vector cylinderTip, vector cylinderAxis, float cylinderRadius);
 	/*!
 	Tests whether sphere is intersecting AABB.
 	\param origin Origin of sphere
@@ -68,7 +77,7 @@ sealed class Math3D
 	\param maxs1 Maximum point of first bounding box.
 	\param mins2 Minimum point of second bounding box.
 	\param maxs2 Maximum point of second bounding box.
-	\return `true` when boundig boxes intersect, otherwise `false`.
+	\return `true` when bounding boxes intersect, otherwise `false`.
 	*/
 	static proto bool IntersectionBoxBox(vector mins1, vector maxs1, vector mins2, vector maxs2);
 	/*!
@@ -209,6 +218,12 @@ sealed class Math3D
 	\return yaw, pitch, roll angles in degrees
 	*/
 	static proto vector MatrixToAngles(vector mat[3]);
+	/*!
+	Returns angles and scale of rotation matrix.
+	\param mat rotation matrix
+	\param angles yaw, pitch, roll angles in degrees
+	\return scale of matrix
+	*/
 	static proto float MatrixToAnglesAndScale(vector mat[3], out vector angles);
 	static proto void MatrixFromForwardVec(vector forwardVec, out vector mat[3]);
 	static proto void MatrixFromUpVec(vector upVec, out vector mat[3]);
@@ -257,6 +272,8 @@ sealed class Math3D
 	static proto void MatrixCopy(vector matSrc[], out vector matDst[]);
 	//! Normalize matrix
 	static proto void MatrixNormalize(vector mat[]);
+	//! Scale matrix
+	static proto void MatrixScale(vector mat[], float scale);
 	/*!
 	Creates identity quaternion.
 	\code
@@ -431,7 +448,7 @@ sealed class Math3D
 	\param p22 Second point of the second segment
 	\return `true` if the segments intersect, `false` otherwise.
 	*/
-	static proto bool LineSegmentsIntersection(vector p11, vector p12, vector p21, vector p22);
+	static proto bool IntersectionLineSegments(vector p11, vector p12, vector p21, vector p22);
 }
 
 /*!

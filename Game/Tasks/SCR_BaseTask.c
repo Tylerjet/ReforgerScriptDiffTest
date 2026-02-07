@@ -85,6 +85,7 @@ class SCR_BaseTask : GenericEntity
 	protected ImageWidget m_wHUDIcon;
 	protected Widget m_wMapTaskIcon;
 	protected Widget m_wTaskListDescription;
+	protected bool m_bIsPriority;
 	
 	//***************************//
 	//PUBLIC MEMBER EVENT METHODS//
@@ -225,6 +226,8 @@ class SCR_BaseTask : GenericEntity
 		
 		if (IsAssignedToLocalPlayer() || SCR_EditorManagerEntity.IsOpenedInstance(false))
 			GetTaskIconkWidget().SetColor(m_TargetFaction.GetFactionColor());
+		else if (m_bIsPriority)
+			GetTaskIconkWidget().SetColor(Color.DarkMagenta);
 		else
 			GetTaskIconkWidget().SetColor(Color.White);
 	}
@@ -468,6 +471,18 @@ class SCR_BaseTask : GenericEntity
 	bool IsIndividual()
 	{
 		return m_bIndividualTask;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetIsPriority(bool isPrio)
+	{
+		m_bIsPriority = isPrio;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsPriority()
+	{
+		return m_bIsPriority;
 	}
 	
 	//------------------------------------------------------------------------------------------------

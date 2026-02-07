@@ -12,15 +12,29 @@ class SCR_NotificationPlayerAndFaction : SCR_NotificationPlayer
 		int playerID;
 		data.GetParams(playerID);
 		
-		if (!GetGame().GetPlayerController()) return string.Empty;
-		SCR_RespawnSystemComponent respawnComponent = SCR_RespawnSystemComponent.GetInstance();
-		if (!respawnComponent) return string.Empty;
+		string playerName, factionName;
+		data.GetNotificationTextEntries(playerName, factionName);
+		if (!GetPlayerName(playerID, playerName))
+			return string.Empty;
 		
-		//Get factions using ID
-		Faction playerFaction = respawnComponent.GetPlayerFaction(playerID);
-		if (!playerFaction) return string.Empty;
+		if (factionName.IsEmpty())
+		{
+			if (!GetGame().GetPlayerController()) 
+			return string.Empty;
 		
-		data.SetNotificationTextEntries(GetPlayerName(playerID), playerFaction.GetUIInfo().GetName());
+			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+			if (!factionManager) 
+				return string.Empty;
+			
+			//Get factions using ID
+			Faction playerFaction = factionManager.GetPlayerFaction(playerID);
+			if (!playerFaction) 
+				return string.Empty;
+			
+			factionName = playerFaction.GetUIInfo().GetName();
+		}
+		
+		data.SetNotificationTextEntries(playerName, factionName);
 		return super.GetText(data);
 	}
 	

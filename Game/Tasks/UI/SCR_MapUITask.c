@@ -20,6 +20,28 @@ class SCR_MapUITask : SCR_MapUIElement
 		props.SetTextVisible(false);
 		props.Activate(true);
 
+		SCR_Faction targetFaction = SCR_Faction.Cast(task.GetTargetFaction());
+
+		ImageWidget image = ImageWidget.Cast(m_wMapTask.FindAnyWidget("TaskIconBackground"));
+		if (image)
+			task.SetTaskIconWidget(image);
+
+		image = ImageWidget.Cast(m_wMapTask.FindAnyWidget("TaskIconSymbol"));
+		if (image)
+		{
+			if (targetFaction)
+				image.SetColor(targetFaction.GetOutlineFactionColor());
+
+			task.SetWidgetIcon(image);
+		}
+
+		Widget widget = Widget.Cast(m_wMapTask.FindAnyWidget("TaskIconOutline"));
+		if (widget)
+		{
+			if (targetFaction)
+				widget.SetColor(targetFaction.GetOutlineFactionColor());
+		}
+
 		if (!m_wMapTask)
 			return null;
 
@@ -95,12 +117,71 @@ class SCR_MapUITask : SCR_MapUIElement
 	{
 		super.HandlerAttached(w);
 
-		m_eIconType = EIconType.TASK;
+		m_eIconType = SCR_EIconType.TASK;
 		m_wTaskTitle = TextWidget.Cast(w.FindAnyWidget("Title"));
 		m_wImage = ImageWidget.Cast(w.FindAnyWidget("TaskIcon"));
 		m_wAssignees = Widget.Cast(w.FindAnyWidget("Assignee"));
 		m_wHorizLayout = w.FindAnyWidget("HorizLayout");
 		m_wMapTask = w;
+
+		ButtonWidget taskIconButton;
+		Widget overlayWidget;
+		ButtonWidget taskAssignButton
+
+		Widget widget = Widget.Cast(w.FindAnyWidget("TaskIconHover"));
+		if (widget)
+		{
+			widget.SetEnabled(false);
+			widget.SetOpacity(0);
+		}
+
+		widget = Widget.Cast(w.FindAnyWidget("Border"));
+		if (widget)
+		{
+			widget.SetEnabled(false);
+			widget.SetOpacity(0);
+		}
+
+		widget = Widget.Cast(w.FindAnyWidget("TaskTitleButton"));
+		if (widget)
+		{
+			widget.SetVisible(false);
+		}
+
+		widget = Widget.Cast(w.FindAnyWidget("Assignee"));
+		if (widget)
+		{
+			widget.SetEnabled(false);
+			widget.SetOpacity(0);
+		}
+
+		SCR_TaskSelectButton iconButtonHandler;
+		SCR_TaskOverlayButton overlayButtonHandler;
+		SCR_TaskAssignButton assignButtonHandler;
+
+		taskIconButton = ButtonWidget.Cast(w.FindAnyWidget("TaskIconButton"));
+		if (taskIconButton)
+		{
+			iconButtonHandler = SCR_TaskSelectButton.Cast(taskIconButton.FindHandler(SCR_TaskSelectButton));
+			if (iconButtonHandler)
+				iconButtonHandler.SetRootWidgetHandler(this);
+		}
+
+		overlayWidget = w.FindAnyWidget("OverlayWidget");
+		if (overlayWidget)
+		{
+			overlayButtonHandler = SCR_TaskOverlayButton.Cast(overlayWidget.FindHandler(SCR_TaskOverlayButton));
+			if (overlayButtonHandler)
+				overlayButtonHandler.SetRootWidgetHandler(this);
+		}
+
+		taskAssignButton = ButtonWidget.Cast(w.FindAnyWidget("TaskTitleButton"));
+		if (taskAssignButton)
+		{
+			assignButtonHandler = SCR_TaskAssignButton.Cast(taskAssignButton.FindHandler(SCR_TaskAssignButton));
+			if (assignButtonHandler)
+				assignButtonHandler.SetRootWidgetHandler(this);
+		}
 
 		if (GetTaskManager())
 		{
@@ -139,12 +220,18 @@ class SCR_MapUITask : SCR_MapUIElement
 			{
 				taskId = m_Task.GetTaskID();
 				taskNetworkComp.RequestAssignment(taskId);
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.TASK_ACCEPT);
+			}
+			else
+			{
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.TASK_CANCELED);
 			}
 		}
 		else
 		{
 			taskId = m_Task.GetTaskID();
 			taskNetworkComp.RequestAssignment(taskId);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.TASK_ACCEPT);
 		}
 	}
 
@@ -205,6 +292,15 @@ class SCR_MapUITask : SCR_MapUIElement
 			if (handler)
 				handler.GetOnMapIconClick().Insert(UpdateFocusedTask);
 		}
+	}
+
+	//------------------------------------------------------------------------------
+	override vector GetPos()
+	{
+		if (!m_Task)
+			return vector.Zero;
+
+		return m_Task.GetOrigin();
 	}
 };
 

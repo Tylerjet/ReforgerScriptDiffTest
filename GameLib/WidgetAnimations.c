@@ -5,29 +5,41 @@ class WidgetAnimationOpacity : WidgetAnimationBase
 	protected float m_fValueTarget;
 	protected float m_fValueCurrent;
 	protected bool m_bChangeVisibleFlag;
-	
+
+	//------------------------------------------------------------------------------------------------
+	// Expose target opacity value so it can be adjusted while the animation is running
+	void SetTargetValue(float targetValue)
+	{
+		m_fValueTarget = targetValue;
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	// Get target opacity value from running animation
+	float GetTargetValue()
+	{
+		return m_fValueTarget;
+	}		
+			
 	//------------------------------------------------------------------------------------------------
 	protected override void ReverseDirection()
 	{
 		float f = m_fValueDefault;
 		m_fValueDefault = m_fValueTarget;
 		m_fValueTarget = f;
+		m_fValue = 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
+	protected override void Animate(bool finished)
 	{
 		if (!m_wWidget)
-			return true;
+			return;
 		
-		bool finished = super.OnUpdate(timeSlice);
 		m_fValueCurrent = Math.Lerp(m_fValueDefault, m_fValueTarget, m_fValue);
 		m_wWidget.SetOpacity(m_fValueCurrent);
 		
 		if (finished && m_bChangeVisibleFlag)
 			m_wWidget.SetVisible(m_fValueCurrent != 0);
-		
-		return finished;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -58,12 +70,10 @@ class WidgetAnimationPadding : WidgetAnimationBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
+	protected override void Animate(bool finished)
 	{
 		if (!m_wWidget)
-			return true;
-		
-		bool finished = super.OnUpdate(timeSlice);
+			return;
 		
 		float l = Math.Lerp(m_fValueDefault[0], m_fValueTarget[0], m_fValue);
 		float t = Math.Lerp(m_fValueDefault[1], m_fValueTarget[1], m_fValue);
@@ -74,7 +84,6 @@ class WidgetAnimationPadding : WidgetAnimationBase
 			GridSlot.SetPadding(m_wWidget, l, t, r, b);
 		else
 			AlignableSlot.SetPadding(m_wWidget, l, t, r, b);
-		return finished;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -109,15 +118,13 @@ class WidgetAnimationLayoutFill : WidgetAnimationBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
+	protected override void Animate(bool finished)
 	{
 		if (!m_wWidget)
-			return true;
+			return;
 		
-		bool finished = super.OnUpdate(timeSlice);
 		m_fValueCurrent = Math.Lerp(m_fValueDefault, m_fValueTarget, m_fValue);
 		LayoutSlot.SetFillWeight(m_wWidget, m_fValueCurrent);
-		return finished;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -145,15 +152,13 @@ class WidgetAnimationAlphaMask : WidgetAnimationBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
+	protected override void Animate(bool finished)
 	{
 		if (!m_wImage)
-			return true;
+			return;
 		
-		bool finished = super.OnUpdate(timeSlice);
 		m_fValueCurrent = Math.Lerp(m_fValueDefault, m_fValueTarget, m_fValue);
 		m_wImage.SetMaskProgress(m_fValueCurrent);
-		return finished;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -185,15 +190,13 @@ class WidgetAnimationImageRotation : WidgetAnimationBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
+	protected override void Animate(bool finished)
 	{
 		if (!m_wImage)
-			return true;
+			return;
 		
-		bool finished = super.OnUpdate(timeSlice);
 		m_fValueCurrent = Math.Lerp(m_fValueDefault, m_fValueTarget, m_fValue);
 		m_wImage.SetRotation(m_fValueCurrent);
-		return finished;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -221,18 +224,17 @@ class WidgetAnimationColor : WidgetAnimationBase
 		Color color = new Color(m_ColorDefault.R(), m_ColorDefault.G(), m_ColorDefault.B(), m_ColorDefault.A());
 		m_ColorDefault = m_ColorTarget;
 		m_ColorTarget = color;
+		m_fValue = 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
+	protected override void Animate(bool finished)
 	{
 		if (!m_wWidget)
-			return true;
+			return;
 		
-		bool finished = super.OnUpdate(timeSlice);
 		m_ColorCurrent = m_ColorDefault.LerpNew(m_ColorTarget, m_fValue);
 		m_wWidget.SetColor(m_ColorCurrent);
-		return finished;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -256,20 +258,18 @@ class WidgetAnimationFrameSize : WidgetAnimationBase
 		float f[2] = {m_fValueDefault[0], m_fValueDefault[1]};
 		m_fValueDefault = m_fValueTarget;
 		m_fValueTarget = f;
+		m_fValue = 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
+	protected override void Animate(bool finished)
 	{
 		if (!m_wWidget)
-			return true;
-		
-		bool finished = super.OnUpdate(timeSlice);
+			return;
 		
 		m_fValueCurrent[0] = Math.Lerp(m_fValueDefault[0], m_fValueTarget[0], m_fValue);
 		m_fValueCurrent[1] = Math.Lerp(m_fValueDefault[1], m_fValueTarget[1], m_fValue);
 		FrameSlot.SetSize(m_wWidget, m_fValueCurrent[0], m_fValueCurrent[1]);
-		return finished;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -297,16 +297,14 @@ class WidgetAnimationPosition : WidgetAnimationBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
+	protected override void Animate(bool finished)
 	{
 		if (!m_wWidget)
-			return true;
+			return;
 		
-		bool finished = super.OnUpdate(timeSlice);
 		m_fValueCurrent[0] = Math.Lerp(m_fValueDefault[0], m_fValueTarget[0], m_fValue);
 		m_fValueCurrent[1] = Math.Lerp(m_fValueDefault[1], m_fValueTarget[1], m_fValue);
 		FrameSlot.SetPos(m_wWidget, m_fValueCurrent[0], m_fValueCurrent[1]);
-		return finished;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -336,15 +334,13 @@ class WidgetAnimationImageSaturation : WidgetAnimationBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
+	protected override void Animate(bool finished)
 	{
 		if (!m_wImage)
-			return true;
+			return;
 		
-		bool finished = super.OnUpdate(timeSlice);
 		m_fValueCurrent = Math.Lerp(m_fValueDefault, m_fValueTarget, m_fValue);
 		m_wImage.SetSaturation(m_fValueCurrent);
-		return finished;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -375,11 +371,9 @@ class WidgetAnimationValue : WidgetAnimationBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool OnUpdate(float timeSlice)
+	protected override void Animate(bool finished)
 	{
-		bool finished = super.OnUpdate(timeSlice);
 		m_fValueCurrent = Math.Lerp(m_fValueDefault, m_fValueTarget, m_fValue);
-		return finished;
 	}
 	
 	//------------------------------------------------------------------------------------------------

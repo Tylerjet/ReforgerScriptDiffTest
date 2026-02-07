@@ -216,7 +216,7 @@ class SCR_ManualCamera: SCR_CameraBase
 		}
 		return null;
 	}
-	protected void SwitchToPreviousCamera()
+	void SwitchToPreviousCamera()
 	{
 		//--- Don't switch when this camera is not current
 		if (!m_CameraManager || m_CameraManager.CurrentCamera() != this) return;

@@ -31,6 +31,14 @@ class SCR_GameCoresManager
 				core.OnGameStart();
 		}
 	}
+	void OnWorldPostProcess(World world)
+	{
+		foreach (SCR_GameCoreBase core: m_CoresSorted)
+		{
+			if (core)
+				core.OnWorldPostProcess(world);
+		}
+	}
 	void OnUpdate(float timeSlice)
 	{
 		foreach (SCR_GameCoreBase core: m_CoresSorted)

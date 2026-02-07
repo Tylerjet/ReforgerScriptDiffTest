@@ -4,17 +4,21 @@ class SCR_VideoSettingsConsoleSubMenu : SCR_SettingsSubMenuBase
 	protected const int COMBO_OPTION_PERFORMANCE = 1;
 	
 	protected EPlatform m_ePlatform;
-	SCR_SettingsManager m_SettingsManager;
+	SCR_SettingsManagerVideoModule m_SettingsVideoModule;
 		
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
 	{
 		super.OnMenuOpen(parentMenu);
 		
-		m_SettingsManager = GetGame().GetSettingsManager();
+		SCR_SettingsManager settingsManager = GetGame().GetSettingsManager();
 
-		if (!m_SettingsManager)
+		if (!settingsManager)
 			return;
+		
+		m_SettingsVideoModule = SCR_SettingsManagerVideoModule.Cast(settingsManager.GetModule(ESettingManagerModuleType.SETTINGS_MANAGER_VIDEO));
+		if (!m_SettingsVideoModule)
+			Print("VideoSettingsConsoleSubMenu: Video settings manager module not found!", LogLevel.WARNING);
 		
 		m_ePlatform = System.GetPlatform();
 		SetupQualityPreset();
@@ -32,17 +36,20 @@ class SCR_VideoSettingsConsoleSubMenu : SCR_SettingsSubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void ChangePreset(EPlatform platform, int itemIndex)
 	{
+		if (!m_SettingsVideoModule)
+			return;
+		
 		if (platform == EPlatform.XBOX_SERIES_S && itemIndex == COMBO_OPTION_QUALITY)
-			m_SettingsManager.SetConsolePreset(EVideoQualityPreset.SERIES_S_PRESET_QUALITY);
+			m_SettingsVideoModule.SetConsolePreset(EVideoQualityPreset.SERIES_S_PRESET_QUALITY);
 		
 		if (platform == EPlatform.XBOX_SERIES_S && itemIndex == COMBO_OPTION_PERFORMANCE)
-			m_SettingsManager.SetConsolePreset(EVideoQualityPreset.SERIES_S_PRESET_PERFORMANCE);
+			m_SettingsVideoModule.SetConsolePreset(EVideoQualityPreset.SERIES_S_PRESET_PERFORMANCE);
 		
 		if (platform == EPlatform.XBOX_SERIES_X && itemIndex == COMBO_OPTION_QUALITY)
-			m_SettingsManager.SetConsolePreset(EVideoQualityPreset.SERIES_X_PRESET_QUALITY);
+			m_SettingsVideoModule.SetConsolePreset(EVideoQualityPreset.SERIES_X_PRESET_QUALITY);
 		
 		if (platform == EPlatform.XBOX_SERIES_X && itemIndex == COMBO_OPTION_PERFORMANCE)
-			m_SettingsManager.SetConsolePreset(EVideoQualityPreset.SERIES_X_PRESET_PERFORMANCE);
+			m_SettingsVideoModule.SetConsolePreset(EVideoQualityPreset.SERIES_X_PRESET_PERFORMANCE);
 		
 	}
 

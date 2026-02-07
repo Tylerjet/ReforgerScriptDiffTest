@@ -15,8 +15,8 @@ class BaseGameTriggerEntityClass: GenericEntityClass
 
 class BaseGameTriggerEntity: GenericEntity
 {
-	// Injects
 	protected ref ScriptInvoker Event_OnQueryFinished = new ScriptInvoker();
+
 	ScriptInvoker GetOnQueryFinished()
 	{
 		return Event_OnQueryFinished;
@@ -29,13 +29,39 @@ class BaseGameTriggerEntity: GenericEntity
 	// Compares the given entity with the defined filters (Name and/or Class)
 	proto external bool DefaultEntityFilterForQuery(IEntity ent);
 	/*!
-	// Gets the array of the latest entities detected inside the Trigger
+	Get the entities inside the triggers.
+	*IMPORTANT* This doesn't force the searching of entities. If you want to search entities, use the QueryEntitiesInside function.
 	*/
 	proto external int GetEntitiesInside(out notnull array<IEntity> outEntities);
 	// Sets the sphere radius of the Trigger
 	proto external void SetSphereRadius(float radius);
 	// Gets the current sphere radius of the Trigger
 	proto external float GetSphereRadius();
+	// Sets the update rate of the trigger in seconds
+	proto external void SetUpdateRate(float updateRate);
+	// Gets the update rate of the trigger in seconds
+	proto external float GetUpdateRate();
+	// Set the periodic queries
+	proto external void EnablePeriodicQueries(bool enable);
+	// Is periodic queries enabled?
+	proto external bool IsPeriodicQueriesEnabled();
+	//! Add a name to the filter
+	proto external void AddFilterName(string name);
+	//! Remove a name from the filter
+	proto external bool RemoveFilterName(string name);
+	//! Add a class type to the filter
+	proto external void AddClassType(typename classType);
+	//! Remove a class type from the filter
+	proto external bool RemoveClassType(typename classType);
+	//! Get flag(s) from the traces done by the the trigger
+	proto external EQueryEntitiesFlags GetTraceMask();
+	/*!
+	Sets trace mask.
+	Bits are or'ed with existing mask.
+	*/
+	proto external void SetTraceMask(EQueryEntitiesFlags flags);
+	//! Clears trace mask.
+	proto external void ClearTraceMask(EQueryEntitiesFlags flags);
 
 	// callbacks
 

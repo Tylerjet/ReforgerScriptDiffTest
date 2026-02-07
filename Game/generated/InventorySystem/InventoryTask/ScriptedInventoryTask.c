@@ -5,7 +5,7 @@ Do not modify, this script is generated
 */
 
 /*!
-\addtogroup InventorySystem\InventoryTask
+\addtogroup InventorySystem_InventoryTask
 \{
 */
 

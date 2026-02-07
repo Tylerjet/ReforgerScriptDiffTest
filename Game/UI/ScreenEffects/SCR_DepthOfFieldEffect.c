@@ -60,8 +60,6 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStartDraw(IEntity owner)
 	{
-		m_pCharacterEntity = ChimeraCharacter.Cast(owner);
-
 		m_wDOFOut = ImageWidget.Cast(m_wRoot.FindAnyWidget("DOFOut"));	
 		m_wDeath = ImageWidget.Cast(m_wRoot.FindAnyWidget("DeathOverlay"));
 	}

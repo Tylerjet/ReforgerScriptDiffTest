@@ -29,19 +29,19 @@ class SCR_SupplyRefundTooltipDetail: SCR_EntityTooltipDetail
 		if (!editableUiInfo.GetEntityBudgetCost(budgets) || budgets.IsEmpty())
 			return false;
 		
-		int campaignBudget = 0;
+		int conflictBudget = 0;
 		
 		foreach (SCR_EntityBudgetValue budget: budgets)
 		{
 			if (budget.GetBudgetType() == EEditableEntityBudget.CAMPAIGN)
-				campaignBudget += budget.GetBudgetValue();
+				conflictBudget += budget.GetBudgetValue();
 		}
 		
-		if (campaignBudget <= 0)
+		if (conflictBudget <= 0)
 			return false;
 		
 		//~ Calculate refund amound
-		text.SetText(Math.Round(campaignBudget * (buildingManager.GetCompositionRefundPercentage() / 100)).ToString());
+		text.SetText(Math.Round(conflictBudget * (buildingManager.GetCompositionRefundPercentage() / 100)).ToString());
 		
 		return true;
 	}

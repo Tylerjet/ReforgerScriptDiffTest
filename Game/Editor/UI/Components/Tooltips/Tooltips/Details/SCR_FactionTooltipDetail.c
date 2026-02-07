@@ -5,15 +5,15 @@ class SCR_FactionTooltipDetail: SCR_EntityTooltipDetail
 	protected LocalizedString m_sPlayerNoFactionName;
 	
 	protected TextWidget m_Text;
-	protected SCR_RespawnSystemComponent m_RespawnSystemComponent;
+	protected SCR_FactionManager m_FactionManager;
 	
 	override void UpdateDetail(SCR_EditableEntityComponent entity)
 	{
 		Faction faction = entity.GetFaction();
 		
-		if (!faction && m_RespawnSystemComponent)
+		if (!faction && m_FactionManager)
 		{
-			faction = m_RespawnSystemComponent.GetPlayerFaction(entity.GetPlayerID());
+			faction = m_FactionManager.GetPlayerFaction(entity.GetPlayerID());
 			
 			//Player has no faction assigned yet
 			if (!faction)
@@ -36,9 +36,9 @@ class SCR_FactionTooltipDetail: SCR_EntityTooltipDetail
 		if (!faction)
 		{
 			playerID = entity.GetPlayerID();
-			m_RespawnSystemComponent = SCR_RespawnSystemComponent.GetInstance();
+			m_FactionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		}
 		
-		return m_Text && (faction || (playerID > 0 && m_RespawnSystemComponent));
+		return m_Text && (faction || (playerID > 0 && m_FactionManager));
 	}
 };

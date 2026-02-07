@@ -3,6 +3,7 @@ class DialogUI : ChimeraMenuBase
 	protected SCR_DialogDataComponent m_DialogData;
 
 	protected Widget m_wCancelButton;
+	protected Widget m_wConfirmButton;
 	protected SCR_NavigationButtonComponent m_Cancel;
 	protected SCR_NavigationButtonComponent m_Confirm;
 
@@ -16,22 +17,31 @@ class DialogUI : ChimeraMenuBase
 	protected float m_fAnimationRate = UIConstants.FADE_RATE_FAST;
 
 	protected EDialogType m_iDialogType;
-
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
+		super.OnMenuOpen();
+		
 		Widget w = GetRootWidget();
 
 		// Cancel button
 		m_wCancelButton = w.FindAnyWidget("Cancel");
-		m_Cancel = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Cancel", w);
-		if (m_Cancel)
-			m_Cancel.m_OnActivated.Insert(OnCancel);
+		if(m_wCancelButton)
+		{
+			m_Cancel = SCR_NavigationButtonComponent.FindComponent(m_wCancelButton);
+			if (m_Cancel)
+				m_Cancel.m_OnActivated.Insert(OnCancel);
+		}
 
 		// Confirm button
-		m_Confirm = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Confirm", w);
-		if (m_Confirm)
-			m_Confirm.m_OnActivated.Insert(OnConfirm);
+		m_wConfirmButton = w.FindAnyWidget("Confirm");
+		if(m_wConfirmButton)
+		{
+			m_Confirm = SCR_NavigationButtonComponent.FindComponent(m_wConfirmButton);
+			if (m_Confirm)
+				m_Confirm.m_OnActivated.Insert(OnConfirm);
+		}
 
 		// Images
 		m_wImgTopLine = ImageWidget.Cast(w.FindAnyWidget("Separator"));
@@ -51,8 +61,17 @@ class DialogUI : ChimeraMenuBase
 		// Set dialog type
 		if (m_DialogData)
 			SetDialogType(m_DialogData.m_iDialogType);
+		
+		SCR_NavigationButtonHelper.OnDialogOpen(this);
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuClose() 
+	{
+		super.OnMenuClose();
+		SCR_NavigationButtonHelper.OnDialogClose(this);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnConfirm()
 	{
@@ -66,6 +85,7 @@ class DialogUI : ChimeraMenuBase
 		m_OnCancel.Invoke();
 		CloseAnimated();
 	}
+
 
 	//------------------------------------------------------------------------------------------------
 	//! Set color based on dialog type
@@ -189,6 +209,7 @@ class DialogUI : ChimeraMenuBase
 
 	//------------------------------------------------------------------------------------------------
 	//! Dialog with OK and CANCEL buttons
+	/*
 	static DialogUI CreateConfirmationDialog()
 	{
 		return DialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ConfirmationDialog, DialogPriority.CRITICAL));
@@ -212,6 +233,7 @@ class DialogUI : ChimeraMenuBase
 	{
 		return DialogUI.CreateSimpleDialog();
 	}
+	*/
 };
 
 enum EDialogType

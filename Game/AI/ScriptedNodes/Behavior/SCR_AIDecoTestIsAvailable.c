@@ -9,7 +9,10 @@ class SCR_AIDecoTestIsAvailable : DecoratorTestScripted
 			AIControlComponent aiContr = AIControlComponent.Cast(controlled.FindComponent(AIControlComponent));
 			if (!aiContr)
 				return false;
-			auto  infoComponent = SCR_AIInfoComponent.Cast(aiContr.GetAIAgent().FindComponent(SCR_AIInfoComponent));
+			SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(aiContr.GetAIAgent());
+			if (!chimeraAgent)
+				return false;
+			auto  infoComponent = chimeraAgent.m_InfoComponent;
 			if (!infoComponent)
 			{
 				Debug.Error("Missing AIInfoComponent in for IEntity: " + controlled.ToString());

@@ -1,15 +1,12 @@
 enum EMessageType_Info
 {
 	NONE,
-	CONTACT,
-	TARGET_LOST,
 	NO_AMMO,
 	WOUNDED,
 	FOUND_CORPSE,
 	UNDER_FIRE,
 	REQ_RETREAT,
 	REQ_AMMO,
-	TARGET_ELIMINATED,
 	SIT_REP,
 	ACTION_FAILED, // Reaction is not implemented
 	HEAL_FAILED
@@ -19,17 +16,15 @@ enum EMessageType_Goal
 {
 	NONE,
 	ATTACK,
-	ATTACK_DONE,
+	ATTACK_CLUSTER,
+	ATTACK_CLUSTER_DONE,
 	MOVE_IN_FORMATION,
-	GROUP_ATTACK,
-	GROUP_ATTACK_DONE,
 	ATTACK_STATIC,
 	ATTACK_STATIC_DONE,	
 	SEEK_DESTROY,
 	FLEE,
 	GET_IN_VEHICLE,
 	GET_OUT_VEHICLE,
-	COVER_ADVANCE,
 	MOVE,
 	FOLLOW,
 	UNGROUP,
@@ -50,6 +45,11 @@ enum EMessageType_Goal
 class SCR_AIMessageBase : AIMessage
 {
 	int m_MessageType;	// here is kept enum for message type, which enum it is depends on IsInherited()
+	
+	#ifdef AI_DEBUG
+	// The Behavior Tree which has sent this message
+	string m_sSentFromBt;
+	#endif
 	
 	void SetMessageParameters(SCR_AISendMessageBase node) // this method fills an existing message with content
 	{
@@ -75,6 +75,7 @@ class SCR_AIMessageGoal : SCR_AIMessageBase // MESSAGE_CLASS()
 	ref SCR_AIActivityBase m_RelatedGroupActivity;
 	float m_fPriorityLevel;		// VARIABLE(NodePort, PriorityLevel, NodeProperty, m_fPriorityLevel)
 	bool m_bIsWaypointRelated;	// VARIABLE(NodePort, IsWaypointRelated, NodeProperty, m_bIsWaypointRelated)
+	AIWaypoint m_RelatedWaypoint;
 	
 	void SetMessageParameters(SCR_AISendGoalMessage node, SCR_AIActivityBase relatedActivity)
 	{
@@ -123,31 +124,8 @@ class SCR_AIMessage_Target : SCR_AIMessageInfo // MESSAGE_CLASS(GenerateSendInfo
 		if (!genericNode.GetVariableIn(genericNode.PORT_VECTOR, pos))
 			pos = genericNode.m_vector;
 		genericNode.GetVariableIn(genericNode.PORT_FLOAT, time);
-		m_TargetInfo = new SCR_AITargetInfo(targetEntity, pos, time);
-	}
-};
-
-class SCR_AIMessage_Contact : SCR_AIMessage_Target // MESSAGE_CLASS(GenerateSendInfoMessage, SCR_AISendInfoMessage_Contact)
-{
-	void SCR_AIMessage_Contact() 
-	{
-		m_MessageType = EMessageType_Info.CONTACT;
-	}
-};
-
-class SCR_AIMessage_TargetLost : SCR_AIMessage_Target // MESSAGE_CLASS(GenerateSendInfoMessage, SCR_AISendInfoMessage_TargetLost)
-{
-	void SCR_AIMessage_TargetLost() 
-	{
-		m_MessageType = EMessageType_Info.TARGET_LOST;
-	}
-};
-
-class SCR_AIMessage_TargetEliminated : SCR_AIMessage_Target // MESSAGE_CLASS(GenerateSendInfoMessage, SCR_AISendInfoMessage_TargetEliminated)
-{
-	void SCR_AIMessage_TargetEliminated() 
-	{
-		m_MessageType = EMessageType_Info.TARGET_ELIMINATED;
+		m_TargetInfo = new SCR_AITargetInfo();
+		m_TargetInfo.Init(targetEntity, worldPos: pos, timestamp: time);
 	}
 };
 
@@ -289,6 +267,14 @@ class SCR_AIMessage_Cancel : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoal
 	{
 		m_MessageType = EMessageType_Goal.CANCEL;
 	}	
+	
+	static SCR_AIMessage_Cancel Create(SCR_AIActivityBase relatedActivity)
+	{
+		SCR_AIMessage_Cancel msg = new SCR_AIMessage_Cancel();
+		msg.m_RelatedGroupActivity = relatedActivity;
+		
+		return msg;
+	}
 };
 
 class SCR_AIMessage_Attack : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_Attack)
@@ -312,17 +298,43 @@ class SCR_AIMessage_Attack : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoal
 		if (!node.GetVariableIn(node.PORT_VECTOR, pos))
 			pos = node.m_vector;
 		node.GetVariableIn(node.PORT_FLOAT, time);
-		m_TargetInfo = new SCR_AITargetInfo(targetEntity, pos, time);		
+		m_TargetInfo = new SCR_AITargetInfo();
+		m_TargetInfo.Init(targetEntity, worldPos: pos, timestamp: time);		
 	}
 };
 
-class SCR_AIMessage_AttackDone : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_AttackDone)
+class SCR_AIMessage_AttackCluster : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_AttackCluster)
 {
-	void SCR_AIMessage_AttackDone() 
+	SCR_AITargetClusterState m_TargetClusterState; // VARIABLE(NodePort, TargetClusterState)
+	bool m_bAllowInvestigate; // VARIABLE(NodePort, AllowInvestigate)
+	
+	void SCR_AIMessage_AttackCluster()
 	{
-		m_MessageType = EMessageType_Goal.ATTACK_DONE;
+		m_MessageType = EMessageType_Goal.ATTACK_CLUSTER;
 	}
-};
+	
+	static SCR_AIMessage_AttackCluster Create(SCR_AITargetClusterState s, bool allowInvestigate)
+	{
+		SCR_AIMessage_AttackCluster msg = new SCR_AIMessage_AttackCluster();
+		msg.m_TargetClusterState = s;
+		msg.m_bAllowInvestigate = allowInvestigate;
+		return msg;
+	}
+}
+
+class SCR_AIMessage_AttackClusterDone : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_AttackClusterDone)
+{
+	void SCR_AIMessage_AttackClusterDone()
+	{
+		m_MessageType = EMessageType_Goal.ATTACK_CLUSTER_DONE;
+	}
+	
+	static SCR_AIMessage_AttackClusterDone Create()
+	{
+		SCR_AIMessage_AttackClusterDone msg = new SCR_AIMessage_AttackClusterDone();
+		return msg;
+	}
+}
 
 class SCR_AIMessage_AttackStatic : SCR_AIMessage_Attack // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_AttackStatic)
 {
@@ -337,14 +349,6 @@ class SCR_AIMessage_AttackStaticDone : SCR_AIMessageGoal // MESSAGE_CLASS(Genera
 	void SCR_AIMessage_AttackStaticDone() 
 	{
 		m_MessageType = EMessageType_Goal.ATTACK_STATIC_DONE;
-	}
-};
-
-class SCR_AIMessage_CoverAdvance : SCR_AIMessage_Attack // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_CoverAdvance)
-{
-	void SCR_AIMessage_CoverAdvance() 
-	{
-		m_MessageType = EMessageType_Goal.COVER_ADVANCE;
 	}
 };
 
@@ -408,10 +412,22 @@ class SCR_AIMessage_Investigate : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSen
 	float m_fRadius; // VARIABLE(NodePort, Radius, NodeProperty, m_fRadius)
 	bool m_bIsDangerous; // VARIABLE(NodePort, IsDangerous, NodeProperty, m_bIsDangerous)
 	EAIUnitType m_eTargetUnitType = EAIUnitType.UnitType_Infantry; // VARIABLE(NodePropertyEnum, m_eTargetUnitType)
+	float m_fDuration = 10; // VARIABLE(NodePort, Duration, NodeProperty, m_fDuration)
 	
 	void SCR_AIMessage_Investigate() 
 	{
 		m_MessageType = EMessageType_Goal.INVESTIGATE;
+	}
+	
+	static SCR_AIMessage_Investigate Create(vector pos, float radius, bool dangerous, EAIUnitType unitType = EAIUnitType.UnitType_Infantry, float duration = 10.0)
+	{
+		SCR_AIMessage_Investigate msg = new SCR_AIMessage_Investigate();
+		msg.m_fRadius = radius;
+		msg.m_vMovePosition = pos;
+		msg.m_bIsDangerous = dangerous;
+		msg.m_eTargetUnitType = unitType;
+		msg.m_fDuration = duration;
+		return msg;
 	}
 	
 	override void SetMessageParameters(SCR_AISendGoalMessage node, SCR_AIActivityBase relatedActivity)
@@ -436,19 +452,13 @@ class SCR_AIMessage_SeekAndDestroy : SCR_AIMessage_Move // MESSAGE_CLASS(Generat
 	}
 };
 
-class SCR_AIMessage_Heal : SCR_AIMessage_Move // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_Heal)
+class SCR_AIMessage_Heal : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_Heal)
 {
+	IEntity m_EntityToHeal; // VARIABLE(NodePort, EntityToHeal)
+	
 	void SCR_AIMessage_Heal() 
 	{
 		m_MessageType = EMessageType_Goal.HEAL;
-	}
-	
-	override void SetMessageParameters(SCR_AISendGoalMessage node, SCR_AIActivityBase relatedActivity)
-	{
-		super.SetMessageParameters(node, relatedActivity);
-		node.GetVariableIn(node.PORT_ENTITY, m_FollowEntity);
-		if (!node.GetVariableIn(node.PORT_BOOL, m_bUseVehicles))
-			m_bUseVehicles = node.m_bool;
 	}
 };
 
@@ -490,7 +500,6 @@ class SCR_AIMessage_PickupInventoryItems : SCR_AIMessageGoal // MESSAGE_CLASS(Ge
 
 class SCR_AIMessage_Defend : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_Defend)
 {
-	AIWaypoint m_RelatedWaypoint; 	// VARIABLE(NodePort, Waypoint)
 	vector m_vDefendLocation; 		// VARIABLE(NodePort, DefendLocation)
 	float m_fDefendAngularRange; 	// VARIABLE(NodePort, DefendAngularRange, NodeProperty, m_fDefendAngularRange)
 	
@@ -614,21 +623,5 @@ class SCR_AIMessage_ThrowGrenadeTo : SCR_AIMessageGoal // MESSAGE_CLASS(Generate
 		genericNode.GetVariableIn(genericNode.PORT_ENTITY, m_TargetEntity);
 		if (!genericNode.GetVariableIn(genericNode.PORT_VECTOR, m_vTargetPosition))
 			m_vTargetPosition = genericNode.m_vector;
-	}
-};
-
-class SCR_AIMessage_GroupAttack : SCR_AIMessage_Attack // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_GroupAttack)
-{
-	void SCR_AIMessage_GroupAttack() 
-	{
-		m_MessageType = EMessageType_Goal.GROUP_ATTACK;
-	}
-};
-
-class SCR_AIMessage_GroupAttackDone : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_GroupAttackDone)
-{
-	void SCR_AIMessage_GroupAttackDone() 
-	{
-		m_MessageType = EMessageType_Goal.GROUP_ATTACK_DONE;
 	}
 };

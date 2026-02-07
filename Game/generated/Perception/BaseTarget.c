@@ -22,6 +22,8 @@ class BaseTarget: ScriptAndConfig
 	proto external float GetTimeSinceSeen();
 	// Time (from perception manager) when the target was seen (direct LoS)
 	proto external float GetTimeLastSeen();
+	// Time (from perception manager) when the target was detected
+	proto external float GetTimeLastDetected();
 	// Time passed since the target's type was recognized
 	proto external float GetTimeSinceTypeRecognized();
 	// Time passed since the target's side was recognized
@@ -32,10 +34,14 @@ class BaseTarget: ScriptAndConfig
 	proto external vector GetLastSeenPosition();
 	// Position where the target was detected last
 	proto external vector GetLastDetectedPosition();
-	// Returns how we percieve whether that target is endangering us or not. The actual value is updated periodically.
-	proto external bool IsEndangering();
+	// Returns distance to target. It's a cached value, calculated by PerceptionComponent.
+	proto external float GetDistance();
 	// Returns unit type, same as in PerceivableComponent of that target
 	proto external EAIUnitType GetUnitType();
+	// Returns how we percieve whether that target is endangering us or not. The actual value is updated periodically.
+	proto external bool IsEndangering();
+	// Returns how we perceive whether the target is disarmed or not. The actual value is updated periodically.
+	proto external bool IsDisarmed();
 	proto external float GetExposure();
 	// Returns perceivable component of target
 	proto external PerceivableComponent GetPerceivableComponent();

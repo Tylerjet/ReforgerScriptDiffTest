@@ -29,6 +29,9 @@ class ServerHostingUI : SCR_TabDialog
 	protected ref SCR_ServerConfigAdvancedComponent m_AdvancedSettings;
 	protected ref SCR_ServerHostingSettingsSubMenu m_AdvancedSubMenu;
 	
+	// Values 
+	protected string m_iUnifiedPort; // Unified port used acress sub menu to define port from basic in advanced settings and vice versa
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
@@ -90,6 +93,9 @@ class ServerHostingUI : SCR_TabDialog
 			m_TemporaryConfig = null;
 		}
 		
+		// Setup menu listeners 
+		m_ConfigList.GetOnPortChanged().Insert(OnSubMenuChangePort);
+		m_AdvancedSettings.GetOnPortChanged().Insert(OnSubMenuChangePort);
 		
 		// Call check fadein when fadein animation is expected to be done to verify dialog is fully visible
 		GetGame().GetCallqueue().CallLater(FinishFadeIn, 1000/m_fAnimationRate*2);
@@ -106,7 +112,7 @@ class ServerHostingUI : SCR_TabDialog
 	//! Verify and store all info into config - return true if all config properties are valid
 	protected bool VerifyAndStoreConfig()
 	{
-		if (!m_DSConfig || !m_ConfigList || !m_ConfigMods)
+		if (!m_DSConfig || !m_ConfigList || !m_ConfigMods || !m_AdvancedSettings)
 		{
 			#ifdef SB_DEBUG 
 			Print("Missing config references");
@@ -115,33 +121,25 @@ class ServerHostingUI : SCR_TabDialog
 			return false;
 		}
 		
-		// Check all input validity 
-		array<ref SCR_WidgetListEntry> configEntries = m_ConfigList.GetInitialEntryList();
-		bool valid = true;
-		Widget firstInvalid = null;
+		// Check all values validity 
+		Widget invalidEntry = m_ConfigList.GetInvalidEntry();
+		int invalidTab = 0;
 		
-		for (int i = 0, count = configEntries.Count(); i < count; i++)
+		if (!invalidEntry)
 		{
-			if (!configEntries[i].CheckValidity())
-			{
-				valid = false;
-				
-				if (!firstInvalid)
-					firstInvalid = configEntries[i].GetEntryRoot();
-			}
+			invalidEntry = m_AdvancedSettings.GetInvalidEntry();
+			invalidTab = 2;
 		}
 		
-		if (!valid)
+		if (invalidEntry)
 		{
-			// Fail and show issue 
-			if (m_SuperMenu.GetTabView().m_iSelectedTab != 0)
-				m_SuperMenu.GetTabView().ShowTab(0);
+			// Show problematic tab
+			if (m_SuperMenu.GetTabView().m_iSelectedTab != invalidTab)
+				m_SuperMenu.GetTabView().ShowTab(invalidTab);
 			
-			if (firstInvalid)
-			{
-				GetGame().GetWorkspace().SetFocusedWidget(firstInvalid);
-				m_ConfigList.ScrollToTheEntry(firstInvalid);
-			}
+			// Move to invalid entry
+			GetGame().GetWorkspace().SetFocusedWidget(invalidEntry);
+			m_ConfigList.ScrollToTheEntry(invalidEntry);
 			
 			return false;
 		}
@@ -334,6 +332,16 @@ class ServerHostingUI : SCR_TabDialog
 		ContentBrowserUI workshopUI = ContentBrowserUI.Cast(GetGame().GetMenuManager().GetTopMenu());
 		if (!workshopUI)
 			workshopUI = ContentBrowserUI.Cast(GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ContentBrowser));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Call when sub menu change port setting to propagete unified port on multiple places
+	protected void OnSubMenuChangePort(string port)
+	{
+		m_iUnifiedPort = port;
+		
+		m_ConfigList.SetPort(m_iUnifiedPort);
+		m_AdvancedSettings.SetPorts(m_iUnifiedPort);
 	}
 	
 	//------------------------------------------------------------------------------------------------

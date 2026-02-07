@@ -211,11 +211,14 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	*/
 	private int GetPlayerFactionIndex(int playerId)
 	{
-		Faction playerFaction = m_pGameMode.GetRespawnSystemComponent().GetPlayerFaction(playerId);
-		if (!playerFaction)
-			return -1;
-
-		return GetGame().GetFactionManager().GetFactionIndex(playerFaction);
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+		{
+			Faction playerFaction = factionManager.GetPlayerFaction(playerId);
+			return factionManager.GetFactionIndex(playerFaction);
+		}
+		
+		return -1;
 	}
 
 	/*!
@@ -623,7 +626,7 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 		}
 
 		#ifdef ENABLE_DIAG
-			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SCORING_SYSTEM, "", "Scoring System Diag", "Network");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SCORING_SYSTEM, "", "Scoring System", "GameMode");
 		#endif
 	}
 

@@ -125,19 +125,20 @@ class SCR_CampaignTutorialStage86 : SCR_BaseCampaignTutorialStage
 		if (!signalComp)
 			return;
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
 		SCR_CallsignManagerComponent callsignManager = SCR_CallsignManagerComponent.Cast(campaign.FindComponent(SCR_CallsignManagerComponent));
 		
 		if (!callsignManager)
 			return;
 		
-		int baseCallsign = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("MainBaseLevie")).GetCallsign();
+		int baseCallsign = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("MainBaseLevie").FindComponent(SCR_CampaignMilitaryBaseComponent)).GetCallsign();
 		
 		int signalBase = signalComp.AddOrFindSignal("Base");
 		int signalCompanyCaller = signalComp.AddOrFindSignal("CompanyCaller");
 		int signalPlatoonCaller = signalComp.AddOrFindSignal("PlatoonCaller");
 		int signalSquadCaller = signalComp.AddOrFindSignal("SquadCaller");
+		int signalQuality = signalComp.AddOrFindSignal("TransmissionQuality");
 		
 		int callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad, callerCallsignCharacter;
 		callsignManager.GetEntityCallsignIndexes(m_Player, callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad, callerCallsignCharacter);
@@ -146,7 +147,8 @@ class SCR_CampaignTutorialStage86 : SCR_BaseCampaignTutorialStage
 		signalComp.SetSignalValue(signalCompanyCaller, callerCallsignCompany);
 		signalComp.SetSignalValue(signalPlatoonCaller, callerCallsignPlatoon);
 		signalComp.SetSignalValue(signalSquadCaller, callerCallsignSquad);
+		signalComp.SetSignalValue(signalQuality, 1.0);
 		
-		m_PlayedRadio = soundComp.SoundEvent(SCR_SoundEvent.SOUND_SL_SRT);
+		m_PlayedRadio = soundComp.SoundEvent(SCR_SoundEvent.SOUND_SL_SRT + "_US");
 	}
 };

@@ -35,6 +35,7 @@ class BaseFuelNode: ScriptAndConfig
 	event protected void OnInit(IEntity owner);
 	//! Fixed Frame Call in script
 	event protected void OnFixedFrame(IEntity owner, float timeSlice);
+	event protected void OnFuelChanged(float newFuel);
 }
 
 /*!

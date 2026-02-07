@@ -15,7 +15,7 @@ class SCR_CampaignTutorialStage81 : SCR_BaseCampaignTutorialStage
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		float angle = m_Player.GetCharacterController().GetAimingAngles()[0];
+		float angle = Math.RAD2DEG * m_Player.GetCharacterController().GetInputContext().GetAimingAngles()[0];
 		return ((angle > 137) && (angle < 143));
 	}
 	

@@ -46,8 +46,8 @@ class SCR_CampaignDeployMobileAssemblyUserAction : ScriptedUserAction
 		
 		if (!m_AssemblyComponent)
 			return false;
-
-		Faction f = SCR_RespawnSystemComponent.GetLocalPlayerFaction();
+		
+		Faction f = SCR_FactionManager.SGetLocalPlayerFaction();
 		
 		if (!f)
 			return false;
@@ -82,7 +82,7 @@ class SCR_CampaignDeployMobileAssemblyUserAction : ScriptedUserAction
 		if (!m_AssemblyComponent)
 			return false;
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
 		if (!campaign)
 			return false;
@@ -92,13 +92,18 @@ class SCR_CampaignDeployMobileAssemblyUserAction : ScriptedUserAction
 		if (!f)
 			return false;
 		
-		if (campaign.IsMobileAssemblyDeployed(f))
+		if (f.GetMobileAssembly())
 		{
 			SetCannotPerformReason("#AR-Campaign_Action_AnotherAssemblyActive-UC");
 			return false;
 		}
 		
-		if (campaign.GetBasePlayerPresence())
+		SCR_CampaignFeedbackComponent feedbackComponent = SCR_CampaignFeedbackComponent.GetInstance();
+		
+		if (!feedbackComponent)
+			return false;
+		
+		if (feedbackComponent.GetBaseWithPlayer())
 		{
 			SetCannotPerformReason("#AR-Campaign_Action_AnotherHQNearby-UC");
 			return false;

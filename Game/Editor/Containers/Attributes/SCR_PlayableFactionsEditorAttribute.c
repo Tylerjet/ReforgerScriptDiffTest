@@ -1,5 +1,5 @@
 
-[BaseContainerProps(), BaseContainerCustomTitleField("m_sDisplayName")]
+[BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_PlayableFactionsEditorAttribute : SCR_BaseMultiSelectPresetsEditorAttribute
 {	
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)

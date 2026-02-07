@@ -14,7 +14,6 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 	
 	// Optics reference 
 	protected SCR_2DOpticsComponent m_Optic;
-
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get whether the local character is in a zoomed state
@@ -129,9 +128,9 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Update optics 
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{			
-		// Update optics 
 		if (m_Optic)
 			m_Optic.Tick(timeSlice);
 	}

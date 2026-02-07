@@ -26,6 +26,7 @@ class TextureUtils
 	{
 		string textureType;	
 		string colorSpace;
+		bool containsMips;
 		string conversion;
 		BaseContainer eddsCont;
 		
@@ -42,19 +43,19 @@ class TextureUtils
 		}
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
 		MetaFile meta = resourceManager.GetMetaFile(path);
-		
 		//If it won't find the meta anyways, Add Missing texture 
-		if(meta == false)
+		if(!meta)
 		{
 			return "";
 		}
-		
 		
 		BaseContainerList configurations = meta.GetObjectArray("Configurations");
 		BaseContainer cfg = configurations.Get(0);
 		//Getting info
 		cfg.Get("Conversion",conversion);
 		cfg.Get("ColorSpace",colorSpace);
+		cfg.Get("ContainsMips", containsMips);
+		
 		string resourceType = cfg.GetClassName();
 		//Translating int conversion to string
 		switch(conversion)
@@ -80,11 +81,11 @@ class TextureUtils
 		}
 		if(guidFormat)
 		{
-			return (colorSpace + "|" + conversion + "|" + meta.GetResourceID());
+			return (colorSpace + "|" + conversion + "|" + meta.GetResourceID()+ "|" + containsMips);
 		}
 		else
 		{
-			return (path + "|" + cfg.GetClassName() + "|" + colorSpace + "|" + conversion + "||");
+			return (path + "|" + cfg.GetClassName() + "|" + colorSpace + "|" + conversion + "|" + containsMips + "||");	
 		}
 	} 	
 	array<string> TextureFormat(string texture)

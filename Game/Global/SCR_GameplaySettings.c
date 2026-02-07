@@ -39,7 +39,7 @@ class SCR_FieldOfViewSettings : ModuleGameSettings
 	[Attribute(defvalue: "74", uiwidget: UIWidgets.Slider, params: "40 90 1", desc: "Field of view in vehicle camera.")]
 	float m_fVehicleFOV;
 
-	[Attribute(defvalue: "0.7", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "Aiming down sights focus intensity.")]
+	[Attribute(defvalue: "0.5", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "Aiming down sights focus intensity.")]
 	float m_fFocusInADS;
 
 	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Use focus mode by holding right mouse button.")]
@@ -74,7 +74,7 @@ class SCR_HintSettings : ModuleGameSettings
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Allow context hints on screen")]
 	protected bool m_bHintsEnabled;
 
-	[Attribute(desc: "Types of hints which were already shown and should not be displayed again.")]
+	[Attribute(desc: "Types of hints which were already shown and should not be displayed again.", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EHint))]
 	protected ref array<EHint> m_aShownHints;
 
 	[Attribute(desc: "How many times were hints in Shown Hints attribute displayed. Order of array items is the same.")]
@@ -214,4 +214,10 @@ class SCR_InventoryHintSettings : ModuleGameSettings
 
 	[Attribute()]
 	protected int m_iQuickSlotShowCount;
+};
+
+class SCR_DeployMenuSettings : ModuleGameSettings
+{
+	[Attribute("1")]
+	protected bool m_bShowPersistentFactionWarning;
 };

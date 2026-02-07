@@ -16,8 +16,8 @@ class SCR_BasePreviewEntry
 	[Attribute("-1")]
 	string m_iPivotID;
 	
-	[Attribute(defvalue: "1")]
-	float m_fScale;
+	[Attribute(defvalue: "1 1 1")]
+	vector m_vScale;
 	
 	[Attribute()]
 	vector m_vPosition;
@@ -30,6 +30,25 @@ class SCR_BasePreviewEntry
 	float m_vHeightTerrain;
 	IEntity m_Entity;
 	IEntitySource m_EntitySource;
+	
+	/*!
+	Save scale of entity within vector scale
+	\param scale Scale to save
+	*/
+	void SetScale(float scale)
+	{
+		m_vScale = Vector(scale, scale, scale);
+	}
+	
+	/*!
+	Get the scale saved in the Preview entity. 
+	Note that the first entry in the scale vector is used
+	\return Scale
+	*/
+	float GetScale()
+	{
+		return m_vScale[0];
+	}
 	
 	/*!
 	Save transformation matrix in entry data.
@@ -59,7 +78,8 @@ class SCR_BasePreviewEntry
 	{
 		string mesh = m_Mesh;
 		mesh = string.Format("%1: %2", typename.EnumToString(EPreviewEntityShape, m_Shape), mesh);
-		string text = string.Format("prt: %1 | pvt: '%2' | scl: %3 | pos: %4 | ang: %5 | angT: %6 | hT: %7 | flg: %8 | shape: '%9'", m_iParentID, m_iPivotID, m_fScale, m_vPosition, m_vAngles, m_vAnglesTerrain, m_vHeightTerrain, m_Flags, mesh);
+		string flagNames = SCR_Enum.FlagsToString(EPreviewEntityFlag, m_Flags);
+		string text = string.Format("prt: %1 | pvt: '%2' | scl: %3 | pos: %4 | ang: %5 | angT: %6 | hT: %7 | flg: %8 | shape: '%9'", m_iParentID, m_iPivotID, m_vScale, m_vPosition, m_vAngles, m_vAnglesTerrain, m_vHeightTerrain, flagNames, mesh);
 		PrintFormat("%1: %2", index, text);
 	}
 	void CopyFrom(SCR_BasePreviewEntry from)
@@ -69,7 +89,7 @@ class SCR_BasePreviewEntry
 		m_Flags = from.m_Flags;
 		m_Shape = from.m_Shape;
 		m_iPivotID = from.m_iPivotID;
-		m_fScale = from.m_fScale;
+		m_vScale = from.m_vScale;
 		m_vPosition = from.m_vPosition;
 		m_fQuat = from.m_fQuat;
 		m_vAngles = from.m_vAngles;
@@ -82,7 +102,7 @@ class SCR_BasePreviewEntry
 	{
 		if (init)
 		{
-			m_fScale = 1;
+			SetScale(1);
 		}
 	}
 #ifdef WORKBENCH
@@ -92,7 +112,7 @@ class SCR_BasePreviewEntry
 		api.SetVariableValue(entitySource, entryPath, "m_Mesh", m_Mesh);
 		api.SetVariableValue(entitySource, entryPath, "m_Shape", m_Shape.ToString());
 		api.SetVariableValue(entitySource, entryPath, "m_iPivotID", m_iPivotID);
-		api.SetVariableValue(entitySource, entryPath, "m_fScale", m_fScale.ToString());
+		api.SetVariableValue(entitySource, entryPath, "m_vScale", m_vScale.ToString(false));
 		api.SetVariableValue(entitySource, entryPath, "m_vPosition", m_vPosition.ToString(false));
 		api.SetVariableValue(entitySource, entryPath, "m_vAngles", m_vAngles.ToString(false));
 		api.SetVariableValue(entitySource, entryPath, "m_Flags", m_Flags.ToString());

@@ -11,7 +11,7 @@ class SCR_EditorHoveredEntityIsSelectedActionCondition: SCR_AvailableActionCondi
 		SCR_EditableEntityComponent entity = SCR_BaseEditableEntityFilter.GetFirstEntity(EEditableEntityState.HOVER);
 		
 		if (!entity)
-			return GetReturnResult(false));
+			return GetReturnResult(false);
 		
 		set <SCR_EditableEntityComponent> entities = new set <SCR_EditableEntityComponent>;
 		SCR_BaseEditableEntityFilter.GetEnititiesStatic(entities, EEditableEntityState.SELECTED);

@@ -12,16 +12,7 @@ class SCR_SliderBloodAttributeComponent : SCR_SliderEditorAttributeUIComponent
 	[Attribute("1", desc: "Size of the BarTop")]
 	protected float m_iUnconsciousBarTopSize;
 	
-	[Attribute()]
-	protected LocalizedString m_sWarningNote;
-	
-	protected SCR_GameModeHealthSettings m_GameModeHealthSettings;
-	
-	//[Attribute("Character goes Unconcious", desc: "Text shown if character(s) will become unconcious")]
-	//protected LocalizedString m_sUnconciousWarning;
-	
 	protected float m_fUnconsciousLevel;
-	protected bool m_bEntityUnconsciousnessPermitted;
 	
 	protected Widget m_UnconsciousBar;
 	protected Widget m_UnconsciousBarTop;
@@ -43,15 +34,20 @@ class SCR_SliderBloodAttributeComponent : SCR_SliderEditorAttributeUIComponent
 			return;
 		
 		vector bloodData = var.GetVector();
-		m_bEntityUnconsciousnessPermitted = bloodData[2] != 0;
-		
-		m_GameModeHealthSettings = SCR_GameModeHealthSettings.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeHealthSettings));
 		
 		m_fUnconsciousLevel = bloodData[1] * 100;
 		
 		super.Init(w, attribute);
 	}
 	
+	/*!
+	Get what percentage the blood must be for the entity to go unconscious
+	\return Percentage of blood for the entity to go unconscious
+	*/
+	float GetUnconsciousLevel()
+	{
+		return m_fUnconsciousLevel;
+	}
 	
 	override void SetSliderSettings(SCR_BaseEditorAttributeVar var, SCR_BaseEditorAttributeEntrySlider sliderData)
 	{
@@ -104,7 +100,5 @@ class SCR_SliderBloodAttributeComponent : SCR_SliderEditorAttributeUIComponent
 				LayoutSlot.SetFillWeight(m_UnconsciousFillerRight, Math.Clamp(100 - value, 0, 100));
 			}
 		}
-		
-		OverrideDescription(value < m_fUnconsciousLevel, m_sWarningNote);
 	}
 };

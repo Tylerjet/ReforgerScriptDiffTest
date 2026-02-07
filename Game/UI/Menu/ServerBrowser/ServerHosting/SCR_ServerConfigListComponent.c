@@ -15,6 +15,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	protected const string PLAYER_LIMIT_ENTRY = "maxPlayers";
 	protected const string BATTLEYE = "battlEye";
 	protected const string CROSSPLAY = "crossPlatform";
+	protected const string SIMPLE_PORT = "publicPortSimple";
 	
 	// Properties content
 	protected const string SERVER_NAME_BASE = "%1 %2";
@@ -22,6 +23,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	protected const string DEFAULT_SCENARIO = "{ECC61978EDCC2B5A}Missions/23_Campaign.conf";
 	
 	protected SCR_WidgetListEntryEditBox m_NameEdit;
+	protected SCR_WidgetListEntryEditBox m_SimplePortEdit;
 	protected SCR_WidgetListEntrySelection m_ScenarioSelect;
 	protected SCR_WidgetListEntrySelection m_ScenarioModSelect;
 	protected SCR_WidgetListEntrySelection m_BattleyeSelect;
@@ -37,6 +39,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 
 	// Invokers
 	protected ref ScriptInvoker<string> m_OnScenarioSelected;
+	protected ref ScriptInvoker<string> m_OnPortChanged;
 
 	//------------------------------------------------------------------------------------------------
 	protected void InvokeOnScenarioSelected(string itemId)
@@ -52,6 +55,15 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 			m_OnScenarioSelected = new ScriptInvoker();
 
 		return m_OnScenarioSelected;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnPortChanged()
+	{
+		if (!m_OnPortChanged)
+			m_OnPortChanged = new ScriptInvoker();
+
+		return m_OnPortChanged;
 	}
 	
 	//-------------------------------------------------------------------------------------------
@@ -78,29 +90,27 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	protected void FillScenarios()
 	{
 		// Find widgets
-		m_NameEdit = SCR_WidgetListEntryEditBox.Cast(
-			FindEntry(NAME_ENTRY));
+		m_NameEdit = SCR_WidgetListEntryEditBox.Cast(FindEntry(NAME_ENTRY));
 		
-		m_ScenarioSelect = SCR_WidgetListEntrySelection.Cast(
-			FindEntry(SCENARIO_SELECTION_ENTRY));
+		m_SimplePortEdit = SCR_WidgetListEntryEditBox.Cast(FindEntry(SIMPLE_PORT));
 		
-		m_ScenarioModSelect = SCR_WidgetListEntrySelection.Cast(
-			FindEntry(SCENARIO_MOD_SELECTION_ENTRY));
+		m_ScenarioSelect = SCR_WidgetListEntrySelection.Cast(FindEntry(SCENARIO_SELECTION_ENTRY));
 		
-		m_PlayerListSlider = SCR_WidgetListEntrySlider.Cast(
-			FindEntry(PLAYER_LIMIT_ENTRY));
+		m_ScenarioModSelect = SCR_WidgetListEntrySelection.Cast(FindEntry(SCENARIO_MOD_SELECTION_ENTRY));
 		
-		m_BattleyeSelect = SCR_WidgetListEntrySelection.Cast(
-			FindEntry(BATTLEYE));
+		m_PlayerListSlider = SCR_WidgetListEntrySlider.Cast(FindEntry(PLAYER_LIMIT_ENTRY));
 		
-		m_CrossplaySelect = SCR_WidgetListEntrySelection.Cast(
-			FindEntry(CROSSPLAY));
+		m_BattleyeSelect = SCR_WidgetListEntrySelection.Cast(FindEntry(BATTLEYE));
+		
+		m_CrossplaySelect = SCR_WidgetListEntrySelection.Cast(FindEntry(CROSSPLAY));
 		
 		// Setup names 
 		if (m_NameEdit)
-		{
 			m_NameEdit.GetEditBoxComponent().m_OnChanged.Insert(OnNameChanged);
-		}
+		
+		// Simple port 
+		if (m_SimplePortEdit)
+			m_SimplePortEdit.GetEditBoxComponent().m_OnChanged.Insert(OnSimplePortChanged);
 		
 		// Scenarios
 		if (!m_ScenarioSelect)
@@ -379,6 +389,11 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		m_wScrollWidget.SetSliderPos(0, pos);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	void SetPort(string port)
+	{
+		m_SimplePortEdit.SetValue(port);
+	}
 	
 	//-------------------------------------------------------------------------------------------
 	// Callbacks 
@@ -388,6 +403,13 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	protected void OnNameChanged(SCR_EditBoxComponent edit, string text)
 	{
 		m_bNameEdited = !text.IsEmpty();
+	}
+	
+	//-------------------------------------------------------------------------------------------	
+	protected void OnSimplePortChanged(SCR_EditBoxComponent edit, string text)
+	{
+		if (m_OnPortChanged)
+			m_OnPortChanged.Invoke(text);
 	}
 	
 	//-------------------------------------------------------------------------------------------

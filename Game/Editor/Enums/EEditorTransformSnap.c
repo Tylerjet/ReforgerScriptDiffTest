@@ -5,5 +5,6 @@
 enum EEditorTransformSnap
 {
 	NONE, ///< Don't snap
-	TERRAIN ///< Snap to terrain
+	TERRAIN, ///< Snap to terrain
+	GEOMETRY, ///< Snap to geometry
 };

@@ -16,7 +16,6 @@ enum ECharacterDataState
 	Unconscious,
 	Jumping,
 	Rolling,
-	VisualRagdoll,
 }
 
 /*!

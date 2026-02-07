@@ -38,6 +38,10 @@ class CharacterInputContext
 	proto external void SetAimingAngles(vector aimingAngles);
 	//! Get the aiming angle in radians
 	proto external vector GetAimingAngles();
+	//! Set the aiming angle in radians
+	proto external void SetLookAtAngles(vector lookAtAngles);
+	//! Get the aiming angle in radians
+	proto external vector GetLookAtAngles();
 	// set weapon translation
 	proto external void SetWeaponIKTranslation(vector pWeaponTrans);
 	proto external vector GetWeaponIKTranslation();
@@ -90,6 +94,14 @@ class CharacterInputContext
 	proto external float GetVehicleClutch();
 	proto external void SetVehicleBrake(float val);
 	proto external float GetVehicleBrake();
+	proto external void SetVehicleCollective(float val);
+	proto external float GetVehicleCollective();
+	proto external void SetVehicleCyclicForward(float val);
+	proto external float GetVehicleCyclicForward();
+	proto external void SetVehicleCyclicAside(float val);
+	proto external float GetVehicleCyclicAside();
+	proto external void SetVehicleAntiTorque(float val);
+	proto external float GetVehicleAntiTorque();
 	proto external int SetVehicleGearSwitch();
 	proto external void GetVehicleGearSwitch(int val);
 	proto external void SetVehicleEngineStartStop(int val);
@@ -105,6 +117,7 @@ class CharacterInputContext
 	proto external void SetPlayingGesture(bool val);
 	proto external int GetGestureID();
 	proto external void SetGestureID(int gestureID);
+	proto external bool IsUnconscious();
 	// Returns the entity only if the gadget is in the hand - not when it is hidden by another action.
 	proto external IEntity GetLeftHandGadgetEntity();
 	// Returns the entity both when the gadget is in hand and when hidden by another action.

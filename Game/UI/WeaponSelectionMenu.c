@@ -82,7 +82,7 @@ class SCR_WeaponSelectionMenu : SCR_InfoDisplay
 					SCR_WeaponSelectionMenu weaponSwitching = SCR_WeaponSelectionMenu.Cast(display);
 					if (weaponSwitching && weaponSwitching != this)
 					{
-						weaponSwitching.Show(false, UIConstants.FADE_RATE_DEFAULT, true);
+						weaponSwitching.Show(false, UIConstants.FADE_RATE_DEFAULT);
 						break;
 					}
 				}
@@ -543,9 +543,9 @@ class SCR_WeaponSelectionMenu : SCR_InfoDisplay
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Show(bool show, float speed = UIConstants.FADE_RATE_DEFAULT, bool force = false)
+	override void Show(bool show, float speed = UIConstants.FADE_RATE_DEFAULT, EAnimationCurve curve = EAnimationCurve.LINEAR)
 	{
-		super.Show(show, speed, force);
+		super.Show(show, speed);
 		
 		//Added this to update the weapon selection upon showing the menu
 		if (show)
@@ -681,7 +681,7 @@ class SCR_WeaponSelectionMenu : SCR_InfoDisplay
 				SCR_WeaponSelectionMenu weaponSwitching = SCR_WeaponSelectionMenu.Cast(display);
 				if (weaponSwitching && weaponSwitching != this)
 				{
-					weaponSwitching.Show(true, UIConstants.FADE_RATE_DEFAULT, false);
+					weaponSwitching.Show(true, UIConstants.FADE_RATE_DEFAULT);
 					break;
 				}
 			}

@@ -32,7 +32,7 @@ class SCR_EvacuateTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		if (!playerController)
 			return;
 		
-		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.GetInstance();
+		SCR_MapRadialUI ctxMenu = SCR_MapRadialUI.GetInstance();
 		if (!ctxMenu)
 			return;
 		
@@ -51,17 +51,17 @@ class SCR_EvacuateTaskSupportEntity : SCR_RequestedTaskSupportEntity
 			return;
 		
 		vector requesterOrigin = requesterEntity.GetOrigin();
-		array<SCR_CampaignBase> bases = new array<SCR_CampaignBase>();
+		array<SCR_MilitaryBaseComponent> bases = {};
 		
-		SCR_CampaignBaseManager.GetInstance().GetFilteredBases(SCR_EvacuateTask.BASES_FILTER, bases);
+		SCR_MilitaryBaseManager.GetInstance().GetBases(bases);
 		
 		bool foundValidBase = false;
 		for (int i = bases.Count() - 1; i >= 0; i--)
 		{
-			if (requesterFaction != bases[i].GetOwningFaction())
+			if (requesterFaction != bases[i].GetFaction())
 				continue;
 			
-			float baseToStartDistance = vector.Distance(bases[i].GetOrigin(), requesterOrigin);
+			float baseToStartDistance = vector.Distance(bases[i].GetOwner().GetOrigin(), requesterOrigin);
 			
 			if (baseToStartDistance > SCR_EvacuateTask.GetMinDistanceFromStart())
 			{
@@ -135,16 +135,16 @@ class SCR_EvacuateTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		bool foundValidBase = false;
 		
 		vector requesterOrigin = requesterEntity.GetOrigin();
-		array<SCR_CampaignBase> bases = new array<SCR_CampaignBase>();
+		array<SCR_MilitaryBaseComponent> bases = {};
 		
-		SCR_CampaignBaseManager.GetInstance().GetFilteredBases(SCR_EvacuateTask.BASES_FILTER, bases);
+		SCR_MilitaryBaseManager.GetInstance().GetBases(bases);
 		
 		for (int i = bases.Count() - 1; i >= 0; i--)
 		{
-			if (requesterFaction != bases[i].GetOwningFaction())
+			if (requesterFaction != bases[i].GetFaction())
 				continue;
 			
-			float baseToStartDistance = vector.Distance(bases[i].GetOrigin(), requesterOrigin);
+			float baseToStartDistance = vector.Distance(bases[i].GetOwner().GetOrigin(), requesterOrigin);
 			
 			if (baseToStartDistance > SCR_EvacuateTask.GetMinDistanceFromStart())
 			{

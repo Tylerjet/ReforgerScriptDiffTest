@@ -43,7 +43,10 @@ class SCR_AIAbortWaypoint: AITaskScripted
 			{
 				if (receiver)
 				{
-					SCR_AIInfoComponent aiInfo = SCR_AIInfoComponent.Cast(receiver.FindComponent(SCR_AIInfoComponent));
+					SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(owner);
+					if (!chimeraAgent)
+						continue;
+					SCR_AIInfoComponent aiInfo = chimeraAgent.m_InfoComponent;
 					if (!aiInfo || !aiInfo.HasUnitState(EUnitState.IN_TURRET))
 						continue;
 					
@@ -71,13 +74,7 @@ class SCR_AIAbortWaypoint: AITaskScripted
 			}
 			myGroup.ReleaseCompartments();
 		}	
-		
-		SCR_AIMessage_Cancel msg3 = SCR_AIMessage_Cancel.Cast(mailbox.CreateMessage(aiWorld.GetGoalMessageOfType(EMessageType_Goal.CANCEL)));
-		if ( !msg3 )
-			Debug.Error("Unable to create valid message!");
-		msg3.SetText("Waypoint was aborted, cancelling related behaviors");
-		msg3.SetReceiver(myGroup);
-		mailbox.RequestBroadcast(msg3,myGroup);
+
 		m_bAbortDone = true;
 	}
 

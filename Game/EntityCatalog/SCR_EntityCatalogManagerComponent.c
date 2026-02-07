@@ -8,7 +8,7 @@ class SCR_EntityCatalogManagerComponentClass : SCR_BaseGameModeComponentClass
 
 class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 {
-	[Attribute(desc: "List of non-faction related Enity catalogs. Each holds a list of entity Prefab and data of a given type. Each catalog should have an unique type! Best not to change this list in runtime as it might cause unforeseen issues. Note this array is moved to a map on init and set to null")]
+	[Attribute(desc: "List of non-faction related Entity catalogs. Each holds a list of entity Prefab and data of a given type. Catalogs of the same type are merged into one. Note this array is moved to a map on init and set to null")]
 	protected ref array<ref SCR_EntityCatalog> m_aEntityCatalogs;
 
 	//~ Catalog map for quicker obtaining the catalog using EEntityCatalogType
@@ -22,7 +22,7 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 
 	//------------------------------------------------------------------------------------------------
 	static SCR_EntityCatalogManagerComponent GetInstance()
-	{
+	{		
 		return s_Instance;
 	}
 
@@ -319,7 +319,7 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	\param requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
 	\return bool False if no config is set and when 0 items are configured
 	*/
-	bool GetArsenalItems(out array<ref SCR_ArsenalItem> arsenalItems, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
+	bool GetArsenalItems(out array<SCR_ArsenalItem> arsenalItems, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		arsenalItems.Clear();
 		
@@ -341,7 +341,7 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	\param requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
 	\return bool False if no config is set and when 0 items are configured
 	*/
-	bool GetFactionArsenalItems(out array<ref SCR_ArsenalItem> arsenalItems, SCR_Faction faction, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
+	bool GetFactionArsenalItems(out array<SCR_ArsenalItem> arsenalItems, SCR_Faction faction, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
 	{		
 		arsenalItems.Clear();
 		
@@ -354,7 +354,7 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	
 	//--------------------------------- Get Arsenal items from catalog ---------------------------------\\
 	//~ Gets a filtered list of arsenal items
-	protected bool GetArsenalItems(out array<ref SCR_ArsenalItem> arsenalItems, notnull SCR_EntityCatalog itemCatalog, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
+	protected bool GetArsenalItems(out array<SCR_ArsenalItem> arsenalItems, notnull SCR_EntityCatalog itemCatalog, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		array<SCR_EntityCatalogEntry> arsenalEntries = {};
 		array<SCR_BaseEntityCatalogData> arsenalDataList = {};
@@ -384,7 +384,43 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		
 		return !arsenalItems.IsEmpty();
 	}
-
+	
+	
+	//--------------------------------- Get Arsenal items from catalog ---------------------------------\\
+	/*!
+	Get all arsenal items configured in any faction and the non-faction catalogs. Note this is a very intensive seach
+	Values taken from Faction Catalog ITEM
+	\param[out] allArsenalItems output array
+	\param typeFilter filter for Types (-1 is ignore filter)
+	\param modeFilter filter for Modes (-1 is ignore filter)
+	\param requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
+	\return int count of items found
+	*/
+	int GetAllArsenalItems(out array<SCR_ArsenalItem> allArsenalItems, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
+	{
+		allArsenalItems.Clear();
+		
+		array<Faction> factions = {};
+		m_FactionManager.GetFactionsList(factions);
+		SCR_Faction scrFaction;
+		array<SCR_ArsenalItem> arsenalItems = {};
+		
+		foreach (Faction faction : factions)
+		{
+			scrFaction = SCR_Faction.Cast(faction);
+			if (!scrFaction)
+				continue;
+			
+			GetFactionArsenalItems(arsenalItems, scrFaction, typeFilter, modeFilter, requiresDisplayType);
+			allArsenalItems.InsertAll(arsenalItems);
+		}
+		
+		GetArsenalItems(arsenalItems, typeFilter, modeFilter, requiresDisplayType);
+		allArsenalItems.InsertAll(arsenalItems);
+		
+		return allArsenalItems.Count();
+	}
+	
 	//--------------------------------- Returns an array of filtered arsenal items ---------------------------------\\
 	/*!
 	Get arsenal items filtered by SCR_EArsenalItemType filter, caches values
@@ -397,7 +433,7 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	*/
 	array<SCR_ArsenalItem> GetFilteredArsenalItems(SCR_EArsenalItemType typeFilter, SCR_EArsenalItemMode modeFilter, SCR_Faction faction = null, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
-		array<ref SCR_ArsenalItem> refFilteredItems = {};
+		array<SCR_ArsenalItem> refFilteredItems = {};
 		array<SCR_ArsenalItem> filteredItems = {};
 		
 		if (faction)
@@ -414,22 +450,37 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//======================================== INIT ========================================\\
+	/*!
+	Init Catalog lists to move the arrays into a map for faster processing
+	\param entityCatalogArray Array of entity catalog to move into the map
+	\param entityCatalogMap the map to move the catalogs to. Catalogs with the same type will be merged
+	*/
+	static void InitCatalogs(notnull array<ref SCR_EntityCatalog> entityCatalogArray, notnull map<EEntityCatalogType, ref SCR_EntityCatalog> entityCatalogMap)
+	{
+		SCR_EntityCatalog foundCatalog;
+		
+		//~ Move catalogs to map for quicker processing
+		foreach (SCR_EntityCatalog entityCatalog : entityCatalogArray)
+		{
+			//~ Catalog not part of map so add it
+			if (!entityCatalogMap.Find(entityCatalog.GetCatalogType(), foundCatalog))
+				entityCatalogMap.Insert(entityCatalog.GetCatalogType(), entityCatalog);
+			//~ Catalog is part of map so merge them
+			else 
+				foundCatalog.MergeCatalogs(entityCatalog);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		m_FactionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (!m_FactionManager)
 			Debug.Error2("SCR_EntityCatalogManagerComponent", "Could not find SCR_FactionManager, this is required for many the Getter Functions!");
 
-		//~ Move catalogs to map for quicker processing
-		foreach (SCR_EntityCatalog entityCatalog : m_aEntityCatalogs)
-		{
-			//~ Ignore duplicate catalog types
-			if (m_mEntityCatalogs.Contains(entityCatalog.GetCatalogType()))
-				continue;
-
-			m_mEntityCatalogs.Insert(entityCatalog.GetCatalogType(), entityCatalog);
-		}
-
+		//~ Init the catalog
+		InitCatalogs(m_aEntityCatalogs, m_mEntityCatalogs);
+		
 		//~ Clear array as no longer needed
 		m_aEntityCatalogs = null;
 	}

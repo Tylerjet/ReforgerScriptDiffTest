@@ -12,8 +12,8 @@ class SCR_CampaignTutorialStage49 : SCR_BaseCampaignTutorialStage
 		m_fConditionCheckPeriod = 1;
 		m_fWaypointHeightOffset = 1.2;
 		m_bCheckWaypoint = false;
-		SCR_CampaignBase mainBaseUS = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("MainBaseChotain"));
-		mainBaseUS.AlterReinforcementsTimer(-float.MAX);
+		SCR_CampaignMilitaryBaseComponent mainBaseUS = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("MainBaseChotain").FindComponent(SCR_CampaignMilitaryBaseComponent));
+		mainBaseUS.AlterSupplyIncomeTimer(-float.MAX);
 		mainBaseUS.AddSupplies(1000);
 		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_RequestingVehicle" + CreateString("#AR-KeybindEditor_MultiSelection","SelectAction"), duration: -1);
 	}

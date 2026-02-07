@@ -41,16 +41,14 @@ class SCR_SpinBoxPagingComponent : SCR_WLibComponentBase
 		m_ButtonLeft = SCR_PagingButtonComponent.GetPagingButtonComponent("ButtonLeft", w);
 		if (m_ButtonLeft)
 		{
-			//m_ButtonLeft.m_OnActivated.Insert(OnButtonLeft);
-			m_ButtonLeft.m_OnClicked.Insert(OnButtonLeft);
+			m_ButtonLeft.m_OnActivated.Insert(OnButtonLeft);
 			m_ButtonLeft.SetAction(m_sLeftAction);
 		}
 		
 		m_ButtonRight = SCR_PagingButtonComponent.GetPagingButtonComponent("ButtonRight", w);
 		if (m_ButtonRight)
 		{
-			//m_ButtonRight.m_OnActivated.Insert(OnButtonRight);
-			m_ButtonRight.m_OnClicked.Insert(OnButtonRight);
+			m_ButtonRight.m_OnActivated.Insert(OnButtonRight);
 			m_ButtonRight.SetAction(m_sRightAction);
 		}
 		
@@ -191,16 +189,16 @@ class SCR_SpinBoxPagingComponent : SCR_WLibComponentBase
 	{
 		if (m_ButtonLeft)
 		{
-			m_ButtonLeft.m_OnClicked.Remove(OnButtonLeft);
+			m_ButtonLeft.m_OnActivated.Remove(OnButtonLeft);
 			if (active)
-				m_ButtonLeft.m_OnClicked.Insert(OnButtonLeft);
+				m_ButtonLeft.m_OnActivated.Insert(OnButtonLeft);
 		}
 
 		if (m_ButtonRight)
 		{
-			m_ButtonRight.m_OnClicked.Remove(OnButtonRight);
+			m_ButtonRight.m_OnActivated.Remove(OnButtonRight);
 			if (active)
-				m_ButtonRight.m_OnClicked.Insert(OnButtonRight);
+				m_ButtonRight.m_OnActivated.Insert(OnButtonRight);
 		}
 	}
 	

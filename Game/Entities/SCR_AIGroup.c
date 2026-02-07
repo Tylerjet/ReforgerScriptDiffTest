@@ -1,5 +1,5 @@
 [EntityEditorProps(category: "GameScripted/AI")]
-class SCR_AIGroupClass: ChimeraAIGroupClass
+class SCR_AIGroupClass : ChimeraAIGroupClass
 {
 	/*!
 	Get group members and their offsets.
@@ -50,7 +50,7 @@ class SCR_AIGroupClass: ChimeraAIGroupClass
 	}
 };
 
-class SCR_AIGroup: ChimeraAIGroup
+class SCR_AIGroup : ChimeraAIGroup
 {
 	[Attribute("", UIWidgets.EditBox, "Faction", category: "Group")]
 	string m_faction;
@@ -120,6 +120,7 @@ class SCR_AIGroup: ChimeraAIGroup
 	
 	protected int m_iGroupID = -1;
 	protected int m_iLeaderID = -1;
+	protected ref SCR_AIGroupUIInfo m_UiInfo;
 	
 	//gamecode uses 0 as invalid playerID
 	protected int m_iDescriptionAuthorID = 0;
@@ -139,32 +140,140 @@ class SCR_AIGroup: ChimeraAIGroup
 	protected static ref ScriptInvoker s_OnMaxMembersChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnCustomDescChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnFlagSelected = new ScriptInvoker();
+	protected static ref ScriptInvoker s_OnJoinPrivateGroupRequest = new ScriptInvoker();
+	protected static ref ScriptInvoker s_OnJoinPrivateGroupConfirm = new ScriptInvoker();
+	protected static ref ScriptInvoker s_OnJoinPrivateGroupCancel = new ScriptInvoker();	
 	
-	
-	protected ResourceName m_sGroupFlag;
+	protected ref array<int> m_aRequesterIDs = {};
+	protected ref array<int> m_aDeniedRequesters = {};
 	
 	//commanding variables
 	protected SCR_AIGroup m_SlaveGroup;
 	protected SCR_AIGroup m_MasterGroup;
-	protected ref array<SCR_ChimeraCharacter> m_aAIMembers = {};	
+	protected ref array<SCR_ChimeraCharacter> m_aAIMembers = {};		
 	
+	//------------------------------------------------------------------------------------------------
+	bool HasRequesterID(int id)
+	{
+		return m_aRequesterIDs.Contains(id);
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	void RemoveRequester(int playerID)
+	{
+		if (!m_aRequesterIDs.Contains(playerID))
+			return;
+		
+		RPC_DoRemoveRequester(playerID);
+		Rpc(RPC_DoRemoveRequester, playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetDeniedRequesters(out array<int> valueArray)
+	{
+		return valueArray.Copy(m_aDeniedRequesters);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddDeniedRequester(int playerID)
+	{
+		if (m_aDeniedRequesters.Contains(playerID))
+			return;
+		
+		RPC_DoAddDeniedRequester(playerID);
+		Rpc(RPC_DoAddDeniedRequester, playerID);
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	void ClearRequesters()
+	{
+		RPC_DoClearRequesterIDs();
+		Rpc(RPC_DoClearRequesterIDs);
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	void ClearDeniedRequester()
+	{
+		RPC_DoClearDeniedRequester();
+		Rpc(RPC_DoClearDeniedRequester);
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	int GetRequesterIDs(out array<int> valueArray)
+	{
+		return valueArray.Copy(m_aRequesterIDs);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddRequester(int playerID)
+	{
+		if (m_aRequesterIDs.Contains(playerID))
+			return;
+		
+		RPC_DoAddRequester(playerID);
+		Rpc(RPC_DoAddRequester, playerID);
+	}			
+	
+	//------------------------------------------------------------------------------------------------
+	void SetFlagIsFromImageSet(bool value)
+	{
+		if (!m_UiInfo)
+			m_UiInfo = new SCR_AIGroupUIInfo();
+		
+		m_UiInfo.SetFlagIsFromImageSet(value);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCustomGroupFlag(ResourceName flag)
+	{
+		if (!m_UiInfo)
+			m_UiInfo = new SCR_AIGroupUIInfo();
+		
+		m_UiInfo.SetGroupFlag(flag);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetFlagIsFromImageSet()
+	{
+		if (!m_UiInfo)
+			m_UiInfo = new SCR_AIGroupUIInfo();
+		
+		bool flagIsFromSet = m_UiInfo.GetFlagIsFromImageSet();
+		return flagIsFromSet;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetGroupFlag()
 	{
-		return m_sGroupFlag;
+		if (!m_UiInfo)
+			m_UiInfo = new SCR_AIGroupUIInfo();
+		
+		ResourceName name = m_UiInfo.GetGroupFlag();		
+		return name;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
 	static ScriptInvoker GetOnFlagSelected()
-	{
+	{				
 		return s_OnFlagSelected;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	void SetMaxGroupMembers(int value)
+	static ScriptInvoker GetOnJoinPrivateGroupRequest()
 	{
-		m_iMaxMembers = value;
+		return s_OnJoinPrivateGroupRequest;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvoker GetOnJoinPrivateGroupConfirm()
+	{
+		return s_OnJoinPrivateGroupConfirm;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvoker GetOnJoinPrivateGroupCancel()
+	{
+		return s_OnJoinPrivateGroupCancel;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -226,28 +335,119 @@ class SCR_AIGroup: ChimeraAIGroup
 			return false;
 		return true;
 	}
+		
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get the count of all players and AI in the group
+	\param checkMasterAndSlaves If true then it will also check any attached Master and/or slave group
+	\return Total group count of all AI and player member
+	*/
+	int GetPlayerAndAgentCount(bool checkMasterAndSlaves = false)
+	{
+		if (!checkMasterAndSlaves)
+			return GetPlayerCount() + GetAgentsCount();
+		
+		//~ Return count of group and master and slave groups
+		return GetPlayerCount(true) + GetAgentCountIncludingMasterAndSlaves();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	\return Get the count of all AI in the group as well as any attached Master and slave groups
+	*/
+	int GetAgentCountIncludingMasterAndSlaves()
+	{
+		int totalAgentCount = GetAgentsCount();
+		
+		SCR_AIGroup aiGroup = GetSlave();
+		if (aiGroup)
+			totalAgentCount += aiGroup.GetAgentsCount();
+		
+		aiGroup = GetMaster();
+		if (aiGroup)
+			totalAgentCount += aiGroup.GetAgentsCount();
+
+		return totalAgentCount;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get the count of all players and AI in both the group itself as well as the slave/master group(s)
+	\return Total group count of all AI and player member
+	*/
+	int GetTotalAgentCount()
+	{
+		int totalGroupCount = GetAgentsCount();
+		
+		SCR_AIGroup aiGroup = GetSlave();
+		if (aiGroup)
+			totalGroupCount += aiGroup.GetAgentsCount();
+		
+		aiGroup = GetMaster();
+		if (aiGroup)
+			totalGroupCount += aiGroup.GetAgentsCount();
+		
+		return totalGroupCount;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get the count of all players and AI in both the group itself as well as the slave/master group(s)
+	\return Total group count of all AI and player member
+	*/
+	int GetTotalPlayerCount()
+	{
+		int totalGroupCount = GetPlayerCount();
+		
+		SCR_AIGroup aiGroup = GetSlave();
+		if (aiGroup)
+			totalGroupCount += aiGroup.GetPlayerCount();
+		
+		aiGroup = GetMaster();
+		if (aiGroup)
+			totalGroupCount += aiGroup.GetPlayerCount();
+		
+		return totalGroupCount;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! called on server only
-	void SetGroupFlag(int flagIndex)
+	void SetGroupFlag(int flagIndex, bool isFromImageset)
 	{
-		RPC_DoSetGroupFlag(flagIndex);
-		Rpc(RPC_DoSetGroupFlag, flagIndex);
+		if(!m_UiInfo)
+			m_UiInfo = new SCR_AIGroupUIInfo();
+		
+		RPC_DoSetGroupFlag(flagIndex, isFromImageset);
+		Rpc(RPC_DoSetGroupFlag, flagIndex, isFromImageset);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RPC_DoSetGroupFlag(int flagIndex)
+	void RPC_DoSetGroupFlag(int flagIndex, bool isFromImageset)
 	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 	    if (!groupManager)
 			return;
 		
-		array<ResourceName> flags = {};
-		groupManager.GetGroupFlags(flags);
+		SCR_Faction scrFaction = SCR_Faction.Cast(GetFaction());
+		if (!scrFaction)
+			return;		
 		
-		if (flagIndex >= 0)				
-			m_sGroupFlag = flags[flagIndex];
+		m_UiInfo.SetFlagIsFromImageSet(isFromImageset);
+		
+		if (isFromImageset)
+		{		
+			if (flagIndex >= 0)				
+				m_UiInfo.SetGroupFlag(scrFaction.GetFlagName(flagIndex));
+		}
+		else
+		{
+			array<ResourceName> textures = {};
+			scrFaction.GetGroupFlagTextures(textures);
+			
+			if (textures.IsIndexValid(flagIndex))				
+				m_UiInfo.SetGroupFlag(textures[flagIndex]);
+		}
 		
 		s_OnFlagSelected.Invoke();
 	}
@@ -277,6 +477,20 @@ class SCR_AIGroup: ChimeraAIGroup
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetMaxGroupMembers(int value)
+	{
+		RPC_DoSetMaxGroupMembers(value);
+		Rpc(RPC_DoSetMaxGroupMembers, value);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoSetMaxGroupMembers(int value)
+	{
+		m_iMaxMembers = value;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoSetCustomDescription(string desc, int authorID)
 	{
@@ -287,19 +501,13 @@ class SCR_AIGroup: ChimeraAIGroup
 	
 	//------------------------------------------------------------------------------------------------
 	string GetCustomDescription()
-	{
-		if (!GetGame().GetPlayerController().CanViewContentCreatedBy(m_iDescriptionAuthorID))
-			return string.Empty;
-		
+	{	
 		return m_sCustomDescription;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	string GetCustomName()
 	{
-		if (!GetGame().GetPlayerController().CanViewContentCreatedBy(m_iNameAuthorID))
-			return string.Empty;
-		
 		return m_sCustomName;
 	}
 	
@@ -373,9 +581,26 @@ class SCR_AIGroup: ChimeraAIGroup
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetPlayerCount()
+	/*!
+	Get the count of all players in the group
+	\param checkMasterAndSlaves If true then it will also check any attached Master and/or slave groups
+	\return Total count of players
+	*/
+	int GetPlayerCount(bool checkMasterAndSlaves = false)
 	{
-		return m_aPlayerIDs.Count();
+		if (!checkMasterAndSlaves)
+			return m_aPlayerIDs.Count();
+		
+		int totalPlayerCount = GetPlayerCount();
+		SCR_AIGroup aiGroup = GetSlave();
+		if (aiGroup)
+			totalPlayerCount += aiGroup.GetPlayerCount();
+		
+		aiGroup = GetMaster();
+		if (aiGroup)
+			totalPlayerCount += aiGroup.GetPlayerCount();
+
+		return totalPlayerCount;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -625,8 +850,11 @@ class SCR_AIGroup: ChimeraAIGroup
 		//check if leader is still in group, noleaderallowed is preparation for editor integration
 		if (!IsPlayerInGroup(GetLeaderID()) && !noLeaderAllowed && playerID == -1)
 		{
-			if (m_aPlayerIDs.Count() == 0)
+			if (m_aPlayerIDs.IsEmpty())
+			{
+				s_OnPlayerLeaderChanged.Invoke(m_iGroupID, -1);
 				return;
+			}
 			SetGroupLeader(m_aPlayerIDs.Get(0));
 			return;
 		}
@@ -638,6 +866,8 @@ class SCR_AIGroup: ChimeraAIGroup
 		//otherwise appoint provided player as a leader
 		if (playerID != -1)
 			SetGroupLeader(playerID);
+		
+	    
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -665,12 +895,18 @@ class SCR_AIGroup: ChimeraAIGroup
 	{
 		m_bPrivate = isPrivate;
 		s_OnPrivateGroupChanged.Invoke();
+		
+		if (!isPrivate)
+		{
+			ClearRequesters();		
+			ClearDeniedRequester();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called on the server (authority)
 	void AddPlayer(int playerID)
-	{
+	{		
 		// Avoiding duplicate entries
 		if (m_aPlayerIDs.Contains(playerID))
 			return;
@@ -704,6 +940,42 @@ class SCR_AIGroup: ChimeraAIGroup
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoAddRequester(int playerID)
+	{
+			m_aRequesterIDs.Insert(playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoRemoveRequester(int playerID)
+	{
+		m_aRequesterIDs.RemoveItem(playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoClearDeniedRequester()
+	{
+		m_aDeniedRequesters.Clear();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoClearRequesterIDs()
+	{
+		m_aRequesterIDs.Clear();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoAddDeniedRequester(int playerID)
+	{
+		m_aDeniedRequesters.Insert(playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoRemovePlayer(int playerID)
 	{
@@ -873,6 +1145,8 @@ class SCR_AIGroup: ChimeraAIGroup
 			pos = CoordToParent(formationDefinition.GetOffsetPosition(index));
 		else
 			pos = CoordToParent(Vector(index, 0, 0));
+		
+		
 		
 		float surfaceY = world.GetSurfaceY(pos[0], pos[2]);
 		if (snapToTerrain && pos[1] < surfaceY)
@@ -1060,8 +1334,6 @@ class SCR_AIGroup: ChimeraAIGroup
 		
 		AIAgent agent = control.GetControlAIAgent();
 		if (!agent) return false;
-		
-		SCR_AIInfoComponent info = SCR_AIInfoComponent.Cast(agent.FindComponent(SCR_AIInfoComponent));
 		
 		control.ActivateAI();
 		
@@ -1441,16 +1713,13 @@ class SCR_AIGroup: ChimeraAIGroup
 		
 		//--- Delete after delay, doing it directly in this event would be unsafe
 		if (m_bDeleteWhenEmpty)
-			GetGame().GetCallqueue().CallLater(SCR_EntityHelper.DeleteEntityAndChildren, 1, false, this);
+			GetGame().GetCallqueue().CallLater(SCR_EntityHelper.DeleteEntityAndChildren, 1, false, this);		
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnAgentAdded(AIAgent child)
 	{
 		Event_OnAgentAdded.Invoke(child);
-		SCR_AIGroupUtilityComponent guc = SCR_AIGroupUtilityComponent.Cast(this.FindComponent(SCR_AIGroupUtilityComponent));
-		if (guc)
-			guc.AddAgentInfo(child);
 		
 		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(child);
 		if (agent)
@@ -1463,9 +1732,6 @@ class SCR_AIGroup: ChimeraAIGroup
 	override void OnAgentRemoved(AIAgent child)
 	{
 		Event_OnAgentRemoved.Invoke(this, child);
-		SCR_AIGroupUtilityComponent guc = SCR_AIGroupUtilityComponent.Cast(this.FindComponent(SCR_AIGroupUtilityComponent));
-		if (guc)
-			guc.RemoveAgentInfo(child);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1511,11 +1777,11 @@ class SCR_AIGroup: ChimeraAIGroup
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnWaypointRemoved(AIWaypoint wp)
+	override void OnWaypointRemoved(AIWaypoint wp, bool isCurrentWaypoint)
 	{
 		InvokeSubagentsOnWaypointChanged(null);
 		
-		Event_OnWaypointRemoved.Invoke(wp);
+		Event_OnWaypointRemoved.Invoke(wp, isCurrentWaypoint);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1563,6 +1829,12 @@ class SCR_AIGroup: ChimeraAIGroup
 		}
 		
 		s_bIgnoreSpawning = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetSpawnImmediately()
+	{
+		return m_bSpawnImmediately;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1662,6 +1934,9 @@ class SCR_AIGroup: ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
 	{
+		if (!m_UiInfo)
+		 m_UiInfo = new SCR_AIGroupUIInfo();
+		
 		int factionIndex = -1;
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (factionManager)
@@ -1682,7 +1957,9 @@ class SCR_AIGroup: ChimeraAIGroup
 		
 		writer.WriteString(m_sCustomDescription);
 		writer.WriteString(m_sCustomName);
-		writer.WriteString(m_sGroupFlag);
+		
+		writer.WriteString(m_UiInfo.GetGroupFlag());
+		writer.WriteBool(m_UiInfo.GetFlagIsFromImageSet());
 		
 		RplId groupID;
 		groupID = Replication.FindId(m_MasterGroup);
@@ -1692,6 +1969,7 @@ class SCR_AIGroup: ChimeraAIGroup
 		
 		writer.WriteInt(m_iDescriptionAuthorID);
 		writer.WriteInt(m_iNameAuthorID);
+		writer.WriteInt(m_iMaxMembers);
 		
 		//do rpcs for players join/leave
 		//add invokers for players join/leave
@@ -1737,7 +2015,17 @@ class SCR_AIGroup: ChimeraAIGroup
 		
 		reader.ReadString(m_sCustomDescription);
 		reader.ReadString(m_sCustomName);
-		reader.ReadString(m_sGroupFlag);
+		
+		if (!m_UiInfo)
+		 m_UiInfo = new SCR_AIGroupUIInfo();
+		
+		string flag;
+		reader.ReadString(flag);
+		m_UiInfo.SetGroupFlag(flag);
+		
+		bool isFromImageSet;
+		reader.ReadBool(isFromImageSet);
+		m_UiInfo.SetFlagIsFromImageSet(isFromImageSet);
 		
 		RplId groupID;
 		reader.ReadRplId(groupID);
@@ -1747,6 +2035,7 @@ class SCR_AIGroup: ChimeraAIGroup
 		
 		reader.ReadInt(m_iDescriptionAuthorID);
 		reader.ReadInt(m_iNameAuthorID);
+		reader.ReadInt(m_iMaxMembers);
 		
 		return true;
 	}

@@ -175,7 +175,7 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 		{
 			SCR_BaseEditorAttribute attribute = m_PrefabData.GetAttribute(attributeId);
 			
-			if (GetIsAttributeDuplicate(attribute.Type()))
+			if (!attribute.BoolAllowDuplicate() && GetIsAttributeDuplicate(attribute.Type()))
 			{
 				Print(string.Format("Trying to add editor attribute of type '%1' but there is already an attribute of the same type", attribute.Type()), LogLevel.ERROR);
 				continue;
@@ -221,7 +221,7 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 			SCR_BaseEditorAttributeVar var = attributesVars[i];
 			EEditorAttributeMultiSelect attributeMultiSelect = attributesMultiSelect[i];
 			
-			if (GetIsAttributeDuplicate(attribute.Type()))
+			if (!attribute.BoolAllowDuplicate() && GetIsAttributeDuplicate(attribute.Type()))
 			{
 				Print(string.Format("Trying to add editor attribute of type '%1' but there is already an attribute of the same type", attribute.Type()), LogLevel.ERROR);
 				continue;
@@ -641,9 +641,35 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 	} 
 	
 	/*!
+	Get list of all attributes of given type (or inherents from type)
+	\param type Class of attribute
+	\param[out] list of attributes of type
+	\param includedInherent If true will also get inherent classes else will only get the attributes of given type
+	\param ignoreAttribute Add if a given attribute should be ignored
+	\return Count of the found attributes
+	*/
+	int GetActiveAttributesOfType(typename type, notnull out array<SCR_BaseEditorAttribute> attributes, bool includedInherent = true, SCR_BaseEditorAttribute ignoreAttribute = null)
+	{		
+		attributes.Clear();
+		
+		if (!m_aEditedAttributes || m_aEditedAttributes.IsEmpty())
+			return 0; 
+		
+		foreach (SCR_BaseEditorAttribute attributeEntry: m_aEditedAttributes)
+		{
+			if (((includedInherent && attributeEntry.Type().IsInherited(type)) || (!includedInherent && attributeEntry.Type() == type)) && attributeEntry != ignoreAttribute)
+			{
+				attributes.Insert(attributeEntry);
+			}
+		}
+		
+		return attributes.Count();
+	} 
+	
+	/*!
 	Gets the attribute in the atribute window
 	\param type Class of attribute
-	\para[out] attribute attribute to get
+	\param[out] attribute attribute to get
 	\return bool if the class is succesfully found
 	*/
 	bool GetActiveAttribute(typename type, out SCR_BaseEditorAttribute attribute)

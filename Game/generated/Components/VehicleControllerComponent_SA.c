@@ -23,10 +23,18 @@ class VehicleControllerComponent_SA: CompartmentControllerComponent
 	//! Try to start the engine with the chance of getting the engine not started based on engine startup chance.
 	proto external void TryStartEngine();
 	/*!
-	Start the engine directly without any chance of startup involved.
+	Issue a start engine input request
 	\return Returns true if the engine is started otherwise false.
 	*/
 	proto external bool StartEngine();
+	/*!
+	Forcibly starts the engine without any delay, only meant for cinematics, not to be used in any game logic!
+	*/
+	proto external void ForceStartEngine();
+	/*!
+	Forcibly stops the engine without any delay, only meant for cinematics, not to be used in any game logic!
+	*/
+	proto external void ForceStopEngine();
 	/*!
 	Stop the engine.
 	\param playDriverAnimation The driver should play the animation or not.

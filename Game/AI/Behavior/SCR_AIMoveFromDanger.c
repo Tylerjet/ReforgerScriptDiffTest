@@ -20,7 +20,7 @@ class SCR_AIMoveFromDangerBehavior : SCR_AIBehaviorBase
 	//-----------------------------------------------------------------------------------------------------
 	void SCR_AIMoveFromDangerBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
 	{
-		m_fPriority = PRIORITY_BEHAVIOR_MOVE_FROM_DANGER;
+		SetPriority(PRIORITY_BEHAVIOR_MOVE_FROM_DANGER);
 		InitParameters(dangerEntity, dangerPos);
 				
 		if (dangerEntity)
@@ -48,7 +48,7 @@ class SCR_AIMoveFromUnknownFire : SCR_AIMoveFromDangerBehavior
 	//-----------------------------------------------------------------------------------------------------
 	void SCR_AIMoveFromUnknownFire(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
 	{
-		m_fPriority = PRIORITY_BEHAVIOR_MOVE_FROM_UNKNOWN_FIRE;
+		SetPriority(PRIORITY_BEHAVIOR_MOVE_FROM_UNKNOWN_FIRE);
 		m_Stance.m_Value = ECharacterStance.STAND;
 		m_MovementType.m_Value = EMovementType.SPRINT;
 		m_bIsInterruptable = false;
@@ -57,7 +57,7 @@ class SCR_AIMoveFromUnknownFire : SCR_AIMoveFromDangerBehavior
 	}
 	
 	//-----------------------------------------------------------------------------------------------------
-	override float Evaluate()
+	override float CustomEvaluate()
 	{
 		// This behavior is started by the fact that we don't have a current target,
 		// so it also ends when we have selected a target
@@ -67,7 +67,7 @@ class SCR_AIMoveFromUnknownFire : SCR_AIMoveFromDangerBehavior
 			return 0;
 		}
 			
-		return m_fPriority;
+		return GetPriority();
 	}
 }
 
@@ -78,7 +78,7 @@ class SCR_AIMoveFromGrenadeBehavior : SCR_AIMoveFromDangerBehavior
 	{
 		m_sBehaviorTree = "{478811D2295EAF3E}AI/BehaviorTrees/Chimera/Soldier/MoveFromDanger_Grenade.bt";
 		m_MovementType.m_Value = EMovementType.SPRINT;
-		m_fPriority = PRIORITY_BEHAVIOR_MOVE_FROM_DANGER;
+		SetPriority(PRIORITY_BEHAVIOR_MOVE_FROM_DANGER);
 	}
 }
 
@@ -88,7 +88,7 @@ class SCR_AIMoveFromIncomingVehicleBehavior : SCR_AIMoveFromDangerBehavior
 	void SCR_AIMoveFromIncomingVehicleBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
 	{
 		m_sBehaviorTree = "{2488649728730886}AI/BehaviorTrees/Chimera/Soldier/MoveFromDanger_Vehicle.bt";
-		m_fPriority = PRIORITY_BEHAVIOR_MOVE_FROM_DANGER;
+		SetPriority(PRIORITY_BEHAVIOR_MOVE_FROM_DANGER);
 		m_MovementType.m_Value = EMovementType.SPRINT;
 	}
 }
@@ -99,6 +99,6 @@ class SCR_AIMoveFromVehicleHornBehavior : SCR_AIMoveFromDangerBehavior
 	void SCR_AIMoveFromVehicleHornBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
 	{
 		m_sBehaviorTree = "{10A3DFFBC3629A79}AI/BehaviorTrees/Chimera/Soldier/MoveFromDanger_VehicleHorn.bt";
-		m_fPriority = PRIORITY_BEHAVIOR_MOVE_FROM_VEHICLE_HORN;
+		SetPriority(PRIORITY_BEHAVIOR_MOVE_FROM_VEHICLE_HORN);
 	}
 }

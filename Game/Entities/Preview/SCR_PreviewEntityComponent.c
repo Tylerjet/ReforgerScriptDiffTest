@@ -29,7 +29,7 @@ class SCR_PreviewEntityComponentClass: ScriptComponentClass
 			{
 				entryCopy = new SCR_BasePreviewEntry();
 				entryCopy.CopyFrom(m_aEntries[i]);
-				entryCopy.m_iParentID += entry.m_iParentID + 1;
+				//entryCopy.m_iParentID += entry.m_iParentID + 1;
 				outEntries.Insert(entryCopy);
 			}	
 		}
@@ -95,11 +95,11 @@ class SCR_PreviewEntityComponent: ScriptComponent
 		
 		array<ref SCR_BasePreviewEntry> entries = {};
 		SCR_PrefabPreviewEntity.GetPreviewEntries(entitySource, entries, flags: EPreviewEntityFlag.IGNORE_PREFAB);
-		BaseContainer entryContainer;
 		for (int i = 0, count = entries.Count(); i < count; i++)
 		{
 			if (api.CreateObjectArrayVariableMember(entitySource, {ContainerIdPathEntry("SCR_PreviewEntityComponent")}, "m_aEntries", "SCR_BasePreviewEntry", i))
 			{
+				entries[i].Log(i);
 				entries[i].SaveToContainer(api, entitySource, {ContainerIdPathEntry("SCR_PreviewEntityComponent"), ContainerIdPathEntry("m_aEntries", i)});
 			}
 		}

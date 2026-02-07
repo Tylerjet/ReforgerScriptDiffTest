@@ -29,7 +29,6 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 	protected SCR_CharacterBloodHitZone				m_pBloodHZ;
 	private bool m_bLocalPlayerOutsideCharacter;
 	protected ChimeraCharacter						m_pCharacterEntity;
-	protected SCR_HUDManagerComponent				m_LocalHudManager;
 
 	protected bool m_bBleedingEffect;
 	protected bool m_bIsBleeding;
@@ -38,13 +37,6 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStartDraw(IEntity owner)
 	{
-	 	m_pCharacterEntity = ChimeraCharacter.Cast(owner);
-		
-		m_LocalHudManager = SCR_HUDManagerComponent.Cast(m_PlayerController.FindComponent(SCR_HUDManagerComponent));
-		
-		if (m_LocalHudManager)
-			m_LocalHudManager.GetSceneBrightnessChangedInvoker().Insert(UpdateOpacity);
-		
 		m_wBloodEffect1 = ImageWidget.Cast(m_wRoot.FindAnyWidget("BloodVignette1"));
 		m_wBloodEffect2 = ImageWidget.Cast(m_wRoot.FindAnyWidget("BloodVignette2"));
 		m_wBlackOut = ImageWidget.Cast(m_wRoot.FindAnyWidget("BlackOut"));
@@ -58,10 +50,6 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 		m_pCharacterEntity = ChimeraCharacter.Cast(to);
 		if (!m_pCharacterEntity)
 			return;
-		
-		// In the case adaptive opacity will not work, this failsafe will ensure bleeding effect is still visible
-		if (!m_LocalHudManager)
-			UpdateOpacity(0.9,0.9,0.9);
 		
 		m_pDamageManager = SCR_CharacterDamageManagerComponent.Cast(m_pCharacterEntity.GetDamageManager());
 		if (!m_pDamageManager)
@@ -123,18 +111,26 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	void CreateEffectOverTime(bool repeat)
 	{
-		if (!m_wBloodEffect1 || !m_wBloodEffect2)
+		if (!m_wBloodEffect1 || !m_wBloodEffect2 || !m_pBloodHZ)
 			return;
 		
-		float effectStrength1 = 1;
+		float effectStrength = 1;
+		const float REDUCEDSTRENGTH = 0.7;
+		bool playHeartBeat = true; 
+		
+		if (m_pBloodHZ.GetDamageOverTime(EDamageType.BLEEDING) < 5)
+		{
+			effectStrength *= REDUCEDSTRENGTH;
+			playHeartBeat = false;
+		}
 	
 		m_wBloodEffect1.SetSaturation(1);
 		m_wBloodEffect2.SetSaturation(1);
 		
 		if (m_iEffectNo == 1)
 		{
-			AnimateWidget.Opacity(m_wBloodEffect1, effectStrength1, BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION);
-			AnimateWidget.AlphaMask(m_wBloodEffect1, effectStrength1 * 0.5, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
+			AnimateWidget.Opacity(m_wBloodEffect1, effectStrength, BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION);
+			AnimateWidget.AlphaMask(m_wBloodEffect1, effectStrength * 0.5, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
 			AnimateWidget.Opacity(m_wBloodEffect2, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_2_DURATION);
 			AnimateWidget.AlphaMask(m_wBloodEffect2, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_2_DURATION);
 		}
@@ -142,18 +138,15 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 		{
 			AnimateWidget.Opacity(m_wBloodEffect1, 0, BLEEDINGEFFECT_OPACITY_FADEOUT_2_DURATION);
 			AnimateWidget.AlphaMask(m_wBloodEffect1, 0, BLEEDINGEFFECT_PROGRESSION_FADEOUT_2_DURATION);
-			AnimateWidget.Opacity(m_wBloodEffect2, effectStrength1, BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION);
-			AnimateWidget.AlphaMask(m_wBloodEffect2, effectStrength1 * 0.5, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
+			AnimateWidget.Opacity(m_wBloodEffect2, effectStrength, BLEEDINGEFFECT_OPACITY_FADEIN_1_DURATION);
+			AnimateWidget.AlphaMask(m_wBloodEffect2, effectStrength * 0.5, BLEEDINGEFFECT_PROGRESSION_FADEIN_1_DURATION);
 		}
 
-		BlackoutEffect(1);
+		BlackoutEffect(effectStrength);
 		
 		// Play heartbeat sound
-		if (!m_bLocalPlayerOutsideCharacter && m_pDamageManager.GetDefaultHitZone().GetDamageState() != EDamageState.DESTROYED)
+		if (!m_bLocalPlayerOutsideCharacter && playHeartBeat && m_pDamageManager.GetDefaultHitZone().GetDamageState() != EDamageState.DESTROYED)
 		{
-			if (!m_pBloodHZ)
-				return;
-			
 			SCR_UISoundEntity.SetSignalValueStr("BloodLoss", 1 - m_pBloodHZ.GetHealthScaled());
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INJURED_PLAYERCHARACTER);
 		}

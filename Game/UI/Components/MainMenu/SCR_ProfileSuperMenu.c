@@ -1,8 +1,6 @@
 //------------------------------------------------------------------------------------------------
 class SCR_ProfileSuperMenu : SCR_SuperMenuBase
 {
-	const string TERMS_OF_SERVICE_URL = "https:\/\/www.bohemia.net/privacy-policy";
-	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
@@ -34,6 +32,6 @@ class SCR_ProfileSuperMenu : SCR_SuperMenuBase
 	//------------------------------------------------------------------------------------------------
 	void OnTos()
 	{
-		GetGame().GetPlatformService().OpenBrowser(TERMS_OF_SERVICE_URL);
+		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_PrivacyPolicy"));
 	}
 };

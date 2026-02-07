@@ -16,9 +16,9 @@ class DSGameConfig: JsonApiStruct
 	void DSGameConfig()
 	{
 		RegV("name");
-		RegV("maxPlayers");
 		RegV("password");
-		RegV("passwordAdmin");
+		RegV("passwordAdmin");	
+		RegV("maxPlayers");
 		RegV("scenarioId");
 		RegV("gameProperties");
 		RegV("mods");
@@ -84,10 +84,8 @@ class DSConfig: JsonApiStruct
 	{		
 		RegV("bindAddress");
 		RegV("bindPort");
-
 		RegV("publicAddress");
-		RegV("publicPort");
-		
+		RegV("publicPort");		
 		RegV("game");
 	}
 }

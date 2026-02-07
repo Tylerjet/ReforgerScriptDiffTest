@@ -171,7 +171,7 @@ class SCR_InvCallBack : ScriptedInventoryOperationCallback
 			}
 		}
 		
-		if (!m_bShouldEquip && m_pStorageTo && m_pStorageTo.Type() != SCR_InventoryStorageLootUI)
+		if (!m_bShouldEquip && m_pStorageTo && m_pStorageTo.IsInherited(SCR_InventoryStorageLootUI))
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
 	}
 	
@@ -213,6 +213,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected SCR_InventoryAttachmentStorageUI				m_pAttachmentStorageUI			= null;
 
 	protected SCR_InventoryItemInfoUI						m_pItemInfo						= null;
+	protected SCR_InventoryDamageInfoUI						m_pDamageInfo					= null;
 	protected SCR_InventoryStorageBaseUI					m_pActiveStorageUI				= null;
 	protected SCR_InventoryStorageBaseUI					m_pActiveHoveredStorageUI		= null;
 	protected SCR_InventoryStorageBaseUI					m_pPrevActiveStorageUI			= null;
@@ -235,10 +236,15 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	const string 											GADGETS_STORAGE_LAYOUT 	= "{265189B87ED5CD10}UI/layouts/Menus/Inventory/InventoryGadgetsPanel.layout";
 	const string 											STORAGES_LIST_LAYOUT 	= "{FC579324F5E4B3A3}UI/layouts/Menus/Inventory/InventoryCharacterGrid.layout";
 	const string 											ITEM_INFO			 	= "{AE8B7B0A97BB0BA8}UI/layouts/Menus/Inventory/InventoryItemInfo.layout";
+	const string 											DAMAGE_INFO			 	= "{55AFA256E1C20FB2}UI/layouts/Menus/Inventory/InventoryDamageInfo.layout";
 	const string											ACTION_LAYOUT 			= "{81BB7785A3987196}UI/layouts/Menus/Inventory/InventoryActionNew.layout";
 
 	const ResourceName										HITZONE_CONTAINER_LAYOUT= "{36DB099B4CDF8FC2}UI/layouts/Menus/Inventory/Medical/HitZonePointContainer.layout";
 
+	[Attribute("{01E150D909447632}Configs/Damage/DamageStateConfig.conf", desc: "Config to get visual data from", params: "conf class=SCR_DamageStateConfig")]
+	protected ref SCR_DamageStateConfig m_DamageStateConfig;
+	
+	
 	protected EStateMenuStorage								m_EStateMenuStorage = EStateMenuStorage.STATE_IDLE; // is this useful for anything?
 	protected EStateMenuItem								m_EStateMenuItem = EStateMenuItem.STATE_IDLE;
 	protected string 										m_sFSMStatesNames[10]={"init", "idle", "item selected", "storage selected", "STATE_STORAGE_OPENED", "storage unfolded", "move started", "move finished", "closing", "STATE_UNKNOWN" };
@@ -291,11 +297,15 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected Widget											m_wAttachmentPointsContainer;
 	protected ref array<SCR_InventoryHitZonePointContainerUI> 	m_aHitZonePoints = {};
 
-	protected SCR_InventoryHitZonePointUI 						m_pBleedingHandlerGlobal;
+	protected SCR_InventoryHitZonePointUI 						m_bleedingHandlerGlobal;
+	protected SCR_InventoryHitZonePointUI 						m_fractureHandlerGlobal;
+	protected SCR_CountingTimerUI		 						m_morphineTimerHandlerGlobal;
+	protected SCR_CountingTimerUI		 						m_salineTimerHandlerGlobal;
 
 	protected SCR_CharacterDamageManagerComponent				m_CharDamageManager;
 	protected const int											CHARACTER_HITZONES_COUNT = 7;
-
+	protected int												m_iHitzonesUICount = 0;
+	
 	protected SCR_InventorySpinBoxComponent 					m_AttachmentSpinBox;
 
 	//------------------------------------------------------------------------------------------------
@@ -305,12 +315,24 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			m_AttachmentSpinBox.ClearAll();
 
 		Widget bleeding = m_widget.FindAnyWidget("BleedingGlobal");
+		Widget fracture = m_widget.FindAnyWidget("FractureGlobal");
+		Widget morphineTimer = m_widget.FindAnyWidget("MorphineTimer");
+		Widget salineTimer = m_widget.FindAnyWidget("SalineTimer");
 
 		m_CharController = SCR_CharacterControllerComponent.Cast(m_Player.GetCharacterController());
 		m_CharDamageManager = SCR_CharacterDamageManagerComponent.Cast(m_Player.GetDamageManager());
 		if (bleeding)
-			m_pBleedingHandlerGlobal = SCR_InventoryHitZonePointUI.Cast(bleeding.FindHandler(SCR_InventoryHitZonePointUI));
-
+			m_bleedingHandlerGlobal = SCR_InventoryHitZonePointUI.Cast(bleeding.FindHandler(SCR_InventoryHitZonePointUI));
+		
+		if (fracture)
+			m_fractureHandlerGlobal = SCR_InventoryHitZonePointUI.Cast(fracture.FindHandler(SCR_InventoryHitZonePointUI));
+		
+		if (morphineTimer)
+			m_morphineTimerHandlerGlobal = SCR_CountingTimerUI.Cast(morphineTimer.FindHandler(SCR_CountingTimerUI));
+		
+		if (salineTimer)
+			m_salineTimerHandlerGlobal = SCR_CountingTimerUI.Cast(salineTimer.FindHandler(SCR_CountingTimerUI));
+		
 		if (!m_wAttachmentPointsContainer)
 			return;
 
@@ -324,8 +346,6 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			m_aHitZonePoints.Insert(point);
 			string hzName = point.GetHitZoneName();
 		}
-		
-		GetGame().GetCallqueue().CallLater(UpdateCharacterPreview, 50, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -333,8 +353,17 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		if (m_AttachmentSpinBox)
 			m_AttachmentSpinBox.ClearAll();
-		if (m_pBleedingHandlerGlobal)
-			m_pBleedingHandlerGlobal.GetRootWidget().SetVisible(false);
+		if (m_bleedingHandlerGlobal)
+			m_bleedingHandlerGlobal.GetRootWidget().SetVisible(false);		
+		
+		if (m_fractureHandlerGlobal)
+			m_fractureHandlerGlobal.GetRootWidget().SetVisible(false);	
+		
+		if (m_morphineTimerHandlerGlobal)
+			m_morphineTimerHandlerGlobal.GetRootWidget().SetVisible(false);
+
+		if (m_salineTimerHandlerGlobal)
+			m_salineTimerHandlerGlobal.GetRootWidget().SetVisible(false);
 
 		foreach (SCR_InventoryHitZonePointContainerUI point : m_aHitZonePoints)
 		{
@@ -350,7 +379,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		SCR_CharacterBloodHitZone charBloodHZ = SCR_CharacterBloodHitZone.Cast(m_CharDamageManager.GetBloodHitZone());
 		charBloodHZ.GetOnDamageStateChanged().Insert(OnDamageStateChanged);
+
 		m_CharDamageManager.GetOnDamageOverTimeRemoved().Insert(OnDamageStateChanged);
+		m_CharDamageManager.GetOnDamageOverTimeAdded().Insert(OnDamageStateChanged);
 		m_CharDamageManager.GetOnDamageStateChanged().Insert(OnDamageStateChanged);
 		OnDamageStateChanged();
 	}
@@ -386,13 +417,30 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		SCR_CharacterBloodHitZone charBloodHZ = SCR_CharacterBloodHitZone.Cast(m_CharDamageManager.GetBloodHitZone());
 
-		bool bleedingVisible = m_CharDamageManager.IsDamagedOverTime(EDamageType.BLEEDING);
+		bool bleedingVisible = (charBloodHZ.GetDamageState() != EDamageState.UNDAMAGED);
+		float bleedingAmount = Math.InverseLerp(
+			charBloodHZ.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS),
+			charBloodHZ.GetDamageStateThreshold(ECharacterBloodState.UNDAMAGED),
+			charBloodHZ.GetHealthScaled());
 
-		if (m_pBleedingHandlerGlobal)
+		if (m_bleedingHandlerGlobal)
 		{
-			m_pBleedingHandlerGlobal.GetRootWidget().SetVisible(bleedingVisible);
-			m_pBleedingHandlerGlobal.UpdateRegen();
+			m_bleedingHandlerGlobal.GetRootWidget().SetVisible(bleedingVisible);
+			m_bleedingHandlerGlobal.SetBloodLevelProgress(bleedingAmount);
+		}		
+		
+		if (m_fractureHandlerGlobal)
+			m_fractureHandlerGlobal.GetRootWidget().SetVisible(m_CharDamageManager.GetMovementDamage() > 0);
+		
+		if (m_morphineTimerHandlerGlobal)
+		{
+			ScriptedHitZone headHZ = ScriptedHitZone.Cast(m_CharDamageManager.GetHeadHitZone());
+			if (headHZ)
+				m_morphineTimerHandlerGlobal.GetRootWidget().SetVisible(headHZ.GetDamageOverTime(EDamageType.HEALING) < 0);		
 		}
+		
+		if (m_salineTimerHandlerGlobal)
+			m_salineTimerHandlerGlobal.GetRootWidget().SetVisible(charBloodHZ.GetDamageOverTime(EDamageType.HEALING) < 0);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -497,8 +545,18 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateCharacterPreview()
 	{
+		if (!m_wPlayerRender)
+			return;
+		
+		if (m_iHitzonesUICount > 10)
+		{
+			m_iHitzonesUICount = 0;
+			return;
+		}
+		
 		m_pPreviewManager.SetPreviewItem(m_wPlayerRender, m_Player, m_PlayerRenderAttributes);
-		for (int i = 0; i < m_aHitZonePoints.Count(); ++i)
+		
+		for (int i, count = m_aHitZonePoints.Count(); i < count; i++)
 		{
 			SCR_InventoryHitZonePointContainerUI hp = m_aHitZonePoints[i];
 			if (!hp)
@@ -507,10 +565,25 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 			vector transform[4];
 			Math3D.MatrixIdentity4(transform);
+			float xOffset = 0;
+			if (hp.GetHitZoneGroup() == ECharacterHitZoneGroup.HEAD)
+				xOffset = -40;
+
 			vector screenPos;
 			if (m_wPlayerRender.TryGetItemNodePositionInWidgetSpace(id, transform, screenPos))
-				FrameSlot.SetPos(hp.GetRootWidget(), screenPos[0], screenPos[1]);
+			{
+ 				FrameSlot.SetPos(hp.GetRootWidget(), screenPos[0] + xOffset, screenPos[1]);
+			}
+			else
+			{
+				//Calllater is needed to avoid calling this method too often
+				GetGame().GetCallqueue().CallLater(UpdateCharacterPreview, 50, false);
+				m_iHitzonesUICount++;
+				return;
+			}
 		}
+		
+		m_iHitzonesUICount = 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -617,6 +690,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		}
 
 		m_AttachmentSpinBox = SCR_InventorySpinBoxComponent.Cast(w.FindHandler(SCR_InventorySpinBoxComponent));
+		m_AttachmentSpinBox.m_OnChanged.Insert(NavigationBarUpdateGamepad);
 	}
 
 
@@ -740,11 +814,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				m_CharController = SCR_CharacterControllerComponent.Cast(m_Player.GetCharacterController());
 				if (m_CharController)
 				{
-					m_CharController.m_OnPlayerDeath.Insert(Action_CloseInventory);
-					if (m_CharController.IsDead() || m_CharController.IsUnconscious())
-					{
+					m_CharController.m_OnLifeStateChanged.Insert(Action_CloseInventory);
+					if (m_CharController.GetLifeState() != ECharacterLifeState.ALIVE)
 						return false;
-					}
 				}
 
 				//Inventory Manager
@@ -926,6 +998,13 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 					return;
 				}
 				Action_SwapItems(m_pSelectedSlotUI, m_pFocusedSlotUI);
+			} break;
+			
+			case "Inventory_DetachItem":
+			{
+				SCR_InventoryHitZonePointContainerUI hzContainer = SCR_InventoryHitZonePointContainerUI.Cast(m_AttachmentSpinBox.GetCurrentItemData());
+				if (hzContainer)
+					hzContainer.RemoveTourniquetFromSlot();
 			} break;
 		}
 	}
@@ -1381,6 +1460,73 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 		m_pItemInfo.Move( GetGame().GetWorkspace().DPIUnscale( iMouseX ), GetGame().GetWorkspace().DPIUnscale( iMouseY ) );
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ShowDamageInfo( string sName, SCR_InventoryDamageUIInfo damageInfo)
+	{
+		if (!m_pDamageInfo)
+ 	 	{
+		 	Widget infoWidget = GetGame().GetWorkspace().CreateWidgets(DAMAGE_INFO, m_widget);
+			if ( !infoWidget )
+				return;
+		
+			infoWidget.AddHandler( new SCR_InventoryDamageInfoUI() );
+			m_pDamageInfo = SCR_InventoryDamageInfoUI.Cast( infoWidget.FindHandler( SCR_InventoryDamageInfoUI ) );
+		}
+	
+		if (!m_pDamageInfo)
+ 	 		return;
+
+		Widget w = WidgetManager.GetWidgetUnderCursor();
+		if (!w && m_pFocusedSlotUI)
+			w = m_pFocusedSlotUI.GetButtonWidget();
+
+		m_pDamageInfo.Show( 0.6, w, m_bIsUsingGamepad );
+		m_pDamageInfo.SetName( sName );
+		
+		if (damageInfo)
+		{
+			m_pDamageInfo.SetDamageStateVisible(damageInfo.m_bDamageIconVisible, damageInfo.m_bDamageRegenerating, damageInfo.m_sDamageIntensity, damageInfo.m_sDamageText);
+			m_pDamageInfo.SetBleedingStateVisible(damageInfo.m_bBleedingIconVisible, damageInfo.m_sBleedingText);
+			m_pDamageInfo.SetTourniquetStateVisible(damageInfo.m_bTourniquetIconVisible);
+			m_pDamageInfo.SetSalineBagStateVisible(damageInfo.m_bSalineBagIconVisible);
+			m_pDamageInfo.SetFractureStateVisible(damageInfo.m_bFractureIconVisible, damageInfo.m_bFractureIcon2Visible);
+		}
+
+		int iMouseX, iMouseY;
+
+		float x, y;
+		w.GetScreenPos(x, y);
+
+		float width, height;
+		w.GetScreenSize(width, height);
+
+		float screenSizeX, screenSizeY;
+		GetGame().GetWorkspace().GetScreenSize(screenSizeX, screenSizeY);
+
+		float infoWidth, infoHeight;
+		m_pDamageInfo.GetInfoWidget().GetScreenSize(infoWidth, infoHeight);
+
+		iMouseX = x;
+		iMouseY = y + height;
+		if (x + infoWidth > screenSizeX)
+			iMouseX = screenSizeX - infoWidth - width * 0.5; // offset info if it would go outside of the screen
+
+		m_pDamageInfo.Move( GetGame().GetWorkspace().DPIUnscale( iMouseX ), GetGame().GetWorkspace().DPIUnscale( iMouseY ) );
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool GetDamageInfo()
+	{
+ 	 	Widget infoWidget = GetGame().GetWorkspace().CreateWidgets(DAMAGE_INFO, m_widget);
+		if ( !infoWidget )
+			return false;
+
+		infoWidget.AddHandler( new SCR_InventoryDamageInfoUI() );
+		m_pDamageInfo = SCR_InventoryDamageInfoUI.Cast( infoWidget.FindHandler( SCR_InventoryDamageInfoUI ) );
+		
+		return m_pDamageInfo;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void HideItemInfo()
@@ -1388,6 +1534,14 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if ( !m_pItemInfo )
 			return;
 		m_pItemInfo.Hide();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void HideDamageInfo()
+	{
+		if ( !m_pDamageInfo )
+			return;
+		m_pDamageInfo.Hide();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1530,6 +1684,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 		m_pNavigationBar.SetAllButtonEnabled( false );
 		m_pNavigationBar.SetButtonEnabled( "ButtonClose", true );
+		
+		SCR_InventoryHitZoneUI hzSlot = SCR_InventoryHitZoneUI.Cast(m_pActiveHoveredStorageUI);
+		m_pNavigationBar.SetButtonEnabled("ButtonRemoveTourniquet", (hzSlot && hzSlot.IsTourniquetted()));			
 
 		if ( !m_pFocusedSlotUI )
 			return;
@@ -1543,6 +1700,13 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		m_pNavigationBar.SetButtonEnabled( "ButtonSelect", true );
 		m_pNavigationBar.SetButtonEnabled( "ButtonDrop", m_pFocusedSlotUI.IsDraggable() );
+
+		if (itemComp)
+		{	
+			SCR_ConsumableItemComponent consumableComp = SCR_ConsumableItemComponent.Cast(itemComp.GetOwner().FindComponent(SCR_ConsumableItemComponent));
+			if (consumableComp && consumableComp.GetConsumableEffect() && consumableComp.GetConsumableEffect().CanApplyEffect(m_Player, m_Player))
+				m_pNavigationBar.SetButtonEnabled("ButtonUse");
+		}
 
 		bool flag = m_pFocusedSlotUI.GetStorageUI() == m_pStorageLootUI;
 		m_pNavigationBar.SetButtonEnabled("ButtonPickup", flag);
@@ -1636,6 +1800,13 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_pNavigationBar.SetAllButtonEnabled(false);
 		m_pNavigationBar.SetButtonEnabled("ButtonSelect", true);
 
+		SCR_InventoryHitZoneUI hzSlot = m_AttachmentSpinBox.GetFocusedHZPoint();
+
+		m_pNavigationBar.SetButtonEnabled("ButtonRemoveTourniquet",
+			(hzSlot && hzSlot.IsTourniquetted()) &&
+			m_AttachmentSpinBox.IsFocused()
+		);		
+		
 		if (m_pActiveStorageUI == m_pAttachmentStorageUI)
 		{
 			m_pNavigationBar.SetButtonEnabled("ButtonUse", true);
@@ -1996,16 +2167,6 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			m_pVicinity.ManipulationComplete();
 			m_iVicinityDiscoveryRadius = 0;
 		}
-		
-		/*
-		TODO: enable once the performance issue with invokers is solved in characterdamagemanager
-		if ( m_CharDamageManager )
-			m_CharDamageManager.GetOnDamageStateChanged().Remove( OnDamageStateChanged );
-		*/
-
-		auto playerController = GetGame().GetPlayerController();
-		if (!playerController)
-			return;
 
 		auto menuManager = GetGame().GetMenuManager();
 		auto menu = ChimeraMenuPreset.Inventory20Menu;
@@ -2013,26 +2174,33 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		auto inventoryMenu = menuManager.FindMenuByPreset( menu ); // prototype inventory
 		if (inventoryMenu)
 			menuManager.CloseMenuByPreset( menu );
+		
 		if  (m_PlayerRenderAttributes)
-		{
 			m_PlayerRenderAttributes.ResetDeltaRotation();
-		}
+
 		if (m_Player)
 		{
-			m_CharController = SCR_CharacterControllerComponent.Cast(m_Player.FindComponent(SCR_CharacterControllerComponent));
+			m_CharController = SCR_CharacterControllerComponent.Cast(m_Player.GetCharacterController());
 			if (m_CharController)
-			{
-				m_CharController.m_OnPlayerDeath.Remove(Action_CloseInventory);
-			}
+				m_CharController.m_OnLifeStateChanged.Remove(Action_CloseInventory);
 		}
+		
 		if (m_pCharacterWidgetHelper)
 			m_pCharacterWidgetHelper.Destroy();
+		
 		m_pCharacterWidgetHelper = null;
 
 		HideItemInfo();
+		HideDamageInfo();
+		
 		if ( m_pItemInfo )
 			m_pItemInfo.Destroy();
+		
+		if ( m_pDamageInfo )
+			m_pDamageInfo.Destroy();
+		
 		m_pItemInfo = null;
+		m_pDamageInfo = null;
 
 		if (m_InventoryManager)
 			m_InventoryManager.OnInventoryMenuClosed();
@@ -2217,7 +2385,6 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 						{
 							//m_pFocusedSlotUI.m_iQuickSlotIndex
 							SetItemToQuickSlotDrop();
-							SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CONFIRM);
 						}
 						else
 						{
@@ -2405,8 +2572,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			}
 			else if (pItemToReplace != pItem)
 			{
-				m_InventoryManager.TrySwapItemStorages(pItem, pItemToReplace, m_pCallBack);
-				m_InventoryManager.PlayItemSound(pItem, SCR_SoundEvent.SOUND_EQUIP);
+				if (m_InventoryManager.TrySwapItemStorages(pItem, pItemToReplace, m_pCallBack))
+					m_InventoryManager.PlayItemSound(pItem, SCR_SoundEvent.SOUND_EQUIP);
+				else
+					SCR_UISoundEntity.SoundEvent("SOUND_INV_DROP_ERROR");
+				
 				return;
 			}
 		}
@@ -2414,7 +2584,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		BaseInventoryStorageComponent pStorageToComponent = m_pWeaponStorageComp;
 		
 		if (!m_InventoryManager.TryMoveItemToStorage( pItem, m_pWeaponStorageComp, weaponSlot.GetWeaponSlotIndex(), m_pCallBack ))
-			m_InventoryManager.TryInsertItemInStorage(pItem, m_pWeaponStorageComp, weaponSlot.GetWeaponSlotIndex(), m_pCallBack);
+		{
+			if (!m_InventoryManager.TryInsertItemInStorage(pItem, m_pWeaponStorageComp, weaponSlot.GetWeaponSlotIndex(), m_pCallBack))
+				SCR_UISoundEntity.SoundEvent("SOUND_INV_DROP_ERROR");
+				return;
+		}
 		
 		m_InventoryManager.PlayItemSound(pItem, SCR_SoundEvent.SOUND_EQUIP);
 	}
@@ -2594,6 +2768,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		{
 			m_pCallBack.m_bUpdateSlotOnly = true;
 			m_InventoryManager.TrySpawnPrefabToStorage(pItem.GetPrefabData().GetPrefabName(), null, -1, EStoragePurpose.PURPOSE_ANY, m_pCallBack);
+			m_InventoryManager.PlayItemSound(pItem, SCR_SoundEvent.SOUND_PICK_UP);
 			return;
 		}
 
@@ -2889,10 +3064,38 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		if (m_pFocusedSlotUI)
 		{
+			// TODO: Currently won't work if there are no HitzonePointContainers. (Won't work for saline bag if the player is not injured in any way)
 			SCR_InventoryHitZonePointContainerUI hzContainer = SCR_InventoryHitZonePointContainerUI.Cast(m_AttachmentSpinBox.GetCurrentItemData());
 			if (hzContainer)
 			{
-				hzContainer.GetStorage().OnDrop(m_pFocusedSlotUI);
+				SCR_InventoryHitZoneUI hzStorage = hzContainer.GetStorage();
+				if (!hzStorage)
+					return;
+				
+				IEntity item = m_pFocusedSlotUI.GetInventoryItemComponent().GetOwner();
+				if (!item)
+					return;
+				
+				if (hzStorage.CanApplyItem(item))
+				{
+					hzStorage.OnDrop(m_pFocusedSlotUI);
+				}
+				else
+				{
+					hzContainer = null;
+					hzStorage = null;
+					
+					for (int i = 0, max = m_AttachmentSpinBox.GetNumItems(); i < max; i++)
+					{
+						hzContainer = SCR_InventoryHitZonePointContainerUI.Cast(m_AttachmentSpinBox.GetItemData(i));
+						if (!hzContainer)
+							continue;
+						
+						hzStorage = hzContainer.GetStorage();
+						if (hzStorage && hzStorage.CanApplyItem(item))
+							hzStorage.OnDrop(m_pFocusedSlotUI)
+					}
+				}
 			}
 
 			SCR_InventorySlotGearInspectionUI point = SCR_InventorySlotGearInspectionUI.Cast(m_AttachmentSpinBox.GetCurrentItemData());
@@ -2900,6 +3103,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			{
 				m_pGearInspectionPointUI.SetSlotFocused(point);
 				point.OnDrop(m_pFocusedSlotUI);
+			}
+			
+			if (!hzContainer || !point)
+			{
+				m_pFocusedSlotUI.UseItem(m_Player);
 			}
 		}
 	}
@@ -3160,7 +3368,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return;
 
 		SCR_ConsumableItemComponent consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
-		if (consumable && consumable.GetConsumableEffect().GetDeleteOnUse()) // consumables require different handling
+		if (consumable && consumable.GetConsumableEffect() && consumable.GetConsumableEffect().GetDeleteOnUse()) // consumables require different handling
 		{
 			if (m_wAttachmentStorage && m_pAttachmentStorageUI)
 				m_pAttachmentStorageUI.Refresh();
@@ -3198,6 +3406,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			pContainer.ShowContainerBorder( true );
 		m_pActiveHoveredStorageUI = pContainer;
 		pContainer.SetPagingActive(true);
+		NavigationBarUpdate();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -3274,6 +3483,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		pContainer.ShowContainerBorder( false );
 		m_pActiveHoveredStorageUI = null;
 		pContainer.SetPagingActive(false);
+		NavigationBarUpdate();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -3340,10 +3550,15 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateTotalWeightText()
 	{
-		if (!m_wTotalWeightText || !m_StorageManager)
+		if (!m_wTotalWeightText)
 			return;
-		
-		m_wTotalWeightText.SetText(string.Format("%1 / %2 kg", GetTotalWeight(), m_StorageManager.GetMaxLoad()));
+	
+		float weight = Math.Round(GetTotalWeight() * 100) * 0.01;
+					
+		if (weight <= 0 )
+		 weight = 0;
+					
+		m_wTotalWeightText.SetText(string.Format("%1 kg", weight));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -3456,12 +3671,16 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return;
 		SCR_ItemAttributeCollection pItemAttributes = SCR_ItemAttributeCollection.Cast( pInventoryComponent.GetAttributes() );
 		if ( pItemAttributes && ( pItemAttributes.GetItemSize() != ESlotSize.SLOT_1x1 && pItemAttributes.GetItemSize() != ESlotSize.SLOT_2x1 ) )
-			return; //so far only items with one line are supported ( issue on the UI side )
+		{
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
+			return;
+		}
 		int iSlotIndex = m_pFocusedSlotUI.GetSlotIndex();
 		
 		if (iSlotIndex < WEAPON_SLOTS_COUNT || m_pWeaponStorageComp.Contains(pInventoryComponent.GetOwner()))
 		{
 			ShowQuickSlotStorage();
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
 			return;
 		}
 		
@@ -3469,6 +3688,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if ( pOriginalEntity )
 			m_StorageManager.StoreItemToQuickSlot( pOriginalEntity, m_pSelectedSlotUI.GetSlotIndex() );
 		ShowQuickSlotStorage();
+		
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CONFIRM);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -3506,6 +3727,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		ResetHighlightsOnAvailableStorages();
 	}
 
+	void OnAttachmentSpinboxFocused()
+	{
+		NavigationBarUpdate();	
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	bool IsUsingGamepad()
 	{

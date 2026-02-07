@@ -15,30 +15,26 @@ class SCR_WeaponAction : ScriptedUserAction
 
 	//! Description of action to toggle on
 	[Attribute( uiwidget: UIWidgets.Auto, defvalue: "#AR-UserAction_State_On", desc: "Description of action to toggle on")]
-	private string m_sActionStateOn;
+	protected string m_sActionStateOn;
 
 	//! Description of action to toggle off
 	[Attribute( uiwidget: UIWidgets.Auto, defvalue: "#AR-UserAction_State_Off", desc: "Description of action to toggle off")]
-	private string m_sActionStateOff;
+	protected string m_sActionStateOff;
 
 	[Attribute("1", UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(EWeaponActionType) )]
-	EWeaponActionType m_WeaponActionType;
+	protected EWeaponActionType m_WeaponActionType;
 
-	WeaponAnimationComponent m_WeaponAnimComp = null;
+	protected BaseWeaponComponent m_Weapon;
 
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
-		auto weaponComp = WeaponComponent.Cast(pOwnerEntity.FindComponent(WeaponComponent));
-		if (weaponComp)
-		{
-			m_WeaponAnimComp = WeaponAnimationComponent.Cast(GetOwner().FindComponent(WeaponAnimationComponent));
-		}
+		m_Weapon = WeaponComponent.Cast(pOwnerEntity.FindComponent(WeaponComponent));
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
-		if (!m_WeaponAnimComp)
+		if (!m_Weapon)
 			return false;
 
 		ChimeraCharacter character = ChimeraCharacter.Cast(user);
@@ -46,22 +42,14 @@ class SCR_WeaponAction : ScriptedUserAction
 			return false;
 
 		CharacterControllerComponent controller = character.GetCharacterController();
-		if(!controller)
+		if (!controller)
 			return false;
 
-		if(!controller.GetInspect())
-			return false;
-
-		BaseWeaponManagerComponent weaponManager = controller.GetWeaponManagerComponent();
-		if(!weaponManager)
-			return false;
-
-		BaseWeaponComponent weaponComp = controller.GetWeaponManagerComponent().GetCurrentWeapon();
-		if(!weaponComp || weaponComp.GetOwner() != GetOwner())
+		if (!controller.GetInspect())
 			return false;
 
 		if (m_WeaponActionType == EWeaponActionType.Bipod)
-			return m_WeaponAnimComp.HasBipod();
+			return m_Weapon && m_Weapon.HasBipod();
 
 		return true;
 	}
@@ -76,10 +64,12 @@ class SCR_WeaponAction : ScriptedUserAction
 	//! Current state of the feature
 	bool GetState()
 	{
-		if (!m_WeaponAnimComp)
+		if (!m_Weapon)
 			return false;
+
 		if (m_WeaponActionType == EWeaponActionType.Bipod)
-			return m_WeaponAnimComp.GetBipod();
+			return m_Weapon.GetBipod();
+
 		return false;
 	}
 
@@ -87,13 +77,11 @@ class SCR_WeaponAction : ScriptedUserAction
 	//! Script to change state of the feature
 	void SetState(bool enable)
 	{
-		if (!m_WeaponAnimComp)
+		if (!m_Weapon)
 			return;
 
 		if (m_WeaponActionType == EWeaponActionType.Bipod)
-		{
-			m_WeaponAnimComp.SetBipod(enable);
-		}
+			m_Weapon.SetBipod(enable);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -134,6 +122,12 @@ class SCR_WeaponAction : ScriptedUserAction
 		}
 		else
 			outName = prefix;
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool HasLocalEffectOnlyScript()
+	{
 		return true;
 	}
 };

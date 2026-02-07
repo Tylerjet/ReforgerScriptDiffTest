@@ -24,12 +24,12 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	//! Get consumable type
 	//! \return consumable type
-	EConsumableType GetConsumableType()
+	SCR_EConsumableType GetConsumableType()
 	{
 		if (m_ConsumableEffect)
 			return m_ConsumableEffect.m_eConsumableType;
 
-		return EConsumableType.None;
+		return SCR_EConsumableType.NONE;
 	}
 	
 	//------------------------------------------------------------------------------------------------

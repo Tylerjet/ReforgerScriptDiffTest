@@ -12,7 +12,12 @@ class SCR_NotificationEditableEntityTargetPlayer : SCR_NotificationPlayerTargetP
 		int entityID, targetPlayerID;
 		data.GetParams(entityID, targetPlayerID);
 
-		data.SetNotificationTextEntries(GetEditableEntityName(entityID),GetPlayerName(targetPlayerID));
+		string entityName, targetPlayerName;
+		data.GetNotificationTextEntries(entityName, targetPlayerName);
+		if (!GetEditableEntityName(entityID, entityName) || !GetPlayerName(targetPlayerID, targetPlayerName))
+			return string.Empty;
+		
+		data.SetNotificationTextEntries(entityName, targetPlayerName);
 		return super.GetText(data);
 	}
 	

@@ -11,7 +11,7 @@ typedef ScriptInvokerBase<SpawnAreaCharacterEventDelegate> SpawnAreaEvent;
 //! Callback delegate raised when the area is occupied by at least one enemy character.
 void SpawnAreaAlertEventDelegate(SCR_SpawnArea area, array<IEntity> enemies);
 typedef func SpawnAreaAlertEventDelegate;
-typedef ScriptInvokerBase<SpawnAreaCharacterEventDelegate> SpawnAreaAlertEvent;
+typedef ScriptInvokerBase<SpawnAreaAlertEventDelegate> SpawnAreaAlertEvent;
 
 //------------------------------------------------------------------------------------------------
 /*!

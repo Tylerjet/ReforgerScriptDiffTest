@@ -7,7 +7,7 @@ class SCR_AntennaServicePointComponent : SCR_ServicePointComponent
 	protected BaseRadioComponent m_RadioControl;
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnFactionChanged(Faction faction)
+	override void OnFactionChanged(FactionAffiliationComponent owner, Faction previousFaction, Faction faction)
 	{
 		super.OnFactionChanged(faction);
 		
@@ -47,6 +47,7 @@ class SCR_AntennaServicePointComponent : SCR_ServicePointComponent
 		super.OnPostInit(owner);
 		
 		m_RadioControl = BaseRadioComponent.Cast(owner.FindComponent(BaseRadioComponent));
+		m_RadioControl.SetPower(true);
 
 		if (!m_RadioControl)
 			Print("SCR_AntennaServicePointComponent: Owner is missing BaseRadioComponent!", LogLevel.ERROR);

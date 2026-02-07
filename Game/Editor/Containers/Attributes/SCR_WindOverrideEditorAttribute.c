@@ -68,12 +68,12 @@ class SCR_WindOverrideEditorAttribute : SCR_BaseEditorAttribute
 				if (!weatherManager.GetWindDirectionInfoFromIndex(windDirectionVar.GetInt(), windDirectionInfo))
 					return;
 				
-				weatherTransitionManager.SetWindPreview(true, windSpeedVar.GetFloat(),  windDirectionInfo.GetWindDirectionValue());
+				weatherManager.SetWindPreview(true, windSpeedVar.GetFloat(),  windDirectionInfo.GetWindDirectionValue());
 			}
 			//Override false so disable preview
 			else if (weatherTransitionManager.IsPreviewingWind())
 			{
-				weatherTransitionManager.SetWindPreview(false);
+				weatherManager.SetWindPreview(false);
 			}
 			
 			return;
@@ -81,7 +81,7 @@ class SCR_WindOverrideEditorAttribute : SCR_BaseEditorAttribute
 		
 		//Cancel preview
 		if (weatherTransitionManager && weatherTransitionManager.IsPreviewingWind())
-			weatherTransitionManager.SetWindPreview(false);
+			weatherManager.SetWindPreview(false);
 		
 		weatherManager.DelayedSetWindOverride(var.GetBool(), playerID);
 	}
@@ -105,7 +105,7 @@ class SCR_WindOverrideEditorAttribute : SCR_BaseEditorAttribute
 				return;
 			
 			if (weatherTransitionManager.IsPreviewingWind())
-				weatherTransitionManager.SetWindPreview(false);
+				weatherManager.SetWindPreview(false);
 		}
 	}
 };

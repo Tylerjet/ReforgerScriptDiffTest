@@ -10,6 +10,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	protected override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
 		m_RplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
+		InitializeSuppliesComponent();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -35,11 +36,11 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity);
 		m_ProviderComponent.RequestBuildingMode(playerID, true);
 	}
-		
+	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
-	{		
-		if (GetUserRank(user) >= m_ProviderComponent.GetAccessRank())
+	{
+		if (!m_ProviderComponent || GetUserRank(user) >= m_ProviderComponent.GetAccessRank())
 			return true;
 		
 		FactionAffiliationComponent factionAffiliationComp = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
@@ -63,14 +64,6 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		if (!playerController)
 			return SCR_ECharacterRank.INVALID;
 		
-		SCR_CampaignFactionManager factionManager = SCR_CampaignFactionManager.GetInstance();
-		if (!factionManager)
-			return SCR_ECharacterRank.INVALID;
-		
-		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
-		if (!campaignNetworkComponent)
-			return SCR_ECharacterRank.INVALID;
-		
 		return SCR_CharacterRankComponent.GetCharacterRank(playerController.GetControlledEntity());
 	}
 	
@@ -78,7 +71,11 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	override bool CanBeShownScript(IEntity user)
 	{
 		if (!m_ProviderComponent)
-			InitializeSuppliesComponent();
+			return false;
+		
+		ChimeraCharacter char = ChimeraCharacter.Cast(user);
+		if (!char || char.IsInVehicle())
+			return false;
 		
 		Vehicle truck = Vehicle.Cast(SCR_EntityHelper.GetMainParent(GetOwner(), true));
 		
@@ -91,9 +88,7 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 				return false;
 		}
 				
-		if (m_ProviderComponent.IsPlayerFactionSame(user))
-			return true;
-		return false;
+		return m_ProviderComponent.IsPlayerFactionSame(user);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -119,7 +114,8 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	protected bool ProcessTracedEntity(IEntity ent)
 	{
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(ent);
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(ent.FindComponent(SCR_CampaignMilitaryBaseComponent));
+		
 		if (!base)
 			return true;
 		

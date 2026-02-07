@@ -21,7 +21,7 @@ class SCR_AIHealBehavior : SCR_AIBehaviorBase
 	{
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Heal.bt";
 		m_EntityToHeal = entityToHeal;
-		m_fPriority = priority;
+		SetPriority(priority);
 		m_fPriorityLevel.m_Value = priorityLevel;
 		m_fTimeCreated_ms = GetGame().GetWorld().GetWorldTime();
 		m_fPriorityDelay_ms = Math.RandomFloat(PRIORITY_DELAY_MIN_MS, PRIORITY_DELAY_MAX_MS);
@@ -44,10 +44,10 @@ class SCR_AIHealBehavior : SCR_AIBehaviorBase
 #endif
 	}
 	
-	override float Evaluate()
+	override float CustomEvaluate()
 	{
 		if (GetGame().GetWorld().GetWorldTime() - m_fTimeCreated_ms > m_fPriorityDelay_ms)
-			return m_fPriority;
+			return GetPriority();
 		else
 			return 0;
 	}

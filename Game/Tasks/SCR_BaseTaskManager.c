@@ -653,14 +653,14 @@ class SCR_BaseTaskManager : GenericEntity
 		}
 		
 		m_mTaskEventMaskMap.Clear();
-			
-		for (int i = m_aTasksToDelete.Count() - 1; i >= 0; i--)
+		
+		foreach (SCR_BaseTask taskToDelete : m_aTasksToDelete)
 		{
-			task = m_aTasksToDelete[i];
-			m_aTaskList.RemoveItem(task);
-			m_aTasksToDelete.RemoveItem(task);
-			delete task;
+			m_aTaskList.RemoveItem(taskToDelete);
+			delete taskToDelete;
 		}
+		
+		m_aTasksToDelete.Clear();
 	}
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnFrame(IEntity owner, float timeSlice)

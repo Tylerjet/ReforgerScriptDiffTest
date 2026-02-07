@@ -15,11 +15,11 @@ class SCR_CharacterRankComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RpcDoSetCharacterRank(SCR_ECharacterRank newRank, SCR_ECharacterRank prevRank)
+	void RpcDoSetCharacterRank(SCR_ECharacterRank newRank, SCR_ECharacterRank prevRank, bool silent)
 	{
 		SCR_ECharacterRank oldRank = m_iRank;
 		m_iRank = newRank;
-		OnRankChanged(oldRank, newRank);
+		OnRankChanged(oldRank, newRank, silent);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -29,19 +29,19 @@ class SCR_CharacterRankComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetCharacterRank(SCR_ECharacterRank rank)
+	void SetCharacterRank(SCR_ECharacterRank rank, bool silent = false)
 	{
 		if (rank != m_iRank)
 		{
-			Rpc(RpcDoSetCharacterRank, rank, m_iRank);
-			RpcDoSetCharacterRank(rank, m_iRank);
+			Rpc(RpcDoSetCharacterRank, rank, m_iRank, silent);
+			RpcDoSetCharacterRank(rank, m_iRank, silent);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnRankChanged(SCR_ECharacterRank prevRank, SCR_ECharacterRank newRank)
+	protected void OnRankChanged(SCR_ECharacterRank prevRank, SCR_ECharacterRank newRank, bool silent)
 	{
-		s_OnRankChanged.Invoke(prevRank, newRank, m_Owner);
+		s_OnRankChanged.Invoke(prevRank, newRank, m_Owner, silent);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -208,8 +208,8 @@ class SCR_CharacterRank
 	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Rank name (short)")]
 	protected string m_sRankNameShort;
 	
-	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Rank insignia", params: "edds")]
-	protected ResourceName m_sInsignia;
+	[Attribute("", "Rank insignia quad name in MilitaryIcons.imageset")]
+	protected string m_sInsignia;
 	
 	//------------------------------------------------------------------------------------------------
 	SCR_ECharacterRank GetRankID()
@@ -236,7 +236,7 @@ class SCR_CharacterRank
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ResourceName GetRankInsignia()
+	string GetRankInsignia()
 	{
 		return m_sInsignia;
 	}
@@ -252,6 +252,9 @@ class SCR_RankID
 	[Attribute("0", UIWidgets.CheckBox, "Renegade", "Is this rank considered hostile by friendlies?")]
 	protected bool m_bIsRenegade;
 	
+	[Attribute("100", UIWidgets.EditBox, "XP required to get promoted to this rank.")]
+	protected int m_iRequiredXP;
+	
 	//------------------------------------------------------------------------------------------------
 	SCR_ECharacterRank GetRankID()
 	{
@@ -262,6 +265,12 @@ class SCR_RankID
 	bool IsRankRenegade()
 	{
 		return m_bIsRenegade;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetRequiredRankXP()
+	{
+		return m_iRequiredXP;
 	}
 };
 

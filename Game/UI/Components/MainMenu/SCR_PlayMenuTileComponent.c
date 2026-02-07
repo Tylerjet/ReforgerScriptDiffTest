@@ -135,12 +135,12 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 		m_wName.SetText(item.Name());
 		m_wDescription.SetText(item.Description());
 
-		bool canBeLoaded = m_Header && SCR_SaveLoadComponent.HasSaveFile(m_Header);
+		bool canContinue = m_Header && GetGame().GetSaveManager().HasLatestSave(m_Header);
 		
-		m_wPlay.SetVisible(!canBeLoaded);
-		m_wContinue.SetVisible(canBeLoaded);
-		m_wRestart.SetVisible(canBeLoaded);
-		m_wHost.SetVisible(item.GetPlayerCount() > 1);
+		m_wPlay.SetVisible(!canContinue);
+		m_wContinue.SetVisible(canContinue);
+		m_wRestart.SetVisible(canContinue);
+		m_wHost.SetVisible(!GetGame().IsPlatformGameConsole() && item.GetPlayerCount() > 1);
 		m_wFindServer.SetVisible(item.GetPlayerCount() > 1);		
 				
 		// Set image through SCR_ButtonImageComponent

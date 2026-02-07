@@ -27,6 +27,7 @@ class SCR_BuildingDestructionData
 	ref SCR_BuildingDestructionCameraShakeProgress m_CameraShake = new SCR_BuildingDestructionCameraShakeProgress();
 	SCR_AudioSource m_AudioSource;
 	float m_fBuildingVolume;
+	float m_fSizeMultiplier;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Sets variables to default values when freed to be reused by another object on demand

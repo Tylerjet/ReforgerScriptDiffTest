@@ -17,7 +17,6 @@ class ServerBrowserMenuWidgets
 	const string WIDGET_CONTROLLER_ACTIONS = "hControllerActions";
 	const string WIDGET_SERVERS_FEEDBACK = "txtServersFeedback";
 	const string WIDGET_LOADING_SERVERS = "LoadingServers";
-	const string WIDGET_TEXT_VERSION = "VersionText";  
 	const string WIDGET_SCROLLABLE_LIST = "vServerListView";
 	
 	// Buttons 
@@ -41,7 +40,6 @@ class ServerBrowserMenuWidgets
 	Widget m_wControllerActionsOverlay;
 	TextWidget m_wTxtServersFeedback;
 	Widget m_wLoadingServers;
-	TextWidget m_wTxtVersion;
 	Widget m_wSortSessionName;
 	
 	Widget m_wHostNewServerButton;
@@ -65,8 +63,6 @@ class ServerBrowserMenuWidgets
 		m_wSortSessionName = m_wRoot.FindAnyWidget(WIDGET_SORT_SESSION_NAME);
 		
 		m_wHostNewServerButton = m_wRoot.FindAnyWidget(WIDGET_BUTTON_HOST);
-		
-		SetupVersionText();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -95,14 +91,4 @@ class ServerBrowserMenuWidgets
 		// Find handler 	 
 		return target.FindHandler(typeName);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void SetupVersionText()
-	{
-		m_wTxtVersion = TextWidget.Cast(m_wRoot.FindAnyWidget(WIDGET_TEXT_VERSION));
-		
-		if (m_wTxtVersion)
-			m_wTxtVersion.SetText(GetGame().GetBuildVersion());
-	}
-	
 };

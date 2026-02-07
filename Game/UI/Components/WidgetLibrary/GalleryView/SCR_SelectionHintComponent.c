@@ -6,6 +6,9 @@ class SCR_SelectionHintComponent : ScriptedWidgetComponent
 
 	[Attribute("", UIWidgets.ResourceNamePicker, "")]
 	protected ResourceName m_sHintElementImage;
+	
+	[Attribute("SelectionHintElement", UIWidgets.EditBox, "Name for generated selection hints widgets")]
+	protected string m_sSelectionHintElementName;
 
 	[Attribute("0.760 0.392 0.08 1", UIWidgets.ColorPicker)]
 	protected ref Color m_ColorSelected;
@@ -103,6 +106,8 @@ class SCR_SelectionHintComponent : ScriptedWidgetComponent
 
 		if (m_bSetCustomSize)
 			img.SetSize(m_fItemWidth, m_fItemHeight);
+		
+		img.SetName(m_sSelectionHintElementName);
 		
 		AlignableSlot.SetPadding(img, m_fItemSpacing * 0.5, 0, m_fItemSpacing * 0.5, 0);
 		AlignableSlot.SetVerticalAlign(img, LayoutVerticalAlign.Center);

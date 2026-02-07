@@ -44,7 +44,7 @@ class SCR_BandagePredicate: InventorySearchPredicate
 
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{		
-		return (SCR_ConsumableItemComponent.Cast(queriedComponents[0])).GetConsumableType() == EConsumableType.Bandage);
+		return (SCR_ConsumableItemComponent.Cast(queriedComponents[0])).GetConsumableType() == SCR_EConsumableType.BANDAGE;
 	}
 };
 
@@ -60,12 +60,12 @@ class SCR_ApplicableMedicalItemPredicate : InventorySearchPredicate
 
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{
-		EConsumableType type = SCR_ConsumableItemComponent.Cast(queriedComponents[0]).GetConsumableType();
-		bool isMatch = (type == EConsumableType.Bandage)
-			|| (type == EConsumableType.Health)
-			|| (type == EConsumableType.Tourniquet)
-			|| (type == EConsumableType.Saline)
-			|| (type == EConsumableType.Morphine);
+		SCR_EConsumableType type = SCR_ConsumableItemComponent.Cast(queriedComponents[0]).GetConsumableType();
+		bool isMatch = (type == SCR_EConsumableType.BANDAGE)
+			|| (type == SCR_EConsumableType.HEALTH)
+			|| (type == SCR_EConsumableType.TOURNIQUET)
+			|| (type == SCR_EConsumableType.SALINE)
+			|| (type == SCR_EConsumableType.MORPHINE);
 
 		if (!isMatch)
 			return false;
@@ -76,6 +76,23 @@ class SCR_ApplicableMedicalItemPredicate : InventorySearchPredicate
 			return false;
 
 		return effect.CanApplyEffectToHZ(characterEntity, characterEntity, hitZoneGroup);
+	}
+};
+
+class SCR_ItemTypeSearchPredicate : InventorySearchPredicate
+{
+	int m_iItemType = -1;
+	IEntity m_iOriginalItem;
+	
+	void SCR_ItemTypeSearchPredicate(typename type, int wantedItemType, IEntity originalItem)
+	{
+		QueryComponentTypes.Insert(type);
+		m_iItemType = wantedItemType;
+	}
+	
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		return (item != m_iOriginalItem) && (SCR_CharacterInventoryStorageComponent.GetItemType(item) == m_iItemType);
 	}
 };
 
@@ -365,7 +382,7 @@ class SCR_ResupplyMagazinesCallback: ScriptedInventoryOperationCallback
 class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComponent
 {
 	private SCR_CharacterInventoryStorageComponent				m_pStorage;
-	private CharacterControllerComponent						m_pCharacterController;
+	private SCR_CharacterControllerComponent					m_pCharacterController;
 	private	ref SCR_BandagePredicate 							m_bandagePredicate = new SCR_BandagePredicate();
 	protected EInventoryRetCode									m_ERetCode;
 	protected int												m_iHealthEquipment	=	0;
@@ -380,16 +397,63 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 
 	ref ScriptInvoker<bool> 									m_OnInventoryOpenInvoker	= new ref ScriptInvoker<bool>();
 	ref ScriptInvoker<bool> 									m_OnQuickBarOpenInvoker		= new ref ScriptInvoker<bool>();
-	
-	protected EventHandlerManagerComponent m_pEventHandlerManager;
 
+	
+	//------------------------------------------------------------------------------------------------
+	/*
+	Get an array of all root items in the inventory storage.
+	\param[out] rootItems All root items without going in the sub inventory of the items or attachments
+	\return Count of root items
+	*/
+	int GetAllRootItems(out notnull array<IEntity> rootItems)
+	{
+		rootItems.Clear();
+		array<BaseInventoryStorageComponent> storages = {};
+		
+		//~ Get deposits like backpacks and jackets as well as any held weapons
+		GetStorages(storages, EStoragePurpose.PURPOSE_DEPOSIT);
+		GetStorages(storages, EStoragePurpose.PURPOSE_WEAPON_PROXY);
+		
+		array<IEntity> items = {};
+		foreach (BaseInventoryStorageComponent storage : storages)
+		{
+			//~ If backpack or jacked or any other cloth storage only get what is inside the storage
+			if (ClothNodeStorageComponent.Cast(storage))
+			{
+				if (!storage)
+					continue;
+				
+				array<BaseInventoryStorageComponent> clothStorages = {};
+				storage.GetOwnedStorages(clothStorages, 1, false);
+			
+				foreach (BaseInventoryStorageComponent clothStorage : clothStorages)
+				{
+					if (!clothStorage)
+						continue;
+					
+					clothStorage.GetAll(items);
+					rootItems.Copy(items);
+				}
+				
+				continue;
+			}
+			else 
+			{
+				storage.GetAll(items);
+				rootItems.Copy(items);
+			}
+		}
+		
+		return rootItems.Count();
+	}
+	
 	// Callback when item is added (will be performed locally after server completed the Insert/Move operation)
 	override protected void OnItemAdded(BaseInventoryStorageComponent storageOwner, IEntity item)
 	{		
 		super.OnItemAdded(storageOwner, item);
 		
 		auto consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
-		if ( consumable && consumable.GetConsumableType() == EConsumableType.Bandage )
+		if ( consumable && consumable.GetConsumableType() == SCR_EConsumableType.BANDAGE )
 			m_iHealthEquipment++;	//store count of the health components
 				
 		if ( m_OnItemAddedInvoker )
@@ -410,7 +474,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		super.OnItemRemoved(storageOwner, item);
 		
 		auto consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
-		if ( consumable && consumable.GetConsumableType() == EConsumableType.Bandage )
+		if ( consumable && consumable.GetConsumableType() == SCR_EConsumableType.BANDAGE )
 			m_iHealthEquipment--;	//store count of the health components
 		
 		if ( m_OnItemRemovedInvoker )
@@ -432,7 +496,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		if (consumableItemComp)
 			return false;
 		
-		if (m_pCharacterController && !m_pCharacterController.IsUnconscious())
+		if (m_pCharacterController && m_pCharacterController.GetLifeState() == ECharacterLifeState.ALIVE)
 			return true;
 		
 		return false;
@@ -608,20 +672,19 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		{
 			if ( pStorageTo == m_pStorage )
 			{
-				if ( TryReplaceItem( pStorageTo, pItem, 0, cb ) )
+				canInsert = TryReplaceItem( pStorageTo, pItem, 0, cb );
+				if (canInsert)
 				{
 					SetInventoryLocked(false);
 					return;
 				}
-				else
-					SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
 			}
 			if ( FindStorageForInsert( pItem, pStorageTo, EStoragePurpose.PURPOSE_ANY ) )
 				pStorageTo = FindStorageForInsert( pItem, pStorageTo, EStoragePurpose.PURPOSE_ANY );
 			
 			if ( !pStorageFrom )
 			{
-				TryInsertItemInStorage( pItem, pStorageTo, -1, cb );	// if we move item from ground to opened storage
+				canInsert = TryInsertItemInStorage( pItem, pStorageTo, -1, cb );	// if we move item from ground to opened storage
 			}
 			else
 				canInsert = TryMoveItemToStorage( pItem, pStorageTo, -1, cb );		// if we move item between storages
@@ -629,6 +692,8 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		
 		if (!canInsert)
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
+		else
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
 		
 		if (m_pCharacterController && canInsert)
 		{
@@ -708,7 +773,25 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		if ( !slot )
 			return false;
 		if ( slot.GetAttachedEntity() )
-			return TrySwapItemStorages( pOwnerEntity, slot.GetAttachedEntity(), cb );
+		{
+			if (!TrySwapItemStorages( pOwnerEntity, slot.GetAttachedEntity(), cb ))
+			{
+				CharacterHandWeaponSlotComponent handWeaponSlot = CharacterHandWeaponSlotComponent.Cast(slot.GetParentContainer());
+				//Move 
+				if (handWeaponSlot)
+				{
+					if (TryRemoveItemFromInventory(slot.GetAttachedEntity()))
+					{
+						TryInsertItem(pOwnerEntity, EStoragePurpose.PURPOSE_ANY, cb);
+						return true;
+					}
+				}
+				
+				return false;
+			}
+			
+			return true;
+		}
 		else
 			return TryMoveItemToStorage( pOwnerEntity, pStorageTo, slot.GetID(), cb );
 
@@ -1050,6 +1133,9 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	//------------------------------------------------------------------------------------------------
 	void OpenInventory()
 	{
+		if (m_pCharacterController && m_pCharacterController.GetLifeState() != ECharacterLifeState.ALIVE)
+			return;
+
 		auto menuManager = GetGame().GetMenuManager();
 		auto menu = ChimeraMenuPreset.Inventory20Menu;
 		
@@ -1080,9 +1166,10 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	void CloseInventory()
 	{
 		auto menuManager = GetGame().GetMenuManager();
-		auto inventoryMenu = menuManager.FindMenuByPreset(ChimeraMenuPreset.Inventory20Menu);
-		if (inventoryMenu)
-			menuManager.CloseMenu(inventoryMenu);
+		if (!menuManager)
+			return;
+		
+		menuManager.CloseMenuByPreset(ChimeraMenuPreset.Inventory20Menu);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1106,7 +1193,18 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		CompartmentAccessComponent cac = m_pCharacterController.GetCharacter().GetCompartmentAccessComponent();
 		if (cac && cac.IsInCompartment())
 		{
-			SetStorageToOpen(cac.GetCompartment().GetOwner());
+			IEntity owner = cac.GetCompartment().GetOwner();
+			while (owner)
+			{
+				UniversalInventoryStorageComponent comp = UniversalInventoryStorageComponent.Cast(owner.FindComponent(UniversalInventoryStorageComponent));
+				if (comp)
+				{
+					SetStorageToOpen(owner);
+					break;
+				}
+
+				owner = owner.GetParent();
+			}
 		}
 
 		OpenInventory();
@@ -1210,8 +1308,6 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	void ~SCR_InventoryStorageManagerComponent()
 	{
 		m_ERetCode = EInventoryRetCode.RETCODE_DEFAULT_STATE;
-		if (m_pEventHandlerManager)
-			m_pEventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1335,35 +1431,6 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		return null;
 	}
 
-	//------------------------------------------------------------------------------------------------
-	protected void OnConsciousnessChanged(bool conscious)
-	{
-		if (!conscious)
-		{
-			CloseInventory();
-
-			ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
-			if (!character)
-				return;
-
-			AIControlComponent aiControl = AIControlComponent.Cast(GetOwner().FindComponent(AIControlComponent));
-			if (!aiControl || !aiControl.IsAIActivated())
-				return;
-
-			CharacterControllerComponent charCtrl = character.GetCharacterController();
-			if (!charCtrl)
-				return;
-
-			IEntity currentWeapon;
-			BaseWeaponManagerComponent wpnMan = BaseWeaponManagerComponent.Cast(character.FindComponent(BaseWeaponManagerComponent));
-			if (wpnMan && wpnMan.GetCurrentWeapon())
-				currentWeapon = wpnMan.GetCurrentWeapon().GetOwner();
-
-			if (currentWeapon)
-				charCtrl.TryEquipRightHandItem(currentWeapon, EEquipItemType.EEquipTypeSlinged, true);
-		}
-	}
-
 #else
 	void SetReturnCode( EInventoryRetCode ERetCode ) ;
 	void SetReturnCodeDefault() ;
@@ -1393,12 +1460,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		//pChimeraChar.s_OnCharacterCreated.Insert( DebugListAllItemsInInventory );
 		
 		m_pStorage = SCR_CharacterInventoryStorageComponent.Cast( ent.FindComponent( CharacterInventoryStorageComponent ) );
-		m_pCharacterController = CharacterControllerComponent.Cast(ent.FindComponent(CharacterControllerComponent));
-		m_pEventHandlerManager = EventHandlerManagerComponent.Cast(ent.FindComponent(EventHandlerManagerComponent));
-		if (m_pEventHandlerManager)
-		{
-			m_pEventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
-		}
+		m_pCharacterController = SCR_CharacterControllerComponent.Cast(ent.FindComponent(SCR_CharacterControllerComponent));
 		#endif
 	}
 };

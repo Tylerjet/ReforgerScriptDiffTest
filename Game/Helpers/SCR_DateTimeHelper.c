@@ -23,8 +23,8 @@ class SCR_DateTimeHelper
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Returns month in translated string formating.
-	\param int month, nr of month (Jan being 1, Dec being 12, etc.)
-	\return month in translated string
+	\param month number (from 1 to 12)
+	\return month's translation key
 	*/
 	static string GetMonthString(int month)
 	{
@@ -49,11 +49,12 @@ class SCR_DateTimeHelper
 
 		return months[month -1];
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
-	Returns Abbriviated month in translated string formating.
-	\param int month, nr of month (Jan being 1, Dec being 12, etc.)
-	\return month in translated string
+	Returns abbreviated month in translated string formating.
+	\param month number (from 1 to 12)
+	\return month's short translation key
 	*/
 	static string GetAbbreviatedMonthString(int month)
 	{
@@ -169,7 +170,8 @@ class SCR_DateTimeHelper
 	{
 		return hour * 3600 + minute * 60 + second;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Grabs all given values and convert it to minutes.
 	\param[out] year Years to convert into minutes. Note that max years is around 4000
@@ -182,30 +184,31 @@ class SCR_DateTimeHelper
 	{
 		return (year * 525600) + (month * 43800) + (day * 1440) + (hour * 60) + minutes;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Grabs the given total minutes and converts it into years, months, days, hours and minutes
 	\param totalDateMinutes total minutes to be converted - absolute value will be used
-	\param[out] year Returns amount of years 0..x 
+	\param[out] year Returns amount of years 0..x
 	\param[out] month Returns amount of months 0..12
 	\param[out] day Returns amount of days 0..31
-	\param[out] hour Returns amount of Hours 0..23
-	\param[out] minutes Returns amount of Minutes 0..59
+	\param[out] hour Returns amount of hours 0..23
+	\param[out] minutes Returns amount of minutes 0..59
 	*/
 	static void ConvertMinutesIntoDate(int totalDateMinutes, out int year, out int month, out int day, out int hour, out int minutes)
 	{
 		year = totalDateMinutes / 525600;
 		totalDateMinutes -= year * 525600;
-		
+
 		month = totalDateMinutes / 43800;
 		totalDateMinutes -= month * 43800;
-		
+
 		day = totalDateMinutes / 1440;
 		totalDateMinutes -= day * 1440;
-		
+
 		hour = totalDateMinutes / 60;
 		totalDateMinutes -= hour * 60;
-		
+
 		minutes = totalDateMinutes;
 	}
 };

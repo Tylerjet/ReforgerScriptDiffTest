@@ -28,11 +28,11 @@ class SCR_Faction : ScriptedFaction
 	[Attribute()]
 	protected ref SCR_FactionCallsignInfo m_CallsignInfo;
 
-	[Attribute(desc: "List of vehicles related to this faction.")]
-	protected ref SCR_EntityAssetList m_aVehicleList;
-
 	[Attribute(desc: "Group preset for predefined groups")]
 	protected ref array<ref SCR_GroupPreset> m_aPredefinedGroups;
+
+	[Attribute(desc: "Create only predefined groups")]
+	protected bool m_bCreateOnlyPredefinedGroups;
 
 	[Attribute("", uiwidget: UIWidgets.EditBox)]
 	protected string m_sFactionRadioEncryptionKey;
@@ -46,9 +46,18 @@ class SCR_Faction : ScriptedFaction
 	[Attribute("", UIWidgets.Object, "List of ranks")]
 	protected ref array<ref SCR_CharacterRank> m_aRanks;
 	
-	[Attribute(desc: "List of Enity catalogs. Each holds a list of entity Prefab and data of a given type. Each catalog should have an unique type! Best not to change this list in runtime as it might cause unforeseen issues. Note this array is moved to a map on init and set to null")]
+	[Attribute(desc: "List of Entity catalogs. Each holds a list of entity Prefab and data of a given type. Catalogs of the same type are merged into one. Note this array is moved to a map on init and set to null")]
 	protected ref array<ref SCR_EntityCatalog> m_aEntityCatalogs;
+
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Flag icons for group.", params: "edds")]
+	protected ref array<ResourceName> m_aGroupFlags;
 	
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Flag imageset for groups of this faction.", params: "imageset")]
+	protected ResourceName m_sGroupFlagsImageSet;
+
+	[Attribute("List of flags from imageset")]
+	protected ref array<string> m_aFlagNames;
+
 	//~ Catalog map for quicker obtaining the catalog using EEntityCatalogType
 	protected ref map<EEntityCatalogType, ref SCR_EntityCatalog> m_mEntityCatalogs = new ref map<EEntityCatalogType, ref SCR_EntityCatalog>();
 	
@@ -64,12 +73,42 @@ class SCR_Faction : ScriptedFaction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	bool GetCanCreateOnlyPredefinedGroups()
+	{
+		return m_bCreateOnlyPredefinedGroups;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void GetPredefinedGroups(notnull array<ref SCR_GroupPreset> groupArray)
 	{
 		for (int i = 0, count = m_aPredefinedGroups.Count(); i < count; i++)
 		{
 			groupArray.Insert(m_aPredefinedGroups[i]);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetFlagName(int index)
+	{
+		return m_aFlagNames[index];
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetFlagNames(out array<string> flagNames)
+	{
+		return flagNames.Copy(m_aFlagNames);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetGroupFlagImageSet()
+	{
+		return m_sGroupFlagsImageSet;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetGroupFlagTextures(out array<ResourceName> textures)
+	{
+		return textures.Copy(m_aGroupFlags);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -173,10 +212,6 @@ class SCR_Faction : ScriptedFaction
 		//Kill players if m_bIsPlayable is false, killPlayersIfNotPlayable is true, of the same faction and is server
 		if (!m_bIsPlayable && killPlayersIfNotPlayable && Replication.IsServer())
 		{
-			SCR_RespawnSystemComponent respawnSystemComponent = SCR_RespawnSystemComponent.GetInstance();
-			if (!respawnSystemComponent)
-				return;
-
 			array<int> playerList = new array<int>;
 			GetGame().GetPlayerManager().GetPlayers(playerList);
 
@@ -185,7 +220,7 @@ class SCR_Faction : ScriptedFaction
 
 			foreach (int playerId : playerList)
 			{
-				Faction playerFaction = respawnSystemComponent.GetPlayerFaction(playerId);
+				Faction playerFaction = factionManager.GetPlayerFaction(playerId);
 				if (!playerFaction)
 					continue;
 
@@ -257,23 +292,18 @@ class SCR_Faction : ScriptedFaction
 		if (index >= 0)
 			m_FriendlyFactions.Remove(index);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Get the vehicle list assigned to this faction
-	\return SCR_EntityAssetList Vehicle List
-	*/
-	SCR_EntityAssetList GetVehicleList()
-	{
-		return m_aVehicleList;
-	}
 
 	/*!
 	Get the number of players assigned to this faction
 	*/
 	int GetPlayerCount()
 	{
-		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return -1;
+		
+		return factionManager.GetFactionPlayerCount(this);
+		/*SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
 		if (!respawnSystem)
 			return -1;
 
@@ -290,7 +320,7 @@ class SCR_Faction : ScriptedFaction
 				playerCount++;
 		}
 
-		return playerCount;
+		return playerCount;*/
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -303,8 +333,8 @@ class SCR_Faction : ScriptedFaction
 	{
 		players.Clear();
 		
-		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
-		if (!respawnSystem)
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
 			return -1;
 
 		array<int> allPlayers = {};
@@ -312,7 +342,7 @@ class SCR_Faction : ScriptedFaction
 
 		foreach (int playerId : allPlayers)
 		{
-			Faction playerFaction = respawnSystem.GetPlayerFaction(playerId);
+			Faction playerFaction = factionManager.GetPlayerFaction(playerId);
 			if (playerFaction == this)
 				players.Insert(playerId);
 		}
@@ -381,7 +411,7 @@ class SCR_Faction : ScriptedFaction
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ResourceName GetRankInsignia(SCR_ECharacterRank rankID)
+	string GetRankInsignia(SCR_ECharacterRank rankID)
 	{
 		SCR_CharacterRank rank = GetRankByID(rankID);
 
@@ -480,15 +510,8 @@ class SCR_Faction : ScriptedFaction
 			}
 		}
 		
-		//~ Move catalogs to map for quicker processing
-		foreach (SCR_EntityCatalog entityCatalog: m_aEntityCatalogs)
-		{
-			//~ Ignore duplicate catalog types
-			if (m_mEntityCatalogs.Contains(entityCatalog.GetCatalogType()))
-				continue;
-			
-			m_mEntityCatalogs.Insert(entityCatalog.GetCatalogType(), entityCatalog);
-		}
+		//~ Init the catalog for faster processing
+		SCR_EntityCatalogManagerComponent.InitCatalogs(m_aEntityCatalogs, m_mEntityCatalogs);
 		
 		//~ Clear array as no longer needed
 		m_aEntityCatalogs = null;

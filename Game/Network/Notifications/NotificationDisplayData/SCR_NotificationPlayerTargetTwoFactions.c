@@ -13,10 +13,12 @@ class SCR_NotificationPlayerTargetTwoFactions : SCR_NotificationPlayerTargetFact
 		int playerID, firstFactionIndex, secondFactionIndex;
 		data.GetParams(playerID, firstFactionIndex, secondFactionIndex);
 		
-		string firstFactionName = GetFactionName(firstFactionIndex);
-		string secondFactionName = GetFactionName(secondFactionIndex);
+		string playerName, firstFactionName, secondFactionName;
+		data.GetNotificationTextEntries(playerName, firstFactionName, secondFactionName);
+		if (!GetPlayerName(playerID, playerName) || !GetFactionName(firstFactionIndex, firstFactionName) || !GetFactionName(secondFactionIndex, secondFactionName))
+			return string.Empty;
 		
-		data.SetNotificationTextEntries(GetPlayerName(playerID), firstFactionName, secondFactionName);
+		data.SetNotificationTextEntries(playerName, firstFactionName, secondFactionName);
 		return super.GetText(data);
 	}
 };

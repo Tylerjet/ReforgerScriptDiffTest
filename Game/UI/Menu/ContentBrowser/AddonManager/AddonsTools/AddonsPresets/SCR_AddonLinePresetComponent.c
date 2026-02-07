@@ -313,6 +313,8 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	{
 		m_Widgets.m_EditNameComponent.m_OnConfirm.Remove(OnEditNameConfirm);
 		m_Widgets.m_EditNameComponent.m_OnFocusChangedEditBox.Remove(OnEditNameCancel);
+		
+		m_Widgets.m_EditNameComponent.ClearInteractionState();
 	}
 	
 	//------------------------------------------------------------------------------------------------

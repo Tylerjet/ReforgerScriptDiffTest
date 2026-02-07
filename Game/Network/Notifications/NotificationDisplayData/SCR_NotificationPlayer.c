@@ -11,9 +11,19 @@ class SCR_NotificationPlayer : SCR_NotificationDisplayData
 {
 	override string GetText(SCR_NotificationData data)
 	{	
+		string textEntry1, textEntry2, textEntry3, textEntry4, textEntry5, textEntry6;
+		data.GetNotificationTextEntries(textEntry1, textEntry2, textEntry3, textEntry4, textEntry5, textEntry6);
+		
 		int playerID;
 		data.GetParams(playerID);
-		data.SetNotificationTextEntries(GetPlayerName(playerID));		
+		
+		string playerName;
+		data.GetNotificationTextEntries(playerName);
+		if (!GetPlayerName(playerID, playerName))
+			return string.Empty;
+		
+		data.SetNotificationTextEntries(playerName);		
+		
 		return super.GetText(data);
 	}
 		

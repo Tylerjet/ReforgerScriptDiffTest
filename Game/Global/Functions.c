@@ -161,7 +161,7 @@ class SCR_Global
 		}
 		mins[1] = height;
 		maxs[1] = height;
-		float intersectPct = Math3D.IntersectRayBox(start, end, mins - "1 0 1", maxs + "1 0 1");
+		float intersectPct = Math3D.IntersectionRayBox(start, end, mins - "1 0 1", maxs + "1 0 1");
 		if (intersectPct < 0)
 			return false;
 
@@ -412,12 +412,13 @@ class SCR_Global
 	{
 		array<ref ParamEnum> retEnums = new array<ref ParamEnum>;
 		array<string> boneNames = new array<string>;
-		entity.GetBoneNames(boneNames);
+		Animation anim = entity.GetAnimation();
+		anim.GetBoneNames(boneNames);
 
 		retEnums.Insert(new ParamEnum("NONE", "-1", "")); // Always have NONE as an option
 		foreach (string s : boneNames)
 		{
-			int nodeid = entity.GetBoneIndex(s);
+			int nodeid = anim.GetBoneIndex(s);
 			retEnums.Insert(new ParamEnum(s, nodeid.ToString(), ""));
 		}
 
@@ -1617,13 +1618,36 @@ class SCR_Global
 	/*!
 	Teleport local player to given position.
 	\param worldPosition World position
+	\param teleportReason Dictates the notifcation the player gets when teleported. DEFAULT reason has no notification associated with it
 	\return True if the operation was performed successfully
 	*/
-	static bool TeleportPlayer(vector worldPosition)
+	static bool TeleportLocalPlayer(vector worldPosition, SCR_EPlayerTeleportedReason teleportReason = SCR_EPlayerTeleportedReason.DEFAULT)
+	{
+		return TeleportPlayer(SCR_PlayerController.GetLocalPlayerId(), worldPosition, teleportReason);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Teleport player to given position.
+	\param playerId ID of teleported player
+	\param worldPosition World position
+	\param teleportReason Dictates the notifcation the player gets when teleported. DEFAULT reason has no notification associated with it
+	\return True if the operation was performed successfully
+	*/
+	static bool TeleportPlayer(int playerId, vector worldPosition, SCR_EPlayerTeleportedReason teleportReason = SCR_EPlayerTeleportedReason.DEFAULT)
 	{		
-		IEntity player = SCR_PlayerController.GetLocalControlledEntity();
+		IEntity player = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
 		if (!player)
 			return false;
+		
+		//~ Player teleport feedback
+		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		if (playerController)
+		{
+			SCR_PlayerTeleportedFeedbackComponent teleportFeedback = SCR_PlayerTeleportedFeedbackComponent.Cast(playerController.FindComponent(SCR_PlayerTeleportedFeedbackComponent));
+			if (teleportFeedback)
+				teleportFeedback.PlayerTeleported(player, false, teleportReason);
+		}
 		
 		vector startingPosition = player.GetOrigin();
 
@@ -1658,7 +1682,7 @@ class SCR_Global
 #ifdef ENABLE_DIAG
 	#ifndef WORKBENCH
 		//~ Send notification to all players if player teleported and Diag is enabled
-		if (Replication.IsRunning())
+		if (teleportReason == SCR_EPlayerTeleportedReason.DEFAULT && Replication.IsRunning())
 			SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_TELEPORTED_SELF, SCR_PlayerController.GetLocalPlayerId(), vector.Distance(startingPosition, player.GetOrigin()) * 100);	
 	#endif
 #endif
@@ -1723,6 +1747,33 @@ class SCR_Global
 
 		line = {matrix[3], matrix[3] + matrix[2] * scale};
 		Shape.CreateLines(colorZ, flags, line, 2);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Draw lines representing trace param.
+	\param trace Trace param
+	\param traceCoef Trace coef calculated e.g., by BaseWorld.TraceMove
+	\param flags Shape flags
+	\param colorEnd Color of the line going from intersection point to TraceParam.End
+	\param colorIntersect Color of the line going from TraceParam.Start to intersection point
+	*/
+	static void DrawTrace(TraceParam trace, float traceCoef = -1, ShapeFlags flags = ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.NOOUTLINE, int colorEnd = Color.BLACK, int colorIntersect = Color.PINK)
+	{
+		vector lines[2];
+		lines[0] = trace.Start;
+		
+		if (traceCoef != -1)
+		{
+			lines[0] = vector.Lerp(trace.Start, trace.End, traceCoef);
+			lines[1] = trace.Start;
+			Shape.CreateLines(colorIntersect, flags, lines, 2);
+			Shape.CreateSphere(colorIntersect, flags, lines[0], 0.05);
+		}
+		
+		lines[1] = trace.End;
+		Shape.CreateLines(colorEnd, flags, lines, 2);
+		Shape.CreateSphere(colorEnd, flags, trace.Start, 0.05);
 	}
 
 	//------------------------------------------------------------------------------------------------

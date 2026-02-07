@@ -3,7 +3,7 @@ class SCR_AISendGoalMessageGenerated : AITaskScripted
 	static const string PORT_RECEIVER = "Receiver";
 	
 	//-----------------------------------------------------------------------------------------------------------------------------------------------
-	protected SCR_AIActivityBase GetRelatedActivity(AIAgent owner)
+	protected SCR_AIActionBase GetRelatedActivity(AIAgent owner)
 	{
 		SCR_AIBaseUtilityComponent utilityComp = SCR_AIBaseUtilityComponent.Cast(owner.FindComponent(SCR_AIBaseUtilityComponent));
 		if (!utilityComp)
@@ -12,8 +12,7 @@ class SCR_AISendGoalMessageGenerated : AITaskScripted
 		if (SCR_AIGroup.Cast(owner))
 			return SCR_AIActivityBase.Cast(utilityComp.GetCurrentAction());
 		else
-			return SCR_AIBehaviorBase.Cast(utilityComp.GetCurrentAction()).m_RelatedGroupActivity;
-		
+			return SCR_AIBehaviorBase.Cast(utilityComp.GetCurrentAction().GetRelatedGroupActivity());
 		return null;
 	}
 	

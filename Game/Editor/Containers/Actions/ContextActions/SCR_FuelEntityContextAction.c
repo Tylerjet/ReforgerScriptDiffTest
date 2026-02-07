@@ -49,13 +49,10 @@ class SCR_FuelEntityContextAction : SCR_SelectedEntitiesContextAction
 		{
 			array<BaseFuelNode> nodes = {};
 			fuelManagerComponent.GetFuelNodesList(nodes);
+			SCR_FuelNode fuelNode;
 			foreach (BaseFuelNode node : nodes)
 			{
-				if(node.GetFuel() == node.GetMaxFuel())
-					continue;
-				
 				node.SetFuel(node.GetMaxFuel());
-				break;
 			}
 		}
 	}

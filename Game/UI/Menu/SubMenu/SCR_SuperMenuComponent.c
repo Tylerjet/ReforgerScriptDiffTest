@@ -151,7 +151,17 @@ class SCR_SuperMenuComponent : ScriptedWidgetComponent
 		if (!w)
 			return null;
 		
-		HorizontalLayoutSlot.SetPadding(w, 0, 0, 0, 0);
+		//Handle padding
+		float padding, paddingLeft, paddingRight;
+		float a, b, c;
+		AlignableSlot.GetPadding(w, a, b, padding, c);
+		if(rightFooter)
+			paddingLeft = padding;
+		else 
+			paddingRight = padding;
+		
+		AlignableSlot.SetPadding(w, paddingLeft, 0.0, paddingRight, 0.0);
+		
 		
 		SCR_NavigationButtonComponent comp = SCR_NavigationButtonComponent.Cast(w.FindHandler(SCR_NavigationButtonComponent));
 		if (!comp)

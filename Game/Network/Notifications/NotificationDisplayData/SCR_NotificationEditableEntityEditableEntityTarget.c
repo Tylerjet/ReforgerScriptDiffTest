@@ -11,7 +11,13 @@ class SCR_NotificationEditableEntityEditableEntityTarget : SCR_NotificationPlaye
 	{
 		int entityID, targetID;
 		data.GetParams(entityID, targetID);		
-		data.SetNotificationTextEntries(GetEditableEntityName(entityID),GetEditableEntityName(targetID));
+		
+		string entityName, targetEntityName;
+		data.GetNotificationTextEntries(entityName, targetEntityName);
+		if (!GetEditableEntityName(entityID, entityName) || !GetEditableEntityName(targetID, targetEntityName))
+			return string.Empty;
+		
+		data.SetNotificationTextEntries(entityName, targetEntityName);
 		return super.GetText(data);
 	}
 	

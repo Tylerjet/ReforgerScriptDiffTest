@@ -9,6 +9,7 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 {	
 	protected ref map<EntityID, IEntity> m_aOccupiedStatic = new map<EntityID, IEntity>();
 	protected ref map<RplId, IEntity> m_aOccupiedDynamic = new map<RplId, IEntity>();
+	protected ref array<IEntity> m_aQueriedEntities;
 	
 	static SCR_CompositionSlotManagerComponent GetInstance()
 	{
@@ -27,6 +28,18 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 			SetOccupiedDynamic(rplID, occupant != null, occupant);
 		else
 			SetOccupiedStatic(slot.GetID(), occupant != null, occupant);
+	}
+	void SetOccupant(vector pos, IEntity occupant)
+	{
+		if (Replication.IsClient())
+			return;
+		
+		m_aQueriedEntities = {};
+		GetOwner().GetWorld().QueryEntitiesBySphere(pos, 1, QueryEntity, null, EQueryEntitiesFlags.STATIC);
+		if (!m_aQueriedEntities.IsEmpty())
+			SetOccupant(m_aQueriedEntities[0], occupant);
+		
+		m_aQueriedEntities = null;
 	}
 	IEntity GetOccupant(IEntity slot)
 	{
@@ -64,6 +77,20 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 			}
 		}
 		return null;
+	}
+	bool IsInSlot(IEntity occupant)
+	{
+		for (int i = 0, count = m_aOccupiedStatic.Count(); i < count; i++)
+		{
+			if (m_aOccupiedStatic.GetElement(i) == occupant)
+				return true;
+		}
+		for (int i = 0, count = m_aOccupiedDynamic.Count(); i < count; i++)
+		{
+			if (m_aOccupiedDynamic.GetElement(i) == occupant)
+				return true;
+		}
+		return false;
 	}
 	
 	//--- Static
@@ -166,6 +193,18 @@ class SCR_CompositionSlotManagerComponent : ScriptComponent
 		}
 		
 		SetOccupant(slot, null);
+	}
+	protected bool QueryEntity(IEntity entity)
+	{
+		if (entity.IsInherited(SCR_SiteSlotEntity))
+		{
+			m_aQueriedEntities.Insert(entity);
+			return false;
+		}
+		else
+		{
+			return true;
+		}
 	}
 	
 	override bool RplSave(ScriptBitWriter writer)

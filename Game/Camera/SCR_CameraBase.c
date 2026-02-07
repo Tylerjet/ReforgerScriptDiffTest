@@ -138,7 +138,7 @@ class SCR_CameraBase: CameraBase
 		points[10] = points[2];
 		points[11] = points[7];
 
-		Shape.CreateTris(ARGBF(0.25, 0.5, 0, 1), ShapeFlags.ONCE | ShapeFlags.TRANSP | ShapeFlags.DOUBLESIDE, points, 12);
+		Shape.CreateTris(ARGBF(0.25, 0.5, 0, 1), ShapeFlags.ONCE | ShapeFlags.TRANSP | ShapeFlags.DOUBLESIDE, points, 4);
 	}
 #endif
 };

@@ -22,15 +22,6 @@ enum EUnitState
 	UNCONSCIOUS		= 8
 };
 
-enum EFireTeams
-{
-	NONE,
-	BLUE,
-	RED,
-	GREEN,
-	YELLOW,
-};
-
 enum EUnitAIState
 {
 	AVAILABLE,
@@ -38,38 +29,38 @@ enum EUnitAIState
 	UNRESPONSIVE,
 };
 
-
 //------------------------------------------------------------------------------------------------
 class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 {
-	private EUnitState m_iUnitStates;
-	private EUnitAIState m_iAIStates;
-	private EFireTeams m_iFireTeams;
-	private SCR_InventoryStorageManagerComponent m_inventoryManagerComponent;
-	private BaseWeaponManagerComponent m_weaponManagerComponent;
-	private SCR_CompartmentAccessComponent m_CompartmentAccessComponent;
-	private SCR_AIThreatSystem m_ThreatSystem;
-	private ScriptedDamageManagerComponent m_DamageManager;
-	private SCR_AICombatComponent m_CombatComponent;
-	private EventHandlerManagerComponent m_EventHandlerManagerComponent;
+	protected EUnitState m_iUnitStates;
+	protected EUnitAIState m_iAIStates;	
+	protected SCR_InventoryStorageManagerComponent m_inventoryManagerComponent;
+	protected BaseWeaponManagerComponent m_weaponManagerComponent;
+	protected SCR_CompartmentAccessComponent m_CompartmentAccessComponent;
+	protected SCR_AIThreatSystem m_ThreatSystem;
+	protected ScriptedDamageManagerComponent m_DamageManager;
+	protected SCR_AICombatComponent m_CombatComponent;
+	protected EventHandlerManagerComponent m_EventHandlerManagerComponent;
+	PerceptionComponent m_Perception;
 	
-	private ECharacterStance m_eStance;
-	private EMovementType m_eMovementType;
-	private bool m_bWeaponRaised;
-	private int m_iAttackCount;
-	private int m_unitID;
+	protected ECharacterStance m_eStance;
+	protected EMovementType m_eMovementType;
+	protected bool m_bWeaponRaised;
+	protected int m_iAttackCount;
+	protected int m_unitID;	
+	ref SCR_AICommunicationState m_CommunicationState = new SCR_AICommunicationState();
 	
 	override protected void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT);
-	}	
+	}
 	
 	void OnVehicleEntered( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
 	{
 		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
 		if (TurretCompartmentSlot.Cast(compSlot))
-			AddUnitState(EUnitState.IN_TURRET);			
+			AddUnitState(EUnitState.IN_TURRET);
 	}
 	
 	void OnVehicleLeft( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
@@ -99,15 +90,14 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			msg1.SetReceiver(owner);
 			mailbox.RequestBroadcast(msg1,owner);
 		}
-		
-	}	
+	}
 	
 	override protected void EOnInit(IEntity owner)
 	{
 		IEntity ent = owner;
 		AIAgent agent = AIAgent.Cast(owner);
 		if (agent)
-			ent = agent.GetControlledEntity();	
+			ent = agent.GetControlledEntity();
 		
 		if (ent)
 		{
@@ -124,13 +114,15 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			CharacterControllerComponent characterController = CharacterControllerComponent.Cast(ent.FindComponent(CharacterControllerComponent));
 			if (characterController)
 				OnConsciousnessChanged(!characterController.IsUnconscious());
+			
+			m_Perception = PerceptionComponent.Cast(ent.FindComponent(PerceptionComponent));
 		}
 		
 		if (m_CompartmentAccessComponent)
 		{
 			m_CompartmentAccessComponent.GetOnCompartmentEntered().Insert(OnVehicleEntered);
-			m_CompartmentAccessComponent.GetOnCompartmentLeft().Insert(OnVehicleLeft);			
-		}						
+			m_CompartmentAccessComponent.GetOnCompartmentLeft().Insert(OnVehicleLeft);
+		}
 		
 		if (m_DamageManager)
 		{
@@ -138,12 +130,22 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			m_DamageManager.GetOnDamageOverTimeRemoved().Insert(OnDamageOverTimeRemoved);
 			EvaluateWoundedState();
 		}
+		
+		m_CommunicationState.m_OnCommunicationStateChanged.Insert(OnCommunicationStateChanged)
+	}
+	
+	override protected void EOnFrame(IEntity owner, float timeSlice)
+	{
+		if (!m_CommunicationState.Update(timeSlice)) 
+			SetEventMask(GetOwner(), EntityEvent.INIT);		// turning off EOnFrame
 	}
 	
 	void ~SCR_AIInfoComponent()
 	{
 		if (m_EventHandlerManagerComponent)
 			m_EventHandlerManagerComponent.RemoveScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
+		if (m_CommunicationState)
+			m_CommunicationState.m_OnCommunicationStateChanged.Remove(OnCommunicationStateChanged);
 	}
 	
 	override protected void OnDelete(IEntity owner)
@@ -151,7 +153,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		if (m_CompartmentAccessComponent)
 		{
 			m_CompartmentAccessComponent.GetOnCompartmentEntered().Remove(OnVehicleEntered);
-			m_CompartmentAccessComponent.GetOnCompartmentLeft().Remove(OnVehicleLeft);			
+			m_CompartmentAccessComponent.GetOnCompartmentLeft().Remove(OnVehicleLeft);
 		}
 		
 		if (m_DamageManager)
@@ -164,6 +166,14 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	bool IsOwnerAgent(AIAgent agent)
 	{
 		return GetOwner() == agent;
+	}
+
+//----------- Signal from CommunicationState class
+	//! We are ticking in info component only if the agent is speaking
+	void OnCommunicationStateChanged(EAICommunicationState newState)
+	{
+		if (newState == EAICommunicationState.SPEAKING)
+			SetEventMask(GetOwner(), EntityEvent.INIT | EntityEvent.FRAME); // turning on EOnFrame event
 	}
 	
 //----------- BIT operations on Roles
@@ -219,17 +229,6 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	EUnitState GetUnitStates()
 	{
 		return m_iUnitStates;
-	}
-	
-//--------- Fire team are disjoined - one can be member of only one fire team at the time
-	void SetFireTeam(EFireTeams fireTeam)
-	{
-		m_iFireTeams = fireTeam;
-	}
-	
-	EFireTeams GetFireTeam()
-	{
-		return m_iFireTeams; 
 	}
 	
 //--------- AI states are disjoined - one can be in only one state at the time
@@ -335,7 +334,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	// Used in SCR_AIDebugInfoComponent
 	void DebugPrintToWidget(TextWidget w)
 	{
-		string str = string.Format("\n%1 %2", m_iFireTeams, typename.EnumToString(EFireTeams, m_iFireTeams));
+		string str;
 		str = str + string.Format("\n%1 %2", m_iAIStates, typename.EnumToString(EUnitAIState, m_iAIStates));
 		w.SetText(str);
 	}
@@ -359,7 +358,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		}
 		
 		if (callsignComp)
-		{			
+		{
 			string company, platoon, squad, character, format;
 			bool setCallsign = callsignComp.GetCallsignNames(company, platoon, squad, character, format);
 			if (setCallsign)

@@ -6,8 +6,9 @@ class SCR_AttributeButtonUIComponent: ScriptedWidgetComponent
 	
 	protected bool m_bIsFocused;
 	protected bool m_bListeningToMouseLeft;
+	protected bool m_FocusUpdateBlocked;
 	
-	protected const int MOUSE_LEFT_REMOVE_DESCRIPTION_DELAY = 150;
+	protected const int MOUSE_LEFT_REMOVE_DESCRIPTION_DELAY = 50;
 	
 	/*!
 	Init the button setting references, description and events
@@ -25,23 +26,15 @@ class SCR_AttributeButtonUIComponent: ScriptedWidgetComponent
 		else 
 			m_sButtonDescription = buttonName;
 		
-		attributeUIComponent.GetOnMouseLeave().Insert(OnAttributeMouseLeave);
 		button.m_OnShowBorder.Insert(OnButtonFocus);
 	}
 	
 	protected void OnButtonFocus(SCR_ButtonBaseComponent button, bool value)
 	{
+		if (!value)
+			return;
+		
 		OnMouseEnter(null, -1, -1);
-	}
-	
-	protected void OnAttributeMouseLeave()
-	{
-		if (m_bListeningToMouseLeft)
-		{
-			m_AttributeUIComponent.ShowButtonDescription(this, false);
-			m_bListeningToMouseLeft = false;
-			GetGame().GetCallqueue().Remove(OnMouseLeaveDelay);
-		}
 	}
 	
 	override bool OnMouseEnter(Widget w, int x, int y)
@@ -81,12 +74,5 @@ class SCR_AttributeButtonUIComponent: ScriptedWidgetComponent
 			return;
 		
 		m_AttributeUIComponent.ShowButtonDescription(this, false);
-	}
-	
-	override void HandlerAttached(Widget w)
-	{
-	}
-	override void HandlerDeattached(Widget w)
-	{
 	}
 };

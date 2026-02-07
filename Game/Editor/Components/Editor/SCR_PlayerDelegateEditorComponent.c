@@ -63,8 +63,14 @@ class SCR_PlayerDelegateEditorComponent : SCR_BaseEditorComponent
 	*/
 	bool HasPlayerWithUnlimitedEditor()
 	{
+		if (!m_Delegates || m_Delegates.IsEmpty())
+			return false;
+		
 		for (int i, count = m_Delegates.Count(); i < count; i++)
 		{
+			if (!m_Delegates.GetElement(i))
+				continue;
+			
 			if (!m_Delegates.GetElement(i).HasLimitedEditor())
 				return true;
 		}
@@ -89,10 +95,15 @@ class SCR_PlayerDelegateEditorComponent : SCR_BaseEditorComponent
 		if (m_PlayerDelegate && m_iPlayerID == playerID) 
 			m_PlayerDelegate.SetControlledEntity(controlledEntity);
 	}
-	protected void OnDeathServer(int playerID, IEntity controlledEntity)
+	protected void OnDeathServer(int playerID, IEntity controlledEntity, IEntity killer)
 	{
 		if (m_PlayerDelegate && m_iPlayerID == playerID) 
 			m_PlayerDelegate.SetControlledEntity(null);
+	}
+	
+	protected void OnPlayerDeletedServer(int playerID, IEntity controlledEntity)
+	{
+		OnDeathServer(playerID, controlledEntity, null);
 	}
 	
 	override void EOnEditorInitServer()
@@ -124,7 +135,7 @@ class SCR_PlayerDelegateEditorComponent : SCR_BaseEditorComponent
 		{
 			gameMode.GetOnPlayerSpawned().Insert(OnSpawnServer);
 			gameMode.GetOnPlayerKilled().Insert(OnDeathServer);
-			gameMode.GetOnPlayerDeleted().Insert(OnDeathServer);
+			gameMode.GetOnPlayerDeleted().Insert(OnPlayerDeletedServer);
 			
 			m_PlayerDelegate.SetControlledEntity(SCR_PossessingManagerComponent.GetPlayerMainEntity(m_iPlayerID));
 		}
@@ -147,7 +158,7 @@ class SCR_PlayerDelegateEditorComponent : SCR_BaseEditorComponent
 		{
 			if (gameMode.GetOnPlayerSpawned()) gameMode.GetOnPlayerSpawned().Remove(OnSpawnServer);
 			if (gameMode.GetOnPlayerKilled()) gameMode.GetOnPlayerKilled().Remove(OnDeathServer);
-			if (gameMode.GetOnPlayerDeleted()) gameMode.GetOnPlayerDeleted().Remove(OnDeathServer);
+			if (gameMode.GetOnPlayerDeleted()) gameMode.GetOnPlayerDeleted().Remove(OnPlayerDeletedServer);
 		}
 	}
 };

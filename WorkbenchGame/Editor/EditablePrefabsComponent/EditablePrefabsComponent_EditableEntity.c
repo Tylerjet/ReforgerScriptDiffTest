@@ -264,7 +264,7 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 		//if (!GetImagePath(config, targetPath)) return;
 
 		//--- Already exists, don't create placeholder, but get GUID of the file
-		if (FileIO.FileExist(targetPath))
+		if (FileIO.FileExists(targetPath))
 		{
 			string absolutePath;
 			Workbench.GetAbsolutePath(targetPath, absolutePath);

@@ -41,7 +41,7 @@ class SCR_InventorySlotGadgetUI : SCR_InventorySlotUI
 	
 			
 	//------------------------------------------------------------------------------------------------
-	void SCR_InventorySlotGadgetUI( SCR_UniversalInventoryStorageComponent pComponent = null, SCR_InventoryStorageBaseUI pStorageUI = null, bool bVisible = true, int iSlotIndex = -1, SCR_ItemAttributeCollection pAttributes = null )
+	void SCR_InventorySlotGadgetUI( InventoryItemComponent pComponent = null, SCR_InventoryStorageBaseUI pStorageUI = null, bool bVisible = true, int iSlotIndex = -1, SCR_ItemAttributeCollection pAttributes = null )
 	{
 	}
 	

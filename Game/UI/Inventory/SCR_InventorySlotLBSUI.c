@@ -14,7 +14,7 @@ class SCR_InventorySlotLBSUI : SCR_InventorySlotStorageUI
 	
 			
 	//------------------------------------------------------------------------------------------------
-	void SCR_InventorySlotLBSUI( SCR_UniversalInventoryStorageComponent pComponent = null, SCR_InventoryStorageBaseUI pStorageUI = null, bool bVisible = true, int iSlotIndex = -1, SCR_ItemAttributeCollection pAttributes = null )
+	void SCR_InventorySlotLBSUI( InventoryItemComponent pComponent = null, SCR_InventoryStorageBaseUI pStorageUI = null, bool bVisible = true, int iSlotIndex = -1, SCR_ItemAttributeCollection pAttributes = null )
 	{
 	}
 	

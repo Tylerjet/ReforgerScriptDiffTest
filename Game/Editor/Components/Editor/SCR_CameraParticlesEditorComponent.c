@@ -37,7 +37,7 @@ class SCR_CameraParticlesEditorComponent : SCR_BaseEditorComponent
 		
 		return prefabData.GetEffects(outEffects);
 	}
-	void RefreshCurrentEffect()
+	void RefreshCurrentEffect(SCR_ManualCamera manualCamera)
 	{
 		SetCurrentEffect(m_iCurrentEffect);
 	}
@@ -64,7 +64,7 @@ class SCR_CameraParticlesEditorComponent : SCR_BaseEditorComponent
 		if (!m_CameraManager) return;
 		
 		if (m_CameraManager.GetCamera())
-			RefreshCurrentEffect();
+			RefreshCurrentEffect(null);
 		else
 			m_CameraManager.GetOnCameraCreate().Insert(RefreshCurrentEffect);
 	}

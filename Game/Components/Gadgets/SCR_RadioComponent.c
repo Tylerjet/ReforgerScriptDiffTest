@@ -344,7 +344,14 @@ class SCR_RadioComponent : SCR_GadgetComponent
 		// Update knobs
 		UpdateKnobState();
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	override void UpdateVisibility(EGadgetMode mode)
+	{
+		if (m_iRadioCategory != ERadioCategory.MANPACK)	// let radio backpack visibility be handled by inventory
+			super.UpdateVisibility(mode);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override EGadgetType GetType()
 	{

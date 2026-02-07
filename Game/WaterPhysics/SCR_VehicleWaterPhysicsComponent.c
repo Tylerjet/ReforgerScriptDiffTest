@@ -34,7 +34,12 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 	protected bool m_bIsLeaking;
 	protected int m_iBuoyancySignalIdx;
 	protected SignalsManagerComponent m_pSignalsManagerComponent;
+	protected VehicleWheeledSimulation_SA m_pSimulation_SA;
 	protected VehicleWheeledSimulation m_pSimulation;
+	
+	// Server Authoritative vehicles informing
+	protected NwkCarMovementComponent m_pNwkCarMovementComponent;
+	protected RplComponent m_pRplComponent;
 	
 	protected float m_fBuoyancyInitial;
 	protected float m_fBuoyancyLossCurrent;
@@ -78,24 +83,48 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 		// Thrust
 		float enginePower;
 		float thrust;
-		if (m_pSimulation && m_pSimulation.EngineIsOn())
-		{
-			enginePower = Math.InverseLerp(0, m_pSimulation.EngineGetRPMPeakPower(), m_pSimulation.EngineGetRPM());
-			
-			if (m_pSimulation.GetThrottle() > MIN_THROTTLE)
-				thrust = Math.Clamp(enginePower, 0, 1);
-			else if (m_pSimulation.GetBrake() > MIN_BRAKE)
-				thrust = -1;
-			
-			// Reverse gear control
-			// TODO Take driving assist mode in account
-			if (m_pSimulation.GetGear() == REVERSE_GEAR)
-				thrust *= -1;
-		}
-		
 		float rudder;
-		if (m_pSimulation)
-			rudder = -m_pSimulation.GetSteering();
+		
+		if(GetGame().GetIsClientAuthority())
+		{
+			if (m_pSimulation && m_pSimulation.EngineIsOn())
+			{
+				enginePower = Math.InverseLerp(0, m_pSimulation.EngineGetRPMPeakPower(), m_pSimulation.EngineGetRPM());
+				
+				if (m_pSimulation.GetThrottle() > MIN_THROTTLE)
+					thrust = Math.Clamp(enginePower, 0, 1);
+				else if (m_pSimulation.GetBrake() > MIN_BRAKE)
+					thrust = -1;
+				
+				// Reverse gear control
+				// TODO Take driving assist mode in account
+				if (m_pSimulation.GetGear() == REVERSE_GEAR)
+					thrust *= -1;
+			}
+			
+			if (m_pSimulation)
+				rudder = -m_pSimulation.GetSteering();
+		}
+		else
+		{
+			if (m_pSimulation_SA && m_pSimulation_SA.EngineIsOn())
+			{
+				enginePower = Math.InverseLerp(0, m_pSimulation_SA.EngineGetRPMPeakPower(), m_pSimulation_SA.EngineGetRPM());
+				
+				if (m_pSimulation_SA.GetThrottle() > MIN_THROTTLE)
+					thrust = Math.Clamp(enginePower, 0, 1);
+				else if (m_pSimulation_SA.GetBrake() > MIN_BRAKE)
+					thrust = -1;
+				
+				// Reverse gear control
+				// TODO Take driving assist mode in account
+				if (m_pSimulation_SA.GetGear() == REVERSE_GEAR)
+					thrust *= -1;
+			}
+			
+			if (m_pSimulation_SA)
+				rudder = -m_pSimulation_SA.GetSteering();
+		}		
 		
 		float thrustVal = m_fThrustForward;
 		if (thrust < 0) // Reversing
@@ -207,14 +236,53 @@ class SCR_VehicleWaterPhysicsComponent : SCR_WaterPhysicsComponent
 		m_fBuoyancyInitial = m_fBuoyancy;
 		m_fBuoyancyLossCurrent = m_fBuoyancyLoss;
 	
-		m_pSimulation = VehicleWheeledSimulation.Cast(owner.FindComponent(VehicleWheeledSimulation));
-		if (m_pSimulation && !m_pSimulation.IsValid())
-			m_pSimulation = null;
+		if(GetGame().GetIsClientAuthority())
+		{
+			m_pSimulation = VehicleWheeledSimulation.Cast(owner.FindComponent(VehicleWheeledSimulation));
+			if (m_pSimulation && !m_pSimulation.IsValid())
+				m_pSimulation = null;
+		}
+		else
+		{
+			m_pSimulation_SA = VehicleWheeledSimulation_SA.Cast(owner.FindComponent(VehicleWheeledSimulation_SA));
+			if (m_pSimulation_SA && !m_pSimulation_SA.IsValid())
+				m_pSimulation_SA = null;
+		}
+		
 		
 		m_pSignalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
 		
 		if (m_pSignalsManagerComponent)
 			m_iBuoyancySignalIdx = m_pSignalsManagerComponent.AddOrFindMPSignal("Buoyancy", 0.1, 1);
+		
+		if(!GetGame().GetIsClientAuthority())
+		{
+			m_pNwkCarMovementComponent = NwkCarMovementComponent.Cast(owner.FindComponent(NwkCarMovementComponent));
+			m_pRplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnEnterWater()
+	{
+		if(!GetGame().GetIsClientAuthority() && m_pNwkCarMovementComponent && m_pRplComponent)
+		{
+			if(!m_pRplComponent.IsProxy())
+				m_pNwkCarMovementComponent.SetAllowance(false, 2, 0.1, 1, 1);
+			else if(m_pRplComponent.IsProxy() && m_pRplComponent.IsOwner())
+				m_pNwkCarMovementComponent.SetPrediction(false);
+		}
+	}
+	
+	override void OnExitWater()
+	{
+		if(!GetGame().GetIsClientAuthority() && m_pNwkCarMovementComponent  && m_pRplComponent)
+		{
+			if(!m_pRplComponent.IsProxy())
+				m_pNwkCarMovementComponent.SetAllowance(true, 300, 0.003, 0.25, 0.3);
+			else if(m_pRplComponent.IsProxy() && m_pRplComponent.IsOwner())
+				m_pNwkCarMovementComponent.SetPrediction(true);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 [ComponentEditorProps(category: "GameScripted/GameMode", description: "Communicator for RespawnSystemComponent. Should be attached to PlayerController.")]
-class SCR_RespawnComponentClass: RespawnComponentClass
+class SCR_RespawnComponentClass : RespawnComponentClass
 {
 };
 
@@ -22,98 +22,8 @@ enum ERespawnSelectionResult
 {
 	OK = 0,
 	ERROR = 1,
-	
+
 	ERROR_FORBIDDEN = 2, // Can happen if we're setting a loadout from faction we don't belong to or similar
-};
-
-
-/*!
-	Delegate for lock state changes, event is raised only when lock state changes.
-	\param locked New state, true when lock is engaged, false otherwise.
-*/
-void OnLockStateDelegate(bool locked);
-typedef func OnLockStateDelegate;
-typedef ScriptInvokerBase<OnLockStateDelegate> LockStateInvoker;
-
-
-// #define RESPAWN_LOCK_VERBOSE_DIAG
-//! Lock for respawn component requests.
-class SCR_RespawnComponentLock
-{
-	private const float MS_IN_SEC = 1000.0;
-
-	private float m_fLockTime;	// world time when lock was engaged
-	private float m_fLockDuration; // duration in seconds
-	private bool m_bIsLocked;
-
-	//! Raised when lock state is changed
-	private ref LockStateInvoker m_pInvoker = new LockStateInvoker();
-
-	/*!
-		Returns invoker that is invoked when lock state is changed,
-		see OnLockStateDelegate definition for details.
-		\return Returns instance of invoker.
-	*/
-	LockStateInvoker GetInvoker()
-	{
-		return m_pInvoker;
-	}
-
-	//! Returns current world time.
-	private float GetCurrentTime()
-	{
-		return GetGame().GetWorld().GetWorldTime();
-	}
-
-	//! Enage the lock.
-	void Lock()
-	{
-		m_fLockTime = GetCurrentTime();
-
-		bool previous = m_bIsLocked;
-		m_bIsLocked = true;
-
-		// Due to who knows what can be attached to invoker,
-		// we first update internal state and only then raise event
-		if (previous != m_bIsLocked)
-			m_pInvoker.Invoke(m_bIsLocked);
-	}
-
-	//! Try disengaging the lock based on elapsed time.
-	bool TryUnlock()
-	{
-		if (GetCurrentTime() > m_fLockTime + m_fLockDuration * MS_IN_SEC)
-		{
-			Break();
-			return true;
-		}
-
-		return false;
-	}
-
-	//! Forcefully disengage the lock.
-	void Break()
-	{
-		bool previous = m_bIsLocked;
-		m_bIsLocked = false;
-
-		// Due to who knows what can be attached to invoker,
-		// we first update internal state and only then raise event
-		if (previous != m_bIsLocked)
-			m_pInvoker.Invoke(m_bIsLocked);
-	}
-
-	//! Returns whether the lock is engaged or not.
-	bool IsLocked()
-	{
-		return m_bIsLocked;
-	}
-
-	//! Create new lock with time duration of provided value.
-	void SCR_RespawnComponentLock(float duration = 10.0)
-	{
-		m_fLockDuration = duration;
-	}
 };
 
 //------------------------------------------------------------------------------------------------
@@ -126,166 +36,123 @@ class SCR_RespawnComponent : RespawnComponent
 	// Parent entity's rpl component
 	protected RplComponent m_RplComponent;
 	// RespawnSystemComponent - has to be attached on a gameMode entity
-	protected SCR_RespawnSystemComponent m_RespawnSystemComponent;
-
-	static ref ScriptInvoker s_OnSpawn = new ScriptInvoker();
-
-	#ifdef RESPAWN_COMPONENT_DIAG
-		static bool s_DebugRegistered;
-	#endif
-
-
-	// Local faction selection lock w/ timeout
-	private ref SCR_RespawnComponentLock m_pFactionLock = new SCR_RespawnComponentLock();
-	// Local loadout selection lock w/ timeout
-	private ref SCR_RespawnComponentLock m_pLoadoutLock = new SCR_RespawnComponentLock();
-	// Local spawnPoint selection lock w/ timeout
-	private ref SCR_RespawnComponentLock m_pSpawnPointLock = new SCR_RespawnComponentLock();
-	// Local RequestRespawn selection lock w/ timeout, handled on gamecode side
-	private ref LockStateInvoker m_pRespawnLock = new LockStateInvoker();
-
-	/*!
-		Returns invoker that is invoked when faction request lock engages or disengages.
-		\return Invoker instance.
-	*/
-	LockStateInvoker GetFactionLockInvoker() { return m_pFactionLock.GetInvoker(); }
-	/*!
-		Returns invoker that is invoked when loadout request lock engages or disengages.
-		\return Invoker instance.
-	*/
-	LockStateInvoker GetLoadoutLockInvoker() { return m_pLoadoutLock.GetInvoker(); }
-	/*!
-		Returns invoker that is invoked when spawn point request lock engages or disengages.
-		\return Invoker instance.
-	*/
-	LockStateInvoker GetSpawnPointLockInvoker() { return m_pSpawnPointLock.GetInvoker(); }
-	/*!
-		Returns invoker that is invoked when request respawn lock engages or disengages.
-		\return Invoker instance.
-	*/
-	LockStateInvoker GetRespawnLockInvoker() { return m_pRespawnLock; }
 	
-	#ifdef RESPAWN_COMPONENT_DIAG
-	static string ResponseToString(ERespawnSelectionResult response)
-	{
-		switch (response)
-		{
-			case ERespawnSelectionResult.OK:
-				return "OK";
-			
-			case ERespawnSelectionResult.ERROR:
-				return "ERROR";
-			
-			case ERespawnSelectionResult.ERROR_FORBIDDEN:
-				return "ERROR_FORBIDDEN";
-		}
-		
-		return "UNREACHABLE_STATE";
+	
+	private static ref ScriptInvoker s_OnSpawn = new ScriptInvoker();
+	[Obsolete("Use SCR_RespawnComponent.GetOnRespawnResponseInvoker_O() instead")]
+	static ScriptInvoker SGetOnSpawn() 
+	{ 
+		return s_OnSpawn;
 	}
-	#endif
 
-	#ifdef RESPAWN_COMPONENT_DIAG
+	//! List of all request components - children of this component, stored by their assigned type.
+	//! See also:SCR_SpawnRequestComponent.GetDataType()
+	protected ref map<typename, SCR_SpawnRequestComponent> m_mRequestComponents = new map<typename, SCR_SpawnRequestComponent>();
+	
 	//------------------------------------------------------------------------------------------------
-	void DrawDebugInfo()
+	// ON RESPAWN READY (notification from server to e.g. open respawn menu)
+	protected ref OnRespawnReadyInvoker m_OnRespawnReadyInvoker_O = new OnRespawnReadyInvoker();
+	/*!
+		Returns an invoker that is invoked after this player is "ready" to spawn. (E.g. open deployment menu)
+	*/
+	OnRespawnReadyInvoker GetOnRespawnReadyInvoker_O()
 	{
-		if (!m_RespawnSystemComponent)
-		{
-			Print("RespawnComponent::RespawnSystemNotFound!", LogLevel.DEBUG);
-			return;
-		}
-
-		int localId = -1;
-		ArmaReforgerScripted game = GetGame();
-		if (game)
-		{
-			PlayerController playerController = game.GetPlayerController();
-			localId = playerController.GetPlayerId();
-		}
-
-		SCR_PlayerRespawnInfo selfInfo = null;
-		array<ref SCR_PlayerRespawnInfo> playerRespawnMap = m_RespawnSystemComponent.GetPlayerRespawnInfoMap();
-		int cnt = playerRespawnMap.Count();
-
-		const string header = "[PlayerID] [LoadoutIndex] [FactionIndex] [LoadoutName] [FactionKey] [SpawnPointIndex] [SpawnPointName] [PlayerRespawnInfo]";
-		const string tableFmt = "%1 | %2 | %3 | %4 | %5 | %6 | %7 | %8 ";
-
-
-		DbgUI.Begin("Respawn System Diag");
-		DbgUI.Spacer(10);
-		DbgUI.Text( header );
-		for (int i = 0 ; i < cnt; i++)
-		{
-			SCR_PlayerRespawnInfo respawnInfo = playerRespawnMap[i];
-			if (respawnInfo)
-			{
-				string respInfo = respawnInfo.ToString();
-				int playerId = respawnInfo.GetPlayerID();
-				int loadoutId = respawnInfo.GetPlayerLoadoutIndex();
-				int factionId = respawnInfo.GetPlayerFactionIndex();
-				RplId spawnPointId = respawnInfo.GetPlayerSpawnPointIdentity();
-
-				if (localId != -1 && playerId == localId)
-					selfInfo = respawnInfo;
-
-				const string INVALID_STR = "INVALID";
-				string loadoutName = INVALID_STR;
-				string factionKey = INVALID_STR;
-				string spawnPointName = INVALID_STR;
-
-				Faction playerFaction = m_RespawnSystemComponent.GetPlayerFaction(playerId);
-				SCR_BasePlayerLoadout playerLoadout = m_RespawnSystemComponent.GetPlayerLoadout(playerId);
-				SCR_SpawnPoint spawnPoint = m_RespawnSystemComponent.GetPlayerSpawnPoint(playerId);
-				if (playerFaction)
-					factionKey = playerFaction.GetFactionKey();
-
-				if (playerLoadout)
-					loadoutName = playerLoadout.GetLoadoutName();
-
-				if (spawnPoint)
-					spawnPointName = spawnPoint.GetName();
-
-				DbgUI.Text( string.Format(tableFmt, playerId, loadoutId, factionId, loadoutName, factionKey, spawnPointId, spawnPointName, respInfo) );
-				DbgUI.Spacer(4);
-			}
-		}
-
-		if (selfInfo)
-		{
-			int oldFac = selfInfo.GetPlayerFactionIndex();
-			int oldLd = selfInfo.GetPlayerLoadoutIndex();
-			RplId oldSpawn = selfInfo.GetPlayerSpawnPointIdentity();
-
-			int requestedFaction = oldFac;
-			int requestedLoadout = oldLd;
-			int requestedSpawnpoint = oldSpawn;
-
-			DbgUI.Spacer( 16 );
-			DbgUI.Text(" --- Request RespawnInfo Change ---" );
-			DbgUI.InputInt("new Loadout ID: ", requestedLoadout, 64);
-			DbgUI.InputInt("new Faction ID: ", requestedFaction, 64);
-			DbgUI.InputInt("new SpawnPoint ID: ", requestedSpawnpoint, 64);
-
-			if (DbgUI.Button("Request new data", 64))
-			{
-				// if server has multiple ply controllers, call only from the "local one"
-				// for players this check should always be ok
-				// TODO: maybe move diag menu somewhere so it's not created for every instance of RespawnComponent
-				if (m_RplComponent && m_RplComponent.IsOwner())
-				{
-					RequestPlayerLoadoutIndex(requestedLoadout);
-					RequestPlayerFactionIndex(requestedFaction);
-					RequestPlayerSpawnPointIdentity(requestedSpawnpoint);
-					const string format = "--- RespawnSystem:RequestChange ---\nPlayerID: %1\nLoadout: %2 -> %3\nFaction: %4 -> %5\nSpawnPoint: %6 -> %7";
-					Print( string.Format(format, localId, oldLd, requestedLoadout, oldFac, requestedFaction, oldSpawn, requestedSpawnpoint ));
-				}
-			}
-
-			if (DbgUI.Button("Toggle Respawn Menu"))
-				SCR_RespawnSystemComponent.ToggleRespawnMenu();
-		}
-
-		DbgUI.End();
+		return m_OnRespawnReadyInvoker_O;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	// ON CAN RESPAWN REQUEST
+	protected ref OnCanRespawnRequestInvoker m_OnCanRespawnRequestInvoker_O = new OnCanRespawnRequestInvoker();
+	/*!
+		Returns an invoker that is invoked after this component *sends* a can-request.
+	*/
+	OnCanRespawnRequestInvoker GetOnCanRespawnRequestInvoker_O()
+	{
+		return m_OnCanRespawnRequestInvoker_O;
+	}
+	protected ref OnCanRespawnRequestInvoker m_OnCanRespawnRequestInvoker_S = new OnCanRespawnRequestInvoker();
+	/*!
+		Returns an invoker that is invoked after this component *sends* a can-request.
+	*/
+	OnCanRespawnRequestInvoker GetOnCanRespawnRequestInvoker_S()
+	{
+		return m_OnCanRespawnRequestInvoker_S;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// ON CAN RESPAWN RESPONSE
+	protected ref OnCanRespawnResponseInvoker m_OnCanRespawnResponseInvoker_O = new OnCanRespawnResponseInvoker();
+	/*!
+		Returns an invoker that is invoked after this component *receives* a response from teh authority about
+		prior sent ask can-request.
+	*/
+	OnCanRespawnResponseInvoker GetOnCanRespawnResponseInvoker_O()
+	{
+		return m_OnCanRespawnResponseInvoker_O;
+	}
+	protected ref OnCanRespawnResponseInvoker m_OnCanRespawnResponseInvoker_S = new OnCanRespawnResponseInvoker();
+	/*!
+		Returns an invoker that is invoked after this component *receives* a response from teh authority about
+		prior sent ask can-request.
+	*/
+	OnCanRespawnResponseInvoker GetOnCanRespawnResponseInvoker_S()
+	{
+		return m_OnCanRespawnResponseInvoker_S;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// ON RESPAWN REQUEST
+	protected ref OnRespawnRequestInvoker m_OnRespawnRequestInvoker_O = new OnRespawnRequestInvoker();
+	/*!
+		Returns an invoker that is invoked after this component sends a respawn request.
+	*/
+	OnRespawnRequestInvoker GetOnRespawnRequestInvoker_O()
+	{
+		return m_OnRespawnRequestInvoker_O;
+	}
+	protected ref OnRespawnRequestInvoker m_OnRespawnRequestInvoker_S = new OnRespawnRequestInvoker();
+	/*!
+		Returns an invoker that is invoked after this component sends a respawn request.
+	*/
+	OnRespawnRequestInvoker GetOnRespawnRequestInvoker_S()
+	{
+		return m_OnRespawnRequestInvoker_S;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// ON RESPAWN RESPONSE
+	protected ref OnRespawnResponseInvoker m_OnRespawnResponseInvoker_O = new OnRespawnResponseInvoker();
+	/*!
+		Returns an invoker that is invoked after this component receives a respawn request response from the authority.
+	*/
+	OnRespawnResponseInvoker GetOnRespawnResponseInvoker_O()
+	{
+		return m_OnRespawnResponseInvoker_O;
+	}
+	protected ref OnRespawnResponseInvoker m_OnRespawnResponseInvoker_S = new OnRespawnResponseInvoker();
+	/*!
+		Returns an invoker that is invoked after this component receives a respawn request response from the authority.
+	*/
+	OnRespawnResponseInvoker GetOnRespawnResponseInvoker_S()
+	{
+		return m_OnRespawnResponseInvoker_S;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// ON FINALIZE START
+	protected ref OnRespawnRequestInvoker m_OnRespawnFinalizeBeginInvoker_O = new OnRespawnRequestInvoker();
+	/*!
+		When the spawn process reaches it end, the authority notifies the client about the last state starting ("finalization").
+		This is the last state after which the player gains control of the desired controllable, or receives a response
+		(see GetOnRespawnResponseInvoker_O) about a possible (rare?) failure.
+	*/
+	OnRespawnRequestInvoker GetOnRespawnFinalizeBeginInvoker_O()
+	{
+		return m_OnRespawnFinalizeBeginInvoker_O;
+	}
+
+	#ifdef DEBUGUI_RESPAWN_REQUEST_COMPONENT_DIAG
+		static bool s_DebugRegistered;
 	#endif
 
 	//------------------------------------------------------------------------------------------------
@@ -299,115 +166,86 @@ class SCR_RespawnComponent : RespawnComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	/*!
+		Find SCR_RespawnComponent affiliated with the local player.
+		Returns null if no PlayerController exists.
+		\return SCR_RespawnComponent instance for local player or null if none is present.
+	*/
+	static SCR_RespawnComponent SGetLocalRespawnComponent()
+	{
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return null;
+
+		SCR_RespawnComponent respawnComponent = SCR_RespawnComponent.Cast(playerController.GetRespawnComponent());
+		return respawnComponent;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Authority only:
+			Find SCR_RespawnComponent affiliated with the provided player by their Id.
+			\param playerId Id of target player corresponding to id in PlayerController/PlayerManager.
+			Returns null if no PlayerController exists.
+			\return SCR_RespawnComponent instance for target player or null if none is present.
+	*/
+	static SCR_RespawnComponent SGetPlayerRespawnComponent(int playerId)
+	{
+		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		if (!playerController)
+			return null;
+
+		SCR_RespawnComponent respawnComponent = SCR_RespawnComponent.Cast(playerController.GetRespawnComponent());
+		return respawnComponent;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	RplComponent GetRplComponent()
 	{
 		return m_RplComponent;
 	}
 
+	[Obsolete("Utilize SCR_PlayerFactionAffiliationComponent instead!")]
 	bool RequestClearPlayerFaction()
 	{
-		if (!m_RespawnSystemComponent)
-			return false;
-
-		RequestPlayerFactionIndex(SCR_PlayerRespawnInfo.RESPAWN_INFO_INVALID_INDEX);
-		return true;
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Utilize SCR_PlayerLoadoutComponent instead!")]
 	bool RequestClearPlayerLoadout()
 	{
-		if (!m_RespawnSystemComponent)
-			return false;
-
-		RequestPlayerLoadoutIndex(SCR_PlayerRespawnInfo.RESPAWN_INFO_INVALID_INDEX);
-		return true;
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Utilize SCR_RespawnComponent.RequestSpawn directly instead!")]
 	void RequestClearPlayerSpawnPoint()
-	{
-		RequestPlayerSpawnPointIdentity(RplId.Invalid());
+	{		
 	}
 
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Utilize SCR_PlayerLoadoutComponent instead!")]
 	//! Ask the server to assign the local player to this loadout ptr
 	bool RequestPlayerLoadout(SCR_BasePlayerLoadout loadout)
 	{
-		if (!m_RespawnSystemComponent)
-			return false;
-
-		int loadoutIndex = m_RespawnSystemComponent.GetLoadoutIndex(loadout);
-		if (loadoutIndex == SCR_PlayerRespawnInfo.RESPAWN_INFO_INVALID_INDEX)
-			return false;
-
-		RequestPlayerLoadoutIndex(loadoutIndex);
-		return true;
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Ask the server to assign the local player to this loadout ptr
+	[Obsolete("Utilize SCR_PlayerFactionAffiliationComponent instead!")]
 	bool RequestPlayerFaction(Faction faction)
 	{
-		if (!m_RespawnSystemComponent)
-			return false;
-
-		if (m_pFactionLock.IsLocked())
-			return false;
-
-		int factionIndex = m_RespawnSystemComponent.GetFactionIndex(faction);
-		if (factionIndex == SCR_PlayerRespawnInfo.RESPAWN_INFO_INVALID_INDEX)
-			return false;
-
-		RequestPlayerFactionIndex(factionIndex);
-		return true;
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Ask the server to assign the local player to this spawnPoint
+	[Obsolete("Utilize SCR_RespawnComponent.RequestSpawn directly instead!")]
 	bool RequestPlayerSpawnPoint(SCR_SpawnPoint spawnPoint)
 	{
-		if (!m_RespawnSystemComponent)
-			return false;
-
-		RplId spawnPointIdentity = SCR_SpawnPoint.GetSpawnPointRplId(spawnPoint);
-		if (spawnPointIdentity == RplId.Invalid())
-			return false;
-
-		RequestPlayerSpawnPointIdentity(spawnPointIdentity);
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Used by UseCLISpawn to set PlayerRespawnInfo fields without (for example) the loadout's faction
-	//! check failing because the faction RPC hadn't completed yet.
-	bool RequestCLISpawnInfo(Faction faction, SCR_BasePlayerLoadout loadout, SCR_SpawnPoint spawnPoint)
-	{
-		if (!m_RespawnSystemComponent)
-			return false;
-
-		if (m_pFactionLock.IsLocked() || m_pLoadoutLock.IsLocked() || m_pSpawnPointLock.IsLocked())
-			return false;
-
-		int factionIndex = m_RespawnSystemComponent.GetFactionIndex(faction);
-		int loadoutIndex = m_RespawnSystemComponent.GetLoadoutIndex(loadout);
-		RplId spawnPointIdentity = SCR_SpawnPoint.GetSpawnPointRplId(spawnPoint);
-
-		if (factionIndex == SCR_PlayerRespawnInfo.RESPAWN_INFO_INVALID_INDEX ||
-			loadoutIndex == SCR_PlayerRespawnInfo.RESPAWN_INFO_INVALID_INDEX ||
-			spawnPointIdentity == RplId.Invalid())
-		{
-			return false;
-		}
-
-		m_pFactionLock.Lock();
-		m_pLoadoutLock.Lock();
-		m_pSpawnPointLock.Lock();
-
-		Rpc(RpcAsk_SetPlayerFaction, factionIndex);
-		Rpc(RpcAsk_SetPlayerLoadout, loadoutIndex);
-		Rpc(RpcAsk_SetPlayerSpawnPoint, spawnPointIdentity);
-
-		return true;
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -429,452 +267,347 @@ class SCR_RespawnComponent : RespawnComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void NotifyOnPlayerSpawned(int playerID)
-	{
-		if (m_PlayerController && playerID == m_PlayerController.GetPlayerId())
-			Rpc(RpcAsk_NotifyOnPlayerSpawned);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Ask the server to assign the local player to this loadoutIndex
+	[Obsolete("Utilize SCR_PlayerLoadoutComponent instead!")]
 	protected void RequestPlayerLoadoutIndex(int loadoutIndex)
 	{
-		if (m_pLoadoutLock.IsLocked())
-			return;
-		
-		// Verify that loadout is allowed
-		if (!m_RespawnSystemComponent.CanSetLoadout(m_PlayerController.GetPlayerId(), loadoutIndex))
-		{
-			Print("SCR_RespawnComponent::RequestPlayerLoadoutIndex request failed, forbidden request caught!", LogLevel.WARNING);
-			return;
-		}
-		
-		SCR_BasePlayerLoadout loadout = m_RespawnSystemComponent.GetLoadoutByIndex(loadoutIndex);
-		#ifdef RESPAWN_COMPONENT_VERBOSE
-			Print("SCR_RespawnComponent::RequestPlayerLoadoutIndex(loadoutIndex: "+loadoutIndex+")");
-		#endif
-		
-		m_pLoadoutLock.Lock();
-		Rpc(RpcAsk_SetPlayerLoadout, loadoutIndex);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Ask the server to assign the local player to this factionIndex
+	[Obsolete("Utilize SCR_PlayerFactionAffiliationComponent instead!")]
 	protected void RequestPlayerFactionIndex(int factionIndex)
-	{
-		if (m_pFactionLock.IsLocked())
-			return;
-		
-		// Verify that faction is allowed
-		if (!m_RespawnSystemComponent.CanSetFaction(m_PlayerController.GetPlayerId(), factionIndex))
-		{
-			Print("SCR_RespawnComponent::RequestPlayerFactionIndex request failed, forbidden request caught!", LogLevel.WARNING);
-			return;
-		}
-		
-		Faction faction = m_RespawnSystemComponent.GetFactionByIndex(factionIndex);
-		
-		#ifdef RESPAWN_COMPONENT_VERBOSE
-			Print("SCR_RespawnComponent::RequestPlayerFactionIndex(factionIndex: "+factionIndex+")");
-		#endif
-		m_pFactionLock.Lock();
-		Rpc(RpcAsk_SetPlayerFaction, factionIndex);
+	{		
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Ask the server to assign the local player to this spawnPointIdentity
+	[Obsolete("Utilize SCR_RespawnComponent.RequestSpawn directly instead!")]
 	protected void RequestPlayerSpawnPointIdentity(RplId spawnPointIdentity)
 	{
-		if (m_pSpawnPointLock.IsLocked())
-			return;
-		
-		// Verify that loadout is allowed
-		if (!m_RespawnSystemComponent.CanSetSpawnPoint(m_PlayerController.GetPlayerId(), spawnPointIdentity))
-		{
-			Print("SCR_RespawnComponent::RequestPlayerSpawnPointIdentity request failed, forbidden request caught!", LogLevel.WARNING);
-			return;
-		}
-
-		#ifdef RESPAWN_COMPONENT_VERBOSE
-			int id = spawnPointIdentity;
-			Print("SCR_RespawnComponent::RequestPlayerSpawnPointIndex(spawnPointIdentity: "+id+")");
-		#endif
-		m_pSpawnPointLock.Lock();
-		Rpc(RpcAsk_SetPlayerSpawnPoint, spawnPointIdentity);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Ask the server to assign loadout by index  to the player that requested it
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_SetPlayerLoadout(int loadoutIndex)
-	{
-		if (m_PlayerController && m_RespawnSystemComponent)
-		{
-			#ifdef RESPAWN_COMPONENT_VERBOSE
-				Print("SCR_RespawnComponent::RpcAsk_SetPlayerLoadout(loadoutIndex: "+loadoutIndex+")");
-			#endif
-			int playerId = m_PlayerController.GetPlayerId();
-			m_RespawnSystemComponent.DoSetPlayerLoadout(playerId, loadoutIndex);
-		}
-
-	}
-	//------------------------------------------------------------------------------------------------
-	/*! Acknowledge player request was processed, send response to owner client. Server only.
-		\param response The request response result.
-	*/
-	void AcknowledgePlayerLoadoutSet(ERespawnSelectionResult response)
-	{
-		Rpc(Rpc_RespondPlayerLoadoutSet_O);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Notify the owner that request was processed.
-	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void Rpc_RespondPlayerLoadoutSet_O(ERespawnSelectionResult result)
-	{
-		m_pLoadoutLock.Break();
-		
-		#ifdef RESPAWN_COMPONENT_DIAG
-		Print("SCR_RespawnComponent::PlayerLoadoutSet response received: " + ResponseToString(result));
-		#endif
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Ask the server to assign faction by index to the player that requested it
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_SetPlayerFaction(int factionIndex)
-	{
-		if (m_PlayerController && m_RespawnSystemComponent)
-		{
-			#ifdef RESPAWN_COMPONENT_VERBOSE
-				Print("SCR_RespawnComponent::RpcAsk_SetPlayerFaction(factionIndex: "+factionIndex+")");
-			#endif
-			int playerId = m_PlayerController.GetPlayerId();
-			m_RespawnSystemComponent.DoSetPlayerFaction(playerId, factionIndex);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*! Acknowledge player request was processed, send response to owner client. Server only.
-		\param response The request response result.
-	*/
-	void AcknowledgePlayerFactionSet(ERespawnSelectionResult response)
-	{
-		Rpc(Rpc_RespondPlayerFactionSet_O);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Notify the owner that request was processed.
-	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void Rpc_RespondPlayerFactionSet_O(ERespawnSelectionResult result)
-	{
-		m_pFactionLock.Break();
-		#ifdef RESPAWN_COMPONENT_DIAG
-		Print("SCR_RespawnComponent::PlayerFactionSet response received: " + ResponseToString(result));
-		#endif
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Ask the server to assign spawn point by rpl id to the player that requested it
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_SetPlayerSpawnPoint(RplId spawnPointIdentity)
-	{
-		if (m_PlayerController && m_RespawnSystemComponent)
-		{
-			#ifdef RESPAWN_COMPONENT_VERBOSE
-				int id = spawnPointIdentity;
-				Print("SCR_RespawnComponent::RpcAsk_SetPlayerSpawnPoint(spawnPointIdentity: "+id+")");
-			#endif
-			int playerId = m_PlayerController.GetPlayerId();
-			m_RespawnSystemComponent.DoSetPlayerSpawnPoint(playerId, spawnPointIdentity);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*! Acknowledge player request was processed, send response to owner client. Server only.
-		\param response The request response result.
-	*/
-	void AcknowledgePlayerSpawnPointSet(ERespawnSelectionResult response)
-	{
-		Rpc(Rpc_RespondPlayerSpawnPointSet_O);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Notify the owner that request was processed.
-	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void Rpc_RespondPlayerSpawnPointSet_O(ERespawnSelectionResult result)
-	{
-		m_pSpawnPointLock.Break();
-		#ifdef RESPAWN_COMPONENT_DIAG
-		Print("SCR_RespawnComponent::PlayerSpawnPointSet response received: " + ResponseToString(result));
-		#endif
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Notify the owner about being spawned
-	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void RpcAsk_NotifyOnPlayerSpawned()
-	{
-		s_OnSpawn.Invoke();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// ! HOTFIX for getting stuck in deploy menu when spawn killed
-	void NotifyOnPlayerKilled()
-	{
-		Rpc(Rpc_NotifyOnPlayerKilled);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void Rpc_NotifyOnPlayerKilled()
-	{
-		SCR_RespawnSuperMenu menu = SCR_RespawnSuperMenu.GetInstance();
-		if (menu)
-			menu.ResetDeployRequest();
-	} // HOTFIX end
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-		Acknowledge that player was enqueued for respawn to owner client. Server only.
-	*/
-	void AcknowledgePlayerEnqueued()
-	{
-		Rpc(Rpc_RespondPlayerSpawnEnqueued_O);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void Rpc_RespondPlayerSpawnEnqueued_O()
-	{
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		gameMode.GetRespawnHandlerComponent().OnLocalPlayerEnqueued();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
-		Acknowledge that player was dequeued from respawn to owner client. Server only.
+		Authority:
+			Send notification to this player that they are ready to spawn.
 	*/
-	void AcknowledgePlayerDequeued()
+	void NotifyReadyForSpawn_S()
 	{
-		Rpc(Rpc_RespondPlayerSpawnDequeued_O);
+		Rpc(Rpc_NotifyReadyForSpawn_O);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void Rpc_RespondPlayerSpawnDequeued_O()
+	protected void Rpc_NotifyReadyForSpawn_O()
 	{
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		gameMode.GetRespawnHandlerComponent().OnLocalPlayerDequeued();
+		#ifdef _ENABLE_RESPAWN_LOGS
+		PrintFormat("%1::Rpc_NotifyReadyForSpawn_O(playerId: %2)", Type().ToString(), GetPlayerController().GetPlayerId());
+		#endif
+		
+		GetOnRespawnReadyInvoker_O().Invoke();
+
+		#ifdef ENABLE_DIAG
+		if (Diag_IsCLISpawnEnabled())
+			Diag_RequestCLISpawn();
+		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
+	[Obsolete("Unsupported")]
 	void RequestQuickRespawn()
 	{
-		Rpc(Rpc_RequestPlayerQuickRespawn);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void Rpc_RequestPlayerQuickRespawn()
-	{
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (!gameMode)
-			return;
-
-		SCR_RespawnMenuHandlerComponent menuHandler = SCR_RespawnMenuHandlerComponent.Cast(gameMode.GetRespawnHandlerComponent());
-		if (!menuHandler)
-			return;
-
-		menuHandler.RequestQuickRespawn(m_PlayerController.GetPlayerId());
-	}
-
-
-	//------------------------------------------------------------------------------------------------
+	[Obsolete("Use SCR_RespawnComponent.RequestSpawn instead.")]
 	void RequestRespawn()
 	{
-		Rpc(Rpc_RequestPlayerRespawn);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void Rpc_RequestPlayerRespawn()
-	{
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (!gameMode)
-			return;
-
-		SCR_RespawnMenuHandlerComponent menuHandler = SCR_RespawnMenuHandlerComponent.Cast(gameMode.GetRespawnHandlerComponent());
-		if (!menuHandler)
-			return;
-
-		menuHandler.RequestRespawn(m_PlayerController.GetPlayerId());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	#ifdef RESPAWN_COMPONENT_DIAG
+	#ifdef ENABLE_DIAG
 	override void OnDiag(IEntity owner, float timeSlice)
 	{
-		// Draw diag menu
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_SYSTEM_INFO))
-			DrawDebugInfo();
+		if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_DIAG))
+			return;
+		
+		foreach (SCR_SpawnRequestComponent requestComponent : m_mRequestComponents)
+			requestComponent.DrawDiag();
 	}
 	#endif
-
-	/*!
-		Event raised when state of lock for loadout selection changes.
-		Always only relevant for local client.
-		\param isLocked New state of the lock, true when engaged, false otherwise.
-	*/
-	protected void OnLoadoutLockChanged(bool isLocked)
-	{
-		#ifdef RESPAWN_COMPONENT_LOCKS_VERBOSE
-		if (isLocked)
-			Print("Loadout req. lock lock engaged! [X]");
-		else
-			Print("Loadout req. lock lock disengaged! [ ]");
-		#endif
-	}
-
-	/*!
-		Event raised when state of lock for faction selection changes.
-		Always only relevant for local client.
-		\param isLocked New state of the lock, true when engaged, false otherwise.
-	*/
-	protected void OnFactionLockChanged(bool isLocked)
-	{
-		#ifdef RESPAWN_COMPONENT_LOCKS_VERBOSE
-		if (isLocked)
-			Print("Faction req. lock lock engaged! [X]");
-		else
-			Print("Faction req. lock lock disengaged! [ ]");
-		#endif
-	}
-
-	/*!
-		Event raised when state of lock for spawn point selection changes.
-		Always only relevant for local client.
-		\param isLocked New state of the lock, true when engaged, false otherwise.
-	*/
-	protected void OnSpawnPointLockChanged(bool isLocked)
-	{
-		#ifdef RESPAWN_COMPONENT_LOCKS_VERBOSE
-		if (isLocked)
-			Print("SpawnPoint req. lock lock engaged! [X]");
-		else
-			Print("SpawnPoint req. lock lock disengaged! [ ]");
-		#endif
-	}
-	
-	/*!
-		Event raised when state of lock for respawn request changes.
-		Always only relevant for local client.
-		\param isLocked New state of the lock, true when engaged, false otherwise.
-	*/
-	protected void OnRespawnLockChanged(bool isLocked)
-	{
-		#ifdef RESPAWN_COMPONENT_LOCKS_VERBOSE
-		if (isLocked)
-			Print("RequestRespawn lock lock engaged! [X]");
-		else
-			Print("RequestRespawn. lock lock disengaged! [ ]");
-		#endif
-	}
-	
-	/*!
-		Called when player controller request respawn lock is engaged,
-		i.e. a request was fired. Valid until response is received or
-		until timeout. Relevant to the owner client.
-	*/
-	protected override void OnRequestLockEngaged()
-	{
-		if (m_pRespawnLock)
-			m_pRespawnLock.Invoke(true);
-		OnRespawnLockChanged(true);
-	}
-	
-	/*!
-		Called when player controller request respawn lock is disengaged,
-		ie. a response is received from the server or on timeout(s).
-		Relevant to the owner client.
-		\param response The response from the server why the lock was lifted.
-	*/
-	protected override void OnRequestLockDisengaged(ERespawnResult result)
-	{
-		if (m_pRespawnLock)
-			m_pRespawnLock.Invoke(false);
-		OnRespawnLockChanged(false);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnFrame(IEntity owner, float timeSlice)
-	{
-		// Break all locks
-		if (m_pFactionLock.IsLocked())
-			m_pFactionLock.TryUnlock();
-
-		if (m_pLoadoutLock.IsLocked())
-			m_pLoadoutLock.TryUnlock();
-
-		if (m_pSpawnPointLock.IsLocked())
-			m_pSpawnPointLock.TryUnlock();
-	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
+		#ifdef ENABLE_DIAG
+		SetEventMask(owner, EntityEvent.FRAME | EntityEvent.DIAG);
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_DIAG, "", "Respawn Component", "GameMode");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_TIME, "", "Respawn Time Measures", "GameMode");
+		#endif
+		
 		m_PlayerController = PlayerController.Cast(owner);
 		if (!m_PlayerController)
 		{
 			Print("SCR_RespawnComponent must be attached to PlayerController!", LogLevel.ERROR);
 			return;
 		}
+		
+		SCR_SpawnLockComponent lockComponent = SCR_SpawnLockComponent.Cast(owner.FindComponent(SCR_SpawnLockComponent));
+		if (!lockComponent)
+		{
+			Print(string.Format("%1 does not have a %2 attached!", 
+				Type().ToString(), SCR_SpawnLockComponent), 
+			LogLevel.ERROR);
+		}
 
-		m_RplComponent = RplComponent.Cast(m_PlayerController.FindComponent(RplComponent));
-
-
-		m_pFactionLock.GetInvoker().Insert(OnFactionLockChanged);
-		m_pLoadoutLock.GetInvoker().Insert(OnLoadoutLockChanged);
-		m_pSpawnPointLock.GetInvoker().Insert(OnSpawnPointLockChanged);
-
+		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
+		RegisterRespawnRequestComponents(owner);
+		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (!gameMode)
 		{
 			Print("No game mode found in the world, SCR_RespawnComponent will not function correctly!", LogLevel.ERROR);
 			return;
 		}
-
-		m_RespawnSystemComponent = SCR_RespawnSystemComponent.Cast(gameMode.FindComponent(SCR_RespawnSystemComponent));
-
-		gameMode.GetOnPlayerSpawned().Insert(NotifyOnPlayerSpawned);
-		gameMode.GetOnPlayerKilled().Insert(NotifyOnPlayerSpawned);
 	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Request a spawn with the provided data.
+	
+		The request is partially validated on client before transmission to the authority occurs.
+		It is then further evaluated and processed by a SCR_RespawnHandlerComponent corresponding to
+		each SCR_SpawnRequestComponent.
+	
+		Notable callbacks:
+			GetOnRespawnRequestInvoker_O -> Raised on owner request ('sender' has asked)
+			GetOnRespawnResponseInvoker_O -> Raised on owner response (authority has responded or in certain cases early reject is done by self)
+			GetOnRespawnRequestInvoker_S -> Authority received request from this component
+			GetOnRespawnResponseInvoker_S -> Authority dispatched response to this component
+	
+		\return Returns true if the request was dispatched into the system, false if there was an error on the requesting side.
+				Such case can occur e.g. when there is a missing respawn handler for provided data type or similar.
+	*/
+	bool RequestSpawn(SCR_SpawnData data)
+	{
+		SCR_SpawnRequestComponent requestComponent = GetRequestComponent(data);
+		if (!requestComponent)
+		{
+			Print(string.Format("%1::RequestRespawn(data: %2) could not find associated %3!", 
+				Type().ToString(), data, SCR_SpawnRequestComponent), LogLevel.ERROR);
+			return false;
+		}
+		
+		return requestComponent.RequestRespawn(data);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Request a authority confirmation whether spawn with the provided data is possible.
+	
+		The request is partially validated on client before transmission to the authority occurs.
+		It is then further evaluated and processed by a SCR_RespawnHandlerComponent corresponding to
+		each SCR_SpawnRequestComponent.
+	
+		Notable callbacks:
+			GetOnCanRespawnRequestInvoker_O -> Raised on owner request ('sender' has asked)
+			GetOnCanRespawnResponseInvoker_O -> Raised on owner response (authority has responded or in certain cases early reject is done by self)
+			GetOnCanRespawnRequestInvoker_S -> Authority received request from this component
+			GetOnCanRespawnResponseInvoker_S -> Authority dispatched response to this component
+	
+		\return Returns true if the request was dispatched into the system, false if there was an error on the requesting side.
+				Such case can occur e.g. when there is a missing respawn handler for provided data type or similar.
+	*/
+	bool CanSpawn(SCR_SpawnData data)
+	{
+		SCR_SpawnRequestComponent requestComponent = GetRequestComponent(data);
+		if (!requestComponent)
+		{
+			Print(string.Format("%1::RequestRespawn(data: %2) could not find associated %3!", 
+				Type().ToString(), data, SCR_SpawnRequestComponent), LogLevel.ERROR);
+			return false;
+		}
+		
+		return requestComponent.CanRequestRespawn(data);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Register all SCR_SpawnRequestComponent found in the hierarchy.
+	*/
+	protected void RegisterRespawnRequestComponents(IEntity owner)
+	{
+		array<GenericComponent> components = {};
+		FindComponents(SCR_SpawnRequestComponent, components);
+		foreach (GenericComponent genericComponent : components)
+		{
+			SCR_SpawnRequestComponent requestComponent = SCR_SpawnRequestComponent.Cast(genericComponent);
+			typename dataType = requestComponent.GetDataType();
+			if (m_mRequestComponents.Contains(dataType))
+			{
+				Debug.Error(string.Format("Cannot register %1! %2 already contains a mapping for %3 data type! (old: %4)",
+						requestComponent.Type().ToString(),
+						Type().ToString(),
+						dataType,
+						m_mRequestComponents[dataType].Type().ToString()));
+
+				continue;
+			}
+
+			m_mRequestComponents.Insert(dataType, requestComponent);
+
+			#ifdef _ENABLE_RESPAWN_LOGS
+			string typeName = "null";
+			if (dataType != typename.Empty)
+				typeName = dataType.ToString();
+			PrintFormat("%1::RegisterRespawnRequestComponents() registered %2 component for requests of %3 type.", Type().ToString(),
+						requestComponent.Type().ToString(),
+						typeName);
+			#endif
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Find a request component based on provided data instance type.
+	*/
+	protected SCR_SpawnRequestComponent GetRequestComponent(SCR_SpawnData data)
+	{
+		if (!data)
+			return null;
+
+		SCR_SpawnRequestComponent component;
+		m_mRequestComponents.Find(data.Type(), component);
+		return component;
+	}
+
+	#ifdef ENABLE_DIAG
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Returns whether diagnostics CLI spawning is enabled, in which case default spawning behaviour
+		is overriden by supplied commands for quicker deployment for diagnostic purposes.
+	*/
+	static bool Diag_IsCLISpawnEnabled()
+	{
+		return System.IsCLIParam("autodeployFaction") || System.IsCLIParam("autodeployLoadout") ||
+			System.IsCLIParam("tdmf") || System.IsCLIParam("tdml");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void Diag_RequestCLISpawn()
+	{
+		int factionId = -1;
+		string fs;
+		if (System.GetCLIParam("autodeployFaction", fs) || System.GetCLIParam("tdmf", fs))
+		{
+			Faction factionFromKey = GetGame().GetFactionManager().GetFactionByKey(fs);
+
+			if (factionFromKey != null)
+				factionId = GetGame().GetFactionManager().GetFactionIndex(factionFromKey);
+			else
+				factionId = fs.ToInt();
+		}
+
+		int loadoutId = -1;
+		string ls;
+		if (System.GetCLIParam("autodeployLoadout", fs) || System.GetCLIParam("tdml", ls))
+		{
+			SCR_BasePlayerLoadout loadoutFromKey = GetGame().GetLoadoutManager().GetLoadoutByName(ls);
+
+			if (loadoutFromKey != null)
+				loadoutId = GetGame().GetLoadoutManager().GetLoadoutIndex(loadoutFromKey);
+			else
+				loadoutId = ls.ToInt();
+		}
+
+		Rpc(Rpc_RequestCLISpawn_S, factionId, loadoutId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void Rpc_RequestCLISpawn_S(int factionIdx, int loadoutIdx)
+	{
+		int ok = 0;
+		Faction faction = GetGame().GetFactionManager().GetFactionByIndex(factionIdx);
+		SCR_BasePlayerLoadout loadout = GetGame().GetLoadoutManager().GetLoadoutByIndex(loadoutIdx);
+
+		// backtrack faction index from loadout, if possible
+		if (!faction && loadout)
+		{
+			SCR_FactionPlayerLoadout factionLoadout = SCR_FactionPlayerLoadout.Cast(loadout);
+			if (factionLoadout)
+				faction = GetGame().GetFactionManager().GetFactionByKey(factionLoadout.GetFactionKey());
+		}
+
+		// select loadout at random, faction was given
+		if (faction && !loadout)
+			loadout = GetGame().GetLoadoutManager().GetRandomFactionLoadout(faction);
+
+		SCR_PlayerFactionAffiliationComponent factionComponent = SCR_PlayerFactionAffiliationComponent.Cast(m_PlayerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		if (factionComponent)
+		{
+			if (factionComponent.RequestFaction(faction))
+				ok |= (1 << 1);
+		}
+
+		SCR_PlayerLoadoutComponent loadoutComponent = SCR_PlayerLoadoutComponent.Cast(m_PlayerController.FindComponent(SCR_PlayerLoadoutComponent));
+		if (loadoutComponent)
+		{
+			if (loadoutComponent.RequestLoadout(loadout))
+				ok |= (1 << 2);
+		}
+
+		if (loadout)
+		{
+			ResourceName resource = loadout.GetLoadoutResource();
+			SCR_SpawnPoint spawnPoint = SCR_SpawnPoint.GetSpawnPointsForFaction(faction.GetFactionKey()).GetRandomElement();
+			if (!resource.IsEmpty() && spawnPoint)
+			{
+				SCR_SpawnPointSpawnData spsd = new SCR_SpawnPointSpawnData(resource, spawnPoint.GetRplId());
+				if (RequestSpawn(spsd))
+					ok |= (1 << 3);
+			}
+		}
+
+		Rpc(Rpc_ResponseCLISpawn_O, ok);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void Rpc_ResponseCLISpawn_O(int response)
+	{
+		bool faction = (response & (1 << 1));
+		bool loadout = (response & (1 << 2));
+		bool spawn = (response & (1 << 3));
+
+		string msg = "Server request to spawn using diagnostics mode processed (-autodeployFaction/-autodeployLoadout), result:\n\tFaction: %1, Loadout: %2, Spawn: %3";
+
+		string fs = "ERR";
+		if (faction)
+			fs = "OK";
+
+		string ls = "ERR";
+		if (loadout)
+			ls = "OK";
+
+		string ss = "ERR";
+		if (spawn)
+			ss = "OK";
+
+		Print(string.Format(msg, fs, ls, ss));
+	}
+
+	#endif
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_RespawnComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (gameMode)
-		{
-			gameMode.GetOnPlayerSpawned().Remove(NotifyOnPlayerSpawned);
-			gameMode.GetOnPlayerKilled().Remove(NotifyOnPlayerSpawned);
-		}
-
-		#ifdef RESPAWN_COMPONENT_DIAG
-		if (!s_DebugRegistered)
-		{
-			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_SYSTEM_INFO, "", "Respawn System Diag", "Network");
-			s_DebugRegistered = true;
-		}
-		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_RespawnComponent()
 	{
-		#ifdef RESPAWN_COMPONENT_DIAG
-		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_RESPAWN_SYSTEM_INFO);
-		s_DebugRegistered = false;
-		#endif
 	}
 };

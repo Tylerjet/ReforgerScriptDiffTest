@@ -85,7 +85,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 																							{ EWeaponType.WT_HANDGUN },
 																							{ EWeaponType.WT_FRAGGRENADE },
 																							{ EWeaponType.WT_SMOKEGRENADE },
-																							{ EGadgetType.CONSUMABLE + GADGET_OFFSET + EConsumableType.Bandage }, // i guess config would be nice eventually
+																							{ EGadgetType.CONSUMABLE + GADGET_OFFSET + SCR_EConsumableType.BANDAGE }, // i guess config would be nice eventually
 																							{ EGadgetType.BINOCULARS + GADGET_OFFSET },
 																							{ EGadgetType.MAP + GADGET_OFFSET },
 																							{ EGadgetType.COMPASS + GADGET_OFFSET },
@@ -213,7 +213,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	
 	//------------------------------------------------------------------------------------------------
 	// !
-	int GetItemType( IEntity pItem )
+	static int GetItemType( IEntity pItem )
 	{
 		int iItemType = -1;
 		//Weapons:
@@ -498,36 +498,64 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// ! 
-	#ifdef DEBUG_INVENTORY20
+	//! Called when item is added to slot, update armored attributes when item with armorData is equipped
 	protected override void OnAddedToSlot(IEntity item, int slotID)
 	{
 		super.OnAddedToSlot(item, slotID);
 		
+		EditArmoredAttributes(item, slotID);
+
+		#ifdef DEBUG_INVENTORY20
 		// Loadout manager is taking care of this since there are some items that shouldn't be visible when attached to slot, some have different meshes for different states.
 		// Consider glasses in first person view - they deffinitely should be disabled
 		// it is slightly more complex then this
 			
-		InventoryItemComponent itemComponent = InventoryItemComponent.Cast( item .FindComponent( InventoryItemComponent ) );
-		if ( itemComponent == null ) 
+		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (!itemComponent) 
 			return;
 		
-		SCR_UniversalInventoryStorageComponent storageComponent = GetStorageComponentFromEntity( item );
-		if( !storageComponent )
+		SCR_UniversalInventoryStorageComponent storageComponent = GetStorageComponentFromEntity(item);
+		if (!storageComponent)
 			return;
 		
-		auto attr = SCR_ItemAttributeCollection.Cast ( storageComponent.GetAttributes() );
-		
+		SCR_ItemAttributeCollection attr = SCR_ItemAttributeCollection.Cast(storageComponent.GetAttributes());
 		if( !attr )
 			return;
+		
 		UIInfo UIinfoItem = attr.GetUIInfo();
 		if( !UIinfoItem )
 			return;
 		
 		PrintFormat( "INV: item %1 was added. It's weight is: %2, and total weight of item/storage is: %3", UIinfoItem.GetName(), attr.GetWeight(), storageComponent.GetTotalWeight() );
+		#endif
 	}
-	#endif
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void OnRemovedFromSlot(IEntity item, int slotID)
+	{
+		super.OnRemovedFromSlot(item, slotID);
+			
+		EditArmoredAttributes(item, slotID, true);
+	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Take the data from the armor attribute, and store them in map on damagemanager
+	protected void EditArmoredAttributes(IEntity item, int slotID, bool remove = false)
+	{
+		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (!itemComponent) 
+			return;
+		
+		SCR_ItemAttributeCollection attributes = SCR_ItemAttributeCollection.Cast(itemComponent.GetAttributes());
+		if (!attributes)
+			return;
+		
+		SCR_ArmoredClothItemData armorAttr = SCR_ArmoredClothItemData.Cast(attributes.FindAttribute(SCR_ArmoredClothItemData));
+		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(GetOwner().FindComponent(SCR_CharacterDamageManagerComponent));
+		if (armorAttr && damageMgr)
+			damageMgr.UpdateArmorDataMap(armorAttr, remove);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	// !
 	void HandleOnItemAddedToInventory( IEntity item, BaseInventoryStorageComponent storageOwner )
@@ -541,7 +569,25 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	void HandleOnItemRemovedFromInventory( IEntity item, BaseInventoryStorageComponent storageOwner )
 	{
 		m_mSlotHistory.Set(item, m_aQuickSlots.Find(item));
+
+		int quickSlot = m_aQuickSlots.Find(item);
+		int itemType = GetItemType(item);
+
+		typename t = BaseWeaponComponent;
+		if (itemType > GADGET_OFFSET)
+			t = SCR_GadgetComponent;
+
+		SCR_ItemTypeSearchPredicate itemSearch = new SCR_ItemTypeSearchPredicate(t, itemType, item);
+		array<IEntity> items = {};
+
+		InventoryStorageManagerComponent invMan = InventoryStorageManagerComponent.Cast(GetOwner().FindComponent(InventoryStorageManagerComponent));
+		if (invMan)
+			invMan.FindItems(items, itemSearch);
+			
 		RemoveItemFromQuickSlot( item );
+
+		if (!items.IsEmpty())
+			StoreItemToQuickSlot(items[0], quickSlot);
 	}
 	
 	//------------------------------------------------------------------------------------------------	
@@ -656,6 +702,10 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 				m_Callback.m_pItem = item;
 				m_Callback.m_Controller = controller;
 				
+				SCR_GadgetManagerComponent gadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(character);
+				if (gadgetMgr)
+					gadgetMgr.RemoveHeldGadget();
+				
 				TurretCompartmentSlot turretCompartment = TurretCompartmentSlot.Cast(GetCurrentCompartment());
 				if (turretCompartment)
 				{	
@@ -730,7 +780,10 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 				// need to run through manager
 				// TODO kamil: this doesnt call setmode when switching to other item from gadget (no direct call to scripted togglefocused for example, possibly other issues?)
 				SCR_GadgetManagerComponent gadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(character);
-				gadgetMgr.SetGadgetMode(item, EGadgetMode.IN_HAND);
+				if (gadgetMgr)
+					gadgetMgr.SetGadgetMode(item, EGadgetMode.IN_HAND);
+				else
+					return false;
 				return true;
 			}
 		} 
@@ -922,33 +975,6 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	// Called when consumable item is used by the player
 	protected void OnItemUsed(IEntity item)
 	{
-		SCR_ConsumableItemComponent consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
-		if (consumable && consumable.GetConsumableType() == EConsumableType.Bandage)
-		{
-			InventoryStorageManagerComponent invMan = InventoryStorageManagerComponent.Cast(GetOwner().FindComponent(InventoryStorageManagerComponent));
-			if (!invMan)
-				return;
-
-			array<IEntity> bandages = {};
-			SCR_BandagePredicate predicate = new SCR_BandagePredicate();
-			invMan.FindItems(bandages, predicate);
-			if (bandages.IsEmpty())
-				return;
-
-			RemoveItemFromQuickSlot(item);
-			foreach (IEntity nextBandage : bandages)
-			{
-				if (nextBandage != item)
-				{
-					StoreItemToQuickSlot(nextBandage);
-					break;
-				}
-			}
-		}
-		else if (consumable && consumable.GetConsumableType() == EConsumableType.Tourniquet)
-		{
-			RemoveItemFromQuickSlot(item);	
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------

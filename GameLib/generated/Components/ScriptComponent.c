@@ -77,15 +77,15 @@ class ScriptComponent: GenericComponent
 	*/
 	event protected void EOnAnimEvent(IEntity owner, int type, int slot);
 	/*!
-	Event before simulated by physics engine (called from sub-iterations!
+	Event before every physics fixed step (can be multiple calls per engine update)
 	\param owner The owner entity
-	\param timeSlice Time slice of simulation step
+	\param timeSlice Time slice of physics fixed step
 	*/
 	event protected void EOnSimulate(IEntity owner, float timeSlice);
 	/*!
-	Event after simulated by physics engine (once per frame)
+	Event after every physics fixed step (can be multiple calls per engine update)
 	\param owner The owner entity
-	\param timeSlice Time slice of simulation step
+	\param timeSlice Time slice of physics fixed step
 	*/
 	event protected void EOnPostSimulate(IEntity owner, float timeSlice);
 	/*!
@@ -107,7 +107,7 @@ class ScriptComponent: GenericComponent
 	*/
 	event protected void EOnContact(IEntity owner, IEntity other, Contact contact);
 	/*!
-	Event when physics engine (de)activated RigidBody
+	Event when a RigidBody active state is changed between consecutive fixed steps
 	\param owner The owner entity
 	*/
 	event protected void EOnPhysicsActive(IEntity owner, bool activeState);

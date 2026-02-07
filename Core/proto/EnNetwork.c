@@ -141,7 +141,9 @@ class Replication
 	/*!
 	Master time for all reaplication instances.
 	(Exponentialy smoothed, is dependent on connection quality)
+	\deprecated Use WorldTimestamp obtained from World instead.
 	*/
+	// [Obsolete("Use WorldTimestamp obtained from World instead.")]
 	proto native static float Time();
 
 	//! Tells whenever the replication is active.
@@ -431,6 +433,7 @@ class SSnapSerializerBase: Managed
 	void SerializeInt(inout int val) { SerializeBytes(val, 4); }
 	void SerializeFloat(inout float val) { SerializeBytes(val, 4); }
 	void SerializeVector(inout vector val) { SerializeBytes(val, 12); }
+	proto void SerializeString(inout string val);
 
 	void EncodeBool(ScriptBitSerializer packet)
 	{
@@ -484,6 +487,9 @@ class SSnapSerializerBase: Managed
 		this.SerializeBytes(val, 12);
 	}
 
+	proto void EncodeString(ScriptBitSerializer packet);
+	proto void DecodeString(ScriptBitSerializer packet);
+
 	/*!
 	Serialization of the BitSerializer type. The size is the amount of bytes
 	written/read from the bit serializer.
@@ -502,12 +508,14 @@ class SSnapSerializerBase: Managed
 	bool CompareInt(int val) { return Compare(val, 4); }
 	bool CompareFloat(float val) { return Compare(val, 4); }
 	bool CompareVector(vector val) { return Compare(val, 12); }
+	proto bool CompareString(string val);
 
 	/*!
 	Compares the contents of two SnapSerialiers. The size is amount of bytes
 	used.
 	*/
 	proto native bool CompareSnapshots(SSnapSerializerBase snapshot, int sizeInBytes);
+	proto bool CompareStringSnapshots(SSnapSerializerBase snapshot);
 
 	private void SSnapSerializerBase();
 	private void ~SSnapSerializerBase();

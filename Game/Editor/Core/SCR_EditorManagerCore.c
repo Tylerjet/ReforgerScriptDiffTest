@@ -404,6 +404,10 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		if (editorManager)
 			editorManager.SetCanOpen(false, EEditorCanOpen.ALIVE);
 	}
+	protected void OnPlayerDeleted(int playerID, IEntity player)
+	{
+		OnPlayerKilled(playerID, player, null);
+	}	
 	protected void OnPlayerRoleChange(int playerId, EPlayerRole roleFlags)
 	{
 		SCR_EditorManagerEntity editorManager = GetEditorManager(playerId);
@@ -477,7 +481,7 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 			gameMode.GetOnPostCompPlayerDisconnected().Insert(OnPlayerDisconnected);
 			gameMode.GetOnPlayerSpawned().Insert(OnPlayerSpawn);
 			gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
-			gameMode.GetOnPlayerDeleted().Insert(OnPlayerKilled);
+			gameMode.GetOnPlayerDeleted().Insert(OnPlayerDeleted);
 			gameMode.GetOnPlayerRoleChange().Insert(OnPlayerRoleChange);
 		}
 		else

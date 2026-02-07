@@ -6,59 +6,83 @@ class SCR_OpenVehicleStorageAction : SCR_InventoryAction
 
 	[Attribute("1")]
 	protected bool m_bShowInside;
+	
+	[Attribute("0", desc: "If true will get Inventory from self even if parent (eg vehicle) also has an inventory.")]
+	protected bool m_bForceInventoryFromSelf;
 
 	protected IEntity m_Vehicle;
+	protected IEntity m_InventoryOwner;
+	protected DamageManagerComponent m_DamageManager;
+	protected FactionAffiliationComponent m_VehicleAffiliation;
 
 	//------------------------------------------------------------------------------------------------
 	override protected void PerformActionInternal(SCR_InventoryStorageManagerComponent manager, IEntity pOwnerEntity, IEntity pUserEntity)
 	{
-		manager.SetStorageToOpen(m_Vehicle);
+		manager.SetStorageToOpen(m_InventoryOwner);
 		manager.OpenInventory();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
-		if (!user || !m_Vehicle)
+		if (!user || !m_Vehicle || !m_InventoryOwner)
 			return false;
 
+		if (m_DamageManager && m_DamageManager.GetState() == EDamageState.DESTROYED)
+			return false;
+		
 		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (character)
+		{
+			CompartmentAccessComponent compAccess = character.GetCompartmentAccessComponent();
+			if (compAccess && (compAccess.IsGettingIn() || compAccess.IsGettingOut()))
+				return false;
 
-		CompartmentAccessComponent compAccess = CompartmentAccessComponent.Cast(character.FindComponent(CompartmentAccessComponent));
-		if (compAccess && compAccess.IsGettingIn() || compAccess.IsGettingOut())
-			return false;
+			if (!m_bShowFromOutside && !character.IsInVehicle())
+				return false;
 
-		if (!m_bShowFromOutside && !character.IsInVehicle())
-			return false;
-
-		if (!m_bShowInside && character.IsInVehicle())
-			return false;
-
-		FactionAffiliationComponent vehicleFaction = FactionAffiliationComponent.Cast(m_Vehicle.FindComponent(FactionAffiliationComponent));
-		FactionAffiliationComponent userFaction = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
-		if (!vehicleFaction || !userFaction)
-			return false;
-
-		if (!vehicleFaction.GetAffiliatedFaction())
+			if (!m_bShowInside && character.IsInVehicle())
+				return false;
+		}
+		
+		if (!m_VehicleAffiliation)
 			return true;
 		
-		if (!userFaction.GetAffiliatedFaction())
-			return false;
+		Faction vehicleFaction = m_VehicleAffiliation.GetAffiliatedFaction();
+		if (!vehicleFaction)
+			return true;
 
-		return (vehicleFaction.GetAffiliatedFaction() == userFaction.GetAffiliatedFaction());
+		FactionAffiliationComponent userAffiliation = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
+		if (!userAffiliation)
+			return true;
+
+		Faction userFaction = userAffiliation.GetAffiliatedFaction();
+		if (!userFaction)
+			return true;
+
+		return !vehicleFaction.IsFactionEnemy(userFaction);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
-		if (!Vehicle.Cast(pOwnerEntity))
-		{
+		if (!Vehicle.Cast(pOwnerEntity) && pOwnerEntity.GetParent())
 			m_Vehicle = pOwnerEntity.GetParent();
-		}
 		else
-		{
 			m_Vehicle = pOwnerEntity;
-		}
+		
+		//~ Set inventory owner the same as vehicle
+		if (!m_bForceInventoryFromSelf)
+			m_InventoryOwner = m_Vehicle;
+		//~ Set inventory owner as self
+		else 
+			m_InventoryOwner = pOwnerEntity;
+
+		if (!m_Vehicle)
+			return;
+
+		m_DamageManager = DamageManagerComponent.Cast(m_Vehicle.FindComponent(DamageManagerComponent));
+		m_VehicleAffiliation = FactionAffiliationComponent.Cast(m_Vehicle.FindComponent(FactionAffiliationComponent));
 	}
 #endif
 };

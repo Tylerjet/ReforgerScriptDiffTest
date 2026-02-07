@@ -1,24 +1,3 @@
-// aproximation if character is in cone. We assume just one point(aiming position) not whole character
-// steps explained here:
-// https://stackoverflow.com/questions/12826117/how-can-i-detect-if-a-point-is-inside-a-cone-or-not-in-3d-space/
-//------------------------------------------------------------------------------------------------
-static bool SCR_AIIsCharacterInCone(ChimeraCharacter character, vector coneTip, vector coneAxis, float coneRadius = 4)
-{
-	if (!character)
-		return false;
-	vector aimingPos = character.AimingPosition();
-	vector dirFromCharacter = vector.Direction(aimingPos, coneTip);
-	
-	float coneDist = vector.Dot(dirFromCharacter, coneAxis);
-	
-	// check if tested point is in same "half-plain" as cone is cast
-	if (coneDist > 0)
-		return false;
-
-	float orthDistance = (dirFromCharacter - coneAxis * coneDist).Length();
-	return orthDistance < coneRadius;
-};
-
 // gets a string from value given in port
 // basically workaround that we can't cast void from GetVariableIn into type of that variable
 //------------------------------------------------------------------------------------------------

@@ -16,7 +16,7 @@ class SCR_AIDefendBehavior : SCR_AIBehaviorBase
 	void SCR_AIDefendBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, AIWaypoint relatedWaypoint, vector location, float angularRange, float priority = PRIORITY_BEHAVIOR_DEFEND, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Defend.bt";
-		m_fPriority = priority;
+		SetPriority(priority);
 		m_fPriorityLevel.m_Value = priorityLevel;
 		InitParameters(relatedWaypoint, location, angularRange);
 	}

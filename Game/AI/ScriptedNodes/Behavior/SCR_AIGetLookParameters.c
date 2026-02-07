@@ -1,8 +1,10 @@
 class SCR_AIGetLookParameters : AITaskScripted
 {
-	static const string PORT_CAN_LOOK = "CanLook";
-	static const string PORT_RESET_LOOK = "ResetLook";
-	static const string PORT_LOOK_POSITION = "LookPosition";
+	static const string PORT_LOOK = "bLook";
+	static const string PORT_CANCEL = "bCancel";
+	static const string PORT_RESTART = "bRestart";
+	static const string PORT_POSITION = "vPosition";
+	static const string PORT_DURATION = "vDuration";
 	
 	SCR_AILookAction m_LookAction;
 	
@@ -11,28 +13,7 @@ class SCR_AIGetLookParameters : AITaskScripted
 		if (!m_LookAction)
 			return ENodeResult.FAIL;
 
-		if (m_LookAction.m_bCanLook)
-			SetVariableOut(PORT_CAN_LOOK, true);
-		else
-			ClearVariable(PORT_CAN_LOOK);
-		
-		if (m_LookAction.m_bResetLook)
-		{
-			SetVariableOut(PORT_RESET_LOOK, true);
-			m_LookAction.m_bResetLook = false;
-		}
-		else
-			ClearVariable(PORT_RESET_LOOK);
-
-		if (m_LookAction.m_bValidLookPosition && m_LookAction.m_vPosition == vector.Zero)
-			Print("AI: looking at 0 0 0", LogLevel.WARNING);
-		
-		if (!m_LookAction.m_bValidLookPosition)
-			ClearVariable(PORT_LOOK_POSITION);
-		else
-			SetVariableOut(PORT_LOOK_POSITION, m_LookAction.m_vPosition);
-		
-		return ENodeResult.SUCCESS;
+		return m_LookAction.GetLookParametersToNode(this);
 	}
 
 	protected override bool VisibleInPalette() {return true;}
@@ -46,9 +27,11 @@ class SCR_AIGetLookParameters : AITaskScripted
 	}
 
 	protected static ref TStringArray s_aVarsOut = {
-		PORT_CAN_LOOK,
-		PORT_RESET_LOOK,
-		PORT_LOOK_POSITION
+		PORT_LOOK,
+		PORT_CANCEL,
+		PORT_RESTART,
+		PORT_POSITION,
+		PORT_DURATION
 	};
 	override TStringArray GetVariablesOut()
 	{

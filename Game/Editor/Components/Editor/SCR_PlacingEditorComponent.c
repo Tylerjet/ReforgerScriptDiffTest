@@ -547,23 +547,18 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		if (Replication.IsClient() || !prefabResource|| !prefabResource.IsValid())
 			return null;
 		
-		IEntity owner;
+		//--- When spawning a player, get their respawn component first
 		EEditorPlacingFlags compatiblePlacingFlags = GetCompatiblePlacingFlags(prefabResource);
+		SCR_RespawnComponent respawnComponent;
 		if (playerID > 0)
 		{
-			//--- Spawn prefab as player
-			if (SCR_Enum.HasFlag(compatiblePlacingFlags, EEditorPlacingFlags.CHARACTER_PLAYER))
-			{
-				SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
-				if (respawnSystem)
-				{
-					vector yawPitchRoll = Math3D.MatrixToAngles(params.m_vTransform);
-					vector pitchYawRoll = Vector(yawPitchRoll[1], yawPitchRoll[0], yawPitchRoll[2]);
-					owner = respawnSystem.CustomRespawn(playerID, prefabResource.GetResource().GetResourceName(), params.m_vTransform[3], pitchYawRoll);
-				}
-			}
+			respawnComponent = SCR_RespawnComponent.Cast(GetGame().GetPlayerManager().GetPlayerRespawnComponent(playerID));
+			if (!respawnComponent)
+				return null;
 		}
-		else if (params.m_TargetInteraction == EEditableEntityInteraction.SLOT)
+		
+		IEntity owner;
+		if (params.m_TargetInteraction == EEditableEntityInteraction.SLOT)
 		{
 			//--- Create in slot
 			GenericEntity targetOwner = params.m_Target.GetOwner();
@@ -590,6 +585,13 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			spawnParams.TransformMode = ETransformMode.WORLD;
 			params.GetWorldTransform(spawnParams.Transform);
 			owner = GetGame().SpawnEntityPrefab(prefabResource, GetGame().GetWorld(), spawnParams);
+			
+			if (respawnComponent && SCR_Enum.HasFlag(compatiblePlacingFlags, EEditorPlacingFlags.CHARACTER_PLAYER))
+			{
+				SCR_PossessSpawnData spawnData = SCR_PossessSpawnData.FromEntity(owner);
+				if (!respawnComponent.RequestSpawn(spawnData))
+					Print(string.Format("@\"%1\" control cannot be given to playerID=%2, error in RequestSpawn!", prefabResource.GetResource().GetResourceName().GetPath(), playerID), LogLevel.ERROR);
+			}
 		}
 		
 		//--- Initialize

@@ -33,6 +33,7 @@ class SCR_AISpawnMagazines : AITaskScripted
 		m_mTypenameToResourceName.Insert("MagazineWellM9Beretta","{9C05543A503DB80E}Prefabs/Weapons/Magazines/Magazine_9x19_M9_15rnd_Ball.et");
 		m_mTypenameToResourceName.Insert("MagazineWellMakarovPM","{8B853CDD11BA916E}Prefabs/Weapons/Magazines/Magazine_9x18_PM_8rnd_Ball.et");
 		m_mTypenameToResourceName.Insert("MagazineWellM249","{06D722FC2666EB83}Prefabs/Weapons/Magazines/Box_556x45_M249_200rnd_4Ball_1Tracer.et");
+		m_mTypenameToResourceName.Insert("MagazineWellRPG7","{32E12D322E107F1C}Prefabs/Weapons/Ammo/Ammo_Rocket_PG7VM.et");
 	}	
 	
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)

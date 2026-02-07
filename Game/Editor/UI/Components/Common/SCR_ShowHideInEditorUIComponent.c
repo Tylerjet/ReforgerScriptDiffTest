@@ -27,7 +27,7 @@ class SCR_ShowHideInEditorUIComponent: ScriptedWidgetComponent
 		editorManagerEntity.GetOnOpened().Insert(OnEditorOpen);
 		editorManagerEntity.GetOnClosed().Insert(OnEditorClosed);
 		
-		m_Root.SetVisible(m_bShowInEditor && editorManagerEntity.IsOpened());
+		m_Root.SetVisible(m_bShowInEditor == editorManagerEntity.IsOpened());
 	}
 	override void HandlerDeattached(Widget w)
 	{

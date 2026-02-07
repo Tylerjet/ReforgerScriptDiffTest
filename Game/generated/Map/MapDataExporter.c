@@ -11,8 +11,9 @@ Do not modify, this script is generated
 
 class MapDataExporter
 {
-	static proto DataExportErrorType ExportData(EMapDataType type, string exportPath, string worldPath, float minimumHillHeight = 50, bool bIgnoreGeneratorAreas = true, ExcludeGenerateFlags generateFlags = ExcludeGenerateFlags.ExcludeGenerateNone, ExcludeSaveFlags saveFlags = ExcludeSaveFlags.ExcludeSaveNone);
-	static proto DataExportErrorType ExportRasterization(string exportPath, string worldPath, notnull Color landColor, notnull Color oceanColor, float scaleLand, float scaleOcean, float heightScale, float depthScale, float depthLerpMeters, float shadeIntensity, float heightIntensity, bool bIncludeGeneratorAreas, notnull Color forestAreaColor, float forestAreaIntensity, notnull Color otherAreaColor, float otherAreaIntensity);
+	proto external DataExportErrorType ExportData(EMapDataType type, string exportPath, string worldPath, float minimumHillHeight = 50, bool bIgnoreGeneratorAreas = true, ExcludeGenerateFlags generateFlags = ExcludeGenerateFlags.ExcludeGenerateNone, ExcludeSaveFlags saveFlags = ExcludeSaveFlags.ExcludeSaveNone);
+	proto external DataExportErrorType SetupColors( notnull Color landColorBright, notnull Color landColorDark, notnull Color oceanColorBright, notnull Color oceanColorDark, notnull Color forestAreaColor, notnull Color otherAreaColor );
+	proto external DataExportErrorType ExportRasterization(string exportPath, string worldPath, float scaleLand, float scaleOcean, float heightScale, float depthScale, float depthLerpMeters, float shadeIntensity, float heightIntensity, bool bIncludeGeneratorAreas, float forestAreaIntensity, float otherAreaIntensity);
 }
 
 /*!

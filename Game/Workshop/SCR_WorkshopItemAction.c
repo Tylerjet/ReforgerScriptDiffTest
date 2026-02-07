@@ -145,7 +145,7 @@ class SCR_WorkshopItemAction
 			}
 			else
 			{
-				this.Fail();
+				Fail();
 			}
 			return success;
 		}
@@ -189,7 +189,7 @@ class SCR_WorkshopItemAction
 			}
 			else
 			{
-				this.Fail();
+				Fail();
 			}
 			return success;
 		}
@@ -229,7 +229,7 @@ class SCR_WorkshopItemAction
 			}
 			else
 			{
-				this.Fail();
+				Fail();
 			}
 			return success;
 		}
@@ -269,7 +269,7 @@ class SCR_WorkshopItemAction
 			}
 			else
 			{
-				this.Fail();
+				Fail();
 			}
 			return success;
 		}
@@ -388,7 +388,7 @@ class SCR_WorkshopItemAction
 	//------------------------------------------------------------------------------------------------
 	//! Called on each frame by the SCR_WorkshopItem which owns it.
 	//! Here we can perform polling to detect state transitions
-	void Internal_Update();
+	void Internal_Update(float timeSlice);
 	
 	//------------------------------------------------------------------------------------------------
 	void Internal_Detach()

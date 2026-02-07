@@ -1,4 +1,3 @@
-//#define PREVIEW_ENTITY_DEBUG
 [EntityEditorProps(category: "GameScripted/Preview", description: "", color: "0 0 0 0", dynamicBox: true)]
 class SCR_BasePreviewEntityClass: GenericEntityClass
 {
@@ -20,6 +19,7 @@ class SCR_BasePreviewEntity: GenericEntity
 	protected vector m_vTerrainTransform[4];
 	protected ref array<SCR_BasePreviewEntity> m_aChildren;
 	protected vector m_vBounds[2];
+	protected bool m_bHasMultipleEditableEntities;
 	
 	/*!
 	Spawn preview entity from entries.
@@ -92,6 +92,8 @@ class SCR_BasePreviewEntity: GenericEntity
 		vector rootBoundMin = vector.One * float.MAX;
 		vector rootBoundMax = -rootBoundMin;
 		
+		int editableEntityCount;
+		
 		array<SCR_BasePreviewEntity> children = {};
 		SCR_BasePreviewEntity entity, parent;
 		foreach (int i, SCR_BasePreviewEntry entry: entries)
@@ -101,16 +103,19 @@ class SCR_BasePreviewEntity: GenericEntity
 			//--- Get local transformation matrix
 			spawnParamsLocal = new EntitySpawnParams();
 			entry.LoadTransform(spawnParamsLocal.Transform);
-			//spawnParamsLocal.Scale = entry.m_fScale; //--- Has no effect
 			
-			if (entry.m_Shape != EPreviewEntityShape.CYLINDER) //--- Don't scale area meshes; instead, the scale is applied on the actual area
-				SCR_Math3D.ScaleMatrix(spawnParamsLocal.Transform, entry.m_fScale); //--- Apply scale on matrix, SetScale() doesn't work reliably
+			if (entry.m_Shape != EPreviewEntityShape.ELLIPSE && entry.m_Shape != EPreviewEntityShape.RECTANGLE) //--- Don't scale area meshes; instead, the scale is applied on the actual area
+				Math3D.MatrixScale(spawnParamsLocal.Transform, entry.GetScale()); //--- Apply scale on matrix, SetScale() doesn't work reliably
 			
 			//--- Get parent (don't apply it to spawn params, it doesn't create true hierarchy link)
 			if (entry.m_iParentID == -1)
 				parent = rootEntity;
 			else
 				parent = children[entry.m_iParentID];
+			
+			//--- Count how manuy editable entities are inside. When more than 1, editing along geometry is disabled.
+			if (entry.m_Flags & EPreviewEntityFlag.EDITABLE)
+				editableEntityCount++;
 			
 			if (applyMesh && entry.m_Shape == EPreviewEntityShape.PREFAB && entry.m_Mesh)
 			{
@@ -145,28 +150,66 @@ class SCR_BasePreviewEntity: GenericEntity
 							}
 							break;
 						}
-						case EPreviewEntityShape.CYLINDER:
+						case EPreviewEntityShape.ELLIPSE:
+						case EPreviewEntityShape.RECTANGLE:
 						{
-							//--- Generate cylinder mesh
-							int resolution = 32;
-							float height = 50;
-							float dirStep = Math.PI2 / resolution;
-							array<vector> positions = {};
+							int resolution = SCR_BaseAreaMeshComponent.PREVIEW_RESOLUTION;
+							vector dimensions = entry.m_vScale;
 							
-							//--- Get positions
-							for (int v = 0; v < resolution; v++)
+							if (resolution <= 0 || dimensions[0] <= 0 || dimensions[1] <= 0 || dimensions[2] <= 0)
 							{
-								float dir = dirStep * v;
-								vector pos = Vector(Math.Sin(dir) * entry.m_fScale, -height, Math.Cos(dir) * entry.m_fScale);
-								positions.Insert(pos);
+								break;
 							}
 							
-							MeshObject meshObject = SCR_Shape.CreateAreaMesh(positions, height * 2, material, true);
+							array<vector> positions = {};
+							
+							if (entry.m_Shape == EPreviewEntityShape.ELLIPSE)
+							{
+								float dirStep = Math.PI2 / resolution;
+							
+								//--- Get positions
+								for (int v = 0; v < resolution; v++)
+								{
+									float dir = dirStep * v;
+									vector pos = Vector(Math.Sin(dir) * dimensions[0], -dimensions[1], Math.Cos(dir) * dimensions[2]);
+									positions.Insert(pos);
+								}
+							}
+							else if (entry.m_Shape == EPreviewEntityShape.RECTANGLE)
+							{
+								//~ Resulution is always 4 for Rectangles
+								resolution = 4;
+								
+								//~ Make sure it uses half of the width and lenght
+								float width = dimensions[0] / 2;
+								float lenght = dimensions[2] / 2;
+								
+								array<vector> corners = {
+									Vector(-width, -dimensions[1], -lenght),
+									Vector(width, -dimensions[1], -lenght),
+									Vector(width, -dimensions[1], lenght),
+									Vector(-width, -dimensions[1], lenght)
+								};
+								
+								//~ Set positions
+								for (int p = 0; p < resolution; p++)
+								{
+									vector start = corners[p];
+									vector end = corners[(p + 1) % resolution];
+									
+									for (float s = 0; s < 4; s++)
+									{
+										vector pos = vector.Lerp(start, end, s / resolution);
+										positions.Insert(pos);
+									}
+								}
+							}
+
+							MeshObject meshObject = SCR_Shape.CreateAreaMesh(positions, dimensions[1] * 2, material, true);
 							if (meshObject)
 								entity.SetObject(meshObject, "");
-							
-							break;
 						}
+							
 					}
 				}
 			}
@@ -188,8 +231,8 @@ class SCR_BasePreviewEntity: GenericEntity
 			
 			//--- Add to parent (spawn params won't do that on their own)
 			int pivot = -1;
-			if (!entry.m_iPivotID.IsEmpty())
-				pivot = parent.GetBoneIndex(entry.m_iPivotID);
+			if (!entry.m_iPivotID.IsEmpty() && parent.GetAnimation())
+				pivot = parent.GetAnimation().GetBoneIndex(entry.m_iPivotID);
 			parent.AddChild(entity, pivot, EAddChildFlags.AUTO_TRANSFORM);
 			
 			//--- Cache the child in parent's array
@@ -212,6 +255,11 @@ class SCR_BasePreviewEntity: GenericEntity
 		}
 		rootEntity.m_vBounds[0] = rootBoundMin;
 		rootEntity.m_vBounds[1] = rootBoundMax;
+			
+		//--- When there is more than one editable entity, mark it. Editing along geometry is disallowed in such case.
+		rootEntity.m_bHasMultipleEditableEntities = editableEntityCount > 1;
+		
+		rootEntity.EOnRootPreviewInit(entries);
 		
 		Print(string.Format("Preview entity created from %1 entries, at %2, using '%3' with material '%4'", entries.Count(), rootTransform, previewPrefab, material), LogLevel.VERBOSE);
 		
@@ -226,7 +274,7 @@ class SCR_BasePreviewEntity: GenericEntity
 	\param heightTerrain Height above terrain
 	\param isUnderwater True when the preview entity is under ocean surface
 	*/
-	void SetPreviewTransform(vector worldTransform[4], EEditorTransformVertical verticalMode, float heightTerrain = 0, bool isUnderwater = false)
+	void SetPreviewTransform(vector worldTransform[4], EEditorTransformVertical verticalMode, float heightTerrain = 0, bool isUnderwater = false, TraceParam trace = null)
 	{
 		//--- Get height difference
 		if (m_fHeightTerrain == -1)
@@ -234,23 +282,25 @@ class SCR_BasePreviewEntity: GenericEntity
 		heightTerrain -= m_fHeightTerrain;
 		
 		SetWorldTransform(worldTransform);
-		SetChildTransform(verticalMode, heightTerrain, isUnderwater);
+		SetChildTransform(verticalMode, heightTerrain, isUnderwater, trace);
 		Update();
 		
-		#ifdef PREVIEW_ENTITY_DEBUG		
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_SHOW_DEBUG))
+		{
 			DbgUI.Begin(this.ToString(), 0, 0);
 			SCR_DbgUI.Matrix("worldTransform", worldTransform);
-			SCR_Global.DrawMatrix(worldTransform, 5, ShapeFlags.ONCE);
+			SCR_Global.DrawMatrix(worldTransform, 1);
 			DbgUI.End();
-		#endif
+		}
 	}
-	protected void SetChildTransform(EEditorTransformVertical verticalMode, float heightTerrain, bool isUnderwater = false)
+	protected void SetChildTransform(EEditorTransformVertical verticalMode, float heightTerrain, bool isUnderwater = false, TraceParam trace = null)
 	{
 		if (GetParent())
 		{
 			//--- Actual preview entity, not root
 			switch (verticalMode)
 			{
+				case EEditorTransformVertical.GEOMETRY:
 				case EEditorTransformVertical.TERRAIN:
 				{
 					//--- Restore local transformation and convert it to world transformation
@@ -261,9 +311,9 @@ class SCR_BasePreviewEntity: GenericEntity
 					float scale = transform[0].Length();
 					
 					//--- Get surface basis
-					if (!SCR_TerrainHelper.GetTerrainBasis(transform[3], surfaceBasis, GetWorld(), !isUnderwater))
+					if (!SCR_TerrainHelper.GetTerrainBasis(transform[3], surfaceBasis, GetWorld(), !isUnderwater, trace))
 						return;
-					
+
 					vector angles = Math3D.MatrixToAngles(transform);
 					if (SCR_Enum.HasFlag(m_Flags, EPreviewEntityFlag.HORIZONTAL))
 					{
@@ -290,10 +340,11 @@ class SCR_BasePreviewEntity: GenericEntity
 					
 					//--- Preserve scale
 					if (scale != 1)
-						SCR_Math3D.ScaleMatrix(transform, scale);
+						Math3D.MatrixScale(transform, scale);
 					
-					//--- Apply					
+					//--- Apply
 					SetWorldTransform(transform);
+					Update();
 					
 					m_bIsOnOrigTransform = false;
 					break;
@@ -315,15 +366,16 @@ class SCR_BasePreviewEntity: GenericEntity
 			//--- Is root, or has children and is allowed to orient them
 			for (int i = 0, count = m_aChildren.Count(); i < count; i++)
 			{
-				m_aChildren[i].SetChildTransform(verticalMode, heightTerrain, isUnderwater);
+				m_aChildren[i].SetChildTransform(verticalMode, heightTerrain, isUnderwater, trace);
 			}
 		}
 		
-		#ifdef PREVIEW_ENTITY_DEBUG
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_SHOW_DEBUG))
+		{
 			vector matrix[4];
 			GetWorldTransform(matrix);
-			SCR_Global.DrawMatrix(matrix, 5, ShapeFlags.ONCE, Color.CYAN, Color.MAGENTA, 0xffffff00);
-		#endif
+			SCR_Global.DrawMatrix(matrix, 1, colorX: Color.CYAN, colorY: Color.MAGENTA, colorZ: 0xffffff00);
+		}
 	}
 	protected void SetPreviewObject(VObject mesh, ResourceName material)
 	{
@@ -366,13 +418,24 @@ class SCR_BasePreviewEntity: GenericEntity
 		outBoundMin = m_vBounds[0];
 		outBoundMax = m_vBounds[1]
 	}
+	 /*!
+	\return True if the preview entity represents multiple editable entities (e.g., composition with editable children, or editing multiple editable entities at once).
+	*/
+	bool HasMultipleEditableEntities()
+	{
+		return m_bHasMultipleEditableEntities;
+	}
 	/*!
 	Init event called when the preview is created.
 	To be overriden by child classes
 	*/
-	protected void EOnPreviewInit(SCR_BasePreviewEntry entry, SCR_BasePreviewEntity root)
-	{
-	}
+	protected void EOnPreviewInit(SCR_BasePreviewEntry entry, SCR_BasePreviewEntity root);
+	/*!
+	Init event called on preview root entity.
+	To be overriden by child classes
+	*/
+	protected void EOnRootPreviewInit(array<ref SCR_BasePreviewEntry> entries);
+	
 	void SCR_BasePreviewEntity(IEntitySource src, IEntity parent)
 	{
 	}

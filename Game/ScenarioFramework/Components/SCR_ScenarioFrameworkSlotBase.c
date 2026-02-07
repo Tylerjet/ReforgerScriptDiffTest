@@ -33,6 +33,9 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	
 	[Attribute(desc: "If true, it will spawn only the entities that are from Included Editable Entity Labels and also do not contain Label to be Excluded.", category: "Randomization")]
 	protected bool										m_bIncludeOnlySelectedLabels;
+	
+	[Attribute(defvalue: "0", category: "Composition", desc: "When disabled orientation to terrain will be skipped for the next composition")]
+	protected bool m_bIgnoreOrientChildrenToTerrain;
 		
 	//TODO: not yet implemented
 	//[Attribute(defvalue: "100", desc: "Spawn probability", category: "Asset")]
@@ -329,12 +332,21 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 		BaseResourceObject resourceObject = resource.GetResource();
 		if (!resourceObject)
 			return null;
-
+		if(m_bIgnoreOrientChildrenToTerrain)
+		{
+			IEntityComponentSource slotCompositionComponent = SCR_BaseContainerTools.FindComponentSource(resourceObject, SCR_SlotCompositionComponent);
+			if (slotCompositionComponent )
+			{
+				SCR_SlotCompositionComponent.IgnoreOrientChildrenToTerrain();
+			}
+		}
+		
 		string resourceName = resourceObject.GetResourceName();
 		IEntity entity = GetGame().SpawnEntityPrefab(resource, GetGame().GetWorld(), m_SpawnParams);
 		SCR_AIWorld aiWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
 		if(aiWorld)
 			aiWorld.RequestNavmeshRebuildEntity(entity);
+		
 	
 		return entity;
 	}

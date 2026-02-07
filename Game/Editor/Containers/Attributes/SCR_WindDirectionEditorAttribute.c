@@ -18,7 +18,7 @@ class SCR_WindDirectionEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		SCR_WindDirectionInfo windDirectionInfo;
 		
 		weatherManager.GetWindDirectionInfoFromFloat(weatherManager.GetWindDirection(), CurrentWindDirectionIndex, windDirectionInfo);
-		return SCR_BaseEditorAttributeVar.CreateInt(CurrentWindDirectionIndex));
+		return SCR_BaseEditorAttributeVar.CreateInt(CurrentWindDirectionIndex);
 	}
 	
 	

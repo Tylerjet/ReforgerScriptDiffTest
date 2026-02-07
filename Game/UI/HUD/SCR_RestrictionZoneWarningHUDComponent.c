@@ -35,37 +35,24 @@ class SCR_RestrictionZoneWarningHUDComponent : SCR_InfoDisplay
 	
 	protected ERestrictionZoneWarningType m_iCurrentDisplayedWarning = -1;
 	
-	protected bool m_bWarningShown;
 	protected vector m_vZoneCenter;
 	protected float m_fWarningRadiusSq;
 	protected float m_fZoneMinusWarningSq;
 
 	
-	override void Show(bool show, float speed = UIConstants.FADE_RATE_DEFAULT, bool force = false)
-	{					
-		if (m_wRoot && !m_wRoot.IsVisible() && show)
-			m_wRoot.SetVisible(true);
-		else if (!show && m_wRoot.IsVisible())
-			m_wRoot.SetVisible(false);
-		
-		m_bWarningShown = show;
-		super.Show(show, speed, force);
-	}
-	
 	/*!
 	Show the restriction zone warning and set the correct UIInfo
 	\param show If the warning should be shown or hidden
 	\param speed fadeSpeed
-	\param force Force Show
 	*/
-	void ShowZoneWarning(bool show, ERestrictionZoneWarningType warningType, vector zoneCenter, float warningRadiusSq, float zoneRadiusSq, float speed = UIConstants.FADE_RATE_DEFAULT, bool force = false)
+	void ShowZoneWarning(bool show, ERestrictionZoneWarningType warningType, vector zoneCenter, float warningRadiusSq, float zoneRadiusSq, float speed = UIConstants.FADE_RATE_DEFAULT)
 	{		
 		if (!show)
 		{
-			if (m_bWarningShown)
+			if (m_bShown)
 				GetGame().GetCallqueue().Remove(UpdateVisualWarning);
 			
-			Show(false, speed, force);
+			Show(false, speed);
 			return;
 		}
 		
@@ -92,10 +79,10 @@ class SCR_RestrictionZoneWarningHUDComponent : SCR_InfoDisplay
 		
 		m_iCurrentDisplayedWarning = warningType;
 		
-		if (!m_bWarningShown)
+		if (!m_bShown)
 			GetGame().GetCallqueue().CallLater(UpdateVisualWarning, m_fWarningVisualsUpdateTime * 1000, true);
 		
-		Show(true, speed, force);
+		Show(true, speed);
 
 	}
 	
@@ -155,7 +142,6 @@ class SCR_RestrictionZoneWarningHUDComponent : SCR_InfoDisplay
 				m_fMinWarningDistanceVisualsOpacity = m_fMaxWarningDistanceVisualsOpacity;
 			}
 			
-			m_wRoot.SetVisible(false);
 			m_WarningZoneDistanceVisuals = m_wRoot.FindAnyWidget(m_sWarningZoneDistanceVisualsName);
 			m_WarningVisualsHolder = m_wRoot.FindAnyWidget(m_sWarningVisualsHolderName);
 			
@@ -174,7 +160,7 @@ class SCR_RestrictionZoneWarningHUDComponent : SCR_InfoDisplay
 	
 	void ~SCR_RestrictionZoneWarningHUDComponent()
 	{
-		if (m_bWarningShown)
+		if (m_bShown)
 				GetGame().GetCallqueue().Remove(UpdateVisualWarning);
 	}
 };

@@ -27,27 +27,55 @@ class SCR_GearboxHitZone: ScriptedHitZone
 	
 	void UpdateGearboxState()
 	{
-		VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(GetOwner().FindComponent(VehicleWheeledSimulation));
-		if (!simulation)
-			return;
-		
-		if (!simulation.IsValid())
-			return;
-		
-		EDamageState state = GetDamageState();
- 		float health = GetDamageStateThreshold(state);
-		
-		float maximumEfficiency = simulation.GearboxGetEfficiency();
-		float minimumEfficiency = m_fMinimumGearboxEfficiencyRatio * maximumEfficiency;
-		float efficiency = Math.Lerp(minimumEfficiency, maximumEfficiency, health);
-		simulation.GearboxSetEfficiencyState(efficiency);
-		
-		// Set GearboxDamage signal value
-		if (m_iGearboxSignalIdx == -1)
-			return;
-		
-		SignalsManagerComponent signalsManager = SignalsManagerComponent.Cast(GetOwner().FindComponent(SignalsManagerComponent));
-		if (signalsManager)
-			signalsManager.SetSignalValue(m_iGearboxSignalIdx, 1 - health);
+		if(GetGame().GetIsClientAuthority())
+		{
+			VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(GetOwner().FindComponent(VehicleWheeledSimulation));
+			if (!simulation)
+				return;
+			
+			if (!simulation.IsValid())
+				return;
+			
+			EDamageState state = GetDamageState();
+	 		float health = GetDamageStateThreshold(state);
+			
+			float maximumEfficiency = simulation.GearboxGetEfficiency();
+			float minimumEfficiency = m_fMinimumGearboxEfficiencyRatio * maximumEfficiency;
+			float efficiency = Math.Lerp(minimumEfficiency, maximumEfficiency, health);
+			simulation.GearboxSetEfficiencyState(efficiency);
+			
+			// Set GearboxDamage signal value
+			if (m_iGearboxSignalIdx == -1)
+				return;
+			
+			SignalsManagerComponent signalsManager = SignalsManagerComponent.Cast(GetOwner().FindComponent(SignalsManagerComponent));
+			if (signalsManager)
+				signalsManager.SetSignalValue(m_iGearboxSignalIdx, 1 - health);
+		}
+		else
+		{
+			VehicleWheeledSimulation_SA simulation = VehicleWheeledSimulation_SA.Cast(GetOwner().FindComponent(VehicleWheeledSimulation_SA));
+			if (!simulation)
+				return;
+			
+			if (!simulation.IsValid())
+				return;
+			
+			EDamageState state = GetDamageState();
+	 		float health = GetDamageStateThreshold(state);
+			
+			float maximumEfficiency = simulation.GearboxGetEfficiency();
+			float minimumEfficiency = m_fMinimumGearboxEfficiencyRatio * maximumEfficiency;
+			float efficiency = Math.Lerp(minimumEfficiency, maximumEfficiency, health);
+			simulation.GearboxSetEfficiencyState(efficiency);
+			
+			// Set GearboxDamage signal value
+			if (m_iGearboxSignalIdx == -1)
+				return;
+			
+			SignalsManagerComponent signalsManager = SignalsManagerComponent.Cast(GetOwner().FindComponent(SignalsManagerComponent));
+			if (signalsManager)
+				signalsManager.SetSignalValue(m_iGearboxSignalIdx, 1 - health);
+		}
 	}
 };

@@ -15,7 +15,7 @@ class SCR_CampaignTutorialStage71 : SCR_BaseCampaignTutorialStage
 		if (!GetTaskManager())
 			return;
 	
-		SCR_CampaignBase baseLaruns = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseLaruns"));
+		SCR_CampaignMilitaryBaseComponent baseLaruns = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("TownBaseLaruns").FindComponent(SCR_CampaignMilitaryBaseComponent));
 	
 		if (!baseLaruns)
 			return;
@@ -25,7 +25,7 @@ class SCR_CampaignTutorialStage71 : SCR_BaseCampaignTutorialStage
 		if (!supportClass)
 			return;
 		
-		m_Task = supportClass.GetTask(baseLaruns, GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_BLUFOR), SCR_CampaignTaskType.CAPTURE);
+		m_Task = supportClass.GetTask(baseLaruns, SCR_GameModeCampaign.GetInstance().GetFactionByEnum(SCR_ECampaignFaction.BLUFOR), SCR_CampaignTaskType.CAPTURE);
 	}
 	
 	//------------------------------------------------------------------------------------------------

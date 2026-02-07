@@ -25,18 +25,26 @@ class SCR_MorphineUserAction : SCR_HealingUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
-		if (!super.CanBePerformedScript(user))
+		// Medic character
+		ChimeraCharacter userCharacter = ChimeraCharacter.Cast(user);
+		if (!userCharacter)
 			return false;
 		
-		ChimeraCharacter character = ChimeraCharacter.Cast(user);
-		if (!character)
-			return false;
-
-		
-		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(character);
+		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(userCharacter);
 		if (!consumableComponent)
 			return false;
 		
-		return consumableComponent.GetConsumableType() == EConsumableType.Morphine;
+		int reason;
+		if (!consumableComponent.GetConsumableEffect().CanApplyEffect(GetOwner(), userCharacter, reason))
+		{
+			if (reason == SCR_EConsumableFailReason.UNDAMAGED)
+				SetCannotPerformReason(m_sNotDamaged);		
+			else if (reason == SCR_EConsumableFailReason.ALREADY_APPLIED)
+				SetCannotPerformReason(m_sAlreadyApplied);
+			
+			return false;
+		}
+		
+		return true;
 	}
 };

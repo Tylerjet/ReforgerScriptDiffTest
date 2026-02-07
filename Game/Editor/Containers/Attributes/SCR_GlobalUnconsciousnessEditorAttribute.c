@@ -3,12 +3,8 @@ class SCR_GlobalUnconsciousnessEditorAttribute : SCR_BaseEditorAttribute
 
 {	
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
-	{
-		//Disabled for now
-		return null;
-		
+	{		
 		//If opened in global attributes
-		
 		BaseGameMode gamemode = BaseGameMode.Cast(item);
 		if (!gamemode)
 			return null;

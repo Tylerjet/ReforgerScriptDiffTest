@@ -7,8 +7,8 @@ class SCR_RequestedTaskClass: SCR_BaseTaskClass
 //------------------------------------------------------------------------------------------------
 class SCR_RequestedTask : SCR_BaseTask
 {
-	[Attribute(CampaignXPRewards.SUPPORT_EVAC.ToString(), uiwidget: UIWidgets.ComboBox, enums:ParamEnumArray.FromEnum(CampaignXPRewards))]
-	CampaignXPRewards m_AssigneeXPReward;
+	[Attribute(SCR_EXPRewards.SUPPORT_EVAC.ToString(), uiwidget: UIWidgets.ComboBox, enums:ParamEnumArray.FromEnum(SCR_EXPRewards))]
+	SCR_EXPRewards m_AssigneeXPReward;
 	
 	int m_iRequesterID = -1;
 	SCR_BaseTaskExecutor m_Requester;
@@ -28,7 +28,12 @@ class SCR_RequestedTask : SCR_BaseTask
 			return;
 		}
 		
-		if (SCR_RespawnSystemComponent.GetLocalPlayerFaction() == GetTargetFaction())
+		Faction localPlayerFaction;
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+			localPlayerFaction = factionManager.GetLocalPlayerFaction();
+		
+		if (localPlayerFaction == GetTargetFaction())
 			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_AVAILABLE_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_AVAILABLE, text2: TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT, sound: SCR_SoundEvent.TASK_CREATED);
 	}
 	
@@ -169,7 +174,10 @@ class SCR_RequestedTask : SCR_BaseTask
 			return;
 		
 		// Award XP to the volunteer
-		SCR_GameModeCampaignMP.GetInstance().AwardXP(assignee.GetControlledEntity(), m_AssigneeXPReward);
+		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
+		
+		if (comp)
+			comp.AwardXP(assignee.GetControlledEntity(), m_AssigneeXPReward);
 		
 		super.Finish(showMsg);
 	}

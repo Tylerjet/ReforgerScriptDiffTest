@@ -7,6 +7,9 @@ The must be declared specifically, we can't have an array of structs, as JSON do
 class SCR_MissionStruct: SCR_JsonApiStruct
 {
 	[Attribute()]
+	protected ref SCR_MetaStruct m_Meta;
+	
+	[Attribute()]
 	protected ref SCR_JsonApiStruct m_Struct0;
 	
 	[Attribute()]
@@ -38,9 +41,20 @@ class SCR_MissionStruct: SCR_JsonApiStruct
 	
 	//--- Array of structs can't be attribute directly, because it would be deserialzied using base class SCR_JsonApiStruct
 	protected ref array<SCR_JsonApiStruct> m_aStructs = {m_Struct0, m_Struct1, m_Struct2, m_Struct3, m_Struct4, m_Struct5, m_Struct6, m_Struct7, m_Struct8, m_Struct9};
+
+	/*!
+	\return Meta header
+	*/
+	SCR_MetaStruct GetMeta()
+	{
+		return m_Meta;
+	}
 	
 	override bool Serialize()
 	{
+		if (!m_Meta.Serialize())
+			return false;
+		
 		foreach (SCR_JsonApiStruct struct: m_aStructs)
 		{
 			if (struct && !struct.Serialize())
@@ -50,6 +64,9 @@ class SCR_MissionStruct: SCR_JsonApiStruct
 	}
 	override bool Deserialize()
 	{
+		if (!m_Meta.Deserialize())
+			return false;
+		
 		foreach (SCR_JsonApiStruct struct: m_aStructs)
 		{
 			if (struct && !struct.Deserialize())
@@ -59,6 +76,8 @@ class SCR_MissionStruct: SCR_JsonApiStruct
 	}
 	override void Log()
 	{
+		m_Meta.Log();
+		
 		foreach (SCR_JsonApiStruct struct: m_aStructs)
 		{
 			if (struct)
@@ -67,6 +86,11 @@ class SCR_MissionStruct: SCR_JsonApiStruct
 	}
 	void SCR_MissionStruct()
 	{
+		if (!m_Meta)
+			m_Meta = new SCR_MetaStruct();
+		
+		RegV("m_Meta");
+		
 		foreach (int i, SCR_JsonApiStruct struct: m_aStructs)
 		{
 			if (struct)

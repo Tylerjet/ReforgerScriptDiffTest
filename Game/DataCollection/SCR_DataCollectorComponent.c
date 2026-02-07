@@ -2,7 +2,7 @@
 class SCR_DataCollectorComponentClass : SCR_BaseGameModeComponentClass
 {
 	// prefab properties here
-}
+};
 
 //------------------------------------------------------------------------------------------------
 class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
@@ -10,19 +10,29 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	[Attribute()]
 	protected ref array<ref SCR_DataCollectorModule> m_aModules;
 	
-	/*
-	//This is part of the rework I am making of PlayerData so it becomes a pure container
-	SCR_DataCollectorModule m_StoreModule;
+	[Attribute()]
+	protected bool m_bOptionalKicking;
 	
-	//This is part of the improvements I am making of the WarCrimes and the ProportionalityPrinciple
-	protected bool warCrimesModule = false;
-	*/
-	[Attribute("1", UIWidgets.CheckBox, desc: "Are War Crimes detection enabled?")]
-	protected bool m_bWarCrimesEnabled;
+	[Attribute("3", desc: "Optional kicking: Penalty score for killing a friendly player.")]
+	protected int m_iOptionalKickingFriendlyPlayerKillPenalty;
 	
-	[Attribute("1", UIWidgets.CheckBox, desc: "Is the proportionality principle enabled?")]
-	protected bool m_bWarCrimesProportionalityPrincipleEnabled;
+	[Attribute("1", desc: "Penalty score for killing a friendly AI.")]
+	protected int m_iOptionalKickingFriendlyAIKillPenalty;
 	
+	[Attribute("10", desc: "Penalty score limit for a kick from the match.")]
+	protected int m_iOptionalKickingKickPenaltyLimit;
+	
+	[Attribute("1800", desc: "Ban duration after a kick (in seconds, -1 for a session-long ban).")]
+	protected int m_iOptionalKickingBanDuration;
+	
+	[Attribute("900", desc: "How often penalty score subtraction happens (in seconds).")]
+	protected int m_iOptionalKickingPenaltySubtractionPeriod;
+	
+	[Attribute("2", desc: "How many penalty points get substracted after each subtraction period.")]
+	protected int m_iOptionalKickingPenaltySubtractionPoints;
+	
+	protected ref SCR_LocalPlayerPenalty m_OptionalKicking;
+
 	protected ref map<int, ref SCR_PlayerData> m_mPlayerData = new map<int, ref SCR_PlayerData>();
 
 	protected IEntity m_Owner;
@@ -35,8 +45,6 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	protected bool m_bLocalEntityListening = false;
 	protected int m_iInitializingTimer = 0;
 	protected bool m_bVisualDisplay = false;
-	
-	
 #endif
 
 	//------------------------------------------------------------------------------------------------
@@ -131,22 +139,34 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		else
 		{
 			int statsCount = stats.Count();
-			
+
 			if (statsCount == 0 || factionStats.Count() != statsCount)
 			{
-				Print("ERROR WHEN ADDING FACTIONSTATS IN DATA COLLECTOR: Size of faction stats is different than expected size! Expected size was" + statsCount + " but real size was "+ factionStats.Count(), LogLevel.ERROR);
+				Print("ERROR WHEN ADDING FACTIONSTATS IN DATA COLLECTOR: Size of faction stats is different than expected size! Expected size was" + statsCount + " but real size was "+ factionStats.Count(), LogLevel.WARNING);
 				return;
 			}
-			
+
 			for (int i = 0; i < statsCount; i++)
 			{
 				factionStats[i] = factionStats[i] + stats[i];
 			}
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! When game shuts down, store the profile of every player who hasn't disconnected yet
+	override void OnGameEnd()
+	{	
+		for (int i = m_mPlayerData.Count() - 1; i >= 0; i--)
+		{
+			SCR_PlayerData playerData = GetPlayerData(m_mPlayerData.GetKey(i), false);
+			if (playerData)
+				playerData.StoreProfile();
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
-	protected SCR_DataCollectorModule FindModule(typename type)
+	SCR_DataCollectorModule FindModule(typename type)
 	{
 		for (int i = m_aModules.Count() - 1; i >= 0; i--)
 		{
@@ -187,7 +207,6 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		if (!playerData && createNew)
 		{
 			playerData = new SCR_PlayerData(playerID, true, requestFromBackend);
-			playerData.ActivateWarCrimesDetection(m_bWarCrimesEnabled, m_bWarCrimesProportionalityPrincipleEnabled);
 			m_mPlayerData.Insert(playerID, playerData);
 		}
 
@@ -212,6 +231,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	//OnAuditSuccess is the moment when the player has not only connected, but also been authenticated
 	protected override void OnPlayerAuditSuccess(int playerId)
 	{
+		Print("Player with id " + playerId + " was auditted succesfully and admitted on the Data Collector", LogLevel.DEBUG);
 		//We create the player's PlayerData here
 		GetPlayerData(playerId);
 
@@ -220,6 +240,13 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		{
 			m_aModules[i].OnPlayerAuditSuccess(playerId);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void OnPlayerConnected(int playerId)
+	{
+		if (m_bOptionalKicking)
+			m_OptionalKicking.OnPlayerConnected(playerId);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -273,32 +300,50 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		{
 			m_aModules[i].OnPlayerKilled(playerId, player, killer);
 		}
+		
+		if (m_bOptionalKicking)
+			m_OptionalKicking.OnControllableDestroyed(player, killer);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnAIKilled(IEntity AI, IEntity killer)
+	{
+		for (int i = m_aModules.Count() - 1; i >= 0; i--)
+		{
+			m_aModules[i].OnAIKilled(AI, killer);
+		}
+		
+		if (m_bOptionalKicking)
+			m_OptionalKicking.OnControllableDestroyed(AI, killer);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	/*
 	This method is a hack to process killings when the dead entity is an AI
 	Because there's no "OnAiKilled" method
 	*/
-	/* TODO: Finish the method checking for vehicles as well and uncomment it
 	protected override void OnControllableDestroyed(IEntity entity, IEntity instigator)
 	{
 		if (!entity || !instigator)
 			return;
-		
-		//if (!SCR_ChimeraCharacter.Cast(entity) || !SCR_ChimeraCharacter.Cast(instigator))
-			
-		
+
+		if (!SCR_ChimeraCharacter.Cast(entity) || !SCR_ChimeraCharacter.Cast(instigator))
+		{
+			Print("Error: The OnControllableDestroyed method from the Data Collector was invoked with an IEntity that is not a chimera character.", LogLevel.ERROR);
+			Print("Instigator's prefab name: " + instigator.GetPrefabData().GetPrefabName() + ". Entity's prefab name: " + entity.GetPrefabData().GetPrefabName()+" .", LogLevel.ERROR);
+			Print("The instance of entity is " + entity + " and the instance of the instigator is " + instigator, LogLevel.ERROR);
+			return;
+		}
+
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity);
-		//If playerId is not 0 it means this will be handled by the OnPlayerKilled event
+		//If playerId is not 0 it means that the entity killed was a player
+		//Therefore it will be handled by the OnPlayerKilled event
 		//so we don't need to do anything else
 		if (playerId != 0)
 			return;
-		
-		int killerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(instigator);
-		OnPlayerKilled(playerId, entity, instigator);
+
+		OnAIKilled(entity, instigator);
 	}
-	*/
 
 #ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------
@@ -315,6 +360,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	protected void ListenToLocalControllerEntityChanged()
 	{
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+
 		if (playerController)
 		{
 			m_bLocalEntityListening = true;
@@ -347,6 +393,13 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	{
 		StartDataCollectorSession();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Use this method to disable all the modules.
+	protected void DisableModules()
+	{
+		m_aModules.Clear();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! We call StartDataCollectorSession when the backend session is ready (OnGameModeStart)
@@ -354,48 +407,47 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	//! If the server has no writing privileges, we don't bother tracking their performance
 	void StartDataCollectorSession()
 	{
-#ifndef ENABLE_DIAG
-		//These are all the comprobations to make sure that this server has writing rights. If not, there's no need for a data collector
-		BackendApi ba = GetGame().GetBackendApi();
-
-		if (!ba || !IsMaster())
-			return;
-
-		SessionStorage baStorage = ba.GetStorage();
-
-		if (!baStorage)
-			return;
-
-		if (!baStorage.GetOnlineWritePrivilege())
+		//If it's no server, disable all tracking
+		if (!IsMaster())
 		{
-			Print("DataCollectorComponent: StartDataCollectorSession: This server has no writing privileges.", LogLevel.DEBUG);
+#ifndef ENABLE_DIAG
+			DisableModules();
+			m_bOptionalKicking = false;
 			return;
-		}
 #endif
-
+		}
+		
+		bool writingRights = false;
+		BackendApi ba = GetGame().GetBackendApi();
+		
+		if (ba)
+		{
+			SessionStorage baStorage = ba.GetStorage();
+			if (baStorage)
+			{
+				writingRights = baStorage.GetOnlineWritePrivilege();
+			}
+		}
+		
+		//Local storage or online backend storage?
+		if (!writingRights)
+		{
+			Print("DataCollectorComponent: StartDataCollectorSession: This server has no writing privileges. Will use local storage instead.", LogLevel.DEBUG);
+		}
+		else
+		{
+			Print("DataCollectorComponent: StartDataCollectorSession: Using online backend storage.", LogLevel.DEBUG);
+		}
+		
 		if (!m_Owner)
 		{
 			Print("DataCollectorComponent: StartDataCollectorSession: m_Owner is null. Can't add the EntityEvent.FRAME flag thus data collector will not work properly.", LogLevel.ERROR);
 		}
 		else
 		{
+			//Activate the FRAME flag
 			SetEventMask(m_Owner, EntityEvent.FRAME);
-			m_Owner.SetFlags(EntityFlags.ACTIVE, false);
 		}
-
-		//Now we check if there is any player already to create playerData manually
-		if (GetGame().GetPlayerManager().GetPlayerCount() <= 0)
-			return;
-
-		array<int> playerIds = {};
-		GetGame().GetPlayerManager().GetPlayers(playerIds);
-
-		foreach (int playerId : playerIds)
-		{
-			GetPlayerData(playerId);
-		}
-
-		SetEventMask(m_Owner, EntityEvent.FRAME);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -415,14 +467,13 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 			m_iInitializingTimer++;
 		}
 
-		
 		if (m_bVisualDisplay != DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_DATA_COLLECTION_ENABLE_DIAG))
 		{
 			if (!m_UiHandler)
 			{
 				CreateStatVisualizations();
 			}
-			
+
 			m_bVisualDisplay = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_DATA_COLLECTION_ENABLE_DIAG);
 			m_UiHandler.SetVisible(m_bVisualDisplay);
 		}
@@ -430,7 +481,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 
 		for (int i = m_aModules.Count() - 1; i >= 0; i--)
 		{
-			m_aModules[i].Update(owner, timeSlice);
+			m_aModules[i].Update(timeSlice);
 		}
 	}
 
@@ -440,13 +491,13 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		//If there is a data collector instance already, return
 		if (GetGame().GetDataCollector())
 			return;
+		
+		m_OptionalKicking = new SCR_LocalPlayerPenalty(m_iOptionalKickingFriendlyPlayerKillPenalty, m_iOptionalKickingFriendlyAIKillPenalty, m_iOptionalKickingKickPenaltyLimit, m_iOptionalKickingBanDuration, m_iOptionalKickingPenaltySubtractionPeriod, m_iOptionalKickingPenaltySubtractionPoints);
 
 		//Register the data collector
 		GetGame().RegisterDataCollector(this);
 
 		m_Owner = owner;
-		
-		//warCrimesModule = FindModule(SCR_DataCollectorWarCrimesModule);
 	}
 
 	//------------------------------------------------------------------------------------------------

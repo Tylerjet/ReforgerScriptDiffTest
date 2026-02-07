@@ -88,30 +88,42 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	void OnDeliveryTriggerActivated(IEntity entity)
+	void OnDeliveryTriggerActivated(notnull SCR_CharacterTriggerEntity trigger)
 	{
-		if (!entity || !m_SupportEntity)
+		if (!m_SupportEntity)
 			return;
 		
-		if (entity == m_Asset)
+		array<IEntity> entitiesInside = {};
+		array<SCR_ChimeraCharacter> chimeraCharacters = {};
+		trigger.GetEntitiesInside(entitiesInside);
+		foreach (IEntity entity : entitiesInside)
 		{
-			m_SupportEntity.FinishTask(this);
-			return;
+			if (entity == m_Asset)
+			{
+				m_SupportEntity.FinishTask(this);
+				return;
+			}
+
+			if (SCR_ChimeraCharacter.Cast(entity))
+				chimeraCharacters.Insert(SCR_ChimeraCharacter.Cast(entity))
 		}
 		
-		InventoryStorageManagerComponent inventoryComponent = InventoryStorageManagerComponent.Cast(entity.FindComponent(InventoryStorageManagerComponent));
-		if (!inventoryComponent)
-			return;
-
-		array<IEntity> aItems = {};
-		inventoryComponent.GetItems(aItems);
-		if (aItems.IsEmpty())
-			return;
-		
-		foreach (IEntity itemEntity : aItems)
+		foreach (SCR_ChimeraCharacter character : chimeraCharacters)
 		{
-			if (itemEntity == m_Asset)
-				m_SupportEntity.FinishTask(this);
+			InventoryStorageManagerComponent inventoryComponent = InventoryStorageManagerComponent.Cast(character.FindComponent(InventoryStorageManagerComponent));
+			if (!inventoryComponent)
+				return;
+	
+			array<IEntity> aItems = {};
+			inventoryComponent.GetItems(aItems);
+			if (aItems.IsEmpty())
+				return;
+			
+			foreach (IEntity itemEntity : aItems)
+			{
+				if (itemEntity == m_Asset)
+					m_SupportEntity.FinishTask(this);
+			}
 		}
 	}
 	
@@ -300,7 +312,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	protected void RegisterPlayer(int iPlayerID)
+	protected void RegisterPlayer(int iPlayerID, IEntity playerEntity)
 	{
 		IEntity player = GetGame().GetPlayerManager().GetPlayerControlledEntity(iPlayerID);
 		if (!player)
@@ -354,7 +366,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 					
 		foreach (int i : aPlayerIDs)
 		{
-			RegisterPlayer(i);
+			RegisterPlayer(i, null);
 		}
 		
 		SetDeliveryTrigger();

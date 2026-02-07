@@ -64,7 +64,7 @@ class SCR_RefuelTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		if (!playerController)
 			return;
 		
-		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.GetInstance();
+		SCR_MapRadialUI ctxMenu = SCR_MapRadialUI.GetInstance();
 		if (!ctxMenu)
 			return;
 		

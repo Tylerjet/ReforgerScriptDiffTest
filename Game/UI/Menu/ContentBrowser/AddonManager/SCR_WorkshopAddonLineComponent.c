@@ -5,7 +5,7 @@ Component to be attached to addon lines.
 //----------------------------------------------------------------------------------------------
 class SCR_WorkshopAddonLineComponent : SCR_AddonLineBaseComponent
 {
-	protected ref SCR_WorkshopUiCommon_DownloadSequence m_DownloadRequest;
+	protected ref SCR_WorkshopDownloadSequence m_DownloadRequest;
 
 	//----------------------------------------------------------------------------------------------
 	bool IsWorkshopItemEnabled()

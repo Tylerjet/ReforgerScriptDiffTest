@@ -174,7 +174,7 @@ class DedicatedServerPlugin: WorldEditorPlugin
 		if (!m_bPlayAndConnect || !m_ServerHandle)
 			return;
 		
-		GameStateTransitions.RequestServerConnectTransition("127.0.0.1");
+		GameStateTransitions.RequestConnectViaIP("127.0.0.1");
 	}
 	override void OnGameModeEnded()
 	{

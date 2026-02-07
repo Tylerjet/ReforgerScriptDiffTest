@@ -14,7 +14,7 @@ class SCR_SessionToolbarAction : SCR_EditorToolbarAction
 	override bool CanBeShown(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
 		//~ Disable for now
-		return false;
+		return GetGame().IsDev();
 		
 		if (Replication.IsRunning() != m_bMultiplayerOnly)
 			return false; 
@@ -27,13 +27,9 @@ class SCR_SessionToolbarAction : SCR_EditorToolbarAction
 	}
 	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition,int flags, int param = -1)
 	{
-		SCR_SaveLoadComponent saveLoadComponent = SCR_SaveLoadComponent.GetInstance();
-		if (!saveLoadComponent)
-			return;
-		
 		if (m_bIsLoad)
-			saveLoadComponent.RestartAndLoad();
+			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.EditorLoadDialog);
 		else
-			saveLoadComponent.Save();
+			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.EditorSaveDialog);
 	}
 };

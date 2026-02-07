@@ -1,7 +1,7 @@
 //! Action to reconfigure relays in Campaign
 class SCR_CampaignReconfigureHQRadioUserAction : ScriptedUserAction
 {
-	protected SCR_CampaignBase m_Base;
+	protected SCR_CampaignMilitaryBaseComponent m_Base;
 	protected IEntity m_HQRadio;
 	
 	static const float MAX_BASE_DISTANCE = 50;
@@ -9,7 +9,7 @@ class SCR_CampaignReconfigureHQRadioUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	protected bool IsParentBase(IEntity ent)
 	{
-		m_Base = SCR_CampaignBase.Cast(ent);
+		m_Base = SCR_CampaignMilitaryBaseComponent.Cast(ent.FindComponent(SCR_CampaignMilitaryBaseComponent));
 
 		// Base was found, stop query
 		if (m_Base)
@@ -30,7 +30,7 @@ class SCR_CampaignReconfigureHQRadioUserAction : ScriptedUserAction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static void ToggleBaseCaptured(SCR_CampaignBase base, bool isBeingCaptured)
+	static void ToggleBaseCaptured(SCR_CampaignMilitaryBaseComponent base, bool isBeingCaptured)
 	{
 		// Find local player controller
 		PlayerController playerController = GetGame().GetPlayerController();
@@ -38,7 +38,7 @@ class SCR_CampaignReconfigureHQRadioUserAction : ScriptedUserAction
 		if (!playerController)
 			return;
 		
-		// Find campaign network component to send RPC to server
+		// Find conflict network component to send RPC to server
 		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
 
 		if (campaignNetworkComponent)
@@ -53,7 +53,7 @@ class SCR_CampaignReconfigureHQRadioUserAction : ScriptedUserAction
 		
 		m_HQRadio = pOwnerEntity;
 		
-		if (SCR_GameModeCampaignMP.NotPlaying())
+		if (!GetGame().InPlayMode())
 			return;
 		
 		BaseWorld world = GetGame().GetWorld();
@@ -100,8 +100,7 @@ class SCR_CampaignReconfigureHQRadioUserAction : ScriptedUserAction
 			if (!comp)
 				return;
 			
-			if (m_Base.BeginCapture(SCR_CampaignFaction.Cast(comp.GetAffiliatedFaction())))
-				m_Base.FinishCapture();
+			m_Base.SetFaction(SCR_CampaignFaction.Cast(comp.GetAffiliatedFaction()));
 			
 			return;
 		}
@@ -131,24 +130,24 @@ class SCR_CampaignReconfigureHQRadioUserAction : ScriptedUserAction
 			if (!comp)
 				return false;
 			
-			return (comp.GetAffiliatedFaction() != m_Base.GetOwningFaction());
+			return (comp.GetAffiliatedFaction() != m_Base.GetFaction());
 		}
 		else
 		{
-			SCR_CampaignFaction playerFaction = SCR_CampaignFaction.Cast(SCR_RespawnSystemComponent.GetLocalPlayerFaction());
+			SCR_CampaignFaction playerFaction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
 			
 			if (!playerFaction)
 				return false;
 			
 			// Already ours
-			if (m_Base.GetOwningFaction() == playerFaction)
+			if (m_Base.GetFaction() == playerFaction)
 			{
 				SetCannotPerformReason("#AR-Campaign_Action_Done-UC");
 				return false;
 			}
 			
 			// No radio signal
-			if (m_Base != playerFaction.GetMainBase() && !m_Base.IsBaseInFactionRadioSignal(playerFaction))
+			if (m_Base != playerFaction.GetMainBase() && !m_Base.IsHQRadioTrafficPossible(playerFaction))
 			{
 				SetCannotPerformReason("#AR-Campaign_Action_NoSignal-UC");
 				return false;

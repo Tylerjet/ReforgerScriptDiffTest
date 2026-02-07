@@ -202,7 +202,7 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 	*/
 	void OpenContext()
 	{
-		if (!IsShown())
+		if (!IsShown() || !m_LatestHint)
 			return;
 		
 		EFieldManualEntryId link = m_LatestHint.GetFieldManualLink();

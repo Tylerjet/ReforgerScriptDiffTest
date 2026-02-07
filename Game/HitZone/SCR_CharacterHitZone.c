@@ -98,17 +98,64 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 		if (manager)
 			manager.SetInstigatorEntity(instigator);
 		
+		// FireDamage shouldn't start bleedings
+		if (type == EDamageType.FIRE)
+			return;
+		
 		// Only serious hits should cause bleeding
 		if (damage < GetCriticalDamageThreshold()*GetMaxHealth())
+			return;
+		
+		// Adding immediately some blood to the clothes - currently it's based on the damage dealt.
+		AddBloodToClothes(Math.Clamp(damage * DAMAGE_TO_BLOOD_MULTIPLIER, 0, 255));
+
+		if (IsProxy())
 			return;
 		
 		if (Math.RandomFloat(0,1) < 0.3)
 			return;
 		
-		// Adding immediately some blood to the clothes - currently it's based on the damage dealt.
-		AddBloodToClothes(Math.Clamp(damage * DAMAGE_TO_BLOOD_MULTIPLIER, 0, 255));
 		AddBleeding(colliderID);
 	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	/*!
+	Calculates the amount of damage a hitzone will receive.
+	\param damageType - damage type
+	\param rawDamage - incoming damage, without any modifiers taken into account
+	\param hitEntity - damaged entity
+	\param struckHitZone - hitzone to damage
+	\param damageSource - projectile
+	\param damageSourceGunner - damage source instigator 
+	\param damageSourceParent - damage source parent entity (soldier, vehicle)
+	\param hitMaterial - hit surface physics material
+	\param colliderID - collider ID - if it exists
+	\param hitTransform - hit position, direction and normal
+	\param impactVelocity - projectile velocity in time of impact
+	\param nodeID - bone index in mesh obj
+	\param isDOT - true if this is a calculation for DamageOverTime 
+	*/
+	override float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, IEntity damageSourceGunner, IEntity damageSourceParent, const GameMaterial hitMaterial, int colliderID, inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
+	{
+		if (rawDamage > 0 && !isDOT)
+		{
+			float protectionValue = GetArmorProtectionValue(damageType);
+			rawDamage = Math.Max(rawDamage - protectionValue, 0);
+		}
+		
+		return super.ComputeEffectiveDamage(damageType, rawDamage, hitEntity, struckHitZone, damageSource, damageSourceGunner, damageSourceParent, hitMaterial, colliderID, hitTransform, impactVelocity, nodeID, isDOT);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Get strength of protection from armor attribute on prefab of clothing item
+	float GetArmorProtectionValue(EDamageType damageType)
+	{
+		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
+		if (!damageMgr)
+			return 0;
+
+		return damageMgr.GetArmorProtection(this, damageType);
+	}	
 	
 	//-----------------------------------------------------------------------------------------------------------
 	//! Whether hitzone submeshes are hidden with clothing
@@ -162,7 +209,7 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 		if (manager)
 			manager.AddBleedingHitZone(this, colliderDescriptorIndex);
 	}
-	
+
 	//-----------------------------------------------------------------------------------------------------------
 	override void OnDamageStateChanged()
 	{
@@ -253,40 +300,16 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	{
 		return m_eBandageAnimationBodyPart;
 	}
-
-	//-----------------------------------------------------------------------------------------------------------
-	override void UpdatePassiveRegenerationOverTime()
-	{
-		super.UpdatePassiveRegenerationOverTime();
-		
-		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
-		if (!character)
-			return;
-		
-		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(character.GetDamageManager());
-			if (!damageMgr)
-				return;
-		
-		if (!damageMgr.CanPassivelyRegenerate())
-		{
-			SetDamageOverTime(EDamageType.REGENERATION, 0);	
-			return;
-		}
-		
-		if (!GetDamageOverTime(EDamageType.BLEEDING) && GetDamageOverTime(EDamageType.FIRE) <= 0)
-			SetDamageOverTime(EDamageType.REGENERATION, (m_fPassivelyRegeneratingAmount * damageMgr.GetPassiveRegenerationStanceMultiplier()));	
-	}
 };
 
-//-----------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------
 class SCR_RegeneratingHitZone : ScriptedHitZone
 {
-	[Attribute("10", UIWidgets.Auto, "Time without receiving damage or bleeding to start regeneration [s]")]
+	[Attribute("10", UIWidgets.Auto, "Time without receiving damage or bleeding to start regeneration\n[s]")]
 	protected float m_fRegenerationDelay;
-	[Attribute("200", UIWidgets.Auto, "Time to fully regenerate resilience hitzone [s]")]
-	protected float m_fFullRegenerationTime;
 
-	protected float m_fPassivelyRegeneratingAmount;
+	[Attribute("200", UIWidgets.Auto, "Time to regenerate this hitzone fully\n[s]")]
+	protected float m_fFullRegenerationTime;
 
 	//-----------------------------------------------------------------------------------------------------------
 	/*!
@@ -324,78 +347,53 @@ class SCR_RegeneratingHitZone : ScriptedHitZone
 		ScheduleRegeneration();
 	}
 	
-	// Calculate amount of passive regeneration
-	float CalculatePassiveRegenAmount()
+	//-----------------------------------------------------------------------------------------------------------
+	// Calculate rate of passive regeneration
+	float CalculatePassiveRegeneration()
 	{
 		if (m_fFullRegenerationTime <= 0)
 			return 0; 
 		
+		// Any local damage over time shall disrupt passive regeneration
+		array<EDamageType> damageTypes = {};
+		SCR_Enum.GetEnumValues(EDamageType, damageTypes);
+		foreach (EDamageType damageType : damageTypes)
+		{
+			if (damageType == EDamageType.REGENERATION || damageType == EDamageType.HEALING)
+				continue;
+
+			if (GetDamageOverTime(damageType) != 0)
+				return 0;
+		}
+
 		return -GetMaxHealth() / m_fFullRegenerationTime;
 	}
 	
+	//-----------------------------------------------------------------------------------------------------------
 	// Schedule healing over time, delay current scheduled regeneration
 	void ScheduleRegeneration()
 	{
-		GetGame().GetCallqueue().Remove(UpdatePassiveRegenerationOverTime);
-		GetGame().GetCallqueue().CallLater(UpdatePassiveRegenerationOverTime, 1000 * m_fRegenerationDelay, true);
-	}
-	
-	// Remove current healing over time and any scheduled regeneration
-	void RemovePassiveRegeneration()
-	{
-		GetGame().GetCallqueue().Remove(UpdatePassiveRegenerationOverTime);
-		
-		if (GetDamageOverTime(EDamageType.REGENERATION))
-		{
-			SetDamageOverTime(EDamageType.REGENERATION, 0);
-			m_fPassivelyRegeneratingAmount = 0;
-		}
+		GetGame().GetCallqueue().Remove(UpdatePassiveRegeneration);
+		GetGame().GetCallqueue().CallLater(UpdatePassiveRegeneration, 1000 * m_fRegenerationDelay, true);
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
-	protected void UpdatePassiveRegenerationOverTime()
+	// Remove current healing over time and any scheduled regeneration
+	void RemovePassiveRegeneration()
 	{
-		if (IsProxy())
-			return;
+		GetGame().GetCallqueue().Remove(UpdatePassiveRegeneration);
 		
-		if (GetDamageState() == ECharacterDamageState.UNDAMAGED)
-			return;
-		
-		array<EDamageType> damageTypes = {};
-		SCR_Enum.GetEnumValues(EDamageType, damageTypes);
-		foreach (EDamageType damageType: damageTypes)
-		{
-			if (damageType == EDamageType.REGENERATION || damageType == EDamageType.FIRE)
-				continue;
-			
-			if (GetDamageOverTime(damageType) != 0)
-				return;
-		}
-				
-		// TODO@FAC: SCR_PatientCompartmentSlot regenerationBoost 
-		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
-		if (character)
-		{
-			CompartmentAccessComponent compAccess = character.GetCompartmentAccessComponent();
-			float medicalVehicleRegenMultiplier = 1;
-			if (compAccess)
-			{
-				SCR_PatientCompartmentSlot patientSlot = SCR_PatientCompartmentSlot.Cast(compAccess.GetCompartment());
-				if (patientSlot)
-					medicalVehicleRegenMultiplier = patientSlot.GetCompartmentRegenRateMultiplier();
-			}
-			
-			SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(character.GetDamageManager());
-			if (!damageMgr)
-				return;
-			
-			m_fPassivelyRegeneratingAmount = (medicalVehicleRegenMultiplier * CalculatePassiveRegenAmount()) * damageMgr.GetRegenScale();
-		}
-		// ENDTODO
-		
-		SetDamageOverTime(EDamageType.REGENERATION, m_fPassivelyRegeneratingAmount);
+		if (GetDamageOverTime(EDamageType.REGENERATION))
+			SetDamageOverTime(EDamageType.REGENERATION, 0)
 	}
 	
+	//-----------------------------------------------------------------------------------------------------------
+	protected void UpdatePassiveRegeneration()
+	{
+		float regenerationRate = CalculatePassiveRegeneration();
+		SetDamageOverTime(EDamageType.REGENERATION, regenerationRate);
+	}
+
 	//-----------------------------------------------------------------------------------------------------------
 	override void OnDamageStateChanged()
 	{
@@ -415,19 +413,31 @@ class SCR_CharacterResilienceHitZone : SCR_RegeneratingHitZone
 	{
 		super.OnDamageStateChanged();
 		
-		SCR_CharacterDamageManagerComponent damageManager = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
-		if (!damageManager)
-			return;
-		
-		damageManager.UpdateConsciousness();
-		
-		// If destroyed and unconsciousness is not allowed, kill character
-		if (GetDamageState() != EDamageState.DESTROYED || damageManager.GetPermitUnconsciousness())
-			return;
-
-		damageManager.Kill(damageManager.GetInstigatorEntity());
+		UpdateConsciousness();
 	}
 	
+	//-----------------------------------------------------------------------------------------------------------
+	void UpdateConsciousness()
+	{
+		SCR_CharacterDamageManagerComponent damageManager = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
+		if (damageManager)
+			damageManager.UpdateConsciousness();
+	}
+		
+	//-----------------------------------------------------------------------------------------------------------
+	override float CalculatePassiveRegeneration()
+	{
+		float regeneration = super.CalculatePassiveRegeneration();
+
+		SCR_CharacterDamageManagerComponent manager = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
+		if (!manager)
+			return regeneration;
+
+		regeneration *= manager.GetResilienceRegenScale();
+
+		return regeneration;
+	}
+
 	//-----------------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
@@ -444,28 +454,21 @@ class SCR_CharacterBloodHitZone : SCR_RegeneratingHitZone
 {
 	ref map<SCR_CharacterHitZone, ref SCR_BleedingHitZoneParameters> m_mHitZoneDOTMap;
 	ref array<float> m_aHitZoneGroupBleedings;
+
 	//-----------------------------------------------------------------------------------------------------------
 	override void OnDamageStateChanged()
 	{
 		super.OnDamageStateChanged();
 		
+		UpdateConsciousness();
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	void UpdateConsciousness()
+	{
 		SCR_CharacterDamageManagerComponent damageManager = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
-		if (!damageManager)
-			return;
-		
-		damageManager.UpdateConsciousness();
-		
-		if (GetDamageState() == ECharacterBloodState.DESTROYED)
-			damageManager.Kill(damageManager.GetInstigatorEntity());
-		
-		// If destroyed and unconsciousness is not allowed, kill character
-		if (GetDamageStateThreshold(GetDamageState()) > GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS))
-			return;
-
-		if (damageManager.GetPermitUnconsciousness())
-			return;
-		
-		damageManager.Kill(damageManager.GetInstigatorEntity());
+		if (damageManager)
+			damageManager.UpdateConsciousness();
 	}
 
 	//-----------------------------------------------------------------------------------------------------------
@@ -485,7 +488,10 @@ class SCR_CharacterBloodHitZone : SCR_RegeneratingHitZone
 			m_mHitZoneDOTMap = new map<SCR_CharacterHitZone, ref SCR_BleedingHitZoneParameters>();
 
 		if (m_mHitZoneDOTMap.Contains(hitZone))
-			m_mHitZoneDOTMap.Remove(hitZone);
+		{
+			m_mHitZoneDOTMap.Set(hitZone, localBleedingHZParams);
+			return true;
+		}
 
 		return m_mHitZoneDOTMap.Insert(hitZone, localBleedingHZParams);
 	}

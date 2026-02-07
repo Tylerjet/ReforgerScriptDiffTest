@@ -99,7 +99,7 @@ class SCR_AIDebugInfoComponent : ScriptedWidgetComponent
 				m_wRoot.SetVisible(false);
 				return false;
 			}
-			AIAgent agent = comp.GetAIAgent();
+			SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(comp.GetAIAgent());
 			if (!agent)
 			{
 				m_wRoot.SetVisible(false);
@@ -120,7 +120,7 @@ class SCR_AIDebugInfoComponent : ScriptedWidgetComponent
 				return false;
 			}
 			
-			m_InfoComponent = SCR_AIInfoComponent.Cast(agent.FindComponent(SCR_AIInfoComponent));
+			m_InfoComponent = agent.m_InfoComponent;
 			if (!m_InfoComponent)
 			{
 				m_wRoot.SetVisible(false);
@@ -166,7 +166,7 @@ class SCR_AIDebugInfoComponent : ScriptedWidgetComponent
 			*/
 		}
 
-		if (m_wThreat)
+		if (m_wThreat && m_UtilityComponent.m_ThreatSystem != null)
 		{
 			//order has to corespond to layout
 			m_UtilityComponent.m_ThreatSystem.DebugPrintToWidget(m_wThreat);
@@ -200,18 +200,12 @@ class SCR_AIDebugInfoComponent : ScriptedWidgetComponent
 	}
 
 	// Create table with results
-	array<string> GetSortedBehaviors()
+	ref array<string> GetSortedBehaviors()
 	{
-		ref array<string> results = new ref array<string>;
-		array<SCR_AIActionBase> actions = new array<SCR_AIActionBase>();
-		array<float> scores = new array<float>();
-		
-		foreach (SCR_AIActionBase action : m_UtilityComponent.m_aActions)
-		{
-			actions.Insert(action);
-			scores.Insert(action.Evaluate());
-		}
-
+		array<string> results = {};
+		array<ref AIActionBase> actions = {};
+			
+		m_UtilityComponent.GetActions(actions);
 
 		string resultString;
 		float highScore;
@@ -220,11 +214,12 @@ class SCR_AIDebugInfoComponent : ScriptedWidgetComponent
 		{
 			highScore = -float.MAX;
 			highIndex = -1;
-			foreach (int i, SCR_AIActionBase action : actions)
+			foreach (int i, AIActionBase action : actions)
 			{
-				if (scores[i] > highScore)
+				float score = action.Evaluate();
+				if (score > highScore)
 				{
-					highScore = scores[i];
+					highScore = score;
 					highIndex = i;
 				}
 			}
@@ -233,7 +228,6 @@ class SCR_AIDebugInfoComponent : ScriptedWidgetComponent
 			results.Insert(resultString);
 			
 			actions.RemoveOrdered(highIndex);
-			scores.RemoveOrdered(highIndex);
 		}
 		
 		return results;

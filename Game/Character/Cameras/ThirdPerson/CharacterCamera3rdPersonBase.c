@@ -45,7 +45,7 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		if (m_iBoneIndex != -1)
 		{
 			vector boneMatrix[4];
-			m_OwnerCharacter.GetBoneMatrix(m_iBoneIndex, boneMatrix);
+			m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_iBoneIndex, boneMatrix);
 			pOutResult.m_CameraTM[3]	= boneMatrix[3];
 		}
 		else

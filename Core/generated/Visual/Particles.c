@@ -11,6 +11,12 @@ Do not modify, this script is generated
 
 /*!
 Script API to Particle Effect Component.
+
+Please note that some emitters may not be present under some environments.
+E.g. the dedicated server will skip loading of most emitters as they are purely visual
+(on the other hand, L3 emitters with non-zero occlusion cannot be skipped as they can be used by AI).
+This also means some methods can take different arguments or give different results under different environments,
+e.g. GetNumEmitters, GetEmitterNames, GetNumParticles or anything working with an emitter index.
 */
 sealed class Particles: pointer
 {

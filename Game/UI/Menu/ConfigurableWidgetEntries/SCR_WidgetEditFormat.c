@@ -123,6 +123,7 @@ class SCR_WidgetEditFormatNumberRange : SCR_WidgetEditFormat
 [BaseContainerProps(configRoot: true)]
 class SCR_WidgetEditFormatIP : SCR_WidgetEditFormat
 {
+	static const string LAN_VALUE = "local";
 	protected static int ADDRESS_VALUES_COUNT = 4;
 	
 	protected const string HINT_RANGE = "#AR-ServerHosting_ValidRangeHint";
@@ -140,6 +141,11 @@ class SCR_WidgetEditFormatIP : SCR_WidgetEditFormat
 		if (str == string.Empty)
 			return false;
 		
+		// local string check 
+		if (str == LAN_VALUE)
+			return true;
+		
+		// IP format check 
 		array<string> values = new array<string>();
 		str.Split(".", values, true);
 		int valueCount = values.Count();

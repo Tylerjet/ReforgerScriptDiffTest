@@ -26,97 +26,86 @@ class SCR_AIGoalReaction_Attack : SCR_AIGoalReaction
 		if (!msg)
 			return;
 		
-		if (!SCR_AIDamageHandling.IsAlive(msg.m_TargetInfo.m_TargetEntity))
-		{
-			SCR_AISendLostMsg(utility, msg.m_TargetInfo.m_TargetEntity);
-			return;
-		}
-		
-		UpdateLastSeenPosition(utility.m_CombatComponent.FindTargetByEntity(msg.m_TargetInfo.m_TargetEntity), msg.m_TargetInfo);
-		utility.m_CombatComponent.SetAssignedTargets({msg.m_TargetInfo.m_TargetEntity});
+		utility.m_CombatComponent.UpdateLastSeenPosition(msg.m_TargetInfo.m_Entity, msg.m_TargetInfo);
+		utility.m_CombatComponent.SetAssignedTargets({msg.m_TargetInfo.m_Entity}, null);
 	}
 	
 	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
 	{
-		SCR_AIMessage_Attack msg = SCR_AIMessage_Attack.Cast(message);
-		if (!msg)
-			return;
-		
-		if (!SCR_AIDamageHandling.IsAlive(msg.m_TargetInfo.m_TargetEntity))
-		{
-			utility.RemoveTarget(msg.m_TargetInfo.m_TargetEntity);
-			return;
-		}
-		
-		auto activity = new SCR_AIAttackActivity(utility, msg.m_bIsWaypointRelated, msg.m_TargetInfo, msg.GetSender(), msg.m_fPriorityLevel);
-		utility.AddOrUpdateTarget(msg.m_TargetInfo);
-		utility.AddAction(activity);
+
 	}
 };
 
 [BaseContainerProps()]
-class SCR_AIGoalReaction_AttackDone : SCR_AIGoalReaction
+class SCR_AIGoalReaction_AttackCluster : SCR_AIGoalReaction
 {
+	// Duration of investigation if target is not seen
+	const float INVESTIGATION_DURATION_S = 120.0;
+	
 	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
 	{
-		utility.SetStateAllActionsOfType(SCR_AIAttackBehavior, EAIActionState.COMPLETED, true);
-	}
-};
-
-[BaseContainerProps()]
-class SCR_AIGoalReaction_GroupAttack : SCR_AIGoalReaction
-{
-	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
-	{
-		SCR_AIMessage_GroupAttack msg = SCR_AIMessage_GroupAttack.Cast(message);
+		SCR_AIMessage_AttackCluster msg = SCR_AIMessage_AttackCluster.Cast(message);
 		if (!msg)
 			return;
 		
-		if (!utility.m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
+		// Does it still exist?
+		if (!msg.m_TargetClusterState || !msg.m_TargetClusterState.m_Cluster)
+			return;
+		
+		// ------ Set assigned targets
+		utility.m_CombatComponent.SetAssignedTargets(null, msg.m_TargetClusterState);
+			
+		
+		// ------ Should we investigate there?
+		
+		// Check if we have identified at least one target
+		if (msg.m_bAllowInvestigate)
 		{
-			IEntity eTarget = msg.m_TargetInfo.m_TargetEntity;
-			SCR_AICombatComponent combatComp = utility.m_CombatComponent;
-			
-			if (!eTarget || !combatComp)
-				return;
-			
-			// Check if this enemy is known to combat component
-			if (combatComp.IsEnemyKnown(eTarget))
+			bool targetIdentified = false;
+			foreach (IEntity targetEntity : msg.m_TargetClusterState.m_Cluster.m_aEntities)
 			{
-				UpdateLastSeenPosition(utility.m_CombatComponent.FindTargetByEntity(eTarget), msg.m_TargetInfo);
-				combatComp.SetAssignedTargets({eTarget});
+				if (utility.m_PerceptionComponent.GetTargetPerceptionObject(targetEntity, ETargetCategory.ENEMY))
+				{
+					targetIdentified = true;	// Found in 'Enemy' category - we have direct sight on it
+					break;
+				}
+				else
+					continue;
 			}
-			else
+			
+			// If we haven't identified any target, go there
+			if (!targetIdentified && msg.m_bAllowInvestigate)
 			{
-				// Ignore if we must defend a waypoint
-				if (!utility.IsInvestigationAllowed(msg.m_TargetInfo.m_vLastSeenPosition))
-					return;
+				// Cancel all other investigations
+				utility.SetStateAllActionsOfType(SCR_AIMoveAndInvestigateBehavior, EAIActionState.FAILED);
 				
-				float searchRadius = 10.0;
-				if (!utility.IsInvestigationRelevant(msg.m_TargetInfo.m_vLastSeenPosition))
-					return;
-				// Correction to surface
-				msg.m_TargetInfo.m_vLastSeenPosition[1] = GetGame().GetWorld().GetSurfaceY(msg.m_TargetInfo.m_vLastSeenPosition[0],msg.m_TargetInfo.m_vLastSeenPosition[2]);
-				// Enemy was never seen by this soldier
-				// Add investigate behavior
-				SCR_AIMoveAndInvestigateBehavior behavior = new SCR_AIMoveAndInvestigateBehavior(utility, msg.m_RelatedGroupActivity,
-					msg.m_TargetInfo.m_vLastSeenPosition, priorityLevel: msg.m_fPriorityLevel, radius: searchRadius, isDangerous: true);
-				utility.WrapBehaviorOutsideOfVehicle(behavior);
-				utility.AddAction(behavior);
+				vector investigatePos;
+				float investigateRadius;
+				SCR_AIInvestigateClusterActivity.CalculateInvestigationArea(msg.m_TargetClusterState, investigatePos, investigateRadius);
+				
+				auto investigateBehavior = new SCR_AIMoveAndInvestigateBehavior(utility, msg.m_RelatedGroupActivity,
+					investigatePos, radius: investigateRadius,
+					priorityLevel: msg.m_fPriorityLevel, isDangerous: true,
+					duration: INVESTIGATION_DURATION_S);
+				utility.AddAction(investigateBehavior);
 			}
 		}
 	}
-};
+}
 
 [BaseContainerProps()]
-class SCR_AIGoalReaction_GroupAttackDone : SCR_AIGoalReaction
+class SCR_AIGoalReaction_AttackClusterDone : SCR_AIGoalReaction
 {
 	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
 	{
-		utility.SetStateAllActionsOfType(SCR_AICombatMoveGroupBehavior,EAIActionState.COMPLETED);
-		utility.m_CombatComponent.ResetCombatType();
+		SCR_AIMessage_AttackClusterDone msg = SCR_AIMessage_AttackClusterDone.Cast(message);
+		if (!msg)
+			return;
+		
+		utility.m_CombatComponent.ResetAssignedTargets();
 	}
-};
+}
+
 
 [BaseContainerProps()]
 class SCR_AIGoalReaction_AttackStatic : SCR_AIGoalReaction_Attack
@@ -127,12 +116,12 @@ class SCR_AIGoalReaction_AttackStatic : SCR_AIGoalReaction_Attack
 		if (!msg)
 			return;
 		
-		BaseTarget baseTarget = utility.m_CombatComponent.FindTargetByEntity(msg.m_TargetInfo.m_TargetEntity);
+		BaseTarget baseTarget = utility.m_CombatComponent.FindTargetByEntity(msg.m_TargetInfo.m_Entity);
 		if (!baseTarget)
 			return;
 		
-		UpdateLastSeenPosition(baseTarget, msg.m_TargetInfo);
-		auto behavior = new SCR_AIAttackStaticBehavior(utility, msg.m_RelatedGroupActivity, baseTarget, msg.m_TargetInfo.m_vLastSeenPosition, msg.m_fPriorityLevel);
+		utility.m_CombatComponent.UpdateLastSeenPosition(baseTarget, msg.m_TargetInfo);
+		SCR_AIAttackStaticBehavior behavior = new SCR_AIAttackStaticBehavior(utility, msg.m_RelatedGroupActivity, baseTarget, msg.m_TargetInfo.m_vWorldPos, msg.m_fPriorityLevel);
 		if (m_OverrideBehaviorTree != string.Empty)
 			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 
@@ -150,25 +139,6 @@ class SCR_AIGoalReaction_AttackStaticDone : SCR_AIGoalReaction
 		{
 			utility.SetStateAllActionsOfType(SCR_AIAttackStaticBehavior, EAIActionState.COMPLETED);
 		}
-	}
-};
-
-[BaseContainerProps()]
-class SCR_AIGoalReaction_CoverAdvance : SCR_AIGoalReaction
-{
-	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
-	{
-		SCR_AIMessage_CoverAdvance msg = SCR_AIMessage_CoverAdvance.Cast(message);
-		if (!msg)
-			return;
-		SCR_AICombatMoveGroupBehavior behavior = new SCR_AICombatMoveGroupBehavior(utility, msg.m_RelatedGroupActivity,
-			msg.m_TargetInfo.m_vLastSeenPosition, target: msg.m_TargetInfo.m_TargetEntity, priorityLevel: msg.m_fPriorityLevel);
-		if (m_OverrideBehaviorTree != string.Empty)
-			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
-		
-		utility.AddAction(behavior);
-		// we asume that bounding overwatch is setting SUPPRESSIVE which disable movement and we need move here
-		utility.m_CombatComponent.ResetCombatType();
 	}
 };
 
@@ -196,7 +166,7 @@ class SCR_AIGoalReaction_Move : SCR_AIGoalReaction
 		if (!msg)
 			return;
 		
-		auto activity = new SCR_AIMoveActivity(utility, msg.m_bIsWaypointRelated, msg.m_MovePosition,
+		auto activity = new SCR_AIMoveActivity(utility, msg.m_RelatedWaypoint, msg.m_MovePosition,
 			msg.m_FollowEntity, msg.m_bUseVehicles, SCR_AIActionBase.PRIORITY_ACTIVITY_MOVE, priorityLevel: msg.m_fPriorityLevel);
 		
 		utility.SetStateAllActionsOfType(SCR_AISeekAndDestroyActivity,EAIActionState.FAILED); // move fails seek and destroy
@@ -225,7 +195,7 @@ class SCR_AIGoalReaction_Follow : SCR_AIGoalReaction
 			return;
 		
 		//SCR_AIBaseUtilityComponent utility, bool prioritize, bool isWaypointRelated, vector pos, float priority = PRIORITY_ACTIVITY_FOLLOW, IEntity ent = null, bool useVehicles = false, float distance = 1.0
-		auto activity = new SCR_AIFollowActivity(utility, msg.m_bIsWaypointRelated, vector.Zero, msg.m_FollowEntity, 
+		auto activity = new SCR_AIFollowActivity(utility, msg.m_RelatedWaypoint, vector.Zero, msg.m_FollowEntity, 
 			false, SCR_AIActionBase.PRIORITY_ACTIVITY_FOLLOW, priorityLevel: msg.m_fPriorityLevel, distance: msg.m_fDistance);
 		utility.SetStateAllActionsOfType(SCR_AISeekAndDestroyActivity, EAIActionState.FAILED); // move fails seek and destroy
 		utility.AddAction(activity);
@@ -241,16 +211,11 @@ class SCR_AIGoalReaction_Investigate : SCR_AIGoalReaction
 		if (!msg)
 			return;
 		
-		// Ignore if we must defend a waypoint
-		if (!utility.IsInvestigationAllowed(msg.m_vMovePosition))
-			return;
-		
-		if (!utility.IsInvestigationRelevant(msg.m_vMovePosition))
-			return;
-		
+		// Cancel previous investigations
+		utility.SetStateAllActionsOfType(SCR_AIMoveAndInvestigateBehavior, EAIActionState.FAILED);
+			
 		auto behavior = new SCR_AIMoveAndInvestigateBehavior(utility, msg.m_RelatedGroupActivity, msg.m_vMovePosition,
-			SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE, msg.m_fPriorityLevel, isDangerous: msg.m_bIsDangerous, targetUnitType: msg.m_eTargetUnitType, );
-
+			SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE, msg.m_fPriorityLevel, isDangerous: msg.m_bIsDangerous, targetUnitType: msg.m_eTargetUnitType, duration: msg.m_fDuration);
 		utility.AddAction(behavior);
 	}
 };
@@ -291,7 +256,7 @@ class SCR_AIGoalReaction_GetInVehicle : SCR_AIGoalReaction
 		if (!msg)
 			return;
 			
-		auto activity = new SCR_AIGetInActivity(utility, msg.m_bIsWaypointRelated, msg.m_Vehicle, msg.m_eRoleInVehicle, priorityLevel: msg.m_fPriorityLevel);
+		auto activity = new SCR_AIGetInActivity(utility, msg.m_RelatedWaypoint, msg.m_Vehicle, msg.m_eRoleInVehicle, priorityLevel: msg.m_fPriorityLevel);
 		utility.AddAction(activity);
 	}
 };
@@ -318,7 +283,7 @@ class SCR_AIGoalReaction_GetOutVehicle : SCR_AIGoalReaction
 		if (!msg)
 			return;
 		
-		auto activity = new SCR_AIGetOutActivity(utility, msg.m_bIsWaypointRelated, msg.m_Vehicle, priorityLevel: msg.m_fPriorityLevel);
+		auto activity = new SCR_AIGetOutActivity(utility, msg.m_RelatedWaypoint, msg.m_Vehicle, priorityLevel: msg.m_fPriorityLevel);
 		utility.AddAction(activity);
 	}
 };
@@ -332,7 +297,7 @@ class SCR_AIGoalReaction_SeekAndDestroy : SCR_AIGoalReaction
 		if (!msg)
 			return;
 		
-		auto activity = new SCR_AISeekAndDestroyActivity(utility, msg.m_bIsWaypointRelated, msg.m_MovePosition, ent: msg.m_FollowEntity, useVehicles: msg.m_bUseVehicles, priorityLevel: msg.m_fPriorityLevel);
+		auto activity = new SCR_AISeekAndDestroyActivity(utility, msg.m_RelatedWaypoint, msg.m_MovePosition, ent: msg.m_FollowEntity, useVehicles: msg.m_bUseVehicles, priorityLevel: msg.m_fPriorityLevel);
 		
 		utility.SetStateAllActionsOfType(SCR_AIMoveActivity,EAIActionState.FAILED);
 		utility.AddAction(activity);
@@ -348,12 +313,41 @@ class SCR_AIGoalReaction_Heal : SCR_AIGoalReaction
 		if (!msg)
 			return;
 
-		auto behavior = new SCR_AIMedicHealBehavior(utility, msg.m_RelatedGroupActivity, msg.m_FollowEntity, false, priorityLevel: msg.m_fPriorityLevel);
+		auto behavior = new SCR_AIMedicHealBehavior(utility, msg.m_RelatedGroupActivity, msg.m_EntityToHeal, false, priorityLevel: msg.m_fPriorityLevel);
 		if (m_OverrideBehaviorTree != string.Empty)
 			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 
 		utility.WrapBehaviorOutsideOfVehicle(behavior);
 		utility.AddAction(behavior);
+	}
+	
+	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		auto msg = SCR_AIMessage_Heal.Cast(message);
+		if (!msg)
+			return;
+		
+		SCR_AIActionBase currentAction = SCR_AIActionBase.Cast(utility.GetCurrentAction());
+		if (!currentAction)
+			return;
+		
+		float priorityLevelClamped = currentAction.GetRestrictedPriorityLevel(msg.m_fPriorityLevel);		
+
+		// Ignore message if we already have an activity to heal this soldier
+		SCR_AIHealActivity healActivity = SCR_AIHealActivity.Cast(utility.FindActionOfType(SCR_AIHealActivity));
+		if (!healActivity)
+			return;
+		
+		// Return if we are already healing this soldier
+		if (healActivity.m_EntityToHeal.m_Value == msg.m_EntityToHeal)
+		{
+			healActivity.SetPriorityLevel(priorityLevelClamped);
+			return;
+		}
+		
+		auto activity = new SCR_AIHealActivity(utility, msg.m_RelatedWaypoint, msg.m_EntityToHeal, priorityLevel: priorityLevelClamped);
+
+		utility.AddAction(activity);
 	}
 };
 
@@ -396,7 +390,7 @@ class SCR_AIGoalReaction_Defend : SCR_AIGoalReaction
 		if (!msg)
 			return;
 		
-		auto activity = new SCR_AIDefendActivity(utility, msg.m_bIsWaypointRelated, msg.m_RelatedWaypoint, msg.m_vDefendLocation,
+		auto activity = new SCR_AIDefendActivity(utility, msg.m_RelatedWaypoint, msg.m_RelatedWaypoint, msg.m_vDefendLocation,
 			priorityLevel: msg.m_fPriorityLevel);
 		if (m_OverrideBehaviorTree != string.Empty)
 			activity.m_sBehaviorTree = m_OverrideBehaviorTree;
@@ -427,7 +421,7 @@ class SCR_AIGoalReaction_PerformAction : SCR_AIGoalReaction
 		if (!msg)
 			return;
 		
-		auto activity = new SCR_AIPerformActionActivity(utility, msg.m_bIsWaypointRelated, msg.m_SmartActionEntity, msg.m_SmartActionTag, priorityLevel: msg.m_fPriorityLevel);
+		auto activity = new SCR_AIPerformActionActivity(utility, msg.m_RelatedWaypoint, msg.m_SmartActionEntity, msg.m_SmartActionTag, priorityLevel: msg.m_fPriorityLevel);
 		if (m_OverrideBehaviorTree != string.Empty)
 			activity.m_sBehaviorTree = m_OverrideBehaviorTree;
 		
@@ -443,11 +437,14 @@ class SCR_AIGoalReaction_Cancel : SCR_AIGoalReaction
 		SCR_AIMessage_Cancel msg = SCR_AIMessage_Cancel.Cast(message);
 		if (!msg || !msg.m_RelatedGroupActivity)
 			return;
-		utility.FailBehaviorsOfActivity(msg.m_RelatedGroupActivity);
+//		utility.FailBehaviorsOfActivity(msg.m_RelatedGroupActivity);
+		utility.SetStateOfRelatedAction(msg.m_RelatedGroupActivity, EAIActionState.FAILED);
 	}	
 	
 	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
 	{
+		// This is wrong and unsafe, must be redone
+		/*
 		SCR_AIActivityBase activity = SCR_AIActivityBase.Cast(utility.GetCurrentAction());
 		AIGroup group = utility.m_Owner;
 		array<AIAgent> agents = {};
@@ -457,6 +454,7 @@ class SCR_AIGoalReaction_Cancel : SCR_AIGoalReaction
 			SCR_AISendCancelMsg(utility, activity, group, agent);
 		}
 		activity.Fail();
+		*/
 	}
 };
 
@@ -530,23 +528,6 @@ class SCR_AIGoalReaction_PickupInventoryItems : SCR_AIGoalReaction
 //--------------------------------------------------------------------------------------------------------
 // Helper methods used in above
 
-static void SCR_AISendLostMsg(SCR_AIUtilityComponent utility, IEntity target)
-{
-	AIAgent agent = AIAgent.Cast(utility.GetOwner());
-	if (!agent)
-		return;
-	AICommunicationComponent mailbox = agent.GetCommunicationComponent();
-	if (mailbox)
-	{
-		auto group = agent.GetParentGroup();
-	
-		SCR_AIMessage_TargetLost msg = new SCR_AIMessage_TargetLost;
-		msg.m_TargetInfo = new SCR_AITargetInfo(target, vector.Zero, 0);
-		msg.SetText("Target lost from reaction");
-		msg.SetReceiver(group);
-		mailbox.RequestBroadcast(msg, group);
-	}	
-};
 
 static void SCR_AISendCancelMsg(SCR_AIGroupUtilityComponent utility, SCR_AIActivityBase relatedActivity, AIAgent sender, AIAgent receiver)
 {
@@ -563,8 +544,8 @@ static void SCR_AISendCancelMsg(SCR_AIGroupUtilityComponent utility, SCR_AIActiv
 	}	
 };
 
-static void UpdateLastSeenPosition(BaseTarget baseTarget, SCR_AITargetInfo newTargetInfo)
+static void UpdateLastSeenPosition2(BaseTarget baseTarget, SCR_AITargetInfo newTargetInfo)
 {
-	if (baseTarget && baseTarget.GetTargetEntity() == newTargetInfo.m_TargetEntity)
-		baseTarget.UpdateLastSeenPosition(newTargetInfo.m_vLastSeenPosition, newTargetInfo.m_fLastSeenTime);
+	if (baseTarget && baseTarget.GetTargetEntity() == newTargetInfo.m_Entity)
+		baseTarget.UpdateLastSeenPosition(newTargetInfo.m_vWorldPos, newTargetInfo.m_fTimestamp);
 }

@@ -1,5 +1,5 @@
 [EntityEditorProps(category: "GameScripted/Campaign", description: "This allows only vehicle requester enther the vehicle as driver for defined period of time.")]
-class SCR_VehicleSpawnProtectionComponentClass : ScriptComponentClass
+class SCR_VehicleSpawnProtectionComponentClass : SCR_BaseLockComponentClass
 {
 };
 

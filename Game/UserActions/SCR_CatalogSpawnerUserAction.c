@@ -144,6 +144,12 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 		
 		switch (m_iRequestStatus)
 		{
+			case SCR_EEntityRequestStatus.GROUP_FULL:
+			{
+				SetCannotPerformReason("#AR-EntitySpawner_RequestDenied_GroupFull-UC");
+				break;
+			}
+			
 			case SCR_EEntityRequestStatus.REQUESTER_NOT_GROUPLEADER:
 			{
 				SetCannotPerformReason("#AR-EntitySpawner_RequestDenied_NotGroupLeader-UC");

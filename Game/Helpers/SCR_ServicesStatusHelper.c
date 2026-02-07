@@ -3,33 +3,19 @@ class SCR_ServicesStatusHelper
 {
 	protected static int s_iLastPingUpdate = -1;
 	protected static int s_iLastStatusUpdate = -1;
-	protected static BackendApi BACKEND_API;
 	protected static ServiceStatusItem s_MainStatus;
 	protected static const ref array<ServiceStatusItem> SERVICE_STATUSES = {};
 
 	//------------------------------------------------------------------------------------------------
 	static bool IsBackendEnabled()
 	{
-		GetBackendAPI();
-
-		return BACKEND_API && BACKEND_API.IsRunning();
+		return GetGame().GetBackendApi() && GetGame().GetBackendApi().IsRunning();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	static bool IsBackendReady()
 	{
-		GetBackendAPI();
-
-		return BACKEND_API && BACKEND_API.IsActive();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static protected BackendApi GetBackendAPI()
-	{
-		if (!BACKEND_API)
-			BACKEND_API = GetGame().GetBackendApi();
-
-		return BACKEND_API;
+		return GetGame().GetBackendApi() && GetGame().GetBackendApi().IsActive();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -42,7 +28,7 @@ class SCR_ServicesStatusHelper
 		if (!IsBackendReady())
 			return false;
 
-		return BACKEND_API.GetCommTestStatus() > 0;
+		return GetGame().GetBackendApi().GetCommTestStatus() > 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -51,7 +37,7 @@ class SCR_ServicesStatusHelper
 		if (!IsBackendReady())
 			return false;
 
-		return BACKEND_API && BACKEND_API.GetCommTestStatus() == 1;
+		return GetGame().GetBackendApi() && GetGame().GetBackendApi().GetCommTestStatus() == 1;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -60,7 +46,7 @@ class SCR_ServicesStatusHelper
 		if (!IsBackendReady())
 			return false;
 
-		return BACKEND_API && BACKEND_API.GetCommTestStatus() == 2;
+		return GetGame().GetBackendApi() && GetGame().GetBackendApi().GetCommTestStatus() == 2;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -69,7 +55,7 @@ class SCR_ServicesStatusHelper
 		if (!IsBackendReady())
 			return false;
 
-		return BACKEND_API && BACKEND_API.GetCommTestStatus() == 3;
+		return GetGame().GetBackendApi() && GetGame().GetBackendApi().GetCommTestStatus() == 3;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -79,7 +65,7 @@ class SCR_ServicesStatusHelper
 		if (!IsBackendReady() || IsPinging())
 			return;
 
-		BACKEND_API.RefreshCommStatus();
+		GetGame().GetBackendApi().RefreshCommStatus();
 		s_iLastPingUpdate = System.GetTickCount();
 	}
 
@@ -91,7 +77,7 @@ class SCR_ServicesStatusHelper
 		if (!IsBackendReady())
 			return -1;
 
-		return Math.Round(BACKEND_API.GetCommResponseTime());
+		return Math.Round(GetGame().GetBackendApi().GetCommResponseTime());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -114,13 +100,13 @@ class SCR_ServicesStatusHelper
 		if (!IsBackendReady())
 			return;
 
-		s_MainStatus = BACKEND_API.GetMainStatus();
+		s_MainStatus = GetGame().GetBackendApi().GetMainStatus();
 
 		SERVICE_STATUSES.Clear();
 		ServiceStatusItem item;
-		for (int i, cnt = BACKEND_API.GetStatusCount(); i < cnt; i++)
+		for (int i, cnt = GetGame().GetBackendApi().GetStatusCount(); i < cnt; i++)
 		{
-			item = BACKEND_API.GetStatusItem(i);
+			item = GetGame().GetBackendApi().GetStatusItem(i);
 			if (item)
 				SERVICE_STATUSES.Insert(item);
 		}
@@ -187,14 +173,14 @@ class SCR_ServicesStatusHelper
 		Print("--------------------------------------------------");
 		Print("SERVICE STATUS DEBUG");
 		Print("--------------------------------------------------");
-		if (!BACKEND_API)
+		if (!GetGame().GetBackendApi())
 		{
 			Print("no backend API found.");
 			return;
 		}
 
-		Print("is main service found: " + (BACKEND_API.GetMainStatus() != null));
-		Print("number of services found: " + BACKEND_API.GetStatusCount());
+		Print("is main service found: " + (GetGame().GetBackendApi().GetMainStatus() != null));
+		Print("number of services found: " + GetGame().GetBackendApi().GetStatusCount());
 
 		if (s_MainStatus)
 			PrintFormat("Service %1: %2 (Name/Status/Message: %3/%4/%5)", -1, s_MainStatus, s_MainStatus.Name(), s_MainStatus.Status(), s_MainStatus.Message());

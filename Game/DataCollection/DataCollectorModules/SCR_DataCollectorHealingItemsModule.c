@@ -1,12 +1,42 @@
 [BaseContainerProps()]
+class ConsumableTypeStats : Managed
+{
+	[Attribute("0", UIWidgets.ComboBox, "Item type", "", ParamEnumArray.FromEnum(SCR_EConsumableType) )]
+	protected SCR_EConsumableType m_eConsumableType;
+
+	[Attribute("0", UIWidgets.ComboBox, "Stat to affect when used on self", "", ParamEnumArray.FromEnum(SCR_EDataStats) )]
+	protected SCR_EDataStats m_eDataStatsSelf;
+
+	[Attribute("0", UIWidgets.ComboBox, "Stat to affect when used on a different character", "", ParamEnumArray.FromEnum(SCR_EDataStats) )]
+	protected SCR_EDataStats m_eDataStatsFriend;
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_EConsumableType GetConsumableType()
+	{
+		return m_eConsumableType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_EDataStats GetStat(bool self)
+	{
+		if (self)
+			return m_eDataStatsSelf;
+		
+		return m_eDataStatsFriend;
+	}
+};
+
+[BaseContainerProps()]
 class SCR_DataCollectorHealingItemsModule : SCR_DataCollectorModule
 {
+	[Attribute("", UIWidgets.Object, "Healing Items")]
+	protected ref array<ref ConsumableTypeStats> m_aConsumableTypes;
+	
 	protected ref map<int, IEntity> m_mTrackedPlayers = new map<int, IEntity>();
 
 	//------------------------------------------------------------------------------------------------
 	protected override void AddInvokers(IEntity player)
 	{
-		//Print("SCR_DataCollectorHealingItemsModule:AddInvokers: Adding invokers");
 		super.AddInvokers(player);
 		if (!player)
 			return;
@@ -25,7 +55,7 @@ class SCR_DataCollectorHealingItemsModule : SCR_DataCollectorModule
 	//------------------------------------------------------------------------------------------------
 	protected override void RemoveInvokers(IEntity player)
 	{
-		super.AddInvokers(player);
+		super.RemoveInvokers(player);
 		if (!player)
 			return;
 
@@ -62,22 +92,29 @@ class SCR_DataCollectorHealingItemsModule : SCR_DataCollectorModule
 		if (userID == 0) // Non-player character
 			return;
 
-		EConsumableType typeId = consumableItem.GetConsumableType();
-
-		switch (typeId)
+		SCR_EConsumableType typeId = consumableItem.GetConsumableType();
+		
+		for (int i = m_aConsumableTypes.Count() - 1; i >= 0; i--)
 		{
-			case EConsumableType.None: return;
-			case EConsumableType.Bandage:GetGame().GetDataCollector().GetPlayerData(userID).AddBandageUse(target == user); return;
-			case EConsumableType.Tourniquet: GetGame().GetDataCollector().GetPlayerData(userID).AddTourniquetUse(target == user); return;
-			case EConsumableType.Saline: GetGame().GetDataCollector().GetPlayerData(userID).AddSalineUse(target == user); return;
-			case EConsumableType.Morphine: GetGame().GetDataCollector().GetPlayerData(userID).AddMorphineUse(target == user); return;
-			default: Print("SCR_DataCollectorHealingItemsModule:HealingItemUsed: Error: Unidentified Healing item typeId. Value is " + typeId + ".", LogLevel.ERROR); return;
+			if (m_aConsumableTypes[i].GetConsumableType() == typeId)
+			{
+				GetGame().GetDataCollector().GetPlayerData(userID).AddStat(m_aConsumableTypes[i].GetStat(target == user));
+				return;
+			}
 		}
+		
+		Print("SCR_DataCollectorHealingItemsModule:HealingItemUsed: Error: Unidentified Healing item typeId. Value is " + typeId + ".", LogLevel.WARNING);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerSpawned(int playerID, IEntity controlledEntity)
 	{
+		IEntity ent = m_mTrackedPlayers.Get(playerID);
+		if (ent)
+			RemoveInvokers(ent);
+		
+		AddInvokers(controlledEntity);
+		
 		m_mTrackedPlayers.Insert(playerID, controlledEntity);
 	}
 
@@ -107,7 +144,7 @@ class SCR_DataCollectorHealingItemsModule : SCR_DataCollectorModule
 #endif
 
 	//------------------------------------------------------------------------------------------------
-	override void Update(IEntity owner, float timeTick)
+	override void Update(float timeTick)
 	{
 		//If there's no data collector, do nothing
 		if (!GetGame().GetDataCollector())
@@ -115,7 +152,7 @@ class SCR_DataCollectorHealingItemsModule : SCR_DataCollectorModule
 
 		m_fTimeSinceUpdate += timeTick;
 
-		if (m_fTimeSinceUpdate<TIME_TO_UPDATE)
+		if (m_fTimeSinceUpdate < m_fUpdatePeriod)
 			return;
 
 		SCR_PlayerData playerData;
@@ -130,14 +167,14 @@ class SCR_DataCollectorHealingItemsModule : SCR_DataCollectorModule
 #ifdef ENABLE_DIAG
 			if (m_StatsVisualization)
 			{
-				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.BANDAGESSELF).SetText(playerData.GetCurrentBandageSelf().ToString());
-				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.BANDAGESFRIENDLIES).SetText(playerData.GetCurrentBandageFriends().ToString());
-				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.TOURNIQUETSSELF).SetText(playerData.GetCurrentTourniquetSelf().ToString());
-				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.TOURNIQUETSFRIENDLIES).SetText(playerData.GetCurrentTourniquetFriends().ToString());
-				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.SELINESELF).SetText(playerData.GetCurrentSelineSelf().ToString());
-				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.SELINEFRIENDLIES).SetText(playerData.GetCurrentSelineFriends().ToString());
-				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.MORPHINESELF).SetText(playerData.GetCurrentMorphineSelf().ToString());
-				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.MORPHINEFRIENDLIES).SetText(playerData.GetCurrentMorphineFriends().ToString());
+				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.BANDAGESSELF).SetText(playerData.GetStat(SCR_EDataStats.BANDAGE_SELF).ToString());
+				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.BANDAGESFRIENDLIES).SetText(playerData.GetStat(SCR_EDataStats.BANDAGE_FRIENDLIES).ToString());
+				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.TOURNIQUETSSELF).SetText(playerData.GetStat(SCR_EDataStats.TOURNIQUET_SELF).ToString());
+				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.TOURNIQUETSFRIENDLIES).SetText(playerData.GetStat(SCR_EDataStats.TOURNIQUET_FRIENDLIES).ToString());
+				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.SALINESELF).SetText(playerData.GetStat(SCR_EDataStats.SALINE_SELF).ToString());
+				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.SALINEFRIENDLIES).SetText(playerData.GetStat(SCR_EDataStats.SALINE_FRIENDLIES).ToString());
+				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.MORPHINESELF).SetText(playerData.GetStat(SCR_EDataStats.MORPHINE_SELF).ToString());
+				m_StatsVisualization.Get(SCR_EHealingItemsModuleStats.MORPHINEFRIENDLIES).SetText(playerData.GetStat(SCR_EDataStats.MORPHINE_FRIENDLIES).ToString());
 			}
 #endif
 		}
@@ -156,8 +193,8 @@ class SCR_DataCollectorHealingItemsModule : SCR_DataCollectorModule
 		CreateEntry("Bandages on friendlies: ", 0, SCR_EHealingItemsModuleStats.BANDAGESFRIENDLIES);
 		CreateEntry("Tourniquets on self: ", 0, SCR_EHealingItemsModuleStats.TOURNIQUETSSELF);
 		CreateEntry("Tourniquets on friendlies: ", 0, SCR_EHealingItemsModuleStats.TOURNIQUETSFRIENDLIES);
-		CreateEntry("seline on self: ", 0, SCR_EHealingItemsModuleStats.SELINESELF);
-		CreateEntry("seline on friendlies: ", 0, SCR_EHealingItemsModuleStats.SELINEFRIENDLIES);
+		CreateEntry("saline on self: ", 0, SCR_EHealingItemsModuleStats.SALINESELF);
+		CreateEntry("saline on friendlies: ", 0, SCR_EHealingItemsModuleStats.SALINEFRIENDLIES);
 		CreateEntry("Morphine on self: ", 0, SCR_EHealingItemsModuleStats.MORPHINESELF);
 		CreateEntry("Morphine on friendlies: ", 0, SCR_EHealingItemsModuleStats.MORPHINEFRIENDLIES);
 	}
@@ -171,8 +208,8 @@ enum SCR_EHealingItemsModuleStats
 	BANDAGESFRIENDLIES,
 	TOURNIQUETSSELF,
 	TOURNIQUETSFRIENDLIES,
-	SELINESELF,
-	SELINEFRIENDLIES,
+	SALINESELF,
+	SALINEFRIENDLIES,
 	MORPHINESELF,
 	MORPHINEFRIENDLIES
 };

@@ -93,6 +93,8 @@ class Screenshot_Autotest: GenericEntity
 
 	override void EOnFrame(IEntity owner, float timeSlice) //!EntityEvent.FRAME
 	{
+		g_Game.GetInputManager().ActivateContext("BlockInputContext");
+		
 		if (!m_camera)
 		{
 			Print("Exiting the game", LogLevel.WARNING);
@@ -112,12 +114,11 @@ class Screenshot_Autotest: GenericEntity
 			g_Game.RequestClose();
 		}
 
-		int remaining = g_Game.WaitPreload(100);
-		if (remaining > 0)
+		if (!g_Game.IsPreloadFinished())
 		{
 			m_timerAfterPreload = 0;
 			m_FPSWidget.SetColor(new Color(1.0, 1.0, 1.0, 1.0));
-			m_FPSWidget.SetText("Preload: remainig " + remaining + " resources");
+			m_FPSWidget.SetText("Preloading");
 			return;
 		}
 		
@@ -176,15 +177,15 @@ class Screenshot_Autotest: GenericEntity
 			int sizeX = g_Game.GetWorkspace().GetWidth();
 			int sizeY = g_Game.GetWorkspace().GetHeight();
 			
-			descrFile.WriteLine(string.Format("Resolution: %1 x %2 px", sizeX, sizeY));
+			descrFile.WriteLine(string.Format("Resolution (px): %1x%2", sizeX, sizeY));
 #ifdef WORKBENCH
-			descrFile.WriteLine(string.Format("Entering playmode time: %1 s", g_Game.GetLoadTime() / 1000));
+			descrFile.WriteLine(string.Format("Entering playmode time (s): %1", g_Game.GetLoadTime() / 1000));
 #else
-			descrFile.WriteLine(string.Format("Load time: %1 s", g_Game.GetLoadTime() / 1000));
+			descrFile.WriteLine(string.Format("Load time (s): %1", g_Game.GetLoadTime() / 1000));
 #endif
-			descrFile.WriteLine(string.Format("Memory: %1 MB", System.MemoryAllocationKB() / 1024));
+			descrFile.WriteLine(string.Format("Memory (MB): %1", System.MemoryAllocationKB() / 1024));
 			descrFile.WriteLine(string.Format("Allocations: %1", System.MemoryAllocationCount()));
-			descrFile.WriteLine(string.Format("Duration: %1 s", m_timeFromStart));
+			descrFile.WriteLine(string.Format("Duration (s): %1", m_timeFromStart));
 			descrFile.Close();
 			Print("Summary file successfully saved into " + filename);
 		}
@@ -240,6 +241,18 @@ class Screenshot_Autotest: GenericEntity
 			descrFile.WriteLine(string.Format("XYZ Rotation: [%1, %2, %3]", orientation[1], orientation[0], orientation[2]));
 			
 			string link = string.Format("enfusion://WorldEditor/%1;%2,%3,%4;%5,%6,%7", g_Game.GetWorldFile(), position[0], position[1], position[2], orientation[1], orientation[0], orientation[2]);
+			float normalizedTime;
+			int year;
+			int month;
+			int day;
+			
+			if (GetTimeAndDate(normalizedTime, year, month, day))
+			{
+				descrFile.WriteLine(string.Format("Time: %1", normalizedTime));
+				descrFile.WriteLine(string.Format("Date: %1/%2/%3", year, month, day));
+				link += string.Format(",%1,%2,%3,%4", normalizedTime, year, month, day);
+			}
+			
 			descrFile.WriteLine(string.Format("<a href=\"%1\">Link to World Editor</a>", link));
 			
 			descrFile.Close();
@@ -257,6 +270,11 @@ class Screenshot_Autotest: GenericEntity
 			m_waypoint.EOnEnter();
 			g_Game.BeginPreload(GetWorld(), mat[3], 500);
 		}
+	}
+	
+	protected bool GetTimeAndDate(out float normTime, out int year, out int month, out int day)
+	{
+		return false;
 	}
 }
 

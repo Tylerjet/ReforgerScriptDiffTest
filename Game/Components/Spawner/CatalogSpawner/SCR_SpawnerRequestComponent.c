@@ -4,10 +4,44 @@ class SCR_SpawnerRequestComponentClass : ScriptGameComponentClass
 };
 
 //------------------------------------------------------------------------------------------------
-//! Used for handling entity spawning requests for SCR_EntitySpawnerComponent and inherited classes, attached to SCR_PlayerController
+//! Used for handling entity spawning requests for SCR_CatalogEntitySpawnerComponent and inherited classes, attached to SCR_PlayerController
 class SCR_SpawnerRequestComponent : ScriptComponent
 {
+	[RplProp()]
+	protected int m_iQueuedAIs;
+	
 	static const float NOTIFICATION_DURATION = 2;
+
+	//------------------------------------------------------------------------------------------------
+	void RequestPlayerTeleport(vector position)
+	{
+		Rpc(RPC_DoTeleportPlayer, position); 
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void RPC_DoTeleportPlayer(vector position)
+	{
+		SCR_Global.TeleportLocalPlayer(position, SCR_EPlayerTeleportedReason.BLOCKING_SPAWNER);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Add (or substract) AI to quenue
+	void AddQueuedAI(int value)
+	{
+		m_iQueuedAIs += value;
+		if (m_iQueuedAIs <= 0)
+			m_iQueuedAIs = 0;
+
+		Replication.BumpMe();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns quenued ai count. Those are requested AI units, that are currently on way to rally point and not yet in players group
+	int GetQueuedAIs()
+	{
+		return m_iQueuedAIs;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Defender spawner request from SCR_EnableDefendersAction
@@ -33,7 +67,7 @@ class SCR_SpawnerRequestComponent : ScriptComponent
 	//! \param index item index in User Faction
 	//! \param playerID id of player requesting the spawn
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_DoEnableSpawning(RplId defenderSpawnerID, bool enable, int playerID)
+	protected void RPC_DoEnableSpawning(RplId defenderSpawnerID, bool enable, int playerID)
 	{
 		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(defenderSpawnerID));
 		if (!rplComp)
@@ -80,7 +114,7 @@ class SCR_SpawnerRequestComponent : ScriptComponent
 	//! \param userId id of user requesting spawn
 	//! \param slotRplId slot RplID OPTIONAL
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_DoRequestCatalogSpawn(RplId rplCompId, int index, int userId, RplId slotRplId)
+	protected void RPC_DoRequestCatalogSpawn(RplId rplCompId, int index, int userId, RplId slotRplId)
 	{
 		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(rplCompId));
 		if (!rplComp)

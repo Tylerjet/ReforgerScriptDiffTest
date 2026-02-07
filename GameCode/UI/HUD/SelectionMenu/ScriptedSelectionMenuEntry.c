@@ -3,7 +3,6 @@ class ScriptedSelectionMenuEntry : BaseScriptedSelectionMenuEntry
 	const string LAYOUT_ENTRY_DEFAULT = "{121C45A1F59DC1AF}UI/layouts/Common/RadialMenu/RadialEntryElement.layout";
 	
 	// Entry widget
-	protected ref SCR_SelectionEntryWidgetComponent m_EntryComponent;
 	protected ResourceName m_EntryLayout = LAYOUT_ENTRY_DEFAULT;
 	protected ref Widget m_wEntry;
 	protected string m_sName;
@@ -66,12 +65,6 @@ class ScriptedSelectionMenuEntry : BaseScriptedSelectionMenuEntry
 	
 	
 	//! API for entry widget and component 
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_SelectionEntryWidgetComponent GetEntryComponent() { return m_EntryComponent; }
-	
-	//------------------------------------------------------------------------------------------------
-	void SetEntryComponent(SCR_SelectionEntryWidgetComponent entryComponent) { m_EntryComponent = entryComponent; }
 	
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetEntryLayout() { return m_EntryLayout; }

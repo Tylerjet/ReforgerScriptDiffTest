@@ -1,3 +1,80 @@
+
+// -----------------------------------------------------------------------------
+//! Settings item
+// -----------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------------------------
+class SCR_BanSettings : JsonApiStruct
+{
+	float m_fScoreThreshold;
+	float m_fScoreDecreasePerMinute;
+	float m_fScoreMultiplier;
+	float m_fAccelerationMin;
+	float m_fAccelerationMax;
+	float m_fBanEvaluationLight;
+	float m_fBanEvaluationHeavy;
+	float m_fCrimePtFriendKill;
+	float m_fCrimePtTeamKill;
+	float m_fQualityTimeTemp;
+	float m_bVotingSuggestionEnabled;
+	
+	//------------------------------------------------------------------------------------------------
+	void Log(LogLevel lv)
+	{
+		Print("m_fScoreThreshold: " + m_fScoreThreshold, lv);
+		Print("m_fScoreDecreasePerMinute: " + m_fScoreDecreasePerMinute, lv);
+		Print("m_fScoreMultiplier: " + m_fScoreMultiplier, lv);
+		Print("m_fAccelerationMin: " + m_fAccelerationMin, lv);
+		Print("m_fAccelerationMax: " + m_fAccelerationMax, lv);
+		Print("m_fBanEvaluationLight: " + m_fBanEvaluationLight, lv);
+		Print("m_fBanEvaluationHeavy: " + m_fBanEvaluationHeavy, lv);
+		Print("m_fCrimePtFriendKill: " + m_fCrimePtFriendKill, lv);
+		Print("m_fCrimePtTeamKill: " + m_fCrimePtTeamKill, lv);
+		Print("m_fQualityTimeTemp: " + m_fQualityTimeTemp, lv);
+		Print("m_bVotingSuggestionEnabled: " + m_bVotingSuggestionEnabled, lv);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_BanSettings()
+	{
+		RegAll();
+	}
+};
+
+//------------------------------------------------------------------------------------------------
+class SCR_BanSettingsContainer : JsonApiStruct
+{
+	protected string m_sDesc;
+	protected ref SCR_BanSettings m_BanSettings = new SCR_BanSettings();
+	
+	//------------------------------------------------------------------------------------------------
+	string GetDesc()
+	{
+		return m_sDesc;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_BanSettings GetBanSettings()
+	{
+		return m_BanSettings;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void Log(LogLevel lv)
+	{
+		Print(" -- Settings -- ", lv);
+		Print("m_sDesc: " + m_sDesc, lv);
+		m_BanSettings.Log(lv);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_BanSettingsContainer()
+	{
+		RegV("m_sDesc");
+		RegV("m_BanSettings");
+	}
+};
+
 //------------------------------------------------------------------------------------------------
 class SCR_PlayerDataConfigs : Managed
 {
@@ -36,13 +113,13 @@ class SCR_PlayerDataConfigs : Managed
 	const int SPECIALIZATION_MAX = 1000000;
 
 	//0 - Infantry
-	static const float MODIFIER_METERS_WALKED = 1;
+	static const float MODIFIER_DISTANCE_WALKED = 1;
 	static const float MODIFIER_KILLS = 250;
 	static const float MODIFIER_AI_KILLS = 125;
 	static const float MODIFIER_PRECISION = 300;
 
 	//1 - Logistics
-	static const float MODIFIER_METERS_DRIVEN = 1;
+	static const float MODIFIER_DISTANCE_DRIVEN = 1;
 	static const float MODIFIER_DRIVER_OF_PLAYERS = 0.7;
 	static const float MODIFIER_TRAVEL_TIME_SUPPLY_VEHICLE = 1;
 	static const float MODIFIER_TRAVELED_DISTANCE_SUPPLY_VEHICLE = 5;
@@ -72,14 +149,16 @@ class SCR_PlayerDataConfigs : Managed
 
 	static const float WARCRIMES_PUNISHMENT = 0.25;
 
-	static const int MAX_WARCRIMES_VALUE = 250000;
-	static const int WARCRIMES_DECREASE_PER_HOUR = 25000;
-	static const int WARCRIME_DIVIDER_TO_PERCENTAGE = 1000000;
+	static const float MAX_WARCRIMES_VALUE = 250000;
+	static const float WARCRIMES_DECREASE_PER_HOUR = 25000;
 
-	static const float MODIFIER_FRIENDLY_KILLS = 7500;
-	static const float MODIFIER_FRIENDLY_AI_KILLS = 5000;
-
-	static const float s_fSTDPointsQualityTime = 10000;
+	static const float STD_POINTS_QUALITY_TIME = 10000;
+	
+	/**************/
+	//BAN SETTINGS//
+	/**************/
+	
+	protected static ref SCR_BanSettingsContainer m_BanSettings = new SCR_BanSettingsContainer();
 
 	/**********/
 	//UI STUFF//
@@ -101,7 +180,86 @@ class SCR_PlayerDataConfigs : Managed
 
 		return instance;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetScoreThreshold()
+	{
+		return m_BanSettings.GetBanSettings().m_fScoreThreshold;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetScoreDecreasePerMinute()
+	{
+		return m_BanSettings.GetBanSettings().m_fScoreDecreasePerMinute;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetScoreDecreasePerSecond()
+	{
+		return m_BanSettings.GetBanSettings().m_fScoreDecreasePerMinute / 60;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetScoreToAccelerationMultiplier()
+	{
+		return m_BanSettings.GetBanSettings().m_fScoreMultiplier;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetMinAcceleration()
+	{
+		return m_BanSettings.GetBanSettings().m_fAccelerationMin;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetMaxAcceleration()
+	{
+		return m_BanSettings.GetBanSettings().m_fAccelerationMax;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetBanEvaluationLight()
+	{
+		return m_BanSettings.GetBanSettings().m_fBanEvaluationLight;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetBanEvaluationHeavy()
+	{
+		return m_BanSettings.GetBanSettings().m_fBanEvaluationHeavy;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetCrimePointsFriendlyKill()
+	{
+		return m_BanSettings.GetBanSettings().m_fCrimePtFriendKill;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetCrimePointsFriendlyMultiKill()
+	{
+		return m_BanSettings.GetBanSettings().m_fCrimePtTeamKill;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetQualityTimeTemp()
+	{
+		return m_BanSettings.GetBanSettings().m_fQualityTimeTemp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetVotingSuggestionEnabled()
+	{
+		return m_BanSettings.GetBanSettings().m_bVotingSuggestionEnabled >= 1;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetBanSettingsDescription()
+	{
+		return m_BanSettings.GetDesc();
+	}
 
+	//------------------------------------------------------------------------------------------------
 	string GetSpecializationName(int n)
 	{
 		switch (n)
@@ -114,6 +272,7 @@ class SCR_PlayerDataConfigs : Managed
 		return "UNDEFINED_NAME";
 	}
 
+	//------------------------------------------------------------------------------------------------
 	int GetSpecializationStatsCount(int n)
 	{
 		switch (n)
@@ -126,6 +285,7 @@ class SCR_PlayerDataConfigs : Managed
 		return -1;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	array<ref SCR_PlayerDataSpecializationDisplay> GetSpecializationArray(int n)
 	{
 		switch (n)
@@ -137,17 +297,28 @@ class SCR_PlayerDataConfigs : Managed
 
 		return null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void LoadJson()
+	{
+		if (m_BanSettings.GetDesc().IsEmpty())
+			GetGame().GetBackendApi().SettingsData("BanSettings", m_BanSettings);
+		else
+			Print(m_BanSettings.GetDesc(), LogLevel.DEBUG);
+		
+		m_BanSettings.Log(LogLevel.DEBUG);
+	}
 
 	//------------------------------------------------------------------------------------------------
-	void SCR_PlayerDataConfigs()
+	private void SCR_PlayerDataConfigs()
 	{
-		m_aSpecialization0.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization0Display.METERS_WALKED, SCR_EDataStats.METERS_WALKED, "#AR-CareerProfile_DistanceTravelled_ByFoot", "#AR-CareerProfile_KMs"));
+		m_aSpecialization0.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization0Display.DISTANCE_WALKED, SCR_EDataStats.DISTANCE_WALKED, "#AR-CareerProfile_DistanceTravelled_ByFoot", "#AR-CareerProfile_KMs"));
 		m_aSpecialization0.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization0Display.PLAYER_KILLS, SCR_EDataStats.KILLS, "#AR-CareerProfile_PlayersKilled", "#AR-CareerProfile_Enemies"));
 		m_aSpecialization0.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization0Display.AI_KILLS, SCR_EDataStats.AI_KILLS, "#AR-CareerProfile_AIKilled", "#AR-CareerProfile_Enemies"));
 		m_aSpecialization0.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization0Display.SHOTS, SCR_EDataStats.SHOTS, "#AR-CareerProfile_BulletsShot", "#AR-CareerProfile_Rounds"));
 
-		m_aSpecialization1.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization1Display.METERS_DRIVEN, SCR_EDataStats.METERS_DRIVEN, "#AR-CareerProfile_DistanceTravelled_AsDriver", "#AR-CareerProfile_KMs"));
-		m_aSpecialization1.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization1Display.POINTS_DRIVING_PEOPLE, SCR_EDataStats.METERS_AS_OCCUPANT, "#AR-CareerProfile_DistanceTravelled_AsPassenger", "#AR-CareerProfile_KMs"));
+		m_aSpecialization1.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization1Display.DISTANCE_DRIVEN, SCR_EDataStats.DISTANCE_DRIVEN, "#AR-CareerProfile_DistanceTravelled_AsDriver", "#AR-CareerProfile_KMs"));
+		m_aSpecialization1.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization1Display.DISTANCE_AS_OCCUPANT, SCR_EDataStats.DISTANCE_AS_OCCUPANT, "#AR-CareerProfile_DistanceTravelled_AsPassenger", "#AR-CareerProfile_KMs"));
 		m_aSpecialization1.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization1Display.POINTS_DRIVING_PEOPLE, SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS, "#AR-CareerProfile_PointsDriverAllies", "#AR-CareerProfile_Points"));
 
 		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.BANDAGE_SELF, SCR_EDataStats.BANDAGE_SELF, "#AR-CareerProfile_BandagesSelf", "#AR-CareerProfile_Times"));
@@ -179,6 +350,8 @@ class SCR_PlayerDataConfigs : Managed
 
 		if (m_aSpecialization2.Count() != SPECIALIZATION_2_COUNT)
 			Print("Error in PlayerDataConfigs: Weird size on specialization2 array", LogLevel.ERROR);
+
+		LoadJson();
 	}
 };
 
@@ -194,7 +367,7 @@ enum SCR_ECareerSp
 //------------------------------------------------------------------------------------------------
 enum SCR_ESpecialization0Display
 {
-	METERS_WALKED,
+	DISTANCE_WALKED,
 	PLAYER_KILLS,
 	AI_KILLS,
 	SHOTS
@@ -203,8 +376,8 @@ enum SCR_ESpecialization0Display
 //------------------------------------------------------------------------------------------------
 enum SCR_ESpecialization1Display
 {
-	METERS_DRIVEN,
-	METERS_AS_OCCUPANT,
+	DISTANCE_DRIVEN,
+	DISTANCE_AS_OCCUPANT,
 	POINTS_DRIVING_PEOPLE
 };
 

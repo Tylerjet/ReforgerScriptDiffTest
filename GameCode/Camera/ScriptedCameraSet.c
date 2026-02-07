@@ -33,7 +33,7 @@ class ScriptedCameraItem : BaseScriptedCameraItem
 		return	"0 0 0";
 	}
 	
-	override void SetBaseAngles(vector angles)
+	override void SetBaseAngles(out vector angles)
 	{
 		return;
 	}

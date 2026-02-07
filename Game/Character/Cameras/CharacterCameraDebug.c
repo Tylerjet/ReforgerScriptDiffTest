@@ -5,7 +5,7 @@ class CharacterCameraDebug extends CharacterCameraBase
 {
 	void CharacterCameraDebug(CameraHandlerComponent pCameraHandler)
 	{
-		m_iHeadBoneIndex = m_OwnerCharacter.GetBoneIndex("Head");
+		m_iHeadBoneIndex = m_OwnerCharacter.GetAnimation().GetBoneIndex("Head");
 		
 		m_WeaponManager = BaseWeaponManagerComponent.Cast(m_OwnerCharacter.FindComponent(BaseWeaponManagerComponent));
 	}

@@ -20,7 +20,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 	
 	// Icons names 
 	const string ICON_MODS_DONWLOADED = "check";
-	const string ICON_MODS_MISSING = "update";
+	const string ICON_MODS_MISSING = "download";
 	
 	// Localized strings 
 	const string STR_VERSION_MISMATCH = "#AR-ServerBrowser_JoinVersionFail";
@@ -174,7 +174,9 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		m_Widgets.m_LoadingOverlay.SetVisible(false);
 		
 		// Title 
-		m_Widgets.m_NameText.SetText(content.m_sTitle);
+		string title = content.m_sTitle;
+		//title.ToUpper();
+		m_Widgets.m_NameText.SetText(title);
 		if (!m_IconImageSet.IsEmpty() && !content.m_sTitleImageName.IsEmpty())
 		{
 			m_wImgName.SetVisible(true);
@@ -192,6 +194,9 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		
 		m_Widgets.m_AuthorNameText.SetVisible(false);
 		m_Widgets.m_TypeOverlay.SetVisible(false);
+		if(m_Widgets.m_ImageCrossplayOverlay)
+			m_Widgets.m_ImageCrossplayOverlay.SetVisible(false);
+		
 		HideModsWidgets();
 	}
 
@@ -258,7 +263,9 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 			scenarioDescription	= m_Scenario.Description();
 		
 		// Set content 
-		m_Widgets.m_NameText.SetText(room.ScenarioName());
+		string title = room.ScenarioName();
+		//title.ToUpper();
+		m_Widgets.m_NameText.SetText(title);
 		m_Widgets.m_DescriptionText.SetText(scenarioDescription);
 		m_Widgets.m_AuthorNameText.SetText(strVersion);
 		m_Widgets.m_TypeText.SetText(room.Name());
@@ -276,6 +283,9 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		}
 		
 		m_Widgets.m_LoadingOverlay.SetVisible(true);
+		
+		if(m_Widgets.m_ImageCrossplayOverlay)
+			m_Widgets.m_ImageCrossplayOverlay.SetVisible(m_Room.IsCrossPlatform());
 	}
 	
 	//-----------------------------------------------------------------------------------
@@ -342,8 +352,8 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		
 		// Set Text 
 		m_wTxtModsCount.SetText(count.ToString());
-		m_Widgets.m_AddonSizeText.SetText("| " + totalSize);
-		m_Widgets.m_AddonSizeText.SetColor(Color.White);
+		m_Widgets.m_AddonSizeText.SetText(totalSize);
+		m_Widgets.m_AddonSizeText.SetColor(UIColors.LIGHT_GREY);
 		
 		// Set updated message as default 
 		m_Widgets.m_AddonStateText.SetText(STR_MODS_DONWLOADED);
@@ -361,10 +371,10 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		// Change text if needs update
 		string toUpdateSize = m_ModsManager.GetModListSizeString(toUpdateMods);
 		
-		m_Widgets.m_AddonStateText.SetText(STR_MODS_MISSING + " " + toUpdateSize);
-		m_Widgets.m_AddonStateText.SetColor(m_ColorScheme.m_Critical);
+		m_Widgets.m_AddonStateText.SetText(toUpdateSize);
+		m_Widgets.m_AddonStateText.SetColor(m_ColorScheme.m_Download);
 		m_Widgets.m_AddonStateIcon.LoadImageFromSet(0, m_IconImageSet, ICON_MODS_MISSING);
-		m_Widgets.m_AddonStateIcon.SetColor(m_ColorScheme.m_Critical); 
+		m_Widgets.m_AddonStateIcon.SetColor(m_ColorScheme.m_Download); 
 	}
 	
 	//-----------------------------------------------------------------------------------

@@ -37,7 +37,7 @@ class SCR_ConsumableMorphine : SCR_ConsumableEffectHealthItems
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanApplyEffect(notnull IEntity target, notnull IEntity user)
+	override bool CanApplyEffect(notnull IEntity target, notnull IEntity user, out SCR_EConsumableFailReason failReason)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
@@ -47,21 +47,35 @@ class SCR_ConsumableMorphine : SCR_ConsumableEffectHealthItems
 		if (!damageMgr)
 			return false;
 		
-		if (damageMgr.GetDefaultHitZone().GetHealthScaled() < 1)
-			return true;
+		array<HitZone> hitzones = {};
+		damageMgr.GetPhysicalHitZones(hitzones);
+
+		foreach (HitZone hitzone : hitzones)
+		{
+			if (hitzone.GetDamageOverTime(EDamageType.HEALING) < 0)
+			{
+				failReason = SCR_EConsumableFailReason.ALREADY_APPLIED;
+				return false;
+			}
+			
+			if (hitzone.GetDamageState() != EDamageState.UNDAMAGED)
+				return true;
+		}
+
+		failReason = SCR_EConsumableFailReason.UNDAMAGED;
 		
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group)
+	override bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
 	{
-		return CanApplyEffect(target, user);
+		return CanApplyEffect(target, user, failReason);
 	}
 		
 	//------------------------------------------------------------------------------------------------
 	void SCR_ConsumableMorphine()
 	{
-		m_eConsumableType = EConsumableType.Morphine;
+		m_eConsumableType = SCR_EConsumableType.MORPHINE;
 	}
 }

@@ -26,7 +26,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	
 	protected Faction m_FactionOnSpawn;
 	
-	protected SCR_RespawnSystemComponent m_RespawnSystemComponent;
+	protected SCR_FactionManager m_FactionManager;
 	
 	//States
 	protected bool m_bListeningToWeatherChanged;
@@ -107,14 +107,18 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		//~ Check if killed player message can be seen if Limited editor (or editor not open)
 		if (!isUnlimitedEditorOpened && m_iReceiveKillFeedType != EKillFeedReceiveType.ALL)
 		{
-			Faction localPlayerFaction = m_RespawnSystemComponent.GetLocalPlayerFaction();
+			//~ No faction manager so don't show killfeed?
+			if (!m_FactionManager)
+				return;
+			
+			Faction localPlayerFaction = m_FactionManager.GetLocalPlayerFaction();
 
 			//~ No local faction so don't show killfeed
 			if (!localPlayerFaction)
 				return;
 			
 			int localPlayerID = SCR_PlayerController.GetLocalPlayerId();
-			Faction killedPlayerFaction = m_RespawnSystemComponent.GetPlayerFaction(playerId);
+			Faction killedPlayerFaction = m_FactionManager.GetPlayerFaction(playerId);
 			
 			switch (m_iReceiveKillFeedType)
 			{
@@ -404,10 +408,10 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	override void OnPlayerSpawned(int playerId, IEntity controlledEntity)
 	{
 		//Check if faction changed and send notification if diffrent
-		if (m_RespawnSystemComponent) 
+		if (m_FactionManager) 
 		{
 			//Get factions using ID
-			Faction playerFaction = m_RespawnSystemComponent.GetPlayerFaction(playerId);
+			Faction playerFaction = m_FactionManager.GetPlayerFaction(playerId);
 		
 			//Faction is diffrent
 			if (m_FactionOnSpawn != playerFaction)
@@ -579,7 +583,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		if (editorManager)
 			editorManager.GetOnLimitedChange().Insert(OnEditorLimitedChanged);
 		
-		m_RespawnSystemComponent = SCR_RespawnSystemComponent.GetInstance();
+		m_FactionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		
 		super.EOnInit(owner);
 	}

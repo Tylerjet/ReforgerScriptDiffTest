@@ -1,7 +1,7 @@
 /*
 The multiplier of building cost
 */
-[BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
+/*[BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_BuildingCostMultiplierEditorAttribute : SCR_BaseValueListEditorAttribute
 {
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
@@ -27,4 +27,4 @@ class SCR_BuildingCostMultiplierEditorAttribute : SCR_BaseValueListEditorAttribu
 		float value = var.GetFloat();		
 		buildingManagerEnt.SetCostMultiplier(value);
 	}
-};
+};*/

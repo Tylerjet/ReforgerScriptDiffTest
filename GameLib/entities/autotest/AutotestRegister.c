@@ -35,7 +35,7 @@ class MeasurementFile
 		m_parent 	= parent;
 		m_filePath 	= path;
 		
-		if(mode == FileMode.APPEND && FileIO.FileExist(path))
+		if(mode == FileMode.APPEND && FileIO.FileExists(path))
 		{
 			m_handle = FileIO.OpenFile(path, FileMode.READ);
 			
@@ -60,9 +60,12 @@ class MeasurementFile
 	//! Destructor - in case that there is a file opened, closes it. Also appends prepared graph header if it makes sense
 	void ~MeasurementFile()
 	{
+		if (!m_handle)
+			return;
 		if(IsChart() && m_containsNoData && m_graphHeader.Length() > 0)
 			m_handle.WriteLine(m_graphHeader);	
 		m_handle.Close();
+		m_handle = null;
 	}
 	
 	//! Was file open valid, can we write inside?
@@ -177,7 +180,7 @@ class AutotestRegister
 		
 		string mutliTestFile = string.Format("%1/%2", m_worldFileFolder, "last_test_index.log");
 		FileHandle tmp;
-		if(FileIO.FileExist(mutliTestFile))
+		if(FileIO.FileExists(mutliTestFile))
 		{
 			tmp = FileIO.OpenFile(mutliTestFile, FileMode.READ);
 			string line;
@@ -212,7 +215,7 @@ class AutotestRegister
 	//! Checks if file with given measurement name exists
 	bool DoesMeasurementExist(string name)
 	{
-		return FileIO.FileExist(CreateMeasurementFilePath(name));
+		return FileIO.FileExists(CreateMeasurementFilePath(name));
 	}
 		
 	//! This opens new measurement file for adding data to it. By default it will delete old results if there are any.
@@ -225,7 +228,7 @@ class AutotestRegister
 		MeasurementFile ret;
 		
 		string measurementFilePath = CreateMeasurementFilePath(name);
-		if(overwriteExisting || !FileIO.FileExist(measurementFilePath))
+		if(overwriteExisting || !FileIO.FileExists(measurementFilePath))
 		{
 			ret = new MeasurementFile(this, measurementFilePath, FileMode.WRITE, type);
 			ret.AddHeader(measurementTitle);
@@ -243,7 +246,7 @@ class AutotestRegister
 	void UploadLogFileWithResults()
 	{
 		string logFilePath = string.Format("%1/console.log", m_worldFileFolder);
-		if(!FileIO.FileExist(logFilePath))
+		if(!FileIO.FileExists(logFilePath))
 		{
 			FileHandle logFileHandle = FileIO.OpenFile(logFilePath, FileMode.WRITE);
 			logFileHandle.WriteLine("Missing log file");

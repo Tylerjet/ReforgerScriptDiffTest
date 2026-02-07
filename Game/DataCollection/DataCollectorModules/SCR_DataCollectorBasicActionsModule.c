@@ -2,8 +2,8 @@
 class SCR_DataCollectorBasicActionsModule : SCR_DataCollectorModule
 {
 	protected ref map<int, IEntity> m_mTrackedPlayers = new map<int, IEntity>();
-	static const int LIMIT_WALKING_SPEED_PER_SECOND = 5;
-	static const int MAX_WALKING_DISTANCE_PER_SECOND = LIMIT_WALKING_SPEED_PER_SECOND * TIME_TO_UPDATE;
+	const int LIMIT_WALKING_SPEED_PER_SECOND = 5;
+	protected int m_iMaxWalkingDistancePerSecond = LIMIT_WALKING_SPEED_PER_SECOND * m_fUpdatePeriod;
 
 	//------------------------------------------------------------------------------------------------
 	protected override void AddInvokers(IEntity player)
@@ -128,11 +128,11 @@ class SCR_DataCollectorBasicActionsModule : SCR_DataCollectorModule
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void Update(IEntity owner, float timeTick)
+	override void Update(float timeTick)
 	{
 		m_fTimeSinceUpdate += timeTick;
 
-		if (m_fTimeSinceUpdate < TIME_TO_UPDATE)
+		if (m_fTimeSinceUpdate < m_fUpdatePeriod)
 			return;
 
 		Physics physics;
@@ -158,16 +158,16 @@ class SCR_DataCollectorBasicActionsModule : SCR_DataCollectorModule
 			distanceTraveled = physics.GetVelocity().Length() * m_fTimeSinceUpdate;
 
 			//Safety measure
-			if (distanceTraveled > MAX_WALKING_DISTANCE_PER_SECOND)
-				distanceTraveled = MAX_WALKING_DISTANCE_PER_SECOND;
+			if (distanceTraveled > m_iMaxWalkingDistancePerSecond)
+				distanceTraveled = m_iMaxWalkingDistancePerSecond;
 
-			playerData.AddStat(SCR_EDataStats.METERS_WALKED, distanceTraveled);
+			playerData.AddStat(SCR_EDataStats.DISTANCE_WALKED, distanceTraveled);
 
 			//DEBUG display
 
 #ifdef ENABLE_DIAG
 			if (m_StatsVisualization)
-				m_StatsVisualization.Get(EBasicActionsModuleStats.DistanceWalked).SetText(playerData.GetCurrentDistanceWalked().ToString());
+				m_StatsVisualization.Get(EBasicActionsModuleStats.DistanceWalked).SetText(playerData.GetStat(SCR_EDataStats.DISTANCE_WALKED).ToString());
 #endif
 		}
 		m_fTimeSinceUpdate = 0;

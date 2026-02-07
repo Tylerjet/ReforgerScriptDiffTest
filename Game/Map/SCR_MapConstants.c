@@ -5,7 +5,8 @@ class SCR_MapConstants
 	const float MAX_PIX_PER_METER = 20;					// maximal possible zoom in the form of max allowed PixelPerUnit value
 	
 	const string MAP_WIDGET_NAME = "MapWidget";			// name of the MapWidget within map layout
-	const string DRAWING_WIDGET_NAME = "DrawingWidget";	// name of the CanvasWidget for drawing within map layout		
+	const string DRAWING_WIDGET_NAME = "DrawingWidget";	// name of the CanvasWidget for drawing within map layout
+	const string DRAWING_CONTAINER_WIDGET_NAME = "DrawingContainer"; //name of FrameWidget for creating drawn lines on map
 	const string CFG_LAYERS_DEFAULT = "{3CAC09C3E89190F7}Configs/Map/MapLayersDefault.conf";
 	const string CFG_PROPS_DEFAULT = "{AF65563F653FED68}Configs/Map/MapPropsDefault.conf";
 	const string CFG_DESCTYPES_DEFAULT = "{FF6B20825D4A566C}Configs/Map/MapDescriptorDefaults.conf";
@@ -28,7 +29,8 @@ enum EMapEntityMode
 	FULLSCREEN = 1,
 	EDITOR,
 	SPAWNSCREEN,
-	MINIMAP
+	MINIMAP,
+	PLAIN
 };
 
 //------------------------------------------------------------------------------------------------

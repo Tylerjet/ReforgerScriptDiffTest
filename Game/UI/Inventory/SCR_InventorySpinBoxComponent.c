@@ -1,6 +1,7 @@
 class SCR_InventorySpinBoxComponent : SCR_SpinBoxComponent
 {
 	protected bool m_bIsFocused;
+	protected SCR_InventoryHitZoneUI m_FocusedPoint;
 
 	override void HandlerAttached(Widget w)
 	{
@@ -16,6 +17,8 @@ class SCR_InventorySpinBoxComponent : SCR_SpinBoxComponent
 		m_bIsFocused = true;
 
 		OnSpinBoxSelectionChanged(this, m_iSelectedItem);
+		if (m_FocusedPoint)
+			m_FocusedPoint.GetMenuHandler().OnAttachmentSpinboxFocused();
 
 		return false;
 	}
@@ -34,9 +37,11 @@ class SCR_InventorySpinBoxComponent : SCR_SpinBoxComponent
 		if (!m_bIsFocused || itemIndex < 0)
 			return;
 
+		m_FocusedPoint = null;
 		SCR_InventoryHitZonePointContainerUI hzContainer = SCR_InventoryHitZonePointContainerUI.Cast(comp.GetCurrentItemData());
 		if (hzContainer)
 		{
+			m_FocusedPoint = hzContainer.GetStorage();
 			hzContainer.ShowApplicableItems();
 		}
 
@@ -55,6 +60,11 @@ class SCR_InventorySpinBoxComponent : SCR_SpinBoxComponent
 	bool IsFocused()
 	{
 		return m_bIsFocused;
+	}
+
+	SCR_InventoryHitZoneUI GetFocusedHZPoint()
+	{
+		return m_FocusedPoint;
 	}
 
 	void SetNavigationActive(bool active)

@@ -2,6 +2,16 @@ class TimeAndWeatherManagerEntityClass: BaseTimeAndWeatherManagerEntityClass
 {
 };
 
+//~ Script invokers
+void SCR_TimeAndWeatherManager_OnWeatherStatePreview(bool previewEnabled, string weatherState);
+typedef func SCR_TimeAndWeatherManager_OnWeatherStatePreview;
+
+void SCR_TimeAndWeatherManager_OnWindPreview(bool previewEnabled, float windSpeed, float windDirectionDegrees);
+typedef func SCR_TimeAndWeatherManager_OnWindPreview;
+
+void SCR_TimeAndWeatherManager_OnDateTimePreview(bool previewEnabled, int year, int month, int day, float timeOfTheDay);
+typedef func SCR_TimeAndWeatherManager_OnDateTimePreview;
+
 /*!
 Manager entity responsible for managing in-game time and weather,
 providing the script and gamecode with usable in-game API.
@@ -26,9 +36,121 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	protected float m_fDelayedWindDirectionOverride = -1;
 	protected bool m_bListiningToWindOverrideDelay = false;
 	
+	//~ ScriptInvokers
+	protected ref ScriptInvokerBase<SCR_TimeAndWeatherManager_OnWeatherStatePreview> m_OnWeatherStatePreview;
+	protected ref ScriptInvokerBase<SCR_TimeAndWeatherManager_OnWindPreview> m_OnWindPreview;
+	protected ref ScriptInvokerBase<SCR_TimeAndWeatherManager_OnDateTimePreview> m_OnDateTimePreview;
+	
 	//Replicated
 	protected bool m_bWeatherIsLooping = false;
 	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Set Weather state preview. Can be called locally and will send an scriptInvoker when called succesfully
+	\param preview True to enable preview, false to disable
+	\param stateName Weather State name to preview, no need to give if preview is false
+	\return True if preview changed succesfully
+	*/
+	bool SetWeatherStatePreview(bool preview, string stateName = "")
+	{
+		WeatherStateTransitionManager weatherStateTransitionManager = GetTransitionManager();
+		if (!weatherStateTransitionManager)
+			return false;
+		
+		if (!weatherStateTransitionManager.SetStatePreview(preview, stateName))
+			return false;
+		
+		//Script invoker
+		if (m_OnWeatherStatePreview)
+			m_OnWeatherStatePreview.Invoke(preview, stateName);
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Set wind preview. Can be called locally and will send an scriptInvoker when called succesfully
+	\param preview True to enable preview, false to disable
+	\param windSpeed Windspeed to preview, no need to give if preview is false
+	\param windAngleDegrees Wind Angle in Degrees to preview, no need to give if preview is false
+	\return True if preview changed succesfully
+	*/
+	bool SetWindPreview(bool preview, float windSpeed = -1, float windAngleDegrees = -1)
+	{
+		WeatherStateTransitionManager weatherStateTransitionManager = GetTransitionManager();
+		if (!weatherStateTransitionManager)
+			return false;
+		
+		if (!weatherStateTransitionManager.SetWindPreview(preview, windSpeed, windAngleDegrees))
+			return false;
+		
+		//Script invoker
+		if (m_OnWindPreview)
+			m_OnWindPreview.Invoke(preview, windSpeed, windAngleDegrees);
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Set date time Preview. Can be called locally and will send an scriptInvoker when called succesfully
+	\param preview True to enable preview, false to disable
+	\param year Year to preview, no need to give if preview is false
+	\param month Month to preview, no need to give if preview is false
+	\param day Day to preview, no need to give if preview is false
+	\param timeOfTheDay Time of day to preview in 24.0, no need to give if preview is false
+	\return True if preview changed succesfully
+	*/
+	bool SetDateTimePreview(bool preview, int year = -1, int month = -1, int day = -1, float timeOfTheDay = -1)
+	{
+		WeatherStateTransitionManager weatherStateTransitionManager = GetTransitionManager();
+		if (!weatherStateTransitionManager)
+			return false;
+		
+		if (!weatherStateTransitionManager.SetDateTimePreview(preview, year, month, day, timeOfTheDay))
+			return false;
+		
+		//Script ScriptInvoker
+		if (m_OnDateTimePreview)
+			m_OnDateTimePreview.Invoke(preview, year, month, day, timeOfTheDay);
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get if the sun is set for the current time, latitude/longitude/date configuration
+	\return True if sun is set
+	*/
+	bool IsSunSet()
+	{
+		return IsSunSet(GetTimeOfTheDay());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get if the sun is set at given time. 
+	Note this will use current latitude/longitude/date configuration
+	\param timeToCheck time to check. Uses 24 hour format e.g. 12.50 is 12:30 A.M
+	\return True if sun is set for the given time
+	*/
+	bool IsSunSet(float timeToCheck)
+	{
+		float sunSetTime, sunRiseTime;
+		
+		//~ The sun never sets
+		if (!GetSunsetHour(sunSetTime))
+			return false;
+		
+		//~ The sun never rises
+		if (!GetSunriseHour(sunRiseTime))
+			return true;
+		
+		//~ Returns if given time is >= than sunset or smaller than sunrise time
+		return (timeToCheck >= sunSetTime || timeToCheck < sunRiseTime);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Use current date to get day of the week localized string (eg Monday, Tuesday ect)
 	\return Day of the week
@@ -111,7 +233,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 		
 		//~ Remove Preview if any
 		if (transitionManager.IsPreviewingState())
-			transitionManager.SetStatePreview(false);
+			SetWeatherStatePreview(false);
 		
 		transitionManager.EnqueueStateTransition(transitionNode, false);
 		transitionManager.RequestStateTransitionImmediately(transitionNode);
@@ -577,6 +699,41 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 		return SetHoursMinutesSeconds(cont.m_iHours, cont.m_iMinutes, cont.m_iSeconds);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	\return Get on weather state preview enabled/disabled
+	*/
+	ScriptInvokerBase<SCR_TimeAndWeatherManager_OnWeatherStatePreview> GetOnWeatherStatePreview()
+	{
+		if (!m_OnWeatherStatePreview)
+			m_OnWeatherStatePreview = new ScriptInvokerBase<SCR_TimeAndWeatherManager_OnWeatherStatePreview>();
+	
+		return m_OnWeatherStatePreview;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	\return Get on wind preview enabled/disabled
+	*/
+	ScriptInvokerBase<SCR_TimeAndWeatherManager_OnWindPreview> GetOnWindPreview()
+	{
+		if (!m_OnWindPreview)
+			m_OnWindPreview = new ScriptInvokerBase<SCR_TimeAndWeatherManager_OnWindPreview>();
+	
+		return m_OnWindPreview;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	\return Get on date time preview enabled/disabled
+	*/
+	ScriptInvokerBase<SCR_TimeAndWeatherManager_OnDateTimePreview> GetOnDateTimePreview()
+	{
+		if (!m_OnDateTimePreview)
+			m_OnDateTimePreview = new ScriptInvokerBase<SCR_TimeAndWeatherManager_OnDateTimePreview>();
+	
+		return m_OnDateTimePreview;
+	}
 	
 	//======================================== RPL ========================================\\
 	override bool RplSave(ScriptBitWriter writer)

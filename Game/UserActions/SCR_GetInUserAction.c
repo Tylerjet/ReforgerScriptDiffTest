@@ -1,11 +1,17 @@
 class SCR_GetInUserAction : SCR_CompartmentUserAction
 {
 	protected SCR_BaseLockComponent m_pLockComp;
+	protected DamageManagerComponent m_DamageManager;
 
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
+		IEntity vehicle = SCR_EntityHelper.GetMainParent(pOwnerEntity, true);
+		if (!vehicle)
+			return;
+
 		m_pLockComp = SCR_BaseLockComponent.Cast(pOwnerEntity.FindComponent(SCR_BaseLockComponent));
+		m_DamageManager = DamageManagerComponent.Cast(vehicle.FindComponent(DamageManagerComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -22,7 +28,7 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 		if (!targetCompartment)
 			return;
 		
-		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(character.FindComponent(CompartmentAccessComponent));
+		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
 		if (!compartmentAccess)
 			return;
 		
@@ -34,7 +40,10 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
-	{		
+	{
+		if (m_DamageManager && m_DamageManager.GetState() == EDamageState.DESTROYED)
+			return false;
+
 		BaseCompartmentSlot compartment = GetCompartmentSlot();
 		if (!compartment)
 			return false;
@@ -86,6 +95,9 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
+		if (m_DamageManager && m_DamageManager.GetState() == EDamageState.DESTROYED)
+			return false;
+
 		BaseCompartmentSlot compartment = GetCompartmentSlot();
 		if (!compartment)
 			return false;

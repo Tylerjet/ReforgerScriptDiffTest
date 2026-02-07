@@ -10,7 +10,7 @@ class SCR_CampaignTutorialStage79 : SCR_BaseCampaignTutorialStage
 	{
 		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_Compass" + CreateString("#AR-Keybind_Compass","GadgetCompass"), duration: -1);
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
 		if (campaign)
 			campaign.SetIsTutorial(true);

@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 [ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Handles respawn timers for players.")]
 class SCR_WaveRespawnTimerComponentClass: SCR_RespawnTimerComponentClass
 {
@@ -20,9 +21,6 @@ class SCR_WaveRespawnTimerComponent : SCR_RespawnTimerComponent
 	[RplProp()]
 	protected ref array<int> m_aWaitingPlayers = new array<int>();
 	
-	//! Mandatory component
-	protected SCR_RespawnSystemComponent m_pRespawnSystemComponent;
-
 	#ifdef RESPAWN_TIMER_COMPONENT_DEBUG
 	override void DrawDebugInfo()
 	{
@@ -47,15 +45,21 @@ class SCR_WaveRespawnTimerComponent : SCR_RespawnTimerComponent
 				DbgUI.Text(playerText);
 			}
 
+			#ifndef AR_RESPAWN_TIMER_TIMESTAMP
 			float timeNow = GetCurrentTime();
-			if (m_pRespawnSystemComponent)
+			#else
+			WorldTimestamp timeNow = GetCurrentTime();
+			#endif
+			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+			
+			if (factionManager)
 			{
 				// Respawn timers
 				DbgUI.Text("Faction Timers:");
 				int index = 0;
 				foreach (SCR_RespawnTimer respawnTimer : m_aFactionRespawnTimers)
 				{
-					Faction affiliatedFaction = m_pRespawnSystemComponent.GetFactionByIndex( index );
+					Faction affiliatedFaction = factionManager.GetFactionByIndex(index);
 					if (affiliatedFaction)
 					{
 						string factionText = string.Format("%1: %2s (%3)", index, respawnTimer.GetRemainingTime(timeNow), affiliatedFaction.GetFactionName());
@@ -83,14 +87,22 @@ class SCR_WaveRespawnTimerComponent : SCR_RespawnTimerComponent
 		// Ready to respawn
 		if (m_aAllowedPlayers.Contains(playerID))
 			return 0;
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return 0;
 
 		// Waiting in next wave
-		Faction faction = m_pRespawnSystemComponent.GetPlayerFaction(playerID);
-		int factionIndex = m_pRespawnSystemComponent.GetFactionIndex(faction);
+		Faction faction = factionManager.GetPlayerFaction(playerID);
+		int factionIndex = factionManager.GetFactionIndex(faction);
 		if (factionIndex < 0)
 			return 0;
 
+		#ifndef AR_RESPAWN_TIMER_TIMESTAMP
 		float timeNow = GetCurrentTime();
+		#else
+		WorldTimestamp timeNow = GetCurrentTime();
+		#endif
 		return m_aFactionRespawnTimers[factionIndex].GetRemainingTime(timeNow);
 	}
 
@@ -151,7 +163,11 @@ class SCR_WaveRespawnTimerComponent : SCR_RespawnTimerComponent
 		\param duration Duration of respawn timer.
 	*/
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	#ifndef AR_RESPAWN_TIMER_TIMESTAMP
 	void RpcDo_StartFactionTimer(int factionIndex, float rplTime)
+	#else
+	void RpcDo_StartFactionTimer(int factionIndex, WorldTimestamp rplTime)
+	#endif
 	{
 		SCR_RespawnTimer timer = m_aFactionRespawnTimers[factionIndex];
 		timer.Start(rplTime);
@@ -164,9 +180,17 @@ class SCR_WaveRespawnTimerComponent : SCR_RespawnTimerComponent
 			return;
 				
 		bool shouldBump;
+		#ifndef AR_RESPAWN_TIMER_TIMESTAMP
 		float timeNow = GetCurrentTime();
+		#else
+		WorldTimestamp timeNow = GetCurrentTime();
+		#endif
 		// Update timers
 		int timersCount = m_aFactionRespawnTimers.Count();
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return;
+		
 		for (int i = 0; i < timersCount; i++)
 		{
 			SCR_RespawnTimer timer = m_aFactionRespawnTimers[i];
@@ -179,10 +203,10 @@ class SCR_WaveRespawnTimerComponent : SCR_RespawnTimerComponent
 					for (int playerIndex = m_aWaitingPlayers.Count() -1; playerIndex >= 0; playerIndex--)
 					{
 						int playerId = m_aWaitingPlayers[playerIndex];
-						Faction playerFaction = m_pRespawnSystemComponent.GetPlayerFaction(playerId);
+						Faction playerFaction = factionManager.GetPlayerFaction(playerId);
 						if (playerFaction)
 						{
-							int factionIndex = m_pRespawnSystemComponent.GetFactionIndex(playerFaction);
+							int factionIndex = factionManager.GetFactionIndex(playerFaction);
 							if (factionIndex == i)
 							{
 								// It would be nicer to use set<T>, but rpl codec is missing for that object
@@ -221,7 +245,6 @@ class SCR_WaveRespawnTimerComponent : SCR_RespawnTimerComponent
 		
 		// Fetch neccessary components
 		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
-		m_pRespawnSystemComponent = SCR_RespawnSystemComponent.Cast(owner.FindComponent(SCR_RespawnSystemComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -232,20 +255,28 @@ class SCR_WaveRespawnTimerComponent : SCR_RespawnTimerComponent
 	{
 		
 		// Fill list of respawns with default data
-		int factionsCount = 0;
-		FactionManager factionManager = GetGame().GetFactionManager();
+		int factionsCount;
 		array<Faction> factions = {};
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (factionManager)
 			factionsCount = factionManager.GetFactionsList(factions);
 
 		// Prefill list with data
+		#ifndef AR_RESPAWN_TIMER_TIMESTAMP
 		float timeNow = GetCurrentTime();
+		#else
+		WorldTimestamp timeNow = GetCurrentTime();
+		#endif
 		for (int i = 0; i < factionsCount; i++)
 		{
 			ref SCR_RespawnTimer timer = new SCR_RespawnTimer();
-			timer.SetDuration( m_fRespawnTime );
-			timer.Start( timeNow - m_fRespawnTime );
-			m_aFactionRespawnTimers.Insert( timer );
+			timer.SetDuration(m_fRespawnTime);
+			#ifndef AR_RESPAWN_TIMER_TIMESTAMP
+			timer.Start(timeNow - m_fRespawnTime);
+			#else
+			timer.Start(timeNow.PlusSeconds(-m_fRespawnTime));
+			#endif
+			m_aFactionRespawnTimers.Insert(timer);
 		}
 
 		Replication.BumpMe();

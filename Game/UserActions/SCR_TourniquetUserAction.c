@@ -25,37 +25,39 @@ class SCR_TourniquetUserAction : SCR_HealingUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
-		if (!super.CanBePerformedScript(user))
+		// Target character
+		ChimeraCharacter targetCharacter = ChimeraCharacter.Cast(GetOwner());
+		if (!targetCharacter)
 			return false;
 		
+		// Medic character
 		ChimeraCharacter userCharacter = ChimeraCharacter.Cast(user);
 		if (!userCharacter)
 			return false;
-			
+
 		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(userCharacter);
-		if (!consumableComponent || consumableComponent.GetConsumableType() != EConsumableType.Tourniquet)
+		if (!consumableComponent)
 			return false;
 		
-		ChimeraCharacter ownerCharacter = ChimeraCharacter.Cast(GetOwner());
-		if (!ownerCharacter)
+		SCR_ConsumableTourniquet consumableTQ = SCR_ConsumableTourniquet.Cast(consumableComponent.GetConsumableEffect());
+		if (!consumableTQ)
 			return false;
 		
-		//Only bleeding HZs can be TQ'd
-		SCR_CharacterDamageManagerComponent charDamMan = SCR_CharacterDamageManagerComponent.Cast(ownerCharacter.GetDamageManager());
-		if (!charDamMan || charDamMan.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.BLEEDING) == 0)
-			return false;
-		
-		//Only extremities can be TQ'd
-		array<ECharacterHitZoneGroup> tqGroups = {};
-		SCR_CharacterDamageManagerComponent.GetAllExtremities(tqGroups);
-		
-		if (!tqGroups.Contains(m_eHitZoneGroup))
-			return false;
-		
-		//No TQ'ing groups that are already TQ'd
-		if (charDamMan.GetGroupTourniquetted(m_eHitZoneGroup))
-			return false;
-		
-		return true;
+		int reason;
+		if (consumableTQ.CanApplyEffectToHZ(targetCharacter, userCharacter, m_eHitZoneGroup, reason))
+			return true;
+
+		if (reason == SCR_EConsumableFailReason.ALREADY_APPLIED)
+			SetCannotPerformReason(m_sAlreadyApplied);
+		else if (reason == SCR_EConsumableFailReason.NOT_BLEEDING)
+			SetCannotPerformReason(m_sNotBleeding);
+
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool HealingAllowedFromSeat(ChimeraCharacter char)
+	{
+		return false;
 	}
 };

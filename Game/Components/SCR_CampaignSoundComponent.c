@@ -1,4 +1,4 @@
-[ComponentEditorProps(category: "GameScripted/Sound", description: "Component is active only in campaign mode")]
+[ComponentEditorProps(category: "GameScripted/Sound", description: "Component is active only in conflict mode")]
 class SCR_CampaignSoundComponentClass: SoundComponentClass
 {
 };
@@ -12,9 +12,8 @@ class SCR_CampaignSoundComponent : SoundComponent
 	{
 		super.OnInit(owner);
 		
-		// Disable dynamic simulation if not campaign game mode
-		SCR_GameModeCampaignMP gameMode = SCR_GameModeCampaignMP.Cast(GetGame().GetGameMode());
-		if (!gameMode)
+		// Disable dynamic simulation if not conflict game mode
+		if (!SCR_GameModeCampaign.GetInstance())
 			EnableDynamicSimulation(false);		
 	}
 

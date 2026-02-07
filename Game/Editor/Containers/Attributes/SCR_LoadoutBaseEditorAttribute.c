@@ -19,7 +19,7 @@ class SCR_LoadoutBaseEditorAttribute : SCR_BaseMultiSelectPresetsEditorAttribute
 		//~ Safty
 		array<int> intValues = new array<int>;
 		if (SCR_Enum.GetEnumValues(SCR_EArsenalItemType, intValues) != ArsenalUIInfo.Count())
-			Print("List of supported item types for editor arsenal and loadout is a diffrent lenght from Arsenal Item Type UI config. Make sure that any new 'SCR_EArsenalItemType' enum also has an entry in 'SCR_ArsenalItemTypeUIConfig'", LogLevel.WARNING);
+			Print("List of supported item types for editor arsenal and loadout is a diffrent length from Arsenal Item Type UI config. Make sure that any new 'SCR_EArsenalItemType' enum also has an entry in 'SCR_ArsenalItemTypeUIConfig'", LogLevel.WARNING);
 		
 		m_aValues.Clear();
 		SCR_EditorAttributeFloatStringValueHolder value;

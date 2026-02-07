@@ -96,16 +96,20 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 			return;
 		
 		IEntity player = SCR_PossessingManagerComponent.GetPlayerMainEntity(editorManager.GetPlayerID());
+		if (!player)
+			return;
 		
-		SCR_EditableEntityComponent editablePlayer = SCR_EditableEntityComponent.GetEditableEntity(player);
-		if (editablePlayer)
-			Rpc(TeleportPlayerToPositionOwner, position);	
+		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(player.FindComponent(CompartmentAccessComponent));
+		if (compartmentAccess && compartmentAccess.IsInCompartment())
+			TeleportPlayerToPositionOwner(position); //--- Player in a vehicle, execute on server
+		else
+			Rpc(TeleportPlayerToPositionOwner, position); //--- Player not in a vehicle, execute where the player is local
 	}
 	
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	void TeleportPlayerToPositionOwner(vector position)
 	{
-		SCR_Global.TeleportPlayer(position);
+		SCR_Global.TeleportPlayer(GetManager().GetPlayerID(), position);
 	}
 	
 	/*!
@@ -275,7 +279,7 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 			Rpc(OnDisconnectedOwner, playerID);
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void OnDisconnectedOwner(int playerID, int entityID)
+	protected void OnDisconnectedOwner(int playerID)
 	{
 		m_MainEntities.Remove(playerID);
 		Event_OnDisconnected.Invoke(playerID);

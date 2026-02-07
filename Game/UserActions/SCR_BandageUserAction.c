@@ -25,27 +25,17 @@ class SCR_BandageUserAction : SCR_HealingUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
-		if (!super.CanBePerformedScript(user))
+		// Target character
+		ChimeraCharacter targetCharacter = ChimeraCharacter.Cast(GetOwner());
+		if (!targetCharacter)
 			return false;
 		
-		if (m_eHitZoneGroup == EHitZoneGroup.VIRTUAL)
-			return false;
-		
-		ChimeraCharacter userCharacter = ChimeraCharacter.Cast(user);
-		if (!userCharacter)
-			return false;
-			
-		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(userCharacter);
-		if (!consumableComponent || consumableComponent.GetConsumableType() != EConsumableType.Bandage)
-			return false;
-		
-		ChimeraCharacter ownerCharacter = ChimeraCharacter.Cast(GetOwner());
-		if (!ownerCharacter)
-			return false;
-		
-		SCR_CharacterDamageManagerComponent charDamMan = SCR_CharacterDamageManagerComponent.Cast(ownerCharacter.GetDamageManager());
+		SCR_CharacterDamageManagerComponent charDamMan = SCR_CharacterDamageManagerComponent.Cast(targetCharacter.GetDamageManager());
 		if (!charDamMan || charDamMan.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.BLEEDING) == 0)
+		{
+			SetCannotPerformReason(m_sNotBleeding);
 			return false;
+		}
 		
 		return true;
 	}

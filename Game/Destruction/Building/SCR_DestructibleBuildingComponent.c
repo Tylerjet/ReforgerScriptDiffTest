@@ -65,7 +65,11 @@ class SCR_BuildingDestructionCameraShakeProgress : SCR_NoisyCameraShakeProgress
 		
 		super.Update(owner, timeSlice);
 		
-		float distanceSq = vector.DistanceSqXZ(m_vStartOrigin, GetGame().GetCameraManager().CurrentCamera().GetOrigin());
+		CameraBase camera = GetGame().GetCameraManager().CurrentCamera();
+		if (!camera)
+			return;
+		
+		float distanceSq = vector.DistanceSqXZ(m_vStartOrigin, camera.GetOrigin());
 		float multiplier = 1 - Math.Clamp(distanceSq / (m_fMaxDistance * m_fMaxDistance * m_fSizeMultiplier), 0, 1);
 		float curveMultiplier = Math3D.Curve(ECurveType.CatmullRom, 1 - multiplier, m_CameraShakeCurve)[1];
 		
@@ -93,7 +97,7 @@ class SCR_BuildingDestructionCameraShakeProgress : SCR_NoisyCameraShakeProgress
 }
 
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
+[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class SCR_TimedDebris : SCR_TimedEffect
 {
 	[Attribute("0 0 0", UIWidgets.Coords, desc: "Positional offset (in local space to the destructible)")]
@@ -197,7 +201,7 @@ class SCR_TimedDebris : SCR_TimedEffect
 }
 
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
+[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class SCR_TimedEffect : Managed
 {
 	[Attribute("0", UIWidgets.Slider, "Set time in % of sinking the building. 0 = Immediately, can happen before the sinking starts if delay is used", "0 1 0.01")]
@@ -208,6 +212,9 @@ class SCR_TimedEffect : Managed
 	
 	[Attribute()]
 	bool m_bAttachToParent;
+	
+	[Attribute("0", desc: "Does this effect remain after destruction? F. E. ruins.")]
+	bool m_bPersistent;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Snaps the origin to terrain
@@ -228,7 +235,7 @@ class SCR_TimedEffect : Managed
 };
 
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
+[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class SCR_TimedSound : SCR_TimedEffect
 {
 	[Attribute("", UIWidgets.Auto, desc: "Audio Source Configuration")]
@@ -258,7 +265,7 @@ class SCR_TimedSound : SCR_TimedEffect
 };
 
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
+[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class SCR_TimedPrefab : SCR_TimedEffect
 {
 	[Attribute("", "Defines what remains after the building is destroyed.", params: "et")]
@@ -303,11 +310,14 @@ class SCR_TimedPrefab : SCR_TimedEffect
 };
 
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
+[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class SCR_TimedParticle : SCR_TimedEffect
 {
 	[Attribute()]
-	ref SCR_ParticleSpawnable m_Particle;
+	protected ref SCR_ParticleSpawnable m_Particle;
+	
+	[Attribute("1")]
+	protected float m_fParticlesMultiplier;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Plays particles
@@ -315,19 +325,35 @@ class SCR_TimedParticle : SCR_TimedEffect
 	{
 		super.ExecuteEffect(owner, hitInfo, data);
 		
-		IEntity entity;
+		SCR_ParticleEmitter emitter;
 		if (m_bAttachToParent)
-			entity = m_Particle.SpawnAsChild(owner, hitInfo, m_bSnapToTerrain);
+			emitter = m_Particle.SpawnAsChild(owner, hitInfo, m_bSnapToTerrain);
 		else
-			entity = m_Particle.Spawn(owner, owner.GetPhysics(), hitInfo, m_bSnapToTerrain);
+			emitter = SCR_ParticleEmitter.Cast(m_Particle.Spawn(owner, owner.GetPhysics(), hitInfo, m_bSnapToTerrain));
 		
-		if (!entity)
+		if (!emitter)
 		{
-			Debug.Error("No particle was spawned in SCR_TimedParticle.ExecuteEffect()");
+			Debug.Error("No emitter was spawned in SCR_TimedParticle.ExecuteEffect()");
 			return;
 		}
 		
-		data.m_aExcludeList.Insert(entity);
+		SetParticleParams(emitter, data);
+		
+		data.m_aExcludeList.Insert(emitter);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetParticleParams(SCR_ParticleEmitter emitter, inout notnull SCR_BuildingDestructionData data)
+	{
+		Particles particles = emitter.GetParticles();
+		if (!particles)
+			return;
+		
+		particles.MultParam(-1, EmitterParam.BIRTH_RATE, Math.Clamp(data.m_fSizeMultiplier, 0.5, 2) * m_fParticlesMultiplier);
+		particles.MultParam(-1, EmitterParam.BIRTH_RATE_RND, Math.Clamp(data.m_fSizeMultiplier, 0.5, 2) * m_fParticlesMultiplier);
+		particles.MultParam(-1, EmitterParam.SIZE, Math.Clamp(data.m_fSizeMultiplier, 0.5, 1));
+		particles.MultParam(-1, EmitterParam.VELOCITY, Math.Clamp(data.m_fSizeMultiplier, 0.5, 2) * m_fParticlesMultiplier);
+		particles.MultParam(-1, EmitterParam.VELOCITY_RND, Math.Clamp(data.m_fSizeMultiplier, 0.5, 2) * m_fParticlesMultiplier);
 	}
 };
 
@@ -338,6 +364,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	protected const int NO_COLLISION_RESPONSE_INDEX = 11;
 	protected const int MAX_CHECKS_PER_FRAME = 20;
 	protected const float BUILDING_SIZE = 5000;
+	protected const vector TRACE_DIRECTIONS[3] = {vector.Right, vector.Up, vector.Forward};
 	
 	private int m_iDataIndex = -1;
 	
@@ -533,7 +560,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 		SetSeed(seed);
 		DestroyInteriorInit(false);
 		CalculateAndStoreVolume();
-		SpawnEffects(0, GetOwner());
+		SpawnEffects(0, GetOwner(), false);
 		GetGame().GetCallqueue().CallLater(GoToDestroyedState, 1000 * GetDelay(), param1: false);
 	}
 	
@@ -623,14 +650,15 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 			}
 			
 			// Interior check for the object
-			if (!IsInside(data.m_aQueriedEntities[i]))
+			// Disabled for now, this check now happens under ground, so it's pointless here
+			/*if (!IsInside(data.m_aQueriedEntities[i]))
 			{
 				data.m_aQueriedEntities.Remove(i);
 				i--;
 				count--;
 				
 				continue;
-			}
+			}*/
 			
 			destructibleEntity = SCR_DestructibleEntity.Cast(data.m_aQueriedEntities[i]);
 			destructionComponent = SCR_DestructionBaseComponent.Cast(data.m_aQueriedEntities[i].FindComponent(SCR_DestructionBaseComponent));
@@ -639,10 +667,13 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 			if (!destructibleEntity && !destructionComponent)
 			{
 				rplComponent = RplComponent.Cast(data.m_aQueriedEntities[i].FindComponent(RplComponent));
-				if (rplComponent)
+				// Don't delete replicated objects for now TODO: Solve this properly in the future
+				if (!rplComponent)
+					delete data.m_aQueriedEntities[i];
+				/*if (rplComponent)
 					RplComponent.DeleteRplEntity(data.m_aQueriedEntities[i], false);
 				else
-					delete data.m_aQueriedEntities[i];
+					delete data.m_aQueriedEntities[i];*/
 			}
 			
 			// Is destructible entity
@@ -677,26 +708,42 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Checks whether an entity is inside the building, using one 5m vertical trace
+	protected bool PerformTrace(notnull TraceParam param, vector start, vector direction, notnull BaseWorld world, float lengthMultiplier = 1)
+	{
+		param.Start = start - direction * lengthMultiplier;
+		param.End = start + direction * lengthMultiplier;
+		world.TraceMove(param, TraceFilter);
+		
+		return param.TraceEnt != null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Checks whether or not an entity is inside of the building, using a trace in each world axis
 	protected bool IsInside(notnull IEntity entity)
 	{
 		IEntity owner = GetOwner();
+		BaseWorld world = owner.GetWorld();
+		vector start = entity.GetOrigin();
 		
 		TraceParam param = new TraceParam();
-		param.Start = entity.GetOrigin();
-		param.End = param.Start + vector.Up * 10; // 10m trace up
 		param.Flags = TraceFlags.ENTS;
 		param.LayerMask = EPhysicsLayerDefs.Projectile;
-		param.Include = owner; // Include only building
-		owner.GetWorld().TraceMove(param, TraceFilter);
+		param.Include = owner; // Include only the building for performance reasons
 		
-		if (owner == param.TraceEnt)
-			return true;
+		bool result;
+		for (int i = 0; i < 3; i++)
+		{
+			float lengthMultiplier = 1;
+			if (i == 1)
+				lengthMultiplier = 100; // Vertical traces can and must be long to detect roof, where there is no floor, also they are internally optimized
+			
+			result = PerformTrace(param, start, TRACE_DIRECTIONS[i], world, lengthMultiplier);
+			
+			if (result)
+				return true;
+		}
 		
-		param.End = param.Start + (owner.GetOrigin() - param.Start).Normalized() * 5;
-		owner.GetWorld().TraceMove(param, TraceFilter);
-		
-		return owner == param.TraceEnt);
+		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -718,13 +765,11 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 			return true;
 		
 		IEntity owner = GetOwner();
+		IEntity entityParent = e.GetParent();
 		
-		// Exclude the owner && children
-		if (e == owner)
+		// Exclude the owner && children of other objects
+		if (e == owner || (entityParent && entityParent != owner))
 			return true;
-		
-		if (SCR_EntityHelper.GetMainParent(e) != owner)
-			owner.AddChild(e, -1, EAddChildFlags.AUTO_TRANSFORM | EAddChildFlags.RECALC_LOCAL_TRANSFORM);
 		
 		// Exclude entities in exclude list
 		// Disabled for now, because it might not be necessary
@@ -753,6 +798,9 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 		if (ChimeraCharacter.Cast(mainParent) || Vehicle.Cast(mainParent))
 			return true;
 		
+		if (SCR_EntityHelper.GetMainParent(e) != owner)
+			owner.AddChild(e, -1, EAddChildFlags.AUTO_TRANSFORM | EAddChildFlags.RECALC_LOCAL_TRANSFORM);
+		
 		data.m_aQueriedEntities.Insert(e);
 		return true;
 	}
@@ -779,7 +827,10 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 		float z = Math.AbsFloat(mins[2]) + maxs[2];
 		
 		float buildingVolume = x * y * z;
+		
 		data.m_fBuildingVolume = buildingVolume;
+		
+		data.m_fSizeMultiplier = data.m_fBuildingVolume / BUILDING_SIZE; // BUILDING_SIZE constant is value for the average building size
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -799,8 +850,6 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 		
 		vector mins, maxs;
 		owner.GetBounds(mins, maxs);
-		
-		float cameraShakeMultiplier = data.m_fBuildingVolume / BUILDING_SIZE; // BUILDING_SIZE constant is value for the average building size
 		
 		maxs[0] = 0;
 		maxs[2] = 0;
@@ -826,7 +875,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 			data.m_CameraShake.SetParams(0.15, 0.15, 0.01, 400, 0.24);
 			data.m_CameraShake.SetCurve(GetCameraShakeCurve());
 			data.m_CameraShake.SetStartOrigin(data.m_vStartMatrix[3]);
-			data.m_CameraShake.SetSizeMultiplier(cameraShakeMultiplier);
+			data.m_CameraShake.SetSizeMultiplier(data.m_fSizeMultiplier);
 			SCR_CameraShakeManagerComponent.AddCameraShake(data.m_CameraShake);
 			SetEventMask(owner, EntityEvent.FRAME);
 		}
@@ -835,7 +884,8 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 	//------------------------------------------------------------------------------------------------
 	//! Called in Frame (while building is sinking)
 	//! Spawns effects which are supposed to spawn at this time
-	protected void SpawnEffects(float percentDone, IEntity owner)
+	//! Immediate destruction = from JIP f. e., only spawn effects that remain after destruction - like ruins prefabs
+	protected void SpawnEffects(float percentDone, IEntity owner, bool immediateDestruction)
 	{
 		SCR_BuildingDestructionData data = GetData();
 		if (!data)
@@ -848,14 +898,20 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 		hitInfo.m_DamageType = EDamageType.KINETIC; // Todo properly store damage type
 		
 		array<ref SCR_TimedEffect> effects = GetEffects();
+		SCR_TimedEffect currentEffect;
 		for (int i = effects.Count() - 1; i >= 0; i--)
 		{
 			if (data.m_aExecutedEffectIndices && data.m_aExecutedEffectIndices.Contains(i))
 				continue;
 			
-			if (effects[i].m_fSpawnTime <= percentDone)
+			currentEffect = effects[i]; // Store it, because each effects[i] is effects.Get(i) call internally
+			
+			if (immediateDestruction && !currentEffect.m_bPersistent)
+				continue; // Skip because destruction happened immediately & effect isn't persistent
+			
+			if (currentEffect.m_fSpawnTime <= percentDone)
 			{
-				effects[i].ExecuteEffect(owner, hitInfo, data);
+				currentEffect.ExecuteEffect(owner, hitInfo, data);
 				
 				// Create the set if it doesn't exist yet
 				if (!data.m_aExecutedEffectIndices)
@@ -880,7 +936,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 		owner.SetObject(null, ""); // Hide the building
 		ClearEventMask(owner, EntityEvent.FRAME);
 		
-		SpawnEffects(1, owner); // Ensure all effects get played
+		SpawnEffects(1, owner, immediate); // Ensure all effects get played
 		
 		SCR_BuildingDestructionData data = GetData();
 		if (!data)
@@ -1068,7 +1124,7 @@ class SCR_DestructibleBuildingComponent : ScriptedDamageManagerComponent
 		float difY = data.m_vTargetOrigin[1] - data.m_vStartMatrix[3][1];
 		float curY = newOrigin[1] - data.m_vStartMatrix[3][1];
 		float percentDone = curY/difY;
-		SpawnEffects(percentDone, owner);
+		SpawnEffects(percentDone, owner, false);
 		
 		if (float.AlmostEqual(newOrigin[0], data.m_vTargetOrigin[0]) && float.AlmostEqual(newOrigin[1], data.m_vTargetOrigin[1]) && float.AlmostEqual(newOrigin[2], data.m_vTargetOrigin[2]))
 			FinishLerp(owner, false);

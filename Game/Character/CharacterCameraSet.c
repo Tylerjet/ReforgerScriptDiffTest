@@ -16,12 +16,15 @@ class CharacterCameraSet : ScriptedCameraSet
 	static const int	CHARACTERCAMERA_3RD_CLIMB				= 15;		//!< climb / vault
 	static const int	CHARACTERCAMERA_3RD_VEHICLE				= 16;		//!< generic vehicle 3rd person
 	static const int	CHARACTERCAMERA_3RD_TURRET				= 17; 		//!< turret camera
+	static const int	CHARACTERCAMERA_3RD_SITTING				= 18; 		//!< sitting loitering camera
 	
 	static const int 	CHARACTERCAMERA_ADS						= 30;		//!< ironsights camera
 	static const int 	CHARACTERCAMERA_OPTICS					= 31;		//!< optics
 	static const int 	CHARACTERCAMERA_BINOCULARS				= 32;		//!< binoculars
 
 	static const int	CHARACTERCAMERA_ADS_VEHICLE				= 33;		//!< turret camera
+	
+	static const int	CHARACTERCAMERA_1ST_UNCONSCIOUS			= 34;		//!< unconscious 1st person
 
 	//! debug view Types
 	static const int DEBUGVIEW_NONE = 0;
@@ -59,7 +62,7 @@ class CharacterCameraSet : ScriptedCameraSet
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_VEHICLE_TRANSITION, CharacterCamera1stPersonVehicleTransition);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_TURRET, CharacterCamera1stPersonTurret);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_READY, CharacterCamera1stPersonReady);
-		
+		RegisterCameraCreator(CHARACTERCAMERA_1ST_UNCONSCIOUS, CharacterCamera1stPersonUnconscious);
 
 		//
 		// 3PV
@@ -72,6 +75,7 @@ class CharacterCameraSet : ScriptedCameraSet
 		RegisterCameraCreator(CHARACTERCAMERA_3RD_CLIMB, CharacterCamera3rdPersonClimb);
 		RegisterCameraCreator(CHARACTERCAMERA_3RD_VEHICLE, CharacterCamera3rdPersonVehicle);
 		RegisterCameraCreator(CHARACTERCAMERA_3RD_TURRET, CharacterCamera3rdPersonTurret);
+		RegisterCameraCreator(CHARACTERCAMERA_3RD_SITTING, CharacterCamera3rdPersonSitting);
 
 		//
 		// ADS + FOCUS
@@ -79,7 +83,7 @@ class CharacterCameraSet : ScriptedCameraSet
 		RegisterCameraCreator(CHARACTERCAMERA_ADS, CharacterCameraADS);
 		//RegisterCameraCreator(CHARACTERCAMERA_OPTICS, CharacterCameraOptics);
 		RegisterCameraCreator(CHARACTERCAMERA_BINOCULARS, CharacterCameraBinoculars);
-		RegisterCameraCreator(CHARACTERCAMERA_ADS_VEHICLE, CharacterCameraADSVehicle);
+		RegisterCameraCreator(CHARACTERCAMERA_ADS_VEHICLE, CharacterCameraADSVehicle);		
 		
 		//! Blend times when changing cameras
 		//! 3rd person erected camera transition

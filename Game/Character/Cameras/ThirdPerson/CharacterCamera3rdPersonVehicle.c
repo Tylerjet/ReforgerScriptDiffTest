@@ -15,6 +15,40 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 	protected float m_fSteeringAngle;
 	protected float m_fInertiaAngle;
 
+	//------------------------------------------------------------------------------------------------
+	protected float m_fHeight;
+	protected float m_fDist_Desired;
+	protected float m_fDist_Min;
+	protected float m_fDist_Max;
+	protected float m_fFOV_SpeedAdjustMax;
+	protected float m_fBobScale;
+	protected float m_fShakeScale;
+	protected float m_fSpeedMax;
+
+	protected IEntity m_OwnerVehicle;
+	protected BaseCompartmentSlot m_pCompartment;
+	protected TurretControllerComponent m_TurretController;
+	protected vector m_vCenter;
+
+	protected vector m_vLastVel;
+	protected vector m_vLastAngVel;
+	protected vector m_vAcceleration;
+
+	protected float m_f3rd_TraceClipPct;
+	protected float m_fBob_FastUp;
+	protected float m_fBob_FastRight;
+	protected float m_fBob_SlowUp;
+	protected float m_fBob_SlowRight;
+	protected float m_fBob_ScaleFast;
+	protected float m_fBob_ScaleSlow;
+	protected float m_fBob_Acceleration;
+
+	//rad
+	protected float m_fAngleThirdPerson;
+
+	protected SCR_VehicleCameraAimpoint m_pCameraAimpointData;
+	protected SCR_VehicleCameraAlignment m_pCameraAlignData;
+
 	//-----------------------------------------------------------------------------
 	void CharacterCamera3rdPersonVehicle(CameraHandlerComponent pCameraHandler)
 	{
@@ -47,14 +81,11 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
 		{
 			m_pCompartment = compartmentAccess.GetCompartment();
-			ForceFreelook(m_pCompartment.GetForceFreeLook());
 			IEntity vehicle = m_pCompartment.GetOwner();
 			if (vehicle)
 			{
 				m_OwnerVehicle = vehicle;
-				BaseControllerComponent controller = m_pCompartment.GetController();
-				if (controller)
-					m_TurretController = TurretControllerComponent.Cast(controller);
+				m_TurretController = TurretControllerComponent.Cast(m_pCompartment.GetController());
 				
 				SCR_VehicleCameraDataComponent vehicleCamData = SCR_VehicleCameraDataComponent.Cast(vehicle.FindComponent(SCR_VehicleCameraDataComponent));
 				if( vehicleCamData )
@@ -205,7 +236,19 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		}
 		
 		if (m_OwnerVehicle)
-			SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleThirdPerson, pOutResult.m_CameraTM);
+		{
+			bool applyCharAngle = true;
+			if (sm_TagLyingCamera != -1)
+			{
+				CharacterAnimationComponent characterAnimationComponent = m_OwnerCharacter.GetAnimationComponent();
+				if (characterAnimationComponent && characterAnimationComponent.IsPrimaryTag(sm_TagLyingCamera))
+					applyCharAngle = false;
+			}
+			if (applyCharAngle)
+				SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleThirdPerson, pOutResult.m_CameraTM);
+			else
+				SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], 0, pOutResult.m_CameraTM);
+		}
 		
 		// other parameters
 		pOutResult.m_fUseHeading 			= 0.0;
@@ -307,38 +350,4 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		
 		return cameraManager.GetVehicleFOV();
 	}
-
-	//------------------------------------------------------------------------------------------------
-	float m_fHeight;
-	float m_fDist_Desired;
-	float m_fDist_Min;
-	float m_fDist_Max;
-	float m_fFOV_SpeedAdjustMax;
-	float m_fBobScale;
-	float m_fShakeScale;
-	float m_fSpeedMax;
-	
-	private IEntity m_OwnerVehicle;
-	private BaseCompartmentSlot m_pCompartment;
-	private TurretControllerComponent m_TurretController;
-	private vector m_vCenter;
-
-	private vector m_vLastVel;
-	private vector m_vLastAngVel;
-	private vector m_vAcceleration;
-	
-	private float m_f3rd_TraceClipPct;
-	private float m_fBob_FastUp;
-	private float m_fBob_FastRight;
-	private float m_fBob_SlowUp;
-	private float m_fBob_SlowRight;
-	private float m_fBob_ScaleFast;
-	private float m_fBob_ScaleSlow;
-	private float m_fBob_Acceleration;
-	
-	//rad
-	private float m_fAngleThirdPerson;
-	
-	private SCR_VehicleCameraAimpoint m_pCameraAimpointData;
-	private SCR_VehicleCameraAlignment m_pCameraAlignData;
-};
+}

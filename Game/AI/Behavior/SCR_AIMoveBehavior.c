@@ -6,7 +6,7 @@ class SCR_AIMoveBehaviorBase : SCR_AIBehaviorBase
 	void SCR_AIMoveBehaviorBase(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priority = PRIORITY_BEHAVIOR_MOVE, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		m_vPosition.Init(this, pos);
-		m_fPriority = priority;
+		SetPriority(priority);
 		m_fPriorityLevel.m_Value = priorityLevel;
 	}
 };
@@ -31,15 +31,7 @@ class SCR_AIMoveIndividuallyBehavior : SCR_AIMoveBehaviorBase
 {
 	ref SCR_BTParamAssignable<IEntity> m_Entity = new SCR_BTParamAssignable<IEntity>(SCR_AIActionTask.ENTITY_PORT);
 	ref SCR_BTParamAssignable<float> m_Radius = new SCR_BTParamAssignable<float>(SCR_AIActionTask.RADIUS_PORT);
-	
-	//-----------------------------------------------------------------------------------------------------
-	override float Evaluate()
-	{
-		//Print(vector.Distance(m_vPosition, m_Utility.m_vOwnerPos));
-			return super.Evaluate();
-	}
-
-	
+		
 	//-----------------------------------------------------------------------------------------------------
 	void SCR_AIMoveIndividuallyBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priority = PRIORITY_BEHAVIOR_MOVE_INDIVIDUALLY, float priorityLevel = PRIORITY_LEVEL_NORMAL, IEntity ent = null, float radius = 1.0)
 	{
@@ -64,21 +56,30 @@ class SCR_AIMoveAndInvestigateBehavior : SCR_AIMoveBehaviorBase
 	ref SCR_BTParam<float> m_fRadius = new SCR_BTParam<float>(SCR_AIActionTask.RADIUS_PORT);
 	ref SCR_BTParam<bool> m_bResetTimer = new SCR_BTParam<bool>(SCR_AIActionTask.RESET_TIMER_PORT);
 	ref SCR_BTParam<float> m_fTimeOut = new SCR_BTParam<float>(SCR_AIActionTask.TIMEOUT_PORT);
+	ref SCR_BTParam<float> m_fDuration = new SCR_BTParam<float>("Duration"); // How much to investigate once we have arrived
 	
 	EAIUnitType m_eTargetUnitType;
+	float m_fTimeStamp;													// world time when constructor of behavior is called
+	bool m_bCanTimeout = true;											// can timeout when not executed?
+	protected static const float INVESTIGATION_TIMEOUT_MS = 20000;		// how long it can take NOT to investigate before the investigation becomes obsolete in ms
 	
 	//-----------------------------------------------------------------------------------------------------
-	void SCR_AIMoveAndInvestigateBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priority = PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE, float priorityLevel = PRIORITY_LEVEL_NORMAL, float radius = 10, bool isDangerous = true, EAIUnitType targetUnitType = EAIUnitType.UnitType_Infantry)
+	void SCR_AIMoveAndInvestigateBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priority = PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE, float priorityLevel = PRIORITY_LEVEL_NORMAL, float radius = 10, bool isDangerous = true, EAIUnitType targetUnitType = EAIUnitType.UnitType_Infantry, float duration = 10.0)
 	{
 		m_bIsDangerous.Init(this, isDangerous);
 		m_fRadius.Init(this, radius);
 		m_bResetTimer.Init(this, false);
-		m_fTimeOut.Init(this, Math.RandomFloat(20,50));
+		//m_fTimeOut.Init(this, Math.RandomFloat(20,50));
+		m_fTimeOut.Init(this, 5.0 * 60.0); // For now it's a reasonable long enough time
+		m_fDuration.Init(this, Math.RandomFloat(0.8*duration, 1.2*duration));
 		m_eTargetUnitType = targetUnitType;
 		
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/MoveAndInvestigate.bt";
 		if (m_Utility)
-			m_Utility.SetInvestigationDestination(pos);
+		{
+			// marking time of creation of this move and investigate (world time)
+			m_fTimeStamp = GetGame().GetWorld().GetWorldTime();
+		}
 		
 		// If target is dangerous, during execution of this action we will increase our threat level
 		// Aim of this is to be in alerted state through the action, so that when we encounter enemy again,
@@ -91,23 +92,8 @@ class SCR_AIMoveAndInvestigateBehavior : SCR_AIMoveBehaviorBase
 	override void OnActionSelected()
 	{
 		super.OnActionSelected();
-		
+		m_bCanTimeout = false;
 		m_Utility.m_CombatComponent.SetExpectedEnemyType(m_eTargetUnitType);
-	}
-	
-	//-----------------------------------------------------------------------------------------------------
-	override void OnActionDeselected()
-	{
-		// when switching from this behavior, it becomes obsolete to continue investigating lost target
-		Fail();
-		m_Utility.ClearInvestigationDestination();
-		super.OnActionDeselected();
-	}
-	
-	//-----------------------------------------------------------------------------------------------------
-	void OnReceivedIrrelevantInvestigation()
-	{
-		m_bResetTimer.m_Value = true;
 	}
 };
 

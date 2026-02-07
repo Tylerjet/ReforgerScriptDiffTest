@@ -50,7 +50,8 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
-		if (m_bMouseOverToFocus && GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.MOUSE)
+		// Do not remove the 'w.IsFocusable()' part of condition, it ensures that refocusing is happening only in case mouse enters focusable widget
+		if (m_bMouseOverToFocus && w.IsFocusable() && GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.MOUSE)
 		{
 			GetGame().GetWorkspace().SetFocusedWidget(null);
 			GetGame().GetWorkspace().SetFocusedWidget(w);
@@ -211,10 +212,10 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 	{
 		m_bMouseOverToFocus = mouseOverToFocus;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	Widget GetRootWidget()
+	void SetDisabledOpacity(float newDisabledOpacity)
 	{
-		return m_wRoot;
+		m_fDisabledOpacity = newDisabledOpacity;
 	}
 };

@@ -21,7 +21,8 @@ class SCR_AIBaseTargetToTargetInfo : AITaskScripted
 		
 		if (!GetVariableIn(BASE_TARGET, baseTarget))
 			return NodeError(this, owner, "No base target provided!");
-		m_TargetInfo = new SCR_AITargetInfo(baseTarget.GetTargetEntity(), baseTarget.GetLastSeenPosition(), baseTarget.GetTimeLastSeen());
+		m_TargetInfo = new SCR_AITargetInfo();
+		m_TargetInfo.InitFromBaseTarget(baseTarget);
 		SetVariableOut(TARGET_INFO_PORT, m_TargetInfo);
 		return ENodeResult.SUCCESS;
 	}

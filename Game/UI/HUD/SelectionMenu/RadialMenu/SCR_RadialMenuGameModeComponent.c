@@ -1,11 +1,11 @@
 [EntityEditorProps(category: "GameScripted/UI/RadialMenu", description: "Common radial menu.")]
-class SCR_RadialMenuGameModeComponentClass : SCR_BaseGameModeComponentClass
+class SCR_RadialMenuGameModeComponentClass : ScriptComponentClass
 {
 	// prefab properties here
 };
 
 //------------------------------------------------------------------------------------------------
-class SCR_RadialMenuGameModeComponent : SCR_BaseGameModeComponent
+class SCR_RadialMenuGameModeComponent : ScriptComponent
 {
 	[Attribute()]
 	protected ref SCR_RadialMenu m_Menu;

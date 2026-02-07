@@ -62,8 +62,8 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	proto external float GetOccupiedSpace();
 	//! does current storage serves as a compartment of other storage
 	proto external bool IsCompartment();
-	//! implemented for convinience - fills array with attached items including items from storage compartments (depth 0)
-	proto external void GetOwnedItems(out notnull array<IEntity> outItems);
+	//! Fills array with attached items including items from storage compartments
+	proto external void GetOwnedItems(out notnull array<InventoryItemComponent> outItemsComponents);
 	/*!
 	Fills array with attached storages up to provided hierarchy depth
 	for every top level storage depth with even number will reach compartments level and odd will reach storages attached to slots (including compartment slots)

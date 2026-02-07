@@ -4,46 +4,78 @@ class SCR_FuelConsumptionComponentClass: ScriptGameComponentClass
 	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Automatic fuel tank switching. Automatically select next fuel tank upon depletion of current fuel tank." )]
 	bool m_bAutomaticFuelTankSwitching;
 	
-	[Attribute( defvalue: "20", uiwidget: UIWidgets.Auto, desc: "Fuel consumption at max power RPM [liters/hour]" )]
+	[Attribute( defvalue: "20", uiwidget: UIWidgets.Auto, desc: "Fuel consumption at max power RPM\n[liters/hour]" )]
 	float m_fFuelConsumption;
 	
-	[Attribute( defvalue: "0.5", uiwidget: UIWidgets.Auto, desc: "Fuel consumption idle [liters/hour]" )]
+	[Attribute( defvalue: "0.5", uiwidget: UIWidgets.Auto, desc: "Fuel consumption idle\n[liters/hour]" )]
 	float m_fFuelConsumptionIdle;
 };
 
 //------------------------------------------------------------------------------------------------
 class SCR_FuelConsumptionComponent : ScriptGameComponent
 {
-	static const float							MIN_FUEL 			= 0;
-	static const float							MIN_THRUST	 		= 0.04;
-	static const float							MIN_CLUTCH		 	= 0.04;
-	static const float							NEUTRAL_GEAR	 	= 1;
-	static const float							TIME_STEP			= 1;
+	protected const float							SECOND_TO_HOUR		= 1/3600;
+	protected const float							MIN_FUEL			= 0;
+	protected const float							MIN_THRUST			= 0.04;
+	protected const float							MIN_CLUTCH			= 0.04;
+	protected const float							NEUTRAL_GEAR		= 1;
+	protected const float							TIME_STEP			= 1;
 	
-	private float								m_fTimeDelta;
-	private BaseFuelNode						m_pCurrentFuelTank;
-	private VehicleWheeledSimulation			m_pVehicleWheeledSim;
-	private SCR_FuelConsumptionComponentClass	m_pComponentData;
-
-	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
-
+	protected float									m_fTimeDelta;
+	protected BaseFuelNode							m_CurrentFuelTank;
+	protected VehicleBaseSimulation					m_Simulation;
+	protected SCR_FuelConsumptionComponentClass		m_ComponentData;
+	
+	//~ Global Fuel consumption scale for vehicles (and other fuel consumers). x1 means the fuel consumption is roughly equal to real world fuel consumption
+	protected static float s_fGlobalFuelConsumptionScale = 4;
+	
+	//------------------------------------------------------------------------------------------------
+	/*
+	Set Fuel consumption scale of vehicles (and other fuel consumers) (Server only)
+	\param globalFuelConsumptionScale New fuel consumption scale
+	\param playerThatChangedValue Optional, if value given then a notification is send on scale changed 
+	*/
+	static void SetGlobalFuelConsumptionScale(float globalFuelConsumptionScale, int playerThatChangedValue = -1)
+	{
+		if (s_fGlobalFuelConsumptionScale == globalFuelConsumptionScale || globalFuelConsumptionScale < 0)
+			return;
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gameMode || gameMode.IsMaster())
+		{
+			//~ Send notification when fuel consumption scale is changed and player Id is given
+			if (playerThatChangedValue > 0)
+				SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_CHANGED_FUEL_CONSUMPTION_SCALE, playerThatChangedValue, globalFuelConsumptionScale * 100);
+		
+			s_fGlobalFuelConsumptionScale = globalFuelConsumptionScale;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*
+	\return Global Fuel consumption Scale
+	*/
+	static float GetGlobalFuelConsumptionScale()
+	{
+		return s_fGlobalFuelConsumptionScale;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! switch the actual fuel tank (i.e. by a switch on the dashboard)
 	void SetCurrentFuelTank(int iFuelTankID)
 	{
-		m_pCurrentFuelTank = GetFuelTankByID(iFuelTankID);
+		m_CurrentFuelTank = FindFuelTankByID(iFuelTankID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	BaseFuelNode GetCurrentFuelTank()
 	{
-		return m_pCurrentFuelTank;
+		return m_CurrentFuelTank;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! returns the fuel tank pointer by the given FuelTankID
-	private BaseFuelNode GetFuelTankByID(int iFuelTankID)
+	protected BaseFuelNode FindFuelTankByID(int iFuelTankID)
 	{
 		FuelManagerComponent fuelManager = FuelManagerComponent.Cast(GetOwner().FindComponent(FuelManagerComponent));
 		if (!fuelManager)
@@ -86,18 +118,18 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	void SetEnabled(bool enabled)
 	{
-		if (!m_pComponentData)
+		if (!m_ComponentData)
 			return;
 		
 		// Irrelevant on proxies
 		RplComponent rpl = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-		if (rpl.IsProxy())
+		if (rpl && rpl.IsProxy())
 			return;
 		
-		if (enabled && GetEventMask() | EntityEvent.FIXEDFRAME)
+		if (enabled && GetEventMask() & EntityEvent.FIXEDFRAME)
 			m_fTimeDelta = 0;
 		
-		if (m_pVehicleWheeledSim)
+		if (m_Simulation)
 			Update();
 		else
 			enabled = false;
@@ -113,39 +145,137 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 	void Update()
 	{
 		// if there is fuel in the actual tank
-		if (!m_pCurrentFuelTank || m_pCurrentFuelTank.GetFuel() <= MIN_FUEL)
+		if (!m_CurrentFuelTank || m_CurrentFuelTank.GetFuel() <= MIN_FUEL)
 		{
-			// auto switching not disabled
-			if (m_pComponentData.m_bAutomaticFuelTankSwitching)
-				m_pCurrentFuelTank = FindNonEmptyFuelTank();
+			// automatic switching not disabled
+			if (m_ComponentData.m_bAutomaticFuelTankSwitching)
+				m_CurrentFuelTank = FindNonEmptyFuelTank();
 			else
-				m_pCurrentFuelTank = null;
+				m_CurrentFuelTank = null;
 		}
 		
 		// vehicle has at least one fuel tank
-		if (m_pCurrentFuelTank)
+		if (m_CurrentFuelTank)
 		{
 			float currentConsumption;
-			float currentThrust = m_pVehicleWheeledSim.GetThrottle();
-			if (currentThrust >= MIN_THRUST || (m_pVehicleWheeledSim.GetGear() != NEUTRAL_GEAR && m_pVehicleWheeledSim.GetClutch() >= MIN_CLUTCH))
-				currentConsumption = m_pComponentData.m_fFuelConsumption * currentThrust * m_pVehicleWheeledSim.EngineGetRPM() / m_pVehicleWheeledSim.EngineGetRPMPeakPower();
+
+			if(GetGame().GetIsClientAuthority())
+			{
+				VehicleWheeledSimulation wheeledSimulation = VehicleWheeledSimulation.Cast(m_Simulation);
+				if (wheeledSimulation)
+				{
+					float throttle = wheeledSimulation.GetThrottle();
+					if (throttle >= MIN_THRUST && wheeledSimulation.GetGear() != NEUTRAL_GEAR && wheeledSimulation.GetClutch() >= MIN_CLUTCH)
+						currentConsumption = m_ComponentData.m_fFuelConsumption * throttle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMPeakTorque();
+					else if (throttle >= MIN_THRUST)
+						currentConsumption = m_ComponentData.m_fFuelConsumptionIdle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMIdle();
+					else
+						currentConsumption = m_ComponentData.m_fFuelConsumptionIdle;
+				}
+	
+				VehicleHelicopterSimulation helicopterSimulation = VehicleHelicopterSimulation.Cast(m_Simulation);
+				if (helicopterSimulation)
+				{
+					currentConsumption = m_ComponentData.m_fFuelConsumption;
+				}
+	
+				// Scale and convert consumption rate per hour to per second
+				float consumptionScale = m_fTimeDelta * s_fGlobalFuelConsumptionScale * SECOND_TO_HOUR;
+	
+				float newFuel = m_CurrentFuelTank.GetFuel() - currentConsumption * consumptionScale;
+	
+	#ifdef ENABLE_DIAG
+				if (wheeledSimulation && currentConsumption > 0 && DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_VEHICLES_FUEL_CONSUMPTION))
+				{
+					float throttle = wheeledSimulation.GetThrottle();
+					float speed = wheeledSimulation.GetSpeedKmh();
+					float range;
+					
+					if (s_fGlobalFuelConsumptionScale != 0 && currentConsumption != 0)
+						range = speed * newFuel / (currentConsumption * s_fGlobalFuelConsumptionScale);
+					else 
+						range = -1;
+					
+					float litersPer100KM;
+					if (speed > 0)
+						litersPer100KM = currentConsumption * 100 / speed;
+	
+					Print(throttle);
+					Print(speed);
+					Print(currentConsumption);
+					Print(newFuel);
+					Print(range);
+					Print(litersPer100KM);
+				}
+	#endif // ENABLE_DIAG
+				m_CurrentFuelTank.SetFuel(newFuel);
+			}
 			else
-				currentConsumption = m_pComponentData.m_fFuelConsumptionIdle;
-			
-			// Scale hourly
-			currentConsumption *= m_fTimeDelta * GAME_ACCELERATION_FACTOR / 3600;
-			
-			SCR_FuelNode scrFuelNode = SCR_FuelNode.Cast(m_pCurrentFuelTank);
-			if (scrFuelNode)
-				scrFuelNode.ConsumeFuelExt(currentConsumption);
-			else
-				m_pCurrentFuelTank.SetFuel(m_pCurrentFuelTank.GetFuel() - currentConsumption);
+			{
+				VehicleWheeledSimulation_SA wheeledSimulation = VehicleWheeledSimulation_SA.Cast(m_Simulation);
+				if (wheeledSimulation)
+				{
+					float throttle = wheeledSimulation.GetThrottle();
+					if (throttle >= MIN_THRUST && wheeledSimulation.GetGear() != NEUTRAL_GEAR && wheeledSimulation.GetClutch() >= MIN_CLUTCH)
+						currentConsumption = m_ComponentData.m_fFuelConsumption * throttle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMPeakTorque();
+					else if (throttle >= MIN_THRUST)
+						currentConsumption = m_ComponentData.m_fFuelConsumptionIdle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMIdle();
+					else
+						currentConsumption = m_ComponentData.m_fFuelConsumptionIdle;
+				}
+	
+				VehicleHelicopterSimulation helicopterSimulation = VehicleHelicopterSimulation.Cast(m_Simulation);
+				if (helicopterSimulation)
+				{
+					currentConsumption = m_ComponentData.m_fFuelConsumption;
+				}
+	
+				// Scale and convert consumption rate per hour to per second
+				float consumptionScale = m_fTimeDelta * s_fGlobalFuelConsumptionScale * SECOND_TO_HOUR;
+	
+				float newFuel = m_CurrentFuelTank.GetFuel() - currentConsumption * consumptionScale;
+	
+	#ifdef ENABLE_DIAG
+				if (wheeledSimulation && currentConsumption > 0 && DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_VEHICLES_FUEL_CONSUMPTION))
+				{
+					float throttle = wheeledSimulation.GetThrottle();
+					float speed = wheeledSimulation.GetSpeedKmh();
+					float range;
+					
+					if (s_fGlobalFuelConsumptionScale != 0 && currentConsumption != 0)
+						range = speed * newFuel / (currentConsumption * s_fGlobalFuelConsumptionScale);
+					else 
+						range = -1;
+					
+					float litersPer100KM;
+					if (speed > 0)
+						litersPer100KM = currentConsumption * 100 / speed;
+	
+					Print(throttle);
+					Print(speed);
+					Print(currentConsumption);
+					Print(newFuel);
+					Print(range);
+					Print(litersPer100KM);
+				}
+	#endif // ENABLE_DIAG
+				m_CurrentFuelTank.SetFuel(newFuel);
+			}		
 		}
 		else
 		{
-			VehicleControllerComponent controller = VehicleControllerComponent.Cast(GetOwner().FindComponent(VehicleControllerComponent));
-			if (controller)
-				controller.StopEngine(false);
+			if(GetGame().GetIsClientAuthority())
+			{
+				VehicleControllerComponent controller = VehicleControllerComponent.Cast(GetOwner().FindComponent(VehicleControllerComponent));
+				if (controller)
+					controller.StopEngine(false);
+			}
+			else
+			{
+				VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(GetOwner().FindComponent(VehicleControllerComponent_SA));
+				if (controller)
+					controller.StopEngine(false);
+			}
 		}
 		
 		m_fTimeDelta = 0;
@@ -164,13 +294,13 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		m_pComponentData = SCR_FuelConsumptionComponentClass.Cast(GetComponentData(owner));
-		if (!m_pComponentData)
+		m_ComponentData = SCR_FuelConsumptionComponentClass.Cast(GetComponentData(owner));
+		if (!m_ComponentData)
 			return;
 		
 		// Irrelevant on proxies
 		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
-		if (!rpl.IsProxy())
+		if (rpl && !rpl.IsProxy())
 			SetEventMask(owner, EntityEvent.INIT);
 	}
 	
@@ -180,14 +310,37 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 		FuelManagerComponent fuelManager = FuelManagerComponent.Cast(owner.FindComponent(FuelManagerComponent));
 		if (!fuelManager)
 			return;
-		
-		m_pCurrentFuelTank = FindNonEmptyFuelTank();
 
-		m_pVehicleWheeledSim = VehicleWheeledSimulation.Cast(owner.FindComponent(VehicleWheeledSimulation));
-		if (m_pVehicleWheeledSim && !m_pVehicleWheeledSim.IsValid())
-			m_pVehicleWheeledSim = null;
+		m_CurrentFuelTank = FindNonEmptyFuelTank();
+
+		m_Simulation = VehicleBaseSimulation.Cast(owner.FindComponent(VehicleBaseSimulation));
+
+		if (m_Simulation && !m_Simulation.IsValid())
+			m_Simulation = null;
 		
-		if (m_pVehicleWheeledSim && m_pVehicleWheeledSim.EngineIsOn())
+		if (!m_Simulation)
+			return;
+
+		if(GetGame().GetIsClientAuthority())
+		{
+			VehicleWheeledSimulation wheeledSimulation = VehicleWheeledSimulation.Cast(m_Simulation);
+			if (wheeledSimulation && wheeledSimulation.EngineIsOn())
+				SetEnabled(true);
+		}
+		else
+		{
+			VehicleWheeledSimulation_SA wheeledSimulation = VehicleWheeledSimulation_SA.Cast(m_Simulation);
+			if (wheeledSimulation && wheeledSimulation.EngineIsOn())
+				SetEnabled(true);
+		}
+		
+
+		VehicleHelicopterSimulation helicopterSimulation = VehicleHelicopterSimulation.Cast(m_Simulation);
+		if (helicopterSimulation && helicopterSimulation.EngineIsOn())
 			SetEnabled(true);
+		
+#ifdef ENABLE_DIAG
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_VEHICLES_FUEL_CONSUMPTION, "", "Fuel consumption", "Vehicles");
+#endif // ENABLE_DIAG
 	}
 };

@@ -70,7 +70,7 @@ class EndGameAction : IScoringAction
 		if (score < m_iScoreLimit)
 			return;
 
-		ref SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(SCR_GameModeEndData.ENDREASON_SCORELIMIT, winnerId: playerId);
+		ref SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(EGameOverTypes.ENDREASON_SCORELIMIT, winnerId: playerId);
 		Execute(endData);
 	}
 
@@ -84,7 +84,7 @@ class EndGameAction : IScoringAction
 			return;
 		
 		int factionIndex = GetGame().GetFactionManager().GetFactionIndex(faction);
-		ref SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(SCR_GameModeEndData.ENDREASON_SCORELIMIT, winnerFactionId: factionIndex );
+		ref SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(EGameOverTypes.ENDREASON_SCORELIMIT, winnerFactionId: factionIndex );
 		Execute(endData);
 	}
 };

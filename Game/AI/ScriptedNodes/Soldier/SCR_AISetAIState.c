@@ -15,8 +15,11 @@ class SCR_AISetAIState : AITaskScripted
 		EUnitAIState state;
 		if(!GetVariableIn(PORT_AI_STATE,state))
 			state = m_stateToSet;
+		SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(owner);
+		if (!chimeraAgent)
+			return SCR_AgentMustChimera(this, owner);
 		
-		SCR_AIInfoComponent infoComp = 	SCR_AIInfoComponent.Cast(owner.FindComponent(SCR_AIInfoComponent));
+		SCR_AIInfoComponent infoComp = 	chimeraAgent.m_InfoComponent;
 		if (!infoComp)
 			ENodeResult.FAIL;
 		

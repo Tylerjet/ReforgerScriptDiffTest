@@ -3,14 +3,14 @@ class SCR_DataCollectorDriverModuleContext : Managed
 	IEntity m_Player;
 	IEntity m_Vehicle;
 	bool m_bPilot;
-	
+
 	void SCR_DataCollectorDriverModuleContext(notnull IEntity player, notnull IEntity vehicle, bool pilot)
 	{
 		m_Player = player;
 		m_Vehicle = vehicle;
 		m_bPilot = pilot;
 	}
-}
+};
 
 [BaseContainerProps()]
 class SCR_DataCollectorDriverModule : SCR_DataCollectorModule
@@ -57,6 +57,7 @@ class SCR_DataCollectorDriverModule : SCR_DataCollectorModule
 			Print("ERROR IN DATACOLLECTOR DRIVER MODULE: TARGETENTITY OR MANAGER ARE EMPTY.", LogLevel.ERROR);
 			return;
 		}
+
 		BaseCompartmentSlot compartment = manager.FindCompartment(slotID, mgrID);
 		if (!compartment)
 			return;
@@ -68,7 +69,7 @@ class SCR_DataCollectorDriverModule : SCR_DataCollectorModule
 		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(playerEntity);
 		if (playerID == 0) // Non-player character
 			return;
-		
+
 		m_mTrackedPlayersInVehicles.Insert(playerID, new SCR_DataCollectorDriverModuleContext(playerEntity, targetEntity, SCR_CompartmentAccessComponent.GetCompartmentType(compartment) == ECompartmentType.Pilot));
 	}
 
@@ -87,8 +88,9 @@ class SCR_DataCollectorDriverModule : SCR_DataCollectorModule
 		SCR_DataCollectorDriverModuleContext playerContext = m_mTrackedPlayersInVehicles.Get(playerID);
 		if (!playerContext)
 			return;
-		
+
 		//If the player died, blame the driver of that vehicle
+		//QUESTION: WHAT IF THE PLAYER SUICIDES IN A VEHICLE
 		ChimeraCharacter playerChimeraCharacter = ChimeraCharacter.Cast(playerContext.m_Player);
 		if (playerChimeraCharacter && playerChimeraCharacter.GetDamageManager().GetState() == EDamageState.DESTROYED)
 			PlayerDied(playerID, playerContext);
@@ -114,12 +116,13 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 			int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(from);
 			m_mTrackedPlayersInVehicles.Remove(playerID);
 		}
-		
+
 	}
 #endif
 */
-	
+
 	//------------------------------------------------------------------------------------------------
+	//We call this method when a player dies and its ejected from a vehicle dead
 	protected void PlayerDied(int PlayerID, notnull SCR_DataCollectorDriverModuleContext playerContext)
 	{
 		//TODO: Replace this using a C++ implemented method to get the count of occupants of the vehicle
@@ -127,23 +130,35 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 		SCR_BaseCompartmentManagerComponent compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(playerContext.m_Vehicle.FindComponent(SCR_BaseCompartmentManagerComponent));
 		if (!compartmentManager)
 			return;
-		
+
 		array<IEntity> occupants = {};
 		compartmentManager.GetOccupants(occupants);
-		
+
 		if (occupants.Count() <= 1) //player was alone in vehicle. Do nothing
 			return;
 		/**********************************************************************************************/
 
 		if (playerContext.m_bPilot)
 		{
-			Print("OK PLAYER KILLED WAS A PILOT. ADDING "+(occupants.Count()-1), LogLevel.ERROR);
+			array<IEntity> checkPilot = {};
+			compartmentManager.GetOccupantsOfType(checkPilot, ECompartmentType.Pilot);
+
+			if (checkPilot.IsEmpty())
+			{
+				Print("DataCollectorDriveModule: Pilot died but according to the compartmentManager there's no pilot. !!!", LogLevel.ERROR);
+			}
+			//check if pilot is pilot
+			else if (playerContext.m_Player != checkPilot.Get(0))
+			{
+				Print("DataCollectorDriveModule: The pilot from the context is not the pilot from the compartments. !!", LogLevel.ERROR);
+			}
+
 			//The driver was killed.
 			//All players from the vehicle are in danger now because of the pilot's death, so we act as if they died
 			GetGame().GetDataCollector().GetPlayerData(PlayerID).AddStat(SCR_EDataStats.PLAYERS_DIED_IN_VEHICLE, occupants.Count()-1);
 			return;
 		}
-		
+
 		//Find if there's a pilot and their ID
 		array<IEntity> pilot = {};
 		compartmentManager.GetOccupantsOfType(pilot, ECompartmentType.Pilot);
@@ -157,7 +172,7 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 
 		if (pilotID == 0)
 			return; //Pilot is an AI
-Print("OK PLAYER DIED. ADDING ONLY 1", LogLevel.ERROR);
+
 		//A player died and it was not the pilot. So the pilot has someone dying on their vehicle
 		GetGame().GetDataCollector().GetPlayerData(PlayerID).AddStat(SCR_EDataStats.PLAYERS_DIED_IN_VEHICLE, 1);
 		//TODO: Make sure it is not possible to add this kill multiple times to the pilot if all players die simultaneously
@@ -167,8 +182,9 @@ Print("OK PLAYER DIED. ADDING ONLY 1", LogLevel.ERROR);
 	override void OnPlayerKilled(int playerID, IEntity player, IEntity killer)
 	{
 		//We are only looking for roadkills here. That's why we don't call super.OnPlayerKilled. This behaviour is very specific
-		
-		if (!player || !killer)
+
+		//if there's a null or the player killed themselves by using the respawn feature, do nothing
+		if (!player || !killer || (player == killer))
 			return;
 
 		int killerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(killer);
@@ -177,22 +193,9 @@ Print("OK PLAYER DIED. ADDING ONLY 1", LogLevel.ERROR);
 		if (killerID == 0)
 			return;
 
-		//Find compartment of killer to see if they are a driver
-		ChimeraCharacter killerChimeraCharacter = ChimeraCharacter.Cast(killer);
-		if (!killerChimeraCharacter)
-			return;
-
-		CompartmentAccessComponent killerCompartmentAccessComponent = killerChimeraCharacter.GetCompartmentAccessComponent();
-		if (!killerCompartmentAccessComponent)
-			return;
-
-		BaseCompartmentSlot killerCompartmentSlot = killerCompartmentAccessComponent.GetCompartment();
-
-		if (!killerCompartmentSlot)
-			return;
-
-		//Check if killer is a driver
-		if (SCR_CompartmentAccessComponent.GetCompartmentType(killerCompartmentSlot) != ECompartmentType.Pilot)
+		SCR_DataCollectorDriverModuleContext killerContext = m_mTrackedPlayersInVehicles.Get(killerID);
+		//If the killer is not tracked as a driver, then this was no roadkill
+		if (!killerContext || !killerContext.m_bPilot)
 			return;
 
 		//Now we know the killer is not an AI and they are a driver. Add roadkill!
@@ -202,32 +205,66 @@ Print("OK PLAYER DIED. ADDING ONLY 1", LogLevel.ERROR);
 		FactionAffiliationComponent victimAffiliation = FactionAffiliationComponent.Cast(player.FindComponent(FactionAffiliationComponent));
 		if (!victimAffiliation)
 			return;
-		
+
 		FactionAffiliationComponent killerAffiliation = FactionAffiliationComponent.Cast(killer.FindComponent(FactionAffiliationComponent));
 		if (!killerAffiliation)
 			return;
-		
+
 		Faction victimFaction = victimAffiliation.GetAffiliatedFaction();
 		Faction killerFaction = killerAffiliation.GetAffiliatedFaction();
 
-		//Add a kill. Find if friendly or unfriendly and if opponent AI or opponent player
-		//If factions exist, AddRoadKill(bool) and AddAIRoadKill(bool) will do the rest
+		//Add a kill. Find if friendly or unfriendly
 		if (killerFaction && victimFaction)
 		{
-			if (playerID != 0)
-			{
-				if (killerFaction.IsFactionFriendly(victimFaction))
-					killerData.AddStat(SCR_EDataStats.FRIENDLY_ROADKILLS);
-				else
-					killerData.AddStat(SCR_EDataStats.ROADKILLS);
-			}	
+			if (killerFaction.IsFactionFriendly(victimFaction))
+				killerData.AddStat(SCR_EDataStats.FRIENDLY_ROADKILLS);
 			else
-			{
-				if (killerFaction.IsFactionFriendly(victimFaction))
-					killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_ROADKILLS);
-				else
-					killerData.AddStat(SCR_EDataStats.AI_ROADKILLS);
-			}
+				killerData.AddStat(SCR_EDataStats.ROADKILLS);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnAIKilled(IEntity AI, IEntity killer)
+	{
+		//We are only looking for roadkills here. That's why we don't call super.OnAIKilled. This behaviour is very specific
+
+		//This code has many similarities with OnPlayerKilled.
+		//It would be nice to have only one method for OnCharacterKilled instead of having this duplicity
+
+		if (!AI || !killer)
+			return;
+
+		int killerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(killer);
+
+		if (killerID == 0)
+			return;
+
+		SCR_DataCollectorDriverModuleContext killerContext = m_mTrackedPlayersInVehicles.Get(killerID);
+		//If the killer is not tracked as a driver, then this was no roadkill
+		if (!killerContext || !killerContext.m_bPilot)
+			return;
+
+		//Now we know the killer is not an AI and they are a driver. Add roadkill!
+		SCR_PlayerData killerData = GetGame().GetDataCollector().GetPlayerData(killerID);
+
+		FactionAffiliationComponent victimAffiliation = FactionAffiliationComponent.Cast(AI.FindComponent(FactionAffiliationComponent));
+		if (!victimAffiliation)
+			return;
+
+		FactionAffiliationComponent killerAffiliation = FactionAffiliationComponent.Cast(killer.FindComponent(FactionAffiliationComponent));
+		if (!killerAffiliation)
+			return;
+
+		Faction victimFaction = victimAffiliation.GetAffiliatedFaction();
+		Faction killerFaction = killerAffiliation.GetAffiliatedFaction();
+
+		//Add an AI kill. Find if friendly or unfriendly
+		if (killerFaction && victimFaction)
+		{
+			if (killerFaction.IsFactionFriendly(victimFaction))
+				killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_ROADKILLS);
+			else
+				killerData.AddStat(SCR_EDataStats.AI_ROADKILLS);
 		}
 	}
 
@@ -242,7 +279,7 @@ Print("OK PLAYER DIED. ADDING ONLY 1", LogLevel.ERROR);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void Update(IEntity owner, float timeTick)
+	override void Update(float timeTick)
 	{
 		//If there are no players tracked, do nothing
 		if (m_mTrackedPlayersInVehicles.IsEmpty())
@@ -250,67 +287,70 @@ Print("OK PLAYER DIED. ADDING ONLY 1", LogLevel.ERROR);
 
 		m_fTimeSinceUpdate += timeTick;
 
-		if (m_fTimeSinceUpdate < TIME_TO_UPDATE)
+		if (m_fTimeSinceUpdate < m_fUpdatePeriod)
 			return;
 
-		SCR_BaseCompartmentManagerComponent compartmentManagerComponent;
-		SCR_DataCollectorDriverModuleContext playerContext;
-		SCR_PlayerData playerData;
-		
-		Physics physics;
-		float distanceTraveled;
-		
-		//for (MapIterator iterator = m_mTrackedPlayersInVehicles.Begin(); iterator != m_mTrackedPlayersInVehicles.End(); iterator++)
-		for (int i = 0; i < m_mTrackedPlayersInVehicles.Count(); ++i)
+		for (int i = 0, count = m_mTrackedPlayersInVehicles.Count(); i < count; i++)
 		{
-			//playerContext = m_mTrackedPlayersInVehicles.GetIteratorElement(iterator);
-			playerContext = m_mTrackedPlayersInVehicles.GetElement(i);
-			
-			physics = playerContext.m_Vehicle.GetPhysics();
-			if (!physics)
+			SCR_DataCollectorDriverModuleContext playerContext = m_mTrackedPlayersInVehicles.GetElement(i);
+			if (!playerContext.m_Player || !playerContext.m_Vehicle)
+			{
+				Print("DataCollectorDriverModule:Update: this context's player or vehicle is null. Removing it from the list", LogLevel.WARNING);
+				m_mTrackedPlayersInVehicles.RemoveElement(i);
 				continue;
+			}
 
-			distanceTraveled = physics.GetVelocity().Length() * m_fTimeSinceUpdate;
+			Physics physics = playerContext.m_Vehicle.GetPhysics();
+			if (!physics)
+			{
+				Print("DataCollectorDriverModule:Update: Couldn't find the vehicle's physics. Player ID: " + m_mTrackedPlayersInVehicles.GetKey(i) + ". Player is a pilot: " + playerContext.m_bPilot, LogLevel.WARNING);
+				continue;
+			}
+
+			float distanceTraveled = physics.GetVelocity().Length() * m_fTimeSinceUpdate;
 			if (distanceTraveled < 1)
 				continue;
-			
-			//playerData = GetGame().GetDataCollector().GetPlayerData(m_mTrackedPlayersInVehicles.GetIteratorKey(iterator));
-			playerData = GetGame().GetDataCollector().GetPlayerData(m_mTrackedPlayersInVehicles.GetKey(i));
+
+			SCR_PlayerData playerData = GetGame().GetDataCollector().GetPlayerData(m_mTrackedPlayersInVehicles.GetKey(i));
 
 			//If player is driver we give some points, if not we give others
 			if (playerContext.m_bPilot)
 			{
-				playerData.AddStat(SCR_EDataStats.METERS_DRIVEN, distanceTraveled);
+				playerData.AddStat(SCR_EDataStats.DISTANCE_DRIVEN, distanceTraveled);
 
 				//Need to find the number of players this pilot is driving around
 				//TODO: Replace this using a C++ implemented method to get the count of occupants of the vehicle
-				compartmentManagerComponent = SCR_BaseCompartmentManagerComponent.Cast(playerContext.m_Vehicle.FindComponent(SCR_BaseCompartmentManagerComponent));
+				SCR_BaseCompartmentManagerComponent compartmentManagerComponent = SCR_BaseCompartmentManagerComponent.Cast(playerContext.m_Vehicle.FindComponent(SCR_BaseCompartmentManagerComponent));
 				if (!compartmentManagerComponent)
+				{
+					Print("DataCollectorDriverModule:Update: Could not add POINTS_AS_DRIVER_OF_PLAYERS because could find this vehicle's compartmentManagerComponent", LogLevel.WARNING);
 					continue;
+				}
+				
 				array<IEntity> occupants = {};
 				compartmentManagerComponent.GetOccupants(occupants);
 
 				//Give points to driver for driving distanceTraveled meters. Not counting the driver as occupant for points calculation
-				playerData.AddPointsAsDriverOfPlayers(distanceTraveled, occupants.Count()-1);
+				playerData.AddStat(SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS, distanceTraveled * (occupants.Count() - 1) * playerData.GetConfigs().MODIFIER_DRIVER_OF_PLAYERS);
 			}
 			else
 			{
 				//Add distanceTraveled meters as occupant of a vehicle
-				playerData.AddStat(SCR_EDataStats.METERS_AS_OCCUPANT, distanceTraveled);
+				playerData.AddStat(SCR_EDataStats.DISTANCE_AS_OCCUPANT, distanceTraveled);
 			}
 
 			//DEBUG display
 #ifdef ENABLE_DIAG
 			if (m_StatsVisualization)
 			{
-				m_StatsVisualization.Get(EDriverModuleStats.MetersDriven).SetText(playerData.GetCurrentDistanceDriven().ToString());
-				m_StatsVisualization.Get(EDriverModuleStats.MetersAsOccupant).SetText(playerData.GetCurrentDistanceAsOccupant().ToString());
-				m_StatsVisualization.Get(EDriverModuleStats.PointsAsDriver).SetText(playerData.GetCurrentPointsAsDriverOfPlayers().ToString());
-				m_StatsVisualization.Get(EDriverModuleStats.RoadKills).SetText(playerData.GetCurrentRoadKills().ToString());
-				m_StatsVisualization.Get(EDriverModuleStats.AIRoadKills).SetText(playerData.GetCurrentAIRoadKills().ToString());
-				m_StatsVisualization.Get(EDriverModuleStats.FriendlyRoadKills).SetText(playerData.GetCurrentFriendlyRoadKills().ToString());
-				m_StatsVisualization.Get(EDriverModuleStats.FriendlyAIRoadKills).SetText(playerData.GetCurrentFriendlyAIRoadKills().ToString());
-				m_StatsVisualization.Get(EDriverModuleStats.PlayersDiedInVehicle).SetText(playerData.GetCurrentPlayersDiedInVehicle().ToString());
+				m_StatsVisualization.Get(EDriverModuleStats.MetersDriven).SetText(playerData.GetStat(SCR_EDataStats.DISTANCE_DRIVEN).ToString());
+				m_StatsVisualization.Get(EDriverModuleStats.MetersAsOccupant).SetText(playerData.GetStat(SCR_EDataStats.DISTANCE_AS_OCCUPANT).ToString());
+				m_StatsVisualization.Get(EDriverModuleStats.PointsAsDriver).SetText(playerData.GetStat(SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS).ToString());
+				m_StatsVisualization.Get(EDriverModuleStats.RoadKills).SetText(playerData.GetStat(SCR_EDataStats.ROADKILLS).ToString());
+				m_StatsVisualization.Get(EDriverModuleStats.AIRoadKills).SetText(playerData.GetStat(SCR_EDataStats.AI_ROADKILLS).ToString());
+				m_StatsVisualization.Get(EDriverModuleStats.FriendlyRoadKills).SetText(playerData.GetStat(SCR_EDataStats.FRIENDLY_ROADKILLS).ToString());
+				m_StatsVisualization.Get(EDriverModuleStats.FriendlyAIRoadKills).SetText(playerData.GetStat(SCR_EDataStats.FRIENDLY_AI_KILLS).ToString());
+				m_StatsVisualization.Get(EDriverModuleStats.PlayersDiedInVehicle).SetText(playerData.GetStat(SCR_EDataStats.PLAYERS_DIED_IN_VEHICLE).ToString());
 			}
 #endif
 		}

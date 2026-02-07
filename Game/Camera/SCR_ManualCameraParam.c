@@ -5,6 +5,8 @@ Parameter for carrying information between individual camera components.
 */
 class SCR_ManualCameraParam
 {
+	protected const float TRACE_DIS = 250;
+	
 	float timeSlice; ///< Frame time slice.
 	BaseWorld world; ///< World in which the camera exists.
 	IEntity target; ///< Entity under cursor
@@ -72,13 +74,13 @@ class SCR_ManualCameraParam
 		
 		vector outDir;
 		vector startPos = workspace.ProjScreenToWorld(workspace.DPIUnscale(mouseX), workspace.DPIUnscale(mouseY), outDir, world, -1);
-		outDir *= 10000;
+		outDir *= TRACE_DIS;
 	
 		autoptr TraceParam trace = new TraceParam();
 		trace.Start = startPos;
 		trace.End = startPos + outDir;
 		trace.Flags = TraceFlags.WORLD | TraceFlags.OCEAN | TraceFlags.ENTS;
-		//trace.LayerMask = TRACE_LAYER_CAMERA;
+		trace.LayerMask = EPhysicsLayerPresets.Projectile;
 		
 		float traceDis = world.TraceMove(trace, null);
 		if (traceDis == 1) return false;

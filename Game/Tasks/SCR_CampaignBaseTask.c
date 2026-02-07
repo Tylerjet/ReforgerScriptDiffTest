@@ -15,21 +15,17 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 	//PROTECTED MEMBER VARIABLES//
 	//**************************//
 	
-	protected SCR_CampaignBase m_TargetBase = null;
-	protected AIWaypoint m_AssignedWaypoint = null;
+	protected SCR_CampaignMilitaryBaseComponent m_TargetBase = null;
+	protected int m_iTargetBaseId = -1;
 	
 	//*********************//
 	//PUBLIC MEMBER METHODS//
 	//*********************//
 	
 	//------------------------------------------------------------------------------------------------
-	//! Gets the AI waypoint for this task.
-	AIWaypoint GetAIWaypoint()
+	int GetTargetBaseId()
 	{
-		if (!m_AssignedWaypoint)
-			SetAIWaypoint();
-
-		return m_AssignedWaypoint;
+		return m_iTargetBaseId;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -37,7 +33,7 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 	//! For capture, target base should be the base to be captured.
 	//! For defend, target base should be the base to be defended.
 	//! For recon, target base should be the base around which recon should be done.
-	void SetTargetBase(notnull SCR_CampaignBase targetBase)
+	void SetTargetBase(notnull SCR_CampaignMilitaryBaseComponent targetBase)
 	{
 		if (SCR_MapEntity.GetMapInstance())
 		{
@@ -46,7 +42,8 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 		}
 			
 		m_TargetBase = targetBase;
-		SetOrigin(m_TargetBase.GetOrigin());
+		m_bIsPriority = (SCR_CampaignFaction.Cast(m_TargetFaction).GetPrimaryTarget() == targetBase);
+		SetOrigin(m_TargetBase.GetOwner().GetOrigin());
 		CreateMapUIIcon();
 		UpdateMapInfo();
 		SetHUDIcon();
@@ -56,7 +53,7 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 	// Temporary method to set offset of task marker from base marker. Once we have a proper solution for the map, this can be deleted.
 	void SetOffset()
 	{
-		vector newPos = m_TargetBase.GetOrigin();
+		vector newPos = m_TargetBase.GetOwner().GetOrigin();
 		newPos[0] = newPos[0] + CalculateOffset() / 2.5;
 		newPos[2] = newPos[2] - CalculateOffset() / 5;
 		SetOrigin(newPos);
@@ -81,7 +78,7 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 	//------------------------------------------------------------------------------------------------
 	string GetBaseNameWithCallsign()
 	{
-		if (m_TargetBase.GetType() == CampaignBaseType.RELAY)
+		if (m_TargetBase.GetType() == SCR_ECampaignBaseType.RELAY)
 			return m_TargetBase.GetBaseNameUpperCase();
 		return string.Format("%1 (%2)", m_TargetBase.GetBaseNameUpperCase(), m_TargetBase.GetCallsignDisplayNameOnlyUC());
 	}
@@ -91,7 +88,7 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 	//! For capture, target base should be the base to be captured.
 	//! For defend, target base should be the base to be defended.
 	//! For recon, target base should be the base around which recon should be done.
-	SCR_CampaignBase GetTargetBase()
+	SCR_CampaignMilitaryBaseComponent GetTargetBase()
 	{
 		return m_TargetBase;
 	}
@@ -108,11 +105,15 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 		int baseID;
 		reader.ReadInt(baseID);
 		
-		SCR_CampaignBase base = SCR_CampaignBaseManager.GetInstance().FindBaseByID(baseID);
-		if (!base)
-			return;
+		SCR_CampaignMilitaryBaseComponent base = SCR_GameModeCampaign.GetInstance().GetBaseManager().FindBaseByCallsign(baseID);
 		
-		if (base.GetOwningFaction() == GetTargetFaction())
+		if (!base)
+		{
+			m_iTargetBaseId = baseID;
+			return;
+		}
+		
+		if (base.GetFaction() == GetTargetFaction())
 			return;
 		
 		SetTargetBase(base);
@@ -124,27 +125,11 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 		super.Serialize(writer);
 		
 		int baseID = -1;
-		SCR_CampaignBase base = GetTargetBase();
+		SCR_CampaignMilitaryBaseComponent base = GetTargetBase();
 		if (base)
-			baseID = base.GetBaseID();
+			baseID = base.GetCallsign();
 		
 		writer.WriteInt(baseID);
-	}
-	
-	//************************//
-	//PROTECTED MEMBER METHODS//
-	//************************//
-	
-	//------------------------------------------------------------------------------------------------
-	protected void SetAIWaypoint()
-	{
-		if (!m_AssignedWaypoint)
-			return;
-		
-		SCR_CampaignBase base = GetTargetBase();
-		
-		if (base && base.GetType() != CampaignBaseType.RELAY)
-			m_AssignedWaypoint = GetTargetBase().GetTaskWaypoint();
 	}
 	
 	//------------------------------------------------------------------------------------------------

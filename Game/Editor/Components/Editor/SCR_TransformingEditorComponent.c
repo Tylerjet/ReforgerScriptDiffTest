@@ -132,11 +132,11 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		m_StatesManager.SetIsWaiting(true);
 		Event_OnTransformationRequest.Invoke(m_aEditedEntities);
 		
-		Rpc(StartEditingServer, pivotId, entityIds, vector.One, transform, m_PreviewManager.IsUnderwater());
+		Rpc(StartEditingServer, pivotId, entityIds, vector.One, transform, m_PreviewManager.IsUnderwater(), m_PreviewManager.GetVerticalMode());
 	}
 	
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void StartEditingServer(int pivotId, array<int> entityIds, vector dummyVector, vector transform[4], bool isUnderwater)
+	protected void StartEditingServer(int pivotId, array<int> entityIds, vector dummyVector, vector transform[4], bool isUnderwater, EEditorTransformVertical verticalMode)
 	{
 		m_aEditedEntities = new set<SCR_EditableEntityComponent>;
 		m_mServerEntityStartingPosition.Clear();
@@ -165,6 +165,9 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		EPreviewEntityFlag flags = EPreviewEntityFlag.IGNORE_PREFAB | EPreviewEntityFlag.ONLY_EDITABLE;
 		if (isUnderwater)
 			flags |= EPreviewEntityFlag.UNDERWATER;
+		
+		if (verticalMode == EEditorTransformVertical.GEOMETRY)
+			flags |= EPreviewEntityFlag.GEOMETRY;
 		
 		ResourceName material;
 #ifdef PREVIEW_ENTITY_SHOW_REFERENCE

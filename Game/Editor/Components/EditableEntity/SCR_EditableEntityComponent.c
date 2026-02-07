@@ -4,8 +4,15 @@
 //------------------------------------------------------------------------------------------------
 /*!
 Component defining editable entity.
+- Any entity with this component is exposed in the editor (SCR_EditorManagerCore).
+- Editable entities are tracked locally in a list managed by SCR_EditableEntityCore.
+- Editable entity, unless it has a flag EEditableEntityFlag.LOCAL, must also have a RplComponent attached.
+- Despite the name, not every entity with this component is actually editable - those with EEditableEntityFlag.NON_INTERACTIVE are not.
 
-Every entities with this component is registered locally to a list managed by SCR_EditableEntityCore.
+## Implementation Notes
+- Keep memory footprint of component instance (i.e., the size of variables) to minimum. The component can axist on thousands of entities per world.
+- Do not reference editor (e.g., SCR_EditorManagerEntity, SCR_EditorModeEntity, or SCR_BaseEditorComponent) from here!
+ + Editable entities are independent on the editor. Each player has their own editor, so there is no single editor to point to anyway.
 */
 class SCR_EditableEntityComponent : ScriptComponent
 {
@@ -120,6 +127,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Get entity type.
+	**Avoid basing your functionality on specific entity types!**
+	If everyone checked for specific types, adding a new type would mean all conditions have to be revised.
+	Instead, base your system on a function inside this class. Such function can be overrided by inherited classes to give desired result.
 	\param Owner entity of this component
 	\return Type
 	*/
@@ -131,7 +141,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		else
 			return EEditableEntityType.GENERIC;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Get entity interaction rules of this entity. If it doesn't contain any custom rules, those for its type will be used.
@@ -271,9 +281,16 @@ class SCR_EditableEntityComponent : ScriptComponent
 		else
 		{
 			//--- Bone position
-			vector transform[4];
-			m_Owner.GetBoneMatrix(m_iIconBoneIndex, transform);
-			pos = m_Owner.CoordToParent(transform[3] + m_vIconPos);
+			if (m_Owner.GetAnimation())
+			{
+				vector transform[4];
+				m_Owner.GetAnimation().GetBoneMatrix(m_iIconBoneIndex, transform);
+				pos = m_Owner.CoordToParent(transform[3] + m_vIconPos);
+			}
+			else
+			{
+				pos = m_Owner.CoordToParent(m_vIconPos);
+			}
 			return true;
 		}
 		return false;
@@ -432,7 +449,17 @@ class SCR_EditableEntityComponent : ScriptComponent
 		else
 			return 1;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	\return If destroying of entity is allowed. Does not check if entity is destroyed already. Use IsDestroyed() for this
+	*/
+	bool CanDestroy()
+	{
+		DamageManagerComponent damageManager = DamageManagerComponent.Cast(GetOwner().FindComponent(DamageManagerComponent));
+		return damageManager && damageManager.IsDamageHandlingEnabled();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Check if the entity is destroyed.
@@ -562,16 +589,38 @@ class SCR_EditableEntityComponent : ScriptComponent
 
 		//--- Not ideal to hard-code speific classes, but we can no longer use BaseGameEntity as it's also used for interactive lights
 		//BaseGameEntity baseGameEntity = BaseGameEntity.Cast(m_Owner);
-		if (m_Owner.GetPhysics() && (m_Owner.IsInherited(ChimeraCharacter) || m_Owner.IsInherited(Vehicle)))
+		if(!System.IsCLIParam("clientVehicles"))
 		{
-			//--- Execute on owner, even server doesn't have the authority to do so
-			Rpc(SetTransformOwner, transform);
+			if (m_Owner.GetPhysics() && m_Owner.IsInherited(ChimeraCharacter))
+			{		
+				//--- Execute on owner, even server doesn't have the authority to do so
+				Rpc(SetTransformOwner, transform);
+			}
+			else if (m_Owner.GetPhysics() && m_Owner.IsInherited(Vehicle))
+			{
+				// TODO: Managed by NwkVehicleMovementComponent if teleportation causes chaotic prediction
+				Rpc(SetTransformOwner, transform);
+				//--- Execute also on server if Vehicle
+				SetTransformOwner(transform);
+			}
+			else
+			{
+				SetTransformBroadcast(transform);
+				if (CanRpc()) Rpc(SetTransformBroadcast, transform);
+			}
 		}
 		else
 		{
-			SetTransformBroadcast(transform);
-			if (CanRpc())
-				Rpc(SetTransformBroadcast, transform);
+			if (m_Owner.GetPhysics() && (m_Owner.IsInherited(ChimeraCharacter) || m_Owner.IsInherited(Vehicle)))
+			{		
+				//--- Execute on owner, even server doesn't have the authority to do so
+				Rpc(SetTransformOwner, transform);
+			}
+			else
+			{
+				SetTransformBroadcast(transform);
+				if (CanRpc()) Rpc(SetTransformBroadcast, transform);
+			}
 		}
 
 		//Sends out on transform changed on server
@@ -631,15 +680,15 @@ class SCR_EditableEntityComponent : ScriptComponent
 	bool Destroy()
 	{
 		if (IsServer())
-		{
-			DamageManagerComponent damageManager = DamageManagerComponent.Cast(m_Owner.FindComponent(DamageManagerComponent));
-			if (damageManager && damageManager.IsDamageHandlingEnabled())
+		{			
+			if (!IsDestroyed() && CanDestroy())
 			{
+				DamageManagerComponent damageManager = DamageManagerComponent.Cast(m_Owner.FindComponent(DamageManagerComponent));
 				damageManager.SetHealthScaled(0);
 				return true;
 			}
 		}
-		return false;
+		return IsDestroyed();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1339,7 +1388,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		//--- Modify the hierarchy (on clients as well; ToDo: Rely on AutoHierarchy in RplComponent)
 		if (toAdd)
 		{
-			parent.AddChild(child, -1, EAddChildFlags.RECALC_LOCAL_TRANSFORM);
+			parent.AddChild(child, -1, EAddChildFlags.AUTO_TRANSFORM | EAddChildFlags.RECALC_LOCAL_TRANSFORM);
 		}
 		else
 		{
@@ -2039,7 +2088,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		{
 			string boneName = prefabData.GetIconBoneName();
 			if (!boneName.IsEmpty())
-				m_iIconBoneIndex = m_Owner.GetBoneIndex(boneName);
+				m_iIconBoneIndex = m_Owner.GetAnimation().GetBoneIndex(boneName);
 		}
 
 		//--- Get parent entity

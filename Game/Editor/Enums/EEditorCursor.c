@@ -1,4 +1,4 @@
-/** @ingroup Editor
+/** @ingroup Editor_UI
 */
 
 //! Editor cursor type. Values must match cursor IDs in gproj!
@@ -15,5 +15,7 @@ enum EEditorCursor
 	TRANSFORM_SNAP_DISABLED = 8, ///< Edited entity is over incompatible entity
 	ROTATE = 9, ///< Rotating an entity
 	WAYPOINT = 10, ///< Placing a waypoint
-	OBJECTIVE = 11 ///< Placing an objective
+	OBJECTIVE = 11, ///< Placing an objective
+	TRANSFORM_GEOMETRY = 13, ///< Transform over geometry
+	PLACE_GEOMETRY = 14, ///< Transform over geometry
 };

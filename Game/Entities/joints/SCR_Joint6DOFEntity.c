@@ -190,7 +190,7 @@ class SCR_Joint6DOFEntity: SCR_JointBaseEntity
 		if (isSpring)
 		{
 			m_Joint = PhysicsJoint.Create6DOFSpring(parent, child, jointMat1, jointMat2, m_CollisionBlocker, -1);
-			Physics6DOFSpringJoint joint6DOF = (Physics6DOFSpringJoint)m_Joint;
+			Physics6DOFSpringJoint joint6DOF = m_Joint;
 			if (m_YawSetSpring)
 				joint6DOF.SetSpring(SCR_Joint6DOFEntityClass.AXIS_YAW, GetSpringScale(), GetSpringAngDampScale());
 			if (m_PitchSetSpring)
@@ -207,7 +207,7 @@ class SCR_Joint6DOFEntity: SCR_JointBaseEntity
 		else
 			m_Joint = PhysicsJoint.Create6DOF(parent, child, jointMat1, jointMat2, m_CollisionBlocker, -1);
 		
-		Physics6DOFJoint joint6DOF = (Physics6DOFJoint)m_Joint;
+		Physics6DOFJoint joint6DOF = m_Joint;
 		if (m_YawIsFree)
 			joint6DOF.SetLimit(SCR_Joint6DOFEntityClass.AXIS_YAW, 1, -1);
 		else

@@ -9,9 +9,13 @@ class SCR_NotificationDisplayData
 	[Attribute("0", UIWidgets.SearchComboBox, "Notification", "", ParamEnumArray.FromEnum(ENotification) )]
 	ENotification m_NotificationKey;
 	
+	[Attribute()]
+	bool m_bPriorityNotification;
+	
 	[Attribute(desc: "Holds the display information of the notification, Fill in Name and Color. Optional: Icon")]
 	ref SCR_UINotificationInfo m_info;	
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Sets the initial display data such as initial notification position and faction related color of notification
 	\param data SCR_NotificationData to get the parameters
@@ -26,11 +30,12 @@ class SCR_NotificationDisplayData
 		SetFactionRelatedColor(data);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Returns the display data
 	\param data SCR_NotificationData to get the parameters
 	\param[out] icon as ResourceName
-	\param[out] colorEnum as ENotificationColor to be used by the SCR_NotificationMessageUIComponent to get the color from SCR_NotificationsLogComponent
+	\param[out] colorEnum as ENotificationColor to be used by the SCR_NotificationMessageUIComponent to get the color from SCR_NotificationsLogDisplay
 	*/
 	void GetDisplayVisualizationData(SCR_NotificationData data, out SCR_UINotificationInfo info = null, out ENotificationColor colorEnum = ENotificationColor.NEUTRAL)
 	{
@@ -42,10 +47,11 @@ class SCR_NotificationDisplayData
 			colorEnum = data.GetFactionRelatedColor();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Returns the display data. Only valid if UI info is SCR_ColoredTextNotificationUIInfo
 	\param data SCR_NotificationData to get the parameters
-	\return colorEnum as ENotificationColor to be used by the SCR_NotificationMessageUIComponent to get the color from SCR_NotificationsLogComponent
+	\return colorEnum as ENotificationColor to be used by the SCR_NotificationMessageUIComponent to get the color from SCR_NotificationsLogDisplay
 	*/
 	ENotificationColor GetTextColor(SCR_NotificationData data)
 	{
@@ -61,11 +67,12 @@ class SCR_NotificationDisplayData
 		return colorEnum;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Returns the display data
 	\param data SCR_NotificationData to get the parameters
-	\param[out] leftTextColorEnum as ENotificationColor to be used by the SCR_SplitNotificationMessageUIComponent to get the color from SCR_NotificationsLogComponent
-	\param[out] rightTextColorEnum as ENotificationColor to be used by the SCR_SplitNotificationMessageUIComponent to get the color from SCR_NotificationsLogComponent
+	\param[out] leftTextColorEnum as ENotificationColor to be used by the SCR_SplitNotificationMessageUIComponent to get the color from SCR_NotificationsLogDisplay
+	\param[out] rightTextColorEnum as ENotificationColor to be used by the SCR_SplitNotificationMessageUIComponent to get the color from SCR_NotificationsLogDisplay
 	*/
 	void GetSplitNotificationTextColors(SCR_NotificationData data, out ENotificationColor leftTextColorEnum = ENotificationColor.NEUTRAL, out ENotificationColor rightTextColorEnum = ENotificationColor.NEUTRAL)
 	{
@@ -88,8 +95,7 @@ class SCR_NotificationDisplayData
 			rightTextColorEnum = rightFactionColor;
 	}
 	
-	
-	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Returns the display text using the parameters set in SCR_NotificationData
 	\param data SCR_NotificationData to get the parameters
@@ -105,7 +111,8 @@ class SCR_NotificationDisplayData
 		
 		return m_info.GetName();
 	}
-		
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	If true it will merge param1 with param2 using param2 as format (eg: Translate(param2, param1)) before constructing the full notification formatted string. Param2 will need %1 to in the localization. 
 	Mainly used by TaskStateChanged as the objective name (param2) includes the location name (param1) which need to be formatted before formatting the entire string.
@@ -116,6 +123,17 @@ class SCR_NotificationDisplayData
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get Priority
+	\return bool
+	*/
+	bool GetPriority()
+	{
+		return m_bPriorityNotification;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get UI info
 	\return string Ui info holding various of display information for the notification
@@ -125,13 +143,18 @@ class SCR_NotificationDisplayData
 		return m_info;
 	}
 	
-	protected string GetPlayerName(int playerID)
+	//------------------------------------------------------------------------------------------------
+	protected bool GetPlayerName(int playerID, out string playerName)
 	{
+		//~ Name already assigned
+		if (!playerName.IsEmpty())
+			return true;
+		
 		PlayerManager playerManager = GetGame().GetPlayerManager();
 		if (!playerManager)
-			return string.Empty;
+			return false;
 		
-		string playerName = playerManager.GetPlayerName(playerID);
+		playerName = playerManager.GetPlayerName(playerID);
 		
 		//Player name not found
 		if (playerName.IsEmpty())
@@ -141,11 +164,16 @@ class SCR_NotificationDisplayData
 				playerName = notificationsManager.GetPlayerNameFromHistory(playerID);
 		}
 			
-		return playerName;
+		return !playerName.IsEmpty();
 	}
 	
-	protected string GetEditableEntityName(int enditableEntityID)
+	//------------------------------------------------------------------------------------------------
+	protected bool GetEditableEntityName(int enditableEntityID, out string entityName)
 	{
+		//~ Name already assigned
+		if (!entityName.IsEmpty())
+			return true;
+		
 		//Get target Entity
 		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.Cast(Replication.FindItem(enditableEntityID));
 		
@@ -153,38 +181,43 @@ class SCR_NotificationDisplayData
 		{
 			if (entity.GetEntityType() != EEditableEntityType.TASK)
 			{
-				return entity.GetDisplayName();
+				entityName = entity.GetDisplayName();
 			}
 			//~ Get objective type name
 			else 
 			{
 				SCR_EditableTaskComponentClass taskPrefabData = SCR_EditableTaskComponentClass.Cast(entity.GetComponentData(entity.GetOwner()));
 				if (taskPrefabData)
-					return taskPrefabData.GetObjectiveTypeName();
+					entityName = taskPrefabData.GetObjectiveTypeName();
 				else 
-					return entity.GetDisplayName();
+					entityName = entity.GetDisplayName();
 			}
 		}
-		else
-		{
-			return string.Empty;
-		}	
+
+		return !entityName.IsEmpty();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//~ Returns faction name by index
-	protected string GetFactionName(int factionIndex)
+	protected bool GetFactionName(int factionIndex, out string factionName)
 	{
+		//~ Name already assigned
+		if (!factionName.IsEmpty())
+			return true;
+		
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (!factionManager)
-			return string.Empty;
+			return false;
 		
 		Faction faction = factionManager.GetFactionByIndex(factionIndex);
 		if (!faction)
-			return string.Empty;
+			return false;
 		
-		return faction.GetFactionName();
+		factionName = faction.GetFactionName();
+		return !factionName.IsEmpty();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool GetCharacterName(int enditableEntityID, out string format, out string firstname, out string alias, out string surname)
 	{
 		//Get target Entity
@@ -200,6 +233,108 @@ class SCR_NotificationDisplayData
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//~ Returns translated callsign in correct formatting
+	protected bool GetEntityCallsign(int rplID, out string callsign)
+	{
+		//~ Name already assigned
+		if (!callsign.IsEmpty())
+			return true;
+		
+		Managed managed = Replication.FindItem(rplID);
+		if (!managed)
+    		return false;
+		
+		SCR_CallsignBaseComponent callsignComponent;
+		ScriptComponent scriptComp = ScriptComponent.Cast(managed);
+		
+		//~ Get managed script
+		if (scriptComp)
+		{
+			callsignComponent = SCR_CallsignBaseComponent.Cast(scriptComp.GetOwner().FindComponent(SCR_CallsignBaseComponent));
+		}
+		//~ Get managed entity
+		else 
+		{
+			IEntity entity = IEntity.Cast(managed);
+			if (!entity)
+				return false;
+			
+			callsignComponent =  SCR_CallsignBaseComponent.Cast(entity.FindComponent(SCR_CallsignBaseComponent));
+		}
+		
+		if (!callsignComponent)
+			return false;
+		
+		string company, platoon, squad, character, format;
+		if (!callsignComponent.GetCallsignNames(company, platoon, squad, character, format))
+			return false;
+		
+		//~ Translate the callsign strings so it can be send as 1 string
+		callsign = WidgetManager.Translate(format, company, platoon, squad, character);
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//~ Returns group name, or callsign if no name assigned
+	protected bool GetGroupNameFromGroupID(int playerGroupId, out string groupName)
+	{
+		//~ Name already assigned
+		if (!groupName.IsEmpty())
+			return true;
+		
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return false;
+		
+		SCR_AIGroup aiGroup;
+		aiGroup = groupsManager.FindGroup(playerGroupId);
+		
+		if (!aiGroup)
+			return false;
+
+		groupName = aiGroup.GetCustomName();
+		
+		//~ No custom name set so get Callsign instead
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(groupName))
+			return GetEntityCallsign(Replication.FindId(aiGroup), groupName);
+			
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//~ Get inventory item name
+	protected bool GetInventoryItemName(RplId rplId, out string itemName)
+	{
+		if (!itemName.IsEmpty())
+			return true;
+		
+		RplComponent itemRplcComp = RplComponent.Cast(Replication.FindItem(rplId));
+		if (!itemRplcComp)
+			return false;
+		
+		IEntity itemEntity = itemRplcComp.GetEntity();
+		if (!itemEntity)
+			return false;
+		
+		InventoryItemComponent item = InventoryItemComponent.Cast(itemEntity.FindComponent(InventoryItemComponent));
+		if (!item)
+			return false;
+		
+		ItemAttributeCollection attributeCollection = item.GetAttributes();
+		if (!ItemAttributeCollection)
+			return false;
+		
+		UIInfo uiInfo = attributeCollection.GetUIInfo();
+		if (!uiInfo)
+			return false;
+		
+		itemName = uiInfo.GetName();
+		
+		return !itemName.IsEmpty();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Gives a position vector that is linked to the notification. 
 	This is for editor functionality so the GM can teleport to the notification positions
@@ -221,6 +356,7 @@ class SCR_NotificationDisplayData
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Set the position of the target entity the SCR_NotificationData
 	\param data SCR_NotificationData to get the parameters
@@ -230,6 +366,7 @@ class SCR_NotificationDisplayData
 	
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected bool CanSetPosition(SCR_NotificationData data)
 	{
 		vector position;
@@ -238,6 +375,7 @@ class SCR_NotificationDisplayData
 		return !((m_info.GetEditorSetPositionData() == ENotificationSetPositionData.AUTO_SET_POSITION_ONCE && position != vector.Zero) || m_info.GetEditorSetPositionData() == ENotificationSetPositionData.NEVER_AUTO_SET_POSITION);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Set position data using Player ID
 	protected void SetPositionDataEditablePlayer(int playerID, SCR_NotificationData data)
 	{
@@ -258,6 +396,7 @@ class SCR_NotificationDisplayData
 		data.SetPosition(position);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Set position data using Editable Entity ID
 	protected void SetPositionDataEditableEntity(int enditableEntityID, SCR_NotificationData data)
 	{
@@ -271,6 +410,7 @@ class SCR_NotificationDisplayData
 		data.SetPosition(position);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Sets the color enum related to faction if SCR_NotificationDisplayData Color is set to: 'FACTION_RELATED_FRIENDLY_IS_NEGATIVE', 'FACTION_RELATED_FRIENDLY_IS_POSITIVE', 'FACTION_RELATED_ENEMY_IS_NEGATIVE_ONLY' or 'FACTION_RELATED_FRIENDLY_IS_POSITIVE_ONLY' and there is a target to check faction of.
 	\param data
@@ -280,6 +420,7 @@ class SCR_NotificationDisplayData
 
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Get faction related color of player target
 	protected ENotificationColor GetFactionRelatedColorPlayer(int notificationPlayerID, ENotificationColor colorType)
 	{
@@ -290,13 +431,13 @@ class SCR_NotificationDisplayData
 		if (!GetGame().GetPlayerController()) 
 			return ENotificationColor.NEUTRAL;
 		
-		SCR_RespawnSystemComponent respawnComponent = SCR_RespawnSystemComponent.GetInstance();
-		if (!respawnComponent) 
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager) 
 			return ENotificationColor.NEUTRAL;
 		
 		//Get factions using ID
-		Faction playerSelfFaction = respawnComponent.GetPlayerFaction(GetGame().GetPlayerController().GetPlayerId());
-		Faction notificationPlayerFaction = respawnComponent.GetPlayerFaction(notificationPlayerID);
+		Faction playerSelfFaction = factionManager.GetLocalPlayerFaction();
+		Faction notificationPlayerFaction = factionManager.GetPlayerFaction(notificationPlayerID);
 		
 		if (!playerSelfFaction || !notificationPlayerFaction) 
 			return ENotificationColor.NEUTRAL;
@@ -329,6 +470,7 @@ class SCR_NotificationDisplayData
 		return ENotificationColor.NEUTRAL;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	//Get faction related color of entity target
 	protected ENotificationColor GetFactionRelatedColorEntity(int notificationEntityID, ENotificationColor colorType)
 	{	
@@ -337,8 +479,8 @@ class SCR_NotificationDisplayData
 			return colorType;
 		
 		if (!GetGame().GetPlayerController()) return ENotificationColor.NEUTRAL;
-		SCR_RespawnSystemComponent respawnComponent = SCR_RespawnSystemComponent.GetInstance();
-		if (!respawnComponent) return ENotificationColor.NEUTRAL;
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager) return ENotificationColor.NEUTRAL;
 		
 		//Get notification entity
 		SCR_EditableEntityComponent notificationEntity = SCR_EditableEntityComponent.Cast(Replication.FindItem(notificationEntityID));
@@ -349,7 +491,7 @@ class SCR_NotificationDisplayData
 		if (!notificationEntityChimera) return ENotificationColor.NEUTRAL;
 		
 		//Get factions
-		Faction playerSelfFaction = respawnComponent.GetPlayerFaction(GetGame().GetPlayerController().GetPlayerId());	
+		Faction playerSelfFaction = factionManager.GetLocalPlayerFaction();
 		Faction notificationEntityFaction = notificationEntityChimera.GetFaction();
 		
 		if (!playerSelfFaction || !notificationEntityFaction) return ENotificationColor.NEUTRAL;
@@ -382,17 +524,17 @@ class SCR_NotificationDisplayData
 		return ENotificationColor.NEUTRAL;
 	}	
 	
+	//------------------------------------------------------------------------------------------------
 	//Check if entities are friendly
 	protected bool AreEntitiesFriendly(int entity1ID, bool entity1IsPlayer, int entity2ID, bool entity2IsPlayer)
 	{
 		Faction faction1, faction2;
 
-		SCR_RespawnSystemComponent respawnComponent;
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		
 		if (entity1IsPlayer || entity2IsPlayer)
 		{
-			respawnComponent = SCR_RespawnSystemComponent.GetInstance();
-			if (!respawnComponent) 
+			if (!factionManager)
 				return false;
 		}
 		
@@ -404,7 +546,7 @@ class SCR_NotificationDisplayData
 		//Get entity 1 faction
 		if (entity1IsPlayer)
 		{
-			faction1 = respawnComponent.GetPlayerFaction(entity1ID);
+			faction1 = factionManager.GetPlayerFaction(entity1ID);
 		}
 		else 
 		{
@@ -423,7 +565,7 @@ class SCR_NotificationDisplayData
 		//Get entity 2 faction
 		if (entity2IsPlayer)
 		{
-			faction2 = respawnComponent.GetPlayerFaction(entity2ID);
+			faction2 = factionManager.GetPlayerFaction(entity2ID);
 		}
 		else 
 		{

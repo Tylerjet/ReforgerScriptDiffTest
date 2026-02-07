@@ -16,7 +16,7 @@ class SCR_AIHealWaitBehavior : SCR_AIBehaviorBase
 	void SCR_AIHealWaitBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, IEntity healProvider, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		InitParameters(healProvider);
-		m_fPriority = PRIORITY_BEHAVIOR_HEAL_WAIT;
+		SetPriority(PRIORITY_BEHAVIOR_HEAL_WAIT);
 		m_fPriorityLevel.m_Value = priorityLevel;
 		m_sBehaviorTree = "{AAB70A7FFF8BB63C}AI/BehaviorTrees/Chimera/Soldier/Behavior_HealWait.bt";
 	}

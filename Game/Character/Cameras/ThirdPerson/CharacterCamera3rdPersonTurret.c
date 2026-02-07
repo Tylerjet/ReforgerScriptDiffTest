@@ -8,17 +8,17 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 	static const float 	CONST_UD_MAX = 30.0; //!< up limit
 	static const float 	CONST_UD_CAMERA_ANGLE_OFFSET = -10.0; //!< camera angle offset
 
-	private TurretControllerComponent m_pTurretController;
-	private TurretComponent m_pControlledTurret;
-	private vector m_vVertAimLimits;
-	private vector m_vHorAimLimits;
-	private vector m_vCameraCenter;
-	private float m_fLRAngleAdd;
-	private float m_fHeight;
-	private float m_fDist_Min;
-	private IEntity m_OwnerVehicle;
+	protected TurretControllerComponent m_pTurretController;
+	protected TurretComponent m_pControlledTurret;
+	protected vector m_vVertAimLimits;
+	protected vector m_vHorAimLimits;
+	protected vector m_vCameraCenter;
+	protected float m_fLRAngleAdd;
+	protected float m_fHeight;
+	protected float m_fDist_Min;
+	protected IEntity m_OwnerVehicle;
 
-	private vector m_vLastCameraAngles; //< Does not update in freelook
+	protected vector m_vLastCameraAngles; //< Does not update in freelook
 	//-----------------------------------------------------------------------------
 	void CharacterCamera3rdPersonTurret(CameraHandlerComponent pCameraHandler)
 	{
@@ -33,17 +33,10 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
 		{
 			auto compartment = compartmentAccess.GetCompartment();
-			
-			ForceFreelook(compartment.GetForceFreeLook());
-			
 			m_OwnerVehicle = compartment.GetVehicle();
 			IEntity turret = compartment.GetOwner();
 			if (turret)
 			{
-				BaseControllerComponent controller = compartment.GetController();
-				if (controller)
-					m_pTurretController = TurretControllerComponent.Cast(controller);
-				
 				vector mins, maxs;
 				turret.GetBounds(mins, maxs);
 				m_vCameraCenter = (maxs - mins) * 0.5 + mins;
@@ -61,6 +54,10 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 				}
 				
 				// If we'll have multiple turrets, don't cache turret
+				m_pTurretController = TurretControllerComponent.Cast(compartment.GetController());
+				if (!m_pTurretController)
+					return;
+
 				m_pControlledTurret = m_pTurretController.GetTurretComponent();
 				if (!m_pControlledTurret)
 					return;

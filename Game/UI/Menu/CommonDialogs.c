@@ -33,6 +33,7 @@ class SCR_CommonDialogs
 
 
 
+
 //---------------------------------------------------------------------------------------------
 class SCR_ExitGameDialog : SCR_ConfigurableDialogUi
 {

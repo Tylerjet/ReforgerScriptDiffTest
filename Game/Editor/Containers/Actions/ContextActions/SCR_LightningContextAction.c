@@ -43,7 +43,7 @@ class SCR_LightningContextAction : SCR_BaseContextAction
 		float scale;
 		entitySource.Get("scale", scale);
 		if (scale != 1)
-			SCR_Math3D.ScaleMatrix(spawnParams.Transform, scale);
+			Math3D.MatrixScale(spawnParams.Transform, scale);
 		
 		//~ Random rotation
 		vector angles = Math3D.MatrixToAngles(spawnParams.Transform);

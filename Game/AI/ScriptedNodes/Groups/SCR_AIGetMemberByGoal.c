@@ -32,7 +32,7 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if (!m_GroupUtilityComponent || !m_GroupUtilityComponent.m_aListOfAIInfo)
+		if (!m_GroupUtilityComponent || !m_GroupUtilityComponent.m_aInfoComponents)
 			return ENodeResult.FAIL;
 				
 		bool notFound = true, isUnique = true, isRolePresent = false;
@@ -53,10 +53,10 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 		
 		int selectedIndex = m_GroupUtilityComponent.m_iGetMemberByGoalNextIndex;
 		
-		int length = m_GroupUtilityComponent.m_aListOfAIInfo.Count();
+		int length = m_GroupUtilityComponent.m_aInfoComponents.Count();
 		for (int i = 0; i < length; i++)
 		{
-			aIInfoComponent = m_GroupUtilityComponent.m_aListOfAIInfo[(i + selectedIndex) % length];
+			aIInfoComponent = m_GroupUtilityComponent.m_aInfoComponents[(i + selectedIndex) % length];
 			if( !aIInfoComponent )
 				return ENodeResult.FAIL;
 			//prevent selecting requesting EntityID
@@ -133,7 +133,7 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 				
 		if (!notFound)
 		{
-			AIAgent agent = AIAgent.Cast(m_GroupUtilityComponent.m_aListOfAIInfo[selectedIndex].GetOwner());
+			AIAgent agent = AIAgent.Cast(m_GroupUtilityComponent.m_aInfoComponents[selectedIndex].GetOwner());
 			if (agent)
 				SetVariableOut(PORT_GROUP_MEMBER_OUT,agent);
 			else 

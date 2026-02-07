@@ -17,7 +17,10 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	protected int m_iUISelectedGroupID = -1;
 	protected int m_iGroupInviteID = -1;
 	protected int m_iGroupInviteFromPlayerID = -1;
-	protected string m_sGroupInviteFromPlayerName; //Player name is saved to get the name of the one who invited even if that player left the server
+	protected string m_sGroupInviteFromPlayerName; //Player name is saved to get the name of the one who invited even if that player left the server	
+	
+	const ref Color DEFAULT_COLOR = new Color(0, 0, 0, 0.4);
+	
 	
 	//------------------------------------------------------------------------------------------------
 	static SCR_PlayerControllerGroupComponent GetPlayerControllerComponent(int playerID)
@@ -70,6 +73,19 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void PlayerRequestToJoinPrivateGroup(int playerID, RplId groupID)
+	{		
+		Rpc(RPC_PlayerRequestToJoinPrivateGroup, playerID, groupID);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ClearAllRequesters(RplId groupID)
+	{		
+		Rpc(RPC_ClearAllRequesters, groupID);	
+		RPC_ClearAllRequesters(groupID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	int GetPlayerID()
 	{
 		PlayerController playerController = PlayerController.Cast(GetOwner());
@@ -83,8 +99,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	bool CanPlayerJoinGroup(int playerID, notnull SCR_AIGroup group)
 	{
 		// First we check the player is in the faction of the group
-		SCR_RespawnSystemComponent respawnSystemComponent = SCR_RespawnSystemComponent.GetInstance();
-		if (respawnSystemComponent && respawnSystemComponent.GetPlayerFaction(playerID) != group.GetFaction())
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager && factionManager.GetPlayerFaction(playerID) != group.GetFaction())
 			return false;
 		
 		// Groups manager doesn't exist, no point in continuing, cannot join
@@ -98,11 +114,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		
 		// Cannot join the group we are in already
 		if (groupsManager.GetPlayerGroup(playerID) == group)
-			return false;
-		
-		//cannot join private group
-		if (group.IsPrivate())
-			return false;
+			return false;  
+						
 		return true;
 	}
 	
@@ -115,17 +128,17 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	bool IsPlayerLeaderOwnGroup()
 	{
-		SCR_PlayerControllerGroupComponent groupPlayerController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
-		if (!groupPlayerController)
-			return false;
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupManager)
 			return false;
+			
+		//get controller from owner, because if this is used on server we cannot get local players player controller :wesmart:
+		SCR_PlayerController controller = SCR_PlayerController.Cast(GetOwner());
+		if (!controller)
+			return false;
 		
-		SCR_AIGroup playerGroup;
-		
-		int playerID = SCR_PlayerController.GetLocalPlayerId();
-		playerGroup = groupManager.GetPlayerGroup(playerID);
+		int playerID = controller.GetPlayerId();
+		SCR_AIGroup playerGroup = groupManager.GetPlayerGroup(playerID);
 		if (!playerGroup)
 			return false;
 		
@@ -178,6 +191,24 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void AcceptJoinPrivateGroup(int playerID, bool accept)
+	{
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		
+		SCR_AIGroup group = groupManager.FindGroup(GetGroupID());
+		if (!group)
+			return;
+			
+		group.GetOnJoinPrivateGroupConfirm().Invoke(DEFAULT_COLOR); // Saphyr TODO: temporary before definition from art dept.
+		
+		if (accept)		
+			Rpc(RPC_ConfirmJoinPrivateGroup,playerID, group.GetGroupID());
+		else 
+			Rpc(RPC_CancelJoinPrivateGroup, playerID, group.GetGroupID());	
+			
+	}	
+	
+	//------------------------------------------------------------------------------------------------
 	void InvitePlayer(int playerID)
 	{
 		// When group id is not valid, return
@@ -216,6 +247,16 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	{
 		if (m_iGroupInviteID >= 0)
 		{
+			SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+			if (!groupManager)
+				return;
+			
+			SCR_AIGroup group = groupManager.FindGroup(m_iGroupInviteID);
+			if (!group)
+				return;
+			
+			group.RemoveRequester(GetPlayerID());
+			
 			RequestJoinGroup(m_iGroupInviteID);
 			m_iGroupInviteID = -1;
 			if (m_OnInviteAccepted)
@@ -238,6 +279,63 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (group.GetGroupID() == GetSelectedGroupID())
 			SetSelectedGroupID(-1);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_PlayerRequestToJoinPrivateGroup(int playerID, RplId groupID)
+	{	
+		SCR_AIGroup group = SCR_AIGroup.Cast(Replication.FindItem(groupID));
+		if (!group)
+			return;
+		
+		group.AddRequester(playerID);
+		group.GetOnJoinPrivateGroupRequest().Invoke();
+		
+		SCR_NotificationsComponent.SendToPlayer(group.GetLeaderID(), ENotification.GROUPS_REQUEST_JOIN_PRIVATE_GROUP, playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_ConfirmJoinPrivateGroup(int playerID, int groupID)
+	{	
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+			
+		SCR_AIGroup group = SCR_AIGroup.Cast(groupManager.FindGroup(groupID));
+		if (!group)
+			return;
+		
+		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerID);
+		if (!playerController)
+			return;
+		
+		SCR_PlayerControllerGroupComponent playerComponent = SCR_PlayerControllerGroupComponent.Cast(playerController.FindComponent(SCR_PlayerControllerGroupComponent));
+		
+		playerComponent.RequestJoinGroup(group.GetGroupID());	
+					
+		group.RemoveRequester(playerID);	
+		
+		SCR_NotificationsComponent.SendToPlayer(playerID, ENotification.GROUPS_REQUEST_ACCEPTED);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_CancelJoinPrivateGroup(int playerID, int groupID)
+	{
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+		
+		SCR_AIGroup group = SCR_AIGroup.Cast(groupManager.FindGroup(groupID));
+		if (!group)
+			return;
+		
+		group.RemoveRequester(playerID);		
+		group.AddDeniedRequester(playerID);	
+		
+		SCR_NotificationsComponent.SendToPlayer(playerID, ENotification.GROUPS_REQUEST_DENIED);	
+	}	
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
@@ -277,19 +375,27 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!groupsManager)
 			return;
 		
-		SCR_RespawnSystemComponent respawnSystemComponent = SCR_RespawnSystemComponent.GetInstance();
-		if (!respawnSystemComponent)
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
 			return;
 		
-		Faction faction = respawnSystemComponent.GetPlayerFaction(GetPlayerID());
+		Faction faction = factionManager.GetPlayerFaction(GetPlayerID());
 		if (!faction)
+			return;
+		
+		SCR_Faction scrFaction = SCR_Faction.Cast(faction);
+		if(!scrFaction)
 			return;
 		
 		// We check if there is any empty group already for our faction
 		if (groupsManager.TryFindEmptyGroup(faction))
 			return;
 		
-		// No empty group found, we allow creation of new group
+		// We check if other then predefined group can be created
+		if(scrFaction.GetCanCreateOnlyPredefinedGroups())
+			return;
+		
+		// No empty group found, we allow creation of new group		
 		SCR_AIGroup newGroup = groupsManager.CreateNewPlayableGroup(faction);
 		
 		// No new group was created, return
@@ -372,9 +478,15 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 				m_OnInviteCancelled.Invoke();
 		}
 		if (m_OnGroupChanged)
-			m_OnGroupChanged.Invoke(groupID);
+			GetGame().GetCallqueue().CallLater(OnGroupChangedDelayed, 0, false, groupID);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------	
+	protected void OnGroupChangedDelayed(int groupId)
+	{
+		m_OnGroupChanged.Invoke(groupId);	
+	}
+
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_AskJoinGroup(int groupID)
@@ -417,7 +529,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		return true;
 	}
 	//------------------------------------------------------------------------------------------------
-	int GetSelectedGroupID()
+		int GetSelectedGroupID()
 	{
 		return m_iUISelectedGroupID;
 	}
@@ -451,6 +563,12 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	{
 		return m_iGroupInviteID;
 	}	
+	
+	//------------------------------------------------------------------------------------------------
+	void SetGroupInviteID(int value)
+	{
+		m_iGroupInviteID = value;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	int GetGroupInviteFromPlayerID()
@@ -651,16 +769,16 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		
 		group.SetRadioFrequency(frequency);
 	}
-	
+	 
 	//------------------------------------------------------------------------------------------------
-	void RequestSetGroupFlag(int groupID, int flagIndex)
+	void RequestSetGroupFlag(int groupID, int flagIndex, bool isFromImageset)
 	{
-		Rpc(RPC_AskSetGroupFlag, groupID, flagIndex);
+		Rpc(RPC_AskSetGroupFlag, groupID, flagIndex, isFromImageset);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskSetGroupFlag(int groupID, int flagIndex)
+	void RPC_AskSetGroupFlag(int groupID, int flagIndex, bool isFromImageset)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
@@ -670,10 +788,27 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!group)
 			return;
 		
-		group.SetGroupFlag(flagIndex);		
+		group.SetGroupFlag(flagIndex, isFromImageset);		
 	}
 	
-		//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_ClearAllRequesters(RplId groupID)
+	{
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+		
+		SCR_AIGroup group = SCR_AIGroup.Cast(Replication.FindItem(groupID));
+		if (!group)
+			return;
+		
+		group.ClearRequesters();
+		group.ClearDeniedRequester();	
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void RequestCreateSlaveGroup(RplId rplCompID)
 	{
 		Rpc(RPC_AskCreateSlaveGroup, rplCompID);
@@ -853,7 +988,105 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
 			return;
-		
+
+#ifdef ENABLE_DIAG
+		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_GROUPS, "Groups", "GameCode");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_GROUPS_ENABLE_DIAG, "", "Enable groups diag", "Groups");
+		SetEventMask(owner, EntityEvent.DIAG);		
+#endif
 		groupsManager.GetOnPlayableGroupRemoved().Insert(OnGroupDeleted);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_AIGroup GetPlayersGroup()
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return null;
+		
+		return groupsManager.FindGroup(m_iGroupID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void EOnDiag(IEntity owner, float timeSlice)
+	{		
+		if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_GROUPS_ENABLE_DIAG))
+			return;
+		
+		DbgUI.Begin("Groups");
+				
+		int playerID = SCR_PlayerController.GetLocalPlayerId();		
+		Faction faction;
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+			faction = factionManager.GetPlayerFaction(playerID);
+		
+		if (!faction)
+		{
+			DbgUI.Text("Groups do not support factionless players now!!");
+			DbgUI.End();
+			return;
+		}
+		
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		
+		DbgUI.Text("Your Faction:" + faction.GetFactionKey());
+		DbgUI.Spacer(2);
+		
+		DbgUI.Text("Playable groups of your faction:");		
+		ListGroupsFromFaction(faction);
+		DbgUI.Spacer(6);
+		
+		DbgUI.Text("Your group:");
+		SCR_AIGroup group = groupsManager.GetPlayerGroup(playerID);
+		if (group)
+		{
+			DbgUI.Text("." + group.ToString());
+			Print(group.ToString());
+		}
+		DbgUI.Spacer(2);
+		
+		if (DbgUI.Button("Create and join group for my faction"))
+			CreateAndJoinGroup(faction);
+		
+		DbgUI.Spacer(2);
+		DbgUI.End();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ListGroupsFromFaction(Faction faction)
+	{
+		array<SCR_AIGroup> groups = {};
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		groups = groupsManager.GetPlayableGroupsByFaction(faction);
+		if (!groups)
+		{
+			DbgUI.Text("No groups for your faction!!");
+			return;
+		}
+	
+		foreach(SCR_AIGroup group : groups)
+		{
+			DbgUI.Text(group.ToString());			
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void CreateAndJoinGroup(Faction faction)
+	{
+		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		if (!playerGroupController)
+			return;
+		
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager || !groupsManager.IsPlayerInAnyGroup(SCR_PlayerController.GetLocalPlayerId()))
+			return;
+		
+		SCR_AIGroup group = groupsManager.GetFirstNotFullForFaction(faction, null, true);
+		if (group)
+			playerGroupController.RequestJoinGroup(group.GetGroupID());
+		else
+			playerGroupController.RequestCreateGroup(); //requestCreateGroup automatically puts player to the newly created group
+		
 	}
 };

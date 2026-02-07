@@ -45,8 +45,8 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 		if (m_Restart)
 			m_Restart.m_OnActivated.Insert(OnRestart);
 		
-		//m_wFooter.SetOpacity(0);
-		//m_wFooter.SetEnabled(false);
+		m_wFooter.SetOpacity(0);
+		m_wFooter.SetEnabled(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -65,7 +65,8 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 	{
 		super.OnFocus(w, x, y);
 		//AnimateWidget.Opacity(m_wFooter, 1, m_fAnimationRate);
-		//m_wFooter.SetEnabled(true);
+		m_wFooter.SetOpacity(1);
+		m_wFooter.SetEnabled(true);
 		return false;
 	}
 	
@@ -74,7 +75,9 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 	{
 		super.OnFocusLost(w, x, y);
 		//AnimateWidget.Opacity(m_wFooter, 0, m_fAnimationRate);
-		//m_wFooter.SetEnabled(false);
+		m_wFooter.SetOpacity(0);
+		m_wFooter.SetEnabled(false);
+		
 		return false;
 	}
 	
@@ -107,11 +110,11 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 		
 		m_wFeatured.SetVisible(isFeatured);
 
-		bool canBeLoaded = m_Header && SCR_SaveLoadComponent.HasSaveFile(m_Header);
-		m_Play.SetVisible(!canBeLoaded);
-		m_Continue.SetVisible(canBeLoaded);
+		bool canContinue = m_Header && GetGame().GetSaveManager().HasLatestSave(m_Header);
+		m_Play.SetVisible(!canContinue);
+		m_Continue.SetVisible(canContinue);
 		
-		m_Restart.SetVisible(canBeLoaded);
+		m_Restart.SetVisible(canContinue);
 		m_FindServer.SetVisible(item.GetPlayerCount() > 1);
 	}
 	

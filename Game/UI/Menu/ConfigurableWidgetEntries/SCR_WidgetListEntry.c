@@ -359,6 +359,9 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 	[Attribute("")]
 	protected string m_sCharBlackList;
 	
+	[Attribute("0")]
+	protected bool m_bShowWriteIcon;
+	
 	protected SCR_EditBoxComponent m_EditBox;
 	protected EditBoxFilterComponent m_Filter;
 	
@@ -380,6 +383,7 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 		m_EditBox.SetValue(m_sDefaultValue);
 		m_EditBox.SetPlaceholderText(m_sPlaceholderText);
 		m_EditBox.GetHint().SetMessage(m_sWarningText);
+		m_EditBox.ShowWriteIcon(m_bShowWriteIcon);
 		
 		EditBoxWidget editBox = EditBoxWidget.Cast(m_EditBox.GetEditBoxWidget());
 		editBox.SetObfuscationChar(m_sObfuscation);
@@ -633,6 +637,12 @@ class SCR_WidgetListEntryCheckBox : SCR_WidgetListEntry
 		
 		return m_Checkbox.IsChecked().ToString();
 	}
+	
+	//-------------------------------------------------------------------------------------------
+	SCR_CheckboxComponent GetCheckbox()
+	{
+		return m_Checkbox;
+	}
 };
 
 //-------------------------------------------------------------------------------------------
@@ -783,6 +793,12 @@ class SCR_WidgetListEntrySpinBox : SCR_WidgetListEntrySelection
 	{
 		if (m_SpinBox)
 			m_SpinBox.SetCurrentItem(str.ToInt());
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	SCR_SpinBoxComponent GetSpinBox()
+	{
+		return m_SpinBox;
 	}
 }
 

@@ -72,7 +72,7 @@ class SCR_AIGroupInfoComponent : SCR_AIInfoBaseComponent
 		
 		SCR_AIWorld aiWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
 		if (aiWorld)
-			aiWorld.GetOnControlModeChanged().Invoke(GetOwner(), currControlMode);
+			aiWorld.GetOnControlModeChanged().Invoke(AIGroup.Cast(GetOwner()), currControlMode);
 	}
 	
 	//------------------------------------------------------------------------------------------------

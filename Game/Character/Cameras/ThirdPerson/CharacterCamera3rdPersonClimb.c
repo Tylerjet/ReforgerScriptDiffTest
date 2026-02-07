@@ -7,7 +7,7 @@ class CharacterCamera3rdPersonClimb extends CharacterCamera3rdPersonErc
 	{
 		m_fDistance 		= 1.6;
 		m_CameraOffsetMS	= "0.0 0.3 -0.6";
-		m_iBoneIndex		= m_OwnerCharacter.GetBoneIndex("Spine1");
+		m_iBoneIndex		= m_OwnerCharacter.GetAnimation().GetBoneIndex("Spine1");
 	}
 
 	//-----------------------------------------------------------------------------

@@ -8,7 +8,7 @@ class SCR_MapToolEntry : Managed
 	int m_iSortPriority;
 	ResourceName m_sImageSet;
 	string m_sIconQuad;
-	SCR_ButtonImageComponent m_ButtonComp;
+	SCR_ToolMenuButtonComponent m_ButtonComp;
 	SCR_MapToolMenuUI m_OwnerMenu;
 	
 	ref ScriptInvoker m_OnClick = new ScriptInvoker();
@@ -18,11 +18,17 @@ class SCR_MapToolEntry : Managed
 	static ScriptInvoker GetOnEntryToggledInvoker() { return s_OnEntryToggled; }
 	
 	//------------------------------------------------------------------------------------------------
-	//! Activation behavior, ON/OFF if entry is enabled
+	//! Activation behavior, ON/OFF if entry is active
 	void SetActive(bool toolActive)
 	{
 		m_bToolActive = toolActive;
 		UpdateVisual();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsEntryActive()
+	{
+		return m_bToolActive;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -68,23 +74,34 @@ class SCR_MapToolEntry : Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	string GetImageSet()
+	{
+		return m_sIconQuad;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! On click callback
 	protected void OnClick()
 	{
+		if (m_bToolActive)
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_HIDE);
+		else
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_SHOW);
+		
 		s_OnEntryToggled.Invoke(this);
 		m_OwnerMenu.SetMenuDisabled();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_MapToolEntry(SCR_MapToolMenuUI menu, ResourceName imageset, string icon, int sortPriority)
+	void SCR_MapToolEntry(SCR_MapToolMenuUI menu, ResourceName imageset, string icon, int sortPriority = 0)
 	{
 		m_OwnerMenu = menu;
 		m_sImageSet = imageset;
-		m_sIconQuad = icon;	
+		m_sIconQuad = icon;
 		
-		if (m_iSortPriority < 0)
+		if (sortPriority > 0)
 			m_iSortPriority = sortPriority;
-		else 
+		else
 			m_iSortPriority = 0;
 		
 		m_OnClick.Insert(OnClick);
@@ -98,7 +115,7 @@ class SCR_MapToolMenuUI : SCR_MapUIBaseComponent
 	[Attribute("{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset", UIWidgets.ResourceNamePicker, "Menu icons imageset", "imageset")]
 	ResourceName m_sToolMenuIcons;
 	
-	[Attribute("{9F48F5037C02D961}UI/layouts/Map/MapToolMenuButton.layout", UIWidgets.ResourceNamePicker, "Entry button prefab", "layout")]
+	[Attribute("{47C1A2A23B9CAC97}UI/layouts/Map/MapToolButton.layout", UIWidgets.ResourceNamePicker, "Entry button prefab", "layout")]
 	ResourceName m_sButtonResource;
 	
 	[Attribute("ToolMenu", UIWidgets.EditBox, desc: "Root frame widget name")]
@@ -106,7 +123,10 @@ class SCR_MapToolMenuUI : SCR_MapUIBaseComponent
 	
 	[Attribute("ToolMenuHoriz", UIWidgets.EditBox, desc: "Tool menu widget name")]
 	string m_sToolBarName;
-		
+	
+	[Attribute("ToolMenuButton", UIWidgets.EditBox, desc: "Default name for generated button widgets")]
+	string m_sButtonDefaultName;
+	
 	static ResourceName s_sToolMenuIcons;
 	
 	protected bool m_bIsVisible;
@@ -114,7 +134,20 @@ class SCR_MapToolMenuUI : SCR_MapUIBaseComponent
 	protected Widget m_wToolMenuBar;
 	
 	protected ref array<ref SCR_MapToolEntry> m_aMenuEntries = {};
-
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns default button name. Bear in mind that actual buttons have added index number to its end in PopulateToolMenu()
+	string GetDefaultButtonName()
+	{
+		return m_sButtonDefaultName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_MapToolEntry> GetMenuEntries()
+	{			
+		return m_aMenuEntries;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Register menu entry
 	//! \param imageset is source imageset
@@ -129,11 +162,19 @@ class SCR_MapToolMenuUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Add custom inherited entry
+	//! \param customEntry is the subject
+	void RegisterEntryCustom(SCR_MapToolEntry customEntry)
+	{
+		m_aMenuEntries.Insert(customEntry);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Build entries
 	protected void PopulateToolMenu()
 	{
 		Widget button;
-		SCR_ButtonImageComponent buttonComp;
+		SCR_ToolMenuButtonComponent buttonComp;
 		
 		bool sorted = false;
 		int count = m_aMenuEntries.Count() - 1;
@@ -154,9 +195,9 @@ class SCR_MapToolMenuUI : SCR_MapUIBaseComponent
 		foreach (int i, SCR_MapToolEntry entry : m_aMenuEntries)	// use the cached entry data to create layouts and find button handlers
 		{
 			button = GetGame().GetWorkspace().CreateWidgets(m_sButtonResource, m_wToolMenuBar);
-			button.SetName("ToolMenuButton" + i);
+			button.SetName(m_sButtonDefaultName + i);
 			
-			buttonComp = SCR_ButtonImageComponent.Cast(button.FindHandler(SCR_ButtonImageComponent));
+			buttonComp = SCR_ToolMenuButtonComponent.Cast(button.FindHandler(SCR_ToolMenuButtonComponent));
 			if (buttonComp)
 			{
 				buttonComp.m_OnClicked = entry.m_OnClick;
@@ -173,21 +214,9 @@ class SCR_MapToolMenuUI : SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Focus menu event when using controller
-	protected void OnFocusToolMenu()
+	protected void OnFocusToolMenu(float value, EActionTrigger reason)
 	{
-		if (m_aMenuEntries.IsEmpty())
-			return;
-				
-		if (!m_wToolMenuBar.IsEnabled())
-		{
-			m_wToolMenuBar.SetEnabled(true);
-			GetGame().GetWorkspace().SetFocusedWidget(m_aMenuEntries[0].m_ButtonComp.GetRootWidget());
-		}
-		else 
-		{
-			m_wToolMenuBar.SetEnabled(false);
-			GetGame().GetWorkspace().SetFocusedWidget(null);
-		}
+		SetToolMenuFocused(!m_wToolMenuBar.IsEnabled());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -197,6 +226,25 @@ class SCR_MapToolMenuUI : SCR_MapUIBaseComponent
 	{
 		m_bIsVisible = state;
 		m_wToolMenuRoot.SetVisible(state);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set focused state
+	void SetToolMenuFocused(bool state)
+	{
+		if (m_aMenuEntries.IsEmpty())
+			return;
+				
+		if (state)
+		{
+			m_wToolMenuBar.SetEnabled(true);
+			GetGame().GetWorkspace().SetFocusedWidget(m_aMenuEntries[0].m_ButtonComp.GetRootWidget());
+		}
+		else 
+		{
+			m_wToolMenuBar.SetEnabled(false);
+			GetGame().GetWorkspace().SetFocusedWidget(null);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

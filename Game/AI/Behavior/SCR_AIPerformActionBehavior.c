@@ -6,7 +6,7 @@ class SCR_AIPerformActionBehavior : SCR_AIBehaviorBase
 	void SCR_AIPerformActionBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, SCR_AISmartActionComponent smartActionComponent, float priority = PRIORITY_BEHAVIOR_PERFORM_ACTION, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/PerformAction.bt";
-		m_fPriority = priority;
+		SetPriority(priority);
 		m_fPriorityLevel.m_Value = priorityLevel;
 		m_SmartActionComponent.Init(this, smartActionComponent);
 	}

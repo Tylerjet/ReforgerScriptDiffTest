@@ -20,8 +20,8 @@ class SCR_ButtonComponent : SCR_ButtonBaseComponent
 	protected ref Color COLOR_CONTENT_CLICKED = Color.White;
 
 	//ref ScriptInvoker m_OnClicked = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnHover = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnHoverLeave = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnHover = new ScriptInvoker();
+	ref ScriptInvoker<Widget> m_OnHoverLeave = new ScriptInvoker();
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -103,7 +103,7 @@ class SCR_ButtonComponent : SCR_ButtonBaseComponent
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
 		super.OnMouseLeave(w, enterW, x, y);
-		m_OnHoverLeave.Invoke();
+		m_OnHoverLeave.Invoke(w);
 		//if (GetGame().GetWorkspace().GetFocusedWidget() != w)
 			//ColorizeWidgets(COLOR_BACKGROUND_DEFAULT, COLOR_CONTENT_DEFAULT);
 

@@ -2,6 +2,7 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 {
 	static const string PORT_CENTER_OF_SEARCH		= "OriginIn";
 	static const string PORT_RADIUS					= "RadiusIn";
+	static const string PORT_VEHICLE_IN				= "VehicleIn";
 	static const string PORT_VEHICLE_OUT			= "VehicleOut";
 	static const string PORT_ROLE_OUT				= "RoleOut";
 	static const string PORT_COMPARTMENT_OUT		= "CompartmentOut";
@@ -14,35 +15,45 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 	bool m_bReserveCompartment;
 	
 	private BaseWorld m_world;
+	protected SCR_AIGroup m_group;
 	private ref array<BaseCompartmentSlot> m_CompartmentSlots = {};
-	protected IEntity m_VehicleEntity;
+	protected IEntity m_VehicleToTestForCompartments;
 	protected BaseCompartmentSlot m_Compartment;
 	protected ECompartmentType m_CompartmentType;
 	protected SCR_AIBoardingWaypointParameters m_WaypointParameter;
 	protected SCR_AIGroupUtilityComponent m_groupUtilityCompoment;
-	
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
 	{
 		m_world = owner.GetWorld();
 		m_groupUtilityCompoment = SCR_AIGroupUtilityComponent.Cast(owner.FindComponent(SCR_AIGroupUtilityComponent));
+		m_group = SCR_AIGroup.Cast(owner);
+		if (!m_group)
+		{
+			SCR_AgentMustBeAIGroup(this, owner);
+		};
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if (!m_world)
+		if (!m_world || !m_group)
 			return ENodeResult.FAIL;
 		
-		if (m_VehicleEntity && !HasNoAvailableCompartment(m_VehicleEntity)) // the vehicle was found already and it has available compartment
+		if (!m_VehicleToTestForCompartments && GetVariableIn(PORT_VEHICLE_IN, m_VehicleToTestForCompartments)) // reading the vehicle to test from outside of the node (another search)
+			GetVariableIn(PORT_SEARCH_PARAMS, m_WaypointParameter);
+		
+		if (m_VehicleToTestForCompartments && !HasNoAvailableCompartment(m_VehicleToTestForCompartments)) // the vehicle was found already, does it have available compartment?
 		{
-			SetVariablesOut(owner, m_VehicleEntity, m_CompartmentType, m_Compartment);
+			if (m_bReserveCompartment)
+				m_group.AllocateCompartment(m_Compartment);
+			SetVariablesOut(owner, m_VehicleToTestForCompartments, m_CompartmentType, m_Compartment);
 			return ENodeResult.SUCCESS;
 		}
-		else
+		else								// perform new search for vehicle entity
 		{ 
-			m_VehicleEntity = null;
+			m_VehicleToTestForCompartments = null;
 			vector center;
 			float radius;
 			GetVariableIn(PORT_CENTER_OF_SEARCH, center);
@@ -50,18 +61,11 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 			GetVariableIn(PORT_SEARCH_PARAMS, m_WaypointParameter);
 			
 			m_world.QueryEntitiesBySphere(center, radius, HasNoAvailableCompartment, FilterEntities, EQueryEntitiesFlags.DYNAMIC);
-			if (m_VehicleEntity)
+			if (m_VehicleToTestForCompartments)
 			{
 				if (m_bReserveCompartment)
-				{
-					SCR_AIGroup group = SCR_AIGroup.Cast(owner);
-					if (!group)
-					{
-						return NodeError(this, owner, "GetEmptyCompartment not run on SCR_AIGroup agent!");
-					}
-					group.AllocateCompartment(m_Compartment);
-				};
-				SetVariablesOut(owner, m_VehicleEntity, m_CompartmentType, m_Compartment);
+					m_group.AllocateCompartment(m_Compartment);
+				SetVariablesOut(owner, m_VehicleToTestForCompartments, m_CompartmentType, m_Compartment);
 				return ENodeResult.SUCCESS;
 			}
 			ClearVariable(PORT_VEHICLE_OUT);
@@ -85,7 +89,7 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 		
 		foreach (BaseCompartmentSlot slot : m_CompartmentSlots)
 		{
-			if (slot.GetOccupant() || !slot.IsCompartmentAccessible())
+			if (slot.GetOccupant() || !slot.IsCompartmentAccessible() || slot.IsReserved())
 				continue;
 			if (m_WaypointParameter.m_bIsDriverAllowed && PilotCompartmentSlot.Cast(slot))
 				pilotCompartment = slot;
@@ -98,7 +102,7 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 		if (pilotCompartment)
 		{
 			m_CompartmentType = ECompartmentType.Pilot;
-			m_VehicleEntity = ent;
+			m_VehicleToTestForCompartments = ent;
 			m_Compartment = pilotCompartment;
 			return false;
 		}
@@ -106,7 +110,7 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 		if (turretCompartment)
 		{
 			m_CompartmentType = ECompartmentType.Turret;
-			m_VehicleEntity = ent;
+			m_VehicleToTestForCompartments = ent;
 			m_Compartment = turretCompartment;
 			return false;
 		}
@@ -114,7 +118,7 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 		if (cargoCompartment)
 		{
 			m_CompartmentType = ECompartmentType.Cargo;
-			m_VehicleEntity = ent;
+			m_VehicleToTestForCompartments = ent;
 			m_Compartment = cargoCompartment;
 			return false;
 		}
@@ -160,7 +164,8 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 	protected static ref TStringArray s_aVarsIn = {
 		PORT_CENTER_OF_SEARCH,
 		PORT_RADIUS,
-		PORT_SEARCH_PARAMS
+		PORT_SEARCH_PARAMS,
+		PORT_VEHICLE_IN
 	};
 	override TStringArray GetVariablesIn()
     {

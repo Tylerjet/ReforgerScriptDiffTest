@@ -8,11 +8,13 @@ class SCR_CampaignSuppliesComponentClass: ScriptComponentClass
 class SCR_CampaignSuppliesComponent : ScriptComponent
 {
 	// Member variables 
-	protected SCR_CampaignBase m_LastLoadedAt;
-	protected SCR_CampaignBase m_LastUnloadedAt;
-	protected SCR_CampaignBase m_LastXPAwardedAt;
+	protected SCR_CampaignMilitaryBaseComponent m_LastLoadedAt;
+	protected SCR_CampaignMilitaryBaseComponent m_LastUnloadedAt;
+	protected SCR_CampaignMilitaryBaseComponent m_LastXPAwardedAt;
 	protected bool m_bAwardUnloadXP = true;
 	protected bool m_bIsPlayerInRange;
+	
+	static const float SUPPLY_TRUCK_UNLOAD_RADIUS = 25;			//m: maximum distance from a supply depot a player can still (un)load their truck
 	
 	[RplProp()]
 	protected ref array<int> m_aLoadingPlayerIDs = {};
@@ -79,6 +81,14 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//~ Called on player killed
+	protected void OnPlayerKilled(int playerID, IEntity player = null, IEntity killer = null)
+	{
+		DeleteSupplyLoadingPlayer(playerID);
+		DeleteSupplyUnloadingPlayer(playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// Setter for Unloading players array
 	void SetSupplyUnloadingPlayer(int playerID)
 	{
@@ -105,14 +115,6 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	{
 		// script invoker executed when ammout of supplies in vehicle changed. m_iSupplies is ammout of currently loaded supplies.
 		m_OnSuppliesChanged.Invoke(m_iSupplies, m_iSuppliesMax);
-		
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(GetOwner().GetParent());
-		
-		if (!base)
-			return;
-		
-		if (RplSession.Mode() != RplMode.Dedicated)
-			base.HandleMapInfo();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -145,7 +147,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 		if (m_fOperationalRadius != 0)
 			return m_fOperationalRadius;
 		
-		return SCR_GameModeCampaignMP.SUPPLY_TRUCK_UNLOAD_RADIUS;
+		return SUPPLY_TRUCK_UNLOAD_RADIUS;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -161,7 +163,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetLastLoadedAt(SCR_CampaignBase base)
+	void SetLastLoadedAt(SCR_CampaignMilitaryBaseComponent base)
 	{
 		m_LastLoadedAt = base;
 		
@@ -172,7 +174,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetLastUnloadedAt(SCR_CampaignBase base)
+	void SetLastUnloadedAt(SCR_CampaignMilitaryBaseComponent base)
 	{
 		m_LastUnloadedAt = base;
 		
@@ -189,13 +191,16 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	void AddSupplies(int supplies)
+	void AddSupplies(int supplies, bool replicate = true)
 	{
 		m_iSupplies += supplies;
+		
 		if (m_iSupplies > m_iSuppliesMax)
 			m_iSupplies = m_iSuppliesMax;
 		
-		Replication.BumpMe();
+		if (replicate)
+			Replication.BumpMe();
+		
 		OnSuppliesChanged();
 	}
 	
@@ -213,8 +218,15 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 		
 		gamemode.GetOnPlayerDisconnected().Insert(DeleteSupplyLoadingPlayer);
 		gamemode.GetOnPlayerDisconnected().Insert(DeleteSupplyUnloadingPlayer);
-		gamemode.GetOnPlayerKilled().Insert(DeleteSupplyLoadingPlayer);
-		gamemode.GetOnPlayerKilled().Insert(DeleteSupplyUnloadingPlayer);
+		gamemode.GetOnPlayerKilled().Insert(OnPlayerKilled);
+		
+		if (m_bIsStandaloneDepot && GetGame().InPlayMode())
+		{
+			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+			
+			if (campaign)
+				campaign.GetBaseManager().RegisterRemnantSupplyDepot(this);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -227,14 +239,6 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 		{
 			string err = string.Format("SCR_CampaignSuppliesComponent on %1 carries more supplies (%2) than its maximum (%3)!", owner, m_iSupplies, m_iSuppliesMax);
 			Print(err, LogLevel.ERROR);
-		}
-		
-		if (m_bIsStandaloneDepot)
-		{
-			SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-			
-			if (campaign)
-				campaign.RegisterRemnantSupplyDepot(this);
 		}
 	}
 	
@@ -293,7 +297,6 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 		
 		gamemode.GetOnPlayerDisconnected().Remove(DeleteSupplyLoadingPlayer);
 		gamemode.GetOnPlayerDisconnected().Remove(DeleteSupplyUnloadingPlayer);
-		gamemode.GetOnPlayerKilled().Remove(DeleteSupplyLoadingPlayer);
-		gamemode.GetOnPlayerKilled().Remove(DeleteSupplyUnloadingPlayer);
+		gamemode.GetOnPlayerKilled().Remove(OnPlayerKilled);
 	}
 };

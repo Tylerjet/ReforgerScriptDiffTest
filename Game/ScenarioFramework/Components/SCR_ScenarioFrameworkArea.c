@@ -31,6 +31,9 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 
 	[Attribute(defvalue: "5.0", UIWidgets.Slider, params: "1.0 1000.0 0.5", desc: "Radius of the trigger area", category: "Trigger")]
 	protected float							m_fAreaRadius;
+	
+	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")]
+	protected bool		m_bOnce;
 
 	protected SCR_BaseTriggerEntity											m_Trigger;
 	protected ref ScriptInvoker<SCR_ScenarioFrameworkArea, SCR_ScenarioFrameworkEActivationType>				m_OnTriggerActivated;
@@ -41,6 +44,9 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	protected string	 													m_sItemDeliveryPointName;
 	protected SCR_ScenarioFrameworkLayerTask								m_LayerTask;
 	protected SCR_ScenarioFrameworkSlotTask									m_TaskSubject; 				//storing this one in order to get the task title and description
+	
+	[Attribute(UIWidgets.Auto, category: "OnActivation")];
+	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActions;
 
 #ifdef WORKBENCH
 	[Attribute(defvalue: "0", desc: "Show the debug shapes in Workbench", category: "Debug")];
@@ -407,6 +413,10 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		//m_Trigger.Show(false);
 		m_Trigger.SetSphereRadius(m_fAreaRadius);
 		m_Trigger.GetOnActivate().Insert(OnAreaTriggerActivated);
+		
+		SCR_CharacterTriggerEntity characterTrigger = SCR_CharacterTriggerEntity.Cast(m_Trigger);
+		if (characterTrigger)
+			characterTrigger.SetOnce(m_bOnce);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -500,6 +510,9 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		{
 			m_OnTriggerActivated.Invoke(this, SCR_ScenarioFrameworkEActivationType.ON_AREA_TRIGGER_ACTIVATION, false);
 			m_OnTriggerActivated.Clear();
+			if (!m_bOnce)
+				return;
+			
 			m_Trigger.Deactivate();
 		}
 	}
@@ -528,8 +541,18 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		if (m_eActivationType != SCR_ScenarioFrameworkEActivationType.ON_INIT)
 			PrintFormat("ScenarioFramework: Area %1 is set to %2 activation type, but area will always spawn on Init as default", GetOwner().GetName(), activation, LogLevel.WARNING);
 
-		super.Init(this, SCR_ScenarioFrameworkEActivationType.ON_INIT);		//area always spawned on the start;
 		SpawnTrigger();
+		// Area is always spawned on the start
+		super.Init(this, SCR_ScenarioFrameworkEActivationType.ON_INIT);
+		
+		if (m_Trigger)
+		{
+			foreach(SCR_ScenarioFrameworkActionBase triggerAction : m_aTriggerActions)
+			{
+				triggerAction.Init(m_Trigger);
+			}
+		}
+		
 		m_OnAreaInit.Invoke();
 	}
 

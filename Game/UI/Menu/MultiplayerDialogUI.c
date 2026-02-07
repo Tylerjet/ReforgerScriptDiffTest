@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-class MultiplayerDialogUI: DialogUI
+class MultiplayerDialogUI: SCR_ConfigurableDialogUi //DialogUI
 {
 	const string WIDGET_EDIT_IP = "EditIP";
 	const string WIDGET_EDIT_PORT = "EditPort";
@@ -84,9 +84,38 @@ class MultiplayerDialogUI: DialogUI
 			return sAddr;
 	}
 	
+	
+	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow()
+	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
+		// Old OnMenuOpen()
+		super.OnMenuOpen(preset);
+		Widget root = GetRootWidget();
+		
+		
+		// IP and join code edit 
+		m_EditIP = SCR_EditBoxComponent.GetEditBoxComponent(WIDGET_EDIT_IP, root);
+		
+		if (m_EditIP)
+		{
+			m_EditIP.m_OnChanged.Insert(CheckValidInput);
+		}
+		
+		// Port edit
+		m_EditPort = SCR_EditBoxComponent.GetEditBoxComponent(WIDGET_EDIT_PORT, root);
+		
+		if (m_EditPort)
+		{
+			m_EditPort.m_OnChanged.Insert(CheckValidInput);
+		}
+		
+		// Checkbox network 
+		m_CheckNetwork = SCR_CheckboxComponent.GetCheckboxComponent(WIDGET_CHECK_NETWORK, root);
+		
+		//SetDialogType(EDialogType.ACTION);
+		//---
+		
 		// Try to load the last valid address
 		string text;
 		BaseContainer gameplaySettings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
@@ -110,33 +139,7 @@ class MultiplayerDialogUI: DialogUI
 		}
 
 		// Set the confirm button enabled or disabled
-		CheckValidInput(m_EditIP, string.Empty);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen()
-	{
-		super.OnMenuOpen();
-		Widget root = GetRootWidget();
-		
-		// IP and join code edit 
-		m_EditIP = SCR_EditBoxComponent.GetEditBoxComponent(WIDGET_EDIT_IP, root);
-		if (m_EditIP)
-		{
-			m_EditIP.m_OnChanged.Insert(CheckValidInput);
-		}
-		
-		// Port edit
-		m_EditPort = SCR_EditBoxComponent.GetEditBoxComponent(WIDGET_EDIT_PORT, root);
-		if (m_EditPort)
-		{
-			m_EditPort.m_OnChanged.Insert(CheckValidInput);
-		}
-		
-		// Checkbox network 
-		m_CheckNetwork = SCR_CheckboxComponent.GetCheckboxComponent(WIDGET_CHECK_NETWORK, root);
-		
-		SetDialogType(EDialogType.ACTION);
+		CheckValidInput(m_EditIP, string.Empty);																						   
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -226,7 +229,8 @@ class MultiplayerDialogUI: DialogUI
 
 		// Enable input 
 		m_EditPort.SetEnabled(validAddress);
-		m_Confirm.SetEnabled(validInput);
+		//m_Confirm.SetEnabled(validInput);
+		FindButton("confirm").SetEnabled(validInput);
 	}
 	
 	//------------------------------------------------------------------------------------------------

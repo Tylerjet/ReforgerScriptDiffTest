@@ -38,6 +38,12 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	
 	[Attribute("OverlayArrow")]
 	protected string m_sButton;
+	
+	[Attribute("0.022995 0.022995 0.022995 1.000000", UIWidgets.ColorPicker)]
+	ref Color m_BackgroundDefault;
+	
+	[Attribute("0.109468 0.109468 0.109468 1.000000", UIWidgets.ColorPicker)]
+	ref Color m_BackgroundInteracting;
 
 	protected InputManager m_InputManager;
 	protected ref array<Widget> m_aElementWidgets = new ref array<Widget>();
@@ -56,6 +62,8 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	ref ScriptInvoker m_OnClosed = new ScriptInvoker();
 	
 	protected float posX, posY;
+	
+	protected Widget m_wTextBackground;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -84,6 +92,13 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 			m_wArrowImage.SetRotation(m_fArrowDefaultAngle);
 
 		UpdateName();
+		
+		Widget overlayText = w.FindAnyWidget("OverlayText");
+		if(overlayText)
+			m_wTextBackground = overlayText.FindAnyWidget("Background");
+		
+		if(m_wTextBackground)
+			m_wTextBackground.SetColor(m_BackgroundDefault);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -234,13 +249,17 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 
 		m_bOpened = true;
 
+	 	SCR_NavigationButtonHelper.SetActiveWidgetInteractionState(true);
+		if(m_wTextBackground)
+			AnimateWidget.Color(m_wTextBackground, m_BackgroundInteracting, m_fAnimationRate);
+		
 		// Add escape handling
 		m_InputManager.ResetAction("MenuSelect");
 		m_InputManager.AddActionListener("MenuBack", EActionTrigger.DOWN, OnMenuBack);
 #ifdef WORKBENCH
 		m_InputManager.AddActionListener("MenuBackWB", EActionTrigger.DOWN, OnMenuBack);
 #endif
-
+		
 		float x, y, w, h;
 		m_wContentRoot.GetScreenPos(x, y);
 		m_wContentRoot.GetScreenSize(w, h);
@@ -324,7 +343,11 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	{
 		if (!m_bOpened || !m_wElementsRoot || !m_aElementNames)
 			return;
-
+		
+		SCR_NavigationButtonHelper.SetActiveWidgetInteractionState(false);
+		if(m_wTextBackground)
+			AnimateWidget.Color(m_wTextBackground, m_BackgroundDefault, m_fAnimationRate);
+		
 		// Remove escape handling
 		GetGame().GetInputManager().RemoveActionListener("MenuBack", EActionTrigger.DOWN, OnMenuBack);
 #ifdef WORKBENCH

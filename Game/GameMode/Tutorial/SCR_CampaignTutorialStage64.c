@@ -28,7 +28,7 @@ class SCR_CampaignTutorialStage64 : SCR_BaseCampaignTutorialStage
 		{
 			SCR_CampaignBuildingComponent buildComp = SCR_CampaignBuildingComponent.Cast(m_Player.FindComponent(SCR_CampaignBuildingComponent));
 			
-			if (buildComp && buildComp.IsBuilding())
+			if (SCR_EditorManagerEntity.IsOpenedInstance() && SCR_EditorManagerEntity.GetInstance().GetCurrentMode() == EEditorMode.BUILDING)
 				m_TutorialComponent.FinishStage(this, SCR_ECampaignTutorialStage.CONFLICT_BUILD_BUNKER);
 		}
 		

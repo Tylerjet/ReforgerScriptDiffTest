@@ -25,8 +25,6 @@ class CharacterCamera3rdPersonCrouch extends CharacterCamera3rdPersonBase
 		movement *= CONST_CAMERAMOVEMENTHEIGH;
 		
 		float stanceCameraHeight = 0.0;
-		if (m_CommandMove && m_CommandMove.IsStanceAdjustedByMovement())
-			stanceCameraHeight = CONST_CAMERA_STANCE_ADJ_BY_MOVEMENT;
 		
 		m_fCameraHeight	= Math.SmoothCD(m_fCameraHeight, Math.Max(movement, stanceCameraHeight), m_fCameraHeightVel, 0.2, 1000, pDt);
 		m_CameraOffsetMS[1] = 0.7 + m_fCameraHeight;

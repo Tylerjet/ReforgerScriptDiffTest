@@ -55,6 +55,11 @@ class SCR_SwitchSeatAction : SCR_GetInUserAction
 		auto characterCompartment = compartmentAccess.GetCompartment();
 		if (!characterCompartment)
 			return false;
+
+		auto commandHandler = character.GetAnimationComponent().GetCommandHandler();
+		if (commandHandler && commandHandler.IsVehicleSwitchingSeats())
+			return false;
+
 		
 		// Prevents switching seats within different vehicles,
 		if (!IsCompartmentInHierarchy(characterCompartment, m_pOwner))
@@ -99,14 +104,28 @@ class SCR_SwitchSeatAction : SCR_GetInUserAction
 		if (!characterCompartment)
 			return false;
 		
+		auto commandHandler = character.GetAnimationComponent().GetCommandHandler();
+		if (commandHandler && commandHandler.IsVehicleSwitchingSeats())
+			return false;
+
 		// Prevents switching seats within different vehicles,
 		if (!IsCompartmentInHierarchy(characterCompartment, m_pOwner))
 			return false;
 		
 		//! Check if some other action or animation is preventing the seat switch 
-		auto vehicleController = VehicleControllerComponent.Cast(characterCompartment.GetController());
-		if (vehicleController && !vehicleController.CanSwitchSeat())
-			return false;
+		if(GetGame().GetIsClientAuthority())
+		{
+			auto vehicleController = VehicleControllerComponent.Cast(characterCompartment.GetController());
+			if (vehicleController && !vehicleController.CanSwitchSeat())
+				return false;
+		}
+		else
+		{
+			auto vehicleController = VehicleControllerComponent_SA.Cast(characterCompartment.GetController());
+			if (vehicleController && !vehicleController.CanSwitchSeat())
+				return false;
+		}
+		
 
 		return characterCompartment != compartment;
 	}	

@@ -1,10 +1,10 @@
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "Component to be used with barrack compositions, handing unit spawning.", color: "0 0 255 255")]
-class SCR_BarracksComponentClass: ScriptComponentClass
+class SCR_BarracksComponentClass: SCR_ServicePointComponentClass
 {
 };
 
 //------------------------------------------------------------------------------------------------
-class SCR_BarracksComponent: ScriptComponent
+class SCR_BarracksComponent: SCR_ServicePointComponent
 {
 	
 	[Attribute("{D4A1576757665D02}Prefabs/Groups/Campaign/Group_US_Defenders.et", UIWidgets.ResourceNamePicker, "Defending Group Prefab", "et")]

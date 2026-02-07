@@ -53,7 +53,7 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RPC_RequestReinforcements(int requesterID)
 	{
-		SCR_CampaignBase base;
+		SCR_CampaignMilitaryBaseComponent base;
 		if (!SCR_CampaignDefendTask.CheckDefendRequestConditions(m_PlayerController, base))
 			return;
 		
@@ -194,7 +194,7 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 		if (!character)
 		   return;
 		
-		SCR_CampaignBase closestBase = SCR_CampaignBaseManager.FindClosestBase(character.GetOrigin());
+		SCR_CampaignMilitaryBaseComponent closestBase = SCR_GameModeCampaign.GetInstance().GetBaseManager().FindClosestBase(character.GetOrigin());
 		if (closestBase)
 			networkComponent.SendPlayerMessage(SCR_ERadioMsg.REQUEST_EVAC, closestBase.GetCallsign(), checkHQReached: true);
 		

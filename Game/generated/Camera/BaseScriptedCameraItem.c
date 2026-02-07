@@ -17,7 +17,8 @@ class BaseScriptedCameraItem
 	event void OnBlendOut();
 	//!	virtual callback - called each frame
 	event void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult);
-	event void SetBaseAngles(vector angles);
+	//! Sets the camera angles in DEG, useful when switching between cameras and changing orientation of the character
+	event void SetBaseAngles(out vector angles);
 }
 
 /*!

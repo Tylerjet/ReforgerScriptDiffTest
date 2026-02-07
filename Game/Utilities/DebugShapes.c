@@ -7,7 +7,7 @@
 void ShowBoneDebug(IEntity ent, int bone, float scale)
 {
 	vector boneMat[4];
-	if (ent.GetBoneMatrix(bone, boneMat))
+	if (ent.GetAnimation().GetBoneMatrix(bone, boneMat))
 	{
 		vector mat[4];
 		ent.GetTransform(mat);

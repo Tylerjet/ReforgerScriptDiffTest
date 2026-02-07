@@ -1,109 +1,103 @@
 /*
 Component for a line in scenario browser.
 */
-class SCR_ContentBrowser_ScenarioLineComponent : ScriptedWidgetComponent
-{	
+class SCR_ContentBrowser_ScenarioLineComponent : SCR_ScriptedWidgetComponent
+{
 	protected ref SCR_ContentBrowser_ScenarioLineWidgets m_Widgets = new SCR_ContentBrowser_ScenarioLineWidgets;
 
 	protected MissionWorkshopItem m_Mission;
-	
-	protected Widget m_wRoot;
-	
+
 	// Called when scenario state is changed through this component
-	ref ScriptInvoker m_OnScenarioStateChanged = new ScriptInvoker; // (SCR_ContentBrowser_ScenarioLineComponent comp)
-	
-	//-----------------------------------------------------------------------------------
+	ref ScriptInvoker m_OnScenarioStateChanged = new ScriptInvoker(); // (SCR_ContentBrowser_ScenarioLineComponent comp)
+
+	protected bool m_bInnerButtonInteraction = false;
+
+	//------------------------------------------------------------------------------------------------
 	static SCR_ContentBrowser_ScenarioLineComponent FindComponent(Widget w)
 	{
 		return SCR_ContentBrowser_ScenarioLineComponent.Cast(w.FindHandler(SCR_ContentBrowser_ScenarioLineComponent));
 	}
-	
-	//-----------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	//! Must be called when the scenario properties have been updated (set/clear favourite or similar)
 	void NotifyScenarioUpdate()
 	{
 		UpdateAllWidgets();
 	}
-	
-	//-----------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	void SetScenario(MissionWorkshopItem mission)
 	{
 		m_Mission = mission;
-		
+
 		UpdateAllWidgets();
 	}
-	
-	
-	//-----------------------------------------------------------------------------------
+
+
+	//------------------------------------------------------------------------------------------------
 	MissionWorkshopItem GetScenario()
 	{
 		return m_Mission;
 	}
-	
-	//-----------------------------------------------------------------------------------
-	Widget GetRootWidget()
-	{
-		return m_wRoot;
-	}
-	
-	//-----------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	void ShowFavouriteButton(bool show)
 	{
 		m_Widgets.m_FavouriteButtonOverlay.SetVisible(show);
 	}
-	
-	//-----------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	void ShowName(bool show)
 	{
 		m_Widgets.m_NameText.SetVisible(show);
 	}
-	
-	//-----------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	void ShowPlayerCount(bool show)
 	{
 		m_Widgets.m_PlayerCount.SetVisible(show);
 	}
-	
-	//-----------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	void ShowLastPlayedText(bool show)
 	{
 		m_Widgets.m_LastPlayedText.SetVisible(show);
 	}
-	
-	//-----------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	void ShowSource(bool show)
 	{
 		m_Widgets.m_Source.SetVisible(show);
 	}
-	
-	
+
+
 	// ----------------------------- Protected / Private ---------------------------------
-		
-	
-	//-----------------------------------------------------------------------------------
+
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateAllWidgets()
 	{
 		if (!m_Mission)
 			return;
-		
+
 		// Fav button
 		if (m_Mission)
 			m_Widgets.m_FavouriteButtonComponent.SetToggled(m_Mission.IsFavorite(), false);
-		
+
 		// Name
 		m_Widgets.m_NameText.SetText(m_Mission.Name());
-		
+
 		// Game mode
 		/*
 		// Not supported yet - todo
 		*/
-		
+
 		// Type/player count
 		{
 			int playerCount = m_Mission.GetPlayerCount();
 			bool mp = playerCount > 1;
 			bool sp = !mp;
-			
+
 			m_Widgets.m_SinglePlayerImage.SetVisible(sp);
 			m_Widgets.m_MultiPlayerImage.SetVisible(mp);
 			m_Widgets.m_PlayerCountText.SetVisible(mp);
@@ -111,18 +105,18 @@ class SCR_ContentBrowser_ScenarioLineComponent : ScriptedWidgetComponent
 			if (mp)
 				m_Widgets.m_PlayerCountText.SetText(playerCount.ToString());
 		}
-		
+
 		// Last played time text
 		{
 			int timeSinceLastPlayedSeconds = m_Mission.GetTimeSinceLastPlay();
 			string timeSinceLastPlayText;
-			if (timeSinceLastPlayedSeconds > 0 )
+			if (timeSinceLastPlayedSeconds > 0)
 				timeSinceLastPlayText = SCR_FormatHelper.GetTimeSinceEventImprecise(timeSinceLastPlayedSeconds);
 			else
 				timeSinceLastPlayText = "-";
 			m_Widgets.m_LastPlayedText.SetText(timeSinceLastPlayText);
 		}
-		
+
 		// Source addon
 		{
 			WorkshopItem sourceAddon = m_Mission.GetOwner();
@@ -137,31 +131,64 @@ class SCR_ContentBrowser_ScenarioLineComponent : ScriptedWidgetComponent
 			}
 			else
 			{
-				m_Widgets.m_SourceNameTextOfficial.SetText("#AR-Editor_Attribute_OverlayLogo_Reforger");				
+				m_Widgets.m_SourceNameTextOfficial.SetText("#AR-Editor_Attribute_OverlayLogo_Reforger");
 			}
 		}
 	}
-	
-	
-	//-----------------------------------------------------------------------------------
+
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_wRoot = w;
 		m_Widgets.Init(w);
-		
+
 		// Init event handlers
 		m_Widgets.m_FavouriteButtonComponent.m_OnToggled.Insert(OnFavouriteButtonMouseToggled);
+		m_Widgets.m_FavouriteButtonComponent.m_OnMouseEnter.Insert(OnFavoriteHover);
+		m_Widgets.m_FavouriteButtonComponent.m_OnMouseLeave.Insert(OnFavoriteLeave);
 	}
-	
-	
-	//-----------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
+	override bool OnClick(Widget w, int x, int y, int button)
+	{
+		// LMB check
+		if (button != 0 || m_bInnerButtonInteraction)
+			return false;
+
+		return super.OnClick(w, x, y, button);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool OnDoubleClick(Widget w, int x, int y, int button)
+	{
+		// LMB check
+		if (button != 0 || m_bInnerButtonInteraction)
+			return false;
+
+		return super.OnDoubleClick(w, x, y, button);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void OnFavouriteButtonMouseToggled(SCR_ModularButtonComponent comp, bool newToggled)
 	{
 		if (!m_Mission)
 			return;
-		
+
 		m_Mission.SetFavorite(newToggled);
-		
+
 		m_OnScenarioStateChanged.Invoke(this);
-	}	
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnFavoriteHover()
+	{
+		m_bInnerButtonInteraction = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnFavoriteLeave()
+	{
+		m_bInnerButtonInteraction = false
+	}
 };

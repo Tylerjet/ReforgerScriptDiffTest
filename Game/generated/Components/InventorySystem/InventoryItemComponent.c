@@ -5,29 +5,15 @@ Do not modify, this script is generated
 */
 
 /*!
-\addtogroup Components\InventorySystem
+\addtogroup Components_InventorySystem
 \{
 */
 
 class InventoryItemComponent: GameComponent
 {
 	ref ScriptInvoker<bool> m_OnLockedStateChangedInvoker = new ScriptInvoker<bool>();
-	private void OnLockedStateChanged(bool nowLocked)
-	{
-		if (m_OnLockedStateChangedInvoker)
-		{
-			m_OnLockedStateChangedInvoker.Invoke(nowLocked);
-		}
-	}
 
 	ref ScriptInvoker<InventoryStorageSlot, InventoryStorageSlot> m_OnParentSlotChangedInvoker = new ScriptInvoker<InventoryStorageSlot, InventoryStorageSlot>();
-	private void OnParentSlotChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot)
-	{
-		if (m_OnParentSlotChangedInvoker)
-		{
-			m_OnParentSlotChangedInvoker.Invoke(oldSlot, newSlot);
-		}
-	}
 
 	//! Returns Entity owner of current component instance
 	proto external IEntity GetOwner();
@@ -96,6 +82,8 @@ class InventoryItemComponent: GameComponent
 	event protected bool ShouldHideInVicinity();
 	//! Override final transformation of dropped item, return true in case transformation should be applied
 	event protected bool OverridePlacementTransform(IEntity caller, out vector computedTransform[4]);
+	event private void OnLockedStateChanged(bool nowLocked) { if (m_OnLockedStateChangedInvoker) m_OnLockedStateChangedInvoker.Invoke(nowLocked); };
+	event private void OnParentSlotChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot) { if (m_OnParentSlotChangedInvoker) m_OnParentSlotChangedInvoker.Invoke(oldSlot, newSlot); };
 }
 
 /*!

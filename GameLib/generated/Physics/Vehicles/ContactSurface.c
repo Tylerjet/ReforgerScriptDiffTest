@@ -5,7 +5,7 @@ Do not modify, this script is generated
 */
 
 /*!
-\addtogroup Physics\Vehicles
+\addtogroup Physics_Vehicles
 \{
 */
 

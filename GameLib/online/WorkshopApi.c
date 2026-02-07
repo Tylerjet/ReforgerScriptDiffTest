@@ -58,6 +58,7 @@
 		EACODE_ERROR_PASSWORD_MISMATCH,
 		EACODE_ERROR_P2P_USER_JOIN_BAN,
 		EACODE_ERROR_DS_USER_JOIN_BAN,
+		EACODE_ERROR_PLAYER_IS_BANNED,
 		EACODE_ERROR_RENTED_SERVER_GAME_DATA_CORRUPTED,
 		EACODE_ERROR_MAINTENANCE_IN_PROGRESS,
 		EACODE_ERROR_USER_IS_BANNED_FROM_SHARED_GAME,
@@ -383,7 +384,7 @@ class DownloadableItem extends BaseWorkshopItem
 	/**
 	\brief Cancel upload or download
 	*/
-	proto native void Cancel();
+	proto native void Cancel(BackendCallback callback);
 	
 	/**
 	\brief Delete local copy of an asset
@@ -416,6 +417,11 @@ class DownloadableItem extends BaseWorkshopItem
 	\brief Get local (non-workshop) revision
 	*/
 	proto native Revision GetLocalRevision();
+	
+	/**
+	\brief Get summary
+	*/
+	proto native string Summary();
 }
 
 
@@ -556,11 +562,6 @@ class WorkshopItem extends DownloadableItem
 	
 	proto native void Enable(bool enable);
 	proto native bool IsEnabled();
-
-	/**
-	\brief Get summary
-	*/
-	proto native string Summary();
 	
 	proto native string License();
 	proto native string LicenseText();
@@ -574,7 +575,7 @@ class WorkshopItem extends DownloadableItem
 	
 	proto native void SetFavourite(bool isFavourite);
 	
-	proto native void PauseDownload();
+	proto native void PauseDownload(BackendCallback callback);
 	
 	proto native void ResumeDownload(BackendCallback callback);
 	

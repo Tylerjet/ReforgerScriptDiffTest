@@ -119,6 +119,15 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		super.Refresh();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//~ Called when nightmode enabled changed to make sure the nightmode action is hidden if global night mode is enabled
+	protected void OnGlobalNightModeEnabledChanged(bool enabled)
+	{
+		Refresh();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnRepeat()
 	{
 		if (m_RepeatAction)
@@ -162,12 +171,22 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
 		if (editorManager)
+		{
 			editorManager.GetOnCanEndGameChanged().Insert(Refresh);
+			editorManager.GetOnLimitedChange().Insert(Refresh);
+		}
+			
 		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
+		{
 			gameMode.GetOnGameModeEnd().Insert(Refresh);
-		
+			
+			SCR_NightModeGameModeComponent nightModeComponent = SCR_NightModeGameModeComponent.Cast(gameMode.FindComponent(SCR_NightModeGameModeComponent));
+			if (nightModeComponent)
+				nightModeComponent.GetOnGlobalNightModeEnabledChanged().Insert(OnGlobalNightModeEnabledChanged);
+		}
+			
 		super.HandlerAttachedScripted(w);
 	}
 	override void HandlerDeattached(Widget w)
@@ -180,10 +199,19 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 		
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
 		if (editorManager)
+		{
 			editorManager.GetOnCanEndGameChanged().Remove(Refresh);
-		
+			editorManager.GetOnLimitedChange().Remove(Refresh);
+		}
+			
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
+		{
 			gameMode.GetOnGameModeEnd().Remove(Refresh);
+			
+			SCR_NightModeGameModeComponent nightModeComponent = SCR_NightModeGameModeComponent.Cast(gameMode.FindComponent(SCR_NightModeGameModeComponent));
+			if (nightModeComponent)
+				nightModeComponent.GetOnGlobalNightModeEnabledChanged().Remove(OnGlobalNightModeEnabledChanged);
+		}
 	}
 };

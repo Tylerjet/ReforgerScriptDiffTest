@@ -1,187 +1,9 @@
-enum EAIActionState
+class SCR_AIActionBase : AIActionBase
 {
-	EVALUATED,
-	RUNNING,
-	SUSPENDED,
-	COMPLETED,
-	FAILED
-};
-
-class SCR_AIActionBase
-{
-	EAIActionState m_eState;
-
-	// TODO: Get rid of flags we don't neccesarily need	
-	bool m_bUniqueInActionQueue = true;
-	bool m_bIsInterruptable = true;
-	bool m_bSuspended = false;
-	protected float m_fPriority;
-	protected ref SCR_BTParam<float> m_fPriorityLevel = new SCR_BTParam<float>(SCR_AIActionTask.PRIORITY_LEVEL_PORT); // used when utility component calls Evaluate() on action, adds level of priority
-	
-	ResourceName m_sBehaviorTree;
-	
-	ResourceName m_sAbortBehaviorTree;
-	
-	ref ScriptInvoker m_OnActionCompleted = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnActionFailed = new ref ScriptInvoker();
-	
-	// Array with parameters which must be exposed to scripts.
-	// For example see how m_bPrioritize is used here.
-	ref array<SCR_BTParamBase> m_aParams = {};	
-	
-	//-------------------------------------------------------------------------------------
-	float Evaluate()
-	{
-		return m_fPriority;
-	}
-	
-	//---------------------------------------------------------------------------------------------------------------------------------
-	void SetPriority(float priority)
-	{
-		m_fPriority = priority;
-	}
-	
-	//-------------------------------------------------------------------------------------
-	float EvaluatePriorityLevel()
-	{
-		return m_fPriorityLevel.m_Value;
-	}
-	
-	//---------------------------------------------------------------------------------------------------------------------------------
-	void SetPriorityLevel(int priority)
-	{
-		m_fPriorityLevel.m_Value = priority;
-	}
-	
-	//-------------------------------------------------------------------------------------
-	void SetActionState(EAIActionState state)
-	{
-		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("SetActionState: %1, %2", typename.EnumToString(EAIActionState, state), GetActionDebugInfo()));
-		#endif
-		m_eState = state;
-	}
-	
-	//-------------------------------------------------------------------------------------
-	EAIActionState GetActionState()
-	{
-		return m_eState;
-	}
-	
-	//-------------------------------------------------------------------------------------
-	void SetSuspended(bool suspended)
-	{
-		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("SetSuspended: %1, %2", suspended, GetActionDebugInfo()));
-		#endif
-		
-		m_bSuspended = suspended;
-	}
-	
-	//-------------------------------------------------------------------------------------
-	bool GetSuspended()
-	{
-		return m_bSuspended;
-	}
-	
-	//-------------------------------------------------------------------------------------
-	void Complete()
-	{
-		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("Complete: %1", GetActionDebugInfo()));
-		#endif
-		OnActionCompleted();
-		m_OnActionCompleted.Invoke(this);
-	}
-	
-	//-------------------------------------------------------------------------------------
-	void Fail()
-	{
-		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("Fail: %1", GetActionDebugInfo()));
-		#endif
-		OnActionFailed();		
-		m_OnActionFailed.Invoke(this);
-	}
-	
-	// Called for basic info to print out for specific behaviors - to override
-	string GetActionDebugInfo()
-	{
-		return this.ToString();
-	}
-	
-	// Called after behavior was selected after different behavior
-	void OnActionSelected() {m_eState = EAIActionState.RUNNING;}
-
-	// Called after behavior different behavior was selected instead of this one
-	void OnActionDeselected() {m_eState = EAIActionState.EVALUATED;}
-	
-	// Called each frame behavior was selected, before it's executed in the behavior tree
-	void OnActionExecuted() { }
-	
-	// Called when utility component recognizes completion of the behavior
-	void OnActionCompleted() {m_eState = EAIActionState.COMPLETED;}
-	
-	// Called when utility component recognizes failure of the behavior
-	void OnActionFailed() {m_eState = EAIActionState.FAILED;}
-	
-	// Called when any new info message arrives, regardless of state of this action.
-	// When any of the messages returns true, the reaction is not invoked.
-	bool OnInfoMessage(SCR_AIMessageBase msg) { return false; };
-	
-	//-------------------------------------------------------------------------------------
-	bool IsActionInterruptable()
-	{
-		return m_bIsInterruptable || m_eState != EAIActionState.RUNNING;
-	}
-	
-	//-------------------------------------------------------------------------------------
-	void SetActionInterruptable(bool IsInterruptable)
-	{
-		m_bIsInterruptable = IsInterruptable;
-	}
-	
-	//-------------------------------------------------------------------------------------
-	void SCR_AIActionBase()
-	{	
-		m_eState = EAIActionState.EVALUATED;
-	}
-	
-	//-------------------------------------------------------------------------------------
-	#ifdef AI_DEBUG
-	protected void AddDebugMessage(string str);
-	#endif
-	
-	//---------------------------------------------------------------------------------------------------
-	// These methods are used by SCR_AIGetActionParameters and SCR_AISetActionParameters.
-	// They help move data between action and behavior tree variables.
-	
-	void SetParametersToBTVariables(SCR_AIActionTask node)
-	{
-		foreach (SCR_BTParamBase param : m_aParams)
-			param.SetVariableOut(node);
-	}
-	
-	void GetParametersFromBTVariables(SCR_AIActionTask node)
-	{
-		foreach (SCR_BTParamBase param : m_aParams)
-			param.GetVariableIn(node);
-	}
-	
-	// Returns array with port names of all parameters of this action.
-	TStringArray GetPortNames()
-	{
-		TStringArray namesOut = {};
-		foreach (SCR_BTParamBase p : m_aParams)
-			namesOut.Insert(p.m_sPortName);
-		return namesOut;
-	}
-	
 	// Priority levels
 	const static float PRIORITY_LEVEL_NORMAL					= 0;
 	const static float PRIORITY_LEVEL_PLAYER					= 1000;
 	const static float PRIORITY_LEVEL_GAMEMASTER				= 2000;
-	
 	// Unit behaviors
 	const static float PRIORITY_BEHAVIOR_RETREAT_MELEE			= 190 + PRIORITY_LEVEL_PLAYER;
 	const static float PRIORITY_BEHAVIOR_MOVE_FROM_DANGER		= 160 + PRIORITY_LEVEL_PLAYER;
@@ -219,11 +41,161 @@ class SCR_AIActionBase
 	const static float PRIORITY_ACTIVITY_RESUPPLY				= 100;
 	const static float PRIORITY_ACTIVITY_HEAL					= 100;
 	const static float PRIORITY_ACTIVITY_ATTACK					= 70;
+	const static float PRIORITY_ACTIVITY_ATTACK_CLUSTER			= 70;
 	const static float PRIORITY_ACTIVITY_SEEK_AND_DESTROY 		= 60;
+	const static float PRIORITY_ACTIVITY_INVESTIGATE_CLUSTER	= 55;
+	const static float PRIORITY_ACTIVITY_DEFEND_FROM_CLUSTER	= 55;
 	const static float PRIORITY_ACTIVITY_MOVE					= 50;
 	const static float PRIORITY_ACTIVITY_PERFORM_ACTION			= 50;
 	const static float PRIORITY_ACTIVITY_DEFEND					= 50;
 	const static float PRIORITY_ACTIVITY_GET_IN					= 50;
 	const static float PRIORITY_ACTIVITY_GET_OUT				= 50;
 	const static float PRIORITY_ACTIVITY_FOLLOW					= 50;
+	
+	
+	// TODO: Get rid of flags we don't neccesarily need	
+	bool m_bIsInterruptable = true;
+	protected ref SCR_BTParam<float> m_fPriorityLevel = new SCR_BTParam<float>(SCR_AIActionTask.PRIORITY_LEVEL_PORT); // used when utility component calls Evaluate() on action, adds level of priority
+	
+	ResourceName m_sBehaviorTree;
+	
+	ResourceName m_sAbortBehaviorTree;
+	
+	ref ScriptInvoker m_OnActionCompleted = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnActionFailed = new ref ScriptInvoker();
+	
+	// Array with parameters which must be exposed to scripts.
+	// For example see how m_bPrioritize is used here.
+	ref array<SCR_BTParamBase> m_aParams = {};	
+	
+	//-------------------------------------------------------------------------------------
+	override float EvaluatePriorityLevel()
+	{
+		return m_fPriorityLevel.m_Value;
+	}
+	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	void SetPriorityLevel(int priority)
+	{
+		m_fPriorityLevel.m_Value = priority;
+	}
+			
+	//-------------------------------------------------------------------------------------
+	
+	#ifdef AI_DEBUG
+	protected void AddDebugMessage(string str);
+	#endif
+	
+	//-------------------------------------------------------------------------------------
+	override void OnSetActionState(EAIActionState state)
+	{
+		#ifdef AI_DEBUG
+		AddDebugMessage(string.Format("SetActionState: %1, %2", typename.EnumToString(EAIActionState, state), GetActionDebugInfo()));
+		#endif
+	}
+	
+	//-------------------------------------------------------------------------------------
+	override void OnSetSuspended(bool suspended)
+	{
+		#ifdef AI_DEBUG
+		AddDebugMessage(string.Format("SetSuspended: %1, %2", suspended, GetActionDebugInfo()));
+		#endif
+	}
+	
+	//-------------------------------------------------------------------------------------
+	override void OnComplete()
+	{
+		#ifdef AI_DEBUG
+		AddDebugMessage(string.Format("Complete: %1", GetActionDebugInfo()));
+		#endif
+		OnActionCompleted();
+		m_OnActionCompleted.Invoke(this);
+	}
+	
+	//-------------------------------------------------------------------------------------
+	override void OnFail()
+	{
+		#ifdef AI_DEBUG
+		AddDebugMessage(string.Format("Fail: %1", GetActionDebugInfo()));
+		#endif
+		OnActionFailed();		
+		m_OnActionFailed.Invoke(this);
+	}
+	
+	//-------------------------------------------------------------------------------------
+	override void OnActionRemoved()
+	{
+		#ifdef AI_DEBUG
+		AddDebugMessage(string.Format("Fail: %1", GetActionDebugInfo()));
+		#endif
+	}
+	
+	// Called for basic info to print out for specific behaviors - to override
+	string GetActionDebugInfo()
+	{
+		return this.ToString();
+	}
+	
+	string GetDebugPanelText() { return string.Empty; }
+	
+	// Called after behavior was selected after different behavior
+	override void OnActionSelected() {SetActionState(EAIActionState.RUNNING);}
+
+	// Called after behavior different behavior was selected instead of this one
+	override void OnActionDeselected() {SetActionState(EAIActionState.EVALUATED);}
+	
+	// Called each frame behavior was selected, before it's executed in the behavior tree
+	void OnActionExecuted() { }
+	
+	// Called when utility component recognizes completion of the behavior
+	void OnActionCompleted() {SetActionState(EAIActionState.COMPLETED);}
+	
+	// Called when utility component recognizes failure of the behavior
+	void OnActionFailed() {SetActionState(EAIActionState.FAILED);}
+		
+	//-------------------------------------------------------------------------------------
+	bool IsActionInterruptable()
+	{
+		return m_bIsInterruptable || GetActionState() != EAIActionState.RUNNING;
+	}
+	
+	//-------------------------------------------------------------------------------------
+	void SetActionInterruptable(bool IsInterruptable)
+	{
+		m_bIsInterruptable = IsInterruptable;
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	// These methods are used by SCR_AIGetActionParameters and SCR_AISetActionParameters.
+	// They help move data between action and behavior tree variables.
+	
+	void SetParametersToBTVariables(SCR_AIActionTask node)
+	{
+		foreach (SCR_BTParamBase param : m_aParams)
+			param.SetVariableOut(node);
+	}
+	
+	//-------------------------------------------------------------------------------------
+	void GetParametersFromBTVariables(SCR_AIActionTask node)
+	{
+		foreach (SCR_BTParamBase param : m_aParams)
+			param.GetVariableIn(node);
+	}
+	
+	//-------------------------------------------------------------------------------------
+	// Returns array with port names of all parameters of this action.
+	TStringArray GetPortNames()
+	{
+		TStringArray namesOut = {};
+		foreach (SCR_BTParamBase p : m_aParams)
+			namesOut.Insert(p.m_sPortName);
+		return namesOut;
+	}
+	
+	//-------------------------------------------------------------------------------------
+	//! Limits priority level for actions such that those are performed in "NORMAL" and "PLAYER" priority level but not in "GAMEMASTER" 
+	float GetRestrictedPriorityLevel(float minimumLevel = PRIORITY_LEVEL_NORMAL)
+	{
+		return Math.Clamp(Math.Max(EvaluatePriorityLevel(), minimumLevel), PRIORITY_LEVEL_NORMAL, PRIORITY_LEVEL_PLAYER);
+	}
 };

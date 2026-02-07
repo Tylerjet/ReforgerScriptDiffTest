@@ -7,8 +7,8 @@ class EditableEntityMaintenancePlugin: WorkbenchPlugin
 	[Attribute("PrefabsEditable/Auto", params: "unregFolders")]
 	private ResourceName m_sDirectory;
 	
-	[Attribute("MeshObject RigidBody RplComponent Hierarchy SCR_DestructionMultiPhaseComponent")]
-	private ref array<string> m_aCheckedComponents;
+	//[Attribute("MeshObject RigidBody RplComponent Hierarchy SCR_DestructionMultiPhaseComponent")]
+	//private ref array<string> m_aCheckedComponents;
 	
 	const ref array<string> UNIQUE_COMPONENTS = { "MeshObject", "RigidBody", "RplComponent", "Hierarchy", "SCR_DestructionMultiPhaseComponent" };
 	

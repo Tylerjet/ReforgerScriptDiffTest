@@ -1,6 +1,7 @@
 class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 {
 	protected SCR_InventoryHitZonePointContainerUI m_pParentContainer;
+	protected bool m_bTourniquetted;
 
 	//------------------------------------------------------------------------------------------------
 	override bool OnDrop(SCR_InventorySlotUI slot)
@@ -9,15 +10,7 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 		if (!item)
 			return true;
 
-		SCR_ConsumableItemComponent comp = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
-		if (!comp)
-			return true;
-
-		SCR_ConsumableEffectHealthItems effect = SCR_ConsumableEffectHealthItems.Cast(comp.GetConsumableEffect());
-		if (!effect)
-			return true;
-
-		if (!effect.CanApplyEffect(m_Player, m_Player))
+		if (!CanApplyItem(item))
 			return true;
 
 		SCR_GadgetManagerComponent gadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(m_Player);
@@ -45,6 +38,18 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 			GetGame().GetCallqueue().CallLater(ApplyLater, 100, false, gadget); // hotfix because m_OnGadgetStateChangedInvoker doesn't wait for anim to be complete
 	}
 
+	//------------------------------------------------------------------------------------------------
+	bool CanApplyItem(notnull IEntity item)
+	{
+		SCR_ConsumableItemComponent comp = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+		if (!comp)
+			return false;
+
+		SCR_ConsumableEffectHealthItems effect = SCR_ConsumableEffectHealthItems.Cast(comp.GetConsumableEffect());
+
+		return effect && effect.CanApplyEffectToHZ(m_Player, m_Player, m_pParentContainer.GetHitZoneGroup());
+	}
+
 	protected void ApplyLater(IEntity gadget)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(m_Player);
@@ -60,6 +65,21 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 		charCtrl.m_OnGadgetStateChangedInvoker.Remove(OnApplyEffect);
 	}
 
+	void SetTourniquetted(bool tourniquetted)
+	{
+		m_bTourniquetted = tourniquetted;
+	}
+
+	bool IsTourniquetted()
+	{
+		return m_bTourniquetted;
+	}
+
+	SCR_InventoryMenuUI GetMenuHandler()
+	{
+		return m_pParentContainer.GetInventoryHandler();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	void SCR_InventoryHitZoneUI(
 		BaseInventoryStorageComponent storage,
@@ -67,7 +87,7 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 		SCR_InventoryMenuUI menuManager = null,
 		int iPage = 0,
 		array<BaseInventoryStorageComponent> aTraverseStorage = null,
-		SCR_InventoryHitZonePointContainerUI parent = null)
+		SCR_InventoryHitZonePointContainerUI parent = null, bool isTourniquetted = false)
 	{
 		m_Storage = storage;
 		m_MenuHandler 	= menuManager;
@@ -76,6 +96,7 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 		m_iMaxColumns 	= 1;
 		m_iMatrix = new SCR_Matrix(m_iMaxColumns, m_iMaxRows);
 		m_pParentContainer = parent;
+		m_bTourniquetted = isTourniquetted;
 	}
 }
 

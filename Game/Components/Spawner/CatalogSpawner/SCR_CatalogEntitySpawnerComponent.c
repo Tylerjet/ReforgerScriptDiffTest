@@ -10,6 +10,15 @@ class SCR_CatalogEntitySpawnerComponentClass : SCR_SlotServiceComponentClass
 	[Attribute(defvalue: "{FFF9518F73279473}PrefabsEditable/Auto/AI/Waypoints/E_AIWaypoint_Move.et", UIWidgets.ResourceNamePicker, "Defend waypoint prefab", "et", category: "Entity Spawner")]
 	protected ResourceName m_sDefaultWaypointPrefab;
 
+	[Attribute(defvalue: "150", params: "0 inf", desc: "Supply component search radius.", category: "Supplies")]
+	protected float m_fSupplyComponentSearchRadius;
+	
+	[Attribute(defvalue: "2.5", params: "0 inf", desc: "Completion radius of initial move waypoint", "et", category: "Entity Spawner")]
+	protected float m_fMoveWaypointCompletionRadius;
+	
+	[Attribute(defvalue: "10", params: "0 inf", desc: "How long should be vehicle locked after spawn", category: "Vehicle lock protection")]
+	protected int m_iVehicleLockedDuration;
+
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetDefaultWaypointPrefab()
 	{
@@ -20,6 +29,24 @@ class SCR_CatalogEntitySpawnerComponentClass : SCR_SlotServiceComponentClass
 	ResourceName GetDefaultGroupPrefab()
 	{
 		return m_sDefaultGroupPrefab;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetSupplySearchRadius()
+	{
+		return m_fSupplyComponentSearchRadius;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetMoveWaypointCompletionRadius()
+	{
+		return m_fMoveWaypointCompletionRadius;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetVehicleLockedDuration()
+	{
+		return m_iVehicleLockedDuration;
 	}
 };
 
@@ -36,7 +63,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 	[Attribute(uiwidget: UIWidgets.SearchComboBox, category: "Catalog Parameters", desc: "Ignored labels.", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
 	protected ref array<EEditableEntityLabel> m_aIgnoredLabels;
-	
+
 	[Attribute(defvalue: "1", desc: "If true, Spawner will require from entities that they have all allowed labels.", category: "Catalog Parameters")]
 	protected bool m_bNeedAllLabels;
 
@@ -60,7 +87,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	static const int SLOT_CHECK_INTERVAL = 60;
 
 	protected ref array<SCR_EntityCatalogEntry> m_aAssetList = {};
-	protected ref map<SCR_AIGroup, IEntity> m_mGroupsToAssign;
+	protected ref array<ref Tuple2<SCR_AIGroup, SCR_AIGroup>> m_aGroupsToAssign = {};
 	protected ref map<AIWaypoint, SCR_AIGroup> m_mGroupWaypoints;
 
 	//arrays used for UI Slot checks
@@ -104,39 +131,22 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		if (!entityEntry)
 			return false;
 
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		if (!campaign)
 			return false;
 
-		if (campaign.CanRequestWithoutRank())
+		if (campaign.CanRequestVehicleWithoutRank())
 			return true;
-
-		SCR_CampaignFactionManager factionManager = SCR_CampaignFactionManager.GetInstance();
-		if (!factionManager)
-			return false;
-
+		
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user);
 		if (playerId == 0)
 			return false;
-		
+
 		IEntity playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
 		if (!playerController)
 			return false;
 
-		SCR_ECharacterRank rank;
-
-		if (IsProxy())
-		{
-			rank = SCR_CharacterRankComponent.GetCharacterRank(user);
-		}
-		else
-		{
-			SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
-			if (!campaignNetworkComponent)
-				return false;
-
-			rank = factionManager.GetRankByXP(campaignNetworkComponent.GetPlayerXP());
-		}
+		SCR_ECharacterRank rank = SCR_CharacterRankComponent.GetCharacterRank(user);
 
 		//Check if the player has high enough rank
 		SCR_EntityCatalogSpawnerData spawnerData = SCR_EntityCatalogSpawnerData.Cast(entityEntry.GetEntityDataOfType(SCR_EntityCatalogSpawnerData));
@@ -358,7 +368,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		SCR_EntityCatalogSpawnerData spawnerData = SCR_EntityCatalogSpawnerData.Cast(entityEntry.GetEntityDataOfType(SCR_EntityCatalogSpawnerData));
 		if (!spawnerData)
 			return;
-		
+
 		if (m_bSuppliesConsumptionEnabled && supplies < spawnerData.GetSupplyCost())
 			return;
 
@@ -393,7 +403,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			return SCR_EEntityRequestStatus.NOT_AVAILABLE;
 
 		// Campaign dependent ranking and cooldowns. To be replaced once stand-alone rank system is present
-		if (SCR_GameModeCampaignMP.GetInstance())
+		if (SCR_GameModeCampaign.GetInstance())
 		{
 			if (!RankCheck(entityEntry, user))
 				return SCR_EEntityRequestStatus.RANK_LOW;
@@ -402,38 +412,98 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 				return SCR_EEntityRequestStatus.COOLDOWN;
 		}
 
-		// Additional states to be returned if entity Entry is of Character type
-		if (entityEntry.GetCatalogParent().GetCatalogType() == EEntityCatalogType.CHARACTER)
+		EEntityCatalogType catalogType = entityEntry.GetCatalogParent().GetCatalogType();
+		// Additional states to be returned if entity Entry is of Character or Group type
+		if (catalogType == EEntityCatalogType.CHARACTER || catalogType == EEntityCatalogType.GROUP)
 		{
 			SCR_PlayerController controller = GetPlayerControllerFromEntity(user);
 			if (!controller)
 				return SCR_EEntityRequestStatus.NOT_AVAILABLE;
 
+			//Do not allow requesting, if player is not in group or is not its leader
 			SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.Cast(controller.FindComponent(SCR_PlayerControllerGroupComponent));
 			if (!groupController || !groupController.IsPlayerLeaderOwnGroup())
 				return SCR_EEntityRequestStatus.REQUESTER_NOT_GROUPLEADER;
+
+			if (!CanRequestAI(user, entitySpawnerData.GetEntityCount()))
+				return SCR_EEntityRequestStatus.GROUP_FULL;
 		}
 
 		return SCR_EEntityRequestStatus.CAN_SPAWN;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	/*! returns true, if player can request another AI into group
+	\param user Entity of user requesting AI
+	\param aiCount Amount of AI's to be added
+	*/
+	bool CanRequestAI(notnull IEntity user, int aiCount = 1)
+	{
+		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
+		if (!commandingManager)
+			return false;
+
+		SCR_PlayerController playerController = GetPlayerControllerFromEntity(user);
+		if (!playerController)
+			return false;
+
+		SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.Cast(playerController.FindComponent(SCR_PlayerControllerGroupComponent));
+		if (!groupController)
+			return false;
+
+		SCR_AIGroup group = groupController.GetPlayersGroup();
+		if (!group)
+			return false;
+
+		SCR_AIGroup slaveGroup = group.GetSlave();
+		if (!slaveGroup)
+			return false;
+
+		SCR_SpawnerRequestComponent reqComponent = SCR_SpawnerRequestComponent.Cast(playerController.FindComponent(SCR_SpawnerRequestComponent));
+		if (!reqComponent)
+			return false;
+
+		int queuedAICount = reqComponent.GetQueuedAIs();
+
+		return commandingManager.GetMaxAIPerGroup() >= (slaveGroup.GetAIMembers().Count() + queuedAICount + aiCount);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Called when AI finishes initial WP (making it move away from spawning position, before joining player squad)
 	protected void OnGroupWaypointFinished(notnull AIWaypoint wp)
 	{
-		if (!m_mGroupWaypoints || !m_mGroupsToAssign)
+		if (!m_mGroupWaypoints || !m_aGroupsToAssign)
 			return;
 
 		SCR_AIGroup group = m_mGroupWaypoints.Get(wp);
 		if (!group)
 			return;
 
-		IEntity player = m_mGroupsToAssign.Get(group);
-		if (!player)
+		SCR_AIGroup playerGroup;
+		foreach (int index, Tuple2<SCR_AIGroup, SCR_AIGroup> groups : m_aGroupsToAssign)
+		{
+			if (groups.param1 == group)
+			{	
+				playerGroup = groups.param2;
+				m_aGroupsToAssign.Remove(index);
+				break;
+			}
+		}
+
+		if (!playerGroup)
+			return;
+
+		SCR_PlayerController playerController = GetPlayerControllerFromEntity(playerGroup.GetLeaderEntity());
+		if (!playerController)
+			return;
+
+		SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.Cast(playerController.FindComponent(SCR_PlayerControllerGroupComponent));
+		if (!groupController)
 			return;
 
 		array<AIAgent> agents = {};
 		group.GetAgents(agents);
+		group.GetOnAgentRemoved().Remove(OnAIAgentRemoved);
 
 		SCR_ChimeraCharacter aiCharacter;
 		foreach (AIAgent agent : agents)
@@ -442,17 +512,20 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			if (!aiCharacter)
 				continue;
 
-			AddAISoldierToPlayerGroup(aiCharacter, player);
+			groupController.AddAIToSlaveGroup(agent.GetControlledEntity(), playerGroup); //AddAISoldierToPlayerGroup(aiCharacter, groupLeaderEntity);
 		}
+
+		SCR_SpawnerRequestComponent spawnerReqComponent = SCR_SpawnerRequestComponent.Cast(playerController.FindComponent(SCR_SpawnerRequestComponent));
+		if (spawnerReqComponent)
+			spawnerReqComponent.AddQueuedAI(-1);
 
 		//Delete old entries or empty maps
 		m_mGroupWaypoints.Remove(wp);
 		if (m_mGroupWaypoints.IsEmpty())
-			delete m_mGroupWaypoints;
+			m_mGroupWaypoints = null;
 
-		m_mGroupsToAssign.Remove(group);
-		if (m_mGroupsToAssign.IsEmpty())
-			delete m_mGroupsToAssign;
+		if (m_aGroupsToAssign.IsEmpty())
+			m_aGroupsToAssign = null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -462,11 +535,11 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		if (!controller)
 			return;
 
-		SCR_PlayerControllerGroupComponent groupComponent = SCR_PlayerControllerGroupComponent.Cast(controller.FindComponent(SCR_PlayerControllerGroupComponent));
-		if (!groupComponent)
+		SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.Cast(controller.FindComponent(SCR_PlayerControllerGroupComponent));
+		if (!groupController)
 			return;
 
-		groupComponent.RequestAddAIAgent(ai, controller.GetPlayerId());
+		groupController.RequestAddAIAgent(ai, controller.GetPlayerId());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -518,14 +591,20 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	SCR_SpawnerRequestComponent GetRequestComponentFromPlayerEntity(notnull IEntity playerEntity)
+	{
+		SCR_PlayerController playerController = GetPlayerControllerFromEntity(playerEntity);
+		if (!playerController)
+			return null;
+
+		return SCR_SpawnerRequestComponent.Cast(playerController.FindComponent(SCR_SpawnerRequestComponent));
+	}
+
+	//------------------------------------------------------------------------------------------------
 	// Send notification to player requesting spawn
 	protected void SendNotification(int msgId, notnull IEntity user, int assetId = -1, int catalogType = -1)
 	{
-		SCR_PlayerController playerController = GetPlayerControllerFromEntity(user);
-		if (!playerController)
-			return;
-
-		SCR_SpawnerRequestComponent reqComponent = SCR_SpawnerRequestComponent.Cast(playerController.FindComponent(SCR_SpawnerRequestComponent));
+		SCR_SpawnerRequestComponent reqComponent = GetRequestComponentFromPlayerEntity(user);
 		if (!reqComponent)
 			return;
 
@@ -545,6 +624,10 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		//This will delete any existing preview entity
 		DeletePreviewEntity();
 
+		// Don't show preview for Groups.
+		if (spawnData.GetCatalogParent().GetCatalogType() == EEntityCatalogType.GROUP)
+			return;
+
 		if (!m_aAssetList || m_aAssetList.IsEmpty() || !m_aAssetList.Contains(spawnData))
 			return;
 
@@ -560,7 +643,11 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		m_PreviewEntity = SCR_PrefabPreviewEntity.Cast(SCR_PrefabPreviewEntity.SpawnPreviewFromPrefab(resource, "SCR_PrefabPreviewEntity", GetOwner().GetWorld(), params, prefabData.m_sPreviewEntityMaterial));
 		
 		if (m_PreviewEntity)
-			m_PreviewEntity.Update();	
+		{
+			// Align preview with terrain and update it to make it appear correctly
+			m_PreviewEntity.SetPreviewTransform(params.Transform, EEditorTransformVertical.TERRAIN);
+			m_PreviewEntity.Update();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -592,18 +679,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 		m_SpawnedEntity = null;
 
-		ResourceName spawnResource = entityEntry.GetPrefab();
 		SCR_EntityCatalogSpawnerData spawnerData = SCR_EntityCatalogSpawnerData.Cast(entityEntry.GetEntityDataOfType(SCR_EntityCatalogSpawnerData));
-
-		Resource resource = Resource.Load(spawnResource);
-		if (!resource || !resource.IsValid())
-		{
-			Print("CatalogEntitySpawnerComponent - PerformSpawn cannot spawn new entity without valid resource. Used SCR_EntityCatalogEntry is probably set incorrectly", LogLevel.ERROR);
-			return;
-		}
-
-		EntitySpawnParams params = new EntitySpawnParams();
-		params.TransformMode = ETransformMode.WORLD;
 
 		//Slot from preferredSlot parameter is checked first, should it be occupied, new slot will be looked for (if there is any)
 		SCR_EntitySpawnerSlotComponent slot;
@@ -622,20 +698,27 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			SendNotification(SCR_EEntityRequestStatus.NOT_ENOUGH_SPACE, user);
 			return;
 		}
+		
+		//Prevents next spawned SCR_AIGroup from being fully spawned
+		if (entityEntry.GetCatalogParent().GetCatalogType() == EEntityCatalogType.GROUP)
+			SCR_AIGroup.IgnoreSpawning(true);
+		
+		//Spawns entity using Resource Name from prefab data and slot owning entity
+		m_SpawnedEntity = SpawnEntity(entityEntry.GetPrefab(), slot.GetOwner());
 
-		preferredSlot = slot;
-		//Obtain transformation of selected slot
-		slot.GetOwner().GetTransform(params.Transform);
-
-		m_SpawnedEntity = GetGame().SpawnEntityPrefab(resource, GetOwner().GetWorld(), params);
 		if (!m_SpawnedEntity)
-			return;
+		{
+			if (entityEntry.GetCatalogParent().GetCatalogType() == EEntityCatalogType.GROUP)
+				SCR_AIGroup.IgnoreSpawning(false);
 
+			return;
+		}
+		
 		if (m_bSuppliesConsumptionEnabled)
 			AddSpawnerSupplies(-spawnerData.GetSupplyCost());
 
 		if (m_OnEntitySpawned)
-			m_OnEntitySpawned.Invoke(m_SpawnedEntity);
+			m_OnEntitySpawned.Invoke(m_SpawnedEntity, user, m_CurrentFaction);
 
 		//Send notification to player, whom requested entity
 		SCR_EntityCatalog parentCatalog = entityEntry.GetCatalogParent();
@@ -649,24 +732,69 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 				SendNotification(0, user, entityList.Find(entityEntry), parentCatalog.GetCatalogType());
 		}
 
+		slot.MoveCharactersFromSlot();
+		
 		//Called, if spawned entity is vehicle
 		if (m_SpawnedEntity.IsInherited(Vehicle))
 		{
 			Physics physicsComponent = m_SpawnedEntity.GetPhysics();
 			if (physicsComponent)
 				physicsComponent.SetVelocity("0 -0.1 0"); // Make the entity copy the terrain properly
-
-			//Temporary
-			SCR_GameModeCampaignMP gamemode = SCR_GameModeCampaignMP.GetInstance();
-			if (gamemode)
-				gamemode.VehicleSpawned(m_SpawnedEntity, user, GetOwningFaction());
+			
+			LockSpawnedVehicle(user);
 		}
 
-		//Called, if spawned entity is character
+		//Called, if spawned entity is SCR_ChimeraCharacter or inherits from it.
 		if (m_SpawnedEntity.IsInherited(SCR_ChimeraCharacter))
+		{
+			SCR_SpawnerRequestComponent requestComponent = GetRequestComponentFromPlayerEntity(user);
+			if (!requestComponent)
+				return;
+
 			OnChimeraCharacterSpawned(SCR_ChimeraCharacter.Cast(m_SpawnedEntity), user, slot.GetRallyPoint());
+			requestComponent.AddQueuedAI(spawnerData.GetEntityCount());
+		}
+
+		//Called, if spawned entity is SCR_AIGroup or inherits from it.
+		if (m_SpawnedEntity.IsInherited(SCR_AIGroup))
+			OnAIGroupSpawned(SCR_AIGroup.Cast(m_SpawnedEntity), user, slot.GetOwner(), slot.GetRallyPoint());
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected IEntity SpawnEntity(ResourceName entityResourceName, notnull IEntity slotOwner)
+	{
+		Resource entityResource = Resource.Load(entityResourceName);
+		if (!entityResource || !entityResource.IsValid())
+		{
+			Print("CatalogEntitySpawnerComponent - SpawnEntity cannot spawn new entity without valid resource. Used SCR_EntityCatalogEntry is probably set incorrectly", LogLevel.ERROR);
+			return null;
+		}
+
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		slotOwner.GetTransform(params.Transform);
+
+		return GetGame().SpawnEntityPrefab(entityResource, GetOwner().GetWorld(), params);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void LockSpawnedVehicle(notnull IEntity owningUser)
+	{
+		if (!m_SpawnedEntity)
+			return;
+		
+		SCR_VehicleSpawnProtectionComponent protectionComp = SCR_VehicleSpawnProtectionComponent.Cast(m_SpawnedEntity.FindComponent(SCR_VehicleSpawnProtectionComponent));
+		if (!protectionComp)
+			return;
+		
+		SCR_CatalogEntitySpawnerComponentClass prefabData = SCR_CatalogEntitySpawnerComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!prefabData)
+			return;
+		
+		protectionComp.SetVehicleOwner(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(owningUser));
+		protectionComp.SetProtectionTime(prefabData.GetVehicleLockedDuration());
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Get supply component assigned to spawner
@@ -706,7 +834,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 			return;
 		}
-		
+
 		m_iCustomSupplies += supplies;
 		Replication.BumpMe();
 
@@ -719,7 +847,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	{
 		if (!m_FactionControl)
 			return;
-		
+
 		Faction faction = m_FactionControl.GetAffiliatedFaction();
 		if (!faction)
 			faction = m_FactionControl.GetDefaultAffiliatedFaction();
@@ -748,21 +876,28 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		if (!networkComponent)
 			return false;
 
-		SCR_CampaignFactionManager factionManager = SCR_CampaignFactionManager.GetInstance();
+		SCR_CampaignFactionManager factionManager = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager());
 		if (!factionManager)
 			return false;
 
 		SCR_ECharacterRank rank = SCR_CharacterRankComponent.GetCharacterRank(user);
+		#ifndef AR_CAMPAIGN_TIMESTAMP
 		float timeout = networkComponent.GetLastRequestTimestamp() + (float)factionManager.GetRankRequestCooldown(rank);
 
 		return timeout < Replication.Time();
+		#else
+		WorldTimestamp lastTimestamp = networkComponent.GetLastRequestTimestamp();
+		WorldTimestamp timeout = lastTimestamp.PlusMilliseconds(factionManager.GetRankRequestCooldown(rank));
+		ChimeraWorld world = GetOwner().GetWorld();
+		return (lastTimestamp == 0 || timeout.Less(world.GetServerTimestamp()));
+		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnFactionChanged(Faction faction)
+	protected override void OnFactionChanged(FactionAffiliationComponent owner, Faction previousFaction, Faction faction)
 	{
 		SCR_Faction newFaction = SCR_Faction.Cast(faction);
-		
+
 		SCR_Faction oldFaction = m_CurrentFaction;
 		m_CurrentFaction = newFaction;
 
@@ -773,13 +908,64 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Called from PerformSpawn, if spawned entity is AIGroup
+	protected void OnAIGroupSpawned(notnull SCR_AIGroup group, notnull IEntity user, notnull IEntity slotEntity, SCR_EntityLabelPointComponent rallyPoint = null)
+	{
+		SCR_SpawnerRequestComponent requestComponent = GetRequestComponentFromPlayerEntity(user);
+		if (!requestComponent)
+			return;
+
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return;
+		
+		SCR_SpawnerAIGroupManagerComponent groupSpawningManager = SCR_SpawnerAIGroupManagerComponent.Cast(gameMode.FindComponent(SCR_SpawnerAIGroupManagerComponent));
+		if (!groupSpawningManager)
+			return;
+
+		foreach (int i, ResourceName resName : group.m_aUnitPrefabSlots)
+			groupSpawningManager.QueueSpawn(this, resName, user, slotEntity, rallyPoint);
+
+		requestComponent.AddQueuedAI(group.m_aUnitPrefabSlots.Count());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//protected void SpawnAIGroupMember(ResourceName resName, notnull IEntity user, IEntity slotEntity, SCR_EntityLabelPointComponent rallyPoint = null)
+	void SpawnAIGroupMember(ResourceName resName, notnull IEntity user, IEntity slotEntity, SCR_EntityLabelPointComponent rallyPoint = null)
+	{
+		SCR_ChimeraCharacter ai = SCR_ChimeraCharacter.Cast(SpawnEntity(resName, slotEntity));
+		if (!ai)
+			return;
+
+		OnChimeraCharacterSpawned(ai, user, rallyPoint);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnAIAgentRemoved(SCR_AIGroup group, AIAgent ai)
+	{
+		SCR_AIGroup playerGroup;
+
+		foreach (Tuple2<SCR_AIGroup, SCR_AIGroup> groups : m_aGroupsToAssign)
+		{
+			if (groups.param1 != group)
+				continue;
+			
+			playerGroup = groups.param2;
+		}
+
+		SCR_SpawnerRequestComponent spawnerReqComponent = GetRequestComponentFromPlayerEntity(playerGroup.GetLeaderEntity());
+		if (spawnerReqComponent)
+			spawnerReqComponent.AddQueuedAI(-1);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Called from PerformSpawn, if spawned entity is ChimeraCharacter
 	protected void OnChimeraCharacterSpawned(notnull SCR_ChimeraCharacter ai, notnull IEntity user, SCR_EntityLabelPointComponent rallyPoint = null)
 	{
 		AIControlComponent control = AIControlComponent.Cast(ai.FindComponent(AIControlComponent));
 		if (!control)
 			return;
-		
+
 		control.ActivateAI();
 
 		// If other type of slot is used, thus without default waypoint, AI unit will be added directly into player group, not going anywhere before that.
@@ -794,6 +980,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			return;
 
 		SCR_AIWaypoint wp = CreateRallyPointWaypoint(rallyPoint);
+		wp.SetCompletionRadius(prefabData.GetMoveWaypointCompletionRadius());
 
 		AIAgent agent = control.GetAIAgent();
 		if (!agent)
@@ -817,11 +1004,20 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		m_mGroupWaypoints.Insert(wp, group);
 
 		group.GetOnWaypointCompleted().Insert(OnGroupWaypointFinished);
+		group.GetOnAgentRemoved().Insert(OnAIAgentRemoved);
 
-		if (!m_mGroupsToAssign)
-			m_mGroupsToAssign = new map<SCR_AIGroup, IEntity>();
+		if (!m_aGroupsToAssign)
+			m_aGroupsToAssign = {};
 
-		m_mGroupsToAssign.Insert(group, user);
+		SCR_PlayerController playerController = GetPlayerControllerFromEntity(user);
+		if (!playerController)
+			return;
+
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+
+		m_aGroupsToAssign.Insert(new Tuple2<SCR_AIGroup, SCR_AIGroup>(group, groupManager.GetPlayerGroup(playerController.GetPlayerId())));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -844,6 +1040,23 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Callback for Search query in EOnInit. Search will be stopped, if Base with Supply component is found.
+	protected bool SupplyComponentSearchCallback(IEntity ent)
+	{
+		if (ent.FindComponent(SCR_CampaignMilitaryBaseComponent))
+		{
+			SCR_CampaignSuppliesComponent supplyComp = SCR_CampaignSuppliesComponent.Cast(ent.FindComponent(SCR_CampaignSuppliesComponent));
+			if (supplyComp)
+			{
+				AssignSupplyComponent(supplyComp);
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
@@ -860,6 +1073,13 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			Print("No Action Manager detected on owner of Spawner Component!", LogLevel.WARNING);
 
 		AssignInitialFaction();
+
+		if (SCR_GameModeCampaign.GetInstance())
+		{
+			SCR_CatalogEntitySpawnerComponentClass prefabData = SCR_CatalogEntitySpawnerComponentClass.Cast(GetComponentData(GetOwner()));
+			if (prefabData)
+				GetGame().GetWorld().QueryEntitiesBySphere(GetOwner().GetOrigin(), prefabData.GetSupplySearchRadius(), SupplyComponentSearchCallback);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

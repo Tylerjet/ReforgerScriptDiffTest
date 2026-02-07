@@ -14,7 +14,12 @@ class SCR_NotificationPlayerBanned : SCR_NotificationPlayer
 		int days, hours, minutes, seconds;
 		SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds(duration, days, hours, minutes, seconds);
 		
-		data.SetNotificationTextEntries(GetPlayerName(playerID), days.ToString(),  hours.ToString(),  minutes.ToString(),  seconds.ToString());
+		string playerName;
+		data.GetNotificationTextEntries(playerName);
+		if (!GetPlayerName(playerID, playerName))
+			return string.Empty;
+		
+		data.SetNotificationTextEntries(playerName, days.ToString(),  hours.ToString(),  minutes.ToString(),  seconds.ToString());
 		return super.GetText(data);
 	}	
 	

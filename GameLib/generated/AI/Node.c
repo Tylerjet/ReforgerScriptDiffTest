@@ -20,6 +20,7 @@ class Node: ScriptAndConfig
 	proto void SetVariableOut(string name, void val);
 	proto void ClearVariable(string name);
 	proto void GetCallstackStr(out string val);
+	proto void GetParentTreeName(out string val);
 
 	// callbacks
 

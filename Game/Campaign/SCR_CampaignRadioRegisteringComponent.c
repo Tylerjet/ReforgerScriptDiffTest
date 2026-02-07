@@ -9,7 +9,7 @@ class SCR_CampaignRadioRegisteringComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected bool IsParentBase(IEntity ent)
 	{
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(ent);
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(ent.FindComponent(SCR_CampaignMilitaryBaseComponent));
 
 		// Base was found, stop query
 		if (base)

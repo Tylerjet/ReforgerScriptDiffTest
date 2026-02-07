@@ -1,5 +1,5 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_EditableTaskComponentClass: SCR_EditableEntityComponentClass
+class SCR_EditableTaskComponentClass: SCR_EditableDescriptorComponentClass
 {
 	[Attribute("#AR-Tasks_Objective", desc: "Name of objective type eg: Attack objective. Used among in, among other things, in notifications", category: "Visualization")]
 	protected  LocalizedString m_sObjectiveTypeName;

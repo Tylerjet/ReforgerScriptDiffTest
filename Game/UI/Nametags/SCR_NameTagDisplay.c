@@ -87,16 +87,7 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		if (data)
 			data.Cleanup();
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! SCR_ReconnectComponent event
-	protected void OnPlayerReconnect(SCR_ReconnectData reconData)
-	{
-		SCR_NameTagData tagData = m_aNameTagEntities.Get(reconData.m_ReservedEntity);
-		if (tagData)
-			tagData.m_Flags |= ENameTagFlags.NAME_UPDATE;
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	void OnNewVehicleOccupant(IEntity vehicle, SCR_NameTagData occupant)
 	{
@@ -257,10 +248,6 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		{
 			gameMode.GetOnControllableDestroyed().Insert(OnControllableDestroyed);
 			gameMode.GetOnControllableDeleted().Insert(OnControllableDeleted);
-			
-			SCR_ReconnectComponent reconComp = SCR_ReconnectComponent.GetInstance();
-			if (reconComp && reconComp.IsActive())
-				reconComp.GetOnReconnect().Insert(OnPlayerReconnect);
 		}
 		
 		SCR_2DOpticsComponent.s_OnSightsADSChanged.Insert(AdjustRange);
@@ -593,10 +580,6 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 			{
 				gameMode.GetOnControllableDestroyed().Remove(OnControllableDestroyed);
 				gameMode.GetOnControllableDeleted().Remove(OnControllableDeleted);
-			
-				SCR_ReconnectComponent reconComp = SCR_ReconnectComponent.GetInstance();
-				if (reconComp && reconComp.IsActive())
-					reconComp.GetOnReconnect().Remove(OnPlayerReconnect);
 			}
 			
 			SCR_2DOpticsComponent.s_OnSightsADSChanged.Remove(AdjustRange);

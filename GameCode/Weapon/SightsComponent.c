@@ -59,7 +59,7 @@ class SightsComponent : BaseSightsComponent
 			BaseWeaponComponent weapon = BaseWeaponComponent.Cast(parent.FindComponent(BaseWeaponComponent));
 			if (weapon)
 			{
-				int eye = parent.GetBoneIndex(EYE_BONE);
+				int eye = parent.GetAnimation().GetBoneIndex(EYE_BONE);
 				if (eye != -1)
 				{
 					boneIndex = eye;

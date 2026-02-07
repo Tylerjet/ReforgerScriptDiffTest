@@ -1,7 +1,7 @@
 class WorldSaveManifest
 {
 	ref array<string> m_aFileNames;	//list of files to upload
-	ref array<ref JsonApiStruct> m_aFiles;	//list of files to upload
+	ref array<ref JsonApiStruct> m_aFiles;	//list of files to upload - WIP
 	string m_sName;				
 	string m_sSummary;
 	string m_sPreview;			//name of the file with preview image - its full path has to be among other files in m_aFiles
@@ -12,15 +12,13 @@ class WorldSaveItem extends DownloadableItem
 	/**
 	\brief Request delete of this item from the backend storage
 	*/
-	proto native void DeleteFromBackend(BackendCallback callback);
+	proto native void DeleteOnline(BackendCallback callback);
 
 	proto native void FillManifest(out notnull WorldSaveManifest manifest);
 	
 	proto native int CreatedAt();	//time in DateTimeUtcAsInt format
 	
-	proto native void Save(notnull WorldSaveManifest manifest);
-	proto native void DeleteLocalRevision();
-	proto native void DeleteDownloadedRevision();
+	proto native void DeleteOffline();
 }
 
 class WorldSaveApi extends DownloadableCatalogue

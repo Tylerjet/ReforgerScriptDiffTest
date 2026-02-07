@@ -3,7 +3,6 @@
 enum ChimeraMenuPreset : ScriptMenuPresetEnum
 {
 	MainMenu,
-	ConfirmationDialog,
 	PlayMenu,
 	EditorSelectionMenu,
 	CareerMenu,
@@ -11,16 +10,10 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	MultiplayerDialog,
 	LoginDialog,
 	LoginDialogConsole,
-	SettingsMenu,
-	InventoryMenu,
 	ServerBrowserMenu,
-	ServerBrowserDetailsUI,
-	ServerBrowserJoinDialog,
 	ServerHostingDialog,
-	SimpleDialog,
 	ProfileDialog,
 	ErrorDialog,
-	InventoryPrototype,
 	MapMenu,
 	WorldEditorIngameMenu,
 	EditorMenu,
@@ -32,21 +25,19 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	EditorPlacingMenuDialog,
 	EditorAttributesDialog,
 	EditorBrowserDialog,
-	BindingMenu,
-	AssetCardMenu,
+	EditorSaveDialog,
+	EditorLoadDialog,
 	ServicesStatusDialog,
 	FeedbackDialog,
 	Inventory20Menu,
-	SelectLoadoutMenu,
-	SelectFactionMenu,
-	SelectSpawnPointMenu,
-	BetaWarningDialog,
 	ReportItemDialog,
 	ContentBrowser,
 	PauseSuperMenu,
 	ContentBrowserDetailsMenu,
 	AddonsToolsMenu,
 	RespawnSuperMenu,
+	WelcomeScreenMenu,
+	DebriefingScreenMenu,
 	SettingsSuperMenu,
 	PlayerListMenu,
 	LogoutDialog,
@@ -63,19 +54,20 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	GalleryDialog,
 	ConfigurableDialog,
 	KeybindChangeDialog,
-	NewsletterDialog,
 	ScrollTest,
 	LoadingOverlay,
 	CreateAccountDialog,
 	TutorialDialog,
 	CreditsMenu,
 	WelcomeDialog,
-	ExperimentalDialog,
 	AddonPresetDialog,
 	GroupSettingsDialog,
 	CareerProfileMenu,
 	CampaignBuildingPlacingMenuDialog,
-	GroupFlagDialog
+	GroupMenu,
+	GroupFlagDialog,
+	AdvancedKeybindDialog,
+	RoleSelectionDialog
 };
 
 //------------------------------------------------------------------------------------------------
@@ -115,21 +107,6 @@ class ChimeraMenuBase : MenuBase
 	static ChimeraMenuBase CurrentChimeraMenu()
 	{
 		return m_ThisMenu;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static void ReloadCurrentWorld()
-	{
-		MissionHeader header = GetGame().GetMissionHeader();
-		if (header)
-		{
-			GameStateTransitions.RequestMissionChangeTransition(header);
-		}
-		else
-		{
-			// In case of running the world from WB and entering the game menu (F10 ATM) there is no mission header to reload
-			GameStateTransitions.RequestWorldChangeTransition(GetGame().GetWorldFile());
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------

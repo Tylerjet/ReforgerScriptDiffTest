@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------------------------
 //! Base zone element widget for icons/images
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_NameTagElementTitle()]
 class SCR_NTIconBase : SCR_NTElementBase
 {	
 	[Attribute("{70E828A2F6EBE7D0}UI/Textures/Nametags/nametagicons.imageset", UIWidgets.ResourceNamePicker, desc: "Imageset selection", params: "imageset")]
@@ -9,7 +9,7 @@ class SCR_NTIconBase : SCR_NTElementBase
 	[Attribute("64", UIWidgets.CheckBox, "Scaled icon size at the beginning of the zone \n pix*pix")]
 	protected float m_iImageSizeMax;
 		
-	[Attribute("18", UIWidgets.CheckBox, "Scaled icon size at the end of the zone \n pix*pix")]
+	[Attribute("64", UIWidgets.CheckBox, "Scaled icon size at the end of the zone \n pix*pix")]
 	protected float m_iImageSizeMin;
 		
 	//------------------------------------------------------------------------------------------------
@@ -50,7 +50,8 @@ class SCR_NTIconBase : SCR_NTElementBase
 		if (!stateConf)
 			return;
 		
-		iWidget.LoadImageFromSet(0, m_sImageset, stateConf.m_sImagesetQuad);
+		if (!m_sImageset.IsEmpty() && !stateConf.m_sImagesetQuad.IsEmpty())
+			iWidget.LoadImageFromSet(0, m_sImageset, stateConf.m_sImagesetQuad);
 		
 		if (!m_bScaleElement)
 			FrameSlot.SetSize(iWidget, m_iImageSizeMin, m_iImageSizeMin);

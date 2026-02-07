@@ -9,7 +9,7 @@ class SCR_ServerConfigSaveDialog : SCR_ConfigurableDialogUi
 	protected SCR_NavigationButtonComponent m_navConfirm;
 	
 	//------------------------------------------------------------------------------------------------
-	override protected void Init(Widget root, SCR_ConfigurableDialogUiPreset preset, SCR_ConfigurableDialogUiProxy proxyMenu)
+	override protected void Init(Widget root, SCR_ConfigurableDialogUiPreset preset, MenuBase proxyMenu)
 	{
 		super.Init(root, preset, proxyMenu);
 		m_navConfirm = FindButton(WIDGET_NAV_CONFIRM);

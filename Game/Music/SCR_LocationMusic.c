@@ -5,42 +5,57 @@ class SCR_LocationMusic : LocationMusic
 	
 	override void Init() 
 	{
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-	
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		
 		if (!campaign)
 			return;
 		
-		campaign.GetOnPlayerEnterBase().Insert(PlayerEnteredHQ);
-		campaign.GetOnPlayerLeftBase().Insert(PlayerLeftHQ);
+		SCR_CampaignMilitaryBaseManager baseManager = campaign.GetBaseManager();
+		
+		if (!baseManager)
+			return;
+		
+		baseManager.GetOnLocalPlayerEnteredBase().Insert(PlayerEnteredHQ);
+		baseManager.GetOnLocalPlayerLeftBase().Insert(PlayerLeftHQ);
 	}
 
 	override void OnDelete()
 	{
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		
 		if (!campaign)
 			return;
 		
-		campaign.GetOnPlayerEnterBase().Remove(PlayerEnteredHQ);
-		campaign.GetOnPlayerLeftBase().Remove(PlayerLeftHQ);
+		SCR_CampaignMilitaryBaseManager baseManager = campaign.GetBaseManager();
+		
+		if (!baseManager)
+			return;
+		
+		baseManager.GetOnLocalPlayerEnteredBase().Remove(PlayerEnteredHQ);
+		baseManager.GetOnLocalPlayerLeftBase().Remove(PlayerLeftHQ);
 	}
 		
 	//~ Player entered their faction HQ
-	protected void PlayerEnteredHQ(SCR_CampaignBase base)
+	protected void PlayerEnteredHQ(SCR_CampaignMilitaryBaseComponent base)
 	{
 		if (m_bPlayerIsInHQ)
 			return;
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 				
 		if (!campaign)
 			return;
 		
-		SCR_CampaignFaction pFaction = SCR_CampaignFaction.Cast(campaign.GetLastPlayerFaction());
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return;
+		
+		SCR_CampaignFaction pFaction = SCR_CampaignFaction.Cast(factionManager.GetLocalPlayerFaction());
 		
 		if (!pFaction)
 			return;
 		
-		SCR_CampaignBase HQ = pFaction.GetMainBase();
+		SCR_CampaignMilitaryBaseComponent HQ = pFaction.GetMainBase();
 		
 		//~ No HQ or the given base is not HQ then ignore
 		if (!HQ || base != HQ)
@@ -50,22 +65,26 @@ class SCR_LocationMusic : LocationMusic
 	}
 	
 	//~ Player left their faction HQ
-	protected void PlayerLeftHQ(SCR_CampaignBase base)
+	protected void PlayerLeftHQ(SCR_CampaignMilitaryBaseComponent base)
 	{
 		if (!m_bPlayerIsInHQ)
 			return;
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 				
 		if (!campaign)
 			return;
 		
-		SCR_CampaignFaction pFaction = SCR_CampaignFaction.Cast(campaign.GetLastPlayerFaction());
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return;
+		
+		SCR_CampaignFaction pFaction = SCR_CampaignFaction.Cast(factionManager.GetLocalPlayerFaction());
 		
 		if (!pFaction)
 			return;
 		
-		SCR_CampaignBase HQ = pFaction.GetMainBase();
+		SCR_CampaignMilitaryBaseComponent HQ = pFaction.GetMainBase();
 		
 		//~ No HQ or the given base is not HQ then ignore
 		if (!HQ || base != HQ)

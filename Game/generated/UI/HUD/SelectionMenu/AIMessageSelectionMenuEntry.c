@@ -5,7 +5,7 @@ Do not modify, this script is generated
 */
 
 /*!
-\addtogroup UI\HUD\SelectionMenu
+\addtogroup UI_HUD_SelectionMenu
 \{
 */
 

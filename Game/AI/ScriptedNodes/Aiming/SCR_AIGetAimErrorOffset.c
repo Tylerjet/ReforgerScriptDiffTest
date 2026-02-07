@@ -40,10 +40,6 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
 	{
-		if (GetVariableType(false, PORT_ERROR_OFFSET) != vector)
-		{
-			NodeError(this, owner, PORT_ERROR_OFFSET+" should be vector");
-		}
 		IEntity ent = owner.GetControlledEntity();
 		if (ent)
 			m_CombatComponent = SCR_AICombatComponent.Cast(ent.FindComponent(SCR_AICombatComponent));		

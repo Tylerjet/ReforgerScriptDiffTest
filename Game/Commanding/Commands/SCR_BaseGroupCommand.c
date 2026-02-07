@@ -14,6 +14,12 @@ class SCR_BaseGroupCommand
 	[Attribute(defvalue: "0", desc: "Will the command be shown while commanding from map?")]
 	protected bool m_bShowOnMap;
 	
+	[Attribute(defvalue: "0", desc: "Is the command available while player is dead?")]
+	protected bool m_bUsableWhileDead;
+	
+	[Attribute(defvalue: "0", desc: "Is the command available while player is unconscious?")]
+	protected bool m_bUsableWhileUncouscious;
+	
 	[Attribute(defvalue: "0", desc: "ID of the gesture in gesture state machine to be played when command is given out. 0 = no gesture")]
 	protected int m_iGestureID;
 	
@@ -113,5 +119,28 @@ class SCR_BaseGroupCommand
 	ResourceName GetIconImageset()
 	{
 		return m_sImageset;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool CanBeShownInCurrentLifeState()
+	{
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return false;
+		
+		//returns true because if there is no controlled entity then player is not dead nor uncoscious.
+		IEntity controlledEntity = playerController.GetControlledEntity();
+		if (!controlledEntity)
+			return true;
+		
+		//we do not really care if controlled character does or does not have damage component, it is to avoid VME later
+		SCR_CharacterControllerComponent characterDamageComp = SCR_CharacterControllerComponent.Cast(controlledEntity.FindComponent(SCR_CharacterControllerComponent));
+		if (!characterDamageComp)
+			return true;
+		
+		if ((!m_bUsableWhileDead && characterDamageComp.IsDead()) || (!m_bUsableWhileUncouscious && characterDamageComp.IsUnconscious()))
+			return false;
+		
+		return true;
 	}
 }

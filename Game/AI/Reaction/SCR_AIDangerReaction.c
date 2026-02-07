@@ -51,13 +51,21 @@ class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
 	{
 		IEntity shooter = dangerEvent.GetObject();
+		
+		if (!shooter)
+			return false;
+		
+		// Get root entity of shooter, in case it is turret in vehicle hierarchy
+		shooter = shooter.GetRootParent();
+		
 		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(utility.GetOwner());
-		if (!agent || !shooter || !agent.IsEnemy(shooter))
+		if (!agent || !agent.IsEnemy(shooter))
 			return false;
 		
 		vector min, max;
 		shooter.GetBounds(min, max);
 		vector lookPosition = shooter.GetOrigin() + (min + max) * 0.5;
+		vector myOrigin = utility.m_OwnerEntity.GetOrigin();
 		
 		float distance = vector.Distance(lookPosition, utility.GetOrigin());
 		
@@ -65,7 +73,13 @@ class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 
 		// Look at shooting position. Even though we add an observe behavior, we can't guarantee that
 		// some other behavior doesn't override observe behavior, in which case we might want to look at shooter in parallel.
-		utility.m_LookAction.LookAt(lookPosition, utility.m_LookAction.PRIO_DANGER_EVENT);
+		utility.m_LookAction.LookAt(lookPosition, utility.m_LookAction.PRIO_DANGER_EVENT, 3.0);
+		
+		// Notify our group
+		// ! Only if we are a leader
+		AIGroup myGroup = AIGroup.Cast(utility.GetOwner().GetParentGroup());
+		if (myGroup && myGroup.GetLeaderAgent() == agent)
+			NotifyGroup(myGroup, shooter, lookPosition);
 		
 		// Ignore if we have selected a target
 		// Ignore if target is too far
@@ -82,7 +96,23 @@ class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 		}
 		
 		// Stare at gunshot origin
-		if (!utility.HasActionOfType(SCR_AIObserveUnknownFireBehavior) && utility.IsInvestigationRelevant(lookPosition))
+		bool addObserveBehavior = false;
+		SCR_AIMoveAndInvestigateBehavior investigateBehavior = SCR_AIMoveAndInvestigateBehavior.Cast(utility.FindActionOfType(SCR_AIMoveAndInvestigateBehavior));
+		SCR_AIObserveUnknownFireBehavior oldObserveBehavior = SCR_AIObserveUnknownFireBehavior.Cast(utility.FindActionOfType(SCR_AIObserveUnknownFireBehavior));
+		if (investigateBehavior)
+		{
+			if (SCR_AIObserveUnknownFireBehavior.IsNewPositionMoreRelevant(myOrigin, investigateBehavior.m_vPosition.m_Value, lookPosition))
+				addObserveBehavior = true;
+		}
+		else if (oldObserveBehavior)
+		{
+			if (SCR_AIObserveUnknownFireBehavior.IsNewPositionMoreRelevant(myOrigin, oldObserveBehavior.m_vPosition.m_Value, lookPosition))
+				addObserveBehavior = true;
+		}
+		else if (!oldObserveBehavior)
+			addObserveBehavior = true;
+			
+		if (addObserveBehavior)
 		{
 			// !!! It's important that priority of this is higher than priority of move and investigate,
 			// !!! So first we look at gunshot origin, then investigate it
@@ -90,50 +120,21 @@ class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 			utility.AddAction(observeBehavior);
 		}
 		
-		// Ignore the rest if we can't investigate something
-		if (!utility.IsInvestigationAllowed(lookPosition))
-			return false;
-		
-		EWeaponType currentWeaponType = utility.m_CombatComponent.GetCurrentWeaponType();
-		
-		if (currentWeaponType != EWeaponType.WT_NONE &&
-			shooter)
+		return true;
+	}
+	
+	void NotifyGroup(AIGroup group, IEntity shooter, vector posWorld)
+	{
+		SCR_AIGroupUtilityComponent groupUtilityComp = SCR_AIGroupUtilityComponent.Cast(group.FindComponent(SCR_AIGroupUtilityComponent));
+		if (groupUtilityComp)
 		{
-			float radius = Math.Max(0.087 * distance, 20); // Roughly +-5 degrees precision
-			
-			// Randomize position
-			vector movePos = s_AIRandomGenerator.GenerateRandomPointInRadius(0, radius, lookPosition, true);
-			
-			if (utility.m_CombatComponent.HasWeaponOfType(EWeaponType.WT_SNIPERRIFLE))
+			PerceptionManager pm = GetGame().GetPerceptionManager();
+			if (pm)
 			{
-				//Snap Y to terrain
-				float y = GetGame().GetWorld().GetSurfaceY(movePos[0], movePos[2]);
-				if (y > 0.0)
-					movePos[1] = y;
-				
-				auto behavior = new SCR_AIFindFirePositionBehavior(utility, null, movePos, 
-					minDistance: SCR_AIFindFirePositionBehavior.SNIPER_MIN_DISTANCE, maxDistance: SCR_AIFindFirePositionBehavior.SNIPER_MAX_DISTANCE,
-					targetUnitType: EAIUnitType.UnitType_Infantry, duration: SCR_AIFindFirePositionBehavior.SNIPER_DURATION_S);
-				utility.AddAction(behavior);
-			}
-			else if (utility.IsInvestigationRelevant(movePos))
-			{
-				//Snap Y to terrain
-				float y = GetGame().GetWorld().GetSurfaceY(movePos[0], movePos[2]);
-				if (y > 0.0)
-					movePos[1] = y;
-				
-				SCR_AIMoveAndInvestigateBehavior investigate = new SCR_AIMoveAndInvestigateBehavior(utility, null, pos: movePos, isDangerous: true, radius: radius);
-				utility.AddAction(investigate);
-			}
-			else
-			{
-				SCR_AIMoveAndInvestigateBehavior investigate = SCR_AIMoveAndInvestigateBehavior.Cast(utility.FindActionOfType(SCR_AIMoveAndInvestigateBehavior));
-				if (investigate)
-					investigate.OnReceivedIrrelevantInvestigation();
+				float timestamp = pm.GetTime();
+				groupUtilityComp.m_Perception.AddOrUpdateGunshot(shooter, posWorld, timestamp);
 			}
 		}
-		return true;
 	}
 };
 

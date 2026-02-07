@@ -60,7 +60,7 @@ class SCR_ServicesStatusDialogUI : DialogUI
 #endif
 		}
 
-		m_ServicesStatusDialogComponent = SCR_ServicesStatusDialogComponent.Cast(GetRootWidget().FindHandler(SCR_ServicesStatusDialogComponent));
+		m_ServicesStatusDialogComponent = SCR_ServicesStatusDialogComponent.Cast(SCR_ConfigurableDialogUi.GetContentLayoutRoot(GetRootWidget()).FindHandler(SCR_ServicesStatusDialogComponent));
 		if (!m_ServicesStatusDialogComponent)
 			Print("No SCR_ServicesStatusDialogComponent component found | " + __FILE__ + ": " + __LINE__, LogLevel.WARNING);
 

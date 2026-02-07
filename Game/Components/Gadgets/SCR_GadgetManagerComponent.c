@@ -129,9 +129,10 @@ class SCR_GadgetManagerComponentClass: ScriptGameComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_GadgetManagerComponent : ScriptGameComponent
 {			
+	int m_iRadiosFlags = EGadgetType.RADIO | EGadgetType.RADIO_BACKPACK;
+	
 	ref ScriptInvoker<SCR_GadgetComponent> m_OnGadgetAdded = new ScriptInvoker();			// called when gadget is added to inventory
 	ref ScriptInvoker<SCR_GadgetComponent> m_OnGadgetRemoved = new ScriptInvoker();			// called when gadget is removed from inventory
-	
 	protected static ref ScriptInvoker<IEntity, SCR_GadgetManagerComponent> s_OnGadgetInitDone = new ScriptInvoker();	// invoked after gadget init is done on a newly spawned character
 	
 	protected bool m_bIsGadgetADS;		// is gadget currently in raised state
@@ -141,6 +142,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	protected InputManager m_InputManager;
 	protected SCR_InventoryStorageManagerComponent m_InventoryStorageMgr;
 	protected SCR_CharacterControllerComponent m_Controller;
+	protected SCR_VONController m_VONController;
 	protected ref SCR_GadgetInvokersInitState m_pInvokersState = new ref SCR_GadgetInvokersInitState(this);
 	
 	protected ref array<ref array <SCR_GadgetComponent>> m_aInventoryGadgetTypes = {};	// array of gadget types > array of gadget components
@@ -325,8 +327,16 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	IEntity GetGadgetByType(EGadgetType type)
 	{
 		array<SCR_GadgetComponent> gadgets = GetGadgetsByType(type);
-		if (gadgets && !gadgets.IsEmpty())
-			return gadgets[0].GetOwner();
+		if (!gadgets || gadgets.IsEmpty())
+			return null;
+		
+		foreach (SCR_GadgetComponent comp : gadgets)
+		{
+			if (comp)
+				return comp.GetOwner();
+			else 
+				Print(GetOwner().ToString() + " SCR_GadgetManager::GetGadgetsByType returned null entry in an array of " + typename.EnumToString(EGadgetType, type) + " gadgets", LogLevel.ERROR); // this should not happen
+		}
 
 		return null;
 	}
@@ -512,8 +522,24 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			SetGadgetMode(item, EGadgetMode.IN_SLOT);
 		else
 			SetGadgetMode(item, EGadgetMode.IN_STORAGE); 
-			
+				
 		m_OnGadgetAdded.Invoke(gadgetComp);
+		
+		if (m_VONController && (type & m_iRadiosFlags))	// add entries to VONController
+		{
+			BaseRadioComponent radioComp = BaseRadioComponent.Cast(gadgetComp.GetOwner().FindComponent(BaseRadioComponent));
+			if (!radioComp)
+				return;
+			
+			// Put all transceivers (AKA) channels in the VoN menu
+			int count = radioComp.TransceiversCount();
+			for (int i = 0; i < count; i++)
+			{
+				SCR_VONEntryRadio radioEntry = new SCR_VONEntryRadio();
+				radioEntry.SetRadioEntry(radioComp.GetTransceiver(i), i + 1, gadgetComp);
+				m_VONController.AddEntry(radioEntry);
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -528,6 +554,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		if (!invComp)
 			return;
 				
+		EGadgetType type = gadgetComp.GetType();
+		
 		if (invComp.GetParentSlot())
 			SetGadgetMode(item, EGadgetMode.IN_STORAGE);	
 		else
@@ -542,6 +570,18 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			m_aInventoryGadgetTypes[gadgetArrayID].Remove(gadgetPos);
 		
 		m_OnGadgetRemoved.Invoke(gadgetComp);
+		
+		if (m_VONController && (type == EGadgetType.RADIO || type == EGadgetType.RADIO_BACKPACK))	// remove entries from VONController
+		{
+			array<ref SCR_VONEntry> entries = m_VONController.GetVONEntries();
+			
+			for (int i = entries.Count() - 1; i >= 0; --i)
+			{
+				SCR_VONEntryRadio entry = SCR_VONEntryRadio.Cast(entries[i]);
+				if (entry && entry.GetGadget() == gadgetComp)
+					m_VONController.RemoveEntry(entries[i]);	// multiple entries per gadget possible
+			}
+		}
 	}
 			
 	//------------------------------------------------------------------------------------------------
@@ -553,6 +593,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 				
 		ClearToggleState();
 		m_pInvokersState.Clear(GetOwner());
+		UnregisterVONEntries();
 		UnregisterInputs();
 		ClearEventMask(GetOwner(), EntityEvent.FRAME);
 	}
@@ -561,16 +602,24 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	//! SCR_CharacterControllerComponent event
 	protected void OnControlledByPlayer(IEntity owner, bool controlled)
 	{		
+		if (System.IsConsoleApp())	// hotfix for this being called on DS when other players control their characters
+			return;
+		
+		if (controlled && owner != SCR_PlayerController.Cast(GetGame().GetPlayerController()).GetLocalControlledEntity()) // same as hotfix above but for hosted server, if we get controlled=true for entity which isnt ours, discard
+			controlled = false;
+		
 		if (!controlled)
 		{
 			m_pInvokersState.CleanupLocalInvokers(GetOwner());
 			UnregisterInputs();
+			UnregisterVONEntries();
 			ClearEventMask(owner, EntityEvent.FRAME);
 		}
 		else if (owner)
 		{			
 			m_pInvokersState.InitControlledInvokers(owner, m_Controller);
 			RegisterInputs();
+			RegisterVONEntries();
 			SetEventMask(owner, EntityEvent.FRAME);
 		}
 	}
@@ -602,10 +651,11 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			IEntity parent = gadget.GetParent();
 			if (parent)
 			{
-				EquipmentStorageComponent equipStorage = EquipmentStorageComponent.Cast(parent.FindComponent(EquipmentStorageComponent));
-				if (equipStorage)
+				InventoryItemComponent item = InventoryItemComponent.Cast(gadget.FindComponent(InventoryItemComponent));
+				if (item)
 				{
-					if (equipStorage.Contains(gadget))
+					EquipmentStorageSlot storageSlot = EquipmentStorageSlot.Cast(item.GetParentSlot());
+					if (storageSlot && storageSlot.GetOwner() == parent)
 					{
 						gadgetComp.OnModeChanged(EGadgetMode.IN_SLOT, GetOwner());
 						return;
@@ -687,30 +737,23 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	//! Input action callback
 	protected void OnGadgetADS()
 	{
-		if (!m_Controller)
-			return;
-				
-		if (m_HeldGadgetComponent && m_HeldGadgetComponent.CanBeRaised())
-		{
-			m_Controller.SetGadgetRaisedModeWanted(!m_bIsGadgetADS);
-		}
-		else if (m_HiddenGadgetComponent && m_HiddenGadgetComponent.CanBeRaised())
-		{
-			if (!m_bIsGadgetADS)
-				m_Controller.RecoverHiddenGadget(false, false);
-
-			m_Controller.SetGadgetRaisedModeWanted(!m_bIsGadgetADS);
-		}
+		SetGadgetADS(!m_bIsGadgetADS);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Input action callback
 	protected void OnGadgetADSHold(float value, EActionTrigger reason)
 	{
+		SetGadgetADS(reason == EActionTrigger.DOWN);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! API for setting raised gadget mode
+	void SetGadgetADS(bool gadgetADS)
+	{
 		if (!m_Controller)
 			return;
 				
-		bool gadgetADS = reason == EActionTrigger.DOWN;
 		if (m_HeldGadgetComponent && m_HeldGadgetComponent.CanBeRaised())
 		{
 			m_Controller.SetGadgetRaisedModeWanted(gadgetADS);
@@ -746,26 +789,79 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			
 			m_aInventoryGadgetTypes[gadgetArrayID].Insert(gadgetComp);
 
-			if (gadgetComp.GetMode() == EGadgetMode.ON_GROUND) // initial gadgets for host will likely be added to storage before manager starts catching OnAdded events and will default to ground  
+			if (gadgetComp.GetMode() != EGadgetMode.ON_GROUND)	// initial gadget for client can/will already have set mode members by replication, set the entire mode process properly here
 			{
-				InventoryItemComponent invItemComp = InventoryItemComponent.Cast( foundItems[i].FindComponent(InventoryItemComponent) );
-				if (invItemComp)
-				{
-					EquipmentStorageSlot storageSlot = EquipmentStorageSlot.Cast(invItemComp.GetParentSlot());	// Check whether the gadget is in equipment slot (OnAddedToSlot will happen before this)
-					if (storageSlot || gadgetComp.GetType() == EGadgetType.RADIO_BACKPACK)	// backpack slot is not EquipmentStorageSlot but we consider it as such
-					{
-						SetGadgetMode(foundItems[i], EGadgetMode.IN_SLOT);
-						continue;
-					}
-				}
-				
-				SetGadgetMode(foundItems[i], EGadgetMode.IN_STORAGE);
-			}
-			else 	// initial gadget for client can/will already have set mode members by replication, set the entire mode process properly here
 				SetGadgetMode(foundItems[i], gadgetComp.GetMode());
+				continue;
+			}
+			
+			// initial gadgets for host will likely be added to storage before manager starts catching OnAdded events and will default to ground  
+			InventoryItemComponent invItemComp = InventoryItemComponent.Cast( foundItems[i].FindComponent(InventoryItemComponent) );
+			if (invItemComp)
+			{
+				EquipmentStorageSlot storageSlot = EquipmentStorageSlot.Cast(invItemComp.GetParentSlot());	// Check whether the gadget is in equipment slot (OnAddedToSlot will happen before this)
+				if (storageSlot || gadgetComp.GetType() == EGadgetType.RADIO_BACKPACK)	// backpack slot is not EquipmentStorageSlot but we consider it as such
+				{
+					SetGadgetMode(foundItems[i], EGadgetMode.IN_SLOT);
+					continue;
+				}
+			}
+			
+			SetGadgetMode(foundItems[i], EGadgetMode.IN_STORAGE);
 		}
 		
 		s_OnGadgetInitDone.Invoke(character, this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Register radio gadgets into the VON system as entries
+	protected void RegisterVONEntries()
+	{
+		if (!GetGame().GetPlayerController())
+			return;
+		
+		m_VONController = SCR_VONController.Cast(GetGame().GetPlayerController().FindComponent(SCR_VONController));
+		if (!m_VONController)
+			return;
+		
+		array<SCR_GadgetComponent> radiosArray = {};
+		radiosArray.Copy(GetGadgetsByType(EGadgetType.RADIO)); 					// squad radios
+		radiosArray.InsertAll(GetGadgetsByType(EGadgetType.RADIO_BACKPACK)); 	// backpack radio
+
+		foreach (SCR_GadgetComponent radio : radiosArray)
+		{
+			BaseRadioComponent radioComp = BaseRadioComponent.Cast(radio.GetOwner().FindComponent(BaseRadioComponent));
+			int count = radioComp.TransceiversCount();
+			for (int i = 0 ; i < count; ++i)	// Get all individual transceivers (AKA channels) from the radio
+			{
+				SCR_VONEntryRadio radioEntry = new SCR_VONEntryRadio();
+				radioEntry.SetRadioEntry(radioComp.GetTransceiver(i), i + 1, radio);
+				
+				m_VONController.AddEntry(radioEntry);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UnregisterVONEntries()
+	{
+		if (!m_VONController)
+			return;
+		
+		array<SCR_GadgetComponent> radiosArray = {};
+		radiosArray.Copy(GetGadgetsByType(EGadgetType.RADIO)); 					// squad radios
+		radiosArray.InsertAll(GetGadgetsByType(EGadgetType.RADIO_BACKPACK)); 	// backpack radio
+		array<ref SCR_VONEntry> entries = m_VONController.GetVONEntries(); 
+			
+		foreach (SCR_GadgetComponent radio : radiosArray)
+		{
+			for (int i = entries.Count() - 1; i >= 0; --i)
+			{
+				SCR_VONEntryRadio entry = SCR_VONEntryRadio.Cast(entries[i]);
+				if (entry && entry.GetGadget() == radio)
+					m_VONController.RemoveEntry(entries[i]);	// multiple entries per gadget possible
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -842,24 +938,26 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast( owner.FindComponent(SCR_CharacterControllerComponent) );	
 		if (!controller)
 			return;
-		
+				
 		m_Controller = controller;
-		RplComponent rplComp = RplComponent.Cast(owner.FindComponent(RplComponent));
 	
 		m_pInvokersState.InitInvokers(owner, m_Controller); // default (all entities with gadget manager) invokers
-						
-		if (rplComp.IsOwner() && SCR_PlayerController.GetLocalControlledEntity() == owner)	// local (controlled entity) invokers, ignore owned non controlled characters
-			m_pInvokersState.InitControlledInvokers(owner, m_Controller);
+
+		if (SCR_PlayerController.GetLocalControlledEntity() == owner) 	
+			m_pInvokersState.InitControlledInvokers(owner, m_Controller);						// local (controlled entity) invokers, ignore owned non controlled characters
 		
 		// Owner specific behavior 
 		if (m_pInvokersState.IsInit())
 		{
+			RegisterInitialGadgets(owner);
+			
 			if (m_pInvokersState.m_bIsControlledEnt)
+			{
 				RegisterInputs();
+				RegisterVONEntries();
+			}
 			else
 				ClearEventMask(owner, EntityEvent.FRAME);	// if not controlled entity, clear frame
-			
-			RegisterInitialGadgets(owner);
 		}
 	}
 	
@@ -923,27 +1021,39 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		{			
 			if (!m_pInvokersState.IsInit())
 				InitComponent(owner);
-		
+
 			// context
-			if (m_InputManager && (m_HeldGadgetComponent || m_HiddenGadgetComponent))	
+			if (!m_InputManager || !(m_HeldGadgetComponent || m_HiddenGadgetComponent))
+				return;
+
+			SCR_GadgetComponent gadgetComp;
+			if (m_HeldGadgetComponent)
+				gadgetComp = m_HeldGadgetComponent;
+			else 
+				gadgetComp = m_HiddenGadgetComponent;
+
+			m_InputManager.ActivateContext("GadgetContext");
+
+			if (gadgetComp.CanBeToggled())
+				m_InputManager.ActivateContext("GadgetContextToggleable");
+
+			if (gadgetComp.IsUsingADSControls())
 			{
-				SCR_GadgetComponent gadgetComp;
-				if (m_HeldGadgetComponent)
-					gadgetComp = m_HeldGadgetComponent;
-				else 
-					gadgetComp = m_HiddenGadgetComponent;
-			
-				m_InputManager.ActivateContext("GadgetContext");
-			
-				if (gadgetComp.CanBeToggled())
-					m_InputManager.ActivateContext("GadgetContextToggleable");
-			
-				if (gadgetComp.IsUsingADSControls())
+				// Cancel gadget ADS while actively driving vehicle
+				SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(GetOwner());
+				if (character && character.IsDriving(1))
+				{
+					if (m_bIsGadgetADS)
+						SetGadgetADS(false);
+				}
+				else
+				{
 					m_InputManager.ActivateContext("GadgetContextRaisable");
-			
-				if (gadgetComp.GetType() == EGadgetType.MAP)
-					m_InputManager.ActivateContext("GadgetMapContext");
+				}
 			}
+
+			if (gadgetComp.GetType() == EGadgetType.MAP)
+				m_InputManager.ActivateContext("GadgetMapContext");
 		}
 
 		//------------------------------------------------------------------------------------------------

@@ -1,12 +1,6 @@
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignFaction : SCR_Faction
 {
-	[Attribute("", UIWidgets.ResourceNamePicker, "AI group prefab", "et")]
-	private ResourceName m_AIGroupPrefab;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "AI group vehicle prefab", "et")]
-	private ResourceName m_AIVehiclePrefab;
-	
 	[Attribute("", UIWidgets.ResourceNamePicker, "Defenders group prefab", "et")]
 	private ResourceName m_DefendersGroupPrefab;
 	
@@ -22,114 +16,40 @@ class SCR_CampaignFaction : SCR_Faction
 	[Attribute("", UIWidgets.ResourceNamePicker, "HQ composition in small bases", "et")]
 	private ResourceName m_BaseBuildingHQ;
 	
-	[Attribute("", UIWidgets.ResourceNamePicker, "HQ composition in building. NO SLOT variant.", "et")]
-	private ResourceName m_BaseBuildingHQNoSlot;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Supply stash composition (empty)", "et")]
-	private ResourceName m_BaseBuildingStash0;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Supply stash composition in building. NO SLOT variant.", "et")]
-	private ResourceName m_BaseBuildingStash0NoSlot;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Supply stash composition (30% capacity)", "et")]
-	private ResourceName m_BaseBuildingStash1;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Supply stash composition (30% capacity) in building. NO SLOT variant.", "et")]
-	private ResourceName m_BaseBuildingStash1NoSlot;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Supply stash composition (60% capacity)", "et")]
-	private ResourceName m_BaseBuildingStash2;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Supply stash composition (60% capacity) in building. NO SLOT variant.", "et")]
-	private ResourceName m_BaseBuildingStash2NoSlot;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Supply stash composition (full)", "et")]
-	private ResourceName m_BaseBuildingStash3;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Supply stash composition (full) in building. NO SLOT variant.", "et")]
-	private ResourceName m_BaseBuildingStash3NoSlot;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Fuel depot composition (empty)", "et")]
-	private ResourceName m_BaseBuildingFuel0;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Fuel depot composition (empty) in building. NO SLOT variant.", "et")]
-	private ResourceName m_BaseBuildingFuel0NoSlot;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Fuel depot composition (30% capacity)", "et")]
-	private ResourceName m_BaseBuildingFuel1;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Fuel depot composition (60% capacity)", "et")]
-	private ResourceName m_BaseBuildingFuel2;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Fuel depot composition (full)", "et")]
-	private ResourceName m_BaseBuildingFuel3;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Armory composition", "et")]
-	private ResourceName m_BaseBuildingArmory;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Armory composition in building. NO SLOT variant.", "et")]
-	private ResourceName m_BaseBuildingArmoryNoSlot;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Light Vehicle Depot composition", "et")]
-	private ResourceName m_sBaseBuildingLightVehicleDepot;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Light Vehicle Depot composition in building. NO SLOT variant.", "et")]
-	private ResourceName m_sBaseBuildingLightVehicleDepotNoSlot;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Heavy Vehicle Depot composition", "et")]
-	private ResourceName m_sBaseBuildingHeavyVehicleDepot;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Heavy Vehicle Depot composition in building. NO SLOT variant.", "et")]
-	private ResourceName m_sBaseBuildingHeavyVehicleDepotNoSlot;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Military hospital composition", "et")]
-	private ResourceName m_BaseBuildingHospital;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Barracks composition", "et")]
-	private ResourceName m_BaseBuildingBarracks;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Barracks composition. NO SLOT variant.", "et")]
-	private ResourceName m_BaseBuildingBarracksNoSlot;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Radio antenna composition", "et")]
-	private ResourceName m_BaseBuildingRadioAntenna;
-	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Radio antenna composition. NO SLOT variant.", "et")]
-	private ResourceName m_BaseBuildingRadioAntennaNoSlot;
-	
-	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Faction flag sign material, used on flag signs.", params: "emat")]
-	private ResourceName m_FactionSignMaterial;
-	
-	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Faction flag sign material MLOD, used on flag signs.", params: "emat")]
-	private ResourceName m_FactionSignMaterialMLOD;
+	[Attribute("", UIWidgets.ResourceNamePicker, "Supply stash composition", "et")]
+	private ResourceName m_BaseBuildingSupplyDepot;
 	
 	[Attribute()]
-	ref array<ref SCR_CampaignSlotComposition> m_aCampaignSlotCompositions;
-
-	[Attribute("1", UIWidgets.CheckBox, "Allow AI units")]
-	protected bool m_bSpawnAIs;
+	private ref array<ref SCR_CampaignBaseCallsign> m_aBaseCallsigns;
 	
-	[Attribute("", UIWidgets.Object)]
-	protected ref array<ref SCR_CampaignRemnantsGroup> m_aRemnantGroups;
+	protected SCR_CampaignMilitaryBaseComponent m_MainBase;
+	protected SCR_CampaignMilitaryBaseComponent m_PrimaryTarget;
 	
-	protected ref array<ref ResourceName> m_aAvailableSlotResources = new array<ref ResourceName>();
-	protected SCR_CampaignBase m_MainBase = null;
-	protected ref array<int> m_aAvailableCallsigns = new array<int>();
+	protected SCR_CampaignMobileAssemblyComponent m_MobileAssembly;
+	
+	#ifndef AR_CAMPAIGN_TIMESTAMP
 	protected float m_fVictoryTimestamp;
 	protected float m_fPauseByBlockTimestamp;
+	#else
+	protected WorldTimestamp m_fVictoryTimestamp;
+	protected WorldTimestamp m_fPauseByBlockTimestamp;
+	#endif
+	
+	protected int m_iActiveRespawnRadios;
+	protected int m_iControlPointsHeld;
 	
 	//------------------------------------------------------------------------------------------------
-	void SendHQMessage(SCR_ERadioMsg msgType, int baseCallsign = SCR_CampaignBase.INVALID_BASE_INDEX, int calledID = SCR_CampaignBase.INVALID_PLAYER_INDEX, bool public = true, int param = SCR_CampaignRadioMsg.INVALID_RADIO_MSG_PARAM)
+	void SendHQMessage(SCR_ERadioMsg msgType, int baseCallsign = SCR_CampaignMilitaryBaseComponent.INVALID_BASE_CALLSIGN, int calledID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX, bool public = true, int param = SCR_CampaignRadioMsg.INVALID_RADIO_MSG_PARAM)
 	{
 		if (msgType == SCR_ERadioMsg.NONE)
 			return;
 		
-		SCR_CampaignBase HQ = GetMainBase();
+		SCR_CampaignMilitaryBaseComponent HQ = GetMainBase();
 		
 		if (!HQ)
 			return;
 		
-		BaseRadioComponent radio = BaseRadioComponent.Cast(HQ.FindComponent(BaseRadioComponent));
+		BaseRadioComponent radio = BaseRadioComponent.Cast(HQ.GetOwner().FindComponent(BaseRadioComponent));
 		
 		if (!radio || !radio.IsPowered())
 			return;
@@ -139,7 +59,7 @@ class SCR_CampaignFaction : SCR_Faction
 		if (!transmitter)
 			return;
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
 		if (!campaign)
 			return;
@@ -157,98 +77,96 @@ class SCR_CampaignFaction : SCR_Faction
 		
 		SCR_CampaignRadioMsg msg = new SCR_CampaignRadioMsg;
 		msg.SetRadioMsg(msgType);
+		msg.SetFactionId(GetGame().GetFactionManager().GetFactionIndex(this));
 		msg.SetBaseCallsign(baseCallsign);
 		msg.SetCalledCallsign(companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex);
 		msg.SetIsPublic(public);
 		msg.SetParam(param);
 		msg.SetPlayerID(calledID);
-		
+		msg.SetEncryptionKey(radio.GetEncryptionKey());
+
 		transmitter.BeginTransmission(msg);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	IEntity GetDeployedMobileAssembly()
+	void SetControlPointsHeld(int count)
 	{
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		
-		if (!campaign)
-			return null;
-		
-		SCR_CampaignMobileAssemblyComponent comp = SCR_CampaignMobileAssemblyComponent.Cast(Replication.FindItem(campaign.GetDeployedMobileAssemblyID(GetFactionKey())));
-		
-		if (!comp)
-			return null;
-		
-		return comp.GetOwner();
-	}
-		
-	//------------------------------------------------------------------------------------------------
-	void SetAvailableSlotResources()
-	{		
-		for (int i = 0, count = m_aCampaignSlotCompositions.Count(); i < count; i++)
-		{
-			ResourceName res = m_aCampaignSlotCompositions[i].GetResourceName();		
-			m_aAvailableSlotResources.Insert(res);
-		}
+		m_iControlPointsHeld = count;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Get the list of all compositions that can be built on certain type of the slot
-	array<ref SCR_CampaignSlotComposition> GetSlotResource(SCR_ESlotTypesEnum slotType)
-	{	
-		ref array<ref SCR_CampaignSlotComposition> availableComposition = new ref array<ref SCR_CampaignSlotComposition>();
-		
-		// Go through all slot compositions and check if the type of slot match.
-		for (int i = 0, count = m_aCampaignSlotCompositions.Count(); i < count; i++)
-		{
-			// If so, add the composition into the available compositions array
-			if (m_aCampaignSlotCompositions[i].GetSlotType() == slotType)
-				availableComposition.Insert(m_aCampaignSlotCompositions[i]);
-		}
-		
-		return availableComposition;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	array<ref ResourceName> GetAvailableSlotResources()
+	int GetControlPointsHeld()
 	{
-		return m_aAvailableSlotResources;
+		return m_iControlPointsHeld;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	array<ref SCR_CampaignSlotComposition> GetCampaignSlotsComposition()
-	{	
-		return m_aCampaignSlotCompositions;
+	void SetActiveRespawnRadios(int count)
+	{
+		m_iActiveRespawnRadios = count;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetMainBase(SCR_CampaignBase mainBase)
+	int GetActiveRespawnRadios()
+	{
+		return m_iActiveRespawnRadios;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetMainBase(SCR_CampaignMilitaryBaseComponent mainBase)
 	{
 		m_MainBase = mainBase;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool GetAIsAllowed()
+	void SetPrimaryTarget(SCR_CampaignMilitaryBaseComponent target)
 	{
-		return m_bSpawnAIs;
+		m_PrimaryTarget = target;
+		SCR_BaseTaskManager taskManager = GetTaskManager();
+
+		if (!taskManager)
+			return;
+		
+		SCR_CampaignMilitaryBaseManager baseManager = SCR_GameModeCampaign.GetInstance().GetBaseManager();
+
+		if (!baseManager)
+			return;
+
+		array<SCR_BaseTask> tasks = {};
+		taskManager.GetFilteredTasks(tasks, this);
+
+		foreach (SCR_BaseTask task : tasks)
+		{
+			SCR_CampaignBaseTask conflictTask = SCR_CampaignBaseTask.Cast(task);
+
+			if (!conflictTask)
+				continue;
+
+			SCR_CampaignMilitaryBaseComponent base = conflictTask.GetTargetBase();
+
+			if (!base || base.GetFaction() == conflictTask.GetTargetFaction())
+				continue;
+
+			conflictTask.SetIsPriority(m_PrimaryTarget == base);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_CampaignMilitaryBaseComponent GetPrimaryTarget()
+	{
+		return m_PrimaryTarget;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetMobileAssembly(SCR_CampaignMobileAssemblyComponent mobileAssembly)
+	{
+		m_MobileAssembly = mobileAssembly;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetRadioPrefab()
 	{
 		return m_RadioPrefab;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	ResourceName GetAIGroupPrefab()
-	{
-		return m_AIGroupPrefab;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	ResourceName GetAIGroupVehiclePrefab()
-	{
-		return m_AIVehiclePrefab;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -270,53 +188,12 @@ class SCR_CampaignFaction : SCR_Faction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ResourceName GetBuildingPrefab(ECampaignCompositionType type)
+	ResourceName GetBuildingPrefab(EEditableEntityLabel type)
 	{
 		switch (type)
 		{
-			case ECampaignCompositionType.HQ: {return m_BaseBuildingHQ;};
-			case ECampaignCompositionType.SUPPLIES: {return m_BaseBuildingStash0;};
-			case ECampaignCompositionType.SUPPLIES_EMPTY: {return m_BaseBuildingStash0;};
-			case ECampaignCompositionType.SUPPLIES_LOW: {return m_BaseBuildingStash1;};
-			case ECampaignCompositionType.SUPPLIES_HIGH: {return m_BaseBuildingStash2;};
-			case ECampaignCompositionType.SUPPLIES_FULL: {return m_BaseBuildingStash3;};
-			case ECampaignCompositionType.FUEL: {return m_BaseBuildingFuel0;};
-			case ECampaignCompositionType.FUEL_EMPTY: {return m_BaseBuildingFuel0;};
-			case ECampaignCompositionType.FUEL_LOW: {return m_BaseBuildingFuel1;};
-			case ECampaignCompositionType.FUEL_HIGH: {return m_BaseBuildingFuel2;};
-			case ECampaignCompositionType.FUEL_FULL: {return m_BaseBuildingFuel3;};
-			case ECampaignCompositionType.LIGHT_VEHICLE_DEPOT: {return m_sBaseBuildingLightVehicleDepot;};
-			case ECampaignCompositionType.HEAVY_VEHICLE_DEPOT: {return m_sBaseBuildingHeavyVehicleDepot;};
-			case ECampaignCompositionType.ARMORY: {return m_BaseBuildingArmory;};
-			case ECampaignCompositionType.HOSPITAL: {return m_BaseBuildingHospital;};
-			case ECampaignCompositionType.BARRACKS: {return m_BaseBuildingBarracks;};
-			case ECampaignCompositionType.RADIO_ANTENNA: {return m_BaseBuildingRadioAntenna;};
-		}
-		
-		return ResourceName.Empty;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	ResourceName GetBuildingPrefabNoSlot(ECampaignCompositionType type)
-	{
-		switch (type)
-		{
-			case ECampaignCompositionType.HQ: {return m_BaseBuildingHQNoSlot;};
-			case ECampaignCompositionType.SUPPLIES_EMPTY: {return m_BaseBuildingStash0NoSlot;};
-			case ECampaignCompositionType.SUPPLIES_LOW: {return m_BaseBuildingStash1NoSlot;};
-			case ECampaignCompositionType.SUPPLIES_HIGH: {return m_BaseBuildingStash2NoSlot;};
-			case ECampaignCompositionType.SUPPLIES_FULL: {return m_BaseBuildingStash3NoSlot;};
-			case ECampaignCompositionType.FUEL: {return m_BaseBuildingFuel0NoSlot;};
-			case ECampaignCompositionType.FUEL_LOW: {return m_BaseBuildingFuel0NoSlot;};
-			case ECampaignCompositionType.FUEL_HIGH: {return m_BaseBuildingFuel0NoSlot;};			
-			case ECampaignCompositionType.FUEL_FULL: {return m_BaseBuildingFuel0NoSlot;};
-			case ECampaignCompositionType.FUEL: {return m_BaseBuildingFuel0NoSlot;};
-			case ECampaignCompositionType.FUEL_EMPTY: {return m_BaseBuildingFuel0NoSlot;};
-			case ECampaignCompositionType.LIGHT_VEHICLE_DEPOT: {return m_sBaseBuildingLightVehicleDepotNoSlot;};
-			case ECampaignCompositionType.HEAVY_VEHICLE_DEPOT: {return m_sBaseBuildingHeavyVehicleDepotNoSlot;};
-			case ECampaignCompositionType.ARMORY: {return m_BaseBuildingArmoryNoSlot;};
-			case ECampaignCompositionType.BARRACKS: {return m_BaseBuildingBarracksNoSlot;};
-			case ECampaignCompositionType.RADIO_ANTENNA: {return m_BaseBuildingRadioAntennaNoSlot;};
+			case EEditableEntityLabel.SERVICE_HQ: {return m_BaseBuildingHQ;};
+			case EEditableEntityLabel.SERVICE_SUPPLY_STORAGE: {return m_BaseBuildingSupplyDepot;};
 		}
 		
 		return ResourceName.Empty;
@@ -334,230 +211,122 @@ class SCR_CampaignFaction : SCR_Faction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//Called everywhere, used to generate initial data for this faction
-	override void InitializeFaction()
-	{
-		if (SCR_GameModeCampaignMP.NotPlaying())
-			return;
-		
-		// initialize all available slots resources for faction
-		SetAvailableSlotResources();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_CampaignBase GetMainBase()
+	SCR_CampaignMilitaryBaseComponent GetMainBase()
 	{
 		return m_MainBase;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetRemnantsByProbability(float prob, notnull out array<ResourceName> groups)
+	SCR_CampaignMobileAssemblyComponent GetMobileAssembly()
 	{
-		float lowestProb = float.MAX;
-		
-		foreach (SCR_CampaignRemnantsGroup group: m_aRemnantGroups)
-		{
-			float grpProb = group.m_fProbability;
-			
-			if (grpProb > prob)
-			{	
-				if (grpProb <= lowestProb)
-				{
-					if (grpProb < lowestProb)
-					{
-						groups.Clear();
-						lowestProb = grpProb;
-					}
-					
-					groups.Insert(group.m_Prefab);
-				}
-			}
-		}
-		
-		return groups.Count();
+		return m_MobileAssembly;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ResourceName GetRemnantsByType(SCR_CampaignRemnantsGroupType type)
-	{
-		foreach (SCR_CampaignRemnantsGroup group: m_aRemnantGroups)
-		{
-			if (group.m_eType == type)
-				return group.m_Prefab;
-		}
-		
-		return ResourceName.Empty;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	ResourceName GetFactionSignResource()
-	{
-		return m_FactionSignMaterial;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	ResourceName GetFactionSignMLOD()
-	{
-		return m_FactionSignMaterialMLOD;
-	}
-	
-	//------------------------------------------------------------------------------------------------
+	#ifndef AR_CAMPAIGN_TIMESTAMP
 	void SetVictoryTimestamp(float timestamp)
+	#else
+	void SetVictoryTimestamp(WorldTimestamp timestamp)
+	#endif
 	{
 		m_fVictoryTimestamp = timestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	#ifndef AR_CAMPAIGN_TIMESTAMP
 	float GetVictoryTimestamp()
+	#else
+	WorldTimestamp GetVictoryTimestamp()
+	#endif
 	{
 		return m_fVictoryTimestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	#ifndef AR_CAMPAIGN_TIMESTAMP
 	void SetPauseByBlockTimestamp(float timestamp)
+	#else
+	void SetPauseByBlockTimestamp(WorldTimestamp timestamp)
+	#endif
 	{
 		m_fPauseByBlockTimestamp = timestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	#ifndef AR_CAMPAIGN_TIMESTAMP
 	float GetPauseByBlockTimestamp()
+	#else
+	WorldTimestamp GetPauseByBlockTimestamp()
+	#endif
 	{
 		return m_fPauseByBlockTimestamp;
 	}
-};
-
-[BaseContainerProps()]
-class SCR_CampaignSlotComposition
-{
-	[Attribute("", UIWidgets.ResourceNamePicker, "Composition prefab.", "et")]
-	protected ResourceName m_Resource;
 	
-	[Attribute("0 0 0", UIWidgets.EditBox, "...", category: "Offset of building controller from center of the composition.")]
-	protected vector m_vBuildingControllerOffset;
-	
-	[Attribute("Composition", desc: "Display name to be shown in UI.")]
-	protected string m_sDisplayName;
-	
-	[Attribute("", desc: "Name of used marker.")]
-	protected string m_sMarkerImage;
-	
-	[Attribute("", desc: "Name of used HUD icon.")]
-	protected string m_sIconImage;
-	
-	[Attribute("10", UIWidgets.EditBox, "The cost of the composition", "", )]
-	protected int m_iPrice;
-	
-	[Attribute("25", UIWidgets.EditBox, "The percentage of the original composition cost, which is returned back to the player when he disassemble the composition", "", )]
-	protected int m_iRefundPercentage;
-	
-	[Attribute(uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_ESlotTypesEnum))]
-	protected SCR_ESlotTypesEnum m_SlotType;
+	//------------------------------------------------------------------------------------------------
+	array<int> GetBaseCallsignIndexes()
+	{
+		array<int> indexes = {};
 		
-	[Attribute("1", UIWidgets.CheckBox, "Can user rotate this composition?")]
-	protected bool m_bCanBeRotated;
-	
-	[Attribute("0", UIWidgets.CheckBox, "Is this a service composition i.e. Barracks, Hospital...")]
-	protected bool m_bIsServiceComposition;
-	
-	[Attribute()]
-	ref array<ref SCR_BuildingPhase> m_aBuildingPhase;
+		foreach (SCR_CampaignBaseCallsign callsign : m_aBaseCallsigns)
+			indexes.Insert(callsign.GetSignalIndex());
 		
-	//------------------------------------------------------------------------------------------------
-	ResourceName GetResourceName()
-	{
-		return m_Resource;
+		return indexes;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	vector GetBuildingControllerOffset()
+	SCR_CampaignBaseCallsign GetBaseCallsignByIndex(int index, int offset = 0)
 	{
-		return m_vBuildingControllerOffset;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	int GetPrice()
-	{
-		return m_iPrice;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	float GetRefundPercentage()
-	{
-		return m_iRefundPercentage / 100;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_ESlotTypesEnum GetSlotType()
-	{
-		return m_SlotType;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool CanBeRotated()
-	{
-		return m_bCanBeRotated;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetCompositionName()
-	{
-		return m_sDisplayName;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool IsServiceComposition()
-	{
-		return m_bIsServiceComposition;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	array<ref SCR_BuildingPhase> GetBuildingPhaseResources()
-	{
-		return m_aBuildingPhase;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetMarkerImage()
-	{
-		return m_sMarkerImage;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetIconImage()
-	{
-		return m_sIconImage;
+		index += offset;
+		
+		if (m_aBaseCallsigns.IsIndexValid(index))
+			return m_aBaseCallsigns[index];
+		
+		index -= m_aBaseCallsigns.Count();
+		
+		if (m_aBaseCallsigns.IsIndexValid(index))
+			return m_aBaseCallsigns[index];
+		
+		return null;
 	}
 };
 
-[BaseContainerProps()]
-class SCR_BuildingPhase
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_BaseContainerCustomTitleResourceName("m_sCallsign", true)]
+class SCR_CampaignBaseCallsign
 {
-	[Attribute("", UIWidgets.ResourceNamePicker, "Composition prefab.", "et")]
-	protected ResourceName m_BuildingPhaseResource;
+	[Attribute("", UIWidgets.EditBox)]
+	protected string m_sCallsign;
 	
-	[Attribute("10", UIWidgets.EditBox, "How long this building stage should takse. Composition building time = sum of all building stages.", "", )]
-	protected int m_iBuildingTime;
+	[Attribute("", UIWidgets.EditBox)]
+	protected string m_sCallsignShort;
+	
+	[Attribute("", UIWidgets.EditBox)]
+	protected string m_sCallsignUpperCase;
+	
+	[Attribute("0", UIWidgets.EditBox)]
+	protected int m_iSignalIndex;
 	
 	//------------------------------------------------------------------------------------------------
-	ResourceName GetPhaseResourceName()
+	string GetCallsign()
 	{
-		return m_BuildingPhaseResource;
+		return m_sCallsign;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetBuildingTime()
+	string GetCallsignShort()
 	{
-		return m_iBuildingTime;
+		return m_sCallsignShort;
 	}
-};
-
-enum SCR_ESlotTypesEnum
-{
-	FlatSmall,
-	FlatMedium,
-	FlatLarge,
-	CheckpointSmall,
-	CheckpointMedium,
-	CheckpointLarge,
-	Services
-};
+	
+	//------------------------------------------------------------------------------------------------
+	string GetCallsignUpperCase()
+	{
+		return m_sCallsignUpperCase;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetSignalIndex()
+	{
+		return m_iSignalIndex;
+	}
+}

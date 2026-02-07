@@ -32,7 +32,7 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanApplyEffect(notnull IEntity target, notnull IEntity user)
+	override bool CanApplyEffect(notnull IEntity target, notnull IEntity user, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
@@ -42,14 +42,11 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 		if (!damageMgr || !damageMgr.IsDamagedOverTime(EDamageType.BLEEDING))
 			return false;
 		
-		array<ECharacterHitZoneGroup> limbs = {};
-		damageMgr.GetAllExtremities(limbs);
-		
-		return damageMgr.GetMostDOTHitZone(EDamageType.BLEEDING, false, limbs);
+		return damageMgr.GetMostDOTHitzoneGroup(EDamageType.BLEEDING, true, true);
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group)
+	override bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
@@ -65,9 +62,16 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 		if (!limbs.Contains(group))
 			return false;
 		
+		if (damageMgr.GetGroupTourniquetted(group))
+		{
+			failReason = SCR_EConsumableFailReason.ALREADY_APPLIED;
+			return false;
+		}
+		
 		if (damageMgr.GetGroupDamageOverTime(group, EDamageType.BLEEDING) > 0)
 			return true;
 		
+		failReason = SCR_EConsumableFailReason.NOT_BLEEDING;
 		return false;
 	}
 	
@@ -90,14 +94,14 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 		}
 		else
 		{
-			array<ECharacterHitZoneGroup> limbs = {};
-			damageMgr.GetAllExtremities(limbs);
-			
-			HitZone hitzone = damageMgr.GetMostDOTHitZone(EDamageType.BLEEDING, false, limbs);
-			if (!hitzone)
+			group = damageMgr.GetMostDOTHitzoneGroup(EDamageType.BLEEDING, true, true);
+			if (!group)
 				return null;
 			
-			SCR_CharacterHitZone charHitZone = SCR_CharacterHitZone.Cast(hitzone);
+			array<HitZone> groupHitZones = {};
+			damageMgr.GetGroupHitZones(group, groupHitZones);
+			
+			SCR_CharacterHitZone charHitZone = SCR_CharacterHitZone.Cast(groupHitZones[0]);
 			if (!charHitZone)
 				return null;
 			
@@ -107,7 +111,7 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 		if (bodyPartToBandage == EBandagingAnimationBodyParts.Invalid)
 				return null;
 		
-		return new SCR_ConsumableEffectAnimationParameters(GetApplyToSelfAnimCmnd(target), 1, 0, 4.0, bodyPartToBandage, 0.0, false);	
+		return new SCR_ConsumableEffectAnimationParameters(GetApplyToSelfAnimCmnd(target), 1, 0, m_fApplyToSelfDuration, bodyPartToBandage, 0.0, false);	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -119,7 +123,7 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 	//------------------------------------------------------------------------------------------------
 	void SCR_ConsumableTourniquet()
 	{
-		m_eConsumableType = EConsumableType.Tourniquet;
+		m_eConsumableType = SCR_EConsumableType.TOURNIQUET;
 	}
 	
 };

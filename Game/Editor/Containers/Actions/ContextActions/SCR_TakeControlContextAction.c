@@ -94,7 +94,7 @@ class SCR_TakeControlContextAction : SCR_BaseEditorAction
 			return;
 		
 		SCR_EditableEntityComponent aiEntity = entityToControl.GetAIEntity();
-		if (!aiEntity)
+		if (!aiEntity || aiEntity.IsDestroyed())
 			return;
 		
 		//--- Find player controller (param is playerID)

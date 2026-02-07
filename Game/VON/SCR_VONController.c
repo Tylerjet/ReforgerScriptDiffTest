@@ -9,6 +9,14 @@ enum EVONTransmitType
 }
 
 //------------------------------------------------------------------------------------------------
+// invoker typedefs
+void OnVONActiveToggled(bool isToggledDirect, bool isToggledChannel);	// when direct toggle activates
+typedef func OnVONActiveToggled;
+
+void OnEntriesChanged(SCR_VONEntry entry, bool isAdded);				// when entry array is modified, true = added
+typedef func OnEntriesChanged;
+
+//------------------------------------------------------------------------------------------------
 class SCR_VONControllerClass: ScriptGameComponentClass
 {}
 
@@ -16,13 +24,18 @@ class SCR_VONControllerClass: ScriptGameComponentClass
 //! Scripted VON input and control, attached to SCR_PlayerController
 class SCR_VONController : ScriptComponent
 {
-	const string VON_DIRECT_HOLD = "VONDirect";
-	const string VON_CHANNEL_HOLD = "VONChannel";
-	const string VON_LONG_RANGE_HOLD = "VONLongRange";
-	const float TOGGLE_OFF_DELAY = 0.5;		// seconds, delay before toggle state can get canceled, to avoid collision of double click and press
+	// TODO remove ties to consciousness logic 
+ 	// TODO more robust von component selection management
+	
+	[Attribute("", UIWidgets.Object)]
+	protected ref SCR_VONMenu m_VONMenu;
+	
+	protected const string VON_DIRECT_HOLD = "VONDirect";
+	protected const string VON_CHANNEL_HOLD = "VONChannel";
+	protected const string VON_LONG_RANGE_HOLD = "VONLongRange";
+	protected const float TOGGLE_OFF_DELAY = 0.5;		// seconds, delay before toggle state can get canceled, to avoid collision of double click and press
 	
 	static bool s_bIsInit;					// component init done, static so its only done once
-	bool m_bIsInitEntries;					// entry init done
 	protected bool m_bIsDisabled; 			// VON control is disabled
 	protected bool m_bIsUnconscious; 		// Character is unconscious --> VON control is disabled
 	protected bool m_bIsActive;				// VON is active
@@ -33,13 +46,9 @@ class SCR_VONController : ScriptComponent
 	protected float m_fToggleOffDelay;		// used to track delay before toggle can be cancelled
 	protected string m_sActiveHoldAction;	// tracker for ending the hold action VON 
 	protected EVONTransmitType m_eVONType;	// currently active VON type
-	protected EventHandlerManagerComponent m_EventHandlerManager;
 	protected InputManager m_InputManager;
 	
-	protected IEntity m_VONEntity;							// cached ent, compared to currently controlled for update
-	protected SCR_VoNComponent m_VONComp;					// vonComp of controlled entity
-	protected SCR_GadgetManagerComponent m_GadgetMgr;		// gadget manager of controlled entity
-	protected SCR_PlayerController m_PlayerController;		// downcasted owner
+	protected SCR_VoNComponent m_VONComp;					// VON component used for transmission
 	protected SCR_VonDisplay m_VONDisplay;					// VON transmission display
 	protected SCR_VONEntry m_ActiveEntry;					// active entry (non direct speech)
 	protected SCR_VONEntry m_LongRangeEntry;				// entry for long range radio, if available
@@ -47,53 +56,86 @@ class SCR_VONController : ScriptComponent
 	protected ref SCR_VONEntry m_DirectSpeechEntry;			// separate direct speech entry
 	protected ref array<ref SCR_VONEntry> m_aEntries = {};	// all entries except direct
 	
-	ref ScriptInvoker<SCR_VONEntry> 		m_OnActiveDeviceChanged = new ScriptInvoker();	// when non direct entry changes
-	ref ScriptInvoker<SCR_VONEntry, bool> 	m_OnEntriesChanged = new ScriptInvoker();		// when entry array is modified, true = added
-	ref ScriptInvoker<bool, bool> 			m_OnVONActiveToggled = new ScriptInvoker();		// when direct toggle activates
+	protected ref ScriptInvokerBase<OnEntriesChanged> 	m_OnEntriesChanged = new ScriptInvokerBase<OnEntriesChanged>();						
+	protected ref ScriptInvokerBase<OnVONActiveToggled> m_OnVONActiveToggled = new ScriptInvokerBase<OnVONActiveToggled>();
 	
 	//------------------------------------------------------------------------------------------------
-	void SetDisplay(SCR_VonDisplay display){ m_VONDisplay = display; }
-	//------------------------------------------------------------------------------------------------
-	SCR_VonDisplay GetDisplay(){ return m_VONDisplay; }
-	//------------------------------------------------------------------------------------------------
-	SCR_VoNComponent GetVONComponent(){ return m_VONComp; }
-		
-	//------------------------------------------------------------------------------------------------
-	//! Set entity for transmit of VON, must be the owner
-	//! \param entity is the target subject
-	void SetVoNEntity(IEntity entity)
-	{			
-		m_VONEntity = entity;
-		if (m_EventHandlerManager)
-				m_EventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
-		
-		m_EventHandlerManager = null;
-		m_VONComp = null;
-		
-		if (!entity)
-			return;
-		
-		ChimeraCharacter character = ChimeraCharacter.Cast(entity);
-		if (!character)
-			return;
-		
-		CharacterControllerComponent characterController = character.GetCharacterController();
-		if (!characterController)
-			return;
-		
-		m_bIsUnconscious = characterController.IsUnconscious();
-		
-		m_EventHandlerManager = EventHandlerManagerComponent.Cast(character.FindComponent(EventHandlerManagerComponent));
-		if (m_EventHandlerManager)
-			m_EventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+	ScriptInvokerBase<OnEntriesChanged> GetOnEntriesChangedInvoker()
+	{
+		return m_OnEntriesChanged;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Get current entries
-	//! \return array of entries
+	ScriptInvokerBase<OnVONActiveToggled> GetOnVONActiveToggledInvoker()
+	{
+		return m_OnVONActiveToggled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetDisplay(SCR_VonDisplay display)
+	{ 
+		m_VONDisplay = display; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_VonDisplay GetDisplay()
+	{ 
+		return m_VONDisplay; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_VONMenu GetVONMenu()
+	{ 
+		return m_VONMenu; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetVONDisabled(bool state)
+	{
+		m_bIsDisabled = state;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsVONDisabled()
+	{
+		return m_bIsDisabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_VoNComponent GetVONComponent()
+	{ 
+		return m_VONComp; 
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	//! Set component for transmit of VON
+	//! \param VONComp is the subject
+	void SetVONComponent(SCR_VoNComponent VONComp)
+	{			
+		m_VONComp = VONComp;
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get current entries	TODO return this as out array to save alloc
+	//! \return copied array of entries
 	array<ref SCR_VONEntry> GetVONEntries()
-	{		
-		return m_aEntries;
+	{
+		array<ref SCR_VONEntry> entries = {};
+
+		for (int i = 0, count = m_aEntries.Count(); i < count; i++)
+		{
+			entries.Insert(m_aEntries[i]);
+		}
+
+		return entries;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get number of entries
+	int GetVONEntryCount()
+	{
+		return m_aEntries.Count();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -121,8 +163,6 @@ class SCR_VONController : ScriptComponent
 			if (radioEntry && !radioEntry.m_bIsLongRange)
 				m_bIsActiveModeLong = false;			
 		}
-
-		m_OnActiveDeviceChanged.Invoke(entry);
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -263,9 +303,9 @@ class SCR_VONController : ScriptComponent
 	//! VON toggle   val 0 = off / 1 = direct / 2 = channel
  	protected void OnVONToggle(float value, EActionTrigger reason)
 	{
-		if (!m_bIsInitEntries)
+		if (!m_VONComp)
 		{
-			if (!InitEntries())
+			if (!AssignVONComponent())
 			{
 				m_sActiveHoldAction = string.Empty;
 				return;
@@ -329,9 +369,9 @@ class SCR_VONController : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void VONDirect(bool activate)
 	{
-		if (!m_bIsInitEntries)
+		if (!m_VONComp)
 		{
-			if (!InitEntries())
+			if (!AssignVONComponent())
 			{
 				m_sActiveHoldAction = string.Empty;
 				return;
@@ -358,9 +398,9 @@ class SCR_VONController : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void VONChannel(bool activate)
 	{
-		if (!m_bIsInitEntries)
+		if (!m_VONComp)
 		{
-			if (!InitEntries())
+			if (!AssignVONComponent())
 			{
 				m_sActiveHoldAction = string.Empty;
 				return;
@@ -387,9 +427,9 @@ class SCR_VONController : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void VONLongRange(bool activate)
 	{
-		if (!m_bIsInitEntries)
+		if (!m_VONComp)
 		{
-			if (!InitEntries())
+			if (!AssignVONComponent())
 			{
 				m_sActiveHoldAction = string.Empty;
 				return;
@@ -425,8 +465,8 @@ class SCR_VONController : ScriptComponent
 			
 			if (m_SavedEntry)	// restore last saved entry if there is one
 			{
-				m_SavedEntry.ActivateEntry();
-				if (m_SavedEntry.m_RadioTransceiver == null)
+				SetActiveTransmit(m_SavedEntry);
+				if (m_SavedEntry.GetVONMethod() == EVONTransmitType.DIRECT)
 					m_bIsActiveModeDirect = true;
 				
 				m_SavedEntry = null;
@@ -440,7 +480,7 @@ class SCR_VONController : ScriptComponent
 	//! \param state determines target state ON/OFF
  	protected void ActivateVON(SCR_VONEntry entry, bool state)
 	{				
-		if (!entry)
+		if (!entry || !m_VONComp)
 			return;
 				
 		if (!state)
@@ -450,27 +490,44 @@ class SCR_VONController : ScriptComponent
 						
 			if (m_bIsToggledDirect) // direct toggle is active so ending VON should not end capture
 			{
-				entry.ActivateEntry();
+				SetActiveTransmit(entry);
 				ActivateVON(m_DirectSpeechEntry, m_bIsToggledDirect);
 				m_sActiveHoldAction = string.Empty;
 			}
 			else if (m_bIsToggledChannel) // channel toggle is active so ending VON should not end capture
 			{
-				entry.ActivateEntry();
+				SetActiveTransmit(entry);
 				ActivateVON(m_ActiveEntry, m_bIsToggledChannel);
 				m_sActiveHoldAction = string.Empty;
 			}
 		}
 		else
 		{
-			entry.ActivateEntry();
+			SetActiveTransmit(entry);
 			m_VONComp.SetCapture(true);
 			m_bIsActive = true;
 		}
 	}
+		
+	//------------------------------------------------------------------------------------------------
+	//! Set transmission method depending on entry type when starting VON transmit
+	protected void SetActiveTransmit(notnull SCR_VONEntry entry)
+	{		
+		if (entry.GetVONMethod() == ECommMethod.SQUAD_RADIO)
+		{
+			m_VONComp.SetCommMethod(ECommMethod.SQUAD_RADIO);
+			m_VONComp.SetTransmitRadio(SCR_VONEntryRadio.Cast(entry).GetTransceiver());
+			SetEntryActive(entry);
+		}
+		else 
+		{
+			m_VONComp.SetCommMethod(ECommMethod.DIRECT);
+			m_VONComp.SetTransmitRadio(null);
+		}
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! VON hold timeout
+	//! VON hold timeout, stops active von transmission in case of specific condition which would prevent for it to end normally
 	protected void TimeoutVON()
 	{
 		if (m_sActiveHoldAction == VON_DIRECT_HOLD)
@@ -491,22 +548,41 @@ class SCR_VONController : ScriptComponent
 		if (m_bIsToggledDirect || m_bIsToggledChannel)
 			OnVONToggle(0,0);
 		
-		CleanupEntries();
-		SetVoNEntity(to);
+		if (to)
+			SetVONComponent(SCR_VoNComponent.Cast(to.FindComponent(SCR_VoNComponent)));
+		else 
+			SetVONComponent(null);	
+		
+		if (from)
+		{
+			EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(from.FindComponent(EventHandlerManagerComponent));
+			if (eventHandlerManager)
+				eventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+		}
+		
+		if (to)		
+		{
+			ChimeraCharacter character = ChimeraCharacter.Cast(to);
+			if (!character)
+				return;
+			
+			CharacterControllerComponent characterController = character.GetCharacterController();
+			if (characterController)
+				m_bIsUnconscious = characterController.IsUnconscious();
+			
+			EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(to.FindComponent(EventHandlerManagerComponent));
+			if (eventHandlerManager)
+				eventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_PlayerController Event
-	//! Used to deactivate VON for dead players. Listeners are added back because they are previously 
-	//! removed on unconsciousness and if character dies, they need to added back.
+	//! Used to deactivate VON for dead players
 	protected void OnDestroyed(IEntity killer)
 	{		
 		if (m_bIsToggledDirect || m_bIsToggledChannel)
 			OnVONToggle(0,0);
-		
-		CleanupEntries();
-		
-		//m_bIsUnconscious = false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -524,140 +600,31 @@ class SCR_VONController : ScriptComponent
 	//! PauseMenuUI Event
 	protected void OnPauseMenuOpened()
 	{
-		m_bIsDisabled = true;
+		SetVONDisabled(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! PauseMenuUI Event
 	protected void OnPauseMenuClosed()
 	{
-		m_bIsDisabled = false;
+		SetVONDisabled(false);
 	}
-	
+			
 	//------------------------------------------------------------------------------------------------
-	//! GadgetManager Event
-	protected void OnGadgetAdded(SCR_GadgetComponent gadgetComp)
+	//! Assign VON comp by fetching it from controlled entity
+	bool AssignVONComponent()
 	{
-		BaseRadioComponent radioComp = BaseRadioComponent.Cast(gadgetComp.GetOwner().FindComponent(BaseRadioComponent));
-		if (!radioComp)
-			return;
+		IEntity controlledEnt = SCR_PlayerController.Cast(GetOwner()).GetControlledEntity();
+		if (controlledEnt)
+			SetVONComponent(SCR_VoNComponent.Cast(controlledEnt.FindComponent(SCR_VoNComponent)));
 		
-		// Put all transceivers (AKA) channels in the VoN menu
-		for (int i = radioComp.TransceiversCount() - 1; i >= 0; --i)
-		{
-			SCR_VONEntryRadio radioEntry = new SCR_VONEntryRadio(this, m_VONComp, radioComp.GetTransceiver(i), gadgetComp);
-			AddEntry(radioEntry);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! GadgetManager Event
-	protected void OnGadgetRemoved(SCR_GadgetComponent gadgetComp)
-	{	
-		for (int i = m_aEntries.Count() - 1; i >= 0; --i)
-		{
-			if (m_aEntries[i].GetGadget() == gadgetComp)
-				RemoveEntry(m_aEntries[i]);
-			// Do not dare to break or return here, there may be multiple entries per one gadget
-		}
-		
-		// Check if we still have active entry...
-		if (!m_ActiveEntry)
-		{
-			// ...try to fix if we do not
-			if (!m_aEntries.IsEmpty())
-				m_ActiveEntry = m_aEntries[0];
-			else 
-				m_ActiveEntry = null;
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Init VON entries, done when controlled entity changes
-	bool InitEntries()
-	{
-		if (!m_VONEntity)	//No entity, try to use current controlled entity
-		{
-			IEntity controlledEnt = m_PlayerController.GetControlledEntity();
-			if (controlledEnt)
-				SetVoNEntity(controlledEnt);
-		}
-		
-		if (!m_VONEntity)			
+		if(!m_VONComp)
 			return false;
 		
-		// must be owner (is this necessary?)
-		RplComponent rplComponent = RplComponent.Cast(m_VONEntity.FindComponent(RplComponent));
-		if (!rplComponent || !rplComponent.IsOwner())
-			return false;
-		
-		m_VONComp = SCR_VoNComponent.Cast(m_VONEntity.FindComponent(SCR_VoNComponent));
-		if (!m_VONComp)
-			return false;
-		
-		if (!m_VONComp)
-			return false;
-		
-		if (m_aEntries)
-			m_aEntries.Clear();
-		
-		m_DirectSpeechEntry = new SCR_VONEntry(this, m_VONComp); // Init direct speech entry
-		m_DirectSpeechEntry.m_bIsEnabled = true;
-		
-		// Init radio entries
-		m_GadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(m_VONEntity);
-		if (!m_GadgetMgr)
-			return false;
-		
-		// Buracisko do not like this. We shouldn't treat them in different way
-		// TODO: What about Intercom and what about entering/leaving car
-		array<SCR_GadgetComponent> radiosArray = new array<SCR_GadgetComponent>;
-		radiosArray.Copy(m_GadgetMgr.GetGadgetsByType(EGadgetType.RADIO)); // squad radios
-		radiosArray.InsertAll(m_GadgetMgr.GetGadgetsByType(EGadgetType.RADIO_BACKPACK)); // backpack radio
-
-		foreach (SCR_GadgetComponent radio : radiosArray)
-		{
-			BaseRadioComponent radioComp = BaseRadioComponent.Cast(radio.GetOwner().FindComponent(BaseRadioComponent));
-			// Get all individual transceivers (AKA channels) from the radio
-			for (int i = 0 ; i < radioComp.TransceiversCount(); ++i)
-			{
-				BaseTransceiver radioChannel = radioComp.GetTransceiver(i);
-				SCR_VONEntryRadio radioEntry = new SCR_VONEntryRadio(this, m_VONComp, radioChannel, radio);
-				// This already makes sure its activates entry if no other is activated
-				AddEntry(radioEntry);
-			}
-		}
-		
-		// Use events from gadget manager to maintain the list of entries
-		// Note: This is illformed for non gadget radios, like intercom in vehicle
-		// - Redesign needed unless different approach is used
-		m_GadgetMgr.m_OnGadgetAdded.Insert(OnGadgetAdded);
-		m_GadgetMgr.m_OnGadgetRemoved.Insert(OnGadgetRemoved);
-		
-		m_bIsInitEntries = true;
 		return true;			
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Cleanup VON entries, done when controlled entity changes
-	protected void CleanupEntries()
-	{
-		m_aEntries.Clear();
-		
-		if (m_DirectSpeechEntry)
-			m_DirectSpeechEntry.m_bIsEnabled = false;
-		
-		m_VONEntity = null;
-		
-		if (m_GadgetMgr)
-		{
-			m_GadgetMgr.m_OnGadgetAdded.Remove(OnGadgetAdded);
-			m_GadgetMgr.m_OnGadgetRemoved.Remove(OnGadgetRemoved);
-		}
-		
-		m_bIsInitEntries = false;
-	}
-	
 	void OnConsciousnessChanged(bool conscious)
 	{
 		m_bIsUnconscious = !conscious;
@@ -673,10 +640,13 @@ class SCR_VONController : ScriptComponent
 		
 	//------------------------------------------------------------------------------------------------
 	//! Initialize component, done once per controller
-	protected void Init()
+	protected void Init(IEntity owner)
 	{
 		if (s_bIsInit)	// hosted server will have multiple controllers, init just the first one
+		{
+			Deactivate(owner);
 			return;
+		}
 		
 		m_InputManager = GetGame().GetInputManager();
 		if (!m_InputManager)
@@ -696,23 +666,29 @@ class SCR_VONController : ScriptComponent
 		m_InputManager.AddActionListener("VONToggleGamepad", EActionTrigger.DOWN, OnVONToggleGamepad);
 		m_InputManager.AddActionListener("VONSwitch", EActionTrigger.DOWN, OnVONSwitch);
 		
-		m_PlayerController = SCR_PlayerController.Cast(GetOwner());
-		m_PlayerController.m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
-		m_PlayerController.m_OnDestroyed.Insert(OnDestroyed);
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
+		playerController.m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
+		playerController.m_OnDestroyed.Insert(OnDestroyed);
 		PauseMenuUI.m_OnPauseMenuOpened.Insert(OnPauseMenuOpened);
 		PauseMenuUI.m_OnPauseMenuClosed.Insert(OnPauseMenuClosed);
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
+		m_DirectSpeechEntry = new SCR_VONEntry(); // Init direct speech entry
+		m_DirectSpeechEntry.m_bIsEnabled = true;
+		
 		SetEventMask(GetOwner(), EntityEvent.FRAME);
 		
 		s_bIsInit = true;
+		
+		if (m_VONMenu)
+			m_VONMenu.Init(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Cleanup component
 	protected void Cleanup()
 	{
-		s_bIsInit = false;
+		m_VONMenu = null;
 		
 		if (GetGame().GetCallqueue())
 			GetGame().GetCallqueue().Remove(OnVONGamepad);
@@ -735,8 +711,13 @@ class SCR_VONController : ScriptComponent
 		m_InputManager.RemoveActionListener("VONToggleGamepad", EActionTrigger.DOWN, OnVONToggleGamepad);
 		m_InputManager.RemoveActionListener("VONSwitch", EActionTrigger.DOWN, OnVONSwitch);
 	
-		if (m_EventHandlerManager)
-			m_EventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+		IEntity ent = PlayerController.Cast(GetOwner()).GetControlledEntity();
+		if (ent)
+		{
+			EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(ent.FindComponent(EventHandlerManagerComponent));
+			if (eventHandlerManager)
+				eventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -744,8 +725,8 @@ class SCR_VONController : ScriptComponent
 	protected void UpdateDebug()
 	{
 		DbgUI.Begin("VON debug");
-		string dbg = "VONentity: %1 | VONcomp: %2 | Entries init done: %3 | entries: %4";
-		DbgUI.Text( string.Format( dbg, m_VONEntity, m_VONComp, m_bIsInitEntries, m_aEntries.Count() ) );
+		string dbg = "VONcomp: %1 | entries: %2";
+		DbgUI.Text( string.Format( dbg, m_VONComp, m_aEntries.Count() ) );
 		string dbg2 = "Gpad Direct mode: %1 | Gpad LRR mode: %2 | Active entry: %3";
 		DbgUI.Text( string.Format( dbg2, m_bIsActiveModeDirect, m_bIsActiveModeLong, m_ActiveEntry ) );
 		string dbg3 = "Saved Entry: %1";
@@ -756,7 +737,13 @@ class SCR_VONController : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override protected void OnPostInit(IEntity owner)
 	{
-		Init();
+		Init(owner);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void EOnDeactivate(IEntity owner)
+	{
+		Cleanup();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -778,6 +765,9 @@ class SCR_VONController : ScriptComponent
 			}
 		}
 		
+		if (m_VONMenu)
+			m_VONMenu.Update(timeSlice);
+		
 		#ifdef VON_DEBUG
 			UpdateDebug();
 		#endif
@@ -785,6 +775,7 @@ class SCR_VONController : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_VONController()
 	{
+		s_bIsInit = false;
 		Cleanup();
 	}
 };

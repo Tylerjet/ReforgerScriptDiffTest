@@ -6,6 +6,8 @@ Radial menu class for handling HUD part of menu.
 [BaseContainerProps()]
 class SCR_SelectionMenuDisplay : SCR_InfoDisplayExtended
 {	
+	protected const float FADE_IN_SPEED = UIConstants.FADE_RATE_FAST;
+	
 	[Attribute("", ".layout", desc: "Base layout that should be used for all entries that doesn't need custom layout.")]
 	protected ResourceName m_sEntryLayout;
 	
@@ -23,17 +25,29 @@ class SCR_SelectionMenuDisplay : SCR_InfoDisplayExtended
 	protected int m_iLastSelectedId = -1;
 	
 	// Widgets 
-	protected Widget m_wEntriesParent; 
+	protected Widget m_wEntriesParent;
 	
 	//------------------------------------------------------------------------------------------------
 	// Override 
 	//------------------------------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
-	override void DisplayInit(IEntity owner)
+	//! Set menu and register callback reactions for menu
+	//! Clear callbacks if there was any other menu used
+	void SetupMenu(SCR_SelectionMenu menu)
 	{
-		super.DisplayInit(owner);
-		FindMenu();
+		// Clear callbacks for previous menu 
+		if (m_Menu)
+		{
+			m_Menu.GetOnOpen().Remove(OnMenuOpen);
+			m_Menu.GetOnClose().Remove(OnMenuClose);
+			m_Menu.GetOnUpdateEntries().Remove(OnMenuEntriesUpdate);
+			m_Menu.GetOnSelect().Remove(OnMenuEntrySelected);
+			m_Menu.GetOnPerform().Remove(OnMenuEntryPerform);
+		}
+
+		// Register to new menu 
+		m_Menu = menu;
 		
 		if (!m_Menu)
 		{
@@ -42,10 +56,11 @@ class SCR_SelectionMenuDisplay : SCR_InfoDisplayExtended
 		}
 		
 		// Listen to menu 
-		m_Menu.GetEventOnOpen().Insert(OnMenuOpen);
-		m_Menu.GetEventOnClose().Insert(OnMenuClose);
-		m_Menu.GetEventOnUpdateEntries().Insert(OnMenuEntriesUpdate);
-		m_Menu.GetEventOnSelect().Insert(OnMenuEntrySelected);
+		m_Menu.GetOnOpen().Insert(OnMenuOpen);
+		m_Menu.GetOnClose().Insert(OnMenuClose);
+		m_Menu.GetOnUpdateEntries().Insert(OnMenuEntriesUpdate);
+		m_Menu.GetOnSelect().Insert(OnMenuEntrySelected);
+		m_Menu.GetOnPerform().Insert(OnMenuEntryPerform);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -56,9 +71,6 @@ class SCR_SelectionMenuDisplay : SCR_InfoDisplayExtended
 		
 		// Find widgets
 		m_wEntriesParent = GetRootWidget().FindAnyWidget(m_sEntriesParent);
-		
-		// Setup 
-		GetRootWidget().SetOpacity(0);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -203,7 +215,7 @@ class SCR_SelectionMenuDisplay : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	protected void OnMenuOpen()
 	{		
-		Show(true);
+		Show(true, FADE_IN_SPEED);
 		
 		ClearEntryWidgets();
 		CreateEntryWidgets();
@@ -212,7 +224,7 @@ class SCR_SelectionMenuDisplay : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	protected void OnMenuClose()
 	{
-		Show(false);
+		Show(false, UIConstants.FADE_RATE_FAST);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -229,6 +241,10 @@ class SCR_SelectionMenuDisplay : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	//! React on selected entry change
 	protected void OnMenuEntrySelected(SCR_SelectionMenu menu, SCR_SelectionMenuEntry entry, int id) {}
+	
+	//------------------------------------------------------------------------------------------------
+	//! React on selected entry change
+	protected void OnMenuEntryPerform(SCR_SelectionMenu menu, SCR_SelectionMenuEntry entry) {}
 	
 	//------------------------------------------------------------------------------------------------
 	// API

@@ -15,14 +15,98 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 	protected int m_iTutorialStage = -1;
 	protected bool m_bMatchOver;
 	protected string m_sWeatherState;
+	protected int m_iCallsignOffset = SCR_CampaignMilitaryBaseComponent.INVALID_BASE_CALLSIGN;
+	
+	//------------------------------------------------------------------------------------------------
+	int GetHours()
+	{
+		return m_iHours;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetMinutes()
+	{
+		return m_iMinutes;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetSeconds()
+	{
+		return m_iSeconds;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	vector GetMHQLocationBLUFOR()
+	{
+		return m_vMHQLocationBLUFOR;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	vector GetMHQRotationBLUFOR()
+	{
+		return m_vMHQRotationBLUFOR;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	vector GetMHQLocationOPFOR()
+	{
+		return m_vMHQLocationOPFOR;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	vector GetMHQRotationOPFOR()
+	{
+		return m_vMHQRotationOPFOR;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array <ref SCR_CampaignBaseStruct>GetBasesStructs()
+	{
+		return m_aBasesStructs;
+	}	
+		
+	//------------------------------------------------------------------------------------------------
+	array <ref SCR_CampaignRemnantInfoStruct>GetRemnantsStructs()
+	{
+		return m_aRemnantsStructs;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array <ref SCR_CampaignPlayerStruct>GetPlayersStructs()
+	{
+		return m_aPlayerStructs;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetTutorialStage()
+	{
+		return m_iTutorialStage;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsMatchOver()
+	{
+		return m_bMatchOver;
+	}		
+	
+	//------------------------------------------------------------------------------------------------
+	string GetWeatherState()
+	{
+		return m_sWeatherState;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetCallsignOffset()
+	{
+		return m_iCallsignOffset;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool Serialize()
 	{
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
-		if (!campaign || !baseManager)
+		if (!campaign)
 			return false;
 		
 		m_bMatchOver = campaign.GetIsMatchOver();
@@ -40,7 +124,7 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 				m_sWeatherState = transitionManager.GetCurrentState().GetStateName();
 		}
 		
-		baseManager.StoreBasesStates(m_aBasesStructs);
+		campaign.GetBaseManager().StoreBasesStates(m_aBasesStructs);
 		
 		SCR_CampaignTutorialComponent tutorial = SCR_CampaignTutorialComponent.Cast(campaign.FindComponent(SCR_CampaignTutorialComponent));
 		
@@ -52,23 +136,35 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		
 		campaign.StoreRemnantsStates(m_aRemnantsStructs);
 		
-		SCR_CampaignFaction factionBLUFOR = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_BLUFOR));
-		SCR_CampaignFaction factionOPFOR = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_OPFOR));
+		SCR_CampaignFaction factionBLUFOR = campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR);
+		SCR_CampaignFaction factionOPFOR = campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR);
+		SCR_CampaignMobileAssemblyComponent mobileHQ;
 		
-		if (factionBLUFOR && factionBLUFOR.GetDeployedMobileAssembly())
+		if (factionBLUFOR)
 		{
-			m_vMHQLocationBLUFOR = factionBLUFOR.GetDeployedMobileAssembly().GetOrigin();
-			m_vMHQRotationBLUFOR = factionBLUFOR.GetDeployedMobileAssembly().GetYawPitchRoll();
+			mobileHQ = factionBLUFOR.GetMobileAssembly();
+			
+			if (mobileHQ)
+			{
+				m_vMHQLocationBLUFOR = mobileHQ.GetOwner().GetParent().GetOrigin();
+				m_vMHQRotationBLUFOR = mobileHQ.GetOwner().GetParent().GetYawPitchRoll();
+			}
 		}
 		
-		if (factionOPFOR && factionOPFOR.GetDeployedMobileAssembly())
+		if (factionOPFOR)
 		{
-			m_vMHQLocationOPFOR = factionOPFOR.GetDeployedMobileAssembly().GetOrigin();
-			m_vMHQRotationOPFOR = factionOPFOR.GetDeployedMobileAssembly().GetYawPitchRoll();
+			mobileHQ = factionOPFOR.GetMobileAssembly();
+			
+			if (mobileHQ)
+			{
+				m_vMHQLocationOPFOR = mobileHQ.GetOwner().GetParent().GetOrigin();
+				m_vMHQRotationOPFOR = mobileHQ.GetOwner().GetParent().GetYawPitchRoll();
+			}
 		}
 		
 		campaign.WriteAllClientsData();
-		array<ref SCR_CampaignClientData> clients = campaign.GetClientsData();
+		array<ref SCR_CampaignClientData> clients = {};
+		campaign.GetClientsData(clients);
 		
 		foreach (SCR_CampaignClientData data : clients)
 		{
@@ -80,56 +176,20 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 			m_aPlayerStructs.Insert(struct);
 		}
 		
+		m_iCallsignOffset = campaign.GetCallsignOffset();
+		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool Deserialize()
 	{
-		// No bases data available for load, something is wrong - terminate
-		if (m_aBasesStructs.IsEmpty())
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		
+		if (!campaign)
 			return false;
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
-		
-		if (!campaign || !baseManager)
-			return false;
-		
-		// Game was saved after match was over, don't load
-		if (m_bMatchOver)
-			return false;
-		
-		SCR_TimeAndWeatherHandlerComponent timeHandler = SCR_TimeAndWeatherHandlerComponent.GetInstance();
-		
-		// Weather has to be changed after init
-		if (timeHandler && m_iHours >= 0 && m_iMinutes >= 0)
-		{
-			GetGame().GetCallqueue().Remove(timeHandler.SetupDaytimeAndWeather);
-			GetGame().GetCallqueue().CallLater(timeHandler.SetupDaytimeAndWeather, 500, false, m_iHours, m_iMinutes, m_iSeconds, m_sWeatherState, true);
-		}
-		
-		baseManager.LoadBasesStates(m_aBasesStructs);
-		
-		SCR_CampaignTutorialComponent tutorial = SCR_CampaignTutorialComponent.Cast(campaign.FindComponent(SCR_CampaignTutorialComponent));
-		
-		if (tutorial)
-		{
-			tutorial.SetResumeStage(m_iTutorialStage);
-			return true;
-		}
-		
-		campaign.LoadRemnantsStates(m_aRemnantsStructs);
-		campaign.LoadClientData(m_aPlayerStructs);
-		
-		SCR_CampaignFaction factionBLUFOR = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_BLUFOR));
-		SCR_CampaignFaction factionOPFOR = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_OPFOR));
-		
-		if (factionBLUFOR && m_vMHQLocationBLUFOR != vector.Zero)
-			GetGame().GetCallqueue().CallLater(campaign.SpawnMobileHQ, 500, false, factionBLUFOR, m_vMHQLocationBLUFOR, m_vMHQRotationBLUFOR);
-		
-		if (factionOPFOR && m_vMHQLocationOPFOR != vector.Zero)
-			GetGame().GetCallqueue().CallLater(campaign.SpawnMobileHQ, 500, false, factionOPFOR, m_vMHQLocationOPFOR, m_vMHQRotationOPFOR);
+		campaign.StoreLoadedData(this);
 		
 		return true;
 	}
@@ -144,6 +204,20 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		m_vMHQRotationBLUFOR = vector.Zero;
 		m_vMHQLocationOPFOR = vector.Zero;
 		m_vMHQRotationOPFOR = vector.Zero;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns the id of the given resource
+	//! {76A14F180887D76E}Prefabs/Compositions/Slotted/SlotFlatSmall/AmmoStorage_S_US_01.et
+	//! >> {76A14F180887D76E}
+	static string GetResourceId(string resourceName)
+	{
+		int i = resourceName.IndexOf("}");
+		
+		if (i <= 0)
+			return string.Empty;
+	
+		return resourceName.Substring(0, resourceName.IndexOf("}") + 1);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -162,51 +236,46 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		RegV("m_iTutorialStage");
 		RegV("m_bMatchOver");
 		RegV("m_sWeatherState");
+		RegV("m_iCallsignOffset");
 	}
 };
 
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 {
-	protected int m_iBaseID;
+	// We need to keep these short so save file size is manageable
 	protected bool m_bIsHQ;
-	protected int m_iCallsignIndex;
-	protected int m_iOwningFaction;
-	protected int m_iBuildingsFaction;
-	protected int m_iSupplies;
-	protected string m_sVehicleDepotPrefab;
-	protected vector m_vVehicleDepotPosition;
-	protected vector m_vVehicleDepotRotation;
-	protected string m_sArmoryPrefab;
-	protected vector m_vArmoryPosition;
-	protected vector m_vArmoryRotation;
-	protected string m_sHeavyVehicleDepotPrefab;
-	protected vector m_vHeavyVehicleDepotPosition;
-	protected vector m_vHeavyVehicleDepotRotation;
-	protected string m_sSupplyDepotPrefab;
-	protected vector m_vSupplyDepotPosition;
-	protected vector m_vSupplyDepotRotation;
-	protected string m_sAntennaPrefab;
-	protected vector m_vAntennaPosition;
-	protected vector m_vAntennaRotation;	
-	protected string m_sFieldHospitalPrefab;
-	protected vector m_vFieldHospitalPosition;
-	protected vector m_vFieldHospitalRotation;
-	protected string m_sBarracksPrefab;
-	protected vector m_vBarracksPosition;
-	protected vector m_vBarracksRotation;
-	protected string m_sHospitalPrefab;
-	protected vector m_vHospitalPosition;
-	protected vector m_vHospitalRotation;
+	protected int m_iCSI;
+	protected vector m_vPos;
+	protected int m_iF;
+	protected int m_iS;
+	protected string m_sHQP;
+	protected vector m_vHQPos;
+	protected vector m_vHQRot;
+	protected string m_sVDP;
+	protected vector m_vVDPos;
+	protected vector m_vVDRot;
+	protected string m_sArmP;
+	protected vector m_vArmPos;
+	protected vector m_vArmRot;
+	protected string m_sHVDP;
+	protected vector m_vHVDPos;
+	protected vector m_vHVDRot;
+	protected string m_sSDP;
+	protected vector m_vSDPos;
+	protected vector m_vSDRot;
+	protected string m_sAP;
+	protected vector m_vAPos;
+	protected vector m_vARot;	
+	protected string m_sFHP;
+	protected vector m_vFHPos;
+	protected vector m_vFHRot;
+	protected string m_sBP;
+	protected vector m_vBPos;
+	protected vector m_vBRot;
 	
 	//------------------------------------------------------------------------------------------------
-	int GetBaseID()
-	{
-		return m_iBaseID;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool GetIsHQ()
+	bool IsHQ()
 	{
 		return m_bIsHQ;
 	}
@@ -214,25 +283,42 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	//------------------------------------------------------------------------------------------------
 	int GetCallsignIndex()
 	{
-		return m_iCallsignIndex;
+		return m_iCSI;
+	}
+	
+	vector GetPosition()
+	{
+		return m_vPos;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	int GetSupplies()
 	{
-		return m_iSupplies;
+		return m_iS;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetOwningFaction()
+	int GetFaction()
 	{
-		return m_iOwningFaction;
+		return m_iF;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetBuildingsFaction()
+	string GetHQPrefab()
 	{
-		return m_iBuildingsFaction;
+		return m_sHQP;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	vector GetHQPosition()
+	{
+		return m_vHQPos;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	vector GetHQRotation()
+	{
+		return m_vHQRot;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -240,14 +326,13 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	{
 		switch (type)
 		{
-			case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT: {return m_sVehicleDepotPrefab;};
-			case SCR_EServicePointType.ARMORY: {return m_sArmoryPrefab;};
-			case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT: {return m_sHeavyVehicleDepotPrefab;};
-			case SCR_EServicePointType.SUPPLY_DEPOT: {return m_sSupplyDepotPrefab;};
-			case SCR_EServicePointType.RADIO_ANTENNA: {return m_sAntennaPrefab;};
-			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_sFieldHospitalPrefab;};
-			case SCR_EServicePointType.BARRACKS: {return m_sBarracksPrefab;};
-			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_sHospitalPrefab;};
+			case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT: {return m_sVDP;};
+			case SCR_EServicePointType.ARMORY: {return m_sArmP;};
+			case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT: {return m_sHVDP;};
+			case SCR_EServicePointType.SUPPLY_DEPOT: {return m_sSDP;};
+			case SCR_EServicePointType.RADIO_ANTENNA: {return m_sAP;};
+			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_sFHP;};
+			case SCR_EServicePointType.BARRACKS: {return m_sBP;};
 		}
 		
 		return string.Empty;
@@ -258,14 +343,13 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	{
 		switch (type)
 		{
-			case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT: {return m_vVehicleDepotPosition;};
-			case SCR_EServicePointType.ARMORY: {return m_vArmoryPosition;};
-			case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT: {return m_vHeavyVehicleDepotPosition;};
-			case SCR_EServicePointType.SUPPLY_DEPOT: {return m_vSupplyDepotPosition;};
-			case SCR_EServicePointType.RADIO_ANTENNA: {return m_vAntennaPosition;};
-			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_vFieldHospitalPosition;};
-			case SCR_EServicePointType.BARRACKS: {return m_vBarracksPosition;};
-			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_vHospitalPosition;};
+			case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT: {return m_vVDPos;};
+			case SCR_EServicePointType.ARMORY: {return m_vArmPos;};
+			case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT: {return m_vHVDPos;};
+			case SCR_EServicePointType.SUPPLY_DEPOT: {return m_vSDPos;};
+			case SCR_EServicePointType.RADIO_ANTENNA: {return m_vAPos;};
+			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_vFHPos;};
+			case SCR_EServicePointType.BARRACKS: {return m_vBPos;};
 		}
 		
 		return vector.Zero;
@@ -276,23 +360,16 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	{
 		switch (type)
 		{
-			case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT: {return m_vVehicleDepotRotation;};
-			case SCR_EServicePointType.ARMORY: {return m_vArmoryRotation;};
-			case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT: {return m_vHeavyVehicleDepotRotation;};
-			case SCR_EServicePointType.SUPPLY_DEPOT: {return m_vSupplyDepotRotation;};
-			case SCR_EServicePointType.RADIO_ANTENNA: {return m_vAntennaRotation;};
-			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_vFieldHospitalRotation;};
-			case SCR_EServicePointType.BARRACKS: {return m_vBarracksRotation;};
-			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_vHospitalRotation;};
+			case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT: {return m_vVDRot;};
+			case SCR_EServicePointType.ARMORY: {return m_vArmRot;};
+			case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT: {return m_vHVDRot;};
+			case SCR_EServicePointType.SUPPLY_DEPOT: {return m_vSDRot;};
+			case SCR_EServicePointType.RADIO_ANTENNA: {return m_vARot;};
+			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_vFHRot;};
+			case SCR_EServicePointType.BARRACKS: {return m_vBRot;};
 		}
 		
 		return vector.Zero;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetBaseID(int baseID)
-	{
-		m_iBaseID = baseID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -304,39 +381,57 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	//------------------------------------------------------------------------------------------------
 	void SetCallsignIndex(int callsign)
 	{
-		m_iCallsignIndex = callsign;
+		m_iCSI = callsign;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetPosition(vector position)
+	{
+		m_vPos = position;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetSupplies(int supplies)
 	{
-		m_iSupplies = supplies;
+		m_iS = supplies;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetOwningFaction(int owningFaction)
 	{
-		m_iOwningFaction = owningFaction;
+		m_iF = owningFaction;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetBuildingsFaction(int buildingsFaction)
+	void SetBuildingsData(notnull SCR_CampaignMilitaryBaseComponent base)
 	{
-		m_iBuildingsFaction = buildingsFaction;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetBuildingsData(notnull SCR_CampaignBase base)
-	{
-		array<SCR_CampaignServiceComponent> services = {};
-		base.GetAllBaseServices(services);
-		IEntity composition;
+		array<SCR_ServicePointComponent> services = {};
+		base.GetServices(services);
+		
+		IEntity composition = SCR_EntityHelper.GetMainParent(base.GetHQRadio());
 		EntityPrefabData data;
 		ResourceName prefab;
 		
-		foreach (SCR_CampaignServiceComponent service : services)
+		if (composition)
 		{
-			composition = service.GetOwner();
+			data = composition.GetPrefabData();
+			
+			if (data)
+			{
+				prefab = data.GetPrefabName();
+				
+				if (!prefab.IsEmpty())
+				{
+					m_sHQP = SCR_CampaignStruct.GetResourceId(prefab);
+					m_vHQPos = composition.GetOrigin();
+					m_vHQRot = composition.GetYawPitchRoll();
+				}
+			}
+		}
+		
+		foreach (SCR_ServicePointComponent service : services)
+		{
+			composition = SCR_EntityHelper.GetMainParent(service.GetOwner(), true);
 			
 			if (!composition)
 				continue;
@@ -355,74 +450,62 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 			{
 				case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT:
 				{
-					m_sVehicleDepotPrefab = prefab;
-					m_vVehicleDepotPosition = composition.GetOrigin();
-					m_vVehicleDepotRotation = composition.GetYawPitchRoll();
+					m_sVDP = SCR_CampaignStruct.GetResourceId(prefab);
+					m_vVDPos = composition.GetOrigin();
+					m_vVDRot = composition.GetYawPitchRoll();
 					break;
 				}
 				
 				case SCR_EServicePointType.ARMORY:
 				{
-					m_sArmoryPrefab = prefab;
-					m_vArmoryPosition = composition.GetOrigin();
-					m_vArmoryRotation = composition.GetYawPitchRoll();
+					m_sArmP = SCR_CampaignStruct.GetResourceId(prefab);
+					m_vArmPos = composition.GetOrigin();
+					m_vArmRot = composition.GetYawPitchRoll();
 					break;
 				}
 				
 				case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT:
 				{
-					m_sHeavyVehicleDepotPrefab = prefab;
-					m_vHeavyVehicleDepotPosition = composition.GetOrigin();
-					m_vHeavyVehicleDepotRotation = composition.GetYawPitchRoll();
+					m_sHVDP = SCR_CampaignStruct.GetResourceId(prefab);
+					m_vHVDPos = composition.GetOrigin();
+					m_vHVDRot = composition.GetYawPitchRoll();
 					break;
 				}
 				
 				case SCR_EServicePointType.SUPPLY_DEPOT:
 				{
-					m_sSupplyDepotPrefab = prefab;
-					m_vSupplyDepotPosition = composition.GetOrigin();
-					m_vSupplyDepotRotation = composition.GetYawPitchRoll();
+					m_sSDP = SCR_CampaignStruct.GetResourceId(prefab);
+					m_vSDPos = composition.GetOrigin();
+					m_vSDRot = composition.GetYawPitchRoll();
 					break;
 				}
 				
 				case SCR_EServicePointType.RADIO_ANTENNA:
 				{
-					m_sAntennaPrefab = prefab;
-					m_vAntennaPosition = composition.GetOrigin();
-					m_vAntennaRotation = composition.GetYawPitchRoll();
+					m_sAP = SCR_CampaignStruct.GetResourceId(prefab);
+					m_vAPos = composition.GetOrigin();
+					m_vARot = composition.GetYawPitchRoll();
 					break;
 				}
 				
 				case SCR_EServicePointType.FIELD_HOSPITAL:
 				{
-					m_sFieldHospitalPrefab = prefab;
-					m_vFieldHospitalPosition = composition.GetOrigin();
-					m_vFieldHospitalRotation = composition.GetYawPitchRoll();
+					m_sFHP = SCR_CampaignStruct.GetResourceId(prefab);
+					m_vFHPos = composition.GetOrigin();
+					m_vFHRot = composition.GetYawPitchRoll();
 					break;
 				}
 				
 				case SCR_EServicePointType.BARRACKS:
 				{
-					m_sBarracksPrefab = prefab;
-					m_vBarracksPosition = composition.GetOrigin();
-					m_vBarracksRotation = composition.GetYawPitchRoll();
-					break;
-				}
-				
-				case SCR_EServicePointType.FIELD_HOSPITAL:
-				{
-					m_sHospitalPrefab = prefab;
-					m_vHospitalPosition = composition.GetOrigin();
-					m_vHospitalRotation = composition.GetYawPitchRoll();
+					m_sBP = SCR_CampaignStruct.GetResourceId(prefab);
+					m_vBPos = composition.GetOrigin();
+					m_vBRot = composition.GetYawPitchRoll();
 					break;
 				}
 			}
 		}
 	}
-	
-	//****************//
-	//OVERRIDE METHODS//
-	//****************//
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnExpand()
@@ -458,57 +541,37 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnBufferReady()
-	{
-		Print( "OnBufferReady()" );
-		
-		string s = AsString();
-		Print(s);
-	}
-	
-	//************************//
-	//CONSTRUCTOR & DESTRUCTOR//
-	//************************//
-	
-	//------------------------------------------------------------------------------------------------
 	void SCR_CampaignBaseStruct()
 	{
-		RegV("m_iBaseID");
 		RegV("m_bIsHQ");
-		RegV("m_iCallsignIndex");
-		RegV("m_iOwningFaction");
-		RegV("m_iBuildingsFaction");
-		RegV("m_iSupplies");
-		RegV("m_sVehicleDepotPrefab");
-		RegV("m_vVehicleDepotPosition");
-		RegV("m_vVehicleDepotRotation");
-		RegV("m_sArmoryPrefab");
-		RegV("m_vArmoryPosition");
-		RegV("m_vArmoryRotation");
-		RegV("m_sHeavyVehicleDepotPrefab");
-		RegV("m_vHeavyVehicleDepotPosition");
-		RegV("m_vHeavyVehicleDepotRotation");
-		RegV("m_sSupplyDepotPrefab");
-		RegV("m_vSupplyDepotPosition");
-		RegV("m_vSupplyDepotRotation");
-		RegV("m_sAntennaPrefab");
-		RegV("m_vAntennaPosition");
-		RegV("m_vAntennaRotation");
-		RegV("m_sFieldHospitalPrefab");
-		RegV("m_vFieldHospitalPosition");
-		RegV("m_vFieldHospitalRotation");
-		RegV("m_sBarracksPrefab");
-		RegV("m_vBarracksPosition");
-		RegV("m_vBarracksRotation");
-		RegV("m_sHospitalPrefab");
-		RegV("m_vHospitalPosition");
-		RegV("m_vHospitalRotation");
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_CampaignBaseStruct()
-	{
-		
+		RegV("m_iCSI");
+		RegV("m_vPos");
+		RegV("m_iF");
+		RegV("m_iS");
+		RegV("m_sHQP");
+		RegV("m_vHQPos");
+		RegV("m_vHQRot");
+		RegV("m_sVDP");
+		RegV("m_vVDPos");
+		RegV("m_vVDRot");
+		RegV("m_sArmP");
+		RegV("m_vArmPos");
+		RegV("m_vArmRot");
+		RegV("m_sHVDP");
+		RegV("m_vHVDPos");
+		RegV("m_vHVDRot");
+		RegV("m_sSDP");
+		RegV("m_vSDPos");
+		RegV("m_vSDRot");
+		RegV("m_sAP");
+		RegV("m_vAPos");
+		RegV("m_vARot");
+		RegV("m_sFHP");
+		RegV("m_vFHPos");
+		RegV("m_vFHRot");
+		RegV("m_sBP");
+		RegV("m_vBPos");
+		RegV("m_vBRot");
 	}
 };
 
@@ -516,8 +579,8 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 class SCR_CampaignRemnantInfoStruct : SCR_JsonApiStruct
 {
 	protected int m_iID;
-	protected int m_iMembersAlive;
-	protected float m_fRespawnTimer;
+	protected int m_iSize;
+	protected float m_fR;
 	
 	//------------------------------------------------------------------------------------------------
 	int GetID()
@@ -528,13 +591,13 @@ class SCR_CampaignRemnantInfoStruct : SCR_JsonApiStruct
 	//------------------------------------------------------------------------------------------------
 	int GetMembersAlive()
 	{
-		return m_iMembersAlive;
+		return m_iSize;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	float GetRespawnTimer()
 	{
-		return m_fRespawnTimer;
+		return m_fR;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -546,30 +609,21 @@ class SCR_CampaignRemnantInfoStruct : SCR_JsonApiStruct
 	//------------------------------------------------------------------------------------------------
 	void SetMembersAlive(int count)
 	{
-		m_iMembersAlive = count;
+		m_iSize = count;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetRespawnTimer(float timer)
 	{
-		m_fRespawnTimer = timer;
+		m_fR = timer;
 	}
-	
-	//************************//
-	//CONSTRUCTOR & DESTRUCTOR//
-	//************************//
 	
 	//------------------------------------------------------------------------------------------------
 	void SCR_CampaignRemnantInfoStruct()
 	{
 		RegV("m_iID");
-		RegV("m_iMembersAlive");
-		RegV("m_fRespawnTimer");
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_CampaignRemnantInfoStruct()
-	{
+		RegV("m_iSize");
+		RegV("m_fR");
 	}
 };
 
@@ -579,7 +633,7 @@ class SCR_CampaignPlayerStruct : SCR_JsonApiStruct
 	static const string LOCAL_PLAYER_IDENTITY_ID = "identitySP";
 	
 	protected string m_sID;
-	protected int m_iFaction = -1;
+	protected int m_iF = -1;
 	protected int m_iXP;
 	
 	//------------------------------------------------------------------------------------------------
@@ -591,7 +645,7 @@ class SCR_CampaignPlayerStruct : SCR_JsonApiStruct
 	//------------------------------------------------------------------------------------------------
 	int GetFactionIndex()
 	{
-		return m_iFaction;
+		return m_iF;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -609,7 +663,7 @@ class SCR_CampaignPlayerStruct : SCR_JsonApiStruct
 	//------------------------------------------------------------------------------------------------
 	void SetFactionIndex(int index)
 	{
-		m_iFaction = index;
+		m_iF = index;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -635,15 +689,11 @@ class SCR_CampaignPlayerStruct : SCR_JsonApiStruct
 		return api.GetPlayerUID(playerId);
 	}
 	
-	//************************//
-	//CONSTRUCTOR & DESTRUCTOR//
-	//************************//
-	
 	//------------------------------------------------------------------------------------------------
 	void SCR_CampaignPlayerStruct()
 	{
 		RegV("m_sID");
-		RegV("m_iFaction");
+		RegV("m_iF");
 		RegV("m_iXP");
 	}
 };

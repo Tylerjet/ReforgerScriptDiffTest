@@ -13,7 +13,7 @@ class SCR_GroupPreset
 	[Attribute(desc: "Count of group members.")]
 	protected int m_iGroupSize;
 	
-	[Attribute(desc: "Radio frequency for communication in Hz.")]
+	[Attribute(desc: "Radio frequency for communication in kHz.")]
 	protected int m_iRadioFrequency;
 	
 	[Attribute(desc: "Group is private.")]
@@ -28,6 +28,9 @@ class SCR_GroupPreset
 		group.SetMaxGroupMembers(m_iGroupSize);
 		group.SetPrivate(m_bIsPrivate);
 		group.SetCustomDescription(m_sGroupDescription, 0);
+		
+		if (!m_sGroupFlag.IsEmpty())
+			group.SetCustomGroupFlag(m_sGroupFlag);
 	}
 	
 	//Getters

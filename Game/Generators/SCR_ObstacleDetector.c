@@ -27,6 +27,7 @@ class SCR_ObstacleDetector
 
 	//------------------------------------------------------------------------------------------------
 	//! changing worlds or something else can lose ref to WorldEditorAPI
+	//! \return true if World Editor API reference is valid, false otherwise
 	bool IsValid()
 	{
 		return m_WorldEditorAPI != null;
@@ -39,7 +40,7 @@ class SCR_ObstacleDetector
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param radius accepts 0..inf radius
+	//! \param radius accepts 0..inf radius - a negative value will be floored to zero
 	void SetAvoidObjectsDetectionRadius(float radius)
 	{
 		if (radius < 0)
@@ -106,6 +107,7 @@ class SCR_ObstacleDetector
 	{
 		if (!m_WorldEditorAPI.GetWorld())
 			return;
+
 		SetupObstacleArrays(true, true);
 		m_fOceanLevel = m_WorldEditorAPI.GetWorld().GetOceanBaseHeight();
 		m_WorldEditorAPI.GetWorld().QueryEntitiesByAABB(worldMin, worldMax, AllSplineQueryFilter);
@@ -117,6 +119,7 @@ class SCR_ObstacleDetector
 	{
 		if (!m_WorldEditorAPI.GetWorld())
 			return;
+
 		vector min, max;
 		m_WorldEditorAPI.GetWorld().GetBoundBox(min, max);
 		RefreshObstaclesByAABB(min, max);
@@ -128,6 +131,7 @@ class SCR_ObstacleDetector
 	{
 		if (!m_WorldEditorAPI.GetWorld())
 			return;
+
 		SetupObstacleArrays(true, false);
 		m_fOceanLevel = m_WorldEditorAPI.GetWorld().GetOceanBaseHeight();
 		m_WorldEditorAPI.GetWorld().QueryEntitiesBySphere(worldPos, radius, RoadSplineQueryFilter);
@@ -139,6 +143,7 @@ class SCR_ObstacleDetector
 	{
 		if (!m_WorldEditorAPI.GetWorld())
 			return;
+
 		SetupObstacleArrays(false, true);
 		m_fOceanLevel = m_WorldEditorAPI.GetWorld().GetOceanBaseHeight();
 		m_WorldEditorAPI.GetWorld().QueryEntitiesBySphere(worldPos, radius, AreaSplineQueryFilter);
@@ -150,6 +155,7 @@ class SCR_ObstacleDetector
 	{
 		if (!m_WorldEditorAPI.GetWorld())
 			return;
+
 		SetupObstacleArrays(false, true);
 		m_fOceanLevel = m_WorldEditorAPI.GetWorld().GetOceanBaseHeight();
 		vector min, max;
@@ -158,11 +164,15 @@ class SCR_ObstacleDetector
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Detects obstacles based on current settings - a SCR_ObstacleDetector.RefreshObstaclesBy*() method must have been called earlier
+	//! \param worldPos the location to check - only the 2D position will be checked
+	//! \param exclusionList list of entities that should not be considered as obstacles
+	//! \return true if an obstacle has been detected or on error, false otherwise
 	bool HasObstacle(vector worldPos, array<IEntity> exclusionList = null)
 	{
 		if (!m_aAvoidInfoRoads) // a null array means obstacles were cleared or never initialised
 		{
-			Print("SCR_ObstacleDetector.HasObstacle() method requires obstacles info through SCR_ObstacleDetector.RefreshObstaclesBy*() method first", LogLevel.ERROR);
+			Print("SCR_ObstacleDetector.HasObstacle() method requires obtaining obstacles info through SCR_ObstacleDetector.RefreshObstaclesBy*() method first", LogLevel.ERROR);
 			return true; // prevent placement by default
 		}
 
@@ -257,24 +267,31 @@ class SCR_ObstacleDetector
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetupObstacleArrays(bool setupRoadSplines, bool setupAreaSplines)
+	//! Sets up needed arrays
+	//! \param setupRoadSplines instanciates "road" spline arrays
+	//! \param setupAreaSplines instanciates area spline arrays
+	protected void SetupObstacleArrays(bool setupRoadSplines, bool setupAreaSplines)
 	{
 		// roads
 		if (setupRoadSplines || !m_aAvoidInfoRoads)
 			m_aAvoidInfoRoads = {};
+
 		if (setupRoadSplines || !m_aAvoidInfoRivers)
 			m_aAvoidInfoRivers = {};
+
 		if (setupRoadSplines || !m_aAvoidInfoPowerLines)
 			m_aAvoidInfoPowerLines = {};
 
 		// areas
 		if (setupAreaSplines || !m_aAvoidInfoForests)
 			m_aAvoidInfoForests = {};
+
 		if (setupAreaSplines || !m_aAvoidInfoLakes)
 			m_aAvoidInfoLakes = {};
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Empties obstacles information - a SCR_ObstacleDetector.RefreshObstaclesBy*() method must be called to use HasObstacle again
 	void ClearObstacles()
 	{
 		m_aAvoidInfoRoads = null;
@@ -287,6 +304,9 @@ class SCR_ObstacleDetector
 	//------------------------------------------------------------------------------------------------
 	//! Fills m_aAvoidInfo* arrays from RefreshObstaclesBy* request for HasObstacle usage
 	//! AllSplineQueryFilter, RoadSplineQueryFilter, AreaSplineQueryFilter call it
+	//! \param getRoadSplines get "road-like" splines - roads, rivers, powerlines
+	//! \param getAreaSplines get area splines - lakes, forests
+	//! \return true when done
 	protected bool BaseSplineQueryFilter(IEntity entity, bool getRoadSplines, bool getAreaSplines)
 	{
 		if (!getRoadSplines && !getAreaSplines)
@@ -390,10 +410,11 @@ class SCR_ObstacleDetectorSplineInfo
 	float m_fLakeSurfaceY;
 	ShapeEntity m_SplineEntity;
 	ref array<float> m_a2DPoints;			//!< World coordinates. Lakes only
-	ref array<vector> m_a3DPoints;			//!< World coordinates. Lakes only
+	// ref array<vector> m_a3DPoints;			//!< World coordinates. Lakes only - not used anywhere for now
 	ref array<vector> m_aTesselatedPoints;	//!< Relative coordinates. Roads/Rivers/Powerlines
 
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_ObstacleDetectorSplineInfo(notnull IEntitySource splineSource, notnull ShapeEntity splineEntity, notnull IEntitySource generatorSource, notnull GeneratorBaseEntity generatorEntity)
 	{
 		m_SplineEntity = splineEntity;
@@ -438,33 +459,32 @@ class SCR_ObstacleDetectorSplineInfo
 		if (generatorEntity.IsInherited(LakeGeneratorEntity))
 		{
 			m_a2DPoints = {};
-			m_a3DPoints = {};
-			GetPoints2D3D(splineSource, m_a2DPoints, m_a3DPoints, m_SplineEntity._WB_GetEditorAPI());
+			array<vector> a3DPoints = {};
+			GetPoints2D3D(splineSource, m_a2DPoints, a3DPoints, m_SplineEntity._WB_GetEditorAPI());
 
 			bool flattenByBottomPlane;
 			generatorSource.Get("m_bFlattenByBottomPlane", flattenByBottomPlane);
 
-			if (m_a3DPoints.IsEmpty())
+			if (a3DPoints.IsEmpty())
 				return;
 
 			// all this to be replaced with a later LakeGeneratorEntity method
-			float minOrMaxY = m_a3DPoints[0][1];
-			for (int i = m_a3DPoints.Count() - 1; i >= 0; i--)
+			float minOrMaxY = a3DPoints[0][1];
+			for (int i = a3DPoints.Count() - 1; i >= 0; i--)
 			{
 				if (flattenByBottomPlane)
 				{
-					if (m_a3DPoints[i][1] < minOrMaxY)
-						minOrMaxY = m_a3DPoints[i][1];
+					if (a3DPoints[i][1] < minOrMaxY)
+						minOrMaxY = a3DPoints[i][1];
 				}
 				else
 				{
-					if (m_a3DPoints[i][1] > minOrMaxY)
-						minOrMaxY = m_a3DPoints[i][1];
+					if (a3DPoints[i][1] > minOrMaxY)
+						minOrMaxY = a3DPoints[i][1];
 				}
 			}
-			m_fLakeSurfaceY = minOrMaxY;
 
-			m_a3DPoints = null; // unused in HasObstacle
+			m_fLakeSurfaceY = minOrMaxY;
 			return;
 		}
 	}
@@ -511,6 +531,7 @@ class SCR_ObstacleDetectorSplineInfo
 			if (pos3D)
 				pos3D.Insert(pos);
 		}
+
 		return count;
 	}
 };

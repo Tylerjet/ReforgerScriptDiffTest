@@ -42,7 +42,20 @@ class SCR_AttributeDescriptionUIComponent: ScriptedWidgetComponent
 		if (customContent.IsEmpty())
 		{	
 			m_ContentText.SetTextFormat(uiInfo.GetDescription(), param1, param2, param3);
-			m_Icon.SetVisible(false);
+
+			if (uiInfo.GetIconPath().IsEmpty())
+			{
+				m_Icon.SetVisible(false);
+			}
+			else
+			{
+				uiInfo.SetIconTo(m_Icon);
+				
+				if (uiInfo.GetDescriptionIconColor())
+					m_Icon.SetColor(uiInfo.GetDescriptionIconColor());
+				
+				m_Icon.SetVisible(true);
+			}
 		}
 		//Custom description
 		else 
@@ -56,7 +69,10 @@ class SCR_AttributeDescriptionUIComponent: ScriptedWidgetComponent
 			else
 			{
 				uiInfo.SetIconTo(m_Icon);
-				m_Icon.SetColor(uiInfo.GetDescriptionIconColor());
+				
+				if (uiInfo.GetDescriptionIconColor())
+					m_Icon.SetColor(uiInfo.GetDescriptionIconColor());
+				
 				m_Icon.SetVisible(true);
 			}
 		}

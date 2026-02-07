@@ -23,7 +23,7 @@ class SCR_TaskSelectButton : ScriptedWidgetComponent
 
 		SCR_UITaskManagerComponent utm = SCR_UITaskManagerComponent.GetInstance();
 		if (utm)
-			utm.Action_ShowTasks(m_MapUiTask.GetTask());
+			utm.Action_ShowTasks(null, m_MapUiTask.GetTask());
 
 		return false;
 	}

@@ -27,11 +27,11 @@ class SCR_AICreateTargetInfo : AITaskScripted
 	{
 		m_TargetInfo = new SCR_AITargetInfo();
 		
-		if(!GetVariableIn(ENTITY_PORT, m_TargetInfo.m_TargetEntity))
+		if(!GetVariableIn(ENTITY_PORT, m_TargetInfo.m_Entity))
 			return NodeError(this, owner, "No entity provided!");
 		
-		GetVariableIn(LAST_SEEN_POSITION_PORT, m_TargetInfo.m_vLastSeenPosition);
-		GetVariableIn(TIME_SINCE_SEEN_PORT, m_TargetInfo.m_fLastSeenTime);
+		GetVariableIn(LAST_SEEN_POSITION_PORT, m_TargetInfo.m_vWorldPos);
+		GetVariableIn(TIME_SINCE_SEEN_PORT, m_TargetInfo.m_fTimestamp);
 		SetVariableOut(TARGET_INFO_PORT, m_TargetInfo);
 		return ENodeResult.SUCCESS;
 	}

@@ -47,7 +47,7 @@ class PrefabToWEUtils
 		}
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
 		MetaFile meta = resourceManager.GetMetaFile(absolutePath);
-		if(meta == false)
+		if(!meta)
 		{
 			response.Output = "Wrong path to " + absolutePath + " or prefab is not registered!"; 
 		}

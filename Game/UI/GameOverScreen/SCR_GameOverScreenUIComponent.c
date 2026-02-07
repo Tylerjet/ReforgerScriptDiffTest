@@ -1,6 +1,6 @@
 class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 {	
-	[Attribute("TabView")]
+	[Attribute("TabView", desc: "Tab view will only be used if the widget in the layout is visible. This is because some changes that no longer required the tabview")]
 	protected string m_sTabViewName;
 	
 	[Attribute("Base_ContentHolder")]
@@ -30,6 +30,12 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	[Attribute("ChatButton")]
 	protected string m_sChatButtonName;
 	
+	[Attribute("Debriefing")]
+	protected string m_sDebriefingButtonName;
+	
+	[Attribute("ButtonHolder")]
+	protected string m_sButtonHolderName;
+	
 	[Attribute("0.05")]
 	protected float m_fBackgroundColorOverlayOpacity;
 	
@@ -45,13 +51,24 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	protected SCR_FadeUIComponent m_OverlayBackgroundColorFadeUIComponent;
 	protected SCR_FadeUIComponent m_ContentFadeComponent;
 	protected SCR_FadeUIComponent m_TabViewFadeComponent;
-	protected SCR_FadeUIComponent m_BackButtonFadeComponent;
-	protected SCR_FadeUIComponent m_ChatButtonFadeComponent;
+	protected SCR_FadeUIComponent m_ButtonHolderFadeComponent;
+	protected ref SCR_GameOverScreenUIContentData m_EndScreenUIContentInfo;
 	
 	//~ On tab changed
 	protected void OnTabChanged(SCR_TabViewComponent tabView, Widget w, int tabIndex)
 	{
 		OnEndScreenContentShow(tabIndex == m_iContentTabIndex);
+	}
+	
+	//~ On Tab created
+	protected void OnTabCreated(SCR_TabViewComponent tabView, Widget w)
+	{
+		if (!w)
+			return;
+		
+		SCR_BaseGameOverTabUIComponent baseGameOverTab = SCR_BaseGameOverTabUIComponent.Cast(w.FindHandler(SCR_BaseGameOverTabUIComponent));
+		if (baseGameOverTab)
+			baseGameOverTab.GameOverTabInit(m_EndScreenUIContentInfo);
 	}
 	
 	//~ When tabview fade is done
@@ -73,10 +90,12 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	\param endScreenUIContent contains the layout and any neccessary information for the endscreen content widget
 	*/
 	void InitGameOverScreen(SCR_GameOverScreenUIContentData endScreenUIContent)
-	{	
+	{			
 		//~ Already has end screen
 		if (m_wEndscreenContent)
 			return;
+		
+		m_EndScreenUIContentInfo = endScreenUIContent;
 		
 		Widget contentHolder = m_wRoot.FindAnyWidget(m_sContentHolderName);
 		if (!contentHolder)
@@ -107,12 +126,65 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 			m_ContentFadeComponent.FadeIn();
 		if (m_TabViewFadeComponent)
 			m_TabViewFadeComponent.FadeIn();
-		if (m_BackButtonFadeComponent)
-			m_BackButtonFadeComponent.FadeIn();
-		if (m_ChatButtonFadeComponent)
-			m_ChatButtonFadeComponent.FadeIn();
+		if (m_ButtonHolderFadeComponent)
+			m_ButtonHolderFadeComponent.FadeIn();
 		if (m_OverlayBackgroundColorFadeUIComponent)
 			m_OverlayBackgroundColorFadeUIComponent.FadeIn();
+		
+		Widget returnToMenuBtn = m_wRoot.FindAnyWidget(m_sBackButtonName);
+		if (returnToMenuBtn)
+		{
+			SCR_NavigationButtonComponent returnToMenuButton = SCR_NavigationButtonComponent.Cast(returnToMenuBtn.FindHandler(SCR_NavigationButtonComponent));
+			if (returnToMenuButton)
+				returnToMenuButton.m_OnActivated.Insert(ReturnToMenu);
+		}
+		
+		Widget debriefingWidgetButton = m_wRoot.FindAnyWidget(m_sDebriefingButtonName);
+		if (debriefingWidgetButton)
+		{
+			BaseGameMode gameMode = GetGame().GetGameMode();
+			if (!gameMode)
+			{
+				debriefingWidgetButton.SetVisible(false);
+			}
+			else 
+			{
+				SCR_DebriefingScreenComponent debriefingScreen = SCR_DebriefingScreenComponent.Cast(gameMode.FindComponent(SCR_DebriefingScreenComponent));
+				if (debriefingScreen)
+				{
+					SCR_NavigationButtonComponent debriefingButton = SCR_NavigationButtonComponent.Cast(debriefingWidgetButton.FindHandler(SCR_NavigationButtonComponent));
+					if (debriefingButton)
+						debriefingButton.m_OnActivated.Insert(OpenDebriefingScreenMenu);
+					}
+				else
+				{
+					debriefingWidgetButton.SetVisible(false);
+				}
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OpenDebriefingScreenMenu()
+	{
+		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.DebriefingScreenMenu);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ReturnToMenu()
+	{
+		SCR_ConfigurableDialogUi dlg = SCR_CommonDialogs.CreateDialog("scenario_exit");
+		if (!dlg)
+			return;
+		
+		dlg.m_OnConfirm.Insert(BackToMainMenuPopupConfirm);
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void BackToMainMenuPopupConfirm()
+	{
+		OnGameEnd();
+		GameStateTransitions.RequestGameplayEndTransition();
 	}
 	
 	/*!
@@ -164,25 +236,14 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 			}
 		}
 			
-		Widget backButton = w.FindAnyWidget(m_sBackButtonName);
-		if (backButton)
+		Widget buttonHolder = w.FindAnyWidget(m_sButtonHolderName);
+		if (buttonHolder)
 		{
-			m_BackButtonFadeComponent = SCR_FadeUIComponent.Cast(backButton.FindHandler(SCR_FadeUIComponent));
-			if (m_BackButtonFadeComponent)
+			m_ButtonHolderFadeComponent = SCR_FadeUIComponent.Cast(buttonHolder.FindHandler(SCR_FadeUIComponent));
+			if (m_ButtonHolderFadeComponent)
 			{
-				m_BackButtonFadeComponent.SetFadeInSpeed(m_fContentFadeInSpeed);
-				backButton.SetVisible(false);
-			}
-		}
-		
-		Widget chatButton = w.FindAnyWidget(m_sChatButtonName);
-		if (chatButton)
-		{
-			m_ChatButtonFadeComponent = SCR_FadeUIComponent.Cast(chatButton.FindHandler(SCR_FadeUIComponent));
-			if (m_ChatButtonFadeComponent)
-			{
-				m_ChatButtonFadeComponent.SetFadeInSpeed(m_fContentFadeInSpeed);
-				chatButton.SetVisible(false);
+				m_ButtonHolderFadeComponent.SetFadeInSpeed(m_fContentFadeInSpeed);
+				buttonHolder.SetVisible(false);
 			}
 		}
 		
@@ -191,7 +252,9 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 			gameMode.GetOnGameEnd().Insert(OnGameEnd);
 		
 		Widget tabView = w.FindAnyWidget(m_sTabViewName);
-		if (tabView)
+		
+		//~ Only use tabview if it is visible in the layout
+		if (tabView && tabView.IsVisible())
 		{
 			m_TabViewComponent = SCR_TabViewComponent.Cast(tabView.FindHandler(SCR_TabViewComponent));
 			m_TabViewFadeComponent = SCR_FadeUIComponent.Cast(tabView.FindHandler(SCR_FadeUIComponent));
@@ -208,7 +271,9 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 		{
 			if (m_TabViewFadeComponent)
 				m_TabViewComponent.EnableAllTabs(false);
+			
 			m_TabViewComponent.m_OnChanged.Insert(OnTabChanged);
+			m_TabViewComponent.m_OnContentCreate.Insert(OnTabCreated);
 		}
 	}
 	

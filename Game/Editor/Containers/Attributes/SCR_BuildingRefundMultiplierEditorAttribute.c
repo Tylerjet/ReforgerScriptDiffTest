@@ -1,7 +1,7 @@
 /*
 The multiplier of refund cost - buildign feature
 */
-[BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
+/*[BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_BuildingRefundMultiplierEditorAttribute : SCR_BaseValueListEditorAttribute
 {
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
@@ -27,4 +27,4 @@ class SCR_BuildingRefundMultiplierEditorAttribute : SCR_BaseValueListEditorAttri
 		float value = var.GetFloat();		
 		buildingManagerEnt.SetRefundMultiplier(value);
 	}
-};
+};*/

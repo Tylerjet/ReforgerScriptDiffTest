@@ -19,6 +19,7 @@ class RespawnSystemComponent: GameComponent
 	//! call to create actual entity from given prefab at given position
 	//! \param position XYZ position in world space
 	//! \param rotation XYZ rotation (pitch, yaw, roll) in world space degrees
+	[Obsolete()]
 	proto external GenericEntity DoSpawn(string prefab, vector position, vector rotation = "0 0 0");
 
 	// callbacks

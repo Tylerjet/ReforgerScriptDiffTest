@@ -35,16 +35,16 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	[Attribute(category: "Preview", defvalue: "1 1 1 0.2", desc: "Color of height indicator helper object.")]
 	protected ref Color m_HeightIndicatorColor;
 
-	[Attribute(category: "Settings", defvalue: typename.EnumToString(EEditorTransformVertical, EEditorTransformVertical.TERRAIN), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditorTransformVertical))]
+	[Attribute(category: "Settings", defvalue: EEditorTransformVertical.GEOMETRY.ToString(), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditorTransformVertical))]
 	private EEditorTransformVertical m_VerticalMode;
 
 	[Attribute(category: "Settings", defvalue: SCR_Enum.GetFlagValues(EEditorTransformVertical).ToString(), uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(EEditorTransformVertical))]
 	private EEditorTransformVertical m_AllowedVerticalModes;
 	
-	[Attribute(category: "Settings", defvalue: typename.EnumToString(EEditorTransformSnap, EEditorTransformSnap.TERRAIN), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditorTransformSnap))]
-	private EEditorTransformSnap m_VerticalSnap;
+	[Attribute(category: "Settings", defvalue: "1")]
+	private bool m_bIsVerticalSnap;
 	
-	[Attribute(category: "Settings", defvalue: "0.5")]
+	[Attribute(category: "Settings", defvalue: "0.25")]
 	private float m_fVerticalSnapLimit;
 	
 	[Attribute(category: "Settings", desc: "When true, interaction between entities passes when at least one edited entity meets the criteria.\nWhen false, all edited entities must be compatible.")]
@@ -58,7 +58,6 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	private EEditorTransformVertical m_VerticalModeReal;
 	private float m_fHeightTerrain;
 	private float m_fHeightSea;
-	private float m_fHeightGeometry;
 	private bool m_bIsHeightSet;
 	private bool m_bIsChange;
 	private BaseWorld m_World;
@@ -67,7 +66,6 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	private bool m_bTargetSnap;
 	private bool m_bTargetDelegate;
 	private EEditableEntityInteraction m_TargetInteraction;
-	private IEntity m_TargetHelper;
 	private float m_fTargetRotationStep;
 	private bool m_bInstantTransformation;
 	private bool m_bIsFixedPosition;
@@ -81,9 +79,9 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	
 	protected SCR_LayersEditorComponent m_LayerManager;
 	protected SCR_StatesEditorComponent m_StateManager;
-	protected SCR_BasePreviewEntity m_PreviewEntity;
+	protected SCR_EditablePreviewEntity m_PreviewEntity;
 	private ResourceName m_SlotPrefab;
-	private vector m_vLocalOffset;
+	private vector m_aLocalOffset[4];
 	private SCR_EditableEntityComponent m_Entity;
 	private EEditableEntityType m_EntityType;
 	protected ref SCR_EditableEntityInteraction m_Interaction;
@@ -103,6 +101,8 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	// OnVerticalModeChange(EEditorTransformSnap verticalSnap)
 	private ref ScriptInvoker Event_OnVerticalSnapChange = new ScriptInvoker;
 	
+	protected const float VERTICAL_TRACE_OFFSET = 0.01; //--- Vertical offset of trace start to make sure it does not start inside geometry.
+	
 	/*!
 	Set transformation of the preview entity.
 	When editing is confirmed, real entities are moved to where the preview is.
@@ -112,6 +112,13 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	{
 		if (!m_PreviewEntity || m_bIsFixedPosition)
 			return;
+		
+		//--- When on non-snappable entity, hide the preview, as the interaction may not place the entity where the preview is (e.g., moving a character into vehicle)
+		if (m_Target && !m_bTargetSnap)
+		{
+			ResetPreviewTransform();
+			return;
+		}
 		
 		instant = true;
 		
@@ -140,7 +147,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 						vector targetAngles = Math3D.MatrixToAngles(targetTransform);
 						vector angles = Math3D.MatrixToAngles(transform);
 						angles[0] = targetAngles[0] + Math.Round((angles[0] - targetAngles[0]) / m_fTargetRotationStep) * m_fTargetRotationStep;
-						if (!m_bInstantTransformation && !instant) LerpAngles(m_TargetHelper.GetAngles(), angles, timeSlice);
+						if (!m_bInstantTransformation && !instant) LerpAngles(m_PreviewEntity.GetAngles(), angles, timeSlice);
 						Math3D.AnglesToMatrix(angles, transform);
 						break;
 					}
@@ -150,14 +157,16 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 						if (!m_bInstantTransformation) 
 						{
 							vector angles = Math3D.MatrixToAngles(transform);
-							if (!m_bInstantTransformation && !instant) LerpAngles(m_TargetHelper.GetAngles(), angles, timeSlice);
+							if (!m_bInstantTransformation && !instant) LerpAngles(m_PreviewEntity.GetAngles(), angles, timeSlice);
 							Math3D.AnglesToMatrix(angles, transform);
 						}
 					}
 				}
 				transform[3] = targetTransform[3];
-				if (!m_bInstantTransformation && !instant) transform[3] = LerpTranslation(m_TargetHelper.GetOrigin(), transform[3], timeSlice);
-				m_TargetHelper.SetWorldTransform(transform);
+				if (!m_bInstantTransformation && !instant) transform[3] = LerpTranslation(m_PreviewEntity.GetOrigin(), transform[3], timeSlice);
+				
+				Math3D.MatrixMultiply4(transform, m_aLocalOffset, transform); //--- Counter local offset to make sure that preview's center is snapped to slot
+				m_PreviewEntity.SetPreviewTransform(transform, verticalMode, m_fHeightTerrain, m_bIsUnderwater);
 			}
 		}
 		else
@@ -177,7 +186,27 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 				transform[3] = LerpTranslation(m_PreviewEntity.GetOrigin(), transform[3], timeSlice);
 			}
 			
-			m_PreviewEntity.SetPreviewTransform(transform, verticalMode, m_fHeightTerrain, m_bIsUnderwater);
+			TraceParam trace;
+			if (verticalMode == EEditorTransformVertical.GEOMETRY)
+			{
+				trace = new TraceParam();
+				trace.ExcludeArray = m_PreviewEntity.GetExcludeArray();
+				
+				//--- When the preview represents a composition, trace surface from camera height, not cursor intersection height, as child entities could be below it.
+				if (m_PreviewEntity.HasMultipleEditableEntities())
+				{
+					vector matrix[4];
+					m_PreviewEntity.GetWorld().GetCurrentCamera(matrix);
+					trace.Start = matrix[3];
+				}
+			}
+			
+			m_PreviewEntity.SetPreviewTransform(transform, verticalMode, m_fHeightTerrain, m_bIsUnderwater, trace);
+		}
+		
+		if (!m_bIsChange)
+		{
+			m_PreviewEntity.SetFlags(EntityFlags.VISIBLE, true);
 		}
 		
 		m_bIsChange = true;
@@ -189,22 +218,33 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		if (!m_bIsHeightSet) SetPreviewHeight(transform[3]);
 		
 		//--- Placeholder vertical indicator. ToDo: Replace
-		Shape.CreateCylinder(m_iHeightIndicatorColor, ShapeFlags.TRANSP | ShapeFlags.ONCE | ShapeFlags.NOOUTLINE, transform[3] - Vector(0, 50, 0), 0.05, 100);
+		float indicatorHeight = m_fHeightTerrain - m_aLocalOffset[3][1];
+		if (indicatorHeight > 0.025)
+		{
+			vector indicatorPos = transform[3] - Vector(0, indicatorHeight * 0.5 + m_aLocalOffset[3][1], 0);
+			Shape.CreateCylinder(m_iHeightIndicatorColor, ShapeFlags.TRANSP | ShapeFlags.ONCE | ShapeFlags.NOOUTLINE, indicatorPos, 0.05, indicatorHeight);
+			Shape.CreateCylinder(m_iHeightIndicatorColor, ShapeFlags.TRANSP | ShapeFlags.ONCE | ShapeFlags.NOOUTLINE | ShapeFlags.NOZBUFFER, indicatorPos, 0.01, indicatorHeight);
+		}
 	}
 	/*!
-	Reset transformation of the preview entity back to its original coordinates.
+	Reset changes of the preveiw entity and hide it.
 	*/
 	void ResetPreviewTransform()
 	{
-		if (!m_PreviewEntity)
+		if (!m_PreviewEntity || !m_bIsChange)
 			return;
-		
-		m_PreviewEntity.SetPreviewTransform(m_vTransform, EEditorTransformVertical.SEA, m_fHeightTerrain);
 		
 		bool isChange = m_bIsChange;
 		m_bIsChange = false;
 		if (isChange)
-			Event_OnPreviewChange.Invoke(m_vTransform, false);
+		{
+			//--- Hide the preview
+			m_PreviewEntity.ClearFlags(EntityFlags.VISIBLE, true);
+			
+			vector transform[4];
+			m_PreviewEntity.GetWorldTransform(transform);
+			Event_OnPreviewChange.Invoke(transform, m_bIsChange);
+		}
 	}
 	/*!
 	Get transformation of the preview entity.
@@ -237,11 +277,31 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	{
 		if (!m_PreviewEntity || !m_World) return;
 		m_fHeightSea = pos[1];
+		
+		TraceParam trace;
+		if (m_VerticalModeReal == EEditorTransformVertical.GEOMETRY)
+		{
+			//--- When snapping to ground, offset a bit up so prevent the trace from starting below surface
+			pos[1] = pos[1] + VERTICAL_TRACE_OFFSET;
+			
+			trace = new TraceParam();
+			trace.ExcludeArray = m_PreviewEntity.GetExcludeArray();
+		}
+		
 		if (m_bHasTerrain)
-			m_fHeightTerrain = pos[1] - SCR_TerrainHelper.GetTerrainY(pos, m_World, !m_bIsUnderwater);
+			m_fHeightTerrain = pos[1] - SCR_TerrainHelper.GetTerrainY(pos, m_World, !m_bIsUnderwater, trace);
 		else
 			m_fHeightTerrain = m_fHeightSea;
+		
 		m_bIsHeightSet = true;
+	}
+	/*!
+	Reset entity height back to 0.
+	*/
+	void ResetPreviewHeight()
+	{
+		m_fHeightSea = 0;
+		m_fHeightTerrain = 0;
 	}
 	/*!
 	Get preview's height above terrain.
@@ -260,19 +320,11 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		return m_fHeightSea;
 	}
 	/*!
-	Get preview's height above geometry.
-	\return Height
-	*/
-	float GetPreviewHeightAboveGeometry()
-	{
-		return m_fHeightGeometry;
-	}
-	/*!
 	\return Offset of pivot on which the preview is centered (e.g., when dragging entity by its mesh, not by icon)
 	*/
 	vector GetLocalOffset()
 	{
-		return m_vLocalOffset;
+		return m_aLocalOffset[3];
 	}
 	/*!
 	Set mode which defines which height the preview maintains.
@@ -284,7 +336,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 			return;
 		
 		m_VerticalMode = mode;
-		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_MODE, m_VerticalMode);
+		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_MODE, m_VerticalMode >> 1);
 		Event_OnVerticalModeChange.Invoke(m_VerticalMode);
 	}
 	/*!
@@ -308,22 +360,22 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	Set vertical snapping rules.
 	\param Mode
 	*/
-	void SetVerticalSnap(EEditorTransformSnap snap)
+	void SetVerticalSnap(bool enabled)
 	{
-		if (snap == m_VerticalSnap)
+		if (enabled == m_bIsVerticalSnap)
 			return;
 		
-		m_VerticalSnap = snap;
-		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_SNAP, m_VerticalSnap);
-		Event_OnVerticalSnapChange.Invoke(m_VerticalSnap);
+		m_bIsVerticalSnap = enabled;
+		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_SNAP, m_bIsVerticalSnap);
+		Event_OnVerticalSnapChange.Invoke(m_bIsVerticalSnap);
 	}
 	/*!
 	Get vertical snapping rules.
 	\return Mode
 	*/
-	EEditorTransformSnap GetVerticalSnap()
+	bool IsVerticalSnap()
 	{
-		return m_VerticalSnap;
+		return m_bIsVerticalSnap;
 	}
 	/*!
 	Snap position according to currently active snapping rules
@@ -332,28 +384,12 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	*/
 	vector SnapVertically(vector pos)
 	{
-		if (m_PreviewEntity && GetVerticalSnap() == EEditorTransformSnap.TERRAIN)
-		{
-			float snapOffsetHeight = m_vLocalOffset[1];
-			float surfaceY = SCR_TerrainHelper.GetTerrainY(pos, m_World, !m_bIsUnderwater);
-			
-			//if (Math.AbsFloat(pos[1] - snapOffsetHeight - surfaceY) < m_fVerticalSnapLimit) //--- This allows to move the entity below terrain
-			if (pos[1] - snapOffsetHeight - surfaceY < m_fVerticalSnapLimit)
-				pos[1] = surfaceY + snapOffsetHeight;
-		}
-		return pos;
-	}
-	/*!
-	Get height offset needed to achieve the suface snap
-	\param pos Position
-	\return Height offset
-	*/
-	float GetVerticalSnapDelta(vector pos)
-	{
-		if (!m_PreviewEntity)
-			return 0;
+		float baseSnapHeight = GetSnapBaseHeight(pos, GetVerticalMode());
+		float delta = pos[1] - baseSnapHeight;
+		if (delta < m_fVerticalSnapLimit)
+			pos[1] = baseSnapHeight;
 		
-		return -pos[1] + SCR_TerrainHelper.GetTerrainY(pos, m_World, !m_bIsUnderwater) + m_vLocalOffset[1];
+		return pos;
 	}
 	/*!
 	Checked if preview entity is snapped according to currently active snapping rules
@@ -364,15 +400,10 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		if (!m_PreviewEntity)
 			return false;
 		
-		if (m_VerticalSnap == EEditorTransformSnap.TERRAIN)
-		{
-			//--- ToDo: One function to get snap offset used in here and in SnapVertically()
-			vector pos = m_PreviewEntity.GetTransformAxis(3);
-			float snapOffsetHeight = m_vLocalOffset[1];
-			float surfaceY = SCR_TerrainHelper.GetTerrainY(pos, m_World, !m_bIsUnderwater);
-			return Math.AbsFloat(pos[1] - snapOffsetHeight - surfaceY) < m_fVerticalSnapLimit;
-		}
-		return false;
+		vector pos = m_PreviewEntity.GetTransformAxis(3);
+		float baseSnapHeight = GetSnapBaseHeight(pos, GetVerticalMode());
+		float delta = pos[1] - baseSnapHeight;
+		return Math.AbsFloat(delta) < m_fVerticalSnapLimit;
 	}
 	/*!
 	Checked if preview entity is snapped and can be unsnapped
@@ -381,13 +412,32 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	*/
 	bool CanUnsnap(float verticalDelta)
 	{
-		if (!IsSnappedVertically()) return false;
+		if (!IsSnappedVertically())
+			return false;
 		
-		if (m_VerticalSnap == EEditorTransformSnap.TERRAIN)
+		if (m_VerticalMode == EEditorTransformVertical.TERRAIN)
 		{
 			return verticalDelta > 0; //--- Cannot go below terrain
 		}
 		return false;
+	}
+	protected float GetSnapBaseHeight(vector pos, EEditorTransformVertical verticalMode)
+	{
+		switch (verticalMode)
+		{
+			case EEditorTransformVertical.GEOMETRY:
+			case EEditorTransformVertical.TERRAIN:
+			{
+				TraceParam trace;
+				if (verticalMode == EEditorTransformVertical.GEOMETRY)
+				{
+					trace = new TraceParam();
+					trace.ExcludeArray = m_PreviewEntity.GetExcludeArray();
+				}
+				return SCR_TerrainHelper.GetTerrainY(pos, m_World, !m_bIsUnderwater, trace) + m_aLocalOffset[3][1] + VERTICAL_TRACE_OFFSET; //--- Offset a bit to make sure the position is not under surface
+			}
+		}
+		return m_aLocalOffset[3][1];
 	}
 	/*!
 	\return True if the preview entity can be moved to root
@@ -444,17 +494,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 			m_bTargetDelegate = isDelegate;
 			
 			if (m_bTargetSnap)
-			{
-				vector transform[4];
-				m_PreviewEntity.GetWorldTransform(transform);
-				
-				//--- Move preview into helper entity which counters local offset, so rotation is around target's center
-				m_TargetHelper = GetGame().SpawnEntity(GenericEntity, m_World);
-				m_TargetHelper.SetTransform(transform);
-				m_TargetHelper.AddChild(m_PreviewEntity, -1);
-				vector localTransform[4] = {vector.Right, vector.Up, vector.Forward, m_vLocalOffset};
-				m_PreviewEntity.SetLocalTransform(localTransform);
-				
+			{				
 				SCR_SiteSlotEntity slotEntity = SCR_SiteSlotEntity.Cast(target.GetOwner());
 				if (slotEntity)
 					m_fTargetRotationStep = slotEntity.GetRotationStep();
@@ -467,19 +507,8 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 			//--- Remove
 			if (!m_Target) return false;
 			
-			vector transform[4];
-			m_PreviewEntity.GetWorldTransform(transform);
-			
 			m_Target = null;
 			m_TargetInteraction = 0;
-			if (m_TargetHelper)
-			{
-				m_TargetHelper.RemoveChild(m_PreviewEntity);
-				delete m_TargetHelper;
-			}
-			
-			m_PreviewEntity.SetWorldTransform(transform);
-			//SetPreviewTransform(transform);
 		}
 		Event_OnTargetChange.Invoke(target);
 		return true;
@@ -599,7 +628,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	Get preview entity.
 	\return Preview entity
 	*/
-	SCR_BasePreviewEntity GetPreviewEntity()
+	SCR_EditablePreviewEntity GetPreviewEntity()
 	{
 		return m_PreviewEntity;
 	}
@@ -625,7 +654,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	*/
 	bool IsChange()
 	{
-		return m_bIsChange || m_bIsFixedPosition;
+		return m_bIsChange || m_bIsFixedPosition || m_Target;
 	}
 	/*!
 	Is the entity being rotated in this frame?
@@ -682,6 +711,18 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	bool IsUnderwater()
 	{
 		return m_bIsUnderwater;
+	}
+	/*!
+	Get array of entities to be excluded when checking for GEOMETRY intersection for the preview.
+	Filled only if the preview was created from existing entities and not from a prefab.
+	\return Array of entities
+	*/
+	array<IEntity> GetExcludeArray()
+	{
+		if (m_PreviewEntity)
+			return m_PreviewEntity.GetExcludeArray();
+		else
+			return null;
 	}
 	/*!
 	Get event called when a preview is created (e.g., transforming or placing starts).
@@ -743,6 +784,10 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	void InitTransform(vector transform[4])
 	{
 		m_vTransform = transform;
+		
+		//--- Normalize transformation matrix, so it does not affect scale even when pivot entity is scaled up or down
+		Math3D.MatrixNormalize(m_vTransform);
+		
 		SetPreviewHeight(transform[3]);
 	}
 	
@@ -760,9 +805,12 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		if (m_bIsUnderwater)
 			flags |= EPreviewEntityFlag.UNDERWATER;
 		
+		if (m_VerticalMode == EEditorTransformVertical.GEOMETRY)
+			flags |= EPreviewEntityFlag.GEOMETRY;
+		
 		EntitySpawnParams spawnParams = new EntitySpawnParams();
 		Math3D.MatrixCopy(m_vTransform, spawnParams.Transform);
-		m_PreviewEntity = SCR_EditablePreviewEntity.SpawnPreviewFromEditableEntities(entities, m_PreviewEntityPrefab, GetOwner().GetWorld(), spawnParams, m_PreviewMaterial, flags);
+		m_PreviewEntity = SCR_EditablePreviewEntity.Cast(SCR_EditablePreviewEntity.SpawnPreviewFromEditableEntities(entities, m_PreviewEntityPrefab, GetOwner().GetWorld(), spawnParams, m_PreviewMaterial, flags));
 		m_bInstantTransformation = true;
 		m_Entity = pivot;
 		m_EntityType = pivot.GetEntityType();
@@ -776,12 +824,13 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 			m_SlotPrefab = ResourceName.Empty;
 		
 		//--- Get local offset for slotting
-		if (pivot.GetPos(m_vLocalOffset))
+		vector localOffsetPos = m_aLocalOffset[3];
+		if (pivot.GetPos(localOffsetPos))
 		{
 			vector pivotTransform[4];
 			pivot.GetOwner().GetWorldTransform(pivotTransform);
 			Math3D.MatrixInvMultiply4(m_vTransform, pivotTransform, pivotTransform);
-			m_vLocalOffset = -pivotTransform[3];// pivot.GetOwner().CoordToLocal(m_vTransform[3]); //--- Cannot use CoordToLocal, doesn't take m_vTransform rotation into effect
+			m_aLocalOffset[3] = -pivotTransform[3];// pivot.GetOwner().CoordToLocal(m_vTransform[3]); //--- Cannot use CoordToLocal, doesn't take m_vTransform rotation into effect
 		}
 		
 		Event_OnPreviewCreate.Invoke(m_PreviewEntity);
@@ -859,12 +908,12 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 					}
 					entry.m_vPosition = offsets[i];
 				}
-				m_PreviewEntity = SCR_PrefabPreviewEntity.SpawnPreview(entries, m_PreviewEntityPrefab, spawnParams: spawnParams, material: m_PreviewMaterial);
+				m_PreviewEntity = SCR_EditablePreviewEntity.Cast(SCR_PrefabPreviewEntity.SpawnPreview(entries, m_PreviewEntityPrefab, spawnParams: spawnParams, material: m_PreviewMaterial));
 			}
 			else
 			{
 				//--- Create preview directly
-				m_PreviewEntity = SCR_PrefabPreviewEntity.SpawnPreviewFromPrefab(prefabResource, m_PreviewEntityPrefab, spawnParams: spawnParams, material: m_PreviewMaterial);
+				m_PreviewEntity = SCR_EditablePreviewEntity.Cast(SCR_PrefabPreviewEntity.SpawnPreviewFromPrefab(prefabResource, m_PreviewEntityPrefab, spawnParams: spawnParams, material: m_PreviewMaterial));
 			}
 			if (m_PreviewEntity)
 			{
@@ -898,8 +947,8 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		m_bPreviewDisabled = false;
 		m_Target = null;
 		m_TargetInteraction = 0;
-		m_vLocalOffset = vector.Zero;
 		m_Entity = null;
+		m_aLocalOffset[3] = vector.Zero;
 	}
 	/*!
 	Duplicate the preview to indicate waiting.
@@ -948,6 +997,9 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	{
 		debugTexts.Insert("Vertical Mode: " + Type().EnumToString(EEditorTransformVertical, m_VerticalMode));
 		debugTexts.Insert("Vertical Mode (Real): " + Type().EnumToString(EEditorTransformVertical, m_VerticalModeReal));
+		debugTexts.Insert("Vertical Snap: " + m_bIsVerticalSnap);
+		debugTexts.Insert("Height ASL: " + m_fHeightSea);
+		debugTexts.Insert("Height ATL: " + m_fHeightTerrain);
 		
 		if (m_PreviewEntity)
 		{
@@ -957,16 +1009,17 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	}
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
-		#ifdef ENABLE_DIAG
-		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_MODE) != m_VerticalMode)
+#ifdef ENABLE_DIAG
+		int verticalMode = 1 << DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_MODE);
+		if (verticalMode != m_VerticalMode)
 		{
-			SetVerticalMode(DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_MODE));
+			SetVerticalMode(verticalMode);
 		}
-		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_SNAP) != m_VerticalSnap)
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_SNAP) != m_bIsVerticalSnap)
 		{
 			SetVerticalSnap(DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_SNAP));
 		}
-		#endif
+#endif
 	}
 	override void EOnEditorActivate()
 	{
@@ -979,15 +1032,14 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		m_LayerManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent));
 		m_StateManager = SCR_StatesEditorComponent.Cast(SCR_StatesEditorComponent.GetInstance(SCR_StatesEditorComponent));
 		
-		#ifdef ENABLE_DIAG
+#ifdef ENABLE_DIAG
 		typename enumVerticalMode = EEditorTransformVertical;
 		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_MODE, "", "Vertical Mode", "Transforming", string.Format("0 %1 0 1", enumVerticalMode.GetVariableCount() - 1));
-		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_MODE, m_VerticalMode);
+		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_MODE, m_VerticalMode >> 1);
 		
-		typename enumVerticalSnap = EEditorTransformSnap;
-		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_SNAP, "", "Vertical Snap", "Transforming", string.Format("0 %1 0 1", enumVerticalSnap.GetVariableCount() - 1));
-		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_SNAP, m_VerticalSnap);
-		#endif
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_SNAP, "", "Vertical Snap", "Transforming");
+		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_VERTICAL_SNAP, m_bIsVerticalSnap);
+#endif
 	}
 	override void EOnEditorDeactivate()
 	{
@@ -1017,6 +1069,8 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		}
 		
 		m_iHeightIndicatorColor = m_HeightIndicatorColor.PackToInt();
+		
+		Math3D.MatrixIdentity3(m_aLocalOffset); //--- Initialize offset matrix angles
 	}
 	
 	override void OnDelete(IEntity owner)

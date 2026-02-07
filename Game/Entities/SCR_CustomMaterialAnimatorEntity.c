@@ -75,7 +75,7 @@ class SCR_CustomMaterialAnimatorEntity: GenericEntity
 		m_fMaterialAnimationFrameCalculator += m_fAnimationSpeed * timeSlice;
 		
 		//~ Set frame to converted int of calculator. The m_iMaterialAnimationFrame is the actual value the emat will read
-		m_iMaterialAnimationFrame = (int)m_fMaterialAnimationFrameCalculator;
+		m_iMaterialAnimationFrame = m_fMaterialAnimationFrameCalculator;
 		
 		//End of animation reached
 		if (m_iMaterialAnimationFrame >= m_iEndFrame)

@@ -5,8 +5,8 @@ class SCR_MailboxComponentClass: AICommunicationComponentClass
 
 class SCR_MailboxComponent : AICommunicationComponent
 {
-	ref array<ref SCR_AIMessageBase> m_aMessages = new ref array<ref SCR_AIMessageBase>;
-	ref array<ref AIDangerEvent> m_aDangerEvents = new ref array<ref AIDangerEvent>;
+	ref array<ref SCR_AIMessageBase> m_aMessages = {};
+	ref array<ref AIDangerEvent> m_aDangerEvents = {};
 	
 	override void OnReceived(AIMessage pMessage)
 	{
@@ -18,42 +18,71 @@ class SCR_MailboxComponent : AICommunicationComponent
 			
 			ref AIDangerEvent dangerEvent = AIDangerEvent.Cast(pMessage);
 			if (dangerEvent)
-			{
 				m_aDangerEvents.Insert(dangerEvent);
-			}
 			else
 			{
 				//PrintFormat("Message %3 reading from %1 to %2", pMessage.GetSender(), pMessage.GetReceiver(), pMessage);
-				ref SCR_AIMessageBase msg = SCR_AIMessageBase.Cast(pMessage);
-				if (msg)
-					m_aMessages.Insert(msg);
+				SCR_AIMessageBase msgBase = SCR_AIMessageBase.Cast(pMessage);
+				if (msgBase)
+					m_aMessages.Insert(msgBase);
 			}
 		}
 	}
 	
-	SCR_AIMessageBase ReadMessage(typename TypeName)
+	#ifdef AI_MAILBOX_OVERFLOW_DETECTION
+	protected int m_iMailboxOverflowCount = 0;
+	#endif
+	
+	// Returns first message in the queue
+	SCR_AIMessageBase ReadMessage()
 	{
-		for (int index = 0, length = m_aMessages.Count(); index < length; index++)
+		#ifdef AI_MAILBOX_OVERFLOW_DETECTION
+		if (m_aMessages.Count() > 100 && m_iMailboxOverflowCount < 5)
 		{
-			if (m_aMessages[index].IsInherited(TypeName))
-			{ 
-				SCR_AIMessageBase message = m_aMessages[index];				
-				m_aMessages.RemoveOrdered(index);
-				return message;
-			}	
-		};
-		return null;		
+			LogMailboxStatistics(LogLevel.WARNING);
+			m_iMailboxOverflowCount++;
+		}
+		#endif
+		
+		if (m_aMessages.IsEmpty())
+			return null;
+		else
+		{
+			SCR_AIMessageBase message = m_aMessages[0];
+			m_aMessages.RemoveOrdered(0);
+			return message;
+		}
+	}
+	
+	void LogMailboxStatistics(LogLevel logLevel = LogLevel.NORMAL)
+	{
+		map<typename, int> msgTypeCount = new map<typename, int>();
+		foreach (SCR_AIMessageBase msg : m_aMessages)
+		{
+			typename msgFinalType = msg.Type();
+			int nMsgsOfType = msgTypeCount.Get(msgFinalType);
+			nMsgsOfType++;
+			msgTypeCount.Set(msgFinalType, nMsgsOfType);
+		}
+		
+		Print(string.Format("SCR_MailboxComponent statistics: count: %1, %2, %3", m_aMessages.Count(), this, GetAIAgent()), logLevel);
+		foreach (typename t, int count : msgTypeCount)
+		{
+			Print(string.Format("  %1: %2", t, count), logLevel);
+		}
+		Print(string.Format("  Total: %1", m_aMessages.Count()), logLevel);
 	}
 	
 	AIDangerEvent ReadDangerEvent()
 	{
-		for (int index = 0, length = m_aDangerEvents.Count(); index < length; index++)
+		if (m_aDangerEvents.IsEmpty())
+			return null;
+		else
 		{
-			AIDangerEvent dangerEvent = m_aDangerEvents[index];
-			m_aDangerEvents.RemoveOrdered(index);
+			AIDangerEvent dangerEvent = m_aDangerEvents[0];
+			m_aDangerEvents.RemoveOrdered(0);
 			return dangerEvent;
-		};
-		return null;
+		}
 	}
 	
 	bool IsCommunicationEnabled()

@@ -2,8 +2,8 @@
 //! Cursor data
 class SCR_MapCursorInfo
 {
-	bool isGamepad;			// is using gamepad
-	bool isFixedMode = true;// determines whether cursor is fixed to the screen center 
+	static bool isGamepad;			// is using gamepad
+	bool isFixedMode = true;		// determines whether cursor is fixed to the screen center 
 	
 	static int x, y; 				// by default, all screen position are DPI Unscaled, when scaled, these will return a range from 0 to window resolution in pixels
 	static int startPos[2];			// state start pos pan
@@ -88,10 +88,10 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 												 | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_SELECT_RESTRICTED = EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW;
 	const EMapCursorState STATE_MULTISELECT_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MODIFIER;
-	const EMapCursorState STATE_DRAG_RESTRICTED	= EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_ROTATE;
+	const EMapCursorState STATE_DRAG_RESTRICTED	= EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_ROTATE | EMapCursorState.CS_DRAW;
 	const EMapCursorState STATE_ROTATE_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_DRAW_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
-	const EMapCursorState STATE_CTXMENU_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW;
+	const EMapCursorState STATE_CTXMENU_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW;
 	
 	// timers
 	protected float m_fPanCountdown;		// used to stop panning cursor state and refresh start position for next drag panning
@@ -173,7 +173,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		if (!m_bEnableMapCrosshairVisuals)
 			return;
 		
-		if (type == EMapCursorState.CS_DISABLE)
+		if (type == EMapCursorState.CS_DISABLE || m_bIsDisabled)
 			m_CustomCursor.SetCursorVisual(null);
 		else
 			m_CustomCursor.SetCursorVisual(GetCursorStateCfg());
@@ -199,7 +199,8 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	
 	//------------------------------------------------------------------------------------------------
 	//! Force cursor to screen center
-	protected void ForceCenterCursor()
+	//! Only use when necessarry as some methods rely on current cursor position
+	void ForceCenterCursor()
 	{
 		float screenX, screenY;
 		m_MapWidget.GetScreenSize(screenX, screenY);
@@ -207,6 +208,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_InputManager.SetCursorPosition(screenX/2, screenY/2);
 		m_CursorInfo.x = screenX/2;
 		m_CursorInfo.y = screenY/2;
+		
+		if (!m_CursorInfo.isFixedMode)
+			m_fFreeCursorTime = FREE_CURSOR_RESET;
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -234,7 +238,12 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	{ 
 		// pan disabled
 		if (m_CursorState & STATE_PAN_RESTRICTED)
-			return;
+		{
+			if (m_CursorState & EMapCursorState.CS_PAN)
+				m_fPanCountdown = 0;
+			else
+				return;
+		}
 		
 		// Start panning if cursor is on the screen edges
 		if ( m_CursorInfo.edgeFlags > 0 && (m_CursorState & EMapCursorState.CS_PAN) == 0 )	// dont allow edge panning while panning using another method
@@ -268,7 +277,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			return;
 		}
 		// begin pan state
-		else if ( ~m_CursorState & EMapCursorState.CS_PAN )
+		if ( ~m_CursorState & EMapCursorState.CS_PAN )
 			SetCursorState(EMapCursorState.CS_PAN);
 		
 		m_fPanCountdown -= timeSlice;
@@ -351,12 +360,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	{
 		//! select disabled
 		if (m_CursorState & STATE_SELECT_RESTRICTED)
-		{
-			if (m_CursorState & EMapCursorState.CS_CONTEXTUAL_MENU)
-				HandleContextualMenu(true);
-			
 			return;
-		}
 		
 		vector vScreenPos = Vector(m_CursorInfo.Scale(m_CursorInfo.x), 0, m_CursorInfo.Scale(m_CursorInfo.y));
 		m_MapEntity.InvokeOnSelect(vScreenPos);
@@ -392,13 +396,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	//------------------------------------------------------------------------------------------------
 	//! Handle multi select - rectangular selection
 	protected void HandleMultiSelect(bool activate)
-	{
-		if (!activate && m_CursorState & STATE_MULTISELECT_RESTRICTED)
-		{
-			if (m_CursorState & EMapCursorState.CS_CONTEXTUAL_MENU)
-				HandleContextualMenu(true);
-		}
-		
+	{		
 		// multiselect state end or disabled
 		if ( (m_CursorState & STATE_MULTISELECT_RESTRICTED) || !activate)
 		{
@@ -498,55 +496,57 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	
 	//------------------------------------------------------------------------------------------------
 	//! Handle draw state
-	protected void HandleDraw(bool active)
+	bool HandleDraw(bool active)
 	{
-		// disable draw state
-		if (m_CursorState & STATE_DRAW_RESTRICTED)
-			return;
-
 		// begin draw state
-		if (active)
+		if (active && (~m_CursorState & STATE_DRAW_RESTRICTED))
 		{
 			if ( ~m_CursorState & EMapCursorState.CS_DRAW )
 			{
 				SetCursorState(EMapCursorState.CS_DRAW);
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_MARKER_DRAW_START);
+				return true;
 			}
 		}
 		// end draw state
 		else if (m_CursorState & EMapCursorState.CS_DRAW)
 		{
 			UnsetCursorState(EMapCursorState.CS_DRAW);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_MARKER_DRAW_STOP);
 		}
+		
+		return false;
 	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! Handle contextual menu
-	//! /param doClose determines whether the context menu should close
-	void HandleContextualMenu(bool doClose = false)
+	//! \param doClose determines whether the context menu should close
+	//! \return state of the menu where false = close / true = open
+	bool HandleContextualMenu(bool doClose = false)
 	{
 		//! context menu disabled
-		if (m_CursorState & STATE_CTXMENU_RESTRICTED)
-			return;
+		if ((m_CursorState & STATE_CTXMENU_RESTRICTED) && !doClose)
+			return false;
 		
-		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapContextualMenuUI));
-		if (!ctxMenu)
-			return;
-		
-		// close menu
-		if (doClose)
+		SCR_MapRadialUI radialMenu = SCR_MapRadialUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapRadialUI));
+		if (!radialMenu)
+			return false;
+
+		if (doClose)	// close 
 		{
 			if (m_CursorState & EMapCursorState.CS_CONTEXTUAL_MENU)
 			{
 				UnsetCursorState(EMapCursorState.CS_CONTEXTUAL_MENU);
-				ForceCenterCursor();
-				return;
+				return false;
 			}
 		}
-		
-		if (m_CursorState & EMapCursorState.CS_CONTEXTUAL_MENU)	// open/reopen menu
-			UnsetCursorState(EMapCursorState.CS_CONTEXTUAL_MENU);
-		else 
+		else if (~m_CursorState & EMapCursorState.CS_CONTEXTUAL_MENU) // open
+		{
 			SetCursorState(EMapCursorState.CS_CONTEXTUAL_MENU);
+			return true;
+		}
+		
+		return false;
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -581,6 +581,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	{
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		
+		if (!m_MapWidget)
+			m_MapWidget = m_MapEntity.GetMapWidget();
+		
 		float screenX, screenY, offX, offY;
 		m_MapWidget.GetScreenSize(screenX, screenY);
 		m_MapWidget.GetScreenPos(offX, offY);
@@ -601,7 +604,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 					m_CustomCursor.SetOpacity(alpha);
 				}
 				
-				if (m_fFreeCursorTime > FREE_CURSOR_RESET)
+				if (m_fFreeCursorTime >= FREE_CURSOR_RESET)
 				{
 					m_CursorInfo.isFixedMode = true;
 					m_fFreeCursorTime = 0;
@@ -721,7 +724,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			return;
 		
 		m_fPanCountdown = PAN_DEFAULT_COUNTDOWN;	
-		int px = (int)(System.GetFrameTimeS() * 1000);	// speed of pan based on time elapsed to avoid slowdown during lower fps
+		int px = (System.GetFrameTimeS() * 1000);	// speed of pan based on time elapsed to avoid slowdown during lower fps
 		
 		if ((int)direction == 1)
 			px = px * multiPlier;
@@ -807,18 +810,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		value = value * m_fZoomMultiplierWheel;
 		m_MapEntity.ZoomSmooth(targetPPU - targetPPU/2 * (value * 0.001), m_fZoomAnimTime, false);	// the const here is adjusting the value to match the input with zoom range
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Digital draw
-	protected void OnInputDraw( float value, EActionTrigger reason )
-	{
-		if (reason == EActionTrigger.PRESSED)
-			HandleDraw(true);
-		else if (reason == EActionTrigger.UP)
-			HandleDraw(false);
-			
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	//! Digital drag
 	protected void OnInputDrag( float value, EActionTrigger reason )
@@ -1341,6 +1333,9 @@ class SCR_CursorVisualState
 	
 	[Attribute("default", UIWidgets.EditBox, desc: "imageset quad")]
 	string m_sImageQuad;
+	
+	[Attribute("", UIWidgets.EditBox, desc: "imageset quad when controller is active instead of KBM \nIf this is not defined, attibute from above is used for both cases")]
+	string m_sImageQuadController;
 		
 	[Attribute("0", UIWidgets.Slider, desc: "Padding from top, in pixels", "-32 32 1")]
 	float m_fPaddingTop;

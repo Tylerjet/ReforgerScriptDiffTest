@@ -33,6 +33,24 @@ class SCR_SelectionMenuCategoryEntry : SCR_SelectionMenuEntry
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void AddEntry(SCR_SelectionMenuEntry entry = null)
+	{
+		if (!m_aEntries)
+			m_aEntries = new array<ref SCR_SelectionMenuEntry>();
+		
+		if (!entry)
+			SCR_SelectionMenuEntry newEntry = new SCR_SelectionMenuEntry();
+		
+		m_aEntries.Insert(entry);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveEntry(notnull SCR_SelectionMenuEntry entry)
+	{
+		m_aEntries.RemoveItem(entry);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// Get set
 	//------------------------------------------------------------------------------------------------
 	
@@ -45,6 +63,9 @@ class SCR_SelectionMenuCategoryEntry : SCR_SelectionMenuEntry
 	//------------------------------------------------------------------------------------------------
 	array<ref SCR_SelectionMenuEntry> GetEntries()
 	{
+		if (!m_aEntries)
+			m_aEntries = new array<ref SCR_SelectionMenuEntry>();
+		
 		array<ref SCR_SelectionMenuEntry> entries = {};
 		
 		for (int i = 0, count = m_aEntries.Count(); i < count; i++)

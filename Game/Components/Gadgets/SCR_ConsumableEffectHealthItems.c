@@ -70,7 +70,7 @@ class SCR_ConsumableEffectHealthItems : SCR_ConsumableEffectBase
 	//! Condition whther this effect can be applied to the specific hitzone
 	//! /param target is the character who is having the effect applied
 	//! /param EHitZoneGroup is the hitzonegroup which is having the effect applied
-	bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group)
+	bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
 	{}
 	
 	TAnimGraphCommand GetReviveAnimCmnd(IEntity user)

@@ -8,12 +8,12 @@ class SCR_AIGetOutActivity : SCR_AIActivityBase
 		m_fPriorityLevel.Init(this, priorityLevel);
 	}
 	
-	void SCR_AIGetOutActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, IEntity vehicle, float priority = PRIORITY_ACTIVITY_GET_OUT, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AIGetOutActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint, IEntity vehicle, float priority = PRIORITY_ACTIVITY_GET_OUT, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		InitParameters(vehicle, priorityLevel);
 		
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityGetOut.bt";
-		m_fPriority = priority;
+		SetPriority(priority);
 	}
 	
 	override string GetActionDebugInfo()

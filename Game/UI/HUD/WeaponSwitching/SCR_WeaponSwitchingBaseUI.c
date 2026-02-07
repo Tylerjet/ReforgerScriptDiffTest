@@ -82,9 +82,9 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 		if (character && character.GetCharacterController() && character.GetCharacterController().IsUnconscious())
 			return;		
 		
-    	GetGame().GetInputManager().AddActionListener("CharacterSwitchWeapon", EActionTrigger.VALUE, Action_SelectSlot );
-    	m_bOpened = true;
-    	GetGame().GetCallqueue().Remove( ShowQuickSlots );		// if there's a delayed Show method from the previous quick bar usage, purge it
+    		GetGame().GetInputManager().AddActionListener("CharacterSwitchWeapon", EActionTrigger.VALUE, Action_SelectSlot );
+    		m_bOpened = true;
+    		GetGame().GetCallqueue().Remove( ShowQuickSlots );		// if there's a delayed Show method from the previous quick bar usage, purge it
 		if ( !m_wRoot )
 			return;
 		if( s_wQuickSlotStorage )
@@ -101,7 +101,7 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 		s_pQuickSlotStorage.SetInitialQuickSlot();
 		s_pQuickSlotStorage.HighlightLastSelectedSlot();
 		
-		Show( true, UIConstants.FADE_RATE_DEFAULT, true );
+		Show( true, UIConstants.FADE_RATE_DEFAULT );
 		BlurWidget wBlur = BlurWidget.Cast( m_wRoot.FindAnyWidget( "wBlur" ) );
 		if ( wBlur ) 
 			wBlur.SetVisible( true );
@@ -127,7 +127,7 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 		if ( s_pQuickSlotStorage && s_pQuickSlotStorage.UseItemInSlot() )
 			GetGame().GetCallqueue().CallLater( ShowQuickSlots, 2000, false, false, UIConstants.FADE_RATE_DEFAULT, true );
 		else
-			Show( false, UIConstants.FADE_RATE_DEFAULT, true );
+			Show( false, UIConstants.FADE_RATE_DEFAULT );
 		
 		SCR_InventoryStorageManagerComponent invMan = SCR_InventoryStorageManagerComponent.Cast(m_pInventoryManager);
 		if (invMan)
@@ -187,19 +187,17 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 	    GetGame().GetInputManager().ActivateContext("WeaponSelectionContext");
 	}
 
-	protected void ShowQuickSlots(bool show, float speed = UIConstants.FADE_RATE_DEFAULT, bool force = false)
+	protected void ShowQuickSlots(bool show, float speed = UIConstants.FADE_RATE_DEFAULT)
 	{
-		Show(show, speed, force);
+		Show(show, speed);
 	}
 		
-	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
-   	
 	//------------------------------------------------------------------------------------------------
 	override event void OnStartDraw(IEntity owner)
 	{
-		super.OnStartDraw( owner );
-		Init( owner );
-		Show( false, 0, true );
+		super.OnStartDraw(owner);
+		Init(owner);
+		Show(false, 0);
 	}	
 	
 	//------------------------------------------------------------------------------------------------

@@ -75,6 +75,16 @@ class SCR_VariableSightsFOVInfo: SCR_BaseVariableSightsFOVInfo
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Returns true when current FOV of the optic does not match the target FOV.
+	bool IsAdjusting()
+	{
+		if (m_iCurrentIndex == -1)
+			return false;
+
+		return float.AlmostEqual(m_fCurrentFOV, m_aFOVs[m_iCurrentIndex]);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns current field of view provided by this info.
 		\return Returns field of view in degrees.

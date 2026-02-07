@@ -2,20 +2,19 @@
 //------------------------------------------------------------------------------------------------
 class SCR_DestructibleHitzone : ScriptedHitZone
 {
-	private DamageManagerComponent					m_ParentDamageManager; // Damage manager of the direct parent
+	protected DamageManagerComponent				m_ParentDamageManager; // Damage manager of the direct parent
 	protected SCR_BaseCompartmentManagerComponent	m_pCompartmentManager; // The part may have occupants that we want to damage
 
-	[Attribute("0", UIWidgets.EditBox, "Scale of received damage that will be passed to parent vehicle", "0 10 0.01")]
-	private float m_fPassDamageToOwnerParent;
+	[Attribute("0", UIWidgets.Slider, "Scale of damage passed to parent default hitzone\nIgnores base damage multiplier, reduction and threshold\nDamage type multipliers are applied", "0 100 0.001")]
+	protected float m_fPassDamageToParentScale;
 
 	[Attribute("", UIWidgets.Auto, desc: "Destruction Handler")]
 	protected ref SCR_DestructionBaseHandler m_pDestructionHandler;
 
 	[Attribute(desc: "Destruction sound event name", category: "Effects")]
-	private string m_sDestructionSoundEvent;
+	protected string m_sDestructionSoundEvent;
 
 #ifdef ENABLE_BASE_DESTRUCTION
-
 	//------------------------------------------------------------------------------------------------
 	ref SCR_DestructionBaseHandler GetDestructionHandler()
 	{
@@ -40,38 +39,49 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Called after damage multipliers and thresholds are applied to received impacts and damage is applied to hitzone.
-	This is also called when transmitting the damage to parent hitzones!
-	\param type Type of damage
-	\param damage Amount of damage received
-	\param pOriginalHitzone Original hitzone that got dealt damage, as this might be transmitted damage.
-	\param instigator Damage source parent entity (soldier, vehicle, ...)
-	\param hitTransform [hitPosition, hitDirection, hitNormal]
-	\param speed Projectile speed in time of impact
-	\param colliderID ID of the collider receiving damage
-	\param nodeID ID of the node of the collider receiving damage
+	Calculates the amount of damage a hitzone will receive.
+	\param damageType - damage type
+	\param rawDamage - incoming damage, without any modifiers taken into account
+	\param hitEntity - damaged entity
+	\param struckHitZone - hitzone to damage
+	\param damageSource - projectile
+	\param damageSourceGunner - damage source instigator
+	\param damageSourceParent - damage source parent entity (soldier, vehicle)
+	\param hitMaterial - hit surface physics material
+	\param colliderID - collider ID - if it exists
+	\param hitTransform - hit position, direction and normal
+	\param impactVelocity - projectile velocity in time of impact
+	\param nodeID - bone index in mesh obj
+	\param isDOT - true if this is a calculation for DamageOverTime
 	*/
-	override void OnDamage(EDamageType type, float damage, HitZone pOriginalHitzone, IEntity instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID)
+	override float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, IEntity damageSourceGunner, IEntity damageSourceParent, const GameMaterial hitMaterial, int colliderID, inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
 	{
-		super.OnDamage(type, damage, pOriginalHitzone, instigator, hitTransform, speed, colliderID, nodeID);
+		// Forward non-DOT damage to parent, ignoring own base damage multiplier
+		if (!isDOT)
+			PassDamageToParent(damageType, rawDamage, damageSourceParent, hitTransform, hitMaterial);
 
-		if (this != pOriginalHitzone)
-			return;
+		return super.ComputeEffectiveDamage(damageType, rawDamage, hitEntity, struckHitZone, damageSource, damageSourceGunner, damageSourceParent, hitMaterial, colliderID, hitTransform, impactVelocity, nodeID, isDOT);
+	}
 
-		if (IsProxy())
-			return;
-
-		// Skip delay when hit with strong ammunition and destruction is already scheduled
-		if (damage > GetCriticalDamageThreshold()*GetMaxHealth() && m_pDestructionHandler && m_pDestructionHandler.IsDestructionQueued())
-			m_pDestructionHandler.StartDestruction(true);
-
-		if (m_fPassDamageToOwnerParent == 0)
-			return;
-
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Pass damage to default hitzone of parent damage manager, ignoring base damage multiplier, reduction and threshold
+	\param type - damage type, use TRUE damage to ignore thresholds and multipliers of default hitzone
+	\param damage - amount of damage passed to default hitzone of parent damage manager, multiplied by damage type multiplier of current hitzone
+	\param instigator - instigator entity
+	\param transform - hit position, direction and normal
+	\param surface - hit surface properties
+	*/
+	void PassDamageToParent(EDamageType type, float damage, IEntity instigator, inout vector transform[3], SurfaceProperties surface = null)
+	{
 		if (!m_ParentDamageManager)
 			return;
 
-		m_ParentDamageManager.HandleDamage(type, damage * m_fPassDamageToOwnerParent, hitTransform, m_ParentDamageManager.GetOwner(), m_ParentDamageManager.GetDefaultHitZone(), instigator, null, -1, -1);
+		damage *= m_fPassDamageToParentScale * GetDamageMultiplier(type);
+		if (damage == 0)
+			return;
+
+		m_ParentDamageManager.HandleDamage(type, damage, transform, m_ParentDamageManager.GetOwner(), m_ParentDamageManager.GetDefaultHitZone(), instigator, surface, -1, -1);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -89,30 +99,28 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 		// Change from destroyed can only mean repair
 		if (GetPreviousDamageState() == EDamageState.DESTROYED)
 		{
-			if (m_pDestructionHandler)
-				GetGame().GetCallqueue().CallLater(m_pDestructionHandler.OnRepair); // Must not change model outside frame
-
+			StopDestruction();
 			return;
 		}
 
-		SCR_HitZoneContainerComponent hitZoneContainer = SCR_HitZoneContainerComponent.Cast(GetHitZoneContainer());
-		if (!hitZoneContainer)
-			return;
+		if (state == EDamageState.DESTROYED)
+			StartDestruction();
 
-		// Dont play sound when console app and when JIP
-		if (!System.IsConsoleApp() && (!IsProxy() || hitZoneContainer.IsRplReady()))
-			PlayDestructionSound(state);
+		PlayDestructionSound(state);
+	}
 
-		if (state != EDamageState.DESTROYED)
-			return;
-
+	//------------------------------------------------------------------------------------------------
+	//! Start destruction effects
+	void StartDestruction(bool immediate = false)
+	{
 		SCR_VehicleDamageManagerComponent parentDamageManager = FindParentVehicleDamageManager();
 
 		// Kill and eject occupants
 		// Only main hitzone should deal damage to occupants.
 		// TODO: Make passengers suffer random fire and bleeding instead, and let them get out if they are conscious.
 		// TODO: Depends on ability to move the occupants to proper positions inside wrecks.
-		if (hitZoneContainer.GetDefaultHitZone() == this && m_pCompartmentManager && !IsProxy())
+		HitZoneContainerComponent hitZoneContainer = GetHitZoneContainer();
+		if (hitZoneContainer && hitZoneContainer.GetDefaultHitZone() == this && m_pCompartmentManager && !IsProxy())
 		{
 			SCR_DamageManagerComponent damageManager = parentDamageManager;
 			if (!damageManager)
@@ -125,8 +133,17 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 			m_pCompartmentManager.KillOccupants(instigator, true);
 		}
 
-		if (m_pDestructionHandler && !m_pDestructionHandler.IsDestructionQueued())
-			m_pDestructionHandler.StartDestruction(false, parentDamageManager && parentDamageManager.IsInContact());
+		if (m_pDestructionHandler)
+			m_pDestructionHandler.StartDestruction(immediate);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Stop destruction effects
+	protected void StopDestruction()
+	{
+		// Must not change model outside frame
+		if (m_pDestructionHandler)
+			GetGame().GetCallqueue().CallLater(m_pDestructionHandler.OnRepair);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -160,16 +177,25 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 
 	//------------------------------------------------------------------------------------------------
 	//! Start destruction sounds
-	protected void PlayDestructionSound(int damageState)
+	protected void PlayDestructionSound(EDamageState damageState)
 	{
-		if (m_sDestructionSoundEvent.IsEmpty())
+		// Sounds are only relevant for non-dedicated clients
+		if (System.IsConsoleApp())
 			return;
 
 		if (damageState != EDamageState.DESTROYED)
 			return;
 
+		if (m_sDestructionSoundEvent.IsEmpty())
+			return;
+
 		IEntity owner = GetOwner();
 		if (!owner)
+			return;
+
+		// Play destruction effects only if not streaming in
+		SCR_HitZoneContainerComponent hitZoneContainer = SCR_HitZoneContainerComponent.Cast(GetHitZoneContainer());
+		if (IsProxy() && hitZoneContainer && !hitZoneContainer.IsRplReady())
 			return;
 
 		IEntity mainParent = SCR_EntityHelper.GetMainParent(owner);
@@ -206,4 +232,4 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 		}
 	}
 #endif
-};
+}

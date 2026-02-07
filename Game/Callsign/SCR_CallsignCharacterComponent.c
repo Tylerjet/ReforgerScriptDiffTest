@@ -1,4 +1,4 @@
-// Script File[ComponentEditorProps(category: "GameScripted/Callsign", description: "")]
+[ComponentEditorProps(category: "GameScripted/Callsign", description: "")]
 class SCR_CallsignCharacterComponentClass: SCR_CallsignBaseComponentClass
 {
 };
@@ -7,29 +7,25 @@ class SCR_CallsignCharacterComponentClass: SCR_CallsignBaseComponentClass
 Component of assigning and storing squad names
 */
 class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
-{
-	//Server only
-	protected bool m_bIsInGroup = true;
-	protected bool m_bIsPlayer;
-	
+{	
 	//Broadcast
 	protected int m_iCharacterCallsign = -1;
-	protected int m_iRoleCallsign = -1;
+	protected ERoleCallsign m_iRoleCallsign = ERoleCallsign.NONE;
 	protected bool m_bAloneInGroup = false;
 	protected int m_iFactioniD = -1;
+	protected int m_iPlayerId = 0; //~ Set on server only
 
-	
 	//======================================== GET CALLSIGN NAMES ========================================\\
 	override bool GetCallsignNames(out string company, out string platoon, out string squad, out string character, out string format)
-	{					
-		int companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex, characterCallsignIndex, characterRoleCallsignIndex;
+	{				
+		int companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex, characterCallsignNumber, characterRoleCallsignIndex;
 		character = string.Empty;
 		
-		if (!GetCallsignIndexes(companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex, characterCallsignIndex, characterRoleCallsignIndex))
+		if (!GetCallsignIndexes(companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex, characterCallsignNumber, characterRoleCallsignIndex))
 			return false;
 		
-		//Get character callsign if not alone in group, or has a role and that role is not leader (Can't really be a leader of yourself)
-		bool showCharacterCallsign = !GetIsCharacterAloneInGroup();
+		//Get character callsign if not alone in group or if player, or has a role and that role is not leader (AI only) (Can't really be a leader of yourself)
+		bool showCharacterCallsign = !GetIsCharacterAloneInGroup() || (m_iPlayerId > 0 || SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(GetOwner()) > 0);
 		
 		//No callsign data
 		if (!SetCallsignInfo())
@@ -37,7 +33,7 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 			company = companyCallsignIndex.ToString();
 			platoon = platoonCallsignIndex.ToString();
 			squad = squadCallsignIndex.ToString();
-			character = characterCallsignIndex.ToString();
+			character = characterCallsignNumber.ToString();
 			format = "ERROR %1-%2-%3-%4";
 			
 			return true;
@@ -46,36 +42,36 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		company = m_CallsignInfo.GetCompanyCallsignName(companyCallsignIndex);
 		platoon = m_CallsignInfo.GetPlatoonCallsignName(platoonCallsignIndex);
 		squad = m_CallsignInfo.GetSquadCallsignName(squadCallsignIndex);
-		
+
 		//Character callsign
 		if (showCharacterCallsign)
 		{	
 			if (characterRoleCallsignIndex >= 0)
 				character = m_CallsignInfo.GetCharacterRoleCallsignName(characterRoleCallsignIndex);
 			else 
-				character = characterCallsignIndex.ToString();
+				character = characterCallsignNumber.ToString();
 		}
 		
-		format = m_CallsignInfo.GetCallsignFormat(showCharacterCallsign);		
+		format = m_CallsignInfo.GetCallsignFormat(showCharacterCallsign, characterRoleCallsignIndex);		
 		return true;
 	}
 	
 	//======================================== GET CALLSIGN INDEXES ========================================\\
-	override bool GetCallsignIndexes(out int company, out int platoon, out int squad, out int character = -1, out int characterRole = -1)
-	{
+	override bool GetCallsignIndexes(out int companyIndex, out int platoonIndex, out int squadIndex, out int characterNumber = -1, out ERoleCallsign characterRole = ERoleCallsign.NONE)
+	{		
 		if (m_iCompanyCallsign < 0 || m_iPlatoonCallsign < 0 || m_iSquadCallsign < 0)
 		{
-			company = -1;
-			platoon = -1;
-			squad = -1;
+			companyIndex = -1;
+			platoonIndex = -1;
+			squadIndex = -1;
 			return false;
 		}	
 		
-		company = m_iCompanyCallsign;
-		platoon = m_iPlatoonCallsign;
-		squad = m_iSquadCallsign;
+		companyIndex = m_iCompanyCallsign;
+		platoonIndex = m_iPlatoonCallsign;
+		squadIndex = m_iSquadCallsign;
 		
-		GetCharacterAndRoleCallsign(character, characterRole);	
+		GetCharacterAndRoleCallsign(characterNumber, characterRole);	
 		return true;
 	}
 	
@@ -84,17 +80,18 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 	//---------------------------------------- Assign Character Group Callsign ----------------------------------------\\
 	/*!
 	Called by group, assigns a specific character group index and role (if any assigned) to character within specific group
-	\param callsignIndex character group index
-	\param roleCallsignIndex specific character role index
-	\param callsignGroupComponent character group reference
+	\param faction Faction of group
+	\param companyIndex Company Index
+	\param platoonIndex Platoon Index
+	\param squadIndex Squad Index
+	\param characterNumber Character number in squad (starts with 1)
+	\param role Character role (If any assigned)
+	\param aloneInGroup If character is alone in the group
 	*/
-	void AssignCharacterCallsign(Faction faction, int company, int platoon, int squad, int character, int role, bool isInGroup, bool aloneInGroup)
+	void AssignCharacterCallsign(Faction faction, int companyIndex, int platoonIndex, int squadIndex, int characterNumber, ERoleCallsign role, bool aloneInGroup)
 	{
 		if (!m_bIsServer)
 			return;
-		
-		//Make sure that if character wasn't in a group that the group callsign will be made availible again
-		MakeGroupCallsignAvailible();
 			
 		//On Faction changed
 		if (m_Faction != faction && faction != null)
@@ -108,39 +105,36 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 			}
 		}
 		
-		//Update in group. Used to make callsigns availible again on server if not in group
-		m_bIsInGroup = isInGroup;
-		
-		if (company == m_iCompanyCallsign && m_iPlatoonCallsign == platoon && m_iSquadCallsign == squad && m_iCharacterCallsign == character && m_iRoleCallsign == role && m_bAloneInGroup == aloneInGroup) 
+		if (companyIndex == m_iCompanyCallsign && m_iPlatoonCallsign == platoonIndex && m_iSquadCallsign == squadIndex && m_iCharacterCallsign == characterNumber && m_iRoleCallsign == role && m_bAloneInGroup == aloneInGroup) 
 			return;
 		
 		//If group did not change
-		if (company == m_iCompanyCallsign && m_iPlatoonCallsign == platoon && m_iSquadCallsign == squad && m_bAloneInGroup == aloneInGroup)
+		if (companyIndex == m_iCompanyCallsign && m_iPlatoonCallsign == platoonIndex && m_iSquadCallsign == squadIndex && m_bAloneInGroup == aloneInGroup)
 		{
 			//If role did not change
 			if (m_iRoleCallsign == role)
 			{
-				AssignCharacterCallsignBroadcast(character);
-				Rpc(AssignCharacterCallsignBroadcast, character);	
+				AssignCharacterCallsignBroadcast(characterNumber);
+				Rpc(AssignCharacterCallsignBroadcast, characterNumber);	
 			}
 			//If role did change
 			else
 			{
-				AssignCharacterAndRoleCallsignBroadcast(character, role);
-				Rpc(AssignCharacterAndRoleCallsignBroadcast, character, role);	
+				AssignCharacterAndRoleCallsignBroadcast(characterNumber, role);
+				Rpc(AssignCharacterAndRoleCallsignBroadcast, characterNumber, role);	
 			}
 		}
 		//If group did change but not role
 		else if (m_iRoleCallsign == role)
 		{
-			AssignCallsignNoRoleBroadcast(company, platoon, squad, character, aloneInGroup);
-			Rpc(AssignCallsignNoRoleBroadcast, company, platoon, squad, character, aloneInGroup);	
+			AssignCallsignNoRoleBroadcast(companyIndex, platoonIndex, squadIndex, characterNumber, aloneInGroup);
+			Rpc(AssignCallsignNoRoleBroadcast, companyIndex, platoonIndex, squadIndex, characterNumber, aloneInGroup);	
 		}
 		//If role and group changed
 		else 
 		{
-			AssignCallsignBroadcast(company, platoon, squad, character, role, aloneInGroup);
-			Rpc(AssignCallsignBroadcast, company, platoon, squad, character, role, aloneInGroup);	
+			AssignCallsignBroadcast(companyIndex, platoonIndex, squadIndex, characterNumber, role, aloneInGroup);
+			Rpc(AssignCallsignBroadcast, companyIndex, platoonIndex, squadIndex, characterNumber, role, aloneInGroup);	
 		}
 	}
 	
@@ -149,7 +143,7 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 	Updates the assigned role
 	\param roleCallsignIndex role index
 	*/
-	void UpdateCharacterRoleCallsign(int roleCallsignIndex)
+	void UpdateCharacterRoleCallsign(ERoleCallsign roleCallsignIndex)
 	{
 		if (!m_bIsServer)
 			return;
@@ -167,7 +161,7 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 	\param characterCallsign character callsign
 	\param roleCallsignIndex role index
 	*/
-	void UpdateCharacterCallsignAndRole(int characterCallsign, int roleCallsignIndex)
+	void UpdateCharacterCallsignAndRole(int characterCallsign, ERoleCallsign roleCallsignIndex)
 	{
 		if (!m_bIsServer)
 			return;
@@ -200,46 +194,6 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 			return;
 		
 		m_iRoleCallsign = -1;
-	}
-	
-	//======================================== CHARACTER HOLDS OWN GROUP CALLSIGN ========================================\\
-	//---------------------------------------- Assign Both Character and Group Callsign ----------------------------------------\\
-	protected void AssignGroupAndCharacterCallsign()
-	{
-		if (!m_bIsServer)
-			return;
-		
-		if (!m_CallsignManager)
-			return;
-		
-		int company, platoon, squad;
-		m_CallsignManager.AssignCallGroupsign(m_Faction, company, platoon, squad);
-		
-		int roleIndex = -1;
-		if (!SetCallsignInfo())
-			return;
-
-		//Assign role to groupless character
-		m_CallsignInfo.GetGrouplessCharacterRoleCallsign(GetOwner(), roleIndex);
-		AssignCharacterCallsign(m_Faction, company, platoon, squad, 1, roleIndex, false, true);
-	}
-	
-	//======================================== PLAYER CALLSIGN ========================================\\
-	//---------------------------------------- Assign Player Callsign ----------------------------------------\\
-	//Get callsign from CallsignManager
-	protected void AssignPlayerCallsign(int playerId)
-	{
-		m_bIsPlayer = true;
-		int company, platoon, squad, character;
-		
-		m_CallsignManager.SystemGetPlayerCallsignIndexes(playerId, company, platoon, squad, character);
-		
-		int roleIndex = -1;
-		if (!SetCallsignInfo())
-			return;
-		
-		m_CallsignInfo.GetGrouplessCharacterRoleCallsign(GetOwner(), roleIndex);
-		AssignCharacterCallsign(m_Faction, company, platoon, squad, character, roleIndex, false, true);
 	}
 	
 	//======================================== BROAD CASTS ========================================\\
@@ -318,8 +272,6 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 		}	
 	}
 	
-	
-	
 	//======================================== GETTERS ========================================\\
 	/*!
 	Returns if character is alone in group. ALso returns true if not in a group at all
@@ -328,28 +280,6 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 	bool GetIsCharacterAloneInGroup()
 	{
 		return m_bAloneInGroup;	
-	}
-	
-	//---------------------------------------- Assign new callsign on faction Changed ----------------------------------------\\
-	//Todo: Currently not possible for individual characters
-	protected void CharacterChangedFaction(Faction newFaction){
-		MakeGroupCallsignAvailible(newFaction != null);
-
-		if (!m_bIsInGroup && newFaction != null)
-			AssignGroupAndCharacterCallsign();
-	}
-	
-	//---------------------------------------- Make assigned group callsign availible again ----------------------------------------\\
-	protected void MakeGroupCallsignAvailible(bool clearCallsign = true)
-	{
-		//Only make availible on server, if not part of group, if faction is assigned and if company callsign is assigned
-		if (!m_bIsServer || m_bIsInGroup || !m_Faction || m_iCompanyCallsign < 0 || !m_CallsignManager)
-			return;
-		
-		m_CallsignManager.MakeGroupCallsignAvailible(m_Faction, m_iCompanyCallsign, m_iPlatoonCallsign, m_iSquadCallsign);
-		
-		if (clearCallsign)
-			m_iCompanyCallsign = -1;
 	}
 	
 	//======================================== CHARACTER SPECIFIC CALLSIGN INDEXES ========================================\\
@@ -405,42 +335,47 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 			m_iCharacterCallsign.ToString();
 
 		return true;
-	}	
+	}
 	
-	//======================================== INIT ========================================\\
-	override void InitOnServer(IEntity owner)
+	//------------------------------------------------------------------------------------------------
+	//~ Server only. On Player callsign changed
+	protected void OnPlayerCallsignChanged(int playerId, int companyIndex, int platoonIndex, int squadIndex, int characterNumber, ERoleCallsign characterRole)
 	{
-		// Always verify the pointer. The object could be deleted by the time it gets here.
-		if (owner == null)
+		//~ This player's callsign was not changed
+		if (playerId != m_iPlayerId)
 			return;
 		
-		super.InitOnServer(owner);
-		
-		AIAgent aIAgent;
-		AIControlComponent cc = AIControlComponent.Cast(owner.FindComponent(AIControlComponent));
-		if (cc)
-			aIAgent = cc.GetAIAgent();
-		
-		if (aIAgent)
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
 		{
-			SCR_AIGroup aiGroup = SCR_AIGroup.Cast(aIAgent.GetParentGroup());
+			AssignCharacterCallsign(null, -1, -1, -1, -1, -1, true);
+			return;
+		}
 			
-			//If has group then let group assign callsign
-			if (aiGroup)							
-				return;
-		}
-		
-		//Not part of a group check if player
-		int id = SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(GetOwner());
-		
-		if (id > -1)
+		//~ No group so remove callsign
+		SCR_AIGroup playerGroup = groupManager.GetPlayerGroup(playerId);
+		if (!playerGroup)
 		{
-			AssignPlayerCallsign(id);
+			AssignCharacterCallsign(null, -1, -1, -1, -1, -1, true);
 			return;
 		}
 		
-		//Is not a player and not part of a group so should assign full callsign
-		AssignGroupAndCharacterCallsign();
+		AssignCharacterCallsign(playerGroup.GetFaction(), companyIndex, platoonIndex, squadIndex, characterNumber, characterRole, playerGroup.GetPlayerAndAgentCount(true) <= 1);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*
+	Called by Callsign Manager. Makes sure that player characters listen to On Callsign Changed (Server Only)
+	*/
+	void InitPlayerOnServer(int playerId)
+	{
+		if (playerId <= 0 || m_iPlayerId > 0)
+			return;
+		
+		m_iPlayerId = playerId;
+		
+		//~ Subscribe to player callsign changed
+		m_CallsignManager.GetOnPlayerCallsignChanged().Insert(OnPlayerCallsignChanged);
 	}
 	
 	//======================================== RPL ========================================\\
@@ -458,7 +393,7 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
     }
      
     override bool RplLoad(ScriptBitReader reader)
-    {
+    {		
 		int company, platoon, squad, character, role, factionID;
 		bool aloneInGroup;
 		
@@ -479,10 +414,11 @@ class SCR_CallsignCharacterComponent : SCR_CallsignBaseComponent
 	//======================================== ON DESTROY ========================================\\
 	void ~SCR_CallsignCharacterComponent()
 	{
-		if (!m_bIsServer || m_bIsInGroup || m_bIsPlayer || m_iCompanyCallsign < 0 || !m_Faction || !m_CallsignManager)
+		if (!m_bIsServer || m_iPlayerId <= 0 || !m_CallsignManager)
 			return;
 		
-		m_CallsignManager.MakeGroupCallsignAvailible(m_Faction, m_iCompanyCallsign, m_iPlatoonCallsign, m_iSquadCallsign);
+		//~ Remove Player CallsignChanged
+		m_CallsignManager.GetOnPlayerCallsignChanged().Remove(OnPlayerCallsignChanged);
 	}
 };
 

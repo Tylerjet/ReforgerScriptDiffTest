@@ -10,10 +10,14 @@ class SCR_EditorModeEntityClass: SCR_EditorBaseEntityClass
 Editor mode entity.
 
 Must be a child of SCR_EditorManagerEntity.
+- In multiplayer, the entity is **local to the player**.
+- Only one mode can be activated at the same time. Together with it, all its components (SCR_BaseEditorComponent) are activated as well.
+- A mode is the primary way to control editor functionality, an each mode can behave differently - use different GUI, camera, etc.
+- Player can access the editor mode as long as the entity exists.
+ + This is for security reasons. If the mode entity always existed, but mode access for disabled in GUI, functions for communication on server could potentially be exploited.
+- Mode entity influences if the editor is considered limited. See SCR_EditorManagerEntity description for more details.
+- Default editor mode prefabs are defined in SCR_EditorManagerCore (config is Configs/Core folder).
 
-Only one mode can be activated at the same time. Together with it, all its components (SCR_BaseEditorComponent) are activated as well.
-
-A mode is the primary way to control editor functionality, an each mode can behave differently - use different GUI, camera, etc.
 */
 class SCR_EditorModeEntity : SCR_EditorBaseEntity
 {

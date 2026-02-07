@@ -42,14 +42,6 @@ class SCR_WorkshopUiCommon
 		mgr.m_OnAddonsChecked.Insert(SCR_WorkshopUiCommon.Callback_OnAddonsChecked);
 		mgr.CheckAddons();
 		
-		// Check safe mode
-		Print(string.Format("GetGame().IsSafeMode(): %1", GetGame().IsSafeMode()), LogLevel.NORMAL);
-		if (GetGame().IsSafeMode())
-		{
-			// Call it later after main menu init
-			GetGame().GetCallqueue().CallLater(OnFailedToLoadAddons, 0);
-		}
-		
 		InitAddonTagMaps();
 	}
 	
@@ -366,7 +358,7 @@ class SCR_WorkshopUiCommon
 	//---------------------------------------------------------------------------------------------
 	//! Performs the primary suggested action
 	//! You must store the dlRequest somewhere (preferably in UI), in case that the download will be started.
-	static void ExecutePrimaryAction(SCR_WorkshopItem item, out SCR_WorkshopUiCommon_DownloadSequence dlRequest)
+	static void ExecutePrimaryAction(notnull SCR_WorkshopItem item, out SCR_WorkshopDownloadSequence dlRequest)
 	{
 		bool downloading = item.GetDownloadAction() != null || item.GetDependencyCompositeAction() != null;
 		
@@ -379,7 +371,7 @@ class SCR_WorkshopUiCommon
 		{
 			if (!item.GetOffline())
 			{
-				dlRequest = SCR_WorkshopUiCommon_DownloadSequence.TryCreate(item, true, dlRequest);
+				dlRequest = SCR_WorkshopDownloadSequence.TryCreate(item, true, dlRequest);
 				return;
 			}
 			else
@@ -391,7 +383,7 @@ class SCR_WorkshopUiCommon
 					case EWorkshopItemProblem.UPDATE_AVAILABLE:
 					case EWorkshopItemProblem.DEPENDENCY_OUTDATED:
 					{
-						dlRequest = SCR_WorkshopUiCommon_DownloadSequence.TryCreate(item, true, dlRequest);
+						dlRequest = SCR_WorkshopDownloadSequence.TryCreate(item, true, dlRequest);
 						return;
 					}
 					
@@ -560,20 +552,6 @@ class SCR_WorkshopUiCommon
 		new SCR_BannedAddonsDetectedDialog(bannedAddons);
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	protected static void OnFailedToLoadAddons()
-	{	
-		// Open Workshop UI in offline tab, set filter to show enabled addons
-		ContentBrowserUI menu = ContentBrowserUI.Create(EWorkshopTabId.OFFLINE);
-		menu.GetOfflineSubMenu().SetFilterConfiguration_EnabledAddons();
-		
-		// Create a dialog which lists all enabled addons
-		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
-		auto offlineAddons = mgr.GetOfflineAddons();
-		auto enabledAddons = SCR_AddonManager.SelectItemsBasic(offlineAddons, EWorkshopItemQuery.ENABLED);
-		SCR_AddonListDialog.CreaateFailedToStartWithMods(enabledAddons);
-	}
-	
 	//---------------------------------------------------------------------------------------------
 	//! Internal method to handle addon enabling. Might show a dialog or enable some other addons(dependnecies) if needed.
 	protected static void SetAddonEnabled(SCR_WorkshopItem item, bool newEnabled)
@@ -675,292 +653,6 @@ class SCR_DeleteAddonDialog : SCR_ConfigurableDialogUi
 	}
 };
 
-
-
-//------------------------------------------------------------------------------------------------
-//! Helper class to manage starts of new downloads from different menus.
-//! We can start a download from many menus. The download process requests dependency list,
-//! then resolves which dependencies must be downloaded and either starts the downloads or 
-//! shows a confirmation dialog.
-class SCR_WorkshopUiCommon_DownloadSequence
-{	
-	protected ref SCR_WorkshopItem m_Item;
-	bool m_bSubscribeToAddons; // When true, we will subscribe automatically when download is started
-	
-	protected SCR_LoadingOverlayDialog m_LoadingOverlay;
-	
-	protected ref array<ref SCR_WorkshopItem> m_aDependencies;
-	protected bool m_bAllDependencyDetailsLoaded = false;
-	protected bool m_bWaitingResponse;	// Set to false when data fetching is complete
-	protected bool m_bCanceled;	// When true, finishing data reception will not trigger further downloading or other actions.
-	protected bool m_bFailed;	// True when failed due to timeour or error
-	
-	//------------------------------------------------------------------------------------------------
-	//! Tries to create a new request if previous doesn't exist or finished. Otherwise returns the previous request.
-	static SCR_WorkshopUiCommon_DownloadSequence TryCreate(SCR_WorkshopItem item, bool subscribe, SCR_WorkshopUiCommon_DownloadSequence previous)
-	{
-		if (previous)
-		{
-			if (previous.m_bWaitingResponse)
-				return previous;
-		}
-		
-		SCR_WorkshopUiCommon_DownloadSequence newRequest = new SCR_WorkshopUiCommon_DownloadSequence(item, subscribe);
-		return newRequest;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Cancels this download request.
-	void Cancel()
-	{
-		m_bCanceled = true;
-		m_bWaitingResponse = false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	private void SCR_WorkshopUiCommon_DownloadSequence(SCR_WorkshopItem item, bool subscribe, bool showLoadingOverlay = true)
-	{
-		#ifdef WORKSHOP_DEBUG
-		ContentBrowserUI._print(string.Format("SCR_WorkshopUiCommon_DownloadSequence: New for: %1", item.GetName()));
-		#endif
-		
-		m_bWaitingResponse = true;
-		m_bCanceled = false;
-		
-		// Show loading overlay, but now now, wait until some time passes and we don't receive requested data.
-		if (showLoadingOverlay)
-			GetGame().GetCallqueue().CallLater(CreateLoadingOverlay, SCR_WorkshopUiCommon.NO_LOADING_OVERLAY_DURATION_MS, false);
-		
-		// Subscribe to dependency load event of item and load details (and dependencies)
-		m_bSubscribeToAddons = subscribe;
-		m_Item = item;
-		m_Item.m_OnDependenciesLoaded.Insert(Callback_OnDependenciesLoaded);
-		
-		m_Item.m_OnGetAsset.Insert(Callback_OnAddonGetAsset);
-		m_Item.m_OnError.Insert(Callback_OnError);
-		m_Item.m_OnTimeout.Insert(Callback_OnTimeout);
-		m_Item.LoadDetails();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_WorkshopUiCommon_DownloadSequence()
-	{
-		#ifdef WORKSHOP_DEBUG
-		ContentBrowserUI._print(string.Format("SCR_WorkshopUiCommon_DownloadSequence: Delete for: %1", m_Item.GetName()));
-		#endif
-		
-		if (m_LoadingOverlay)
-			m_LoadingOverlay.Close();
-		
-		// Unsubscribe from item's events
-		m_Item.m_OnDependenciesLoaded.Remove(Callback_OnDependenciesLoaded);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void CreateLoadingOverlay()
-	{
-		// Show only if we are still waiting for data
-		if (m_bWaitingResponse)
-		{
-			m_LoadingOverlay = SCR_LoadingOverlayDialog.Create();
-			m_LoadingOverlay.m_OnCloseStarted.Insert(Cancel); // Cancel this when the loading overlay close is initiated by user
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Called from SCR_WorkshopItem.m_OnDependenciesLoaded
-	protected void Callback_OnDependenciesLoaded(SCR_WorkshopItem item)
-	{	
-		// Unsubscribe - this callback is not needed any more
-		m_Item.m_OnDependenciesLoaded.Remove(Callback_OnDependenciesLoaded);
-		
-		m_aDependencies = m_Item.GetLatestDependencies();
-		
-		if (item.GetRestricted())
-			OnAddonRestricted();
-		else if (m_aDependencies.IsEmpty())
-			OnAllDependenciesDetailsLoaded();
-		else
-		{
-			// Load details of all dependencies
-			foreach (SCR_WorkshopItem dep : m_aDependencies)
-			{
-				dep.m_OnGetAsset.Insert(Callback_OnDependencyDetailsLoaded);
-				dep.m_OnTimeout.Insert(Callback_OnTimeout);
-				dep.LoadDetails();
-			}
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnAddonGetAsset(SCR_WorkshopItem item)
-	{
-		if (!item.GetRequestFailed())
-			return;
-
-		GetGame().GetCallqueue().Remove(CreateLoadingOverlay);
-		if (m_LoadingOverlay)
-			m_LoadingOverlay.Close();
-		
-		SCR_CommonDialogs.CreateRequestErrorDialog();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnError(SCR_WorkshopItem item)
-	{
-		if (m_bWaitingResponse || !m_bFailed)
-		{
-			if (m_LoadingOverlay)
-				m_LoadingOverlay.CloseAnimated();
-			
-			SCR_CommonDialogs.CreateRequestErrorDialog();
-		}
-			
-		m_bWaitingResponse = false;
-		m_bFailed = true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnTimeout(SCR_WorkshopItem item)
-	{
-		if (m_bWaitingResponse || !m_bFailed)
-		{
-			if (m_LoadingOverlay)
-				m_LoadingOverlay.CloseAnimated();
-			
-			SCR_CommonDialogs.CreateTimeoutOkDialog();
-		}
-			
-		m_bWaitingResponse = false;
-		m_bFailed = true;
-	}
-	
-	
-	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnDependencyDetailsLoaded(SCR_WorkshopItem item)
-	{
-		item.m_OnGetAsset.Remove(Callback_OnDependencyDetailsLoaded);
-		
-		if (m_bAllDependencyDetailsLoaded)
-			return;
-		
-		int nDetailsNotLoaded;
-		foreach (auto i : m_aDependencies)
-		{
-			if (!i.GetDetailsLoaded())
-				nDetailsNotLoaded++;
-		}
-		
-		if (nDetailsNotLoaded == 0 && !m_bAllDependencyDetailsLoaded)
-		{
-			m_bAllDependencyDetailsLoaded = true;
-			OnAllDependenciesDetailsLoaded();
-		}
-	}
-	
-	
-	//------------------------------------------------------------------------------------------------
-	//! Called when finally all the details of all dependencies are loaded
-	protected void OnAllDependenciesDetailsLoaded()
-	{
-		m_bWaitingResponse = false;
-		
-		// Close the loading overlay
-		if (m_LoadingOverlay)
-			m_LoadingOverlay.CloseAnimated(false);
-		
-		// Bail if this was canceled or failed
-		if (m_bFailed || m_bCanceled)
-			return;
-		
-		// Check if any dependencies are restricted
-		int nRestricted = SCR_AddonManager.CountItemsBasic(m_aDependencies, EWorkshopItemQuery.RESTRICTED, true);
-		if (nRestricted > 0)
-		{
-			auto restrictedDependencies = SCR_AddonManager.SelectItemsBasic(m_aDependencies, EWorkshopItemQuery.RESTRICTED);
-			SCR_AddonListDialog addonsDialog = SCR_AddonListDialog.CreateRestrictedAddonsDownload(restrictedDependencies);
-		
-			// Handle cancel reports done 
-			SCR_ReportedAddonsDialog reportedDialog = SCR_ReportedAddonsDialog.Cast(addonsDialog);
-			if (reportedDialog)
-				reportedDialog.GetOnAllReportsCanceled().Insert(OnAllReportsCanceled);
-			
-			return;
-		}
-		
-		
-		
-		// Select addons for download and calculate total size
-		
-		bool downloadMainItem = false;
-		
-		SCR_WorkshopItem item = m_Item;
-		array<ref SCR_WorkshopItem> dependencies = m_aDependencies;
-		
-		array<ref SCR_WorkshopItem> dependenciesToLoad = new array<ref SCR_WorkshopItem>;
-		
-		SCR_DownloadManager.SelectAddonsForLatestDownload(dependencies, dependenciesToLoad);
-		
-		float totalDownloadSize = SCR_DownloadManager.GetTotalSizeBytes(dependenciesToLoad);
-		
-		if (SCR_DownloadManager.IsLatestDownloadRequired(item))
-		{
-			totalDownloadSize += item.GetSizeBytes();
-			downloadMainItem = true;
-		}
-		
-		int depCount = dependenciesToLoad.Count();
-			
-		// If size above threshold, open a confirmation dialog
-		float smallDownloadThreshold = ContentBrowserUI.GetSmallDownloadThreshold();
-		bool showConfirmation = !dependencies.IsEmpty(); // Show confirmation only if there are dependencies
-		//showConfirmation = true; // debug always show confirmation
-		if (showConfirmation)
-		{
-			auto dlg = SCR_DownloadConfirmationDialog.CreateForAddonAndDependencies(item, downloadMainItem, dependenciesToLoad, m_bSubscribeToAddons);
-		}
-		else
-		{
-			// Start download immediately
-			SCR_DownloadManager.GetInstance().DownloadLatestWithDependencies(m_Item, downloadMainItem, dependenciesToLoad);
-			
-			// Subscribe to items
-			if (m_bSubscribeToAddons)
-			{
-				if (m_Item)
-					m_Item.SetSubscribed(true);
-				
-				foreach (auto i : dependenciesToLoad)
-					i.SetSubscribed(true);
-			}
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Call this when all reports from dialog are cancled to clear invoker actions and display download dialog 
-	protected void OnAllReportsCanceled(SCR_ReportedAddonsDialog dialog)
-	{
-		dialog.GetOnAllReportsCanceled().Remove(OnAllReportsCanceled);
-		OnAllDependenciesDetailsLoaded();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Called when the main addon is restricted
-	protected void OnAddonRestricted()
-	{
-		m_bWaitingResponse = false;
-		
-		// Close the loading overlay
-		if (m_LoadingOverlay)
-			m_LoadingOverlay.CloseAnimated(false);
-		
-		SCR_WorkshopUiCommon.CreateDialog("error_addon_blocked");
-	}
-};
-
-
-
-
 //------------------------------------------------------------------------------------------------
 //! Dialog for confirming multiple downloads in workshop
 class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
@@ -999,7 +691,6 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		return dlg;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	protected static void SetupDownloadDialogAddons(notnull out SCR_DownloadConfirmationDialog dialog, notnull array<ref Tuple2<SCR_WorkshopItem, ref Revision>> addonsAndVersions, bool subscribeToAddons)
 	{
@@ -1030,24 +721,10 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		return dlg;
 	}
 	
-	/*
-	//------------------------------------------------------------------------------------------------
-	static SCR_DownloadConfirmationDialog CreateFailedAddonsDialog(notnull array<ref Tuple2<SCR_WorkshopItem, string>> addonsAndVersions, bool subscribeToAddons)
-	{
-		SCR_DownloadConfirmationDialog dlg = new SCR_DownloadConfirmationDialog();
-	
-		SetupDownloadDialogAddons(dlg, addonsAndVersions, subscribeToAddons);
-		
-		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, "download_failed", dlg);
-		
-		return dlg;
-	}
-	*/
-	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
-		m_Widgets.Init(GetRootWidget());
+		m_Widgets.Init(GetContentLayoutRoot(GetRootWidget()));
 		
 		// Update line of the main addon
 		m_Widgets.m_MainAddonSection.SetVisible(m_bDownloadMainItem);
@@ -1131,19 +808,21 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 	
 	//------------------------------------------------------------------------------------------------
 	//! Create and setup addon widget text and verions
-	protected void CreateAddonWidget(SCR_WorkshopItem dep, Widget listRoot)
+	protected void CreateAddonWidget(notnull SCR_WorkshopItem dep, Widget listRoot)
 	{
 		Widget w = GetGame().GetWorkspace().CreateWidgets(DOWNLOAD_LINE_LAYOUT, listRoot);
 		SCR_DownloadManager_AddonDownloadLine comp = SCR_DownloadManager_AddonDownloadLine.Cast(w.FindHandler(SCR_DownloadManager_AddonDownloadLine));
 		
-		//Find version id - TODO: needs cleaner solution
-		int depId = m_aDependencies.Find(dep);
+		// Setup addon revision
+		Dependency dependency = dep.GetDependency();
 		
-		Revision targetVersionOverride;
-		if (m_aDependencyVersions != null)
-			targetVersionOverride = m_aDependencyVersions[depId];	// Shows this specific target version
-
-		comp.InitForWorkshopItem(dep, targetVersionOverride);	
+		
+		Revision revision = null;
+		if (dependency)
+			revision = dependency.GetRevision();
+		
+		//Revision revision = dep.GetDependency().GetRevision();
+		comp.InitForWorkshopItem(dep, revision);
 	}
 	
 	
@@ -1259,44 +938,6 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 };
 
 //------------------------------------------------------------------------------------------------
-class SCR_DownloadFailDialog : SCR_DownloadConfirmationDialog
-{
-	//------------------------------------------------------------------------------------------------
-	static SCR_DownloadFailDialog CreateFailedAddonsDialog(notnull array<ref Tuple2<SCR_WorkshopItem, ref Revision>> addonsAndVersions, bool subscribeToAddons)
-	{
-		SCR_DownloadFailDialog dlg = new SCR_DownloadFailDialog();
-	
-		SetupAddons(dlg, addonsAndVersions, subscribeToAddons);
-		
-		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, "download_failed", dlg);
-		
-		return dlg;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected static void SetupAddons(notnull out SCR_DownloadFailDialog dialog, notnull array<ref Tuple2<SCR_WorkshopItem, ref Revision>> addonsAndVersions, bool subscribeToAddons)
-	{
-		dialog.m_bDownloadMainItem = false;
-		dialog.m_bSubscribeToAddons = subscribeToAddons;
-		dialog.m_aDependencies = new array<ref SCR_WorkshopItem>;
-		dialog.m_aDependencyVersions = new array<ref Revision>;
-		
-		foreach (Tuple2<SCR_WorkshopItem, ref Revision> i : addonsAndVersions)
-		{
-			dialog.m_aDependencies.Insert(i.param1);
-			dialog.m_aDependencyVersions.Insert(i.param2);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
-	{
-		super.OnMenuOpen(preset);
-		m_Widgets.m_UpdateSpacer.SetVisible(false);
-	}
-};
-
-//------------------------------------------------------------------------------------------------
 //! Dialog to cancel downloads
 class SCR_CancelDownloadConfirmationDialog : SCR_ConfigurableDialogUi
 {
@@ -1320,7 +961,7 @@ class SCR_CancelDownloadConfirmationDialog : SCR_ConfigurableDialogUi
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
-		VerticalLayoutWidget layout = VerticalLayoutWidget.Cast(GetRootWidget().FindAnyWidget("AddonList"));
+		VerticalLayoutWidget layout = VerticalLayoutWidget.Cast(GetContentLayoutRoot(GetRootWidget()).FindAnyWidget("AddonList"));
 		
 		// Create widgets for downloads
 		foreach (SCR_WorkshopItemActionDownload action : m_aActions)
@@ -1396,7 +1037,7 @@ class SCR_AddonListDialog : SCR_ConfigurableDialogUi
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
-		VerticalLayoutWidget layout = VerticalLayoutWidget.Cast(GetRootWidget().FindAnyWidget("AddonList"));
+		VerticalLayoutWidget layout = VerticalLayoutWidget.Cast(GetContentLayoutRoot(GetRootWidget()).FindAnyWidget("AddonList"));
 		
 		// Create widgets
 		foreach (SCR_WorkshopItem item : m_aItems)
@@ -1452,7 +1093,7 @@ class SCR_AddonListDialog : SCR_ConfigurableDialogUi
 	
 	//------------------------------------------------------------------------------------------------
 	//! Dialog when failed to load game with selected mods
-	static SCR_AddonListDialog CreaateFailedToStartWithMods(array<ref SCR_WorkshopItem> items)
+	static SCR_AddonListDialog CreateFailedToStartWithMods(array<ref SCR_WorkshopItem> items)
 	{
 		return new SCR_AddonListDialog(items, "error_failed_to_start_with_mods");
 	}

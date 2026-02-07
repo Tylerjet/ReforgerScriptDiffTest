@@ -146,7 +146,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		if (m_bSnapToGround)
 		{
 			caller.GetTransform(computedTransform);
-			vector normal = vector.Zero;
+			vector normal = vector.Up;
 			SnapToGround(normal, {caller});
 			computedTransform[3] = owner.GetOrigin();
 			

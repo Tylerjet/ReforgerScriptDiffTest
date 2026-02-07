@@ -272,7 +272,7 @@ class GameModeSetupPlugin: WorkbenchPlugin
 		api.GetWorldPath(worldPath);
 		if (worldPath.IsEmpty())
 		{
-			error = "No world is currently loaded!";
+			error = "No world is currently loaded, or the current world is not saved!";
 			return false;
 		}
 		

@@ -67,7 +67,7 @@ class SCR_BaseCampaignTutorialStage : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnStructureBuilt(SCR_CampaignBase base, IEntity structure)
+	void OnStructureBuilt(SCR_CampaignMilitaryBaseComponent base, IEntity structure)
 	{
 	}
 	

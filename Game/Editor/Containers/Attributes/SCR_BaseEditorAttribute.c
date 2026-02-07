@@ -16,6 +16,9 @@ class SCR_BaseEditorAttribute
 	[Attribute(params: "layout")]
 	protected ResourceName m_Layout;
 	
+	[Attribute(desc: "Holds a list of dynamic descriptions from attributes. When hovered and when changing the attribute the system will loop through all entries and display the dynamic description for the first valid. If none are valid than the default description is shown")]
+	protected ref array<ref SCR_BaseAttributeDynamicDescription> m_aAttributeDynamicDescriptions;
+	
 	//State
 	protected bool m_bAttributeEnabled = true;
 	protected bool m_bIsSubAttribute;
@@ -61,6 +64,21 @@ class SCR_BaseEditorAttribute
 	}
 	
 	/*!
+	Get array of dynamic descriptions
+	\param[out] Dynamic descriptions array
+	\return count of dynamic description array
+	*/
+	int GetDynamicDescriptionArray(notnull out array<SCR_BaseAttributeDynamicDescription> dynamicDescriptionArray)
+	{
+		foreach(SCR_BaseAttributeDynamicDescription description: m_aAttributeDynamicDescriptions)
+		{
+			dynamicDescriptionArray.Insert(description);
+		}
+		
+		return dynamicDescriptionArray.Count();
+	}
+	
+	/*!
 	Check if the server should be extracted and applied on server.
 	\return True if the attribute is controlled by server.
 	*/
@@ -83,6 +101,15 @@ class SCR_BaseEditorAttribute
 	ResourceName GetLayout()
 	{
 		return m_Layout;
+	}
+	/*!
+	Return True if attribute is allowed to be duplicate. 
+	Only Global attributes can be duplicates. Entity Attributes that can have confliciting attributes (eg two entities are opened and both have diffrent values. Can never be duplicate!
+	\return True if allow dupplicate
+	*/
+	bool BoolAllowDuplicate()
+	{
+		return false;
 	}
 	
 	/*!
@@ -552,6 +579,29 @@ class SCR_BaseEditorAttributeEntrySlider: SCR_BaseEditorAttributeEntry
 		
 	}
 };
+class SCR_BaseEditorAttributeEntryTimeSlider: SCR_BaseEditorAttributeEntry
+{
+	protected ETimeFormatParam m_eHideIfZero;
+	protected bool m_bAlwaysHideSeconds;
+	
+	/*!
+	Get values to set time slider
+	\param[out] hideIfZeroWill hide the given time values if fully 0
+	\param[out] alwaysHideSeconds Will always hide the seconds if true
+	*/
+	void GetTimeSliderValues(out ETimeFormatParam hideIfZero, out bool alwaysHideSeconds)
+	{
+		hideIfZero = m_eHideIfZero;
+		alwaysHideSeconds = m_bAlwaysHideSeconds;
+	}
+	
+	void SCR_BaseEditorAttributeEntryTimeSlider(ETimeFormatParam hideIfZero, bool alwaysHideSeconds)
+	{
+		m_eHideIfZero = hideIfZero;
+		m_bAlwaysHideSeconds = alwaysHideSeconds;
+	}
+};
+
 class SCR_BaseEditorAttributeFloatStringValues : SCR_BaseEditorAttributeEntry
 {
 	protected array<ref SCR_EditorAttributeFloatStringValueHolder> m_aValues;
@@ -568,18 +618,18 @@ class SCR_BaseEditorAttributeFloatStringValues : SCR_BaseEditorAttributeEntry
 	
 	SCR_EditorAttributeFloatStringValueHolder GetValuesEntry(int index)
 	{
-		if (index < 0 || index >= m_aValues.Count())
+		if (!m_aValues.IsIndexValid(index))
 			return null;
 		
 		return m_aValues[index];
 	}
 	
 	float GetEntryFloatValue(int index)
-	{
-		if (index < m_aValues.Count())
-			return m_aValues[index].GetFloatValue();
-		else 
-		 return 0;
+	{		
+		if (!m_aValues.IsIndexValid(index))
+			return 0;
+		
+		return m_aValues[index].GetFloatValue();
 	}
 };
 

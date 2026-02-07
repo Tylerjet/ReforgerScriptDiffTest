@@ -24,6 +24,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	protected float m_fPlayerDrawDistance;
 	protected ref ScriptInvoker m_OnUIRefresh = new ScriptInvoker();
 	protected ref ScriptInvoker Event_OnCharacterMovedInVehicle = new ScriptInvoker(); //~ Authority Only, Returns this character and vehicle character is placed in. Is NULL if placing failed
+	protected int m_inDeadPlayerID;
 	
 	//~ Authority only, Allows character to be forced into a specific vehicle position and will delete it if failed
 	protected ref array<ECompartmentType> m_aForceVehicleCompartments;
@@ -105,6 +106,9 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	}
 	protected bool IsPlayer(IEntity owner = null)
 	{
+		if (m_inDeadPlayerID != 0)
+			return true;
+		
 		if (owner)
 		{
 			return SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(owner) > 0;
@@ -141,6 +145,9 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	
 	protected void OnDestroyed(IEntity owner)
 	{
+		//--- Cache player's ID upon death, so we can access it later
+		m_inDeadPlayerID = SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(GetOwner());
+		
 		m_OnUIRefresh.Invoke();
 	}
 	
@@ -202,7 +209,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		if (!playerTeleportedComponent)
 			return;
 		
-		playerTeleportedComponent.TeleportedByEditor(this, isLongFade);
+		playerTeleportedComponent.PlayerTeleported(GetOwner(), isLongFade, SCR_EPlayerTeleportedReason.EDITOR);
 	}
 	
 	/*!
@@ -329,7 +336,9 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 							
 							//~ Failed to move in vehicle means delete character
 							Event_OnCharacterMovedInVehicle.Invoke(this, null);
-							Destroy();
+							
+							//~ Delete the next frame so entity is correctly initialized and delete is valid
+							GetGame().GetCallqueue().CallLater(Delete, param1: false, param2: true);
 						}
 						
 						//~ Failed to move in vehicle
@@ -391,7 +400,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	override int GetPlayerID()
 	{		
 		if (IsDestroyed())
-			return 0;
+			return m_inDeadPlayerID;
 		else
 			return SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(GetOwner());
 	}
@@ -405,10 +414,10 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		int playerID = GetPlayerID();
 		if (playerID > 0)
 		{
-			SCR_RespawnSystemComponent respawnSystemComponent = SCR_RespawnSystemComponent.GetInstance();
-			if (respawnSystemComponent)
+			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+			if (factionManager)
 			{
-				Faction faction = respawnSystemComponent.GetPlayerFaction(playerID);
+				Faction faction = factionManager.GetPlayerFaction(playerID);
 				if (faction)
 					return faction;
 			}
@@ -576,7 +585,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		GenericEntity owner = GetOwner();
 		
 		//--- Entity is a player, don't activate AI
-		if (IsPlayer())
+		if (flags & EEditorPlacingFlags.CHARACTER_PLAYER)
 			return this;
 		
 		//--- Activate AI

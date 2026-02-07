@@ -44,11 +44,24 @@ class SCR_TireReplacementManagerComponent : ScriptComponent
 		if(!ownerEntity)
 			return;
 		
-		auto simulation = VehicleWheeledSimulation.Cast(ownerEntity.FindComponent(VehicleWheeledSimulation));
-		if(!simulation)
-			return;
+		int wheelCount = 0;
+		if(GetGame().GetIsClientAuthority())
+		{
+			auto simulation = VehicleWheeledSimulation.Cast(ownerEntity.FindComponent(VehicleWheeledSimulation));
+			if(!simulation)
+				return;
+			
+			 wheelCount = simulation.WheelCount();
+		}
+		else
+		{
+			auto simulation = VehicleWheeledSimulation_SA.Cast(ownerEntity.FindComponent(VehicleWheeledSimulation_SA));
+			if(!simulation)
+				return;
+			
+			 wheelCount = simulation.WheelCount();
+		}
 		
-		int wheelCount = simulation.WheelCount();
 		m_aDestructionTires.Resize(wheelCount);
 		m_aDestructionTireEntities.Resize(wheelCount);
 		

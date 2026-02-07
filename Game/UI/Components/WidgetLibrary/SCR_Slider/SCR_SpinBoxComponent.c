@@ -39,6 +39,9 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 
 	[Attribute("", UIWidgets.EditBox, "")]
 	protected ResourceName m_sHintElementImage;
+	
+	[Attribute("HintBarElement", UIWidgets.EditBox, "Name for generated Hint bar widgets")]
+	protected string m_sHintBarElementName;
 
 	protected ref ScriptInvoker m_OnLeftArrowClick;
 	protected ref ScriptInvoker m_OnRightArrowClick;
@@ -59,14 +62,14 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 		{
 			m_ButtonLeft = SCR_PagingButtonComponent.Cast(left.FindHandler(SCR_PagingButtonComponent));
 			if (m_ButtonLeft)
-				m_ButtonLeft.m_OnClicked.Insert(OnLeftArrowClick);
+				m_ButtonLeft.m_OnActivated.Insert(OnLeftArrowClick);
 		}
 
 		if (right)
 		{
 			m_ButtonRight = SCR_PagingButtonComponent.Cast(right.FindHandler(SCR_PagingButtonComponent));
 			if (m_ButtonRight)
-				m_ButtonRight.m_OnClicked.Insert(OnRightArrowClick);
+				m_ButtonRight.m_OnActivated.Insert(OnRightArrowClick);
 		}
 
 		if (m_wText)
@@ -112,6 +115,7 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 				HorizontalLayoutSlot.SetSizeMode(img, LayoutSizeMode.Fill);
 
 			m_aHintElements.Insert(img);
+			img.SetName(m_sHintBarElementName + i);
 		}
 		UpdateHintBar(m_iSelectedItem, -1);
 	}

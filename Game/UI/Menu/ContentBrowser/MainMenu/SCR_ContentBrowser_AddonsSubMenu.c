@@ -48,7 +48,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	
 	protected ref array<ref BackendCallback> m_aPendingCallbacks = new ref array<ref BackendCallback>();
 	
-	protected ref SCR_WorkshopUiCommon_DownloadSequence m_DownloadRequest;
+	protected ref SCR_WorkshopDownloadSequence m_DownloadRequest;
 	
 	protected ref array<SCR_ContentBrowserTileComponent> m_aTileComponents = new array<SCR_ContentBrowserTileComponent>;
 	
@@ -310,6 +310,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		}
 	}
 	
+	protected const int LOAD_PAGE_DELAY = 500;
 	
 	//------------------------------------------------------------------------------------------------
 	// Requests page from backend or displays items according to current mode
@@ -328,7 +329,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 				DisplayExternalItems(pageId, restoreFocus);
 				break;
 			case EContentBrowserAddonsSubMenuMode.MODE_ONLINE:
-				RequestOnlinePage(pageId);
+				//RequestOnlinePage(pageId);
+				GetGame().GetCallqueue().Remove(RequestOnlinePage);
+				GetGame().GetCallqueue().CallLater(RequestOnlinePage, LOAD_PAGE_DELAY, false, pageId);
 				break;
 			case EContentBrowserAddonsSubMenuMode.MODE_OFFLINE:
 				DisplayOfflineItems(pageId, restoreFocus);
@@ -356,6 +359,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		#ifdef WORKSHOP_DEBUG
 		ContentBrowserUI._print(string.Format("WorkshopApi.RequestPage() limit: %1, offset: %2", m_GetAssetListParams.limit, m_GetAssetListParams.offset));
 		#endif
+		
 		m_WorkshopApi.RequestPage(callback, m_GetAssetListParams, m_bClearCacheAtNextRequest);
 		
 		m_aPendingCallbacks.Insert(callback);
@@ -1139,7 +1143,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		m_iCurrentPage--;
 		m_iCurrentPage = Math.ClampInt(m_iCurrentPage, 0, GetPageCount() - 1);
 		
-		this.RequestPage(m_iCurrentPage);
+		RequestPage(m_iCurrentPage);
 	}
 	
 	
@@ -1158,7 +1162,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		m_iCurrentPage++;
 		m_iCurrentPage = Math.ClampInt(m_iCurrentPage, 0, GetPageCount() - 1);
 		
-		this.RequestPage(m_iCurrentPage);
+		RequestPage(m_iCurrentPage);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1169,9 +1173,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		if (value !=  0)
 			m_bMousePageUsed = true;
 		
-		if (value < 0)
+		if (value < 0 && m_iCurrentPage < GetPageCount() - 1)
 			OnNextPageButton();
-		else if (value > 0)
+		else if (value > 0 && m_iCurrentPage > 0)
 			OnPrevPageButton();
 	}
 	
@@ -1442,7 +1446,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	protected void OnFilterChange()
 	{
 		m_bClearCacheAtNextRequest = true;
-		this.RequestPage(0);
+		RequestPage(0);
 	}
 	
 	//------------------------------------------------------------------------------------------------

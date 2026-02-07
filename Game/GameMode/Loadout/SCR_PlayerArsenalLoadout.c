@@ -59,12 +59,12 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 		string factionKey;
 		loadSuccess &= context.ReadValue(ARSENALLOADOUT_FACTION_KEY, factionKey) && factionKey != ARSENALLOADOUT_FACTIONKEY_NONE;		
 		loadSuccess &= factionKey == factionComponent.GetAffiliatedFaction().GetFactionKey();
-		loadSuccess &= context.ReadGameEntity(ARSENALLOADOUT_KEY, playerEntity);
+		loadSuccess &= context.ReadValue(ARSENALLOADOUT_KEY, playerEntity);
 		
 		// Deserialization failed, delete saved arsenal loadout
 		if (!loadSuccess)
 		{
-			arsenalManager.SetPlayerArsenalLoadout(playerId, null);
+			arsenalManager.SetPlayerArsenalLoadout(playerId, null, null);
 		}
 	}
 };

@@ -5,7 +5,7 @@ Do not modify, this script is generated
 */
 
 /*!
-\addtogroup Core\Animations
+\addtogroup Core_Animations
 \{
 */
 

@@ -12,8 +12,25 @@ class PeerPlugin : WorldEditorPlugin
 	private string GetAddonsDirCLI()
 	{
 		string addonsDir;
-		System.GetCLIParam("addonsDir", addonsDir);
-		return addonsDir;
+		array<string> addonsGUIDs = {};
+		GameProject.GetLoadedAddons(addonsGUIDs);
+		
+		foreach (string GUID: addonsGUIDs)
+		{
+			if (!GameProject.IsVanillaAddon(GUID))
+			{
+				string addonPath = "$" + GameProject.GetAddonID(GUID) + ":";
+				string absPath;
+				if (Workbench.GetAbsolutePath(addonPath, absPath))
+				{
+					if (!addonsDir.IsEmpty())
+						addonsDir += ",";
+					
+					addonsDir += absPath;
+				}
+			}
+		}
+		return "\"" + addonsDir + "\"";
 	}
 	
 	private string GetAddonsCLI()

@@ -41,11 +41,10 @@ sealed class Physics: NativeComponent
 	//! Returns interaction layer mask of the geometry element.
 	proto external int GetGeomInteractionLayer(int index);
 	/*!
-	\brief Changes state of the continuous collision detection (CCD).
-	\details If both maxMotion and shapeCastRadius is >=0 then the CCD is enabled.
-	If you want to disable it, use -1
-	\param maxMotion max motion threshold when sphere-cast is performed, to find time of impact. It should be
-	little bit less than size of the geometry to catch the situation when tunneling can happen
+	Changes state of the continuous collision detection (CCD). If both maxMotion and
+	shapeCastRadius is >=0 then the CCD is enabled. If you want to disable it, use -1.
+	\param maxMotion Max motion threshold when sphere-cast is performed, to find time of impact. It should be
+	little bit less than size of the geometry to catch the situation when tunneling can happen.
 	\param sphereCastRadius The radius of the largest possible sphere, that is completely inside the body geometry.
 	*/
 	proto external void EnableCCD(float maxMotion, float sphereCastRadius);
@@ -91,7 +90,7 @@ sealed class Physics: NativeComponent
 	//! Sets angular velocity of the physics body.
 	proto external void SetAngularVelocity(vector velocity);
 	/*!
-	\brief Sets target transformation. If timeslice == dt (simulation step delta time), it will happen in next step, otherwise in time = timeslice.
+	Sets target transformation. If timeslice == dt (simulation step delta time), it will happen in next step, otherwise in time = timeslice.
 	*/
 	proto external void SetTargetMatrix(vector matrix[4], float timeslice);
 	//! Applies impulse on the physics body.
@@ -111,27 +110,27 @@ sealed class Physics: NativeComponent
 	//! Returns total torque currently applied to the physics body.
 	proto external vector GetTotalTorque();
 	/*!
-	Changes index to response matrix, see project settings/physics/interactions/response matrix
-	Usually this index is set by physics component property, but can be override in runtime.
+	Changes index to response matrix, see "project settings/physics/interactions/response matrix".
+	Usually this index is set by physics component property, but can be overriden at runtime.
 	*/
 	proto external void SetResponseIndex(int responseIndex);
 	//! Returns actual index to response matrix.
 	proto external int GetResponseIndex();
 	/*!
 	Adds new geometry and returns an index of the geometry or -1 when an error occurred
-	\param name Name of the element
-	\param geom Physics geometry shape
-	\param frame Local transformation
-	\param material Material resource name
-	\param interactionLayer Bit mask of layers geometry belongs to
-	@code
+	\code
 		PhysicsGeom geom = PhysicsGeom.CreateBox(Vector(1, 1, 1));
 		vector frame[4];
 		Math3D.MatrixIdentity4(frame);
 		frame[3] = vector.Up;
 		string material = "{D745FD8FC67DB26A}Common/Materials/Game/stone.gamemat";
 		GetPhysics().AddGeom("Box", geom, frame, material, 0xffffffff);
-	@endcode
+	\endcode
+	\param name Name of the element
+	\param geom Physics geometry shape
+	\param frame Local transformation
+	\param material Material resource name
+	\param interactionLayer Bit mask of layers geometry belongs to
 	*/
 	proto external int AddGeom(string name, PhysicsGeom geom, vector frame[4], string material, int interactionLayer);
 	//! Finds a geometry by its name and returns its index or -1 if the geometry wasn't found
@@ -166,14 +165,14 @@ sealed class Physics: NativeComponent
 	static proto Physics CreateStatic(notnull IEntity ent, int layerMask = 0xffffffff);
 	/*!
 	Creates a static physics body from custom made geometries. The geometries are deleted when rigid body is destroyed.
-	\param ent Entity that will be associated with the physics body
-	\param geoms Array of custom made geometries
-	@code
+	\code
 		PhysicsGeom geom = PhysicsGeom.CreateBox(Vector(1, 1, 1));
 		string material = "{D745FD8FC67DB26A}Common/Materials/Game/stone.gamemat";
 		PhysicsGeomDef geoms[] = { PhysisGeomDef("Box", geom, material, 0xffffffff) };
 		Physics.CreateStaticEx(this, geoms);
-	@endcode
+	\endcode
+	\param ent Entity that will be associated with the physics body
+	\param geoms Array of custom made geometries
 	*/
 	static proto Physics CreateStaticEx(notnull IEntity ent, PhysicsGeomDef geoms[]);
 	/*!
@@ -185,17 +184,17 @@ sealed class Physics: NativeComponent
 	static proto Physics CreateDynamic(notnull IEntity ent, float mass, int layerMask = 0xffffffff);
 	/*!
 	Creates a dynamic physics body from custom made geometries. The geometries are deleted when rigid body is destroyed.
-	\param ent Entity that will be associated with the physics body
-	\param centerOfMass Offset from object-pivot to center of mass
-	\param mass Body mass
-	\param geoms Array of custom made geometries
-	@code
+	\code
 		PhysicsGeom geom = PhysicsGeom.CreateBox(Vector(1, 1, 1));
 		string material = "{D745FD8FC67DB26A}Common/Materials/Game/stone.gamemat";
 		PhysicsGeomDef geoms[] = { PhysicsGeomDef("", geom, material, 0xffffffff) };
 		vector center = 2 * vector.Up;
 		Physics.CreateDynamicEx(this, center, 1.0, geoms);
-	@endcode
+	\endcode
+	\param ent Entity that will be associated with the physics body
+	\param centerOfMass Offset from object-pivot to center of mass
+	\param mass Body mass
+	\param geoms Array of custom made geometries
 	*/
 	static proto Physics CreateDynamicEx(notnull IEntity ent, vector centerOfMass, float mass, PhysicsGeomDef geoms[]);
 	/*!

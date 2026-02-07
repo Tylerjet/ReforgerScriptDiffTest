@@ -41,7 +41,7 @@ class SCR_BaseWeaponAction : SCR_InventoryAction
 		{
 			weaponSlotType = weaponSlot.GetWeaponSlotType();
 			
-			if ( weaponSlotType != m_sWeaponOnGroundType )
+			if ( weaponSlotType != m_sWeaponOnGroundType && !CharacterHandWeaponSlotComponent.Cast(weaponSlot) )
 				continue;
 					
 			m_iSameTypeSlotsCount++;

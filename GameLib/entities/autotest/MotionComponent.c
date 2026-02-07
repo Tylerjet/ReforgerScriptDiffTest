@@ -343,7 +343,8 @@ class MotionAutoTest: GenericEntity
 	
 	override void EOnFrame(IEntity owner, float timeSlice) //!EntityEvent.FRAME
 	{	
-
+		g_Game.GetInputManager().ActivateContext("BlockInputContext");
+		
 		//DO FPS
 		int fps = System.GetFPS();
 		m_FPSWidget.SetText("FPS " + fps);

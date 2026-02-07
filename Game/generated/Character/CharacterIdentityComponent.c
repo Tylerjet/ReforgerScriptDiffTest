@@ -18,6 +18,7 @@ class CharacterIdentityComponentClass: GameComponentClass
 */
 class CharacterIdentityComponent: GameComponent
 {
+	proto external IEntity GetHeadEntity();
 	/*
 	Sets the Alpha for the head.
 	\param a target Aplha between 0-255

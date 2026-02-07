@@ -49,7 +49,7 @@ class SCR_TeleportPlayerManualCameraComponent : SCR_BaseManualCameraComponent
 		
 		vector endPos = startPos + outDir * traceDis;
 		
-		SCR_Global.TeleportPlayer(endPos);
+		SCR_Global.TeleportLocalPlayer(endPos);
 	}
 	
 //#ifdef WORKBENCH

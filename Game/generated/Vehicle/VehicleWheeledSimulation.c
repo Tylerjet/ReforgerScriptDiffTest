@@ -94,6 +94,8 @@ class VehicleWheeledSimulation: VehicleBaseSimulation
 	proto external int WheelCount();
 	//! Returns stored index of the wheel based on its name
 	proto external int WheelGetIndex(string name);
+	//! Returns name of the wheel based on its index
+	proto external string WheelGetName(int wheelIdx);
 	/*!
 	Get the wheel position based on suspension.
 	\param wheelIdx Index of the wheel
@@ -101,8 +103,6 @@ class VehicleWheeledSimulation: VehicleBaseSimulation
 	\return Returns wheel position in local space.
 	*/
 	proto external vector WheelGetPosition(int wheelIdx, float displacement = 0.0);
-	//! Returns name of the wheel based on its index
-	proto external string WheelGetName(int wheelIdx);
 	//! Returns true if wheel has contact with ground or other object
 	proto external bool WheelHasContact(int wheelIdx);
 	//! Returns wheel contact material
@@ -113,6 +113,12 @@ class VehicleWheeledSimulation: VehicleBaseSimulation
 	proto external vector WheelGetContactNormal(int wheelIdx);
 	//! Returns entity which is in contact with wheel
 	proto external IEntity WheelGetContactEntity(int wheelIdx);
+	//! Returns whether and how is wheel in contact with some liquid
+	proto external EWheelContactLiquidState WheelGetContactLiquidState(int wheelIdx);
+	//! Returns the material of the liquid which the wheel is in contact
+	proto external GameMaterial WheelGetContactLiquidMaterial(int wheelIdx);
+	//! Returns the position where the wheel touches a liquid surface
+	proto external vector WheelGetContactLiquidPosition(int wheelIdx);
 	//! Returns current wheel's RPM
 	proto external float WheelGetRPM(int wheelIdx);
 	//! Returns initial wheel's radius

@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 [ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Handles respawn timers for players.")]
 class SCR_RespawnTimerComponentClass: SCR_BaseGameModeComponentClass
 {
@@ -84,10 +85,19 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 	/*!
 		Returns time in seconds after world start. Synchronized to clients.
 	*/
+	#ifndef AR_RESPAWN_TIMER_TIMESTAMP
 	protected float GetCurrentTime()
+	#else
+	protected WorldTimestamp GetCurrentTime()
+	#endif
 	{
+		#ifndef AR_RESPAWN_TIMER_TIMESTAMP
 		float time = Replication.Time();
 		return time * 0.001; // ms to s
+		#else
+		ChimeraWorld world = GetOwner().GetWorld();
+		return world.GetServerTimestamp();
+		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -101,13 +111,20 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 		RpcDo_SetDuration_BC(playerID, respawnTime);
 		Rpc(RpcDo_SetDuration_BC, playerID, respawnTime);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsPlayerEnqueued(int playerID)
+	{
+		return m_mRespawnTimers.Contains(playerID);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Only relevant to server and local player.
 	*/
 	bool GetCanPlayerSpawn(int playerID)
 	{
-		if (!m_mRespawnTimers.Contains(playerID))
+		if (!IsPlayerEnqueued(playerID))
 		{
 			Print("Provided playerId: (" + playerID + ") in SCR_RespawnTimerComponent was invalid!", LogLevel.ERROR);
 			return false;
@@ -141,7 +158,11 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 			return;
 
 		// TODO@AS: Propagate change to owner
+		#ifndef AR_RESPAWN_TIMER_TIMESTAMP
 		float rplTime = GetCurrentTime();
+		#else
+		WorldTimestamp rplTime = GetCurrentTime();
+		#endif
 
 		// Notify all clients, fire locally
 		RpcDo_StartTimer_BC(playerId, rplTime);
@@ -159,7 +180,11 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 		\param rplTime Synchronized network time.
 	*/
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	#ifndef AR_RESPAWN_TIMER_TIMESTAMP
 	private void RpcDo_StartTimer_BC(int playerId, float rplTime)
+	#else
+	private void RpcDo_StartTimer_BC(int playerId, WorldTimestamp rplTime)
+	#endif
 	{
 		m_mRespawnTimers[playerId].Start(rplTime);
 	}
@@ -201,7 +226,11 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 
 		// For first spawn to be already finished even when time == 0
 		respawnTimer.SetDuration(m_fRespawnTime);
+		#ifndef AR_RESPAWN_TIMER_TIMESTAMP
 		respawnTimer.Start(-m_fRespawnTime);
+		#else
+		respawnTimer.Start(((WorldTimestamp)null).PlusSeconds(-m_fRespawnTime));
+		#endif
 
 		if (!m_mRespawnTimers.Contains(playerId))
 			m_mRespawnTimers.Insert(playerId, respawnTimer);
@@ -253,7 +282,11 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 			DbgUI.Spacer(10);
 			DbgUI.Text( header );
 
+			#ifndef AR_RESPAWN_TIMER_TIMESTAMP
 			float timeNow = GetCurrentTime();
+			#else
+			WorldTimestamp timeNow = GetCurrentTime();
+			#endif
 			PlayerManager playerManager = GetGame().GetPlayerManager();
 			foreach (int playerId, SCR_RespawnTimer timer : m_mRespawnTimers)
 			{
@@ -308,7 +341,7 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 		#ifdef RESPAWN_TIMER_COMPONENT_DEBUG
 		if (!s_DebugRegistered)
 		{
-			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_TIMER_COMPONENT, "", "Respawn Timers Diag", "Network");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_TIMER_COMPONENT, "", "Respawn Timer", "GameMode");
 			s_DebugRegistered = true;
 		}
 		#endif

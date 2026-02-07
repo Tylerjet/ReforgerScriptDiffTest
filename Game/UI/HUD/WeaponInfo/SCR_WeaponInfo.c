@@ -65,7 +65,6 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	protected const float FADEOUT_AMMO_TYPE_DELAY = 6; // Time until ammo type fades out
 	
 	protected BaseWeaponManagerComponent m_WeaponManager;
-	protected SCR_CharacterControllerComponent m_CharacterController;
 	protected SCR_InventoryStorageManagerComponent m_InventoryManager;
 	protected CompartmentAccessComponent m_CompartmentAccess;
 
@@ -132,10 +131,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		m_WeaponState.m_Weapon = weapon;		
 		
 		// Hide weapon UI if there is no weapon equipped and stop
-		m_bShowLocal = weapon;
-		m_wRoot.SetVisible(m_bShowLocal);
+		Show(weapon != null);
 		
-		if (!m_bShowLocal)
+		if (!weapon)
 			return;
 		
 		// Get weapon & grenade UI info
@@ -1114,17 +1112,10 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		if (!character)
 			return false;
 
-		// Detect and store weapon manager
 		m_WeaponManager = BaseWeaponManagerComponent.Cast(character.FindComponent(BaseWeaponManagerComponent));
 		if (!m_WeaponManager)
 			return false;
 
-		// Store character contoller
-		m_CharacterController = SCR_CharacterControllerComponent.Cast(character.FindComponent(SCR_CharacterControllerComponent));
-		if (!m_CharacterController)
-			return false;
-
-		
 		m_CompartmentAccess = CompartmentAccessComponent.Cast(owner.FindComponent(CompartmentAccessComponent));
 		if (!m_CompartmentAccess)
 			return false;

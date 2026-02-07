@@ -341,9 +341,9 @@ class SCR_PlayMenu: ChimeraMenuBase
 	{
 		SCR_MissionHeader header = m_CurrentTile.m_Header;
 		if (header && !header.GetSaveFileName().IsEmpty())
-			SCR_SaveLoadComponent.LoadOnStart(header);
+			GetGame().GetSaveManager().SetFileNameToLoad(header);
 		else
-			SCR_SaveLoadComponent.LoadOnStart();
+			GetGame().GetSaveManager().ResetFileNameToLoad();
 		
 		PlayCurrentScenario();
 		
@@ -353,7 +353,7 @@ class SCR_PlayMenu: ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnRestart()
 	{
-		SCR_SaveLoadComponent.LoadOnStart();
+		GetGame().GetSaveManager().ResetFileNameToLoad();
 		PlayCurrentScenario();
 		
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.PlayMenu);
@@ -431,13 +431,13 @@ class SCR_PlayMenu: ChimeraMenuBase
 		SCR_MissionHeader header = m_CurrentTile.m_Header;
 		MissionWorkshopItem item = m_CurrentTile.m_Item;
 
-		bool canBeLoaded = header && SCR_SaveLoadComponent.HasSaveFile(header);
-		m_Play.SetVisible(!canBeLoaded, false);
-		m_Continue.SetVisible(canBeLoaded, false);
+		bool canContinue = header && GetGame().GetSaveManager().HasLatestSave(header);
+		m_Play.SetVisible(!tile.m_bIsMouseInteraction && !canContinue, false);
+		m_Continue.SetVisible(!tile.m_bIsMouseInteraction && canContinue, false);
 		
-		m_Restart.SetVisible(canBeLoaded, false);
-		m_Host.SetVisible(item.GetPlayerCount() > 1, false);
-		m_FindServer.SetVisible(item.GetPlayerCount() > 1, false);
+		m_Restart.SetVisible(!tile.m_bIsMouseInteraction && canContinue, false);
+		m_Host.SetVisible(!tile.m_bIsMouseInteraction && !GetGame().IsPlatformGameConsole() && item.GetPlayerCount() > 1, false);
+		m_FindServer.SetVisible(!tile.m_bIsMouseInteraction && item.GetPlayerCount() > 1, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

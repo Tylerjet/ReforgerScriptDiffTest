@@ -23,16 +23,17 @@ class SCR_WorkshopItem
 	// friend class SCR_WorkshopItemAction
 	
 	// ---- Public variables ----
-	ref ScriptInvoker m_OnChanged = new ref ScriptInvoker;				// (SCR_WorkshopItem item) - Called on any change and any event which affects state. Might be called on next frame!
-	ref ScriptInvoker m_OnGetAsset = new ref ScriptInvoker;				// (SCR_WorkshopItem item) - Called on failure to load details too.
-	ref ScriptInvoker m_OnDependenciesLoaded = new ref ScriptInvoker;	// (SCR_WorkshopItem item)
-	ref ScriptInvoker m_OnScenariosLoaded = new ref ScriptInvoker;		// (SCR_WorkshopItem item)
-	ref ScriptInvoker m_OnError = new ref ScriptInvoker;				// (SCR_WorkshopItem item) - Called on any error event
-	ref ScriptInvoker m_OnTimeout = new ref ScriptInvoker;				// (SCR_WorkshopItem item) - Called on any timeout event
-	ref ScriptInvoker m_OnDownloadComplete = new ref ScriptInvoker;		// (SCR_WorkshopItem item) - Called when any download has been completed (including an update)
-	ref ScriptInvoker m_OnOfflineStateChanged = new ref ScriptInvoker;	// (SCR_WorkshopItem item, bool newState) - Called when the addon was downloaded first time or deleted (OFFLINE flag changed its value)
-	ref ScriptInvoker m_OnReportStateChanged = new ref ScriptInvoker;	// (SCR_WorkshopItem, bool newReported) - Called when reported state has changed
-	ref ScriptInvoker m_OnMyReportLoaded = new ref ScriptInvoker;		// (SCR_WorkshopItem item) - called after report loading is done.
+	ref ScriptInvoker m_OnChanged = new ref ScriptInvoker();				// (SCR_WorkshopItem item) - Called on any change and any event which affects state. Might be called on next frame!
+	ref ScriptInvoker m_OnGetAsset = new ref ScriptInvoker();				// (SCR_WorkshopItem item) - Called on failure to load details too.
+	ref ScriptInvoker m_OnDependenciesLoaded = new ref ScriptInvoker();	// (SCR_WorkshopItem item)
+	ref ScriptInvoker m_OnScenariosLoaded = new ref ScriptInvoker();		// (SCR_WorkshopItem item)
+	ref ScriptInvoker m_OnError = new ref ScriptInvoker();				// (SCR_WorkshopItem item) - Called on any error event
+	ref ScriptInvoker m_OnTimeout = new ref ScriptInvoker();				// (SCR_WorkshopItem item) - Called on any timeout event
+	ref ScriptInvoker m_OnDownloadComplete = new ref ScriptInvoker();		// (SCR_WorkshopItem item) - Called when any download has been completed (including an update)
+	ref ScriptInvoker m_OnOfflineStateChanged = new ref ScriptInvoker();	// (SCR_WorkshopItem item, bool newState) - Called when the addon was downloaded first time or deleted (OFFLINE flag changed its value)
+	ref ScriptInvoker m_OnReportStateChanged = new ref ScriptInvoker();	// (SCR_WorkshopItem, bool newReported) - Called when reported state has changed
+	ref ScriptInvoker m_OnMyReportLoaded = new ref ScriptInvoker();		// (SCR_WorkshopItem item) - called after report loading is done.
+	ref ScriptInvoker m_OnRedownload = new ref ScriptInvoker();
 	
 	// ---- Protected / Private ----
 	
@@ -137,7 +138,10 @@ class SCR_WorkshopItem
 		_print(string.Format("   ReportedByMe:        %1", GetReportedByMe()));
 		if (GetCurrentLocalRevision())
 			_print(string.Format("   CurrentLocalVersion: %1", GetCurrentLocalRevision().GetVersion()));
-		_print(string.Format("   LatestVersion:       %1", GetLatestVersion()));
+		
+		if (GetLatestVersion())
+			_print(string.Format("   LatestVersion:       %1", GetLatestVersion()));
+		
 		_print(string.Format("   ItemDataLoaded:      %1", GetItemDataLoaded()));
 		_print(string.Format("   DetailsLoaded:       %1", GetDetailsLoaded()));
 		_print(string.Format("   ScenariosLoaded:     %1", GetScenariosLoaded()));
@@ -190,6 +194,12 @@ class SCR_WorkshopItem
 		}
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	void ClearLoadDetails()
+	{
+		m_bDetailsLoaded = false;
+		m_bWaitingLoadDetails = false;
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Returns array of scenarios
@@ -897,6 +907,23 @@ class SCR_WorkshopItem
 	}
 	
 	//-----------------------------------------------------------------------------------------------
+	void RetryDownload(Revision targetRevision)
+	{
+		if (!m_ActionDownload)
+			m_ActionDownload = new SCR_WorkshopItemActionDownload(this, latestVersion: false, targetRevision);
+		
+		SCR_AddonManager.GetInstance().Internal_OnNewDownload(this, m_ActionDownload);
+		
+		m_ActionDownload.Activate();
+		
+		/*
+		ClearLoadDetails();
+		SCR_WorkshopDownloadSequence.TryCreate(this, true, null);
+		m_OnRedownload.Invoke(this);
+		*/
+	}
+	
+	//-----------------------------------------------------------------------------------------------
 	//! Starts downloading latest version of dependencies which are offline
 	//! !!! If a previous same action is running, it doesn't create a new action but
 	//! !!! Returns a previous action instead.
@@ -1168,6 +1195,7 @@ class SCR_WorkshopItem
 			{
 				m_CallbackLoadScenarios = new SCR_WorkshopItemCallback_LoadScenarios;
 				m_CallbackLoadScenarios.m_OnSuccess.Insert(Callback_LoadScenarios_OnSuccess);
+				m_CallbackLoadScenarios.m_OnError.Insert(Callback_LoadScenarios_OnError);
 				m_CallbackLoadScenarios.m_OnTimeout.Insert(Callback_LoadScenarios_OnTimeout);
 			}
 			
@@ -1214,6 +1242,8 @@ class SCR_WorkshopItem
 		m_OnGetAsset.Invoke(this);
 		
 		SetChanged();
+
+		//CustomDebugError("SCR_WorkshopItem failed to load details");
 	}
 	
 	
@@ -1235,6 +1265,8 @@ class SCR_WorkshopItem
 		#endif
 		
 		m_OnError.Invoke(this);
+
+		CustomDebugError("SCR_WorkshopItem failed to load dependencies");
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -1266,6 +1298,8 @@ class SCR_WorkshopItem
 		#endif
 		
 		m_OnError.Invoke(this);
+		
+		CustomDebugError("SCR_WorkshopItem failed to load scenarios");
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -1299,6 +1333,8 @@ class SCR_WorkshopItem
 		// Error might happen if there is no report at all
 		// Let's report success anyway
 		m_OnMyReportLoaded.Invoke(this);
+
+		CustomDebugError("SCR_WorkshopItem failed to load report");
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -1363,6 +1399,7 @@ class SCR_WorkshopItem
 			_print("TryLoadDependencies()");
 		#endif
 		
+
 		// Get array of dependencies - TODO: differentiate between dependencies version to load
 		Revision latestRevision = GetLatestRevision();
 		array<Dependency> dependencies = new array<Dependency>;
@@ -1505,7 +1542,7 @@ class SCR_WorkshopItem
 		if (!m_Item)
 			return false;
 		
-		m_Item.PauseDownload();
+		m_Item.PauseDownload(null);
 		return true;
 	}
 	
@@ -1519,7 +1556,7 @@ class SCR_WorkshopItem
 		if (!m_Item)
 			return false;
 		
-		m_Item.Cancel();
+		m_Item.Cancel(null);
 		return true;
 	}
 	
@@ -1650,7 +1687,9 @@ class SCR_WorkshopItem
 		// We don't delete the actions so that users can still access them
 		if (m_ActionDownload)
 		{
-			m_ActionDownload.Internal_Update();
+			
+
+			m_ActionDownload.Internal_Update(timeSlice);
 			
 			float newProgress;
 			if (m_Item)
@@ -1703,7 +1742,7 @@ class SCR_WorkshopItem
 			
 		if (m_ActionReport)
 		{
-			m_ActionReport.Internal_Update();
+			m_ActionReport.Internal_Update(timeSlice);
 			
 			if (m_ActionReport.IsCompleted())
 			{
@@ -1721,7 +1760,7 @@ class SCR_WorkshopItem
 		
 		if (m_ActionCancelReport)
 		{
-			m_ActionCancelReport.Internal_Update();
+			m_ActionCancelReport.Internal_Update(timeSlice);
 			
 			if (m_ActionCancelReport.IsCompleted())
 			{
@@ -1739,7 +1778,7 @@ class SCR_WorkshopItem
 			
 		if (m_ActionDependency)
 		{
-			m_ActionDependency.Internal_Update();
+			m_ActionDependency.Internal_Update(timeSlice);
 			
 			if (m_ActionDependency.IsCompleted())
 			{
@@ -1831,7 +1870,7 @@ class SCR_WorkshopItem
 		// Add block
 		if (m_ActionAddAuthorBlock)
 		{
-			m_ActionAddAuthorBlock.Internal_Update();
+			m_ActionAddAuthorBlock.Internal_Update(0);
 			
 			if (m_ActionAddAuthorBlock.IsCompleted())
 			{
@@ -1850,7 +1889,7 @@ class SCR_WorkshopItem
 		// Remove block 
 		if (m_ActionRemoveAuthorBlock)
 		{
-			m_ActionRemoveAuthorBlock.Internal_Update();
+			m_ActionRemoveAuthorBlock.Internal_Update(0);
 			
 			if (m_ActionRemoveAuthorBlock.IsCompleted())
 			{
@@ -2098,5 +2137,16 @@ class SCR_WorkshopItem
 	void _print(string str, LogLevel logLevel = LogLevel.DEBUG)
 	{
 		Print(string.Format("[SCR_AddonManager] %1 %2", this, str), logLevel);
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void CustomDebugError(string message)
+	{	
+		string addonEnv = "unknown due to missing item";
+		if (m_Item)
+			addonEnv = m_Item.GetBackendEnv();
+		
+		string CurrentEnv = GetGame().GetBackendApi().GetBackendEnv();
+		Debug.Error(string.Format("Addon: %1 [id: %2, from: %3] - %4 [current env: %5]", GetName(), GetId(), addonEnv, message, CurrentEnv));
 	}
 };

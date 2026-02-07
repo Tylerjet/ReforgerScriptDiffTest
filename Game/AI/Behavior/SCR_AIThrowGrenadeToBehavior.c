@@ -17,7 +17,7 @@ class SCR_AIThrowGrenadeToBehavior : SCR_AIBehaviorBase
 			return;
 		
 		m_bAllowLook = false;
-		m_fPriority = PRIORITY_BEHAVIOR_THROW_GRENADE;
+		SetPriority(PRIORITY_BEHAVIOR_THROW_GRENADE);
 		m_fPriorityLevel.m_Value = priorityLevel;
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Throw_Grenade.bt";
 #ifdef AI_DEBUG 
@@ -35,7 +35,7 @@ class SCR_AIThrowGrenadeToBehavior : SCR_AIBehaviorBase
 	//----------------------------------------------------------------------------------
 	override void OnActionFailed()
 	{
-		if (m_eState == EAIActionState.COMPLETED || m_eState == EAIActionState.FAILED)
+		if (GetActionState() == EAIActionState.COMPLETED || GetActionState() == EAIActionState.FAILED)
 			return;
 		super.OnActionFailed();
 	}

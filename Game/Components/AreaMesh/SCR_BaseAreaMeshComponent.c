@@ -4,10 +4,16 @@ class SCR_BaseAreaMeshComponentClass: ScriptComponentClass
 };
 class SCR_BaseAreaMeshComponent: ScriptComponent
 {
+	//~ Resolution of Ellipse mesh in preview (Rectangle by definition has a resolution of 4)
+	static const int PREVIEW_RESOLUTION = 48;
+	
+	[Attribute(defvalue: "10", category: "Virtual Area", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EAreaMeshShape), desc: "Area shape. If Ellipse it will use Radius while Rectangle uses diameter (width and length) rather like ellipse using half the diameter)")]
+	protected EAreaMeshShape m_eShape;
+	
 	[Attribute("10")]
 	protected float m_fHeight;
 	
-	[Attribute("12", desc: "How many segments in the ellipse.", uiwidget: UIWidgets.Slider, params: "4 60 1", category: "Virtual Area")]
+	[Attribute("12", desc: "How many segments in the ellipse (ELLIPSE Shapes only as RECTANGLE has a set resolution of 4).", uiwidget: UIWidgets.Slider, params: "4 60 1", category: "Virtual Area")]
 	protected int m_vResolution;
 	
 	[Attribute(desc: "True to let the border copy terrain, creating a 'wall'.", category: "Virtual Area")]
@@ -46,10 +52,73 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	{
 	}
 	
+	/*!
+	Get height of the area.
+	\return Height
+	*/
+	float GetHeight()
+	{
+		return m_fHeight;
+	}
+	
+	/*!
+	Return shape if areaMesh
+	\return Shape Enum
+	*/
+	EAreaMeshShape GetShape()
+	{
+		return m_eShape;
+	}
+	
+	/*!
+	Get Resolution of the area.
+	Always 4 if Rectangle
+	\return Resolution
+	*/
+	int GetResolution()
+	{
+		if (GetShape() == EAreaMeshShape.RECTANGLE)
+			return 4;
+		else 
+			return m_vResolution;
+	}
+	
+	/*!
+	Returns width and length
+	To be overloaded by inherited classes.
+	By default uses radius as width and length unless function is overwritten
+	\param[out] width Width of Zone (x)
+	\param[out] length length of Zone (z)
+	*/
+	void GetDimensions2D(out float width, out float length)
+	{
+		width = GetRadius();
+		length =  width;
+	}
+	
+	/*!
+	Returns dimensions in vector
+	\return dimensions Width, height, length
+	*/
+	void GetDimensions3D(out vector dimensions)
+	{
+		float width, length;
+		GetDimensions2D(width, length);
+		dimensions[0] = width;
+		dimensions[1] = GetHeight();
+		dimensions[2] = length;
+	}
+	
 	//~ Get the position of the AreaMesh. Can be overwritten to set custom position
 	protected vector GetPosition(IEntity owner)
 	{
 		return owner.GetOrigin();
+	}
+	
+	//~ Get material used for area mesh
+	protected ResourceName GetMaterial()
+	{
+		return m_Material;
 	}
 	
 	/*!
@@ -59,28 +128,62 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	{
 		IEntity owner = GetOwner();
 		
-		float radius = GetRadius();
-		if (radius <= 0)
+		vector dimensions;
+		GetDimensions3D(dimensions);
+		
+		if (dimensions[0] <= 0 || dimensions[1] <= 0 || dimensions[2] <= 0)
 		{
 			owner.SetObject(null, "");
 			return;
-		}
+		}	
 		
-		//--- Reset orientation, as the mesh is created in local space
-		vector transform[4];
-		Math3D.MatrixIdentity3(transform);
-		transform[3] = GetPosition(owner);
-		owner.SetWorldTransform(transform);
-		
-		float dirStep = Math.PI2 / m_vResolution;
 		array<vector> positions = {};
 		
-		//--- Get positions
-		for (int v = 0; v < m_vResolution; v++)
+		if (m_eShape == EAreaMeshShape.ELLIPSE)
 		{
-			float dir = dirStep * v;
-			vector pos = Vector(Math.Sin(dir) * radius, -m_fHeight, Math.Cos(dir) * radius);
-			positions.Insert(pos);
+			int resolution = GetResolution();
+			float dirStep = Math.PI2 / resolution;
+		
+			//--- Get positions
+			for (int v = 0; v < resolution; v++)
+			{
+				float dir = dirStep * v;
+				vector pos = Vector(Math.Sin(dir) * dimensions[0], -dimensions[1], Math.Cos(dir) * dimensions[2]);
+				positions.Insert(pos);
+			}
+		}
+		else if (m_eShape == EAreaMeshShape.RECTANGLE)
+		{
+			//~ Make sure it uses half of the width and length
+			float width = dimensions[0] / 2;
+			float length = dimensions[2] / 2;
+			
+			array<vector> corners = 
+			{
+				Vector(-width, -dimensions[1], -length),
+				Vector(width, -dimensions[1], -length),
+				Vector(width, -dimensions[1], length),
+				Vector(-width, -dimensions[1], length)
+			};
+			
+			//~ Set positions
+			for (int i = 0; i < 4; i++)
+			{
+				vector start = corners[i];
+				vector end = corners[(i + 1) % 4];
+				
+				for (float s = 0; s < 4; s++)
+				{
+					vector pos = vector.Lerp(start, end, s / 4);
+					positions.Insert(pos);
+				}
+			}
+		}
+		else 
+		{
+			Print(string.Format("'SCR_BaseAreaMeshComponent' does not support shape type %1 (%2)", typename.EnumToString(EAreaMeshShape, m_eShape), m_eShape), LogLevel.ERROR);
+			owner.SetObject(null, "");
+			return;
 		}
 		
 		//--- Snap all positions to ground
@@ -96,7 +199,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 			}
 		}
 		
-		MeshObject meshObject = SCR_Shape.CreateAreaMesh(positions, m_fHeight * 2, m_Material, m_bStretchMaterial);
+		MeshObject meshObject = SCR_Shape.CreateAreaMesh(positions, dimensions[1] * 2, GetMaterial(), m_bStretchMaterial);
 		if (meshObject)
 		{
 			owner.SetObject(meshObject, "");
@@ -130,4 +233,10 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 		GenerateAreaMesh();
 	}
 	#endif
+};
+
+enum EAreaMeshShape
+{
+	ELLIPSE 		= 10,  ///< Ellipse using Radius and Resolution. 
+	RECTANGLE 		= 20, ///< Rectangle shape that has a width and length.
 };

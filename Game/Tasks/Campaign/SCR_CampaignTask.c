@@ -50,7 +50,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 		SCR_ECannotAssignReasons reason;
 		if (CanBeAssigned(reason))
 		{
-			SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 			if (campaign)
 			{
 				string text = TASK_AVAILABLE_TEXT + " " + GetTitle();
@@ -67,7 +67,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	//------------------------------------------------------------------------------------------------
 	override protected void ShowTaskProgress(bool showMsg = true)
 	{
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		if (campaign && showMsg)
 		{
 			string baseName;
@@ -86,7 +86,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	//------------------------------------------------------------------------------------------------
 	override string GetIconSuffix()
 	{
-		if (m_TargetBase && m_TargetBase.GetType() == CampaignBaseType.RELAY)
+		if (m_TargetBase && m_TargetBase.GetType() == SCR_ECampaignBaseType.RELAY)
 			return "_Relay";
 		
 		return "";
@@ -106,7 +106,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	//! Return the title of this task.
 	override string GetTitle()
 	{
-		if (m_TargetBase && m_TargetBase.GetType() == CampaignBaseType.RELAY)
+		if (m_TargetBase && m_TargetBase.GetType() == SCR_ECampaignBaseType.RELAY)
 			return m_sNameReconfigure;
 		
 		return m_sName;
@@ -116,7 +116,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	//! Return the description of this task.
 	override string GetDescription()
 	{
-		if (m_TargetBase && m_TargetBase.GetType() == CampaignBaseType.RELAY)
+		if (m_TargetBase && m_TargetBase.GetType() == SCR_ECampaignBaseType.RELAY)
 			return m_sDescriptionReconfigure;
 		
 		return m_sDescription;
@@ -125,25 +125,81 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	//------------------------------------------------------------------------------------------------
 	override void Finish(bool showMsg = true)
 	{
-		showMsg = SCR_RespawnSystemComponent.GetLocalPlayerFaction() == m_TargetFaction;
+		showMsg = SCR_FactionManager.SGetLocalPlayerFaction() == m_TargetFaction;
 		super.Finish(showMsg);
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
 		
-		// Reward XP for reconfiguring a relay
-		if (!GetTaskManager().IsProxy() && GetType() == SCR_CampaignTaskType.CAPTURE && m_TargetBase.GetType() == CampaignBaseType.RELAY)
+		// Reward XP for seizing a base or reconfiguring a relay
+		if (comp && !GetTaskManager().IsProxy() && GetType() == SCR_CampaignTaskType.CAPTURE)
 		{
-			int playerID = m_TargetBase.GetReconfiguredByID();
-			PlayerController player = GetGame().GetPlayerManager().GetPlayerController(playerID);
-			campaign.AwardXP(player, CampaignXPRewards.RELAY_RECONFIGURED, 1.0, DoneByAssignee());
-		};
+			PlayerManager playerManager = GetGame().GetPlayerManager();
+			array<int> players = {};
+			playerManager.GetPlayers(players);
+			array<SCR_BaseTaskExecutor> assignees = {};
+			GetAssignees(assignees);
+			vector baseOrigin = m_TargetBase.GetOwner().GetOrigin();
+			int radius = m_TargetBase.GetRadius();
+			int radiusSq;
+			Faction playerFaction;
+			IEntity playerEntity;
+			bool isAssignee;
+			int assigneeID;
+			SCR_EXPRewards rewardID;
+			
+			if (m_TargetBase.GetType() == SCR_ECampaignBaseType.RELAY)
+				rewardID = SCR_EXPRewards.RELAY_RECONFIGURED;
+			else
+				rewardID = SCR_EXPRewards.BASE_SEIZED;
+			
+			if (m_TargetBase.GetType() == SCR_ECampaignBaseType.RELAY)
+				radiusSq = 50 * 50;
+			else
+				radiusSq = radius * radius;
+			
+			foreach (int playerId : players)
+			{
+				playerEntity = playerManager.GetPlayerControlledEntity(playerId);
+				
+				if (!playerEntity)
+					continue;
+				
+				playerFaction = SCR_CampaignReconfigureRelayUserAction.GetPlayerFaction(playerEntity);
+				
+				if (playerFaction != m_TargetFaction)
+					continue;
+				
+				if (vector.DistanceSq(playerEntity.GetOrigin(), baseOrigin) < radiusSq)
+				{
+					isAssignee = false;
+					
+					foreach (SCR_BaseTaskExecutor assignee : assignees)
+					{
+						assigneeID = SCR_BaseTaskExecutor.GetTaskExecutorID(assignee);
+						
+						if (assigneeID == playerId)
+						{
+							isAssignee = true;
+							break;
+						}
+					}
+					
+					float multiplier = 1.0;
+					
+					if (m_bIsPriority)
+						multiplier = 1.5;
+
+					comp.AwardXP(playerEntity, rewardID, multiplier, isAssignee);
+				}
+			}
+		}
 		
 		string baseName;
 		
 		if (m_TargetBase)
 			baseName = GetBaseNameWithCallsign();
 		
-		if (campaign && showMsg)
+		if (showMsg)
 		{
 			// TODO make this nicer
 			if (m_bIndividualTask)
@@ -185,10 +241,10 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	//! Fails the task.
 	override void Fail(bool showMsg = true)
 	{
-		showMsg = SCR_RespawnSystemComponent.GetLocalPlayerFaction() == m_TargetFaction;
+		showMsg = SCR_FactionManager.SGetLocalPlayerFaction() == m_TargetFaction;
 		super.Fail(showMsg);
 		
-		/*SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		/*SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		if (campaign && showMsg)
 		{
 			string baseName;
@@ -305,9 +361,6 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	void SetType(SCR_CampaignTaskType type)
 	{
 		m_eType = type;
-		
-		// Assign proper waypoint unless it's a relay 
-		SetAIWaypoint();
 	}
 	
 	//***************************//
@@ -334,39 +387,49 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	
 	//------------------------------------------------------------------------------------------------
 	//! An event triggered from task manager when a base has been captured.
-	void OnCampaignBaseCaptured(SCR_CampaignBase capturedBase)
+	void OnCampaignBaseCaptured(SCR_CampaignMilitaryBaseComponent capturedBase)
 	{
-		if (!m_TargetBase || !capturedBase || !m_TargetFaction || m_eType != SCR_CampaignTaskType.CAPTURE)
+		if (!m_TargetBase || !capturedBase || !m_TargetFaction || m_eType != SCR_CampaignTaskType.CAPTURE || capturedBase != m_TargetBase)
 			return;
 		
 		SCR_CampaignFaction castFaction = SCR_CampaignFaction.Cast(m_TargetFaction);
+		
+		if (!castFaction)
+			return;
 		
 		if (!GetTaskManager())
 			return;
 		
 		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		
 		if (!supportEntity)
 			return;
 		
-		if (capturedBase != m_TargetBase)
-		{
-			if (!castFaction)
-				return;
-			
-			if (!m_TargetBase.IsBaseInFactionRadioSignal(castFaction))
-				supportEntity.FailTask(this);
-			
-			return;
-		}
-		
-		if (castFaction && !m_TargetBase.IsBaseInFactionRadioSignal(castFaction))
-		{
-			if (capturedBase.GetType() != CampaignBaseType.RELAY)
-				supportEntity.FailTask(this);
-		}
-		
-		if (capturedBase.GetOwningFaction() == m_TargetFaction)
+		if (capturedBase.GetFaction() == m_TargetFaction)
 			supportEntity.FinishTask(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnCampaignBaseSignalChanged(SCR_CampaignMilitaryBaseComponent base)
+	{
+		if (!m_TargetBase || !base || !m_TargetFaction || m_eType != SCR_CampaignTaskType.CAPTURE || base != m_TargetBase)
+			return;
+		
+		SCR_CampaignFaction castFaction = SCR_CampaignFaction.Cast(m_TargetFaction);
+		
+		if (!castFaction)
+			return;
+		
+		if (!GetTaskManager())
+			return;
+		
+		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		
+		if (!supportEntity)
+			return;
+		
+		if (!m_TargetBase.IsHQRadioTrafficPossible(castFaction))
+			supportEntity.FailTask(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -377,8 +440,8 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 		
 		if (!GetTaskManager().IsProxy())
 		{
-			SCR_GameModeCampaignMP.s_OnBaseCaptured.Insert(OnCampaignBaseCaptured);
-			SCR_GameModeCampaignMP.s_OnSignalChanged.Insert(OnCampaignBaseCaptured);
+			SCR_MilitaryBaseManager.GetInstance().GetOnBaseFactionChanged().Insert(OnCampaignBaseCaptured);
+			SCR_GameModeCampaign.GetInstance().GetBaseManager().GetOnSignalChanged().Insert(OnCampaignBaseSignalChanged);
 		}
 	}
 	
@@ -390,8 +453,15 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 		
 		if (!GetTaskManager().IsProxy())
 		{
-			SCR_GameModeCampaignMP.s_OnBaseCaptured.Remove(OnCampaignBaseCaptured);
-			SCR_GameModeCampaignMP.s_OnSignalChanged.Remove(OnCampaignBaseCaptured);
+			SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
+			
+			if (baseManager)
+				baseManager.GetOnBaseFactionChanged().Remove(OnCampaignBaseCaptured);
+			
+			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+			
+			if (campaign)
+				campaign.GetBaseManager().GetOnSignalChanged().Remove(OnCampaignBaseSignalChanged);
 		}
 	}
 };

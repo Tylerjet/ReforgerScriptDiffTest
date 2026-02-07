@@ -10,7 +10,6 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	//RUNTIME STATIC VARIABLES//
 	//************************//
 	protected static SCR_RespawnSystemComponent s_RespawnSystemComponent = null;
-	protected static BackendApi s_BackendApi = null;
 	
 	//*****************//
 	//MEMBER ATTRIBUTES//
@@ -29,10 +28,7 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected Faction GetPlayerFaction(int playerID)
 	{
-		if (s_RespawnSystemComponent)
-			return s_RespawnSystemComponent.GetPlayerFaction(playerID);
-		
-		return null;
+		return SCR_FactionManager.SGetPlayerFaction(playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -126,12 +122,12 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void StoreProfile(int playerID, bool disconnecting = false)
 	{
-		if (!s_BackendApi)
+		if (!GetGame().GetBackendApi())
 			return;
 		
 		CareerBackendData playerProfile = GetPlayerProfile(playerID);
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetCampaign();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
 		if (!playerProfile || !m_Callback || !campaign)
 			return;
@@ -140,25 +136,25 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 			playerProfile.SetLogoutTime();
 		
 		#ifndef WORKBENCH
-			s_BackendApi.PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterUpdateS2S,m_Callback,playerProfile,playerID);
+			GetGame().GetBackendApi().PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterUpdateS2S,m_Callback,playerProfile,playerID);
 		#else
-			s_BackendApi.PlayerRequest(EBackendRequest.EBREQ_GAME_DevCharacterUpdate,m_Callback,playerProfile,playerID);
+			GetGame().GetBackendApi().PlayerRequest(EBackendRequest.EBREQ_GAME_DevCharacterUpdate,m_Callback,playerProfile,playerID);
 		#endif
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	bool LoadPlayerProfileFromBackend(int playerID)
 	{
-		if (m_mPlayerProfiles && s_BackendApi)
+		if (m_mPlayerProfiles && GetGame().GetBackendApi())
 		{
-			if (s_BackendApi.GetDSSession() && s_BackendApi.GetDSSession().Status() == EDsSessionState.EDSESSION_ACTIVE)
+			if (GetGame().GetBackendApi().GetDSSession() && GetGame().GetBackendApi().GetDSSession().Status() == EDsSessionState.EDSESSION_ACTIVE)
 			{
 				CareerBackendData playerProfile = new ref CareerBackendData();
 				m_mPlayerProfiles.Set(playerID, playerProfile);
 				playerProfile = GetPlayerProfile(playerID);
 				
 				if (m_Callback)
-					s_BackendApi.PlayerData(playerProfile, playerID);
+					GetGame().GetBackendApi().PlayerData(playerProfile, playerID);
 				
 				return true;
 			}
@@ -240,8 +236,6 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void SCR_PlayerProfileManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
-		if (GetGame())
-			s_BackendApi = GetGame().GetBackendApi();	
 	}
 
 	//------------------------------------------------------------------------------------------------

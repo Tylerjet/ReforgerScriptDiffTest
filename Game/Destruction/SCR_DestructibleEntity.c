@@ -194,29 +194,9 @@ class SCR_DestructibleEntity: DestructibleEntity
 		if (!phys)
 			return;
 		
-		// If the object has dynamic physics, pass the parameters
-		if (phys.IsDynamic())
-		{
-			float mass = phys.GetMass();
-			vector velocityLinear = phys.GetVelocity();
-			vector velocityAngular = phys.GetAngularVelocity();
-			
-			phys.Destroy();
-			phys = Physics.CreateDynamic(this, mass, -1);
-			if (phys)
-			{
-				phys.SetVelocity(velocityLinear);
-				phys.SetAngularVelocity(velocityAngular);
-			}
-		}
-		else
-		{
-			int responseIndex = phys.GetResponseIndex();
-			phys.Destroy();
-			phys = Physics.CreateStatic(this, -1);
-			if (phys)
-				phys.SetResponseIndex(responseIndex);
-		}
+		// Update physics geometries after mesh change
+		if (!phys.UpdateGeometries())
+			phys.Destroy(); // No geoms found, destroy physics
 	}
 	
 	//------------------------------------------------------------------------------------------------

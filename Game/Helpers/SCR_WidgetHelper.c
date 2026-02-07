@@ -1,5 +1,5 @@
 class SCR_WidgetHelper
-{
+{	
 	//------------------------------------------------------------------------------------------------
 	//! Return a widget's children. The search is not recursive by default.
 	//! \param widget
@@ -20,13 +20,9 @@ class SCR_WidgetHelper
 	//------------------------------------------------------------------------------------------------
 	static void RemoveAllChildren(notnull Widget widget)
 	{
-		Widget oldChild;
-		Widget child = widget.GetChildren();
-		while (child)
+		while (widget.GetChildren())
 		{
-			oldChild = child;
-			child = child.GetSibling();
-			oldChild.RemoveFromHierarchy();
+			widget.GetChildren().RemoveFromHierarchy();
 		}
 	}
 

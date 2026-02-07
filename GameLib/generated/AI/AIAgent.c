@@ -30,8 +30,8 @@ class AIAgent: GenericController
 	proto external AICommunicationComponent GetCommunicationComponent();
 	proto external AIControlComponent GetControlComponent();
 	proto external AIBaseMovementComponent GetMovementComponent();
+	//GetAimingComponent() returns nullptr as base AIAgent doesn't provide aiming
 	proto external AIBaseAimingComponent GetAimingComponent();
-	proto external AIPathfindingComponent GetPathfindingComponent();
 }
 
 /*!

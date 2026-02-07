@@ -46,16 +46,16 @@ sealed class PhysicsRagdoll: pointer
 	proto external int GetNumBones();
 	/*!
 	Creates ragdoll from definition provided. This replaces current physics simulation.
-	\param owner Entity that will be associated with ragdoll
-	\param ragdollDefName Ragdoll resource name
-	\param mass Ragdoll mass
-	\param layerMask Bit mask of layers
-	@code
+	\code
 		IEntity rdEntity = GetWorld().FindEntityByName("rd_test");
 		string rdName = "{CE761502CE2E1990}Prefabs/Characters/character.ragdoll";
 		int rdLayer = 1 << 10;
 		PhysicsRagdoll rd = PhysicsRagdoll.CreateRagdoll(rdEntity, rdName, 1, rdLayer);
-	@endcode
+	\endcode
+	\param owner Entity that will be associated with ragdoll
+	\param ragdollDefName Ragdoll resource name
+	\param mass Ragdoll mass
+	\param layerMask Bit mask of layers
 	*/
 	static proto PhysicsRagdoll CreateRagdoll(notnull IEntity owner, string ragdollDefName, float mass, int layerMask);
 	/*!

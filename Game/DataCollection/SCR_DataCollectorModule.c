@@ -4,14 +4,15 @@ class SCR_DataCollectorModule : Managed
 	protected ref map<int, TextWidget> m_StatsVisualization;
 
 	protected float m_fTimeSinceUpdate = 0;
-	static const float TIME_TO_UPDATE = 1;
+	[Attribute("1", UIWidgets.Slider, desc: "Seconds between updates of the module")]
+	float m_fUpdatePeriod;
 
 	//***************************//
 	/* OVERRIDDEN BY ALL MODULES */
 	//***************************//
 
 	//------------------------------------------------------------------------------------------------
-	void Update(IEntity owner, float timeTick)
+	void Update(float timeTick)
 	{}
 
 	//***********************************************************//
@@ -48,16 +49,20 @@ class SCR_DataCollectorModule : Managed
 	//***********************************************************//
 
 	//------------------------------------------------------------------------------------------------
+	void OnPlayerAuditSuccess(int playerID)
+	{}
+	
+	//------------------------------------------------------------------------------------------------
 	void OnPlayerKilled(int playerID, IEntity player, IEntity killer)
+	{}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnAIKilled(IEntity AI, IEntity killer)
 	{}
 
 	//*****************//
 	/* NEVER OVERRIDDEN*/
 	//*****************//
-
-	//------------------------------------------------------------------------------------------------
-	void OnPlayerAuditSuccess(int playerID)
-	{}
 
 	//------------------------------------------------------------------------------------------------
 	void OnControlledEntityChanged(IEntity from, IEntity to)

@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 //! Action to unload supplies from a Supply truck in Campaign
 class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 {
@@ -6,11 +7,15 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 	
 	// Member variables
 	protected SCR_CampaignSuppliesComponent m_SuppliesComponent;
-	protected SCR_CampaignBase m_Base;
+	protected SCR_CampaignMilitaryBaseComponent m_Base;
 	protected SCR_CampaignSuppliesComponent m_StandaloneDepot;
 	protected IEntity m_Box;
 	protected int m_iCanLoadSuppliesResult = SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
+	#ifndef AR_CAMPAIGN_TIMESTAMP
 	protected float m_fNextConditionCheck;
+	#else
+	protected WorldTimestamp m_fNextConditionCheck;
+	#endif
 	
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -27,7 +32,7 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 		if (!playerController)
 			return;
 		
-		// Find campaign network component to send RPC to server
+		// Find conflict network component to send RPC to server
 		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
 		if (!campaignNetworkComponent)
 			return;
@@ -48,7 +53,7 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 		if (!playerController)
 			return;
 		
-		// Find campaign network component to send RPC to server
+		// Find conflict network component to send RPC to server
 		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
 		if (!campaignNetworkComponent)
 			return;
@@ -97,10 +102,19 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
+		#ifndef AR_CAMPAIGN_TIMESTAMP
 		if (Replication.Time() >= m_fNextConditionCheck)
+		#else
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world.GetServerTimestamp().GreaterEqual(m_fNextConditionCheck))
+		#endif
 		{
 			m_iCanLoadSuppliesResult = CanLoadSupplies(user);
+			#ifndef AR_CAMPAIGN_TIMESTAMP
 			m_fNextConditionCheck += 250;
+			#else
+			m_fNextConditionCheck = m_fNextConditionCheck.PlusMilliseconds(250);
+			#endif
 		}
 		
 		if (m_iCanLoadSuppliesResult == SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW)
@@ -117,7 +131,7 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 		if (!playerController)
 			return;
 		
-		// Find campaign network component to send RPC to server
+		// Find conflict network component to send RPC to server
 		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
 		if (!campaignNetworkComponent)
 			return;
@@ -186,13 +200,19 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 	//! \param player Player trying to unload supplies
 	int CanLoadSupplies(IEntity player)
 	{
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
 		if (!campaign || !player || !m_SuppliesComponent)
 			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 		
-		m_StandaloneDepot = campaign.GetSupplyDepotWithPlayer();
-		m_Base = campaign.GetBasePlayerPresence();
+		m_StandaloneDepot = campaign.GetBaseManager().GetSupplyDepotWithPlayer();
+		
+		SCR_CampaignFeedbackComponent feedbackComponent = SCR_CampaignFeedbackComponent.GetInstance();
+		
+		if (!feedbackComponent)
+			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
+		
+		m_Base = feedbackComponent.GetBaseWithPlayer();
 		
 		if (!m_Base && !m_StandaloneDepot)
 			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
@@ -215,18 +235,18 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 		
 		if (m_Base)
 		{
-			Faction playerFaction = SCR_RespawnSystemComponent.GetLocalPlayerFaction();
+			Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
 			
 			if (!playerFaction)
 				return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 			
-			SCR_CampaignSuppliesComponent baseSuppliesComponent = SCR_CampaignSuppliesComponent.Cast(m_Base.FindComponent(SCR_CampaignSuppliesComponent));
+			SCR_CampaignSuppliesComponent baseSuppliesComponent = SCR_CampaignSuppliesComponent.Cast(m_Base.GetOwner().FindComponent(SCR_CampaignSuppliesComponent));
 			if (!baseSuppliesComponent)	
 				return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 			
-			if (vector.DistanceSq(m_Box.GetOrigin(), m_Base.GetOrigin()) > Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2))
+			if (vector.DistanceSq(m_Box.GetOrigin(), m_Base.GetOwner().GetOrigin()) > Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2))
 			{
-				SCR_CampaignServiceComponent service = m_Base.GetBaseService(SCR_EServicePointType.SUPPLY_DEPOT);
+				SCR_ServicePointComponent service = m_Base.GetServiceByType(SCR_EServicePointType.SUPPLY_DEPOT);
 				if (!service)
 					return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 			
@@ -235,7 +255,7 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 			}
 			
 			// Player can load supplies only in bases owned by his faction
-			if (m_Base.GetOwningFaction() != playerFaction)
+			if (m_Base.GetFaction() != playerFaction)
 				return SCR_CampaignSuppliesInteractionFeedback.BASE_ENEMY;
 		}
 		

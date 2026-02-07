@@ -79,9 +79,9 @@ class GameOverScreenInput: ChimeraMenuBase
 	
 	protected void OnBackToMainMenu()
 	{
-		DialogUI dlg = DialogUI.CreateOkCancelDialog();
-		if (m_GameOverScreenUIComponent)
-			m_GameOverScreenUIComponent.SetMainMenuPopUpTexts(dlg);
+		SCR_ConfigurableDialogUi dlg = SCR_CommonDialogs.CreateDialog("scenario_exit");
+		if (!dlg)
+			return;
 		
 		dlg.m_OnConfirm.Insert(BackToMainMenuPopupComfirm);
 	}

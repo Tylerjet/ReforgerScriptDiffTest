@@ -3,6 +3,10 @@ class SCR_CallsignBaseComponentClass: ScriptComponentClass
 {
 };
 
+//~ ScriptEnvokers
+void SCR_CallsignBaseComponent_OnCallsignChanged(int companyIndex, int platoonIndex, int squadIndex, int characterNumber, ERoleCallsign characterRole);
+typedef func SCR_CallsignBaseComponent_OnCallsignChanged;
+
 /*!
 Component of assigning and storing squad names
 */
@@ -22,9 +26,8 @@ class SCR_CallsignBaseComponent : ScriptComponent
 	//Ref
 	protected SCR_CallsignManagerComponent m_CallsignManager;
 	
-	//ScriptEnvokers
 	//Will always return int Company, int Platoon, int squad, int character number and character role (See GetCallsignIndexes() comments for more information). Also called when assigning callsigns for first time
-	protected ref ScriptInvoker Event_OnCallsignChanged = new ref ScriptInvoker();
+	protected ref ScriptInvokerBase<SCR_CallsignBaseComponent_OnCallsignChanged> Event_OnCallsignChanged = new ScriptInvokerBase<SCR_CallsignBaseComponent_OnCallsignChanged>();
 
 	
 	//======================================== GET CALLSIGN NAMES ========================================\\
@@ -45,14 +48,14 @@ class SCR_CallsignBaseComponent : ScriptComponent
 	//======================================== GET CALLSIGN INDEXES ========================================\\
 	/*!
 	Get the callsign indexes assigned
-	\param[out] company company index. Eg: Company Alpha is index 0 and Beta is index 1
-	\param[out] platoon platoon index. Is an index similar to how Company works.
-	\param[out] squad squad index. Is an index similar to how Company works.
-	\param[out] character character callsign number. This is not an index. Soldier 1 will have character 1. The second soldier in the group will have character 2. Will return -1 if component is on a group
+	\param[out] companyIndex company index. Eg: Company Alpha is index 0 and Beta is index 1
+	\param[out] platoonIndex platoon index. Is an index similar to how Company works.
+	\param[out] squadIndex squad index. Is an index similar to how Company works.
+	\param[out] characterNumber character callsign number. This is not an index. Soldier 1 will have character 1. The second soldier in the group will have character 2. Will return -1 if component is on a group
 	\param[out] characterRole Character role number, roles can be checked with ERoleCallsign eg: characterRole == ERoleCallsign.SQUAD_LEADER will let you know if the character is a squad leader etc. Will return -1 if component is on a group
 	\return bool returns false if indexes are not assigned
 	*/
-	bool GetCallsignIndexes(out int company, out int platoon, out int squad, out int character = -1, out int characterRole = -1)
+	bool GetCallsignIndexes(out int companyIndex, out int platoonIndex, out int squadIndex, out int characterNumber = -1, out ERoleCallsign characterRole = ERoleCallsign.NONE)
 	{
 	}
 	
@@ -101,7 +104,7 @@ class SCR_CallsignBaseComponent : ScriptComponent
 	}
 	
 	//======================================== GETTERS ========================================\\
-	ScriptInvoker GetOnCallsignChanged()
+	ScriptInvokerBase<SCR_CallsignBaseComponent_OnCallsignChanged> GetOnCallsignChanged()
 	{
 		return Event_OnCallsignChanged;
 	}
@@ -111,8 +114,6 @@ class SCR_CallsignBaseComponent : ScriptComponent
 	protected void InitOnServer(IEntity owner)
 	{
 	}
-	
-
 	
 	//---------------------------------------- On Init ----------------------------------------\\
 	override void EOnInit(IEntity owner)

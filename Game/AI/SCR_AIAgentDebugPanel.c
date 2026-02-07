@@ -35,6 +35,7 @@ class SCR_AIAgentDebugPanel : Managed
 		SCR_AIInfoBaseComponent baseInfoComp;
 		SCR_AIInfoComponent infoComp;			// For units
 		SCR_AIGroupInfoComponent groupInfoComp;	// For groups
+		SCR_AIGroupUtilityComponent groupUtilityComp;
 		SCR_MailboxComponent mailboxComp;
 		PerceptionComponent perception;
 		PerceivableComponent perceivable;
@@ -51,8 +52,7 @@ class SCR_AIAgentDebugPanel : Managed
 			// Agent name
 			string agentName = GetAgentDebugName();
 			DbgUI.Text(agentName);
-			
-			
+				
 			if (m_Agent)
 			{
 				baseInfoComp = SCR_AIInfoBaseComponent.Cast(m_Agent.FindComponent(SCR_AIInfoBaseComponent));
@@ -60,10 +60,8 @@ class SCR_AIAgentDebugPanel : Managed
 				groupInfoComp = SCR_AIGroupInfoComponent.Cast(baseInfoComp);
 				mailboxComp = SCR_MailboxComponent.Cast(m_Agent.FindComponent(SCR_MailboxComponent));
 				utilityComp = SCR_AIBaseUtilityComponent.Cast(m_Agent.FindComponent(SCR_AIBaseUtilityComponent));
-				if (utilityComp)
-				{
-					unitUtilityComp = SCR_AIUtilityComponent.Cast(utilityComp);
-				}
+				groupUtilityComp = SCR_AIGroupUtilityComponent.Cast(utilityComp);
+				unitUtilityComp = SCR_AIUtilityComponent.Cast(utilityComp);
 			}
 				
 			
@@ -117,7 +115,7 @@ class SCR_AIAgentDebugPanel : Managed
 					DbgUI.Text(string.Format("Threat: %1 %2", unitUtilityComp.m_ThreatSystem.GetThreatMeasure().ToString(6, 3), typename.EnumToString(EAIThreatState, threatState)));
 				}
 				
-				SCR_AIActionBase currentAction = utilityComp.m_CurrentAction;
+				AIActionBase currentAction = utilityComp.GetCurrentAction();
 				if (!currentAction)
 					DbgUI.Text("Current Action: null");
 				else
@@ -128,16 +126,37 @@ class SCR_AIAgentDebugPanel : Managed
 					DbgUI.Text(currentActionStr);
 				}
 				
-				DbgUI.Text("Actions:");
-				foreach (int i, SCR_AIActionBase action : utilityComp.m_aActions)
+				// Spinner
+				array<string> spinnerStrings = {"[|]", "[/]", "[-]", "[\\]"};
+				string strSpinner = spinnerStrings[utilityComp.DiagGetCounter() % spinnerStrings.Count()];
+				
+				DbgUI.Text(string.Format("%1 Actions:", strSpinner));
+				array<ref AIActionBase> allActions = {};
+				utilityComp.GetActions(allActions);
+				foreach (int i, AIActionBase action : allActions)
 				{
-					float actionPriority = action.Evaluate() + action.EvaluatePriorityLevel();
-					string strSuspended = string.Empty;
-					if (action.m_bSuspended)
-						strSuspended = "(S) ";
-					string actionStr = string.Format("    %1 %2%3 %4", i, strSuspended, actionPriority.ToString(5, 1), action.Type().ToString());
+					string actionStr = GetActionString(action, i);
 					DbgUI.Text(actionStr);
+					
+					SCR_AICompositeActionParallel compositeAction = SCR_AICompositeActionParallel.Cast(action);
+					if (compositeAction)
+					{
+						array<AIActionBase> subactions = {};
+						compositeAction.GetSubactions(subactions);
+						foreach (AIActionBase subaction : subactions)
+						{
+							string subactionStr = "  " + GetActionString(subaction, i);
+							DbgUI.Text(subactionStr);
+						}
+					}
 				}
+				
+				delete allActions;
+			}
+			
+			if (groupUtilityComp)
+			{
+				DbgUI.Text(groupUtilityComp.m_FireteamMgr.DiagGetFireteamsData());
 			}
 			
 			// Dump debug messages button
@@ -185,7 +204,7 @@ class SCR_AIAgentDebugPanel : Managed
 				bool rqBreak = DbgUI.Button("Utility Comp.");
 				if (rqBreak && utilityComp)
 				{
-					utilityComp.SetEvaluationBreakpoint();
+					utilityComp.DiagSetBreakpoint();
 				}
 			}
 			
@@ -248,6 +267,21 @@ class SCR_AIAgentDebugPanel : Managed
 		return m_bRequestClose;
 	}
 	
+	string GetActionString(AIActionBase action, int actionId)
+	{
+		float actionPriority = action.Evaluate() + action.EvaluatePriorityLevel();
+		string strState = string.Format("(%1)", typename.EnumToString(EAIActionState, action.GetActionState()) );
+		
+		string debugText;
+		SCR_AIActionBase scrActionBase = SCR_AIActionBase.Cast(action);
+		if (scrActionBase)
+			debugText = scrActionBase.GetDebugPanelText();
+		
+		string actionStr = string.Format("    %1 %2 %3 %4 %5", actionId, strState, actionPriority.ToString(5, 1), action.Type().ToString(), debugText);
+		
+		return actionStr;
+	}
+	
 	//! Lists enemies from perception component
 	void ShowPerceptionEnemies(IEntity myEntity, PerceptionComponent perception, SCR_AICombatComponent combatComponent)
 	{
@@ -267,7 +301,7 @@ class SCR_AIAgentDebugPanel : Managed
 		
 		BaseTarget selectedTarget = combatComponent.GetCurrentTarget();
 		
-		DbgUI.Text("[ID Category TimeSinceSeen Dngr Type Exp Detect Ident]");
+		DbgUI.Text("[ID Category TimeSinceSeen Dngr Type Exp Detect Ident Sound]");
 		
 		array<BaseTarget> targets = {};
 		int targetId = 0;
@@ -312,12 +346,14 @@ class SCR_AIAgentDebugPanel : Managed
 				Print(" ");
 				*/
 				
-				string strTimeSinceSeen = baseTarget.GetTimeSinceSeen().ToString(5, 2);
-				string strEndangering;
+				string strTimeSinceSeenOrDetected = string.Format("(%1 %2)",
+					baseTarget.GetTimeSinceSeen().ToString(4, 1),
+					baseTarget.GetTimeSinceDetected().ToString(4, 1));
+				string strState;
 				if (baseTarget.IsEndangering())
-					strEndangering = "DNGR";
-				else
-					strEndangering = "    ";
+					strState = strState + "DNGR ";
+				if (baseTarget.IsDisarmed())
+					strState = strState + "DISARMED ";
 				
 				array<string> substrings = {};
 				substrings.Clear();
@@ -341,11 +377,25 @@ class SCR_AIAgentDebugPanel : Managed
 				float recognitionIdentify;
 				baseTarget.GetAccumulatedRecognition(recognitionDetect, recognitionIdentify);
 				
-				string str = string.Format("%1 %2 %3 %4s %5 %6 %7 %8 %9",
-					targetId, strSelected, typename.EnumToString(ETargetCategory, targetCategory), strTimeSinceSeen, strEndangering, strType,
-					baseTarget.GetExposure().ToString(3,2),
-					recognitionDetect.ToString(3, 2),
-					recognitionIdentify.ToString(3, 2));
+				// Same code as in ears sensor
+				float emittedSoundPower = baseTarget.GetPerceivableComponent().GetSoundPower();
+				float targetDistance = baseTarget.GetDistance();
+				float observedSoundIntensity = -999;
+				if (targetDistance != 0)
+					observedSoundIntensity = emittedSoundPower / (4.0 * Math.PI * targetDistance * targetDistance);
+				string strSoundIntensity = string.Format("%1 dB", (10*Math.Log10(observedSoundIntensity/1e-12)).ToString(5,1));
+				
+				string strRecognition = string.Format("%1 %2 %3", recognitionDetect.ToString(3, 2), recognitionIdentify.ToString(3, 2), strSoundIntensity);
+				
+				string str = string.Format("%1 %2 %3 %4s %5 %6 %7 %8",
+					targetId,												// 1
+					strSelected,											// 2
+					typename.EnumToString(ETargetCategory, targetCategory),	// 3
+					strTimeSinceSeenOrDetected,								// 4
+					strState,												// 5
+					strType,												// 6
+					baseTarget.GetExposure().ToString(3,2),					// 7
+					strRecognition);										// 8
 				DbgUI.Text(str);
 				
 				DbgUI.Text(string.Format("%1   %2 %3", targetId, targetEntity, strPrefabName));
@@ -375,7 +425,7 @@ class SCR_AIAgentDebugPanel : Managed
 		DbgUI.Text("Recognition Factors:");
 		DbgUI.Text(string.Format("  Visual:   %1", p.GetVisualRecognitionFactor()));
 		DbgUI.Text(string.Format("    Illumination: %1", p.GetIlluminationFactor()));
-		DbgUI.Text(string.Format("  Acoustic: %1", p.GetAcousticRecognitionFactor()));
+		DbgUI.Text(string.Format("  Sound pwr: %1 dB", 10*Math.Log10(p.GetSoundPower()/1e-12)));
 		DbgUI.Text(string.Format("Est. visual size: %1", p.GetEstimatedVisualSize()));
 	}
 	

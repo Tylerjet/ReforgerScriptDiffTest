@@ -1,17 +1,30 @@
 class SCR_EngineAction : SCR_VehicleActionBase
 {
 	protected CarControllerComponent m_pCarController;
+	protected CarControllerComponent_SA m_pCarController_SA;
+
 	
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
-		m_pCarController = CarControllerComponent.Cast(pOwnerEntity.FindComponent(CarControllerComponent));
+		if(GetGame().GetIsClientAuthority())
+			m_pCarController = CarControllerComponent.Cast(pOwnerEntity.FindComponent(CarControllerComponent));
+		else
+			m_pCarController_SA = CarControllerComponent_SA.Cast(pOwnerEntity.FindComponent(CarControllerComponent_SA));
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool HasLocalEffectOnlyScript()
 	{
-		return false;
+		if(GetGame().GetIsClientAuthority())
+		{
+			return false;
+		}
+		else
+		{
+			// Local only - prevents its automatic networking
+			return true;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -25,6 +38,9 @@ class SCR_EngineAction : SCR_VehicleActionBase
 	{
 		if (m_pCarController)
 			m_pCarController.TryStartEngine();
+		
+		if (m_pCarController_SA)
+			m_pCarController_SA.TryStartEngine();
 	}
 	
 	//! Method called from scripted interaction handler when an action is started (progress bar appeared)
@@ -33,6 +49,9 @@ class SCR_EngineAction : SCR_VehicleActionBase
 	{
 		if (m_pCarController)
 			m_pCarController.TryStartEngine();
+		
+		if (m_pCarController_SA)
+			m_pCarController_SA.TryStartEngine();
 	}
 
 	//! Action canceled
@@ -44,29 +63,53 @@ class SCR_EngineAction : SCR_VehicleActionBase
 		
 		if (m_pCarController && !m_pCarController.IsEngineOn())
 			m_pCarController.CancelStart();
+		
+		if (m_pCarController_SA && !m_pCarController_SA.IsEngineOn())
+			m_pCarController_SA.CancelStart();
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
-		return m_pCarController && super.CanBeShownScript(user) && CanBePerformedScript(user);
+		if(GetGame().GetIsClientAuthority())
+			return m_pCarController && super.CanBeShownScript(user) && CanBePerformedScript(user);
+		else
+			return m_pCarController_SA && super.CanBeShownScript(user) && CanBePerformedScript(user);
+
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool GetState()
 	{
-		return m_pCarController && m_pCarController.IsEngineOn();
+		if(GetGame().GetIsClientAuthority())
+			return m_pCarController && m_pCarController.IsEngineOn();
+		else
+			return m_pCarController_SA && m_pCarController_SA.IsEngineOn();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void SetState(bool enable)
 	{
-		if (!m_pCarController)
-			return;
-		
-		if (enable)
-			m_pCarController.StartEngine();
+		if(GetGame().GetIsClientAuthority())
+		{
+			if (!m_pCarController)
+				return;
+			
+			if (enable)
+				m_pCarController.StartEngine();
+			else
+				m_pCarController.StopEngine();
+		}
 		else
-			m_pCarController.StopEngine();
+		{
+			if (!m_pCarController_SA)
+				return;
+			
+			if (enable)
+				m_pCarController_SA.StartEngine();
+			else
+				m_pCarController_SA.StopEngine();
+		}
 	}
 };

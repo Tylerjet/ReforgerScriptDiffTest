@@ -12,7 +12,8 @@ enum EInputDeviceType
 	MOUSE,
 	GAMEPAD,
 	JOYSTICK,
-	TRACK_IR
+	TRACK_IR,
+	INVALID
 }
 
 typedef func ActionListenerCallback;

@@ -130,8 +130,23 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 			return;
 
 		SetOnPlayerConsciousnessChanged(playerID);
+		SetOnPlayerTeleported(playerID);
 		editorManager.GetOnOpened().Insert(BuildingModeCreated);
 		networkComponent.RequestEnterBuildingMode(GetOwner(), playerID, m_bUserActionActivationOnly, UserActionUsed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetOnPlayerTeleported(int playerID)
+	{
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;	
+		
+		SCR_PlayerTeleportedFeedbackComponent playerTeleportComponent = SCR_PlayerTeleportedFeedbackComponent.Cast(playerController.FindComponent(SCR_PlayerTeleportedFeedbackComponent));
+		if (!playerTeleportComponent)
+			return;
+		
+		playerTeleportComponent.GetOnPlayerTeleported().Insert(PlayerTeleported);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -160,6 +175,17 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void PlayerTeleported(SCR_EditableCharacterComponent character, bool isLongFade, SCR_EPlayerTeleportedReason teleportReason)
+	{
+		SCR_CampaignBuildingNetworkComponent networkComponent = GetNetworkManager();
+		if (!networkComponent)
+			return;
+
+		networkComponent.RemoveEditorMode(SCR_PlayerController.GetLocalPlayerId(), GetOwner());
+		
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void RemoveOnConsciousnessChanged()
 	{
 		IEntity ent = SCR_PlayerController.GetLocalControlledEntity();
@@ -176,15 +202,11 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 	// Insert a method called when the provider faction is changed. For an example base is taken by an enemy.
 	void SetOnProviderFactionChangedEvent()
 	{
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(GetOwner());
-		if (!base)
-			return;
-
-		SCR_FactionAffiliationComponent factionComponent = SCR_FactionAffiliationComponent.Cast(base.FindComponent(SCR_FactionAffiliationComponent));
+		SCR_FactionAffiliationComponent factionComponent = SCR_FactionAffiliationComponent.Cast(GetOwner().FindComponent(SCR_FactionAffiliationComponent));
 		if (!factionComponent)
 			return;
 
-		factionComponent.GetOnFactionUpdate().Insert(OnBaseOwnerChanged);
+		factionComponent.GetOnFactionChanged().Insert(OnBaseOwnerChanged);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -235,6 +257,7 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 	{
 		RemoveOnModeClosed();
 		RemoveOnConsciousnessChanged();
+		RemoveOnPlayerTeleported();
 		
 		SCR_CampaignBuildingNetworkComponent networkComponent = GetNetworkManager();
 		if (!networkComponent)
@@ -257,6 +280,20 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 			return;
 
 		editorManager.GetOnClosed().Remove(OnModeClosed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveOnPlayerTeleported()
+	{
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;	
+		
+		SCR_PlayerTeleportedFeedbackComponent playerTeleportComponent = SCR_PlayerTeleportedFeedbackComponent.Cast(playerController.FindComponent(SCR_PlayerTeleportedFeedbackComponent));
+		if (!playerTeleportComponent)
+			return;
+		
+		playerTeleportComponent.GetOnPlayerTeleported().Remove(PlayerTeleported);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -357,7 +394,7 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Method triggered when owning faction of provider has changed.
-	protected void OnBaseOwnerChanged()
+	protected void OnBaseOwnerChanged(FactionAffiliationComponent owner, Faction previousFaction, Faction newFaction)
 	{
 		// ToDo: In the future if the trigger activation will be enabled again, here I have to use a trigger range to find all entities which should be added and remove those on the list now.
 		RemoveActiveUsers();

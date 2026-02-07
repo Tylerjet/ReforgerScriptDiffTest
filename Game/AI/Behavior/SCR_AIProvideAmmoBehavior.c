@@ -17,7 +17,7 @@ class SCR_AIProvideAmmoBehavior : SCR_AIBehaviorBase
 	void SCR_AIProvideAmmoBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity,
 		IEntity ammoConsumer, typename magazineWellType, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
-		m_fPriority = SCR_AIActionBase.PRIORITY_BEHAVIOR_PROVIDE_AMMO;
+		SetPriority(SCR_AIActionBase.PRIORITY_BEHAVIOR_PROVIDE_AMMO);
 		m_fPriorityLevel.m_Value = priorityLevel;
 		m_sBehaviorTree = "{ADA6E7C5BC3C8C8D}AI/BehaviorTrees/Chimera/Soldier/ProvideAmmo.bt";
 		
@@ -27,13 +27,13 @@ class SCR_AIProvideAmmoBehavior : SCR_AIBehaviorBase
 		if (!utility)
 			return;
 		
-		float movePriority = m_fPriority + 0.1;
+		float movePriority = GetPriority() + 0.1;
 		m_MoveBehavior = new SCR_AIMoveIndividuallyBehavior(utility, groupActivity, vector.Zero, priority : movePriority, priorityLevel: priorityLevel, ent: ammoConsumer, radius: 30.0);
 		utility.AddAction(m_MoveBehavior);
 	}
 	
 	//------------------------------------------------------------------------------------------------------------------------------------
-	override float Evaluate()
+	override float CustomEvaluate()
 	{
 		// Fail is our ammo consumer is not alive any more
 		if(!SCR_AIDamageHandling.IsAlive(m_AmmoConsumer.m_Value))
@@ -44,7 +44,7 @@ class SCR_AIProvideAmmoBehavior : SCR_AIBehaviorBase
 			return 0;
 		}
 		
-		return m_fPriority;
+		return GetPriority();
 	}
 	
 	//------------------------------------------------------------------------------------------------------------------------------------

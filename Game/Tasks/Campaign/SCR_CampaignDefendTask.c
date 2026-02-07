@@ -14,7 +14,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	//**************************//
 	//PROTECTED STATIC VARIABLES//
 	//**************************//
-	protected static SCR_CampaignBase s_ClosestBase; //This is the closest base to the local player's character (only updated when task list is open)
+	protected static SCR_CampaignMilitaryBaseComponent s_ClosestBase; //This is the closest base to the local player's character (only updated when task list is open)
 	
 	//*********************//
 	//PUBLIC STATIC METHODS//
@@ -73,7 +73,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static SCR_CampaignDefendTask FindDefendTask(SCR_CampaignBase targetBase, SCR_CampaignFaction targetFaction)
+	static SCR_CampaignDefendTask FindDefendTask(SCR_CampaignMilitaryBaseComponent targetBase, SCR_CampaignFaction targetFaction)
 	{
 		array<SCR_BaseTask> tasks = new array<SCR_BaseTask>();
 		GetTaskManager().GetTasks(tasks);
@@ -95,9 +95,11 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static SCR_CampaignBase FindClosestFriendlyBase(notnull IEntity controlledEntity, notnull Faction faction)
+	static SCR_CampaignMilitaryBaseComponent FindClosestFriendlyBase(notnull IEntity controlledEntity, notnull Faction faction)
 	{
-		array<SCR_CampaignBase> bases = SCR_CampaignBaseManager.GetInstance().GetBases();
+		
+		array<SCR_MilitaryBaseComponent> bases = {};
+		SCR_MilitaryBaseManager.GetInstance().GetBases(bases);
 		
 		if (!bases)
 			return null;
@@ -109,13 +111,18 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		
 		for (int i = bases.Count() - 1; i >= 0; i--)
 		{
-			if (!bases[i].GetIsEnabled())
+			SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(bases[i]);
+			
+			if (!campaignBase)
 				continue;
 			
-			if (bases[i].GetOwningFaction() != faction)
+			if (!campaignBase.IsInitialized())
 				continue;
 			
-			float distance = vector.DistanceSq(bases[i].GetOrigin(), controlledEntityOrigin);
+			if (campaignBase.GetFaction() != faction)
+				continue;
+			
+			float distance = vector.DistanceSq(campaignBase.GetOwner().GetOrigin(), controlledEntityOrigin);
 			
 			if (distance < minAllyDistanceSq && distance < closestBaseDistance)
 			{
@@ -125,12 +132,12 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		}
 		
 		if (closestBaseIndex != -1)
-			return bases[closestBaseIndex];
+			return SCR_CampaignMilitaryBaseComponent.Cast(bases[closestBaseIndex]);
 		return null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static bool CheckDefendRequestConditions(notnull SCR_PlayerController playerController, out SCR_CampaignBase closestBase)
+	static bool CheckDefendRequestConditions(notnull SCR_PlayerController playerController, out SCR_CampaignMilitaryBaseComponent closestBase)
 	{
 		IEntity locallyControlledEntity = playerController.GetMainEntity();
 		
@@ -163,9 +170,9 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set initialCheck to false if the task is already created for this base
-	static bool FindEnemyPresence(notnull SCR_CampaignBase base, notnull SCR_CampaignFaction alliedFaction, bool initialCheck = true)
+	static bool FindEnemyPresence(notnull SCR_CampaignMilitaryBaseComponent base, notnull SCR_CampaignFaction alliedFaction, bool initialCheck = true)
 	{
-		SCR_CampaignFaction enemyFaction = SCR_CampaignFactionManager.GetInstance().GetEnemyFaction(alliedFaction);
+		SCR_CampaignFaction enemyFaction = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager()).GetEnemyFaction(alliedFaction);
 		if (!enemyFaction)
 			return false;
 		
@@ -185,7 +192,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		if (!enemyCharacters)
 			return false;
 		
-		vector baseOrigin = base.GetOrigin();
+		vector baseOrigin = base.GetOwner().GetOrigin();
 		for (int i = enemyCharacters.Count() - 1; i >= 0; i--)
 		{
 			if (vector.DistanceSq(baseOrigin, enemyCharacters[i].GetOrigin()) < distanceSq)
@@ -239,7 +246,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		SCR_ECannotAssignReasons reason;
 		if (CanBeAssigned(reason))
 		{
-			SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 			if (campaign)
 			{
 				string text = TASK_AVAILABLE_TEXT + " " + GetTitle();
@@ -256,7 +263,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	//------------------------------------------------------------------------------------------------
 	override protected void ShowTaskProgress(bool showMsg = true)
 	{
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		if (campaign && showMsg)
 		{
 			string baseName;
@@ -286,13 +293,13 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	//------------------------------------------------------------------------------------------------
 	override void Finish(bool showMsg = true)
 	{
-		showMsg = SCR_RespawnSystemComponent.GetLocalPlayerFaction() == m_TargetFaction;
+		showMsg = SCR_FactionManager.SGetLocalPlayerFaction() == m_TargetFaction;
 		super.Finish(showMsg);
 		
 		if (!m_TargetBase)
 			return;
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		if (!campaign)
 			return;
 		
@@ -300,6 +307,11 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		{
 			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: m_TargetBase.GetBaseNameUpperCase(), sound: SCR_SoundEvent.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
 		}
+		
+		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
+		
+		if (!comp)
+			return;
 		
 		// Reward XP for reconfiguring a relay
 		if (!GetTaskManager().IsProxy())
@@ -315,7 +327,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 			for (int i = characters.Count() - 1; i >= 0; i--)
 			{
 				if (IsCharacterInDefendTaskRange(characters[i]))
-					campaign.AwardXP(characters[i], CampaignXPRewards.TASK_DEFEND, 1.0);
+					comp.AwardXP(characters[i], SCR_EXPRewards.TASK_DEFEND, 1.0);
 			}
 		};
 	}
@@ -324,13 +336,13 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	//! Fails the task.
 	override void Fail(bool showMsg = true)
 	{
-		showMsg = SCR_RespawnSystemComponent.GetLocalPlayerFaction() == m_TargetFaction;
+		showMsg = SCR_FactionManager.SGetLocalPlayerFaction() == m_TargetFaction;
 		super.Fail(showMsg);
 		
 		if (!m_TargetBase)
 			return;
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		if (campaign && showMsg)
 		{
 			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_FAILED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: m_TargetBase.GetBaseNameUpperCase(), sound: SCR_SoundEvent.TASK_FAILED);
@@ -360,7 +372,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		
 		maxDistanceSq *= maxDistanceSq;
 		
-		float distanceSq = vector.DistanceSq(character.GetOrigin(), GetTargetBase().GetOrigin());
+		float distanceSq = vector.DistanceSq(character.GetOrigin(), GetTargetBase().GetOwner().GetOrigin());
 		
 		return (distanceSq < maxDistanceSq);
 	}
@@ -398,12 +410,12 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	
 	//------------------------------------------------------------------------------------------------
 	//! An event called when a base has been captured.
-	void OnBaseCaptured(SCR_CampaignBase capturedBase)
+	void OnBaseCaptured(SCR_CampaignMilitaryBaseComponent capturedBase)
 	{
 		if (!capturedBase || capturedBase != m_TargetBase || !GetTaskManager())
 			return;
 		
-		if (capturedBase.GetOwningFaction() == m_TargetFaction)
+		if (capturedBase.GetFaction() == m_TargetFaction)
 			return;
 		
 		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
@@ -431,8 +443,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		if (SCR_BaseTaskManager.s_OnPeriodicalCheck60Second)
 			SCR_BaseTaskManager.s_OnPeriodicalCheck60Second.Insert(PeriodicalCheck);
 		
-		if (SCR_GameModeCampaignMP.s_OnBaseCaptured)
-			SCR_GameModeCampaignMP.s_OnBaseCaptured.Insert(OnBaseCaptured);
+		SCR_MilitaryBaseManager.GetInstance().GetOnBaseFactionChanged().Insert(OnBaseCaptured);
 		
 		SCR_CampaignDefendTaskSupportEntity supportClass = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
 		if (supportClass)
@@ -451,8 +462,10 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		if (SCR_BaseTaskManager.s_OnPeriodicalCheck60Second)
 			SCR_BaseTaskManager.s_OnPeriodicalCheck60Second.Remove(PeriodicalCheck);
 		
-		if (SCR_GameModeCampaignMP.s_OnBaseCaptured)
-			SCR_GameModeCampaignMP.s_OnBaseCaptured.Remove(OnBaseCaptured);
+		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
+		
+		if (baseManager)
+			baseManager.GetOnBaseFactionChanged().Remove(OnBaseCaptured);
 		
 		SCR_CampaignDefendTaskSupportEntity supportClass = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
 		if (supportClass)

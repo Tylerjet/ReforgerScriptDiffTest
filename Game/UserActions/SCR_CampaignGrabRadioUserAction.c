@@ -4,7 +4,7 @@ class SCR_CampaignGrabRadioUserAction : ScriptedUserAction
 	protected SCR_ChimeraCharacter m_Player;
 	protected SCR_CampaignMobileAssemblyComponent m_AssemblyComponent;
 	protected DamageManagerComponent m_DamageManagerComponent;
-	protected SCR_CampaignBase m_Base;
+	protected SCR_CampaignMilitaryBaseComponent m_Base;
 	
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -44,7 +44,7 @@ class SCR_CampaignGrabRadioUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	protected bool IsParentBase(IEntity ent)
 	{
-		m_Base = SCR_CampaignBase.Cast(ent);
+		m_Base = SCR_CampaignMilitaryBaseComponent.Cast(ent.FindComponent(SCR_CampaignMilitaryBaseComponent));
 		
 		return (m_Base == null);
 	}
@@ -52,7 +52,7 @@ class SCR_CampaignGrabRadioUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool GetActionNameScript(out string outName)
 	{
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
 		if (!campaign)
 			return false;
@@ -66,7 +66,7 @@ class SCR_CampaignGrabRadioUserAction : ScriptedUserAction
 			return false;
 		
 		outName = "#AR-Campaign_Action_RequestRadio-UC";
-		ActionNameParams[0] = (campaign.GetMaxRespawnRadios() - campaign.GetActiveRespawnRadiosCount(faction.GetFactionKey())).ToString();
+		ActionNameParams[0] = (campaign.GetMaxRespawnRadios() - faction.GetActiveRespawnRadios()).ToString();
 		
 		return true;
 	}
@@ -74,7 +74,7 @@ class SCR_CampaignGrabRadioUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
 		if (!campaign)
 			return false;
@@ -104,13 +104,13 @@ class SCR_CampaignGrabRadioUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(m_Player.GetFaction());
 		
-		if (campaign.GetActiveRespawnRadiosCount(faction.GetFactionKey()) >= campaign.GetMaxRespawnRadios())
+		if (faction.GetActiveRespawnRadios() >= campaign.GetMaxRespawnRadios())
 			return false;
 		
-		if (m_Base && faction != m_Base.GetOwningFaction())
+		if (m_Base && faction != m_Base.GetFaction())
 		{
 			SetCannotPerformReason("#AR-Campaign_Action_WrongBase-UC");
 			return false;

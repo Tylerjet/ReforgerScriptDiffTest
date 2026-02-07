@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 [EntityEditorProps(category: "GameScripted/Campaign", description: "Allow respawning at this vehicle in Campaign", color: "0 0 255 255")]
 class SCR_CampaignMobileAssemblyComponentClass: ScriptComponentClass
 {
@@ -16,30 +17,28 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	protected MapItem m_MapItem;
 	protected SCR_CampaignFaction m_Faction;
 	protected SCR_CampaignFaction m_ParentFaction;
-	protected bool m_bIsInRadioRange = false;
+	protected bool m_bIsInRadioRange;
 	protected bool m_bCooldownDone = true;
 	protected RplId m_RplId = RplId.Invalid();
-	protected ref array<SCR_CampaignBase> m_aBasesInRange = {};
+	protected ref array<SCR_CampaignMilitaryBaseComponent> m_aBasesInRadioRange = {};
 	protected SCR_SpawnPoint m_SpawnPoint;
-	protected ResourceName m_sBuildingIconImageset = "{F7E8D4834A3AFF2F}UI/Imagesets/Conflict/conflict-icons-bw.imageset";
-	protected bool m_bIsHovered = false;
+	protected bool m_bIsHovered;
 	protected ref array<MapLink> m_aMapLinks = {};
 	
-	[Attribute("{C35F29E48086221A}Configs/Campaign/CampaignGraphLinesConfig.conf")]
-	protected ref SCR_GraphLinesData m_GraphLinesData;
-	
-	[Attribute("3")]
-	protected float m_fLineWidth;
-	
-	
 	[RplProp(onRplName: "OnParentFactionIDSet")]
-	protected int m_iParentFaction = SCR_CampaignBase.INVALID_FACTION_INDEX;
+	protected int m_iParentFaction = SCR_CampaignMilitaryBaseComponent.INVALID_FACTION_INDEX;
 	[RplProp(onRplName: "OnFactionChanged")]
-	protected int m_iFaction = SCR_CampaignBase.INVALID_FACTION_INDEX;
+	protected int m_iFaction = SCR_CampaignMilitaryBaseComponent.INVALID_FACTION_INDEX;
 	[RplProp()]
+	#ifndef AR_CAMPAIGN_TIMESTAMP
 	protected float m_fRespawnAvailableSince = float.MAX;
+	#else
+	protected WorldTimestamp m_fRespawnAvailableSince;
+	#endif
 	[RplProp()]
 	protected int m_iBasesCoveredByMHQOnly;
+	[RplProp(onRplName: "OnDeployChanged")]
+	protected bool m_bIsDeployed;
 	
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
@@ -50,40 +49,74 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		super.OnPostInit(owner);
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
+		if (!campaign)
+			return;
+		
+		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT);
 		
 		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
+		
 		GetGame().GetCallqueue().CallLater(UpdateRadioCoverage, 1000, true);
-		GetGame().GetCallqueue().CallLater(UpdateRespawnCooldown, 250, true, null);
 		
 		if (IsProxy())
 		{
-			SCR_GameModeCampaignMP.s_OnFactionAssignedLocalPlayer.Insert(OnParentFactionIDSet);
-			SCR_GameModeCampaignMP.s_OnFactionAssignedLocalPlayer.Insert(OnDeployChanged);
-		}
-		
-		//Show descriptor
-		SCR_MapDescriptorComponent descriptor = SCR_MapDescriptorComponent.Cast(owner.FindComponent(SCR_MapDescriptorComponent));
-		
-		if (descriptor)
-		{
-			m_MapItem = descriptor.Item();
-			
-			if (m_MapItem)
-				m_MapItem.SetDisplayName("#AR-Vehicle_MobileAssembly_Name");
+			campaign.GetInstance().GetOnFactionAssignedLocalPlayer().Insert(OnParentFactionIDSet);
+			campaign.GetInstance().GetOnFactionAssignedLocalPlayer().Insert(OnDeployChanged);
 		}
 	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
 		super.OnDelete(owner);
 		
 		GetGame().GetCallqueue().Remove(UpdateRadioCoverage);
-		GetGame().GetCallqueue().Remove(UpdateRespawnCooldown);		
-		SCR_GameModeCampaignMP.s_OnFactionAssignedLocalPlayer.Remove(OnParentFactionIDSet);
-		SCR_GameModeCampaignMP.s_OnFactionAssignedLocalPlayer.Remove(OnDeployChanged);
+		GetGame().GetCallqueue().Remove(UpdateRespawnCooldown);	
+		
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		
+		if (!campaign)
+			return;
+		
+		campaign.GetInstance().GetOnFactionAssignedLocalPlayer().Remove(OnParentFactionIDSet);
+		campaign.GetInstance().GetOnFactionAssignedLocalPlayer().Remove(OnDeployChanged);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UpdateBasesInRadioRange()
+	{
+		array<SCR_MilitaryBaseComponent> bases = {};
+		SCR_MilitaryBaseManager.GetInstance().GetBases(bases);
+		
+		float radioRange = GetRadioRange();
+		radioRange = radioRange * radioRange;	// We're checking square distance
+		vector truckPosition = GetOwner().GetOrigin();
+		SCR_CampaignMilitaryBaseComponent campaignBase;
+		
+		m_aBasesInRadioRange = {};
+		
+		foreach (SCR_MilitaryBaseComponent base : bases)
+		{
+			campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
+			
+			if (!campaignBase || !campaignBase.IsInitialized())
+				continue;
+			
+			if (campaignBase.IsHQ() && campaignBase.GetFaction() != m_ParentFaction)
+				continue;
+			
+			if (vector.DistanceSqXZ(truckPosition, campaignBase.GetOwner().GetOrigin()) < radioRange)
+				m_aBasesInRadioRange.Insert(campaignBase);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool CanReachByRadio(notnull SCR_CampaignMilitaryBaseComponent base)
+	{
+		return m_aBasesInRadioRange.Contains(base);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -102,6 +135,19 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 				
 			child = child.GetSibling();
 		}
+		
+		SCR_MapDescriptorComponent descriptor = SCR_MapDescriptorComponent.Cast(GetOwner().FindComponent(SCR_MapDescriptorComponent));
+		
+		if (descriptor)
+		{
+			m_MapItem = descriptor.Item();
+			
+			if (m_MapItem)
+				m_MapItem.SetDisplayName("#AR-Vehicle_MobileAssembly_Name");
+		}
+		
+		if (m_Faction && m_SpawnPoint.GetFactionKey() != m_Faction.GetFactionKey())
+			OnFactionChanged();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -116,24 +162,60 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 			ColorMapLink(m_aMapLinks[i]);
 		}
 	}
-
-	//------------------------------------------------------------------------------------------------	
+	
+	//------------------------------------------------------------------------------------------------
 	void ColorMapLink(notnull MapLink link)
 	{
+		if (!m_ParentFaction)
+			return;
+		
 		MapLinkProps props = link.GetMapLinkProps();
+		
 		if (!props)
 			return;
 		
-		props.SetLineWidth(m_fLineWidth);
+		SCR_CampaignMilitaryBaseComponent hq = m_ParentFaction.GetMainBase();
+		
+		if (!hq)
+			return;
+		
+		props.SetLineWidth(hq.GetLineWidth());
 		
 		Color c = props.GetLineColor();
+		
 		if (!c)
 			return;
 		
+		SCR_GraphLinesData linesData = hq.GetGraphLinesData();
+		
 		if (m_bIsHovered)
-			c.SetA(m_GraphLinesData.GetHighlightedAlpha());
+		{
+			// Highlight only bases in range
+			MapItem otherEnd = link.Target();
+			
+			if (otherEnd == m_MapItem)
+				otherEnd = link.Owner();
+			
+			IEntity otherEndOwner = otherEnd.Entity();
+			
+			if (!otherEndOwner)
+				return;
+			
+			SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(otherEndOwner.FindComponent(SCR_CampaignMilitaryBaseComponent));
+			
+			if (!base)
+				return;
+			
+			if (!m_aBasesInRadioRange.Contains(base))
+				return;
+			
+			c.SetA(linesData.GetHighlightedAlpha());	
+		}
 		else
-			c.SetA(m_GraphLinesData.GetDefaultAlpha());
+		{
+			c.SetA(linesData.GetDefaultAlpha());
+		}
+		
 		props.SetLineColor(c);
 	}
 	
@@ -141,7 +223,6 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	void AddMapLink(notnull MapLink link)
 	{
 		m_aMapLinks.Insert(link);
-	
 	}
 	
 	//------------------------------------------------------------------------------------------------	
@@ -161,36 +242,42 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void OnParentFactionIDSet()
 	{
-		SCR_CampaignFactionManager fManager = SCR_CampaignFactionManager.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		
+		if (!campaign)
+			return;
+		
+		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
+		SCR_CampaignFactionManager fManager = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager());
 		m_ParentFaction = SCR_CampaignFaction.Cast(fManager.GetFactionByIndex(m_iParentFaction));
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		Faction playerFaction;
 		
-		if (campaign)
-			playerFaction = campaign.GetLastPlayerFaction();
+		if (!m_ParentFaction)
+			return;
 		
-		if (m_ParentFaction && m_ParentFaction == playerFaction)
+		if (m_bIsDeployed)
+			m_ParentFaction.SetMobileAssembly(this);
+		
+		if (!m_MapItem || m_ParentFaction != playerFaction)
+			return;
+		
+		switch (m_ParentFaction.GetFactionKey())
 		{
-			if (m_MapItem)
-				switch (m_ParentFaction.GetFactionKey())
-				{
-					case SCR_GameModeCampaignMP.FACTION_BLUFOR:
-					{
-						m_MapItem.SetFactionIndex(EFactionMapID.WEST);
-						break;
-					}
-				
-					case SCR_GameModeCampaignMP.FACTION_OPFOR:
-					{
-						m_MapItem.SetFactionIndex(EFactionMapID.EAST);
-						break;
-					}
-					
-					default:
-					{
-						m_MapItem.SetFactionIndex(EFactionMapID.UNKNOWN);
-					}
-				}
+			case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.BLUFOR):
+			{
+				m_MapItem.SetFactionIndex(EFactionMapID.WEST);
+				break;
+			}
+		
+			case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.OPFOR):
+			{
+				m_MapItem.SetFactionIndex(EFactionMapID.EAST);
+				break;
+			}
+			
+			default:
+			{
+				m_MapItem.SetFactionIndex(EFactionMapID.UNKNOWN);
+			}
 		}
 	}
 	
@@ -213,84 +300,145 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	array<SCR_CampaignBase> GetBasesInRange()
+	int GetBasesInRange(notnull out array<SCR_CampaignMilitaryBaseComponent> basesInRange)
 	{
-		return m_aBasesInRange;
+		return basesInRange.Copy(m_aBasesInRadioRange);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool Deploy(bool deploy)
+	int GetRadioRange()
 	{
-		if (!m_bIsInRadioRange && deploy)
+		IEntity truck = GetOwner().GetParent();
+		
+		if (!truck)
+			return 0;
+		
+		BaseRadioComponent comp = BaseRadioComponent.Cast(truck.FindComponent(BaseRadioComponent));
+		
+		if (!comp)
+			return 0;
+		
+		BaseTransceiver tsv = comp.GetTransceiver(0);
+		
+		if (!tsv)
+			return 0;
+		
+		return tsv.GetRange();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool Deploy(SCR_EMobileAssemblyStatus status, int playerId = 0)
+	{
+		if (!m_bIsInRadioRange && status == SCR_EMobileAssemblyStatus.DEPLOYED)
 			return false;
 		
 		if (!m_ParentFaction)
 			return false;
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
 		if (!campaign)
 			return false;
 		
-		if (campaign.IsMobileAssemblyDeployed(m_ParentFaction) && deploy)
+		if (m_ParentFaction.GetMobileAssembly() && status == SCR_EMobileAssemblyStatus.DEPLOYED)
 			return false;
-				
-		if (deploy)
-		{
-			m_aBasesInRange = campaign.GetBasesInRangeOfMobileHQ(GetOwner());
-			
-			if (campaign && GetOwner() && GetTaskManager())
-			{
-				SCR_CampaignTaskSupportEntity supportClass = SCR_CampaignTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignTaskSupportEntity));
-				if (supportClass)
-					supportClass.GenerateCaptureTasks(GetOwner());
-			}
-				
-			campaign.SetDeployedMobileAssemblyID(m_ParentFaction.GetFactionKey(), Replication.FindId(this));
-		}
+		
+		if (status == SCR_EMobileAssemblyStatus.DEPLOYED)
+			m_bIsDeployed = true;
 		else
-		{
-			campaign.SetDeployedMobileAssemblyID(m_ParentFaction.GetFactionKey(), RplId.Invalid());
-			m_iBasesCoveredByMHQOnly = 0;
-		}
+			m_bIsDeployed = false;
+		
+		OnDeployChanged();
+		Replication.BumpMe();
+		
+		Rpc(RpcDo_BroadcastFeedback, status, playerId, GetGame().GetFactionManager().GetFactionIndex(m_ParentFaction));
+		
+		if (RplSession.Mode() != RplMode.Dedicated)
+			RpcDo_BroadcastFeedback(status, playerId, GetGame().GetFactionManager().GetFactionIndex(m_ParentFaction));	
 		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_BroadcastFeedback(SCR_EMobileAssemblyStatus msgID, int playerID, int factionID)
+	{
+		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.GetInstance();
+		
+		if (!comp)
+			return;
+		
+		comp.MobileAssemblyFeedback(msgID, playerID, factionID)
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void OnDeployChanged()
 	{
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		Faction playerFaction;
-		BaseRadioComponent radioComponent;
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
-		if (campaign)
-			playerFaction = campaign.GetLastPlayerFaction();
+		if (!campaign)
+			return;
+		
+		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
+		BaseRadioComponent radioComponent;
 		
 		IEntity vehicle = GetOwner().GetParent();
 		
 		if (vehicle)
 			radioComponent = BaseRadioComponent.Cast(vehicle.FindComponent(BaseRadioComponent));
 		
-		if (!IsProxy())
-		{
-			SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
-			
-			if (baseManager)
-				baseManager.UpdateBasesSignalCoverage(m_ParentFaction, true);
-		}
+		array<SCR_CampaignMilitaryBaseComponent> previouslyLinkedBases = {};
+		previouslyLinkedBases.Copy(m_aBasesInRadioRange);
 		
-		if (IsDeployed())
+		if (m_bIsDeployed)
 		{
-			m_aBasesInRange = campaign.GetBasesInRangeOfMobileHQ(GetOwner());
+			UpdateBasesInRadioRange();
+			GetGame().GetCallqueue().CallLater(UpdateRespawnCooldown, 250, true, null);
+			
+			if (m_ParentFaction)
+				m_ParentFaction.SetMobileAssembly(this);
 			
 			if (!IsProxy())
 			{
-				m_fRespawnAvailableSince = Replication.Time() + RESPAWN_COOLDOWN;
+				// Only update respawn cooldown if a load state has not been applied
+				#ifndef AR_CAMPAIGN_TIMESTAMP
+				if (GetGame().GetWorld().GetWorldTime() > 10000)
+				{
+					m_fRespawnAvailableSince = Replication.Time() + RESPAWN_COOLDOWN;
+					m_bCooldownDone = false;
+				}
+				else
+				{
+					m_fRespawnAvailableSince = Replication.Time();
+					m_bCooldownDone = true;
+				}
+				#else
+				ChimeraWorld world = GetGame().GetWorld();
+				if (world.GetWorldTime() > 10000)
+				{
+					m_fRespawnAvailableSince = world.GetServerTimestamp().PlusMilliseconds(RESPAWN_COOLDOWN);
+					m_bCooldownDone = false;
+				}
+				else
+				{
+					m_fRespawnAvailableSince = world.GetServerTimestamp();
+					m_bCooldownDone = true;
+				}
+				#endif
 				Replication.BumpMe();
 				
 				if (radioComponent)
 					radioComponent.SetPower(true);
+				
+				if (GetTaskManager())
+				{
+					SCR_CampaignTaskSupportEntity supportClass = SCR_CampaignTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignTaskSupportEntity));
+					
+					if (supportClass)
+						supportClass.GenerateCaptureTasks(GetOwner());
+				}
+				
+				GetGame().GetCallqueue().CallLater(CheckStatus, 500, true);
 			}
 			
 			if (RplSession.Mode() != RplMode.Dedicated)
@@ -301,36 +449,95 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 		}
 		else
 		{
-			m_aBasesInRange = {};
+			m_aBasesInRadioRange = {};
+			GetGame().GetCallqueue().Remove(UpdateRespawnCooldown);
+			
+			if (m_ParentFaction)
+				m_ParentFaction.SetMobileAssembly(null);
 			
 			if (!IsProxy())
 			{
-				m_iFaction = SCR_CampaignBase.INVALID_FACTION_INDEX;
+				m_iFaction = SCR_CampaignMilitaryBaseComponent.INVALID_FACTION_INDEX;
+				#ifndef AR_CAMPAIGN_TIMESTAMP
 				m_fRespawnAvailableSince = float.MAX;
+				#else
+				m_fRespawnAvailableSince = null;
+				#endif
 				Replication.BumpMe();
 				
 				if (radioComponent)
 					radioComponent.SetPower(false);
+				
+				GetGame().GetCallqueue().Remove(CheckStatus);
 			}
 			
 			if (m_MapItem && RplSession.Mode() != RplMode.Dedicated)
 				m_MapItem.SetVisible(false);
-			
+
 			OnFactionChanged();
 		}
 		
-		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
+		if (!IsProxy())
+			campaign.GetBaseManager().RecalculateRadioConverage(m_ParentFaction);
 		
-		if(!baseManager)
+		if (RplSession.Mode() == RplMode.Dedicated)
 			return;
 		
-		baseManager.UpdateBasesSignalCoverage();
+		foreach (SCR_CampaignMilitaryBaseComponent base: previouslyLinkedBases)
+		{
+			if (!m_aBasesInRadioRange.Contains(base))
+				base.GetMapDescriptor().HandleMapLinks();
+		}
+		
+		if (m_bIsDeployed)
+			foreach (SCR_CampaignMilitaryBaseComponent base: m_aBasesInRadioRange)
+				base.GetMapDescriptor().HandleMapLinks();
+		else
+			m_aMapLinks.Clear();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void CheckStatus()
+	{
+		IEntity truck = GetOwner().GetParent();
+		
+		if (!truck)
+			return;
+		
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+			
+		if (!campaign)
+			return;
+		
+		DamageManagerComponent damageComponent = DamageManagerComponent.Cast(truck.FindComponent(DamageManagerComponent));
+		
+		// Destroyed?
+		if (damageComponent && damageComponent.GetState() == EDamageState.DESTROYED)
+		{
+			Deploy(SCR_EMobileAssemblyStatus.DESTROYED);
+			
+			return;
+		}
+		
+		// Moved?
+		Physics physicsComponent = truck.GetPhysics();
+		
+		if (!physicsComponent)
+			return;
+		
+		vector vel = physicsComponent.GetVelocity();
+		vel[1] = 0;
+		
+		if (vel.LengthSq() <= 0.01)
+			return;
+		
+		Deploy(SCR_EMobileAssemblyStatus.DISMANTLED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void OnFactionChanged()
 	{
-		SCR_CampaignFactionManager fManager = SCR_CampaignFactionManager.GetInstance();
+		SCR_CampaignFactionManager fManager = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager());
 		
 		if (!fManager)
 			return;
@@ -343,7 +550,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 			fKey = f.GetFactionKey();
 			m_Faction = SCR_CampaignFaction.Cast(f);
 		}
-		
+
 		if (m_SpawnPoint)
 		{
 			m_SpawnPoint.SetFaction(f);
@@ -360,18 +567,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	bool IsDeployed()
 	{
-		if (!m_ParentFaction)
-			return false;
-		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		
-		if (!campaign)
-			return false;
-		
-		if (m_RplId.Invalid())
-			m_RplId = Replication.FindId(this);
-		
-		return campaign.GetDeployedMobileAssemblyID(m_ParentFaction.GetFactionKey()) == m_RplId;
+		return m_bIsDeployed;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -396,6 +592,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	void SetCountOfExclusivelyLinkedBases(int cnt)
 	{
 		m_iBasesCoveredByMHQOnly = cnt;
+		Replication.BumpMe();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -407,28 +604,19 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void UpdateRadioCoverage()
 	{
-		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
-		
-		if (!baseManager)
+		if (!m_ParentFaction)
 			return;
 		
-		SCR_CampaignFaction f = GetParentFaction();
-		
-		if (!f)
-			return;
-		
-		SCR_CampaignBase HQ = f.GetMainBase();
-		
-		if (!HQ)
-			return;
-		
-		bool inRangeNow = baseManager.IsEntityInFactionRadioSignal(GetOwner(), f);
+		bool inRangeNow = SCR_GameModeCampaign.GetInstance().GetBaseManager().IsEntityInFactionRadioSignal(GetOwner(), m_ParentFaction);
 		bool refreshLinks = inRangeNow != m_bIsInRadioRange;
 		m_bIsInRadioRange = inRangeNow;
 		
-		if (refreshLinks)
-			foreach (SCR_CampaignBase base: m_aBasesInRange)
-				base.HandleMapLinks();
+		if (!IsDeployed())
+			return;
+		
+		if (RplSession.Mode() != RplMode.Dedicated && refreshLinks)
+			foreach (SCR_CampaignMilitaryBaseComponent base: m_aBasesInRadioRange)
+				base.GetMapDescriptor().HandleMapLinks();
 		
 		DamageManagerComponent damageComponent = DamageManagerComponent.Cast(GetOwner().FindComponent(DamageManagerComponent));
 			
@@ -451,42 +639,52 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 			}
 		}
 		
-		if (!IsProxy() && IsDeployed())
+		if (IsProxy())
+			return;
+		
+		if (!m_bIsInRadioRange && m_iFaction != SCR_CampaignMilitaryBaseComponent.INVALID_FACTION_INDEX)
 		{
-			if (!m_bIsInRadioRange && m_iFaction != SCR_CampaignBase.INVALID_FACTION_INDEX)
-			{
-				m_iFaction = SCR_CampaignBase.INVALID_FACTION_INDEX;
-				Replication.BumpMe();
-				OnFactionChanged();
-			}
-			
-			if (m_bIsInRadioRange && m_iFaction == SCR_CampaignBase.INVALID_FACTION_INDEX && m_bCooldownDone)
-			{
-				m_iFaction = m_iParentFaction;
-				Replication.BumpMe();
-				OnFactionChanged();
-			}
+			m_iFaction = SCR_CampaignMilitaryBaseComponent.INVALID_FACTION_INDEX;
+			Replication.BumpMe();
+			OnFactionChanged();
+		}
+		
+		if (m_bIsInRadioRange && m_iFaction == SCR_CampaignMilitaryBaseComponent.INVALID_FACTION_INDEX && m_bCooldownDone)
+		{
+			m_iFaction = m_iParentFaction;
+			Replication.BumpMe();
+			OnFactionChanged();
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void UpdateRespawnCooldown(Widget w = null)
 	{
-		if (!IsDeployed())
+		if (!IsDeployed() || !m_ParentFaction)
 			return;
+		
+		SCR_CampaignMilitaryBaseComponent hq = m_ParentFaction.GetMainBase();
+		
 		ImageWidget bg;
 		TextWidget Respawn;
 		ImageWidget RespawnImg;
 		
-		if(w)
+		ResourceName imageset = hq.GetBuildingIconImageset();
+		
+		if(w && imageset)
 		{
 			bg = ImageWidget.Cast(w.FindAnyWidget("Bg"));
 			Respawn = TextWidget.Cast(w.FindAnyWidget("Respawn"));
 			RespawnImg = ImageWidget.Cast(w.FindAnyWidget("RespawnIMG"));
-			RespawnImg.LoadImageFromSet(0, m_sBuildingIconImageset, "RespawnBig");
+			RespawnImg.LoadImageFromSet(0, imageset, "RespawnBig");
 		}
 		
+		#ifndef AR_CAMPAIGN_TIMESTAMP
 		if (m_fRespawnAvailableSince > Replication.Time())
+		#else
+		ChimeraWorld world = GetOwner().GetWorld();
+		if (m_fRespawnAvailableSince.Greater(world.GetServerTimestamp()))
+		#endif
 		{
 			if (m_bCooldownDone)
 				m_bCooldownDone = false;
@@ -501,7 +699,11 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 					Respawn.SetVisible(true);
 					RespawnImg.SetVisible(true);
 					
+					#ifndef AR_CAMPAIGN_TIMESTAMP
 					float respawnCooldown = Math.Ceil((m_fRespawnAvailableSince - Replication.Time()) / 1000);
+					#else
+					float respawnCooldown = Math.Ceil(m_fRespawnAvailableSince.DiffMilliseconds(world.GetServerTimestamp()) / 1000);
+					#endif
 					int d;
 					int h;
 					int m;
@@ -519,6 +721,8 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 		}
 		else
 		{
+			GetGame().GetCallqueue().Remove(UpdateRespawnCooldown);
+			
 			if (w)
 			{
 				if (RplSession.Mode() != RplMode.Dedicated)
@@ -545,4 +749,20 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 			}
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_CampaignMobileAssemblyComponent()
+	{
+		if (!m_ParentFaction || !IsDeployed() ||IsProxy())
+			return;
+		
+		Deploy(SCR_EMobileAssemblyStatus.DISMANTLED);
+	}
+};
+
+enum SCR_EMobileAssemblyStatus
+{
+	DEPLOYED,
+	DISMANTLED,
+	DESTROYED
 };

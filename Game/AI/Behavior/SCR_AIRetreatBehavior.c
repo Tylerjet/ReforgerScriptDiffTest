@@ -14,11 +14,11 @@ class SCR_AIRetreatWhileLookAtBehavior : SCR_AIBehaviorBase
 		m_LookAt.Init(this, tempPos);
 		 
 		m_sBehaviorTree = "{9673533977BD9950}AI/BehaviorTrees/Chimera/Soldier/RetreatWhileLookAt.bt";
-		m_fPriority = PRIORITY_BEHAVIOR_RETREAT_MELEE;
+		SetPriority(PRIORITY_BEHAVIOR_RETREAT_MELEE);
 		m_fPriorityLevel.m_Value = priorityLevel;
 	}
 	
-	override float Evaluate()
+	override float CustomEvaluate()
 	{
 		if(!m_TimeSet)
 		{
@@ -37,7 +37,7 @@ class SCR_AIRetreatWhileLookAtBehavior : SCR_AIBehaviorBase
 			Fail();
 		}
 		
-		return m_fPriority;
+		return GetPriority();
 	}
 };
 
@@ -52,7 +52,7 @@ class SCR_AIRetreatFromTargetBehavior : SCR_AIBehaviorBase
 	{
 		m_RetreatFromTarget.Init(this, retreatFromTarget);
 		m_sBehaviorTree = "{91B8D5FDB60C1C80}AI/BehaviorTrees/Chimera/Soldier/RetreatFromTarget.bt";
-		m_fPriority = PRIORITY_BEHAVIOR_RETREAT_FROM_TARGET;
+		SetPriority(PRIORITY_BEHAVIOR_RETREAT_FROM_TARGET);
 		m_fPriorityLevel.m_Value = priorityLevel;
 	}
 }

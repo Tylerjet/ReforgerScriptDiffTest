@@ -9,12 +9,16 @@ Do not modify, this script is generated
 \{
 */
 
-class HelicopterControllerComponentClass: VehicleControllerComponentClass
+class HelicopterControllerComponentClass: VehicleControllerComponent_SAClass
 {
 }
 
-class HelicopterControllerComponent: VehicleControllerComponent
+class HelicopterControllerComponent: VehicleControllerComponent_SA
 {
+	//! Is called every time the engine starts.
+	event void OnEngineStart();
+	//! Is called every time the engine stops.
+	event void OnEngineStop();
 }
 
 /*!

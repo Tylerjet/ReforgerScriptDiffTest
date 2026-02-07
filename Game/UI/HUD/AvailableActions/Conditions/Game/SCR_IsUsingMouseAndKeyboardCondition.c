@@ -5,7 +5,7 @@ class SCR_IsUsingMouseAndKeyboardCondition : SCR_AvailableActionCondition
 	{
 		if (!data)
 			return false;
-		
+
 		return GetReturnResult(GetGame().GetInputManager().IsUsingMouseAndKeyboard());
 	}
 };

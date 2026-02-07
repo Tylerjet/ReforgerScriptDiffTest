@@ -25,21 +25,21 @@ class SCR_AISetActionParameters : SCR_AIActionTask
 
 class SCR_AISetMoveActivityParameters : SCR_AISetActionParameters
 {
-	protected static ref TStringArray s_aVarsIn = (new SCR_AIMoveActivity(null, false, vector.Zero, null)).GetPortNames();	
+	protected static ref TStringArray s_aVarsIn = (new SCR_AIMoveActivity(null, null, vector.Zero, null)).GetPortNames();	
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	override bool VisibleInPalette() { return true; }
 };
 
 class SCR_AISetGetInActivityParameters : SCR_AISetActionParameters
 {
-	protected static ref TStringArray s_aVarsIn = (new SCR_AIGetInActivity(null, false, null)).GetPortNames();
+	protected static ref TStringArray s_aVarsIn = (new SCR_AIGetInActivity(null, null, null)).GetPortNames();
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	override bool VisibleInPalette() { return true; }
 };
 
 class SCR_AISetDefendActivityParameters : SCR_AISetActionParameters
 {
-	protected static ref TStringArray s_aVarsIn = (new SCR_AIDefendActivity(null, false, null, vector.Zero)).GetPortNames();
+	protected static ref TStringArray s_aVarsIn = (new SCR_AIDefendActivity(null, null, null, vector.Zero)).GetPortNames();
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	override bool VisibleInPalette() { return true; }
 };

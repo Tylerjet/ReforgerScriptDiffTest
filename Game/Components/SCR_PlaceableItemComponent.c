@@ -6,7 +6,7 @@ class SCR_PlaceableItemComponentClass : ScriptComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_PlaceableItemComponent : ScriptComponent
 {
-	[Attribute(params: ".xob")]
+	[Attribute(params: "xob")]
 	protected ResourceName m_sPreviewObject;
 	
 	[Attribute("0.5084", desc: "Max placement distance in meters.")]

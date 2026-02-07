@@ -8,7 +8,7 @@ class MainMenuUI : ChimeraMenuBase
 	protected SCR_MenuTileComponent m_FocusedTile;
 	protected SCR_AccountWidgetComponent m_AccountComponent;
 	protected DialogUI m_BannedDetectionDialog;
-	protected DialogUI m_ExperimentalDialog;
+	protected SCR_ConfigurableDialogUi m_ExperimentalDialog;
 
 	protected ref array<string> m_aBannedItems = {};
 	protected static ref array<ref SCR_NewsEntry> m_aNews = {};
@@ -28,7 +28,8 @@ class MainMenuUI : ChimeraMenuBase
 		if (!SplashScreenSequence.s_Sequence)
 			return;
 		
-		EanbleButtonsInGrid(false);
+		//TODO: Fixme! Disabled, because enable event was never called. Possibly because its update rely on GetCallqueue().CallLater
+		//EanbleButtonsInGrid(false);
 		SplashScreenSequence.s_Sequence.GetEventOnClose().Insert(OnSplashScreenClose);
 	}
 	
@@ -42,6 +43,7 @@ class MainMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void EanbleButtonsInGrid(bool enable)
 	{
+		// FIXME/TODO: This disables the large tiles in the mian menu, but not other buttons up and bottom
 		Widget grid = GetRootWidget().FindAnyWidget(WIDGET_GRID);
 		if (!grid)
 			return;
@@ -140,33 +142,31 @@ class MainMenuUI : ChimeraMenuBase
 		SCR_MenuLoadingComponent.LoadLastMenu();
 		SCR_MenuLoadingComponent.ClearLastMenu();
 
-		// Show experimental dialog 
-		bool exp = GetGame().IsExperimentalBuild();
-		bool first = SplashScreen.IsFirstLoadingScreen();
+		BaseContainer cont = GetGame().GetGameUserSettings().GetModule("SCR_RecentGames");
+		if (cont)
+			cont.Get("m_bFirstTimePlay", m_bFirstLoad);
 		
-		if (GetGame().IsExperimentalBuild() && GameSessionStorage.s_Data["m_bMenuFirstOpening"].IsEmpty())
+		// Update on opened
+		cont.Set("m_bFirstTimePlay", false);
+		
+		// Check first start of session
+		bool firstLoadSession = GameSessionStorage.s_Data["m_bMenuFirstOpening"].IsEmpty();
+		if (!firstLoadSession)
+			return;
+		
+		// Show experimental dialog 
+		if (GetGame().IsExperimentalBuild())
 		{
-			m_ExperimentalDialog = DialogUI.Cast(
-				GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ExperimentalDialog, DialogPriority.CRITICAL));
+			m_ExperimentalDialog = SCR_CommonDialogs.CreateDialog("experimental_build");
 			m_ExperimentalDialog.m_OnConfirm.Insert(OnExperitementalDialogClose);
 		}
 		
 		GameSessionStorage.s_Data["m_bMenuFirstOpening"] = "false";
 		
-		// Check playing for the first time, do not show to devs
-		/*if (Game.IsDev())
-			return;*/
-		
-		//bool firstLoad;
-		BaseContainer cont = GetGame().GetGameUserSettings().GetModule("SCR_RecentGames");
-		if (cont)
-			cont.Get("m_bFirstTimePlay", m_bFirstLoad);
-		
 		if (!m_bFirstLoad)
 			return;
 		
 		// Complete the first load, show welcome screen, save into settings
-		cont.Set("m_bFirstTimePlay", false);
 		GetGame().UserSettingsChanged();
 		GetGame().SaveUserSettings();
 		

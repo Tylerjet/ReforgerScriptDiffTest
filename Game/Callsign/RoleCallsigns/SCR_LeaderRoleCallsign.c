@@ -1,15 +1,20 @@
 [BaseContainerProps(), BaseContainerCustomStringTitleField("Leader")]
 class SCR_LeaderRoleCallsign: SCR_BaseRoleCallsign
 {
-	override bool IsValidRole(AIAgent character, SCR_AIGroup group, map<int, AIAgent> occupiedRoles, out int roleCallsignIndex)
+	//------------------------------------------------------------------------------------------------
+	override bool IsValidRole(IEntity character, int playerID, SCR_AIGroup group, inout int roleCallsignIndex, out bool isUnique)
 	{
-		if (!super.IsValidRole(character, group, occupiedRoles, roleCallsignIndex))
+		if (!character)
 			return false;
 		
-		if (!group)
+		//~ Slave group can never have the leader role
+		if (!group || group.IsSlave())
 			return false;
 		
-		if (group.GetLeaderAgent() == character)
+		if (!super.IsValidRole(character, playerID, group, roleCallsignIndex, isUnique))
+			return false;
+		
+		if (group.GetLeaderEntity() == character)
 		{
 			roleCallsignIndex = GetRoleIndex();
 			return true;
@@ -18,6 +23,7 @@ class SCR_LeaderRoleCallsign: SCR_BaseRoleCallsign
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override int GetRoleIndex()
 	{
 		return ERoleCallsign.SQUAD_LEADER;

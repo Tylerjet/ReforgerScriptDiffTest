@@ -1,3 +1,12 @@
+void SCR_TabViewComponent_TabviewUpdate(SCR_TabViewComponent tabView, Widget widget);
+typedef func SCR_TabViewComponent_TabviewUpdate;
+
+void SCR_TabViewComponent_TabviewUpdateAndTabIndex(SCR_TabViewComponent tabView, Widget widget, int index);
+typedef func SCR_TabViewComponent_TabviewUpdateAndTabIndex;
+
+void SCR_TabViewComponent_TabviewUpdateAndTabIndex(SCR_TabViewComponent tabView, SCR_TabViewContent tabContent, int index);
+typedef func SCR_TabViewComponent_TabviewUpdateAndTabContent;
+
 //------------------------------------------------------------------------------------------------
 class SCR_TabViewComponent : ScriptedWidgetComponent
 {
@@ -54,14 +63,14 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 	protected SCR_PagingButtonComponent m_PagingRight;
 	
 	// Arguments passed: SCR_TabViewComponent, Widget (contentRoot), int currentIndex
-	ref ScriptInvoker m_OnChanged = new ref ScriptInvoker();
+	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdateAndTabIndex> m_OnChanged = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdateAndTabIndex>();
 	
 	// Arguments passed for all invokers below: SCR_TabViewComponent, Widget (contentRoot)
-	ref ScriptInvoker m_OnContentCreate = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnContentSelect = new ref ScriptInvoker(); //--- Called when a tab is selected, no matter if any content widget is tied to it
-	ref ScriptInvoker m_OnContentShow = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnContentHide = new ref ScriptInvoker();
-	ref ScriptInvoker m_OnContentRemove = new ref ScriptInvoker();
+	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate> m_OnContentCreate = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate>();
+	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdateAndTabContent> m_OnContentSelect = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdateAndTabContent>(); //--- Called when a tab is selected, no matter if any content widget is tied to it
+	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate> m_OnContentShow = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate>();
+	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate> m_OnContentHide = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate>();
+	ref ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate> m_OnContentRemove = new ScriptInvokerBase<SCR_TabViewComponent_TabviewUpdate>();
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -314,7 +323,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 			{
 				CreateTabContent(content);
 			}
-			m_OnContentSelect.Invoke(this, i, content);
+			m_OnContentSelect.Invoke(this, content, i);
 		}
 		else
 		{
@@ -563,12 +572,12 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnSelection(SCR_ButtonTextComponent component, Widget widget)
+	protected void OnSelection(SCR_ButtonBaseComponent button)
 	{
 		for (int i = 0, len = m_aElements.Count(); i < len; i++)
 		{
 			// Deselect the old button, select the new button
-			if (m_aElements[i].m_ButtonComponent != component)
+			if (m_aElements[i].m_ButtonComponent != button)
 				continue;
 			
 			ShowTab(i);

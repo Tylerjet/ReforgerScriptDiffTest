@@ -43,7 +43,7 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool CanApplyEffect(notnull IEntity target, notnull IEntity user)
+	override bool CanApplyEffect(notnull IEntity target, notnull IEntity user, out SCR_EConsumableFailReason failReason)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
@@ -57,7 +57,7 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group)
+	override bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
@@ -109,6 +109,6 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 	//------------------------------------------------------------------------------------------------
 	void SCR_ConsumableBandage()
 	{
-		m_eConsumableType = EConsumableType.Bandage;
+		m_eConsumableType = SCR_EConsumableType.BANDAGE;
 	}		
 };

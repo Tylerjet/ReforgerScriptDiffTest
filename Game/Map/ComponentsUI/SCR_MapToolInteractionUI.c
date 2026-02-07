@@ -45,6 +45,9 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 		WidgetManager.TraceWidgets(SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.x), SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.y), GetGame().GetWorkspace(), widgets);
 		SCR_MapElementMoveComponent moveComp;
 		
+		if (!CanBeManipulated(widgets))
+			return;
+		
 		foreach ( Widget widget : widgets )
 		{
 			moveComp = SCR_MapElementMoveComponent.Cast(widget.FindHandler(SCR_MapElementMoveComponent));	
@@ -68,6 +71,9 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 		WidgetManager.TraceWidgets(SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.x), SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.y), GetGame().GetWorkspace(), widgets);
 		SCR_MapElementMoveComponent moveComp;
 		
+		if (!CanBeManipulated(widgets))
+			return false;
+		
 		foreach ( Widget widget : widgets )
 		{
 			moveComp = SCR_MapElementMoveComponent.Cast(widget.FindHandler(SCR_MapElementMoveComponent));	
@@ -87,6 +93,8 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 			s_bIsDragging = true;
 			s_OnDragWidget.Invoke(s_DraggedWidget);
 			
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_GRAB);
+			
 			return true;
 		}
 		
@@ -101,6 +109,9 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 		array<ref Widget> widgets = {};
 		WidgetManager.TraceWidgets(SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.x), SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.y), GetGame().GetWorkspace(), widgets);
 		SCR_MapElementMoveComponent moveComp;
+		
+		if (!CanBeManipulated(widgets))
+			return false;
 		
 		foreach ( Widget widget : widgets )
 		{
@@ -125,12 +136,27 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Check whether the tool isnt currently clicked from top of/under of a button 
+	protected static bool CanBeManipulated(array<ref Widget> tracedWidgets)
+	{
+		foreach ( Widget widget : tracedWidgets )
+		{
+			if (ButtonWidget.Cast(widget))
+				return false;
+		}
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! End drag
 	static void EndDrag()
 	{
 		s_bIsDragging = false;
 		s_DraggedWidget = null;
 		s_OnDragWidget.Invoke(null);
+		
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_RELEASE);
 	}
 	
 	//------------------------------------------------------------------------------------------------

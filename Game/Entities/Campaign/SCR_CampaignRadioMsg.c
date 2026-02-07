@@ -1,25 +1,33 @@
+#include "scripts/Game/config.c"
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignRadioMsg : ScriptedRadioMessage
 {
 	static const int INVALID_RADIO_MSG_PARAM = -1;
 	
 	protected SCR_ERadioMsg m_iRadioMsg;
-	protected int m_iBaseCallsign =  SCR_CampaignBase.INVALID_BASE_INDEX;
-	protected int m_iCallerCompanyID = SCR_CampaignBase.INVALID_PLAYER_INDEX;
-	protected int m_iCallerPlatoonID = SCR_CampaignBase.INVALID_PLAYER_INDEX;
-	protected int m_iCallerSquadID = SCR_CampaignBase.INVALID_PLAYER_INDEX;
-	protected int m_iCalledCompanyID = SCR_CampaignBase.INVALID_PLAYER_INDEX;
-	protected int m_iCalledPlatoonID = SCR_CampaignBase.INVALID_PLAYER_INDEX;
-	protected int m_iCalledSquadID = SCR_CampaignBase.INVALID_PLAYER_INDEX;
+	protected int m_iFactionId;
+	protected int m_iBaseCallsign =  SCR_CampaignMilitaryBaseComponent.INVALID_BASE_CALLSIGN;
+	protected int m_iCallerCompanyID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
+	protected int m_iCallerPlatoonID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
+	protected int m_iCallerSquadID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
+	protected int m_iCalledCompanyID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
+	protected int m_iCalledPlatoonID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
+	protected int m_iCalledSquadID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
 	protected float m_fSeed = Math.RandomFloat01();
 	protected bool m_bIsPublic = true;
 	protected int m_iParam = INVALID_RADIO_MSG_PARAM;
-	protected int m_iPlayerID = SCR_CampaignBase.INVALID_PLAYER_INDEX;
+	protected int m_iPlayerID = SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX;
 	
 	//------------------------------------------------------------------------------------------------
 	void SetRadioMsg(SCR_ERadioMsg msg)
 	{
 		m_iRadioMsg = msg;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetFactionId(int factionId)
+	{
+		m_iFactionId = factionId;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -72,14 +80,14 @@ class SCR_CampaignRadioMsg : ScriptedRadioMessage
 	override void OnDelivery(BaseTransceiver receiver, int freq, float quality)
 	{
 		IEntity owner = receiver.GetRadio().GetOwner();
-		
+
 		ChimeraCharacter player;
-		SCR_CampaignBase base;
-		
+		SCR_CampaignMilitaryBaseComponent base;
+
 		while (!player && !base)
 		{
 			player = ChimeraCharacter.Cast(owner);
-			base = SCR_CampaignBase.Cast(owner);
+			base = SCR_CampaignMilitaryBaseComponent.Cast(owner.FindComponent(SCR_CampaignMilitaryBaseComponent));
 			
 			if (player || base)
 				break;
@@ -89,7 +97,7 @@ class SCR_CampaignRadioMsg : ScriptedRadioMessage
 			if (!owner)
 				return;
 		}
-		
+
 		if (player)
 		{
 			int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(owner);
@@ -101,12 +109,15 @@ class SCR_CampaignRadioMsg : ScriptedRadioMessage
 			SCR_CampaignNetworkComponent comp = SCR_CampaignNetworkComponent.Cast(controller.FindComponent(SCR_CampaignNetworkComponent));
 			
 			if (comp)
-				comp.PlayRadioMsg(m_iRadioMsg, m_iBaseCallsign, m_iCallerCompanyID, m_iCallerPlatoonID, m_iCallerSquadID, m_iCalledCompanyID, m_iCalledPlatoonID, m_iCalledSquadID, m_bIsPublic, m_iParam, m_fSeed, quality, m_iPlayerID);
+				comp.PlayRadioMsg(m_iRadioMsg, m_iFactionId, m_iBaseCallsign, m_iCallerCompanyID, m_iCallerPlatoonID, m_iCallerSquadID, m_iCalledCompanyID, m_iCalledPlatoonID, m_iCalledSquadID, m_bIsPublic, m_iParam, m_fSeed, quality, m_iPlayerID);
 		}
 		else
 		{
 			// Received by HQ, ping player that the message has been received
-			if (!base.GetIsHQ())
+			if (!base.IsHQ())
+				return;
+			
+			if (freq != receiver.GetRadio().GetTransceiver(0).GetFrequency())
 				return;
 			
 			PlayerController controller = GetGame().GetPlayerManager().GetPlayerController(m_iPlayerID);
@@ -117,7 +128,14 @@ class SCR_CampaignRadioMsg : ScriptedRadioMessage
 			SCR_CampaignNetworkComponent comp = SCR_CampaignNetworkComponent.Cast(controller.FindComponent(SCR_CampaignNetworkComponent));
 			
 			if (comp)
+			#ifndef AR_CAMPAIGN_TIMESTAMP
 				comp.SetLastHQRadioMessageTimestamp(Replication.Time());
+			#else
+			{
+				ChimeraWorld world = GetGame().GetWorld();
+				comp.SetLastHQRadioMessageTimestamp(world.GetServerTimestamp());
+			}
+			#endif
 		}
 	}
 };
@@ -155,6 +173,7 @@ enum SCR_ERadioMsg
 	TASK_CANCEL_REQUEST,
 	TASK_ASSIST,
 	BASE_LOST,
+	RELAY_LOST,
 	BASE_UNDER_ATTACK,
 	BUILT_ARMORY,
 	BUILT_FUEL,

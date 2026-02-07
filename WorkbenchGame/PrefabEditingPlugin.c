@@ -29,7 +29,7 @@ class PrefabEditingPlugin: PrefabEditingPluginBase
 		//--- ToDo: Use more legit way to create the world?
 		string worldPath = worldPrefab.GetPath();
 		
-		if (!FileIO.FileExist(worldPath))
+		if (!FileIO.FileExists(worldPath))
 		{
 			Print(string.Format("Cannot load prefab, selected world '%2' doesn't exist!", worldPath), LogLevel.ERROR);
 			return false;
@@ -48,7 +48,7 @@ class PrefabEditingPlugin: PrefabEditingPluginBase
 		file.Close();
 		
 		//--- Layer file
-		file = FileIO.OpenFile(targetPath + "_default.layer", FileMode.WRITE);
+		file = FileIO.OpenFile(targetPath + "_Layers/default.layer", FileMode.WRITE);
 		file.Close();
 		
 		return true;

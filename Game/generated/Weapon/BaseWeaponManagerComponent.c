@@ -21,6 +21,7 @@ class BaseWeaponManagerComponent: GameComponent
 	proto external IEntity GetOwner();
 	//! performs throwing
 	proto external void Throw(vector vDirection, float fSpeedScale);
+	proto external int GetDefaultWeaponIndex();
 	//! Returns currently selected weapon or null if none. (This can either be a weapon component directly or a slot component.)
 	proto external BaseWeaponComponent GetCurrent();
 	proto external BaseWeaponComponent GetCurrentWeapon();
@@ -28,6 +29,11 @@ class BaseWeaponManagerComponent: GameComponent
 	proto external WeaponSlotComponent GetCurrentSlot();
 	proto external GrenadeSlotComponent GetCurrentGrenadeSlot();
 	proto external SightsComponent GetCurrentSights();
+	/*!
+	Select the weapon passed by the parameter. Returns true if the weapon has been selected.
+	*IMPORTANT* This is not synchronized in multiplayer, it will only replicate during streams-in correctly. You will need to implement your RPC to send this command to every client.
+	*/
+	proto external bool SelectWeapon(BaseWeaponComponent weapon);
 	//! Returns the old weapon entity of the specified weapon slot
 	proto external IEntity SetSlotWeapon(WeaponSlotComponent pSlot, IEntity pWeaponEntity);
 	//! weapons visibility

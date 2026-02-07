@@ -12,13 +12,13 @@ class SCR_AIGetInActivity : SCR_AIActivityBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_AIGetInActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, IEntity vehicle, ECompartmentType role = ECompartmentType.Cargo, float priority = PRIORITY_ACTIVITY_GET_IN, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AIGetInActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint, IEntity vehicle, ECompartmentType role = ECompartmentType.Cargo, float priority = PRIORITY_ACTIVITY_GET_IN, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		InitParameters(vehicle, role, priorityLevel);
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityGetIn.bt";
-		m_fPriority = priority;
+		SetPriority(priority);
 		if (utility)
-			m_OwnerGroup = SCR_AIGroup.Cast(utility.m_OwnerAgent);
+			m_OwnerGroup = SCR_AIGroup.Cast(utility.GetAIAgent());
 	}
 	
 	//------------------------------------------------------------------------------------------------

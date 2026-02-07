@@ -2,7 +2,7 @@
 class SCR_CampaignReconfigureRelayUserAction : ScriptedUserAction
 {
 	// Member variables
-	protected SCR_CampaignBase m_Base;
+	protected SCR_CampaignMilitaryBaseComponent m_Base;
 	protected IEntity m_TowerRadio;
 	protected bool m_bCanBeShownResult = false;
 
@@ -38,8 +38,8 @@ class SCR_CampaignReconfigureRelayUserAction : ScriptedUserAction
 		IEntity parent = pOwnerEntity.GetParent();
 		
 		// Register parent base
-		if (parent && parent.Type() == SCR_CampaignBase)
-			m_Base = SCR_CampaignBase.Cast(parent);
+		if (parent && parent.FindComponent(SCR_CampaignMilitaryBaseComponent))
+			m_Base = SCR_CampaignMilitaryBaseComponent.Cast(parent.FindComponent(SCR_CampaignMilitaryBaseComponent));
 		
 		m_TowerRadio = pOwnerEntity;
 		m_Base.RegisterHQRadio(m_TowerRadio);
@@ -74,8 +74,7 @@ class SCR_CampaignReconfigureRelayUserAction : ScriptedUserAction
 			if (!comp)
 				return;
 			
-			if (m_Base.BeginCapture(SCR_CampaignFaction.Cast(comp.GetAffiliatedFaction())))
-				m_Base.FinishCapture();
+			m_Base.SetFaction(SCR_CampaignFaction.Cast(comp.GetAffiliatedFaction()));
 			
 			return;
 		}
@@ -109,20 +108,20 @@ class SCR_CampaignReconfigureRelayUserAction : ScriptedUserAction
 			playerFaction = SCR_CampaignFaction.Cast(comp.GetAffiliatedFaction());
 		}
 		else
-			playerFaction = SCR_CampaignFaction.Cast(SCR_RespawnSystemComponent.GetLocalPlayerFaction());
+			playerFaction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
 		
 		if (!playerFaction)
 			return false;
 		
 		// Already ours
-		if (m_Base.GetOwningFaction() == playerFaction)
+		if (m_Base.GetFaction() == playerFaction)
 		{
 			SetCannotPerformReason("#AR-Campaign_Action_Done-UC");
 			return false;
 		}
 		
 		// No radio signal
-		if (m_Base != playerFaction.GetMainBase() && !m_Base.IsBaseInFactionRadioSignal(playerFaction))
+		if (m_Base != playerFaction.GetMainBase() && !m_Base.IsHQRadioTrafficPossible(playerFaction))
 		{
 			SetCannotPerformReason("#AR-Campaign_Action_NoSignal-UC");
 			return false;

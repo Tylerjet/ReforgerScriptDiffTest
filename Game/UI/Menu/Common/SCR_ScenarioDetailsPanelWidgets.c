@@ -68,6 +68,8 @@ class SCR_ScenarioDetailsPanelWidgets
 	HorizontalLayoutWidget m_AddonSizeOverlay;
 
 	TextWidget m_AddonSizeText;
+	
+	OverlayWidget m_ImageCrossplayOverlay;
 
 	bool Init(Widget root)
 	{
@@ -134,6 +136,8 @@ class SCR_ScenarioDetailsPanelWidgets
 
 		m_AddonSizeText = TextWidget.Cast(root.FindWidget("ContentDetailsPanel.Bottom.m_MainArea.Offset.StateAndSize.m_AddonSizeOverlay.m_AddonSizeText"));
 
+		m_ImageCrossplayOverlay = OverlayWidget.Cast(root.FindAnyWidget("ImageCrossplayOverlay"));
+		
 		return true;
 	}
 };

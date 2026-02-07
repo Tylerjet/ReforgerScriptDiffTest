@@ -5,8 +5,11 @@ class SCR_AICharacterStats : AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
 	{
-		m_AIInfo = SCR_AIInfoComponent.Cast(owner.FindComponent(SCR_AIInfoComponent));
+		SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(owner);
+		if (!chimeraAgent)
+			SCR_AgentMustChimera(this, owner);
+		m_AIInfo = chimeraAgent.m_InfoComponent;
 		if (!m_AIInfo)
-			NodeError(this, owner, "Can't find AIInfo component.");		
+			NodeError(this, owner, "Can't find AIInfo component.");
 	}
 };

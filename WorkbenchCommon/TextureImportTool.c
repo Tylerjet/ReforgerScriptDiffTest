@@ -375,7 +375,7 @@ class FontTextureType: TextureType
 	override bool IsType(string path)
 	{
 		string fntPath = FilePath.ReplaceExtension(path, "fnt");
-		return FileIO.FileExist(fntPath);
+		return FileIO.FileExists(fntPath);
 	}
 	
 	override bool TestPostFix(string resource)

@@ -60,7 +60,9 @@ class AutoSpawnerTool : WorldEditorTool
 	private ref array <ResourceName> m_aSelectedXOBs = {};
 
 	private ref array <IEntity> m_aSpawnedEntities = {};
+	private ref array <IEntity> m_aPlacedEntityHistory = {};
 	private ref array <int> m_aSpawnHistory = {};
+	private ref array <int> m_aSpawnHistoryChunks = {};
 
 	private int m_iEntityId;
 	private int m_iEntityIdPrev;
@@ -79,7 +81,7 @@ class AutoSpawnerTool : WorldEditorTool
 	[ButtonAttribute("Spawn prefab list")]
 	void SpawnFromPrefabList()
 	{
-		if (!FileIO.FileExist(m_PrefabList))
+		if (!FileIO.FileExists(m_PrefabList))
 			return;
 
 		FileHandle file = FileIO.OpenFile(m_PrefabList, FileMode.READ);
@@ -102,22 +104,24 @@ class AutoSpawnerTool : WorldEditorTool
 	[ButtonAttribute("Undo")]
 	private void Undo()
 	{
-		if (m_aSpawnHistory.Count() == 0)
+		if (m_aSpawnHistoryChunks.IsEmpty())
 			return;
-
+		
+		int chunkSize = m_aSpawnHistoryChunks[m_aSpawnHistoryChunks.Count()-1];
+		int bottomIndex = m_aPlacedEntityHistory.Count() - chunkSize - 1;
+		
 		m_API.BeginEntityAction();
-		for (int i = m_aSpawnedEntities.Count()-1; i >= m_iEntityIdPrev; --i)
+	
+
+		for (int i = m_aPlacedEntityHistory.Count() - 1; i > bottomIndex; i--)
 		{
-			m_API.DeleteEntity(m_aSpawnedEntities[i]);
-			m_aSpawnedEntities.Remove(i);
+			m_API.DeleteEntity(m_aPlacedEntityHistory[i]);
+			m_aPlacedEntityHistory.Remove(i);
 		}
+				
 		m_API.EndEntityAction();
-
-		m_iEntityId = m_aSpawnedEntities.Count();
-		m_aSpawnHistory.Remove(m_aSpawnHistory.Count()-1);
-
-		if (m_aSpawnHistory.Count() > 0)
-			m_iEntityIdPrev = m_aSpawnHistory[m_aSpawnHistory.Count()-1];
+		
+		m_aSpawnHistoryChunks.Remove(m_aSpawnHistoryChunks.Count()-1);
 
 		ClearSelection();
 	}
@@ -172,6 +176,9 @@ class AutoSpawnerTool : WorldEditorTool
 		vector min, max;
 		foreach (IEntity ent : m_aSpawnedEntities)
 		{
+			if (!ent)
+				continue;
+			
 			ent.GetBounds(min, max);
 
 			float cur_bbox_x = Math.AbsFloat(min[0] - max[0]);
@@ -242,10 +249,11 @@ class AutoSpawnerTool : WorldEditorTool
 		// m_API.ModifyEntityKey(comment, "m_FaceCamera", "1");
 	}
 
-	private void PlaceSelection(vector trace_end)
+	private int PlaceSelection(vector trace_end, bool isOnClick)
 	{
 		int j = 0;
 		int k = 0;
+		int chunkSize = 0;
 
 		m_API.BeginEntityAction();
 		foreach (IEntity ent : m_aSpawnedEntities)
@@ -281,10 +289,16 @@ class AutoSpawnerTool : WorldEditorTool
 
 				m_API.ModifyEntityKey(ent, "coords", pos.ToString(false));
 				m_API.ModifyEntityKey(ent, "angleY", (m_fCumulativeRotation*(m_iRowSizeX*(k-1) + j)).ToString(false));
+				if (isOnClick)
+					m_aPlacedEntityHistory.Insert(ent);
+				
+				chunkSize++;
 				j++;
-			}
+				}
 		}
 		m_API.EndEntityAction();
+		
+		return chunkSize;
 	}
 
 	override void OnMousePressEvent(float x, float y, WETMouseButtonFlag buttons)
@@ -292,11 +306,14 @@ class AutoSpawnerTool : WorldEditorTool
 		vector trace_start;
 		vector trace_end;
 		vector trace_dir;
+		int historyChunkSize = 0;
 
 		if (m_API.TraceWorldPos(x, y, TraceFlags.WORLD | TraceFlags.ENTS, trace_start, trace_end, trace_dir))
 		{
-			PlaceSelection(trace_end);
+			historyChunkSize = PlaceSelection(trace_end, true);
 		}
+		if (historyChunkSize > 0)
+			m_aSpawnHistoryChunks.Insert(historyChunkSize);
 
 		ClearSelection();
 	}
@@ -327,7 +344,7 @@ class AutoSpawnerTool : WorldEditorTool
 
 				if (m_bShowPlacement)
 				{
-					PlaceSelection(trace_end);
+					PlaceSelection(trace_end, false);
 				}
 				else
 				{
@@ -359,6 +376,7 @@ class AutoSpawnerTool : WorldEditorTool
 		m_aSelection.Clear();
 		m_aSelectedEntities.Clear();
 		m_aSelectedXOBs.Clear();
+		m_aSpawnedEntities.Clear();
 	}
 
 	private string FormatEntityIndex()

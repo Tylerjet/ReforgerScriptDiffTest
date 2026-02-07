@@ -52,11 +52,7 @@ class SCR_WeatherInstantEditorAttribute: SCR_BasePresetsEditorAttribute
 		//Preview Weather
 		if (!item)
 		{
-			WeatherStateTransitionManager weatherTransitionManager = weatherManager.GetTransitionManager();
-			if (!weatherTransitionManager)
-				return;
-			
-			weatherTransitionManager.SetStatePreview(true, weatherToSet.GetStateName());
+			weatherManager.SetWeatherStatePreview(true, weatherToSet.GetStateName());
 			return;
 		}
 		
@@ -88,7 +84,7 @@ class SCR_WeatherInstantEditorAttribute: SCR_BasePresetsEditorAttribute
 			
 			//Remove preview
 			if (weatherTransitionManager.IsPreviewingState())
-				weatherTransitionManager.SetStatePreview(false);
+				weatherManager.SetWeatherStatePreview(false);
 		}
 	}
 	

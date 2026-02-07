@@ -13,9 +13,6 @@ class SCR_AIWaitForNewCombatComponentWeapon : AITaskScripted
 	protected static const string PORT_HANDLE_TREE = "WeaponHandlingTree";
 	protected static const string PORT_WEAPON_OR_MUZZLE = "WeaponOrMuzzleSwitch";
 	
-	// Input ports
-	protected static const string  PORT_USE_EXPECTED_WEAPON = "UseExpectedWeapon";
-	
 	protected SCR_AICombatComponent m_CombatComponent;
 	
 	protected BaseWeaponComponent m_WeaponComp;
@@ -49,19 +46,12 @@ class SCR_AIWaitForNewCombatComponentWeapon : AITaskScripted
 		if (!m_CombatComponent)
 			return ENodeResult.FAIL;
 		
-		// Determines mode of operation
-		bool useExpectedWeapon = false;
-		GetVariableIn(PORT_USE_EXPECTED_WEAPON, useExpectedWeapon);
-		
 		BaseWeaponComponent weaponComp;
 		BaseMagazineComponent magazineComp;
 		int muzzleId;
 		
 		// Resolve in what mode we operate
-		if (useExpectedWeapon)
-			m_CombatComponent.GetExpectedWeapon(weaponComp, muzzleId, magazineComp);
-		else
-			m_CombatComponent.GetSelectedWeapon(weaponComp, muzzleId, magazineComp);
+		m_CombatComponent.GetSelectedWeapon(weaponComp, muzzleId, magazineComp);
 		
 		bool weaponEvent = weaponComp != m_WeaponComp || magazineComp != m_MagazineComp || muzzleId != m_MuzzleId;
 		bool weaponOrMuzzleSwitch = weaponComp != m_WeaponComp || muzzleId != m_MuzzleId;
@@ -98,7 +88,4 @@ class SCR_AIWaitForNewCombatComponentWeapon : AITaskScripted
 		PORT_WEAPON_OR_MUZZLE
 	};
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
-	
-	protected static ref TStringArray s_aVarsIn = { PORT_USE_EXPECTED_WEAPON };
-	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 }

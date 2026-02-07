@@ -3,16 +3,26 @@ class SCR_FactionAffiliationComponentClass: FactionAffiliationComponentClass
 	
 };
 
+void OnFactionChangeDelegate(FactionAffiliationComponent owner, Faction previousFaction, Faction newFaction);
+typedef func OnFactionChangeDelegate;
+typedef ScriptInvokerBase<OnFactionChangeDelegate> OnFactionChangedInvoker;
+
+
 class SCR_FactionAffiliationComponent: FactionAffiliationComponent
 {
 	//! Local invokers
 	private ref ScriptInvoker m_OnFactionUpdate;
 	
+	private ref OnFactionChangedInvoker m_OnFactionChangedInvoker;
+	
 	//--------------------------------------------------------------------------------------------------------------------------
-	override protected void OnFactionChanged()
+	override protected void OnFactionChanged(Faction previous, Faction current)
 	{
 		if (m_OnFactionUpdate)
 			m_OnFactionUpdate.Invoke(GetAffiliatedFaction());
+		
+		if (m_OnFactionChangedInvoker)
+			m_OnFactionChangedInvoker.Invoke(this, previous, current);
 	}
 	
 	// may return to DefaultAffiliatedFaction in some cases - override this
@@ -39,10 +49,20 @@ class SCR_FactionAffiliationComponent: FactionAffiliationComponent
 	}
 	
 	//--------------------------------------------------------------------------------------------------------------------------
+	[Obsolete("Use the SCR_FactionAffiliationComponent.GetOnFactionChanged invoker instead!")]
 	ScriptInvoker GetOnFactionUpdate()
 	{
 		if (!m_OnFactionUpdate)
 			m_OnFactionUpdate = new ScriptInvoker();
 		return m_OnFactionUpdate;
+	}
+	
+	//--------------------------------------------------------------------------------------------------------------------------
+	OnFactionChangedInvoker GetOnFactionChanged()
+	{
+		if (!m_OnFactionChangedInvoker)
+			m_OnFactionChangedInvoker = new OnFactionChangedInvoker();
+		
+		return m_OnFactionChangedInvoker;
 	}
 };

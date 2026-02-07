@@ -1,32 +1,59 @@
 class ParamEnumAddons : array<ref ParamEnum>
 {
+	protected static const int CORE_MODULE_COUNT = 2;
+
 	//------------------------------------------------------------------------------------------------
-	static ParamEnumArray FromEnum()
+	//! Get ParamEnumArray compatible with Attribute's enums parameter
+	//! Example:
+	//! @code
+	//! [Attribute(desc: "Pick an addon", enums: ParamEnumAddons.FromEnum())]
+	//! protected int m_iAddon;
+	//! @endcode
+	//! \param titleFormat 0 for "AddonID", 1 for "AddonTitle", 2 for "AddonTitle (AddonID)"
+	//! \param hideCoreModules 0 to hide nothing, 1 to hide core (vanilla) addons, 2 to hide core addons only when more addons are available
+	//! \return [Attribute] combobox-compatible ParamEnumArray value (for int variable)
+	static ParamEnumArray FromEnum(int titleFormat = 2, int hideCoreModules = 0)
 	{
 		ParamEnumArray params = new ParamEnumArray();
-		array<string> addons = {};
-		GameProject.GetLoadedAddons(addons);
-		int cnt = addons.Count();
+		array<string> addonGUIDs = {};
+		GameProject.GetLoadedAddons(addonGUIDs);
 
-		for (int i = 0; i < cnt; i++)
+		for (int i, count = addonGUIDs.Count(); i < count; i++)
 		{
-			params.Insert(new ParamEnum(GameProject.GetAddonID(addons[i]), i.ToString()));
+			string addonGUID = addonGUIDs[i];
+
+			if (hideCoreModules == 1 && GameProject.IsVanillaAddon(addonGUID))
+				continue;
+
+			if (hideCoreModules == 2 && count > CORE_MODULE_COUNT && GameProject.IsVanillaAddon(addonGUID))
+				continue;
+
+			string title;
+			switch (titleFormat)
+			{
+				case 0: title = GameProject.GetAddonID(addonGUID); break;
+				case 1: title = GameProject.GetAddonTitle(addonGUID); break;
+				default:
+				case 2: title = string.Format("%1 (%2)", GameProject.GetAddonTitle(addonGUID), GameProject.GetAddonID(addonGUID)); break;
+			}
+			params.Insert(new ParamEnum(title, i.ToString()));
 		}
 
 		return params;
 	}
-};
+}
 
+// TODO: rename to SCR_AddonTools?
 class SCR_AddonTool
 {
-	static const autoptr array<string> IGNORED_ADDONS = { "core", "ArmaReforger" };
+	protected static const ref array<string> CORE_ADDONS = { "core", "ArmaReforger" };
 
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Returns an array of addons where given resource is present or modified.
 	\param prefab Prefab path
 	\param ignoreCoreAddons if true then ArmaReforger and Core are ignored
-	\return Aray of addon ID strings
+	\return array of addon ID strings
 	*/
 	static array<string> GetResourceAddons(ResourceName prefab, bool ignoreCoreAddons = false)
 	{
@@ -52,7 +79,7 @@ class SCR_AddonTool
 
 		if (ignoreCoreAddons && !addonNames.IsEmpty())
 		{
-			foreach (string item : IGNORED_ADDONS)
+			foreach (string item : CORE_ADDONS)
 			{
 				addonNames.RemoveItem(item);
 			}
@@ -102,4 +129,25 @@ class SCR_AddonTool
 	{
 		return "$" + addon + ":";
 	}
-};
+
+#ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
+	//! Return the absolute path (without a trailing '/')
+	//! \param relativeDirPath if a directory resourceName is provided, use resourceName.GetPath()
+	//! \return true on success, false on failure
+	static bool GetAddonAbsolutePath(int addonId, string relativeDirPath, out string result, bool mustExist = true)
+	{
+		return Workbench.GetAbsolutePath(ToFileSystem(GetAddonIndex(addonId)) + relativeDirPath, result, mustExist);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Return the absolute path (without a trailing '/')
+	//! \param directory a directory resourceName should be provided\
+	//! if a -file- ResourceName is provided, the xxx.yyy part WILL be part of the provided directory so use FilePath.StripFileName if not wanted
+	//! \return true on success, false on failure
+	static bool GetAddonAbsolutePath(int addonId, ResourceName directory, out string result, bool mustExist = true)
+	{
+		return Workbench.GetAbsolutePath(ToFileSystem(GetAddonIndex(addonId)) + directory.GetPath(), result, mustExist);
+	}
+#endif
+}

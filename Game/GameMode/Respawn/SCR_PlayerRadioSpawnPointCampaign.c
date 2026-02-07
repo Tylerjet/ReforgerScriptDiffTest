@@ -5,6 +5,15 @@ class SCR_PlayerRadioSpawnPointCampaignClass: SCR_PlayerRadioSpawnPointClass
 class SCR_PlayerRadioSpawnPointCampaign: SCR_PlayerRadioSpawnPoint
 {
 	//------------------------------------------------------------------------------------------------
+	override void OnItemAdded(IEntity item, BaseInventoryStorageComponent storageOwner)
+	{
+		if (SCR_CharacterRankComponent.GetCharacterRank(storageOwner.GetOwner()) == SCR_ECharacterRank.RENEGADE)
+			return;
+		
+		super.OnItemAdded(item, storageOwner);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	Faction GetCachedFaction()
 	{
 		return m_CachedFaction;

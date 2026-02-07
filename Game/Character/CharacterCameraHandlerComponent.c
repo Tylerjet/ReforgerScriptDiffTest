@@ -64,7 +64,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		m_IdentityComponent = CharacterIdentityComponent.Cast(m_OwnerCharacter.FindComponent(CharacterIdentityComponent));
 		m_CmdHandler = CharacterCommandHandlerComponent.Cast(m_OwnerCharacter.FindComponent(CharacterCommandHandlerComponent));
 			
-		m_iHeadBoneIndex = m_OwnerCharacter.GetBoneIndex("Head");
+		m_iHeadBoneIndex = m_OwnerCharacter.GetAnimation().GetBoneIndex("Head");
 	}
 	//------------------------------------------------------------------------------------------------
 	override void OnCameraActivate()
@@ -184,9 +184,13 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		}
 		#endif
 
-		if ((m_ControllerComponent.IsDead() || m_CharMovementState.m_DataState & ECharacterDataState.Unconscious) && !IsInThirdPerson())
+		if (!IsInThirdPerson())
 		{
-			return CharacterCameraSet.CHARACTERCAMERA_1ST_BONE_TRANSFORM;
+			if (m_ControllerComponent.IsDead())
+				return CharacterCameraSet.CHARACTERCAMERA_1ST_BONE_TRANSFORM;
+		
+			if (m_ControllerComponent.IsUnconscious())
+				return CharacterCameraSet.CHARACTERCAMERA_1ST_UNCONSCIOUS;
 		}
 
 		if (SCR_BinocularsComponent.IsZoomedView())
@@ -244,6 +248,13 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			
 			if( m_CharMovementState.m_CommandTypeId == ECharacterCommandIDs.CLIMB )
 				return CharacterCameraSet.CHARACTERCAMERA_3RD_CLIMB;
+			
+			if (m_ControllerComponent.GetScrInputContext().m_iLoiteringType == 1)
+			{
+				SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(m_CmdHandler);
+				if (scrCmdHandler && scrCmdHandler.IsLoitering())
+					return CharacterCameraSet.CHARACTERCAMERA_3RD_SITTING;
+			}
 			
 			if( m_CharMovementState.m_iStanceIdx == ECharacterStance.PRONE )
 			{
@@ -394,6 +405,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	// Empirical multiplier for focus deceleration
 	protected const float FOCUS_DECELERATION_RATIO = 4.5;
 	protected const float FOCUS_DEFAULT_ADS_TIME = 0.35;
+	protected const float FOCUS_ADS_TIME_RATIO = 0.75;
 	
 	[Attribute("0.5", UIWidgets.Slider, "Focus interpolation time", "0 10 0.05")]
 	protected float m_fFocusTime;
@@ -404,55 +416,61 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	protected bool m_bDoInterpolateFocus;
 	protected float m_fFocusTargetValue;
 	protected float m_fFocusValue;
+	protected float m_fAutoFocusProgress;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnBeforeCameraUpdate(float pDt, bool pIsKeyframe)
 	{
-		if (!pIsKeyframe)
+		m_InputManager.ActivateContext("PlayerCameraContext");
+
+		bool isADSAllowed = m_CmdHandler && m_CmdHandler.IsWeaponADSAllowed(false);
+		bool isWeaponADS = isADSAllowed && m_ControllerComponent.GetWeaponADSInput() && !m_ControllerComponent.IsReloading();
+		if (!isWeaponADS)
+			CheckIsInTurret(isWeaponADS);
+
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+
+		if (!isWeaponADS && playerController)
+			isWeaponADS = playerController.GetGadgetFocus();
+
+		// Gadgets do not have ADS time defined
+		float adsTime = m_fADSTime;
+		if (adsTime <= 0)
+			adsTime = FOCUS_DEFAULT_ADS_TIME;
+
+		float adsChange = pDt / adsTime;
+		float autoFocusChange = adsChange / FOCUS_ADS_TIME_RATIO;
+
+		if (isWeaponADS)
 		{
-			m_InputManager.ActivateContext("PlayerCameraContext");
-			
-			bool isADSAllowed = m_CmdHandler && m_CmdHandler.IsWeaponADSAllowed(false);
-			bool isWeaponADS = isADSAllowed && m_ControllerComponent.GetWeaponADSInput() && !m_ControllerComponent.IsReloading();
-			if (!isWeaponADS)
-				CheckIsInTurret(isWeaponADS);
-			
-			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-			
-			if (!isWeaponADS && playerController)
-				isWeaponADS = playerController.GetGadgetFocus();
-			
-			// Gadgets do not have ADS time defined
-			float adsTime = m_fADSTime;
-			if (adsTime <= 0)
-				adsTime = FOCUS_DEFAULT_ADS_TIME;
-			
-			if (isWeaponADS)
-			{
-				if (m_fADSProgress < 1)
-					m_fADSProgress = Math.Min(1, m_fADSProgress + pDt / adsTime);
-			}
-			else if (m_fADSProgress > 0)
-			{
-				m_fADSProgress = Math.Max(0, m_fADSProgress - pDt / adsTime);
-			}
-			
-			float cameraFocus;
-			if (playerController && !m_ControllerComponent.GetDisableViewControls())
-				cameraFocus = playerController.GetFocusValue(m_fADSProgress, pDt);
-			
-			if (!float.AlmostEqual(m_fFocusTargetValue, cameraFocus))
-			{
-				m_fFocusTargetValue = cameraFocus;
-				m_bDoInterpolateFocus = true;
-			}
+			if (m_fADSProgress < 1)
+				m_fADSProgress = Math.Min(1, m_fADSProgress + adsChange);
+
+			if (m_fAutoFocusProgress < 1)
+				m_fAutoFocusProgress = Math.Min(1, m_fAutoFocusProgress + autoFocusChange);
 		}
 		else
 		{
-			UpdateViewBob(pDt);
+			if (m_fADSProgress > 0)
+				m_fADSProgress = Math.Max(0, m_fADSProgress - adsChange);
+
+			if (m_fAutoFocusProgress > 0)
+				m_fAutoFocusProgress = Math.Max(0, m_fAutoFocusProgress - autoFocusChange);
 		}
-		
-		
+
+		float cameraFocus;
+		if (playerController && !m_ControllerComponent.GetDisableViewControls())
+			cameraFocus = playerController.GetFocusValue(m_fAutoFocusProgress, pDt);
+
+		if (!float.AlmostEqual(m_fFocusTargetValue, cameraFocus))
+		{
+			m_fFocusTargetValue = cameraFocus;
+			m_bDoInterpolateFocus = true;
+		}
+
+		if (pIsKeyframe)
+			UpdateViewBob(pDt);
+
 		// When ADS in third person, the fpv view is not necesarilly toggled, but oddly enforced,
 		// so the camera never activates/deactivates, thus bleeding values in
 		if (IsInThirdPerson() && m_ControllerComponent && m_ControllerComponent.GetInputContext().GetDie())
@@ -495,15 +513,16 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4], inout vector transformWS[4])
 	{
-		if (m_ControllerComponent.IsDead())
-			return;
 		//! update head visibility
 		vector headBoneMat[4];
-		m_OwnerCharacter.GetBoneMatrix(m_iHeadBoneIndex, headBoneMat);
+		m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_iHeadBoneIndex, headBoneMat);
 		vector charMat[4];
 		m_OwnerCharacter.GetWorldTransform(charMat);
 		Math3D.MatrixMultiply4(charMat, headBoneMat, headBoneMat);
 		OnAlphatestChange(255 - Math.Clamp((vector.Distance(transformWS[3], headBoneMat[3]) - 0.2) / 0.15, 0.0, 1.0)*255);
+		
+		if (m_ControllerComponent.IsDead())
+			return;
 		
 		//! aiming update
 		if( pIsKeyframe )

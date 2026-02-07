@@ -30,15 +30,15 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! What happens when a player is killed. 
-	void OnKill(int victimID, int killerID)
+	void OnKill(int playerId, IEntity player, IEntity killer)
 	{
 		// Remove player from assigned firing line
-		s_Manager.RemoveAssignedPlayerFromFireline(victimID);	
+		s_Manager.RemoveAssignedPlayerFromFireline(playerId);	
 		
-		ClearScore(victimID);
+		ClearScore(playerId);
 		// If player is in Firing line area and has his line in scoreborad, remove him from it.
-		if (s_Manager.IsPlayerInFiringRangeArea(victimID))
-			s_Manager.RemovePlayerFromArea(victimID);	
+		if (s_Manager.IsPlayerInFiringRangeArea(playerId))
+			s_Manager.RemovePlayerFromArea(playerId);	
 	}
 	
 	//------------------------------------------------------------------------------------------------

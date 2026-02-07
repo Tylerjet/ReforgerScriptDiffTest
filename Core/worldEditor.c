@@ -18,6 +18,7 @@ class WorldEditorAPI
 	proto native IEntitySource FindEntityByName(string name);
 	proto native IEntitySource FindEntityByID(EntityID id);
 	proto external string GetEntityNiceName(IEntitySource entSrc);
+	proto external string GenerateDefaultEntityName(IEntitySource entSrc);	//!< Generates unique name for a particular entity which is based on class/prefab name and numerical postfix
 	
 	//! Puts new (nowhere used) entity source instances as children of an entity in prefab
 	proto native external bool AddPrefabMembers(IEntitySource prefabMember, notnull array<IEntitySource> members);
@@ -32,6 +33,8 @@ class WorldEditorAPI
 	proto native external bool MoveEntitiesToPrefab(IEntitySource newParentInMap, IEntitySource newParentInPrefab, notnull array<IEntitySource> entitiesInMap);
 	
 	proto native void RegenerateFlowMaps(bool preview = true, bool save = true, bool asyncReturn = true, bool noWarning = false);
+
+	proto native void BuildShoreMap();
 
 	//! Returns the number of entities in the editor.
 	proto native int GetEditorEntityCount();
@@ -119,6 +122,7 @@ class WorldEditorAPI
 	//! Extended version of base method that will use randomization/placement parameters set in Template Library (if any).
 	proto native external IEntity CreateEntityExt(string className, string name, int layerId,  IEntitySource parent, vector coords, vector angles, int traceFlags);
 	proto native external IEntity CreateEntityInWindow(RenderTargetWidget window, int winX, int winY, string className, string name, int layerID);
+	proto native external IEntity CreateEntityInWindowEx(int windowType, int winX, int winY, string className, string name, int layerID);
 
 	proto native external IEntity CreateClonedEntity(notnull IEntity ent, string name, bool cloneChildren);
 	proto native external bool DeleteEntity(notnull IEntity ent);

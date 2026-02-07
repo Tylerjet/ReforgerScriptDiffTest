@@ -1319,8 +1319,7 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 			localPos = CoordToLocal(worldPos);
 			localPos[1] = localPos[1] + baseEntry.m_fVerticalOffset;
 
-			// tree = api.CreateEntityExt(baseEntry.m_Prefab, "", api.GetCurrentEntityLayerId(), m_Source, localPos, "0 1 0", TraceFlags.WORLD);
-			tree = api.CreateEntity(baseEntry.m_Prefab, "", api.GetCurrentEntityLayerId(), m_Source, localPos, "0 1 0");
+			tree = api.CreateEntity(baseEntry.m_Prefab, "", api.GetCurrentEntityLayerId(), m_Source, localPos, vector.Zero);
 			treeSrc = api.EntityToSource(tree);
 			api.BeginEditSequence(treeSrc);
 			m_aGeneratedEntities.Insert(tree);
@@ -1541,8 +1540,8 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 				rectangle.m_aPoints.Insert(p1);
 
 				red = 0;
-				green = (int)Math.Floor(m_RandomGenerator.RandFloatXY(0, 255));
-				blue = (int)Math.Floor(m_RandomGenerator.RandFloatXY(0, 255));
+				green = Math.Floor(m_RandomGenerator.RandFloatXY(0, 255));
+				blue = Math.Floor(m_RandomGenerator.RandFloatXY(0, 255));
 
 				foreach (ForestGeneratorLine line : m_aLines)
 				{

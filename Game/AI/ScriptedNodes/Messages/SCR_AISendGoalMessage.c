@@ -28,7 +28,7 @@ class SCR_AISendGoalMessage: SCR_AISendMessageGeneric
 			return ENodeResult.FAIL;
 		}	
 		
-		msg.SetMessageParameters(this,GetRelatedActivity(owner));
+		msg.SetMessageParameters(this,SCR_AIActivityBase.Cast(GetRelatedActivity(owner)));
 		
 		return SendMessage(owner, msg);
 	}
@@ -47,7 +47,7 @@ class SCR_AISendGoalMessage: SCR_AISendMessageGeneric
 		return "Send Goal Message: Send messages for setting goals either of group or singular agent";
 	};
 	
-	protected SCR_AIActivityBase GetRelatedActivity(AIAgent owner)
+	protected SCR_AIActionBase GetRelatedActivity(AIAgent owner)
 	{
 		if (SCR_AIGroup.Cast(owner))
 		{
@@ -59,7 +59,7 @@ class SCR_AISendGoalMessage: SCR_AISendMessageGeneric
 		{
 			SCR_AIUtilityComponent utility = SCR_AIUtilityComponent.Cast(owner.GetControlledEntity().FindComponent(SCR_AIUtilityComponent));
 			if (utility)
-				return SCR_AIBehaviorBase.Cast(utility.GetCurrentAction()).m_RelatedGroupActivity;
+				return SCR_AIBehaviorBase.Cast(utility.GetCurrentAction().GetRelatedGroupActivity());
 		}
 		return null;
 	}

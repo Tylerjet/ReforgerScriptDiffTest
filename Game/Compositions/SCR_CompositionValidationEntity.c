@@ -45,7 +45,14 @@ class SCR_CompositionValidationEntity : SCR_GenericBoxEntity
 	
 	protected bool FindComposition()
 	{
-		if (m_bCompositionSearched) return m_CompositionSource;
+		if (m_bCompositionSearched) 
+		{
+			if (m_CompositionSource)
+				return true;
+			else 
+				return false;
+		}
+		
 		m_bCompositionSearched = true;
 		
 		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);

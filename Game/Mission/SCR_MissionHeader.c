@@ -15,13 +15,13 @@ class SCR_MissionHeader : MissionHeader
 	[Attribute("", UIWidgets.EditBox, "Detailed description of this mission (i.e. rules).")]
 	string m_sDetails;
 
-	[Attribute("{6CFADAEE9287D1D2}UI/Textures/WorldSelection/Default.edds", UIWidgets.ResourceNamePicker, "Icon texture of this mission visible e.g. in menus.", "edds")]
+	[Attribute("{6CFADAEE9287D1D2}UI/Textures/WorldSelection/Default.edds", UIWidgets.ResourcePickerThumbnail, "Icon texture of this mission visible e.g. in menus.", "edds")]
 	ResourceName m_sIcon;
 
-	[Attribute("{C58FCC06AF13075B}UI/Textures/MissionLoadingScreens/placeholder_1.edds", UIWidgets.ResourceNamePicker, "Texture of this mission visible when loading this mission.", "edds")]
+	[Attribute("{C58FCC06AF13075B}UI/Textures/MissionLoadingScreens/placeholder_1.edds", UIWidgets.ResourcePickerThumbnail, "Texture of this mission visible when loading this mission.", "edds")]
 	ResourceName m_sLoadingScreen;
 
-	[Attribute("{C58FCC06AF13075B}UI/Textures/MissionLoadingScreens/placeholder_1.edds", UIWidgets.ResourceNamePicker, "Texture of this mission visible when loading this mission.", "edds")]
+	[Attribute("{C58FCC06AF13075B}UI/Textures/MissionLoadingScreens/placeholder_1.edds", UIWidgets.ResourcePickerThumbnail, "Texture of this mission visible when loading this mission.", "edds")]
 	ResourceName m_sPreviewImage;
 
 	[Attribute("Sandbox", UIWidgets.EditBox, "Game mode of this mission.")]
@@ -65,7 +65,10 @@ class SCR_MissionHeader : MissionHeader
 	
 	[Attribute("0")]
 	bool m_bRandomStartingWeather;
-
+	
+	[Attribute("1", UIWidgets.EditBox, "Player XP multiplier (when enabled in gamemode; 1 for default)")]
+	float m_fXpMultiplier;
+	
 	bool m_bLoadOnStart;
 	string m_sOwner;
 

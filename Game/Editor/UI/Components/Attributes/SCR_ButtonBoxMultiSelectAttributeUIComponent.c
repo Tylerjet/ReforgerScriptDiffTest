@@ -28,7 +28,6 @@ class SCR_ButtonBoxMultiSelectAttributeUIComponent: SCR_ButtonBoxAttributeUIComp
 		if (!var)
 			return;
 		
-		
 		int count = m_ToolBoxComponent.GetNumItems();
 		vector flags = var.GetVector();
 		int value;
@@ -71,6 +70,8 @@ class SCR_ButtonBoxMultiSelectAttributeUIComponent: SCR_ButtonBoxAttributeUIComp
 		}
 		
 		m_bButtonValueInitCalled = true;
+		
+		SetFromVarOrDefault();
 	}
 	
 	//x is index, y is selectState

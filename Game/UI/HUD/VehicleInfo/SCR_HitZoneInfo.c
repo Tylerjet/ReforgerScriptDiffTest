@@ -15,7 +15,7 @@ class SCR_HitZoneInfo : SCR_BaseVehicleInfo
 		m_bIsBlinking = false;
 
 		EDamageState damageState;
-		EVehicleInfoState state;
+		EVehicleInfoState state = EVehicleInfoState.DISABLED;
 		SCR_WheelHitZone wheelHitZone;
 		foreach (HitZone hitZone : m_aHitZones)
 		{

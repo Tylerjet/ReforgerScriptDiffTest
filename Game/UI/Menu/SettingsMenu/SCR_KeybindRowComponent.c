@@ -11,9 +11,10 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 	protected static const string NO_KEYBIND = "<#AR-Settings_Keybind_NoKeybind>";
 	protected static const string DIALOGWINDOW_LAYOUT_PATH = "{1123A3569ACDCDEC}/UI/layouts/Menus/Dialogs/DialogBase.layout";
 	protected static const string GAMEPAD_PRESET_PREFIX = "gamepad:";
-	protected static const string PRIMARY_PRESET_PREFIX = "primary:";
+	protected static const string PRIMARY_PRESET_PREFIX = ""; //we do not need to use primary prefixes anymore, so we will get rid of them eventually completely, this and its usage will be removed from code when there is time for that
 	protected Widget m_ParentWidget;
 	protected SCR_KeybindSetting m_KeybindSettings;
+	protected SCR_SettingsManagerKeybindModule m_SettingsKeybindModule;
 	
 	protected string m_sActionName;
 	protected string m_sActionDisplayName;
@@ -30,7 +31,11 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		m_sActionDisplayName = actionDisplayName;
 		m_ParentWidget = parentWidget;
 		s_Binding = binding;
-
+		
+		m_SettingsKeybindModule = SCR_SettingsManagerKeybindModule.Cast(GetGame().GetSettingsManager().GetModule(ESettingManagerModuleType.SETTINGS_MANAGER_KEYBINDING));
+		if (!m_SettingsKeybindModule)
+			return;
+		
 		m_KeybindSettings = SCR_KeybindSetting.Cast(s_RootWidget.FindHandler(SCR_KeybindSetting));
 		if (!m_KeybindSettings)
 			return;
@@ -42,11 +47,15 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		SetRichTextAction("PCBind", EInputDeviceType.KEYBOARD, true, actionName, preset);
 		SetRichTextAction("ControllerBind", EInputDeviceType.GAMEPAD, false, actionName, preset);
 #ifdef PLATFORM_CONSOLE
-		ButtonWidget PCKeybind = ButtonWidget.Cast(parentWidget.FindAnyWidget("PCBind"));
-		if (PCKeybind)
-			PCKeybind.SetEnabled(false);
-		if (!GetGame().GetHasKeyboard())
-			PCKeybind.SetOpacity(0);
+		OverlayWidget PCKeybindOverlay = OverlayWidget.Cast(parentWidget.FindAnyWidget("PCKeybindOverlay"));
+		
+		InputManager inputManager = GetGame().GetInputManager();
+		
+		if (PCKeybindOverlay && inputManager && !inputManager.IsUsingMouseAndKeyboard())
+		{
+			PCKeybindOverlay.SetEnabled(false);
+			PCKeybindOverlay.SetVisible(false);
+		}
 #endif
 	}
 
@@ -77,6 +86,7 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		string deviceString;
 		ButtonWidget keybindButton = ButtonWidget.Cast(m_ParentWidget.FindAnyWidget(widgetName));
 		RichTextWidget keybindAction = RichTextWidget.Cast( keybindButton.FindAnyWidget("Text"));
+		
 		if (device == EInputDeviceType.GAMEPAD)
 		{
 			deviceString = "gamepad";
@@ -91,7 +101,21 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 				finalPreset = PRIMARY_PRESET_PREFIX+preset;
 		}
 		
-		keybindAction.SetText(string.Format("<action name='%1' preset='%2' device='" + deviceString + "' scale='1.25'/>", actionName, finalPreset));
+		keybindAction.SetText(string.Format("<action name='%1' preset='%2' device='%3' scale='1.25' index='0'/>", actionName, finalPreset, deviceString));
+		
+		int bindCount = m_SettingsKeybindModule.GetActionBindCount(actionName, finalPreset, device);
+		if (bindCount > 1)
+		{
+			RichTextWidget keybindAdditional = RichTextWidget.Cast(keybindButton.FindAnyWidget("AdditionalBinds"));
+			Widget additionalBindLayout = keybindButton.FindAnyWidget("AdditionalBindsLayout");
+			if(!additionalBindLayout || !keybindAdditional)
+				return;
+			
+			additionalBindLayout.SetVisible(true);
+			// -1 because we are showing how many binds there are other than the one being shown
+			keybindAdditional.SetTextFormat(" #AR-ValueUnit_Short_Plus", bindCount - 1);
+		}
+		
 		if (canChangeKeybind)
 		{
 			SCR_ButtonTextComponent bindComponent = SCR_ButtonTextComponent.Cast(keybindButton.FindHandler(SCR_ButtonTextComponent));
@@ -106,6 +130,7 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		m_KeybindSettings.SetSelectedRowComponent(this);
 		m_KeybindSettings.SingleResetEnabled(true);
 		m_KeybindSettings.UnbindSingleActionEnabled(true);
+		m_KeybindSettings.AdvancedBindingEnabled(true);
 		return true;
 	}
 	
@@ -116,6 +141,7 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		m_KeybindSettings.SetSelectedRowComponent(null);
 		m_KeybindSettings.SingleResetEnabled(false);
 		m_KeybindSettings.UnbindSingleActionEnabled(false);
+		m_KeybindSettings.AdvancedBindingEnabled(false);
 		return true;
 	}
 	
@@ -133,14 +159,31 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Unbind()
+	void Unbind(EInputDeviceType device = EInputDeviceType.KEYBOARD)
 	{
 		string finalPreset;
-		if (!m_sActionPreset.IsEmpty())
-			finalPreset = PRIMARY_PRESET_PREFIX + m_sActionPreset;
+		string devicePrefix;
 		
-		s_Binding.StartCapture(m_sActionName, EInputDeviceType.KEYBOARD, finalPreset, false);
-		s_Binding.SaveCapture();
-		s_Binding.Save();
+		if (device == EInputDeviceType.GAMEPAD)
+			devicePrefix = GAMEPAD_PRESET_PREFIX;
+		else
+			devicePrefix = PRIMARY_PRESET_PREFIX;
+		
+		if (!m_sActionPreset.IsEmpty())
+			finalPreset = devicePrefix + m_sActionPreset;
+		
+		m_SettingsKeybindModule.UnbindAction(m_sActionName, finalPreset, device);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetActionName()
+	{
+		return m_sActionName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetActionPreset()
+	{
+		return m_sActionPreset;
 	}
 };

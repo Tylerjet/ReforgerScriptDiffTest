@@ -12,7 +12,7 @@ class SCR_CampaignTutorialStage51 : SCR_BaseCampaignTutorialStage
 		m_bCheckWaypoint = false;
 		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_SuppliesLoad", duration: -1);
 		m_TutorialComponent.SetWaypointTruckPosition(SCR_ETutorialSupplyTruckWaypointMode.BACK);
-		SCR_CampaignBase mainBaseUS = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("MainBaseChotain"));
+		SCR_CampaignMilitaryBaseComponent mainBaseUS = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("MainBaseChotain").FindComponent(SCR_CampaignMilitaryBaseComponent));
 		mainBaseUS.AddSupplies(2000);
 	}
 	

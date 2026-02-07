@@ -47,6 +47,11 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 		if (!m_ProviderIcon)
 			return;
 		
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		
+		if (!campaign)
+			return;
+		
 		Color factionColor;
 		// We need to check both here, as vehicle has not set AffiliatedFaction if it is empty, to prevent AI to shoot at the empty vehicle. 
 		Faction faction = m_FactionComponent.GetAffiliatedFaction();
@@ -62,17 +67,17 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 		
 		switch(faction.GetFactionKey())
 		{
-			case SCR_GameModeCampaignMP.FACTION_INDFOR:
+			case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.INDFOR):
 			{
 				baseIcon.SetIdentity(EMilitarySymbolIdentity.INDFOR);
 				break;
 			}
-			case SCR_GameModeCampaignMP.FACTION_OPFOR:
+			case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.OPFOR):
 			{
 				baseIcon.SetIdentity(EMilitarySymbolIdentity.OPFOR);
 				break;
 			}
-			case SCR_GameModeCampaignMP.FACTION_BLUFOR:
+			case campaign.GetFactionKeyByEnum(SCR_ECampaignFaction.BLUFOR):
 			{
 				baseIcon.SetIdentity(EMilitarySymbolIdentity.BLUFOR);				
 				break;
@@ -121,7 +126,7 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 	//------------------------------------------------------------------------------------------------
 	protected void SetProviderName(IEntity targetEntity)
 	{
-		SCR_CampaignBase targetBase = SCR_CampaignBase.Cast(targetEntity);
+		SCR_CampaignMilitaryBaseComponent targetBase = SCR_CampaignMilitaryBaseComponent.Cast(targetEntity.FindComponent(SCR_CampaignMilitaryBaseComponent));
 		if (targetBase)
 		{
 			m_ProviderName.SetText(targetBase.GetBaseNameUpperCase());

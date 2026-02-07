@@ -19,29 +19,30 @@ class SCR_FactionCallsignInfo
 	[Attribute()]
 	protected ref array<ref SCR_CallsignInfo> m_aSquadNames;
 	
-	[Attribute(desc: "%1 = Company, %2 = Platoon, %3 = Squad")]
+	[Attribute(desc: "Used to show callsigns of groups. %1 = Company, %2 = Platoon, %3 = Squad")]
 	protected LocalizedString m_sCallsignGroupFormat;
 	
-	[Attribute(desc: "%1 = Company, %2 = Platoon, %3 = Squad, %4 = Character")]
+	[Attribute(desc: "Used when showing callsign of character that has no specific role. %1 = Company, %2 = Platoon, %3 = Squad, %4 = CharacterNumber")]
 	protected LocalizedString m_sCallsignCharacterFormat;
+	
+	[Attribute(desc: "If character has a specific role this formating will be used instead. %1 = Company, %2 = Platoon, %3 = Squad, %4 = CharacterRole")]
+	protected LocalizedString m_sCallsignCharacterWithRoleFormat;
 
 	[Attribute(desc: "A character can have one role at the time and a group can only have one of each role. Note that roles are assigned in order, so make sure important roles (Such as leader) are on top of the list.")]
-	protected ref array<ref SCR_BaseRoleCallsign> m_aCharacterRoleCallsigns;
-	
-	//[Attribute(defvalue: "%4", desc: "%1 = Company, %2 = Platoon, %3 = Squad, %4 = Character")]
-	//protected LocalizedString m_sCallsignCharacterFormat;
-	
+	protected ref array<ref SCR_BaseRoleCallsign> m_aCharacterRoleCallsigns;	
 
 	/*!
 	Get callsign format
 	\return string callsign Format
 	*/
-	string GetCallsignFormat(bool includeCharacter)
+	string GetCallsignFormat(bool includeCharacter, int characterRole = -1)
 	{
 		if (!includeCharacter)
 			return m_sCallsignGroupFormat;
-		else
+		else if (characterRole < 0)
 			return m_sCallsignCharacterFormat;
+		else 
+			return m_sCallsignCharacterWithRoleFormat;
 	}
 	
 	/*!
@@ -183,56 +184,23 @@ class SCR_FactionCallsignInfo
 	
 	/*!
 	Loops through all availible roles for the faction and grabs the first availible role for that character
-	\param character AIAgent of character to assign callsign
+	\param character IEntity of character to assign callsign
+	\param playerID if entity is a player then ID is also given
 	\param group SCR_AIGroup group of which character is a part of
-	\param occupiedRoles roles already occupied for the group the character is part of
+	\param occupiedAIRoles roles already occupied by AI for the group the character is part of
+	\param occupiedPlayerRoles roles already occupied by Player for the group the character is part of
 	\param[out] roleCallsignIndex the return index of the found character role. Can be given a value to look for a specific role to assign
+	\param[out] isUnique If true than only one character can have the role in the group (as well as any attached master and slave groups)
 	\return bool true if callsign found, else it returns false
 	*/
-	bool GetCharacterRoleCallsign(AIAgent character, SCR_AIGroup group, notnull map<int, AIAgent> occupiedRoles, out int roleCallsignIndex)
-	{
+	bool GetCharacterRoleCallsign(IEntity character, int playerID, SCR_AIGroup group, inout int roleCallsignIndex, out bool isUnique)
+	{		
 		foreach (SCR_BaseRoleCallsign roleCallsign: m_aCharacterRoleCallsigns)
 		{
-			if (roleCallsign.IsValidRole(character, group, occupiedRoles, roleCallsignIndex))
+			if (roleCallsign.IsValidRole(character, playerID, group, roleCallsignIndex, isUnique))
 				return true;
 		}
 	
 		return false;
-	}
-
-	
-	/*!
-	Loops through all availible roles for the faction and grabs the first availible role for a GROUPLESS character
-	\param character AIAgent of character to assign callsign
-	\param[out] roleCallsignIndex the return index of the found character role. Can be given a value to look for a specific role to assign
-	\return bool true if callsign found, else it returns false
-	*/
-	bool GetGrouplessCharacterRoleCallsign(AIAgent character, out int roleCallsignIndex)
-	{
-		foreach (SCR_BaseRoleCallsign roleCallsign: m_aCharacterRoleCallsigns)
-		{
-			if (roleCallsign.IsValidRole(character, null, null, roleCallsignIndex))
-				return true;
-		}
-	
-		return false;
-	}
-	
-	/*!
-	Loops through all availible roles for the faction and grabs the first availible role for a GROUPLESS character
-	\param character IEntity, will get character AIAgent
-	\param[out] roleCallsignIndex the return index of the found character role. Can be given a value to look for a specific role to assign
-	\return bool true if callsign found, else it returns false
-	*/
-	bool GetGrouplessCharacterRoleCallsign(IEntity character, out int roleCallsignIndex)
-	{
-		AIControlComponent cc = AIControlComponent.Cast(character.FindComponent(AIControlComponent));
-		AIAgent aIAgent;
-		if (cc)
-			aIAgent = cc.GetAIAgent();
-		if (aIAgent)
-			return GetGrouplessCharacterRoleCallsign(aIAgent, roleCallsignIndex);
-		else
-			return false;
 	}
 };

@@ -12,6 +12,8 @@ class ReportDialogUI: DialogUI
 	
 	protected ref SCR_WorkshopItemAction m_ReportAction;
 	
+	protected bool m_bShouldEnableConfirmButton;
+	
 	//! Available categories of feedback
 	
 	
@@ -60,7 +62,9 @@ class ReportDialogUI: DialogUI
 		SCR_LoadingOverlay overlay = SCR_LoadingOverlay.ShowForWidget(m_wDialogWindow, string.Empty);
 		
 		// Disable writing mode so that user can press escape again
-		overlay.SetFocus();
+		if(overlay)
+			overlay.SetFocus();
+		
 		SetAcceptInput(false);
 		
 		// Report
@@ -150,14 +154,33 @@ class ReportDialogUI: DialogUI
 		
 		// Disable the confirm button initially because text is empty
 		m_Confirm.SetEnabled(false);
+		
+		if(m_InputField)
+		{
+			m_InputField.m_OnWriteModeLeave.Insert(OnWriteModeLeave);
+			m_InputField.m_OnTextChange.Insert(OnTextChange);
+		}
+		
+		SCR_NavigationButtonComponent tos = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ToS", GetRootWidget());
+		if (tos)
+			tos.m_OnActivated.Insert(OnTos);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuUpdate(float tDelta)
+	void OnWriteModeLeave()
 	{
-		if (m_Confirm && m_InputField)
-			m_Confirm.SetEnabled(!m_InputField.GetValue().IsEmpty());
+		OnTextChange();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnTextChange()
+	{
+		if (!m_Confirm || !m_InputField)
+			return;
+		
+		m_Confirm.SetEnabled(!m_InputField.GetValue().IsEmpty());
+	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	void OnFieldChanged(SCR_EditBoxComponent comp, string text)
@@ -170,5 +193,11 @@ class ReportDialogUI: DialogUI
 	void Init(ContentBrowserDetailsMenu parentMenu)
 	{
 		m_DetailsMenu = parentMenu;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnTos()
+	{
+		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_PrivacyPolicy"));
 	}
 };

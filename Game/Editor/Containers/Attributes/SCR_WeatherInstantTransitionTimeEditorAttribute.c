@@ -44,4 +44,10 @@ class SCR_WeatherInstantTransitionTimeEditorAttribute : SCR_BaseValueListEditorA
 		//~Todo: Not implemented
 		//editorWeatherComponent.SetWeatherInstantTransitionTime(var.GetInt());
 	}	
+	
+	override int GetEntries(notnull array<ref SCR_BaseEditorAttributeEntry> outEntries)
+	{
+		outEntries.Insert(new SCR_BaseEditorAttributeEntryTimeSlider(1, false));
+		return super.GetEntries(outEntries);
+	}
 };

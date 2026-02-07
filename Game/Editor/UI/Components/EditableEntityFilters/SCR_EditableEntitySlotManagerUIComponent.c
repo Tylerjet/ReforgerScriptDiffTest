@@ -73,10 +73,14 @@ class SCR_EditableEntitySlotManagerUIComponent: SCR_BaseEditorUIComponent
 		
 		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>();
 		entities.Insert(entity);
-		foreach (SCR_EditableEntityUIRuleTracker ruleTracker: m_RuleTrackers)
+		
+		if (m_RuleTrackers)
 		{
-			ruleTracker.AddEntity(entity);
-			//ruleTracker.OnChanged(entity.GetEntityStates(), entities, null);
+			foreach (SCR_EditableEntityUIRuleTracker ruleTracker: m_RuleTrackers)
+			{
+				ruleTracker.AddEntity(entity);
+				//ruleTracker.OnChanged(entity.GetEntityStates(), entities, null);
+			}
 		}
 	}
 	void ClearSlots()

@@ -333,7 +333,6 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 		}
 	}
 	
-	
 	protected void AnimationDoneListenerUpdate()
 	{
 		if (!AnimateWidget.IsAnimating(m_wRoot))
@@ -395,5 +394,10 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 			
 		if (m_bIsListeningToDoneFade)
 			GetGame().GetCallqueue().Remove(AnimationDoneListenerUpdate);
+	}
+	
+	SCR_NotificationData GetData()
+	{
+		return m_Data;
 	}
 };

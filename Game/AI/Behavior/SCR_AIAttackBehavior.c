@@ -12,12 +12,13 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	ref SCR_BTParam<float> m_fWaitTime = new SCR_BTParam<float>("WaitTime");
 	
     SCR_AIWorld m_AIWorld;
+	SCR_AICombatComponent m_CombatComponent;
 	
 	bool m_bHasGrenades = true;
 	bool m_bSelected = false;
 
 	// This delay is executed before shooting starts
-	protected static const float WAIT_TIME_UNEXPECTED = 0.5;
+	protected static const float WAIT_TIME_UNEXPECTED = 0.25;
 	protected static const float WAIT_TIME_OVERTHREATENED = 0.8;
 	
 	//----------------------------------------------------------------------------------
@@ -37,7 +38,7 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	//----------------------------------------------------------------------------------
 	override void OnActionCompleted()
 	{
-		if (m_eState == EAIActionState.COMPLETED || m_eState == EAIActionState.FAILED)
+		if (GetActionState() == EAIActionState.COMPLETED || GetActionState() == EAIActionState.FAILED)
 			return;
 		super.OnActionCompleted();
 	}
@@ -45,7 +46,7 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	//----------------------------------------------------------------------------------
 	override void OnActionFailed()
 	{
-		if (m_eState == EAIActionState.COMPLETED || m_eState == EAIActionState.FAILED)
+		if (GetActionState() == EAIActionState.COMPLETED || GetActionState() == EAIActionState.FAILED)
 			return;
 		super.OnActionFailed();
 	}
@@ -64,19 +65,27 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 			return;
 		
 		m_fPriorityLevel.m_Value = priorityLevel;
-		m_fPriority = PRIORITY_BEHAVIOR_ATTACK_NOT_SELECTED;
+		SetPriority(PRIORITY_BEHAVIOR_ATTACK_NOT_SELECTED);
 		m_fThreat = 1.01 * SCR_AIThreatSystem.VIGILANT_THRESHOLD;
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Attack.bt";
 		m_bAllowLook = false;
 		m_bResetLook = true;
-		m_bUniqueInActionQueue = false;
+		SetIsUniqueInActionQueue(false);
 		m_AIWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
+		m_CombatComponent = utility.m_CombatComponent;
 	}
 	
 	//----------------------------------------------------------------------------------
-	override float Evaluate()
+	override float CustomEvaluate()
 	{
 		BaseTarget baseTarget = m_Target.m_Value;
+		
+		// Return 0 if it's not current target selected by weapon&target selector
+		// Since weapon&target selector selects both weapon and target, if we chose to attack a different target,
+		// it might happen that we use a wrong weapon
+		if (baseTarget != m_CombatComponent.GetCurrentTarget())
+			return 0;
+		
 		float targetScore = m_Utility.m_CombatComponent.m_WeaponTargetSelector.CalculateTargetScore(baseTarget);
 		if (targetScore >= SCR_AICombatComponent.TARGET_SCORE_HIGH_PRIORITY_ATTACK ||
 			baseTarget.IsEndangering())

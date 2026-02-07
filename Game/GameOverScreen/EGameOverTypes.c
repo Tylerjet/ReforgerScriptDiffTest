@@ -1,6 +1,9 @@
 enum EGameOverTypes
 {
-	//~ Same as in SCR_GameModeEndData
+	ENDREASON_UNDEFINED = -1,
+	ENDREASON_TIMELIMIT = -2,
+	ENDREASON_SCORELIMIT = -3,
+	ENDREASON_DRAW = -4,
 	SERVER_RESTART = -5,
 	
 	//~ Default

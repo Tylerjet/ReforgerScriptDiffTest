@@ -39,16 +39,16 @@ class SCR_AIPickMagazines : AITaskScripted
 			array<IEntity> items = {};
 			vicinity.GetAvailableItems(items);
 			
-			for (int i = items.Count()-1; i >-1; i--)
+			foreach (IEntity item : items)
 			{
-				MagazineComponent magComp = MagazineComponent.Cast(items[i].FindComponent(MagazineComponent));
-				if (magComp && magComp.GetMagazineWell().Type() == m_oMagazineWell && !m_Inventory.TryInsertItem(items[i],EStoragePurpose.PURPOSE_DEPOSIT))
+				MagazineComponent magComp = MagazineComponent.Cast(item.FindComponent(MagazineComponent));
+				if (!magComp)
+					continue;
+				if (magComp.GetMagazineWell().Type() == m_oMagazineWell && !m_Inventory.TryInsertItem(item,EStoragePurpose.PURPOSE_DEPOSIT))
 				{
 					CharacterControllerComponent charCtrlComp = CharacterControllerComponent.Cast(ChimeraCharacter.Cast(m_OwnerEntity).GetCharacterController());
-					charCtrlComp.ReloadWeaponWith(items[i]);
-				}	
-				else
-					items.Remove(i);
+					charCtrlComp.ReloadWeaponWith(item);
+				}
 			}
 			
 			if (items.Count() == 0)

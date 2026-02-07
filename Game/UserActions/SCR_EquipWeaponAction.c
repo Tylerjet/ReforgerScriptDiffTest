@@ -86,7 +86,7 @@ class SCR_EquipWeaponAction : SCR_BaseWeaponAction
 			WeaponSlotComponent weaponSlot = weaponsList[i];
 			string weaponSlotType = weaponSlot.GetWeaponSlotType();
 			
-			if (weaponSlotType.Compare(weapon.GetWeaponSlotType()) != 0)
+			if (weaponSlotType.Compare(weapon.GetWeaponSlotType()) != 0 && !CharacterHandWeaponSlotComponent.Cast(weaponSlot))
 			{
 				continue;
 			}
@@ -138,8 +138,20 @@ class SCR_EquipWeaponAction : SCR_BaseWeaponAction
 		m_bWasUnequipping = false;
 		m_pEquipCB.m_bNoEquipAnims = weaponSlotCurr == null;
 		// Free hands, play gesture right away and grab weapon
-		if (controller.TryPlayItemGesture(EItemGesture.EItemGesturePickUp, this, "Character_ActionGrab"))
-			m_iTargetSlotID = slot.GetWeaponSlotIndex();
+		// If we are equiping to hand slot, just move it into hand directly
+		if (CharacterHandWeaponSlotComponent.Cast(slot))
+		{
+			if (manager.TryInsertItemInStorage(pOwnerEntity, weaponStorage, slot.GetWeaponSlotIndex()))
+			{
+				// Play sound
+				manager.PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
+			}
+		}
+		else
+		{
+			if (controller.TryPlayItemGesture(EItemGesture.EItemGesturePickUp, this, "Character_ActionGrab"))
+				m_iTargetSlotID = slot.GetWeaponSlotIndex();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -269,7 +281,7 @@ class SCR_EquipWeaponHolsterAction : SCR_BaseWeaponAction
 			WeaponSlotComponent weaponSlot = weaponsList[i];
 			string weaponSlotType = weaponSlot.GetWeaponSlotType();
 			
-			if (weaponSlotType.Compare(weapon.GetWeaponSlotType()) != 0)
+			if (weaponSlotType.Compare(weapon.GetWeaponSlotType()) != 0 && !CharacterHandWeaponSlotComponent.Cast(weaponSlot))
 			{
 				continue;
 			}

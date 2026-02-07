@@ -39,7 +39,7 @@ class SCR_BasePlayerBudgetEnableEditorAttribute: SCR_BaseEditorAttribute
 		int maxBudget;
 		budgetComponent.GetMaxBudgetValue(GetBudgetType(), maxBudget);
 
-		return SCR_BaseEditorAttributeVar.CreateBool(maxBudget > 0));
+		return SCR_BaseEditorAttributeVar.CreateBool(maxBudget > 0);
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)

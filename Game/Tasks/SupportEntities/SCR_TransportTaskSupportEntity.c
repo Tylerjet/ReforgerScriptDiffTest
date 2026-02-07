@@ -119,40 +119,41 @@ class SCR_TransportTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		if (m_sRequestButtonText.IsEmpty())
 			return;
 		
-		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapContextualMenuUI));
-		if (!ctxMenu)
+		SCR_MapRadialUI radialMenu = SCR_MapRadialUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapRadialUI));
+		if (!radialMenu)
 			return;
 			
-		SCR_MapMenuRequestedTaskEntry entry = new SCR_MapMenuRequestedTaskEntry(m_sRequestButtonText);
+		SCR_MapMenuRequestedTaskEntry entry = new SCR_MapMenuRequestedTaskEntry();
 		if (!entry)
 			return;
 		
-		ctxMenu.InsertCustomRadialEntry(entry);
-		
+		entry.SetName(m_sRequestButtonText);
 		entry.SetSupportClass(this);
-		entry.m_OnClick.Insert(Request);
+		entry.GetOnPerform().Insert(Request);
 		//entry.m_OnShow.Insert(OnContextualEntryShow);
+		
+		radialMenu.InsertCustomRadialEntry(entry);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void SetToPosition()
 	{
-		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapContextualMenuUI));
-		if (!ctxMenu)
+		SCR_MapRadialUI radialMenu = SCR_MapRadialUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapRadialUI));
+		if (!radialMenu)
 			return;
 		
-		m_vToPosition = ctxMenu.GetMenuWorldPosition();
+		m_vToPosition = radialMenu.GetMenuWorldPosition();
 		m_bSetFromPosition = false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void SetFromPosition()
 	{
-		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapContextualMenuUI));
-		if (!ctxMenu)
+		SCR_MapRadialUI radialMenu = SCR_MapRadialUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapRadialUI));
+		if (!radialMenu)
 			return;
 		
-		m_vFromPosition = ctxMenu.GetMenuWorldPosition();
+		m_vFromPosition = radialMenu.GetMenuWorldPosition();
 		m_bSetFromPosition = true;
 	}
 	

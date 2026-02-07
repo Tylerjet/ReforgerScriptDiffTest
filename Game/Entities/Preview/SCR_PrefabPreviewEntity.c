@@ -61,7 +61,11 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 			if (parentID != -1) //--- Always center prefab root to 0,0,0
 				entitySource.Get("coords", entryLocal.m_vPosition);
 			
-			entitySource.Get("scale", entryLocal.m_fScale);
+			
+			float scale; 
+			entitySource.Get("scale", scale);
+			entryLocal.SetScale(scale);
+			
 			//if (parentID == 0)
 			//	entryLocal.m_fScale *= entryLocal.m_fScale; //--- Compensate for parent scale (why though?)
 			
@@ -149,6 +153,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 		//--- Second pass (when no preview prefab exists) - get mesh and process children
 		string componentClassName;
 		typename componentType;
+		EAreaMeshShape areaMeshShape;
 		for (int i = 0; i < componentCount; i++)
 		{
 			componentSource = entitySource.GetComponent(i);
@@ -201,13 +206,15 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 					for (int e = 0, linkCount = entries.Count(); e < linkCount; e++)
 					{
 						link = SCR_EditorLinkEntry.Cast(BaseContainerTools.CreateInstanceFromContainer(entries.Get(e)));
-						GetPreviewEntriesFromLink(link, outEntries, parentID, entryLocal.m_fScale);
+						GetPreviewEntriesFromLink(link, outEntries, parentID, entryLocal.GetScale());
 					}
 					break;
 				}
 				case (componentType.IsInherited(SCR_EditableEntityComponent)):
 				{
 					EEditableEntityFlag editableFlags = SCR_EditableEntityComponentClass.GetEntityFlags(componentSource);
+					
+					entryLocal.m_Flags |= EPreviewEntityFlag.EDITABLE;
 					
 					if (SCR_Enum.HasFlag(editableFlags, EEditableEntityFlag.HORIZONTAL))
 						entryLocal.m_Flags |= EPreviewEntityFlag.HORIZONTAL;
@@ -238,32 +245,97 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 				}
 				case (componentType.IsInherited(SCR_TriggerAreaMeshComponent)):
 				{
-					entryLocal.m_Shape = EPreviewEntityShape.CYLINDER;
-					entitySource.Get("SphereRadius", entryLocal.m_fScale);
+					//~ Get Shape
+					componentSource.Get("m_eShape", areaMeshShape);
+					if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+						entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
+					else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+						entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
+					else
+						break;
+					
+					float radius, height;
+					entitySource.Get("SphereRadius", radius);
+					componentSource.Get("m_fHeight", height);
+					
+					entryLocal.m_vScale = Vector(radius, height, radius);
+					
 					break;
 				}
 				case (componentType.IsInherited(SCR_WaypointAreaMeshComponent)):
 				{
-					entryLocal.m_Shape = EPreviewEntityShape.CYLINDER;
-					entitySource.Get("CompletionRadius", entryLocal.m_fScale);
+					//~ Get Shape
+					componentSource.Get("m_eShape", areaMeshShape);
+					if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+						entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
+					else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+						entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
+					else
+						break;
+					
+					float radius, height;
+					entitySource.Get("CompletionRadius", radius);
+					componentSource.Get("m_fHeight", height);
+					
+					entryLocal.m_vScale = Vector(radius, height, radius);
+					
 					break;
 				}
 				case (componentType.IsInherited(SCR_SpawnPointAreaMeshComponent)):
 				{
-					entryLocal.m_Shape = EPreviewEntityShape.CYLINDER;
-					entitySource.Get("m_fSpawnRadius", entryLocal.m_fScale);
+					//~ Get Shape
+					componentSource.Get("m_eShape", areaMeshShape);
+					if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+						entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
+					else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+						entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
+					else
+						break;
+					
+					float radius, height;
+					entitySource.Get("m_fSpawnRadius", radius);
+					componentSource.Get("m_fHeight", height);
+					
+					entryLocal.m_vScale = Vector(radius, height, radius);
+					
 					break;
 				}
 				case (componentType.IsInherited(SCR_CustomAreaMeshComponent)):
 				{
-					entryLocal.m_Shape = EPreviewEntityShape.CYLINDER;
-					componentSource.Get("m_fRadius", entryLocal.m_fScale);
+					//~ Get Shape
+					componentSource.Get("m_eShape", areaMeshShape);
+					if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+						entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
+					else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+						entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
+					else
+						break;
+					
+					float radius, height;
+					componentSource.Get("m_fRadius", radius);
+					componentSource.Get("m_fHeight", height);
+					
+					entryLocal.m_vScale = Vector(radius, height, radius);
+					
 					break;
 				}
 				case (componentType.IsInherited(SCR_ZoneRestrictionAreaMeshComponent)):
 				{
-					entryLocal.m_Shape = EPreviewEntityShape.CYLINDER;
-					entitySource.Get("m_fZoneRadius", entryLocal.m_fScale);
+					//~ Get Shape
+					componentSource.Get("m_eShape", areaMeshShape);
+					if (areaMeshShape == EAreaMeshShape.ELLIPSE)
+						entryLocal.m_Shape = EPreviewEntityShape.ELLIPSE;
+					else if (areaMeshShape == EAreaMeshShape.RECTANGLE)
+						entryLocal.m_Shape = EPreviewEntityShape.RECTANGLE;
+					else
+						break;
+					
+					float radius, height;
+					entitySource.Get("m_fZoneRadius", radius);
+					componentSource.Get("m_fHeight", height);
+					
+					entryLocal.m_vScale = Vector(radius, height, radius);
+					
 					break;
 				}
 			}
@@ -321,7 +393,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 		SCR_BasePreviewEntry entry = new SCR_BasePreviewEntry(true);
 		entry.m_vPosition = link.m_vPosition;
 		entry.m_vAngles = link.m_vAngles;
-		entry.m_fScale = link.m_fScale;// * link.m_fScale;//parentScale;
+		entry.SetScale(link.m_fScale);
 		
 		GetPreviewEntries(entitySource, outEntries, parentID, entry);
 	}
@@ -356,7 +428,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 			child = api.EntityToSource(api.CreateEntity(className, "", 0, parent, entry.m_vPosition, entry.m_vAngles));
 			children.Insert(child);
 			
-			child.Set("scale", entry.m_fScale);
+			child.Set("scale", entry.GetScale());
 			child.Set("m_Flags", entry.m_Flags);
 			
 			if (i == 0)

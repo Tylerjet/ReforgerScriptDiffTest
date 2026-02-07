@@ -13,9 +13,12 @@ class SCR_NotificationPlayerTargetFaction : SCR_NotificationDisplayData
 		int playerID, factionID;
 		data.GetParams(playerID, factionID);
 		
-		string factionName = GetFactionName(factionID);
+		string playerName, factionName;
+		data.GetNotificationTextEntries(playerName, factionName);
+		if (!GetPlayerName(playerID, playerName) || !GetFactionName(factionID, factionName))
+			return string.Empty;
 		
-		data.SetNotificationTextEntries(GetPlayerName(playerID), factionName);
+		data.SetNotificationTextEntries(playerName, factionName);
 		return super.GetText(data);
 	}
 	

@@ -304,7 +304,7 @@ class SCR_GameModeStatistics
 	private static ref array<ref SCR_IGameModeRecord> s_aRecordBuffer = {};
 
 	//! File to which records should be written
-	private static FileHandle s_pFileHandle;
+	private static ref FileHandle s_pFileHandle;
 
 	//! File extension used by SCR_GameModeStatistics
 	private static const string k_sExtension = ".txt";

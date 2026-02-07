@@ -70,22 +70,20 @@ class SCR_WorkshopErrorPresetLoadDialog : SCR_ConfigurableDialogUi
 	{
 		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopAddonManagerDialogs.DIALOGS_CONFIG, "error_preset_load", this);
 		
-		string msg = "";
+		TextWidget scrollMessage = TextWidget.Cast(GetRootWidget().FindAnyWidget("ScrollMessage"));
 		
-		foreach (SCR_WorkshopAddonPresetAddonMeta meta : notFoundAddons)
+		if (scrollMessage)
 		{
-			msg = msg + string.Format("%1 %2\n", meta.GetGuid(), meta.GetName());
+			string msg = "";
+			
+			foreach (SCR_WorkshopAddonPresetAddonMeta meta : notFoundAddons)
+			{
+				msg = msg + string.Format("%1 %2\n", meta.GetGuid(), meta.GetName());
+			}
+		
+			scrollMessage.SetVisible(true);
+			scrollMessage.SetText(msg);
 		}
-		
-		SetMessage(msg);
-		
-		
-		/*array<ref SCR_WorkshopItem>
-		
-		array<ref SCR_WorkshopItem> notFoundItems = SCR_AddonManager.SelectItemsOr(
-			m_ModManager.GetRoomItemsScripted(), EWorkshopItemQuery.NOT_OFFLINE
-		);
-		*/
 		
 		/*
 		array<ref Tuple2<SCR_WorkshopItem, string>> notFoundItems = new array<ref Tuple2<SCR_WorkshopItem, string>>;

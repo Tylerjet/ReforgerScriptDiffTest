@@ -4,12 +4,6 @@ class SCR_AIResupplyActivity : SCR_AIActivityBase
 	ref SCR_BTParam<typename> m_MagazineWell = new SCR_BTParam<typename>(SCR_AIActionTask.MAGAZINE_WELL_PORT);
 	
 	//-------------------------------------------------------------------------------------------------------------
-	override float Evaluate()
-	{
-		return m_fPriority;
-	}
-	
-	//-------------------------------------------------------------------------------------------------------------
 	void InitParameters(IEntity entityToResupply, typename magazineWell, float priorityLevel)
 	{
 		m_EntityToResupply.Init(this, entityToResupply);
@@ -18,11 +12,11 @@ class SCR_AIResupplyActivity : SCR_AIActivityBase
 	}
 	
 	//-------------------------------------------------------------------------------------------------------------
-	void SCR_AIResupplyActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, IEntity ent, typename magazineWell, float priority = PRIORITY_ACTIVITY_RESUPPLY, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AIResupplyActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint, IEntity ent, typename magazineWell, float priority = PRIORITY_ACTIVITY_RESUPPLY, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		InitParameters(ent, magazineWell, priorityLevel);
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityResupply.bt";
-		m_fPriority = priority;
+		SetPriority(priority);
 	}
 	
 	override string GetActionDebugInfo()

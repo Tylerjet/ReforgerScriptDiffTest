@@ -5,10 +5,10 @@ Variable zoom.
 
 class SCR_SightsZoomFOVInfo : SCR_BaseVariableSightsFOVInfo
 {	
-	[Attribute("1", UIWidgets.Auto, desc: "Initial zoom that can be static or scaled up", params: "1 15 0.1")]
+	[Attribute("1", UIWidgets.Auto, desc: "Initial zoom that can be static or scaled up", params: "0.1 100 0.1")]
 	protected float m_fBaseZoom;
 	
-	[Attribute("0", UIWidgets.Auto, desc: "Max zoom, smaller zoomMax than baseZoom will result in static zoom", params: "1 15 0.1")]
+	[Attribute("0", UIWidgets.Auto, desc: "Max zoom, smaller zoomMax than baseZoom will result in static zoom", params: "0.1 100 0.1")]
 	protected float m_fZoomMax;
 	
 	[Attribute("0.5", UIWidgets.Slider, desc: "Zoom step size, will automatically set step count", params: "0.1 5 0.1")]
@@ -58,15 +58,7 @@ class SCR_SightsZoomFOVInfo : SCR_BaseVariableSightsFOVInfo
 		}
 		else
 		{
-			// Get reference 1x FOV
-			float referenceFOV;
-			PlayerController pc = GetGame().GetPlayerController();
-			if (pc && pc.GetPlayerCamera())
-				referenceFOV = pc.GetPlayerCamera().GetFocusFOV();
-			else
-				referenceFOV = 38;
-			
-			m_fCurrentFOV = referenceFOV / m_fBaseZoom;
+			m_fCurrentFOV = SCR_2DOpticsComponent.CalculateZoomFOV(m_fBaseZoom);
 		}
 	}
 	

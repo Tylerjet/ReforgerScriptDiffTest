@@ -72,7 +72,7 @@ class SCR_JointSliderEntity: SCR_JointBaseEntity
 	{
 		// Create the joint
 		m_Joint = PhysicsJoint.CreateSlider(parent, child, jointMat1, jointMat2, m_CollisionBlocker, -1);
-		PhysicsSliderJoint jointSlider = (PhysicsSliderJoint)m_Joint;
+		PhysicsSliderJoint jointSlider = m_Joint;
 		jointSlider.SetLinearLimits(m_MoveMin, m_MoveMax);
 		if (m_RotateIsFree)
 			jointSlider.SetAngularLimits(1, -1);

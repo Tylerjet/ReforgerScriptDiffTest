@@ -1,4 +1,4 @@
-/** @ingroup Editor
+/** @ingroup Editor_Entities
 */ 
 
 //! Type of event-processing operation

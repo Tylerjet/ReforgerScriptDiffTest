@@ -346,7 +346,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	[Attribute(defvalue: "0", desc: "Whether or not walls should be snapped to the terrain", category: "Other")]
 	protected bool m_bSnapToTerrain;
 
-	protected float m_fFirstObjectLength;
+	protected float m_fFirstObjectLength; // unused?
 	protected float m_fLastObjectLength;
 
 	protected IEntitySource m_ParentSource;
@@ -365,6 +365,8 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	#ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
+	//! \return entity side on provided axis, 1 on close-to-zero (< 0.00001m) measurement, float.MAX on failure
 	static float MeasureEntity(ResourceName entityName, int measureAxis, WorldEditorAPI api)
 	{
 		float result = float.MAX;
