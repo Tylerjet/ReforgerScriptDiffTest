@@ -1,0 +1,827 @@
+//------------------------------------------------------------------------------------------------
+class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
+{
+ 	[Attribute("{14E86B20D0ED993F}UI/layouts/Campaign/ServiceContainer.layout")]
+	protected ResourceName m_sServiceElement;
+
+	[Attribute("{94F1E2223D7E0588}UI/layouts/Campaign/ServiceHint.layout")]
+	protected ResourceName m_sServiceHint;
+
+	protected static const float OPACITY_DISABLED = 0.5;
+	protected static const float OPACITY_UNSELECTED = 0.9;
+
+	/*
+		note(koudelkaluk): base name and service container offsets
+		are currently hardcoded in SetBaseImage() based on the icon size.
+		Once this system starts utilizing SCR_MilitarySymbolUIComponent,
+		this whole thing can be redone in a better way.
+	*/
+	protected int m_iServicesPadding = 0;
+	protected float m_fNameOffset = 2;
+
+	protected ref map<SCR_CampaignDeliveryPoint, bool> m_mServices = new map<SCR_CampaignDeliveryPoint, bool>(); // true if built
+	protected ref map<Widget, SCR_MapUITask> m_mTasks = new map<Widget, SCR_MapUITask>();
+
+	protected SCR_CampaignBase m_Base;
+	protected CampaignBaseType m_eBaseType;
+	protected string m_sFactionKey;
+	protected SCR_CampaignFaction m_PlayerFaction;
+	protected SCR_CampaignMobileAssemblyComponent m_MobileAssembly;
+
+	protected SizeLayoutWidget m_wImageOverlay;
+	protected Widget m_wInfoOverlay;
+	protected Widget m_wServices;
+	protected static Widget m_wServiceHint;
+
+	protected TextWidget m_wBaseName;
+	protected TextWidget m_wCallsignName;
+	protected Widget m_wInfoText;
+
+	protected ImageWidget m_wLocalTask;
+	protected LocalizedString m_sAssembly = "#AR-Vehicle_MobileAssembly_Name";
+
+	static ref ScriptInvoker Event_OnIconUpdated = new ScriptInvoker();
+
+	protected ref ScriptInvoker m_OnBaseHovered = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnBaseSelected = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnMapIconEnter;
+	protected ref ScriptInvoker m_OnMapIconClick;
+	
+	bool m_bHighlighted;
+	bool m_bIsAnyElementHovered;
+	protected bool m_bServicesShown;
+	protected bool m_bCanRespawn;
+	protected bool m_bIsRespawnMenu;
+	protected bool m_bIsEditor;
+	protected bool m_bCanPlaySounds = true;
+	
+	//------------------------------------------------------------------------------
+	ScriptInvoker GetOnMapIconEnter()
+	{
+		if (!m_OnMapIconEnter)
+			m_OnMapIconEnter = new ScriptInvoker();
+		
+		return m_OnMapIconEnter;
+	}
+	
+	//------------------------------------------------------------------------------
+	ScriptInvoker GetOnMapIconClick()
+	{
+		if (!m_OnMapIconClick)
+			m_OnMapIconClick = new ScriptInvoker();
+		
+		return m_OnMapIconClick;
+	}
+
+	//------------------------------------------------------------------------------
+	override bool OnClick(Widget w, int x, int y, int button)
+	{		
+		if (m_OnMapIconClick)
+			m_OnMapIconClick.Invoke();
+		
+		CheckIfCanRespawn();
+		
+		if (!m_bIsAnyElementHovered && m_bCanRespawn && m_bIsRespawnMenu)
+		{
+			SelectIcon();
+			m_wHighlightImg.SetVisible(false);
+		}
+		return false;
+	}
+
+	//------------------------------------------------------------------------------
+	override bool OnMouseEnter(Widget w, int x, int y)
+	{
+		SCR_UITaskManagerComponent tm = SCR_UITaskManagerComponent.GetInstance();
+		if (tm  && !tm.IsTaskListOpen())
+		{
+			GetGame().GetWorkspace().SetFocusedWidget(w);
+		}
+		
+		if (m_OnMapIconEnter)
+			m_OnMapIconEnter.Invoke();
+
+		super.OnMouseEnter(w, x, y);
+		
+		AnimExpand();
+
+		if (m_wServices)
+		{
+			m_wServices.SetVisible(!m_mServices.IsEmpty());
+			m_wServices.SetEnabled(!m_mServices.IsEmpty())
+		}
+		
+		m_wInfoText.SetVisible(true);
+		m_wRoot.SetZOrder(1);
+
+		if (m_Base)
+			m_Base.OnIconHovered(this, true);
+		
+		if (m_MobileAssembly)
+			m_MobileAssembly.OnIconHovered(this, true);
+		
+		if (!m_bCanRespawn && m_bIsRespawnMenu)
+			return false;
+
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------
+	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
+	{
+		super.OnMouseLeave(w, enterW, x, y);
+
+		AnimCollapse();
+
+		m_wInfoText.SetVisible(false);
+		m_wRoot.SetZOrder(0);
+
+		if (m_Base)
+			m_Base.OnIconHovered(this, false);
+		
+		if (m_MobileAssembly)
+			m_MobileAssembly.OnIconHovered(this, false);
+		
+		if (!m_bCanRespawn && m_bIsRespawnMenu)
+			return false;
+		
+		if (m_wServices)
+			m_wServices.SetEnabled(false);
+
+		if (m_wLocalTask.IsEnabled())
+			m_wLocalTask.SetVisible(true);
+		
+		if (enterW)
+			m_bCanPlaySounds = ScriptedWidgetEventHandler.Cast(w.FindHandler(SCR_CampaignMapUIService)) == null;
+		else
+			m_bCanPlaySounds = true;
+		
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SelectBase()
+	{
+		if (s_SelectedElement && s_SelectedElement != this)
+			s_SelectedElement.Select(false);
+
+		Select(!m_bIsSelected);
+		AnimExpand();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnLeave()
+	{
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void AnimExpand()
+	{
+		if (!m_bIsAnyElementHovered && m_bCanPlaySounds)
+		{
+			switch (m_eIconType)
+			{
+				case EIconType.NONE:
+				{
+				} break;
+
+				case EIconType.BASE:
+				{
+					PlayHoverSound(m_sSoundBase);
+				} break;
+
+				case EIconType.ENEMY_BASE:
+				{
+					PlayHoverSound(m_sSoundEnemyBase);
+				} break;
+
+				case EIconType.RELAY:
+				{
+					PlayHoverSound(m_sSoundRelay);
+				} break;
+			}
+		}
+		
+		int paddingLeft = -100;
+		int paddingRight = -100;
+		int expand = -5;
+		if (m_mTasks.IsEmpty())
+			paddingRight = 0;
+		if (m_mServices.IsEmpty())
+			paddingLeft = 0;
+
+		if (m_wServices)
+		{
+			AlignableSlot.SetPadding(m_wServices, m_iServicesPadding, 0, 0, 0);
+			WidgetAnimator.PlayAnimation(m_wServices, WidgetAnimationType.Opacity, 1, ANIM_SPEED);
+		}
+		
+		m_wHighlightImg.SetVisible(true);
+		AlignableSlot.SetPadding(m_wButton, paddingLeft, -20, paddingRight, -20);
+	}
+
+	//------------------------------------------------------------------------------
+	override void AnimCollapse()
+	{
+		m_wHighlightImg.SetVisible(false);
+		if (m_bIsSelected)
+			return;
+
+		if (m_wServices)
+		{
+			WidgetAnimator.PlayAnimation(m_wServices, WidgetAnimationType.Opacity, 0, ANIM_SPEED);
+		}
+		
+		AlignableSlot.SetPadding(m_wButton, 10, 10, 10, 10);
+	}
+
+	//------------------------------------------------------------------------------
+	void ShowServiceHint(string name, string icon, string text, bool show, int suppliesAmount = -1, int suppliesMax = -1)
+	{
+		int mx;
+		int my;
+		WidgetManager.GetMousePos(mx, my);
+
+		mx = GetGame().GetWorkspace().DPIUnscale(mx);
+		my = GetGame().GetWorkspace().DPIUnscale(my);
+
+		if (!m_wServiceHint)
+		{
+			m_wServiceHint = GetGame().GetWorkspace().CreateWidgets(m_sServiceHint, null);
+			m_wServiceHint = m_wServiceHint.FindAnyWidget("Overlay");
+			m_wServiceHint.SetZOrder(10);
+		}
+
+		if (show)
+		{
+			FrameSlot.SetPos(m_wServiceHint, mx, my);
+			TextWidget.Cast(m_wServiceHint.FindAnyWidget("ServiceName")).SetTextFormat(name);
+			Widget ressuplyText = m_wServiceHint.FindAnyWidget("RessuplyText");
+			if (ressuplyText)
+				ressuplyText.SetVisible(false);
+
+			if (suppliesAmount > -1 && suppliesMax > -1)
+			{
+				TextWidget serviceText = TextWidget.Cast(m_wServiceHint.FindAnyWidget("ServiceText"));
+				if (serviceText)
+					serviceText.SetTextFormat(text, suppliesAmount, suppliesMax);
+
+				if (ressuplyText)
+					ressuplyText.SetVisible(suppliesAmount < suppliesMax);
+			}
+			else
+			{
+				TextWidget serviceText = TextWidget.Cast(m_wServiceHint.FindAnyWidget("ServiceText"));
+				if (serviceText)
+					serviceText.SetTextFormat(text);
+			}
+
+			ImageWidget.Cast(m_wServiceHint.FindAnyWidget("ServiceIcon")).LoadImageFromSet(0, m_sImageSet, icon);
+		}
+
+		m_wServiceHint.SetVisible(show)
+	}
+
+	//------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+
+		m_wImageOverlay = SizeLayoutWidget.Cast(w.FindAnyWidget("SizeBaseIcon"));
+		m_wInfoOverlay = w.FindAnyWidget("InfoOverlay");
+		m_wServices = w.FindAnyWidget("ServicesFrame");
+
+		m_wBaseName = TextWidget.Cast(w.FindAnyWidget("Name"));
+		m_wCallsignName = TextWidget.Cast(w.FindAnyWidget("Callsign"));
+		m_wInfoText = Widget.Cast(w.FindAnyWidget("Info"));
+
+		m_wLocalTask = ImageWidget.Cast(w.FindAnyWidget("LocalTask"));
+
+		SCR_GameModeCampaignMP gameMode = SCR_GameModeCampaignMP.GetInstance();
+		if (gameMode)
+		{
+			SCR_CampaignBase.s_OnMapItemInfoChanged.Insert(SetIconInfoText);
+			SCR_CampaignMobileAssemblyComponent.s_OnUpdateRespawnCooldown.Insert(SetIconInfoText);
+			SCR_CampaignMobileAssemblyComponent.s_OnSpawnPointOwnerChanged.Insert(UpdateAssemblyIcon);
+		}
+
+		m_bIsRespawnMenu = (SCR_SelectSpawnPointSubMenu.GetInstance() != null);
+		m_bIsEditor = SCR_EditorManagerEntity.IsOpenedInstance(false);
+		SCR_MapEntity.GetOnMapClose().Insert(RemoveHint);
+		m_PlayerFaction = SCR_CampaignFaction.Cast(SCR_RespawnSystemComponent.GetLocalPlayerFaction());
+	}
+
+	void RemoveHint()
+	{
+		if (m_wServiceHint)
+			m_wServiceHint.RemoveFromHierarchy();
+		m_wServiceHint = null;
+	}
+
+	//------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		RemoveHint();
+
+		if (SCR_GameModeCampaignMP.GetInstance())
+		{
+			SCR_CampaignBase.s_OnMapItemInfoChanged.Remove(SetIconInfoText);
+			SCR_CampaignMobileAssemblyComponent.s_OnUpdateRespawnCooldown.Remove(SetIconInfoText);
+			SCR_CampaignMobileAssemblyComponent.s_OnSpawnPointOwnerChanged.Remove(UpdateAssemblyIcon);
+		}
+
+		SCR_MapEntity.GetOnMapClose().Remove(RemoveHint);
+	}
+
+	//------------------------------------------------------------------------------
+	protected void FocusOnBase(SCR_SpawnPoint sp)
+	{
+		OnLeave();
+		
+		if (!sp)
+			return;
+
+		IEntity parent = sp.GetParent();
+		if (!parent)
+			return;
+		
+		if (m_MobileAssembly && parent == m_MobileAssembly.GetOwner())
+			SelectBase();
+		else if (parent.Type() == SCR_CampaignBase)
+		{
+			SCR_CampaignBase base = SCR_CampaignBase.Cast(parent);
+			if (base && base == m_Base)
+				SelectBase();
+		}
+	}
+
+	//------------------------------------------------------------------------------
+	protected void ShowServices(bool show)
+	{
+		m_wServices.SetVisible(show);
+	}
+
+	//------------------------------------------------------------------------------
+	protected void ShowBase(bool show)
+	{
+		m_wButton.SetVisible(show);
+	}
+
+	//------------------------------------------------------------------------------
+	void SetIconInfoText(Faction playerFaction = null)
+	{
+		if (!m_wInfoText)
+			return;
+		if (m_MobileAssembly)
+		{
+			m_MobileAssembly.UpdateRespawnCooldown(m_wInfoText);
+		}
+		if (m_Base)
+		{	
+			m_Base.UpdateIconText(m_wInfoText, playerFaction);
+		}
+	}
+
+	//------------------------------------------------------------------------------
+	void InitServices()
+	{
+		Widget w = m_wServices.FindAnyWidget("rootFrame0"); //GetGame().GetWorkspace().CreateWidgets(m_sServiceElement, m_wServices);
+		if (!w)
+			return;
+
+		m_wServices.SetVisible(false);
+		m_wServices.SetOpacity(0);
+
+		int cnt = m_mServices.Count();
+		for (int serviceId = 0; serviceId < 8; ++serviceId)
+		{
+			string btnName = "Service" + serviceId.ToString();
+			Widget serviceBtn = w.FindAnyWidget(btnName);
+
+			if (serviceId >= cnt)
+			{
+				serviceBtn.SetVisible(false);
+				continue;
+			}
+
+			SCR_CampaignMapUIService handler = SCR_CampaignMapUIService.Cast(serviceBtn.FindHandler(SCR_CampaignMapUIService));
+			if (handler)
+			{
+				handler.SetParent(this);
+				handler.SetService(m_mServices.GetKey(serviceId), m_mServices.GetElement(serviceId));
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------
+	protected void InitBaseIcon()
+	{
+		if (!m_Base)
+			return;
+
+		SCR_Faction f;
+		if (m_bIsEditor || m_Base.GetType() == CampaignBaseType.MAIN || (m_PlayerFaction && m_Base.IsBaseInFactionRadioSignal(m_PlayerFaction)))
+		{
+			f = m_Base.GetOwningFaction();
+		}
+
+		SetIconFaction(f);
+		SetIconName(m_Base.GetBaseName());
+		SetBaseType(m_Base.GetType());
+		SetBaseImage();
+
+		Widget w = m_wRoot.FindAnyWidget("BaseNameFrame");
+		if (w)
+			FrameSlot.SetAlignment(w, 0.5, m_fNameOffset);
+	}
+
+	//------------------------------------------------------------------------------
+	void UpdateBaseIcon(int id)
+	{
+		string f = m_sFactionNeutral;
+		if (id == 1)
+			f = SCR_GameModeCampaignMP.FACTION_OPFOR;
+		else if (id == 2)
+			f = SCR_GameModeCampaignMP.FACTION_BLUFOR;
+		else if (id == 3)
+			f = SCR_GameModeCampaignMP.FACTION_INDFOR;
+
+		m_sFactionKey = f;
+		SetBaseImage();
+	}
+
+	//------------------------------------------------------------------------------
+	protected void UpdateAssemblyIcon()
+	{
+		if (!m_MobileAssembly)
+			return;
+
+		SetIconName(m_sAssembly);
+		SetIconFaction(m_MobileAssembly.GetParentFaction());
+
+		string img = string.Format("%1_%2", m_sFactionKey, m_sMobileAssembly);
+		string selectionImg = string.Format("%1_%2_%3", m_sFactionKey, m_sRelay, m_sSelection);
+		SetImage(img);
+	}
+
+	//------------------------------------------------------------------------------
+	protected void SetIconFaction(Faction faction)
+	{
+		if (faction)
+			m_sFactionKey = faction.GetFactionKey();
+		else
+			m_sFactionKey = m_sFactionNeutral;
+	}
+
+	//------------------------------------------------------------------------------
+	protected void SetBaseImage()
+	{
+		string img;
+
+		if (m_eBaseType == CampaignBaseType.RELAY)
+		{
+			img = string.Format("%1_%2", m_sFactionKey, m_sRelay);
+			m_fNameOffset = 0.9;
+		}
+		else if (m_eBaseType == CampaignBaseType.MAIN)
+		{
+			img = string.Format("%1_%2_%3", m_sFactionKey, m_sBase, "Main");
+			m_iServicesPadding = -10;
+			m_fNameOffset = 0.8;
+		}
+		else if (m_eBaseType == CampaignBaseType.MAJOR)
+		{
+			img = string.Format("%1_%2_%3", m_sFactionKey, m_sBase, "Major");
+			m_iServicesPadding = -5;
+			m_fNameOffset = 0.8;
+		}
+		else if (m_eBaseType == CampaignBaseType.SMALL)
+		{
+			img = string.Format("%1_%2_%3", m_sFactionKey, m_sBase, "Small");
+			m_fNameOffset = 0.3;
+		}
+
+		if (img != string.Empty)
+			SetImage(img);
+	}
+
+	//------------------------------------------------------------------------------
+	void InitBase(SCR_CampaignBase base)
+	{
+		m_Base = base;
+
+		m_OnBaseSelected.Insert(m_Base.OnIconSelected);
+		m_OnBaseHovered.Insert(m_Base.OnIconHovered);
+		SetBaseServices(m_Base);
+		InitBaseIcon();
+		InitServices();
+		SetIconInfoText();
+		if(m_eBaseType == CampaignBaseType.SMALL)
+			m_wCallsignName.SetExactFontSize(18);
+
+		SCR_MapDescriptorComponent descr = SCR_MapDescriptorComponent.Cast(m_Base.FindComponent(SCR_MapDescriptorComponent));
+		if (descr)
+		{
+			m_MapItem = descr.Item();
+			MapDescriptorProps props = m_MapItem.GetProps();
+			props.SetIconVisible(false);
+			props.SetTextVisible(false);
+			props.Activate(true);
+			props.SetGroupType(EMapDescriptorGroup.MDG_SEPARATE);
+		}
+	}
+
+	//------------------------------------------------------------------------------	
+	void InitMobile(SCR_CampaignMobileAssemblyComponent assembly)
+	{
+		m_MobileAssembly = assembly;
+		m_eIconType = EIconType.BASE;
+		UpdateAssemblyIcon();
+		SetIconInfoText();
+
+		m_wServices.RemoveFromHierarchy();
+		
+		SCR_MapDescriptorComponent descr = SCR_MapDescriptorComponent.Cast(m_MobileAssembly.GetOwner().FindComponent(SCR_MapDescriptorComponent)); // todo(koudelkaluk): ugh
+		if (descr)
+		{
+			m_MapItem = descr.Item();
+			MapDescriptorProps props = m_MapItem.GetProps();
+			props.SetIconVisible(false);
+			props.SetTextVisible(false);
+			props.Activate(true);
+			props.SetGroupType(EMapDescriptorGroup.MDG_SEPARATE);
+		}
+	}
+
+	//------------------------------------------------------------------------------
+	protected void SetIconName(string name)
+	{
+		if (m_wBaseName)
+		{
+			m_wBaseName.SetText(name);
+			m_sName = name;
+		}
+		if (m_wCallsignName)
+		{
+			string callsign;
+			if (m_Base)
+				callsign = m_Base.GetCallsignDisplayNameOnlyUC();
+
+			m_wCallsignName.SetText(callsign);
+		}
+	}
+
+	//------------------------------------------------------------------------------
+	protected void CheckIfCanRespawn()
+	{	
+		SCR_SpawnPoint spawnPoint;
+		
+		if(m_Base)
+			spawnPoint = m_Base.GetBaseSpawnPoint();
+		
+		if(m_MobileAssembly)
+			spawnPoint = m_MobileAssembly.GetSpawnPoint();
+		
+		if(!spawnPoint)
+			return;
+		
+		m_bCanRespawn = (m_PlayerFaction && m_PlayerFaction.GetFactionKey() == spawnPoint.GetFactionKey() && SCR_SelectSpawnPointSubMenu.GetInstance() != null);
+	}
+
+	//------------------------------------------------------------------------------	
+	protected void SetBaseType(CampaignBaseType type)
+	{
+		SCR_MapEntity mapEnt = SCR_MapEntity.GetMapInstance();
+		int curLayer;
+		if (mapEnt)
+				curLayer = mapEnt.GetLayerIndex();
+		ChangeNameSizeOnLayerChange(curLayer);
+		SCR_MapEntity.GetOnLayerChanged().Insert(ChangeNameSizeOnLayerChange);
+		
+
+		if (type == CampaignBaseType.RELAY)
+			m_eIconType = EIconType.RELAY;
+		else
+		{
+			if (m_PlayerFaction && m_PlayerFaction.GetFactionKey() != m_sFactionKey)
+				m_eIconType = EIconType.ENEMY_BASE;
+			else
+				m_eIconType = EIconType.BASE;
+		}
+
+		m_eBaseType = type;
+	}
+
+	//------------------------------------------------------------------------------
+	protected void SetBaseServices(SCR_CampaignBase base)
+	{
+		array<SCR_CampaignDeliveryPoint> available = {};
+		array<SCR_CampaignDeliveryPoint> built = {};
+
+		if (base)
+		{
+			base.GetAllBaseServices(available, false);
+			base.GetAllBaseServices(built, true);
+		}
+
+		foreach (SCR_CampaignDeliveryPoint service : available)
+		{
+			m_mServices.Set(service, false);
+		}
+
+		foreach (SCR_CampaignDeliveryPoint service : built)
+		{
+			m_mServices.Set(service, true);
+		}
+	}
+
+	//------------------------------------------------------------------------------
+	void SetLocalTaskIcon(SCR_BaseTask task = null)
+	{
+		m_wLocalTask.SetEnabled(task != null);
+		m_wLocalTask.SetVisible(task != null);
+		if (!task)
+			return;
+		task.SetWidgetIcon(m_wLocalTask);
+	}
+
+	//-------------------------------------------------------------------------------
+	override void ShowName(bool visible)
+	{
+		m_wBaseName.SetVisible(visible);
+		m_wCallsignName.SetVisible(visible);
+	}
+	//-------------------------------------------------------------------------------
+	void ChangeNameSize(bool visible)
+	{
+		Widget w = m_wRoot.FindAnyWidget("BaseNameFrame");
+		
+		if(visible){
+			m_wCallsignName.SetExactFontSize(24);
+			if(m_eBaseType == CampaignBaseType.SMALL)
+			{
+				m_fNameOffset = 0.3;
+				m_wBaseName.SetVisible(true);
+				m_wCallsignName.SetExactFontSize(18);
+			}
+			
+		}
+		else
+		{
+			m_wCallsignName.SetExactFontSize(18);
+			if(m_eBaseType == CampaignBaseType.SMALL)
+			{
+				m_fNameOffset = 0.7;
+				m_wBaseName.SetVisible(false);
+				m_wCallsignName.SetExactFontSize(12);
+			}
+		}
+		if (w)
+			FrameSlot.SetAlignment(w, 0.5, m_fNameOffset);		
+	}
+
+	//-------------------------------------------------------------------------------
+	void ChangeNameSizeOnLayerChange(int layer)
+	{
+		ChangeNameSize(layer <= 3 );
+	}
+
+	//------------------------------------------------------------------------------
+	string GetFactionKey()
+	{
+		return m_sFactionKey;
+	}
+	//------------------------------------------------------------------------------
+	Color GetFactionColor()
+	{
+		return GetColorForFaction(m_sFactionKey);
+	}
+	//------------------------------------------------------------------------------
+	CampaignBaseType GetBaseSize()
+	{
+		return m_eBaseType;
+	}
+	//------------------------------------------------------------------------------
+	SCR_CampaignBase GetBase()
+	{
+		return m_Base;
+	}
+	
+	//------------------------------------------------------------------------------
+	void SetBaseIconFactionColor(notnull Faction faction)
+	{
+		if (!m_wBaseIcon)
+			return;
+		
+		m_wBaseIcon.SetColor(faction.GetFactionColor());
+	}
+
+	//------------------------------------------------------------------------------
+	override void SetImage(string image)
+	{
+		if (!m_wImage)
+			return;
+		
+		if (!m_wBaseIcon)
+			return;
+		
+		TStringArray strs = new TStringArray;
+		
+		image.Split("_", strs, true);
+		
+		Color factionColor = GetColorForFaction(m_sFactionKey);
+		m_wBaseIcon.SetColor(factionColor);
+		
+		SCR_MilitarySymbolUIComponent m_SymbolUI = SCR_MilitarySymbolUIComponent.Cast(m_wBaseIcon.FindHandler(SCR_MilitarySymbolUIComponent));
+		SCR_MilitarySymbol baseIcon = new SCR_MilitarySymbol();
+		string selection;
+		string highlight;		
+		SCR_SpawnPoint spawnPoint;
+		
+		switch(strs.Get(0))
+		{
+			case "FIA":
+			{
+				baseIcon.SetIdentity(EMilitarySymbolIdentity.INDFOR);
+				selection = "Neutral_Select_Land";
+				highlight = "Neutral_Focus_Land";
+				break;
+			}
+			case "USSR":
+			{
+				baseIcon.SetIdentity(EMilitarySymbolIdentity.OPFOR);
+				selection = "Hostile_Select_Land";
+				highlight = "Hostile_Focus_Land";
+				break;
+			}
+			case "US":
+			{
+				baseIcon.SetIdentity(EMilitarySymbolIdentity.BLUFOR);				
+				selection = "Friend_Select_Land";
+				highlight = "Friend_Focus_Land";
+				image.Replace("US", "USSR");
+				break;
+			}
+			case "Unknown":
+			{
+				baseIcon.SetIdentity(EMilitarySymbolIdentity.UNKNOWN);
+				selection = "Unknown_Select_Land";
+				highlight = "Unknown_Focus_Land";
+				break;
+			}
+		}
+		
+		switch(strs.Get(1))
+		{
+			case "Relay":
+			{	
+				baseIcon.SetIcons(EMilitarySymbolIcon.RELAY);
+				break;
+			}
+			case "Mobile":
+			{
+				baseIcon.SetIcons(EMilitarySymbolIcon.MOBILEHQ | EMilitarySymbolIcon.RELAY);
+				spawnPoint = m_MobileAssembly.GetSpawnPoint();
+				break;
+			}
+			default:
+			{	
+				spawnPoint = m_Base.GetBaseSpawnPoint();
+				if(strs.Get(2) == "Small")
+				{
+					m_wImageOverlay.SetWidthOverride(35);
+					m_wImageOverlay.SetHeightOverride(35);
+				}
+			}
+		}
+		
+		baseIcon.SetDimension(2);
+		m_SymbolUI.Update(baseIcon);
+		
+		m_wHighlightImg.LoadImageFromSet(0, m_sImageSetARO, highlight);
+		m_wSelectImg.LoadImageFromSet(0, m_sImageSetARO, selection);
+			
+
+		if (!spawnPoint)
+			return;
+		
+		m_bCanRespawn = (m_PlayerFaction && m_PlayerFaction.GetFactionKey() == spawnPoint.GetFactionKey() && SCR_SelectSpawnPointSubMenu.GetInstance() != null);
+		if(m_bCanRespawn)
+		{	
+			if(strs.Get(1) == "Mobile")
+				baseIcon.SetIcons(EMilitarySymbolIcon.RESPAWN | EMilitarySymbolIcon.MOBILEHQ);	
+			else
+				baseIcon.SetIcons(EMilitarySymbolIcon.RESPAWN);
+		}
+		m_SymbolUI.Update(baseIcon);
+	}
+	
+	//------------------------------------------------------------------------------
+	void ~SCR_CampaignMapUIBase()
+	{
+		m_OnBaseSelected.Remove(m_Base.OnIconSelected);
+		m_OnBaseHovered.Remove(m_Base.OnIconHovered);
+
+		s_SelectedElement = null;
+	}
+};

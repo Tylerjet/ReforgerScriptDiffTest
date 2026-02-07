@@ -1,0 +1,1287 @@
+[EntityEditorProps(category: "GameScripted/AI")]
+class SCR_AIGroupClass: ChimeraAIGroupClass
+{
+	/*!
+	Get group members and their offsets.
+	\param entitySource Group's entity source
+	\param[out] outPrefabs Array to be fillded with member prefabs
+	\param[out] outOffsets Array to be fillded with local offsets
+	\return Number of members
+	*/
+	static int GetMembers(IEntitySource entitySource, out array<ResourceName> outPrefabs, out array<vector> outOffsets)
+	{
+		//--- Not a group
+		if (!entitySource || !entitySource.GetClassName().ToType().IsInherited(SCR_AIGroup)) return false;
+		
+		ArmaReforgerScripted game = GetGame();
+		if (!game) return 0;
+		
+		AIWorld aiWorld = game.GetAIWorld();
+		if (!aiWorld) return 0;
+		
+		//--- Get formation
+		AIFormationDefinition formation;
+		IEntityComponentSource componentSource;
+		for (int i = 0, count = entitySource.GetComponentCount(); i < count; i++)
+		{
+			componentSource = entitySource.GetComponent(i);
+			if (componentSource.GetClassName().ToType().IsInherited(AIFormationComponent))
+			{
+				string formationName;
+				componentSource.Get("DefaultFormation", formationName);
+				formation = aiWorld.GetFormation(formationName);
+				break;
+			}
+		}
+		if (!formation) return 0;
+		
+		//--- Get member prefabs
+		entitySource.Get("m_aUnitPrefabSlots", outPrefabs);
+		
+		//--- Get offsets
+		outOffsets.Clear();
+		int count = outPrefabs.Count();
+		for (int i = 0; i < count; i++)
+		{
+			outOffsets.Insert(formation.GetOffsetPosition(i));
+		}
+		
+		return count;
+	}
+};
+
+class SCR_AIGroup: ChimeraAIGroup
+{
+	[Attribute("", UIWidgets.EditBox, "Faction", category: "Group")]
+	string m_faction;
+	
+	[Attribute(uiwidget: UIWidgets.ResourceAssignArray, desc: "Entities in group non-ai included", params: "et", category: "Group Members")]
+	ref array<ResourceName> m_aUnitPrefabSlots;
+	
+	[Attribute(defvalue: "1", desc: "When true, group members will be spawned above terrain, offset by group's ATL height.\nWhen false, group members will be levelled horizontally with the group.", category: "Group Members")]
+	private bool m_bSnapToTerrain;
+	
+	[Attribute("", UIWidgets.EditBox, "List of Waypoint names found in the level", category: "Group Waypoints")] 
+	ref array<string> m_aStaticWaypoints;	
+	
+	[Attribute(defvalue: "", UIWidgets.Object, desc: "Waypoints that should be spawned from prefabs", category: "Group Waypoints")]
+	ref array<ref SCR_WaypointPrefabLocation> m_aSpawnedWaypoints;
+	
+	[Attribute(defvalue: "", UIWidgets.EditBox, desc: "List of vehicles to use for movement", category: "Group Vehicles")]
+	ref array<string> m_aStaticVehicles;
+	
+	[Attribute(defvalue: "1", desc: "When true, group members will be spawned durin OnInit, if false spawning must be called manually calling SpawnUnits()", category: "Group Members")]
+	private bool m_bSpawnImmediately;
+	
+	[Attribute(defvalue: "0", UIWidgets.EditBox, desc: "Delay between spawns of individual members (ms)", category: "Group Members")]
+	protected int m_fMemberSpawnDelay;
+	
+	[Attribute(defvalue: "1", UIWidgets.EditBox, desc: "When enabled, the group will be deleted when its last member dies or is deleted.\nThis will *not* delete the group when it starts empty.", category: "Group")]
+	protected bool m_bDeleteWhenEmpty;
+	
+	protected static bool s_bIgnoreSnapToTerrain;
+	protected static bool s_bIgnoreSpawning;
+	
+	ref array<IEntity> m_aSceneGroupUnitInstances;
+	ref array<IEntity> m_aSceneWaypointInstances;
+	ref array<IEntity> m_aListOfKnownVehicles;
+	
+	protected int m_iMaxUnitsToSpawn = int.MAX;
+	protected ref ScriptInvoker Event_OnInit = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnEmpty = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnAgentAdded = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnAgentRemoved = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnLeaderChanged = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnCurrentWaypointChanged = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnWaypointCompleted = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnWaypointAdded = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnWaypointRemoved = new ScriptInvoker;
+	protected ref ScriptInvoker Event_OnFactionChanged = new ScriptInvoker;
+	
+	protected ref ScriptInvoker m_OnGroupMemberStateChange = new ScriptInvoker();
+	
+	[Attribute(category: "Player settings")]
+	protected int m_iGroupRadioFrequency;
+	
+	[Attribute(category: "Player settings", params: "1 100 1")]
+	protected int m_iMaxMembers;
+	protected int m_iNumOfWantedToSpawnMembers;
+	[Attribute("0", desc: "Can players join this group?", category: "Player settings")]
+	protected bool m_bPlayable;
+	
+	protected int m_iGroupID = -1;
+	protected ref array<int> m_aPlayerIDs = {};
+	protected ref array<int> m_aDisconnectedPlayerIDs;
+	protected static ref ScriptInvoker s_OnPlayerAdded = new ScriptInvoker;
+	protected static ref ScriptInvoker s_OnPlayerRemoved = new ScriptInvoker;
+	protected ref array<int> m_aAgentIDQueue = {};
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsPlayerInGroup(int playerID)
+	{
+		return m_aPlayerIDs.Contains(playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsFull()
+	{
+		return m_iMaxMembers <= m_aPlayerIDs.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetGroupID()
+	{
+		return m_iGroupID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetGroupID(int id)
+	{
+		m_iGroupID = id;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetMaxMembers()
+	{
+		return m_iMaxMembers;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<int> GetPlayerIDs()
+	{
+		return m_aPlayerIDs;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetPlayerCount()
+	{
+		return m_aPlayerIDs.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnMemberStateChange()
+	{
+		return m_OnGroupMemberStateChange;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvoker GetOnPlayerAdded()
+	{
+		return s_OnPlayerAdded;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvoker GetOnPlayerRemoved()
+	{
+		return s_OnPlayerRemoved;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool BelongedToGroup(int playerID)
+	{
+		return m_aDisconnectedPlayerIDs != null && m_aDisconnectedPlayerIDs.Contains(playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddAgentFromControlledEntity(notnull IEntity controlledEntity)
+	{
+		AIControlComponent aiControlComponent = AIControlComponent.Cast(controlledEntity.FindComponent(AIControlComponent));
+		if (!aiControlComponent)
+			return;
+		
+		AIAgent agent = aiControlComponent.GetAIAgent();
+		if (!agent)
+			return;
+		
+		AddAgent(agent);
+		OnGroupMemberStateChange();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Should be only called on the server
+	void OnPlayerDisconnected(int playerID)
+	{
+		// No need to null check m_aPlayerIDs, it always exists together with this entity
+		int index = m_aPlayerIDs.Find(playerID);
+		if (index < 0)
+			return;
+		
+		// We have to check existence of m_aDisconnectedPlayerIDs, because we might be adding the first entry
+		if (!m_aDisconnectedPlayerIDs)
+			m_aDisconnectedPlayerIDs = {};
+		
+		RemovePlayer(playerID);
+		m_aDisconnectedPlayerIDs.Insert(playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Should be only called on the server
+	void OnPlayerConnected(int playerID)
+	{
+		// No need to null check m_aDisconnectedPlayerIDs, this method is only called after entries are added to it
+		int index = m_aDisconnectedPlayerIDs.Find(playerID);
+		if (index < 0)
+			return;
+		
+		m_aDisconnectedPlayerIDs.Remove(index);
+		
+		// Not full, we add the player, else bad luck, find a new group
+		if (!IsFull())
+			AddPlayer(playerID);
+		
+		// No more disconnected players from this group, let's stop listening
+		if (m_aDisconnectedPlayerIDs.Count() == 0)
+		{
+			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+			if (gameMode)
+				gameMode.GetOnPlayerConnected().Remove(OnPlayerConnected);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoOnGroupMemberStateChange()
+	{
+		GetGame().GetCallqueue().CallLater(m_OnGroupMemberStateChange.Invoke, 1, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Should only be called on the server (authority)
+	void OnGroupMemberStateChange()
+	{
+		RPC_DoOnGroupMemberStateChange(); //Local call
+		Rpc(RPC_DoOnGroupMemberStateChange); //Broadcast to clients
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMemberDeath(notnull SCR_CharacterControllerComponent memberController, IEntity instigator)
+	{
+		//This event is only called for members of the group, so it's safe to call QueueAddAgent automatically
+		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(memberController.GetCharacter());
+		QueueAddAgent(playerID);
+		RemovePlayerAgent(playerID);
+		OnGroupMemberStateChange();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ListenToMemberDeath(notnull IEntity groupMember)
+	{
+		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(groupMember.FindComponent(SCR_CharacterControllerComponent));
+		if (!characterController)
+			return;
+		
+		characterController.m_OnPlayerDeathWithParam.Insert(OnMemberDeath);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnControllableEntitySpawned(int playerID, notnull IEntity controlledEntity)
+	{
+		int index = m_aAgentIDQueue.Find(playerID);
+		if (index < 0)
+			return;
+		
+		ListenToMemberDeath(controlledEntity);
+		AddAgentFromControlledEntity(controlledEntity);
+		m_aAgentIDQueue.Remove(index);
+		
+		if (!m_aAgentIDQueue.IsEmpty())
+			return;
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.GetOnPlayerSpawned().Remove(OnControllableEntitySpawned);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void QueueAddAgent(int playerID)
+	{
+		// Avoiding duplicate entries
+		m_aAgentIDQueue.Insert(playerID);
+		if (m_aAgentIDQueue.Count() != 1)
+			return;
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gameMode)
+			return;
+		
+		// Waiting for spawn of a controllable entity with correct ID
+		gameMode.GetOnPlayerSpawned().Insert(OnControllableEntitySpawned);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoAddPlayer(int playerID)
+	{
+		m_aPlayerIDs.Insert(playerID);
+		s_OnPlayerAdded.Invoke(this, playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Called on the server (authority)
+	void AddPlayer(int playerID)
+	{
+		// Avoiding duplicate entries
+		if (m_aPlayerIDs.Contains(playerID))
+			return;
+		
+		SCR_NotificationsComponent.SendToGroup(m_iGroupID, ENotification.GROUPS_PLAYER_JOINED, playerID);
+		m_aPlayerIDs.Insert(playerID);
+		Rpc(RPC_DoAddPlayer, playerID);
+		s_OnPlayerAdded.Invoke(this, playerID);
+		
+		// Did this player re-connect?
+		if (m_aDisconnectedPlayerIDs)
+		{
+			int index = m_aDisconnectedPlayerIDs.Find(playerID);
+			if (index >= 0)
+				m_aDisconnectedPlayerIDs.Remove(index);
+		}
+		
+		// Start listening to disconnect events when we add the first player
+		if (m_aPlayerIDs.Count() == 1)
+		{
+			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+			if (gameMode)
+				gameMode.GetOnPlayerDisconnected().Insert(OnPlayerDisconnected);
+		}
+		// Now we need the player character's agent
+		IEntity controlledEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
+		if (!controlledEntity)
+			QueueAddAgent(playerID);
+		else
+			AddAgentFromControlledEntity(controlledEntity);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoRemovePlayer(int playerID)
+	{
+		m_aPlayerIDs.RemoveItem(playerID);
+		s_OnPlayerRemoved.Invoke(this, playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemovePlayerAgent(int playerID)
+	{
+		IEntity controlledEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
+		if (!controlledEntity)
+			return;
+		
+		AIControlComponent aiControlComponent = AIControlComponent.Cast(controlledEntity.FindComponent(AIControlComponent));
+		if (!aiControlComponent)
+			return;
+		
+		AIAgent agent = aiControlComponent.GetAIAgent();
+		if (!agent)
+			return;
+		
+		RemoveAgent(agent);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Called on the server (authority)
+	void RemovePlayer(int playerID)
+	{
+		if (!m_aPlayerIDs.Contains(playerID))
+			return;
+		
+		m_aPlayerIDs.RemoveItem(playerID);
+		Rpc(RPC_DoRemovePlayer, playerID);
+		s_OnPlayerRemoved.Invoke(this, playerID);
+		RemovePlayerAgent(playerID);
+		SCR_NotificationsComponent.SendToGroup(m_iGroupID, ENotification.GROUPS_PLAYER_LEFT, playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetCallsignSingleString()
+	{
+		string callsign, company, platoon, squad, character, format;
+		SCR_CallsignGroupComponent callsignComponent = SCR_CallsignGroupComponent.Cast(FindComponent(SCR_CallsignGroupComponent));
+		if (!callsignComponent)
+			return callsign;
+		
+		callsignComponent.GetCallsignNames(company, platoon, squad, character, format);
+		
+		callsign = string.Format("%1 %2%3%4", company, platoon, " - ", squad);
+		return callsign;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void GetCallsigns(out string company, out string platoon, out string squad, out string character, out string format)
+	{
+		SCR_CallsignGroupComponent callsignComponent = SCR_CallsignGroupComponent.Cast(FindComponent(SCR_CallsignGroupComponent));
+		if (!callsignComponent)
+			return;
+		
+		callsignComponent.GetCallsignNames(company, platoon, squad, character, format);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetGroupFrequency(int frequency)
+	{
+		m_iGroupRadioFrequency = frequency;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetGroupFrequency()
+	{
+		return m_iGroupRadioFrequency;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsPlayable()
+	{
+		return m_bPlayable;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void CreateUnitEntities(bool editMode, array<ResourceName> entityResourceNames)
+	{
+		ArmaReforgerScripted game = GetGame();
+		if (!game) return;
+		
+		BaseWorld world = GetWorld();
+		if (!world) return;
+
+		if (!GetGame().GetAIWorld())
+		{
+			Print(string.Format("Cannot spawn team members of group %1, AIWorld is missing in the world!", this), LogLevel.WARNING);
+			return;			
+		}
+					
+		if (!editMode)
+		{
+
+			//--- Get AI components
+			AIFormationComponent AIFormation = AIFormationComponent.Cast(this.FindComponent(AIFormationComponent));
+			if (!AIFormation)
+			{
+				Print(string.Format("Group %1 does not have AIFormationComponent! Team members will not be spawned.", this), LogLevel.WARNING);
+				return;			
+			}
+			AIFormationDefinition formationDefinition = AIFormation.GetFormation();
+			if (!formationDefinition)
+			{
+				Print(string.Format("Formation of group %1 not found in SCR_AIWorld! Team members will not be spawned.", this), LogLevel.WARNING);
+				return;			
+			}
+		}
+		
+		//--- Apply global override
+		bool snapToTerrain = m_bSnapToTerrain;
+		if (s_bIgnoreSnapToTerrain)
+		{
+			snapToTerrain = false;
+			s_bIgnoreSnapToTerrain = false;
+		}
+		if (Replication.IsClient())
+			return;
+		
+		//--- We are in WB, prepare array so previews can be deleted later
+		if (editMode && !m_aSceneGroupUnitInstances)
+			m_aSceneGroupUnitInstances = new ref array<IEntity>;
+
+		 m_iNumOfWantedToSpawnMembers = Math.Min(entityResourceNames.Count(), m_iMaxUnitsToSpawn);
+		//--- Create group members
+		for (int i = 0; i < m_iNumOfWantedToSpawnMembers; i++)
+		{
+			bool isLast = i == (m_iNumOfWantedToSpawnMembers - 1);
+			if (!game.InPlayMode())
+				SpawnGroupMember(snapToTerrain, i, entityResourceNames[i], editMode, isLast);
+			else if (m_bSpawnImmediately)
+				//--- Delay is set to 0 to spawn them ASAP
+				GetGame().GetCallqueue().CallLater(SpawnGroupMember, 0, false, snapToTerrain, i, entityResourceNames[i], editMode, isLast);
+			else
+				//--- Delay is defined and sequential spawning is used to preserve performance
+				GetGame().GetCallqueue().CallLater(SpawnGroupMember, m_fMemberSpawnDelay * i, false, snapToTerrain, i, entityResourceNames[i], editMode, isLast);
+		}
+		
+		//--- Call group init if it cannot be called by the last spawned entity
+		if (m_iNumOfWantedToSpawnMembers == 0)
+			Event_OnInit.Invoke();
+	}
+	
+	protected void SpawnGroupMember(bool snapToTerrain, int index, ResourceName res, bool editMode, bool isLast)
+	{
+		if (!GetGame().GetAIWorld().CanAICharacterBeAdded())
+		{
+			if (isLast)
+				Event_OnInit.Invoke();
+			return;
+		}
+		BaseWorld world = GetWorld();
+		AIFormationDefinition formationDefinition;
+		AIFormationComponent formationComponent = AIFormationComponent.Cast(this.FindComponent(AIFormationComponent));
+		if (formationComponent)
+			formationDefinition = formationComponent.GetFormation();
+		EntitySpawnParams spawnParams = new EntitySpawnParams;
+		spawnParams.TransformMode = ETransformMode.WORLD;
+		GetWorldTransform(spawnParams.Transform);
+		vector pos = spawnParams.Transform[3];
+		
+		if (formationDefinition)		
+			pos = CoordToParent(formationDefinition.GetOffsetPosition(index));
+		else
+			pos = CoordToParent(Vector(index, 0, 0));
+		
+		float surfaceY = world.GetSurfaceY(pos[0], pos[2]);
+		if (snapToTerrain && pos[1] < surfaceY)
+		{
+			pos[1] = surfaceY;
+		}
+		
+		//Snap to the nearest navmesh point
+		AIPathfindingComponent pathFindindingComponent = AIPathfindingComponent.Cast(this.FindComponent(AIPathfindingComponent));
+		if (pathFindindingComponent && pathFindindingComponent.GetClosestPositionOnNavmesh(pos, "10 10 10", pos))
+		{
+			float groundHeight = world.GetSurfaceY(pos[0], pos[2]);
+			if (pos[1] < groundHeight)
+				pos[1] = groundHeight;
+		}
+		
+		spawnParams.Transform[3] = pos;
+		IEntity member = GetGame().SpawnEntityPrefab(Resource.Load(res), world, spawnParams);
+		
+		if (!member)
+			return;
+		
+		if (editMode)
+			m_aSceneGroupUnitInstances.Insert(member);
+		
+		AddAIEntityToGroup(member,index+1);
+		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(member.FindComponent(FactionAffiliationComponent));
+		
+		if (factionAffiliation) 
+			factionAffiliation.SetAffiliatedFactionByKey(m_faction);	
+	
+		if (isLast)
+			Event_OnInit.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetWaypointParams(out AIWaypoint wp, SCR_WaypointPrefabLocation prefabParams)
+	{
+		if ( SCR_TimedWaypoint.Cast(wp) && !float.AlmostEqual(prefabParams.m_WPTimeOverride,0.0))
+			SCR_TimedWaypoint.Cast(wp).SetHoldingTime(prefabParams.m_WPTimeOverride);
+		if ( !float.AlmostEqual(prefabParams.m_WPRadiusOverride,0.0) )
+			wp.SetCompletionRadius(prefabParams.m_WPRadiusOverride);
+		wp.SetName(prefabParams.m_WPInstanceName);		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddWaypointsDynamic(out array<IEntity> entityInstanceList, array<ref SCR_WaypointPrefabLocation> prefabs)
+	{
+		entityInstanceList = new ref array<IEntity>;
+		EntitySpawnParams spawnParams = new EntitySpawnParams;
+		spawnParams.TransformMode = ETransformMode.WORLD;
+		vector mat[4];
+		Math3D.MatrixIdentity4(mat);
+		for (int i =  0, length = prefabs.Count(); i < length; i++)
+		{
+			IEntity entity;
+			AIWaypoint wp;
+			mat[3] = prefabs[i].m_WPWorldLocation;
+			spawnParams.Transform = mat;
+			
+#ifdef WORKBENCH //includes game mode run from WB
+			WorldEditorAPI m_API = _WB_GetEditorAPI();
+			if (m_API)
+			{
+				Print(prefabs[i].m_WPPrefabName);
+				entity = GetGame().SpawnEntityPrefab(Resource.Load(prefabs[i].m_WPPrefabName), m_API.GetWorld(), spawnParams);
+				entityInstanceList.Insert(entity);
+				wp = AIWaypoint.Cast(entity);								
+			}
+			else
+			{
+				entity = GetGame().SpawnEntityPrefab(Resource.Load(prefabs[i].m_WPPrefabName), GetGame().GetWorld(), spawnParams);
+				wp = AIWaypoint.Cast(entity);
+				AddWaypoint(wp);
+			}				
+#else		// game run from build 							
+			entity = GetGame().SpawnEntityPrefab(Resource.Load(prefabs[i].m_WPPrefabName), GetGame().GetWorld(), spawnParams);
+			wp = AIWaypoint.Cast(entity);
+			AddWaypoint(wp);	
+#endif		
+			if ( wp )
+				SetWaypointParams(wp,prefabs[i]);				
+		}		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddWaypointsStatic(array<string> aWaypointNames)
+	{
+		for (int i = 0, length = aWaypointNames.Count(); i < length; i++)
+		{
+#ifdef WORKBENCH
+			WorldEditorAPI m_API = _WB_GetEditorAPI();
+			if (m_API)
+			{
+				AddWaypoint(AIWaypoint.Cast(m_API.GetWorld().FindEntityByName(aWaypointNames[i])));
+			}
+			else
+			{
+				AddWaypoint(AIWaypoint.Cast(GetGame().GetWorld().FindEntityByName(aWaypointNames[i])));
+			}
+#else
+			AddWaypoint(AIWaypoint.Cast(GetGame().GetWorld().FindEntityByName(aWaypointNames[i])));
+#endif									
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddVehiclesStatic(array<string> aVehicleNames)
+	{
+		for (int i = 0, length = aVehicleNames.Count(); i < length; i++)
+		{
+#ifdef WORKBENCH
+			WorldEditorAPI m_API = _WB_GetEditorAPI();
+			if (m_API)
+			{
+				AddUsableVehicle(m_API.GetWorld().FindEntityByName(aVehicleNames[i]));
+			}
+			else
+			{
+				AddUsableVehicle(GetGame().GetWorld().FindEntityByName(aVehicleNames[i]));
+			}
+#else
+			AddUsableVehicle(GetGame().GetWorld().FindEntityByName(aVehicleNames[i]));
+#endif									
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void DestroyEntities(out array<IEntity> entityList)
+	{
+		if (!entityList)
+			return;
+		
+		for (int i=0, length = entityList.Count(); i < length; i++)
+		{
+			if ( AIWaypoint.Cast(entityList[i]) )
+				RemoveWaypointFromGroup(AIWaypoint.Cast(entityList[i]));
+			else 
+				RemoveAIEntityFromGroup(entityList[i]);
+			delete entityList[i];
+		}
+		entityList.Clear();
+		entityList = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveStaticWaypointRefs(array<string> aWaypointNames)
+	{
+		if (!aWaypointNames)
+			return;
+		
+		for (int i=0, length = aWaypointNames.Count(); i < length; i++)
+		{
+#ifdef WORKBENCH
+			WorldEditorAPI m_API = _WB_GetEditorAPI();
+			if (m_API)
+			{
+				RemoveWaypointFromGroup(AIWaypoint.Cast(m_API.GetWorld().FindEntityByName(aWaypointNames[i])));
+			}
+			else
+			{
+				RemoveWaypointFromGroup(AIWaypoint.Cast(GetGame().GetWorld().FindEntityByName(aWaypointNames[i])));
+			}
+#else
+			RemoveWaypointFromGroup(AIWaypoint.Cast(GetGame().GetWorld().FindEntityByName(aWaypointNames[i])));
+#endif
+		}	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ClearRefs(out array<IEntity> entityList)
+	{
+		if ( entityList ) 
+			entityList.Clear();
+		entityList = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool AddAIEntityToGroup(IEntity entity, int unitId)
+	{
+		if (!entity) return false;
+		
+		AIControlComponent control = AIControlComponent.Cast(entity.FindComponent(AIControlComponent));
+		if (!control) return false;
+		
+		AIAgent agent = control.GetControlAIAgent();
+		if (!agent) return false;
+		
+		SCR_AIInfoComponent info = SCR_AIInfoComponent.Cast(agent.FindComponent(SCR_AIInfoComponent));
+		
+		control.ActivateAI();
+		
+		if (!agent.GetParentGroup())
+			AddAgent(agent); //--- Add to group only if some other system (e.g., component on the group member) wasn't faster
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool RemoveAIEntityFromGroup(IEntity entity)
+	{
+#ifdef WORKBENCH		
+		WorldEditorAPI m_API = _WB_GetEditorAPI();			
+		if ( !m_API && entity && entity.FindComponent(AIControlComponent))
+		{
+			ref AIAgent agent = AIControlComponent.Cast(entity.FindComponent(AIControlComponent)).GetControlAIAgent();
+			RemoveAgent(agent);
+			return true;
+		}
+#else
+		if ( entity && entity.FindComponent(AIControlComponent))
+		{
+			ref AIAgent agent = AIControlComponent.Cast(entity.FindComponent(AIControlComponent)).GetControlAIAgent();
+			RemoveAgent(agent);
+			return true;
+		}		
+#endif
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddWaypointToGroup(AIWaypoint waypoint)
+	{
+		if ( waypoint )
+		{
+			AddWaypoint(waypoint);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveWaypointFromGroup(AIWaypoint waypoint)
+	{
+		if ( waypoint )
+		{
+			RemoveWaypoint(waypoint)
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddUsableVehicle(IEntity vehicle)
+	{
+		if (Vehicle.Cast(vehicle) && m_aListOfKnownVehicles.Find(vehicle) < 0)
+			m_aListOfKnownVehicles.Insert(vehicle);			
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveUsableVehicle(IEntity vehicle)
+	{
+		if (Vehicle.Cast(vehicle) && m_aListOfKnownVehicles.Find(vehicle) > -1)
+			m_aListOfKnownVehicles.RemoveItem(vehicle);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetUsableVehicles(out array<IEntity> usableVehicles)
+	{
+		return usableVehicles.Copy(m_aListOfKnownVehicles);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Set name of group's faction (only if it's not set yet)
+	\param factionKey, Faction key to set faction to
+	\return True if the faction was set
+	*/
+	bool InitFactionKey(string factionKey)
+	{
+		if (m_faction != "") return false;
+		m_faction = factionKey;		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	If Faction is set change faction to given faction
+	Server Only
+	\param faction, Faction to set
+	\return True if the faction was set
+	*/
+	bool SetFaction(Faction faction)
+	{
+		if (Replication.IsClient())
+			return false;
+		
+		// If playable, we don't want to allow changing the faction.
+		if (m_bPlayable && m_faction)
+			return false;
+		
+		if (!faction)
+			return false;
+		
+		m_faction = faction.GetFactionKey();
+		
+		array<AIAgent> agents = new array<AIAgent>;
+		GetAgents(agents);
+		array<IEntity> updatedVehicles = new array<IEntity>;
+		//array<RplId> entitiesInVehiclesIds = new array<RplId>;
+		IEntity vehicle;
+		IEntity charEntity;
+		
+		foreach(AIAgent agent: agents)
+		{
+			charEntity = agent.GetControlledEntity();
+			
+			if (!charEntity)
+				continue;
+			
+			FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(charEntity.FindComponent(FactionAffiliationComponent));
+			if (factionAffiliation)
+				factionAffiliation.SetAffiliatedFaction(faction);
+				
+		}
+		
+		//Send out event
+		Event_OnFactionChanged.Invoke(faction);
+		
+		FactionManager factionManager = GetGame().GetFactionManager();
+		int factionIndex = factionManager.GetFactionIndex(faction);
+		if (factionManager)
+			GetGame().GetCallqueue().CallLater(SetFactionDelayed, 1, false, factionIndex);
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetFactionDelayed(int factionIndex)
+	{
+		Rpc(BroadCastSetFaction, factionIndex);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//Send to update Editor UI
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void BroadCastSetFaction(int factionIndex)
+	{
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (!factionManager)
+			return;
+		
+		Faction faction = factionManager.GetFactionByIndex(factionIndex);
+		m_faction = faction.GetFactionKey();
+		Event_OnFactionChanged.Invoke(faction);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get name of group's faction.
+	\return Faction name (search for it in FactionManager)
+	*/
+	string GetFactionName()
+	{
+		return m_faction;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get group's faction from FactionManager
+	\return Faction (or null when faction is not found)
+	*/
+	Faction GetFaction()
+	{
+		ArmaReforgerScripted game = GetGame();
+		if (!game) return null;
+		
+		FactionManager factionManager = game.GetFactionManager();
+		if (!factionManager) return null;
+		
+		return factionManager.GetFactionByKey(m_faction);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Ignore snapping to terrain in the next spawned group.
+	Used when some other system handles it and group's functionality would interfere with it.
+	Has to be set before spawning a group, is reset to false afterwards.
+	\param ignore True to ignore terrain snap
+	*/
+	static void IgnoreSnapToTerrain(bool ignore)
+	{
+		s_bIgnoreSnapToTerrain = ignore;
+	}
+	/*!
+	Ignore spawning group members in the next spawned group.
+	Used when some other system handles it and group's functionality would interfere with it.
+	Has to be set before spawning a group, is reset to false afterwards.
+	\param ignore True to ignore spawning
+	*/
+	static void IgnoreSpawning(bool ignore)
+	{
+		s_bIgnoreSpawning = ignore;
+	}
+	
+	//------------------------------------------------------------------------
+	/*!
+	Get event called when all initial group members were spawned.
+	Called only on server.
+	No invoker params are passed.
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnInit()
+	{
+		return Event_OnInit;
+	}
+	/*!
+	Get event called when the group becomes empty.
+	Called only on server.
+	No invoker params are passed.
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnEmpty()
+	{
+		return Event_OnEmpty;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get event called every time an agent is called to a group.
+	Called only on server.
+	Invoker params are: AIGroup group, AIAgent agent
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnAgentAdded()
+	{
+		return Event_OnAgentAdded;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get event called every time an agent is removed from a group.
+	Called only on server.
+	Invoker params are: AIGroup group, AIAgent agent
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnAgentRemoved()
+	{
+		return Event_OnAgentRemoved;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get event called every time a group leader changes.
+	Called only on server.
+	Invoker params are: AIGroup group, AIAgent currentLeader, AIAgent prevLeader
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnLeaderChanged()
+	{
+		return Event_OnLeaderChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get event called when current waypoint of the group changes.
+	Called only on server.
+	Invoker params are: AIWaypoint currentWP, AIWaypoint prevWP
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnCurrentWaypointChanged()
+	{
+		return Event_OnCurrentWaypointChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get event called when current waypoint of the group is completed.
+	Called only on server.
+	Invoker params are: AIWaypoint wp
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnWaypointCompleted()
+	{
+		return Event_OnWaypointCompleted;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get event called when a new waypoint is added to the group.
+	Called only on server.
+	Invoker params are: AIWaypoint wp
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnWaypointAdded()
+	{
+		return Event_OnWaypointAdded;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get event called when a waypoint is removed from the group.
+	Called only on server.
+	Invoker params are: AIWaypoint wp
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnWaypointRemoved()
+	{
+		return Event_OnWaypointRemoved;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get event called when faction of group is changed
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnFactionChanged()
+	{
+		return Event_OnFactionChanged;
+	}
+	
+	//------------------------------------------------------------------------
+	override void OnEmpty()
+	{
+		Event_OnEmpty.Invoke();
+		
+		//--- Delete after delay, doing it directly in this event would be unsafe
+		if (m_bDeleteWhenEmpty)
+			GetGame().GetCallqueue().CallLater(SCR_Global.DeleteEntityAndChildren, 1, false, this);
+	}
+	
+	//------------------------------------------------------------------------
+	override void OnAgentAdded(AIAgent child)
+	{
+		Event_OnAgentAdded.Invoke(child);
+		SCR_AIGroupUtilityComponent guc = SCR_AIGroupUtilityComponent.Cast(this.FindComponent(SCR_AIGroupUtilityComponent));
+		if (guc)	
+			guc.AddAgentInfo(child);
+		
+		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(child);
+		if (agent)
+		{
+			agent.OnGroupWaypointChanged(GetCurrentWaypoint());
+		}
+	}
+	
+	//------------------------------------------------------------------------
+	override void OnAgentRemoved(AIAgent child)
+	{
+		Event_OnAgentRemoved.Invoke(this, child);
+		SCR_AIGroupUtilityComponent guc = SCR_AIGroupUtilityComponent.Cast(this.FindComponent(SCR_AIGroupUtilityComponent));
+		if (guc)	
+			guc.RemoveAgentInfo(child);
+	}
+	
+	//------------------------------------------------------------------------
+	override void OnLeaderChanged(AIAgent currentLeader, AIAgent prevLeader)
+	{
+		Event_OnLeaderChanged.Invoke(currentLeader, prevLeader);
+	}
+	
+	//------------------------------------------------------------------------
+	override void OnCurrentWaypointChanged(AIWaypoint currentWP, AIWaypoint prevWP)
+	{
+		InvokeSubagentsOnWaypointChanged(currentWP);
+		
+		Event_OnCurrentWaypointChanged.Invoke(currentWP, prevWP);
+	}
+	
+	//------------------------------------------------------------------------
+	override void OnWaypointCompleted(AIWaypoint wp)
+	{
+		InvokeSubagentsOnWaypointChanged(null);
+		
+		Event_OnWaypointCompleted.Invoke(wp);
+	}
+	
+	//------------------------------------------------------------------------
+	override void OnWaypointAdded(AIWaypoint wp)
+	{
+		Event_OnWaypointAdded.Invoke(wp);
+	}
+	
+	//------------------------------------------------------------------------
+	override void OnWaypointRemoved(AIWaypoint wp)
+	{
+		InvokeSubagentsOnWaypointChanged(null);
+			
+		Event_OnWaypointRemoved.Invoke(wp);
+	}
+	
+	//------------------------------------------------------------------------
+	//! Invokes OnGroupWaypointChanged on all soldiers
+	//! newWaypoint can be null
+	protected void InvokeSubagentsOnWaypointChanged(AIWaypoint newWaypoint)
+	{
+		array<AIAgent> agents = {};
+		GetAgents(agents);
+		foreach (AIAgent agent : agents)
+		{
+			SCR_ChimeraAIAgent _agent = SCR_ChimeraAIAgent.Cast(agent);
+			if (_agent)
+				_agent.OnGroupWaypointChanged(newWaypoint);
+		}
+	}
+	
+	//------------------------------------------------------------------------
+#ifdef WORKBENCH
+	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
+	{
+		if (key == "coords")
+		{ 
+			DestroyEntities(m_aSceneGroupUnitInstances);
+			CreateUnitEntities(true,m_aUnitPrefabSlots);
+		}
+		return false;
+	}
+#endif
+	
+	//------------------------------------------------------------------------
+	override void EOnInit(IEntity owner)
+	{
+		m_aListOfKnownVehicles =  new ref array<IEntity>;
+			
+		if (m_bSpawnImmediately && !s_bIgnoreSpawning)
+			SpawnUnits();
+		
+		s_bIgnoreSpawning = false;
+	}
+	
+	//------------------------------------------------------------------------
+	void SetMaxUnitsToSpawn(int cnt)
+	{
+		m_iMaxUnitsToSpawn = cnt;
+	}
+	
+	//------------------------------------------------------------------------
+	void SpawnUnits()
+	{
+		if (SCR_Global.IsEditMode(this))
+		{
+			CreateUnitEntities(true, m_aUnitPrefabSlots);
+			AddVehiclesStatic(m_aStaticVehicles);	
+			AddWaypointsStatic(m_aStaticWaypoints);
+			AddWaypointsDynamic(m_aSceneWaypointInstances, m_aSpawnedWaypoints);
+		}
+		else
+		{
+			//--- Don't hardcode members array - it may change in run-time, and we don't want to delete members who meanwhile joined other group
+			CreateUnitEntities(false, m_aUnitPrefabSlots);
+			AddVehiclesStatic(m_aStaticVehicles);	
+			AddWaypointsStatic(m_aStaticWaypoints);
+			AddWaypointsDynamic(null, m_aSpawnedWaypoints);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool RplSave(ScriptBitWriter writer)
+    {	
+		int factionIndex = -1;
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (factionManager)
+			factionIndex = factionManager.GetFactionIndex(GetFaction());
+		
+		writer.WriteInt(factionIndex);
+		writer.WriteInt(m_iGroupRadioFrequency);
+		writer.WriteInt(m_iGroupID);
+		
+		int count = m_aPlayerIDs.Count();
+		writer.WriteInt(count);
+		for (int i = count - 1; i >= 0; i--)
+		{
+			writer.WriteInt(m_aPlayerIDs[i]);
+		}
+		
+		//do rpcs for players join/leave
+		//add invokers for players join/leave
+		
+		return true;
+    }
+	
+	//------------------------------------------------------------------------------------------------
+    override bool RplLoad(ScriptBitReader reader)
+    {
+		int factionIndex;
+		reader.ReadInt(factionIndex);
+		if (factionIndex >= 0)
+			BroadCastSetFaction(factionIndex);
+		
+		reader.ReadInt(m_iGroupRadioFrequency);
+		reader.ReadInt(m_iGroupID);
+		
+		int count, playerID;
+		reader.ReadInt(count);
+		for (int i = count - 1; i >= 0; i--)
+		{
+			reader.ReadInt(playerID);
+			m_aPlayerIDs.Insert(playerID);
+		}
+		
+		if (m_bPlayable)
+		{
+			SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+			if (groupsManager)
+			{
+				groupsManager.RegisterGroup(this);
+				groupsManager.ClaimFrequency(GetGroupFrequency(), GetFaction());
+				groupsManager.OnGroupCreated(this);
+			}
+		}
+		
+		return true;
+    }
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_AIGroup(IEntitySource src, IEntity parent)
+	{
+		SetEventMask(EntityEvent.INIT);
+		SetFlags(EntityFlags.ACTIVE, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_AIGroup()
+	{
+		// Group is playable so we have to unregister it locally as well
+		if (m_bPlayable)
+		{
+			SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+			if (groupsManager)
+			{
+				groupsManager.ReleaseFrequency(GetGroupFrequency(), GetFaction());
+				groupsManager.UnregisterGroup(this);
+			}
+		}
+		
+		DestroyEntities(m_aSceneGroupUnitInstances);
+		DestroyEntities(m_aSceneWaypointInstances);		
+		RemoveStaticWaypointRefs(m_aStaticWaypoints);		
+		ClearRefs(m_aListOfKnownVehicles);		
+	}	
+};
+
+//------------------------------------------------------------------------
+enum EGroupState
+{
+	IDLE = 0,
+	ATTACKING = 1,
+	MOVING = 2,
+	INVESTIGATING = 3,
+	RETREATING = 4,
+	DEFENDING = 5,
+	MANEUVERING = 6,
+	REQ_SUPPORT = 7,
+	REQ_ORDERS = 8,	
+	FOLLOW = 9,
+};
+
+//------------------------------------------------------------------------
+[BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
+class SCR_WaypointPrefabLocation
+{
+	[Attribute("{750A8D1695BD6998}AI/Entities/Waypoints/AIWaypoint.et", UIWidgets.ResourceAssignArray, "Prefab for the waypoint")] 
+	ResourceName m_WPPrefabName;
+	
+	[Attribute("", UIWidgets.EditBox, "Waypoint name")] 
+	string m_WPInstanceName;
+	
+	[Attribute("", UIWidgets.EditBox, "Waypoint location")] 
+	vector m_WPWorldLocation;
+	
+	[Attribute("0", UIWidgets.EditBox, "Waypoint completion radius (-1 dont override default)")] 
+	float m_WPRadiusOverride;
+	
+	[Attribute("0", UIWidgets.EditBox, "Waypoint completion time (-1 dont override default)")] 
+	float m_WPTimeOverride;
+};

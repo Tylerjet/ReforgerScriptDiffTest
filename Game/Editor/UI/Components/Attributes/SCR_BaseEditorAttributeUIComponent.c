@@ -1,0 +1,561 @@
+/** @ingroup Editor_UI Editor_UI_Components Editor_UI_Attributes
+*/
+class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
+{
+	[Attribute()]
+	protected string m_sUiComponentName;
+	
+	[Attribute("TickboxHolder")]
+	protected string m_sTickBoxAttributeName;
+	[Attribute("GamePadLockedSelector")]
+	protected string m_sGamePadLockedSelectorName;
+	
+	[Attribute()]
+	protected ref SCR_EditorAttributeUIInfo m_ConflictingAttributeUIInfo;
+	
+	protected ref SCR_EditorAttributeUIInfo m_ButtonDescriptionUIInfo = new ref SCR_EditorAttributeUIInfo;
+	protected SCR_AttributeButtonUIComponent m_ActiveButtonDescription;
+	
+	protected SCR_ChangeableComponentBase m_UIComponent;
+	private SCR_BaseEditorAttribute m_Attribute;
+	protected float m_fBottomPadding = 1;
+	protected bool m_bIsSubAttribute;
+	protected float m_fSubLabelOffset = 30;
+	protected SCR_AttributeTickboxUIComponent m_TickBoxAttribute;
+	protected Widget m_GamePadLockedSelector;
+	protected SCR_AttributesManagerEditorComponent m_AttributeManager;
+	protected InputManager m_InputManager;
+	
+	protected bool m_bEnabledByAttribute;
+	protected bool m_bEnabledByTickbox;
+	protected bool m_bIsFocused;
+	
+	//Attribute desciption
+	protected bool m_bIsShowingDescription;
+	protected bool m_bShowButtonDescription;
+	protected bool m_bIsOverridingDescription;
+	protected string m_sButtonDescription;
+	protected string m_sButtonDescriptionParam1;
+	protected string m_sOverrideDescriptionCustomDescription;
+	protected string m_sOverrideDescriptionParam1;
+	protected string m_sOverrideDescriptionParam2;
+	protected string m_sOverrideDescriptionParam3;
+	
+	protected ref ScriptInvoker Event_OnAttributeChanged = new ref ScriptInvoker;
+	protected ref ScriptInvoker Event_OnEnabledByAttribute = new ref ScriptInvoker;
+	protected ref ScriptInvoker Event_OnAttributeUIFocusChanged = new ref ScriptInvoker;
+	protected ref ScriptInvoker Event_OnInputDeviceChanged = new ref ScriptInvoker;
+	protected ref ScriptInvoker Event_OnMouseLeave = new ref ScriptInvoker;
+	
+	
+	//============================ Getters ============================\\
+	/*!
+	Get attribute this component represents.
+	\return Editor attribute
+	*/
+	SCR_BaseEditorAttribute GetAttribute()
+	{
+		return m_Attribute;
+	}
+	
+	//============================ Set from var ============================\\
+	protected void SetFromVarExternal(SCR_BaseEditorAttributeVar var, bool isReset)
+	{		
+		//If Reset
+		if (isReset)
+		{
+			GetAttribute().SetConflictingAttributeWasReset(false);
+			if (GetAttribute().GetHasConflictingValues())
+			{		
+				SetVariableToDefaultValue(m_Attribute.GetVariableOrCopy());
+				
+				if (m_TickBoxAttribute.GetToggled())
+					m_TickBoxAttribute.ToggleTickbox(false);
+			}
+		}
+		
+		SetFromVar(var);
+	}
+	/*!
+	Update GUI from attribute variable. Called when attributes are initialized in a dialog or when they are reset based on user request.
+	\param var Attribute variable
+	*/
+	void SetFromVar(SCR_BaseEditorAttributeVar var)
+	{
+		
+	}
+	
+	//============================ Init ============================\\
+	/*!
+	Initialize GUI from attribute.
+	To be overriden by inherited classes.
+	\param w Widget this component is attached to
+	\param attribute Editor attribute this component represents
+	*/
+	void Init(Widget w, SCR_BaseEditorAttribute attribute)
+	{
+		m_Attribute = attribute;
+		m_AttributeManager = SCR_AttributesManagerEditorComponent.Cast(SCR_AttributesManagerEditorComponent.GetInstance(SCR_AttributesManagerEditorComponent));
+		
+		if (m_Attribute.GetOnExternalnChange())
+			m_Attribute.GetOnExternalnChange().Insert(SetFromVarExternal);
+		m_Attribute.GetOnVarChanged().Insert(SetFromVar);
+		m_Attribute.GetOnToggleEnable().Insert(ToggleEnableAttribute);
+		m_Attribute.GetOnToggleButtonSelected().Insert(ToggleButtonSelected);
+		m_Attribute.GetOnSetAsSubAttribute().Insert(SetAsSubAttribute);
+		
+		m_InputManager = GetGame().GetInputManager();
+		
+		Widget tickbox = w.FindAnyWidget(m_sTickBoxAttributeName);
+		if (!tickbox)
+		{
+			Print(string.Format("SCR_BaseEditorAttributeUIComponent could not find tickbox: %1!", m_sTickBoxAttributeName), LogLevel.ERROR);
+			return;
+		}
+		
+		if (!m_ConflictingAttributeUIInfo || !m_ConflictingAttributeUIInfo.HasIcon() || m_ConflictingAttributeUIInfo.GetDescription().IsEmpty())
+			Print(string.Format("SCR_BaseEditorAttributeUIComponent: %1 is missing or has an incomplete m_ConflictingAttributeUIInfo", this), LogLevel.WARNING);
+			
+		m_TickBoxAttribute = SCR_AttributeTickboxUIComponent.Cast(tickbox.FindHandler(SCR_AttributeTickboxUIComponent));
+		
+		m_GamePadLockedSelector = w.FindAnyWidget(m_sGamePadLockedSelectorName);
+		
+		if (m_GamePadLockedSelector)
+		{
+			SCR_OnFocusUIComponent focusComponent = SCR_OnFocusUIComponent.Cast(m_GamePadLockedSelector.FindHandler(SCR_OnFocusUIComponent));
+			
+			if (focusComponent)
+				focusComponent.GetOnFocusChanged().Insert(GamePadLockedSelectorFocusChanged);
+		}
+		
+		if (m_TickBoxAttribute)
+			m_TickBoxAttribute.GetOnToggleChanged().Insert(OnTickboxToggleChanged);
+		
+		//m_AttributeSizeLayout = SizeLayoutWidget.Cast(w.FindAnyWidget(m_sAttributeSizeLayoutName));
+		
+		Widget uiComponentWidget = w.FindAnyWidget(m_sUiComponentName);
+		if (uiComponentWidget)
+		{
+			m_UIComponent = SCR_ChangeableComponentBase.Cast(uiComponentWidget.FindHandler(SCR_ChangeableComponentBase));
+			
+			if (m_UIComponent)
+				attribute.GetUIInfo().SetNameTo(m_UIComponent.GetLabel());
+		}
+		
+		//Check if is disabled by means of overriding varriables
+		m_bEnabledByTickbox = (!attribute.GetIsMultiSelect()) || (attribute.GetIsMultiSelect() && !attribute.GetHasConflictingValues() || (attribute.GetHasConflictingValues() && attribute.GetIsOverridingValues()));
+		
+		//If not multi select it can be disabled and enabled
+		ToggleEnableAttribute(attribute.IsEnabled());
+		
+		if (attribute.GetIsSubAttribute())
+			SetAsSubAttribute();
+		
+		//Padding
+		LayoutSlot.SetPadding(w,0,0,0,m_fBottomPadding);
+		
+		//Override attributes link
+		typename linkedOverrideAttributeType = typename.Empty;		
+		
+		if (attribute.GetHasConflictingValues() && !GetAttribute().GetInitCalled())
+		{		
+			GetGame().OnInputDeviceUserChangedInvoker().Insert(SetGamepadLockSelectorActive);
+		}
+
+		//Multiselect
+		if (attribute.GetIsMultiSelect())
+		{	
+			//If attribute init or reset was called make sure that attribute settings are reset and default values are set
+			if (attribute.GetHasConflictingValues() && (!GetAttribute().GetInitCalled() || GetAttribute().GetConflictingAttributeWasReset()))
+			{
+				if (!attribute.GetInitCalled())
+					attribute.SetInitCalled(true);
+				else if (attribute.GetConflictingAttributeWasReset())
+					attribute.SetConflictingAttributeWasReset(false);
+				
+				attribute.ResetAttribute();
+				SetVariableToDefaultValue(m_Attribute.GetVariableOrCopy());			
+			}
+		}
+		//Override
+		else
+		{			
+			array<ref SCR_BaseEditorAttributeEntry> entries = new array<ref SCR_BaseEditorAttributeEntry>;
+			attribute.GetEntries(entries);
+			
+			foreach (SCR_BaseEditorAttributeEntry entry: entries)
+			{
+				SCR_EditorAttributeEntryOverride overrideEntry = SCR_EditorAttributeEntryOverride.Cast(entry);
+				
+				if (overrideEntry)
+				{
+					//attribute.SetHasConflictingValues(true);
+					bool isOverride;
+					overrideEntry.GetToggleStateAndTypename(isOverride, linkedOverrideAttributeType);
+					attribute.SetIsOverridingValues(isOverride);
+					
+					break;
+				}
+			}
+		}
+		
+		
+		if (attribute.GetIsMultiSelect())
+		{
+			if (attribute.GetHasConflictingValues())
+				m_TickBoxAttribute.InitTickbox(attribute.GetIsOverridingValues(), this);	
+			else 
+				m_TickBoxAttribute.InitDisabled();
+		}
+		//If values are overriden by another attribute
+		else if (attribute.GetHasConflictingValues())
+		{
+			m_TickBoxAttribute.InitTickbox(attribute.GetIsOverridingValues(), this, linkedOverrideAttributeType);	
+		}
+	}
+	
+	//============================ Set button states ============================\\
+	//Button boxs only, toggle the slection state of buttons
+	protected void ToggleButtonSelected(bool selected, int index, bool animated = true)
+	{
+	}
+	
+	//============================ UI Logics ============================\\
+	//Sets an indent on the label if it is a child of another attribute
+	protected void SetAsSubAttribute()
+	{
+		m_bIsSubAttribute = true;
+		m_Attribute.GetOnSetAsSubAttribute().Remove(SetAsSubAttribute);
+		
+		Widget labelWidget = m_UIComponent.GetLabelWidget();
+		
+		if (!labelWidget) 
+			return;
+		
+		TextWidget tw = TextWidget.Cast(labelWidget.FindAnyWidget("Text"));
+		
+		if (!tw) 
+			return;
+		
+		tw.SetTextOffset(m_fSubLabelOffset, 0);
+	}
+
+	//============================ Varriable changed ============================\\
+	override bool OnChange(Widget w, int x, int y, bool finished)
+	{
+		AttributeValueChanged();
+		return false;
+	}
+
+	//On attribute value changed
+	protected void AttributeValueChanged()
+	{
+		m_Attribute.UpdateInterlinkedVariables(m_Attribute.GetVariable(), m_AttributeManager);
+		m_Attribute.PreviewVariable(true, m_AttributeManager);
+		
+		Event_OnAttributeChanged.Invoke();
+	}
+	
+	//============================ Set tooltip ============================\\
+	protected void ShowAttributeDescription()
+	{
+		m_bIsShowingDescription = true;
+		
+		//If conflicting attribute and not toggled show the conflicting attribute description
+		if (!m_TickBoxAttribute.GetToggled() && m_TickBoxAttribute.IsVisibleAndEnabled())
+			m_AttributeManager.SetAttributeDescription(m_ConflictingAttributeUIInfo, m_ConflictingAttributeUIInfo.GetDescription());
+		else if (m_bIsOverridingDescription)
+			m_AttributeManager.SetAttributeDescription(GetAttribute().GetUIInfo(), m_sOverrideDescriptionCustomDescription, m_sOverrideDescriptionParam1, m_sOverrideDescriptionParam2, m_sOverrideDescriptionParam3);
+		else if (m_bShowButtonDescription)
+			m_AttributeManager.SetAttributeDescription(m_ButtonDescriptionUIInfo, string.Empty, m_sButtonDescriptionParam1);
+		else
+			m_AttributeManager.SetAttributeDescription(GetAttribute().GetUIInfo());
+	}
+	
+	protected void HideAttributeDescription()
+	{
+		m_bIsShowingDescription = false;
+		m_AttributeManager.SetAttributeDescription(null);
+	}	
+	
+	/*!
+	Override the default tooltip Text
+	\param content text displayed
+	\param icon icon displayed. Hidden if left empty
+	\param param1 param in text
+	\param param2 param in text
+	*/
+	protected void OverrideDescription(bool overrideDescription, string customContent = string.Empty, string param1 = string.Empty, string param2 = string.Empty, string param3 = string.Empty)
+	{	
+		m_bIsOverridingDescription = overrideDescription;
+		
+		if (!m_bIsOverridingDescription && m_bIsShowingDescription)
+		{
+			ShowAttributeDescription();
+			return;
+		}
+		
+		m_sOverrideDescriptionCustomDescription = customContent;
+		m_sOverrideDescriptionParam1 = param1;
+		m_sOverrideDescriptionParam2 = param2;
+		m_sOverrideDescriptionParam3 = param3;
+
+		if (m_bIsShowingDescription)
+			ShowAttributeDescription();
+		else 
+			HideAttributeDescription();
+	}
+	
+	void ShowButtonDescription(SCR_AttributeButtonUIComponent button, bool showButtonDescription, string buttonDescription = string.Empty)
+	{
+		//~ If trying to hide description but that description is not active ignore it
+		if (showButtonDescription)
+			m_ActiveButtonDescription = button;
+		else if (m_ActiveButtonDescription != button && button != null)
+			return;
+			
+		if (buttonDescription.IsEmpty())
+			m_bShowButtonDescription = false;
+		else 
+			m_bShowButtonDescription = showButtonDescription;
+		
+		m_sButtonDescriptionParam1 = buttonDescription;
+		
+		//~ Override description to that of the button
+		ShowAttributeDescription();
+	}
+	
+	//============================ Script Invokers ============================\\
+	/*!
+	Called on attribute changed via UI.
+	\return Event_OnAttributeChanged ScriptInvoker
+	*/
+	ScriptInvoker GetOnAttributeChanged()
+	{
+		return Event_OnAttributeChanged;
+	}
+	
+	/*!
+	Called on focus changes. For gamepad to know if the attribute is being focused on
+	\return Event_OnAttributeUIFocusChanged ScriptInvoker
+	*/
+	ScriptInvoker GetOnAttributeUIFocusChanged()
+	{
+		return Event_OnAttributeUIFocusChanged;
+	}	
+	
+	/*!
+	Called when another attribute enables/disables the attribute
+	\return Event_OnEnabledByAttribute ScriptInvoker when on enabled by attribute happens
+	*/
+	ScriptInvoker GetOnEnabledByAttribute()
+	{
+		return Event_OnEnabledByAttribute;
+	}	
+	
+	/*!
+	Called when the mouse leaves the attribute
+	\return Event_OnMouseLeave ScriptInvoker on mouse leave
+	*/
+	ScriptInvoker GetOnMouseLeave()
+	{
+		return Event_OnMouseLeave;
+	}	
+	
+	//============================ Enabling and Disabling UI and Tickbox ============================\\
+	//Sets a default state for the UI and var value if conflicting attribute
+	protected void SetVariableToDefaultValue(SCR_BaseEditorAttributeVar var)
+	{
+		
+	}
+	
+	
+	void OnVarChanged()
+	{
+	
+	}
+	
+	
+	protected void ToggleEnableAttribute(bool enabled)
+	{
+		m_bEnabledByAttribute = enabled;
+		ToggleEnable(m_bEnabledByAttribute);
+		Event_OnEnabledByAttribute.Invoke(m_bEnabledByAttribute);
+	}
+	
+	
+	/*!
+	Toggle UI enabled. Disabled will delete the var if is conflicting var
+	/param bool enable true or false
+	*/
+	protected void ToggleEnable(bool enabled)
+	{				
+		//If Multiselect
+		if (GetAttribute().GetHasConflictingValues())
+		{
+			//Create var from copy var if enabled
+			if (enabled)
+			{
+				GetAttribute().SetVariable(m_Attribute.GetCopyVariable());
+				GetAttribute().ClearCopyVar();
+			}
+			//Create copy var and Delete var if disabled
+			else 
+			{
+				GetAttribute().CreateCopyVariable();
+				GetAttribute().ClearVar();
+			}
+		}
+		
+		if (m_bEnabledByAttribute && m_bEnabledByTickbox)
+			m_UIComponent.SetEnabled(true);
+		else
+			m_UIComponent.SetEnabled(false);
+
+	}
+	
+	/*!
+	Toggle tickbox UI, flipping the tickbox from true to false and viceversa
+	*/
+	void ToggleEnableAttributeTickbox()
+	{
+		if (GetAttribute().GetHasConflictingValues())
+			m_TickBoxAttribute.ToggleTickbox(!GetAttribute().GetIsOverridingValues());
+		
+		if (GetAttribute().GetIsOverridingValues())
+			GetGame().GetWorkspace().SetFocusedWidget(m_UIComponent.GetRootWidget());
+		else
+			GetGame().GetWorkspace().SetFocusedWidget(m_GamePadLockedSelector);
+	}
+	
+	//Listens to tickbox if the state changed
+	protected void OnTickboxToggleChanged(bool toggle)
+	{
+		if (GetAttribute().GetHasConflictingValues())
+		{
+			GetAttribute().SetIsOverridingValues(toggle);
+		}
+		
+		m_bEnabledByTickbox = toggle;
+		ToggleEnable(toggle);
+		
+		SetGamepadLockSelectorActive(-1, -1);
+
+		if (toggle)
+			AttributeValueChanged();
+		
+		if (m_bIsShowingDescription)
+			ShowAttributeDescription();
+	}
+	
+	//If Disabled attribute is focused or not with gamepad
+	protected void GamePadLockedSelectorFocusChanged(bool newFocus)
+	{
+		if (!GetAttribute().GetHasConflictingValues())
+			return;
+		
+		if (newFocus)
+		{
+			ShowAttributeDescription();
+			Event_OnAttributeUIFocusChanged.Invoke(this);
+		}
+			
+		else
+		{
+			HideAttributeDescription();
+			Event_OnAttributeUIFocusChanged.Invoke(null);
+		}			
+	}
+	
+	/*!
+	Get if attribute is focused
+	/return if attribute is focused
+	*/
+	bool GetIsFocused()
+	{
+		return m_bIsFocused;
+	}
+	
+	//If enabled UI is focused
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		m_bIsFocused = true;
+		
+		if (!m_InputManager.IsUsingMouseAndKeyboard())
+			ShowButtonDescription(null, false);
+		
+		if (GetAttribute().GetHasConflictingValues())
+			Event_OnAttributeUIFocusChanged.Invoke(this);
+		
+		ShowAttributeDescription();
+		
+		return true;
+	}
+	
+	//If enabled UI is lost focus
+	override bool OnFocusLost(Widget w, int x, int y)
+	{		
+		m_bIsFocused = false; 
+		
+		if (GetAttribute().GetHasConflictingValues())
+			Event_OnAttributeUIFocusChanged.Invoke(null);
+		
+		return false;
+	}	
+	
+	override bool OnMouseEnter(Widget w, int x, int y)
+	{
+		return OnFocus(w, x, y);
+	}
+	
+	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
+	{	
+		Event_OnMouseLeave.Invoke();
+		
+		if (enterW != null)
+			HideAttributeDescription();
+		
+		return false;
+	}
+	
+	//For tickbox
+	protected void SetGamepadLockSelectorActive(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	{
+		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
+			return;
+		
+		m_GamePadLockedSelector.SetVisible(!m_InputManager.IsUsingMouseAndKeyboard() && !m_TickBoxAttribute.GetToggled());
+	}	
+	
+	//============================ On Destroy ============================\\
+	override void HandlerDeattached(Widget w)
+	{
+		if (m_Attribute)
+		{
+			if (m_Attribute.GetOnExternalnChange())
+				m_Attribute.GetOnExternalnChange().Remove(SetFromVarExternal);
+		
+			m_Attribute.GetOnVarChanged().Remove(SetFromVar);
+			m_Attribute.GetOnToggleEnable().Remove(ToggleEnableAttribute);
+			m_Attribute.GetOnToggleButtonSelected().Remove(ToggleButtonSelected);
+			
+			if (!m_bIsSubAttribute)
+				m_Attribute.GetOnSetAsSubAttribute().Remove(SetAsSubAttribute);
+			
+			if (m_Attribute.GetHasConflictingValues())
+				GetGame().OnInputDeviceUserChangedInvoker().Remove(SetGamepadLockSelectorActive);
+		} 
+		
+		if (m_TickBoxAttribute)
+			m_TickBoxAttribute.GetOnToggleChanged().Remove(OnTickboxToggleChanged);	
+		
+		
+		if (m_GamePadLockedSelector)
+		{
+			SCR_OnFocusUIComponent focusComponent = SCR_OnFocusUIComponent.Cast(m_GamePadLockedSelector.FindHandler(SCR_OnFocusUIComponent));
+			
+			if (focusComponent)
+				focusComponent.GetOnFocusChanged().Remove(GamePadLockedSelectorFocusChanged);
+		}
+	}
+};

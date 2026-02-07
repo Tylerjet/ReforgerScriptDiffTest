@@ -1,0 +1,370 @@
+//#define PREVIEW_ENTITY_DEBUG
+[EntityEditorProps(category: "GameScripted/Preview", description: "", color: "0 0 0 0", dynamicBox: true)]
+class SCR_BasePreviewEntityClass: GenericEntityClass
+{
+};
+/*!
+Generic preview entity used to represent another entity is simplified form.
+Uses array of SCR_BasePreviewEntry for configuration. Such array can be generated from prefab or existing entities, see inherited classes for details.
+*/
+class SCR_BasePreviewEntity: GenericEntity
+{
+	[Attribute(uiwidget: UIWidgets.Flags, category: "Preview Entity",  enums: ParamEnumArray.FromEnum(EPreviewEntityFlag))]
+	protected EPreviewEntityFlag m_Flags;
+	
+	protected IEntity m_Entity;
+	protected IEntitySource m_EntitySource;
+	protected float m_fHeightTerrain = -1;
+	protected bool m_bIsOnOrigTransform = true;
+	protected vector m_vLocalTransform[4];
+	protected vector m_vTerrainTransform[4];
+	protected ref array<SCR_BasePreviewEntity> m_aChildren;
+	
+	/*!
+	Spawn preview entity from entries.
+	To get entries, see specialized inherited classes.
+	\param entries List of entity entries
+	\param previewPrefab Prefab of preview entity. Can also be a class name, e.g., "SCR_RefPreviewEntity"
+	\param world World in which the preview will be spawned
+	\param spawnParams Spawn params of the preview
+	\param material Material of the preview. When empty, meshes won't be created at all.
+	\return Entity preview
+	*/
+	static SCR_BasePreviewEntity SpawnPreview(notnull array<ref SCR_BasePreviewEntry> entries, ResourceName previewPrefab, BaseWorld world = null, EntitySpawnParams spawnParams = null, ResourceName material = ResourceName.Empty, EPreviewEntityFlag flags = 0)
+	{
+		if (entries.IsEmpty())
+		{
+			Print("No entries defined!", LogLevel.WARNING);
+			return null;
+		}
+		
+		if (!world)
+			world = GetGame().GetWorld();
+		
+		EntitySpawnParams spawnParamsLocal = spawnParams;
+		if (!spawnParamsLocal)
+		{
+			spawnParamsLocal = new EntitySpawnParams();
+			spawnParamsLocal.Transform[3] = entries[0].m_vPosition;
+		}
+		
+		bool applyMesh = !material.IsEmpty();
+
+		//--- Create root entity
+		string ext;
+		FilePath.StripExtension(previewPrefab, ext);
+		Resource previewResource;
+		typename previewType;
+		bool spawnFromResource;
+		if (!ext.IsEmpty())
+		{
+			previewResource = Resource.Load(previewPrefab);
+			spawnFromResource = previewResource.IsValid();
+		}
+		
+		SCR_BasePreviewEntity rootEntity;
+		if (spawnFromResource)
+		{
+			//--- From prefab
+			rootEntity = SCR_BasePreviewEntity.Cast(GetGame().SpawnEntityPrefab(previewResource, world, spawnParamsLocal));
+		}
+		else
+		{
+			//--- From class name
+			previewType = previewPrefab.ToType();
+			if (!previewType)
+				previewType = SCR_BasePreviewEntity;
+			rootEntity = SCR_BasePreviewEntity.Cast(GetGame().SpawnEntity(previewType, world, spawnParamsLocal));
+		}
+		
+		if (!rootEntity)
+		{
+			Debug.Error2("SCR_BasePreviewEntity", string.Format("Unable to create preview entity from prefab/type '%1'!", previewPrefab));
+			return null;
+		}
+		
+		vector rootTransform[4];
+		Math3D.MatrixCopy(spawnParamsLocal.Transform, rootTransform);
+		
+		rootEntity.m_Flags = flags;
+		
+		array<SCR_BasePreviewEntity> children = {};
+		SCR_BasePreviewEntity entity, parent;
+		foreach (int i, SCR_BasePreviewEntry entry: entries)
+		{
+			//entry.Log(i);
+			
+			//--- Get local transformation matrix
+			spawnParamsLocal = new EntitySpawnParams();
+			entry.LoadTransform(spawnParamsLocal.Transform);
+			//spawnParamsLocal.Scale = entry.m_fScale; //--- Has no effect
+			
+			if (entry.m_Shape != EPreviewEntityShape.CYLINDER) //--- Don't scale area meshes; instead, the scale is applied on the actual area
+				SCR_Math3D.ScaleMatrix(spawnParamsLocal.Transform, entry.m_fScale); //--- Apply scale on matrix, SetScale() doesn't work reliably
+			
+			//--- Get parent (don't apply it to spawn params, it doesn't create true hierarchy link)
+			if (entry.m_iParentID == -1)
+				parent = rootEntity;
+			else
+				parent = children[entry.m_iParentID];
+			
+			if (applyMesh && entry.m_Shape == EPreviewEntityShape.PREFAB && entry.m_Mesh)
+			{
+				//--- Use preview prefab
+				entity = SCR_BasePreviewEntity.Cast(GetGame().SpawnEntityPrefabLocal(Resource.Load(entry.m_Mesh), world, spawnParamsLocal));
+			}
+			else
+			{
+				//--- Create entity
+				if (spawnFromResource)
+					entity = SCR_BasePreviewEntity.Cast(GetGame().SpawnEntityPrefabLocal(previewResource, world, spawnParamsLocal));
+				else
+					entity = SCR_BasePreviewEntity.Cast(GetGame().SpawnEntity(previewType, world, spawnParamsLocal));
+				
+				if (entity && applyMesh)
+				{
+					switch (entry.m_Shape)
+					{
+						case EPreviewEntityShape.MESH:
+						{
+							//--- Set mesh from a file
+							if (entry.m_Mesh)
+							{
+								Resource meshResource = Resource.Load(entry.m_Mesh);
+								if (meshResource)
+								{
+									BaseResourceObject res = meshResource.GetResource();
+									
+									if (res)
+										entity.SetPreviewObject(res.ToVObject(), material);
+								}
+							}
+							break;
+						}
+						case EPreviewEntityShape.CYLINDER:
+						{
+							//--- Generate cylinder mesh
+							int resolution = 32;
+							float height = 50;
+							float dirStep = Math.PI2 / resolution;
+							array<vector> positions = {};
+							
+							//--- Get positions
+							for (int v = 0; v < resolution; v++)
+							{
+								float dir = dirStep * v;
+								vector pos = Vector(Math.Sin(dir) * entry.m_fScale, -height, Math.Cos(dir) * entry.m_fScale);
+								positions.Insert(pos);
+							}
+							
+							MeshObject meshObject = SCR_Shape.CreateAreaMesh(positions, height * 2, material, true);
+							if (meshObject)
+								entity.SetObject(meshObject, "");
+							
+							break;
+						}
+					}
+				}
+			}
+			children.Insert(entity);
+			
+			//--- Add to parent (spawn params won't do that on their own)
+			int pivot = -1;
+			if (!entry.m_iPivotID.IsEmpty())
+				pivot = parent.GetBoneIndex(entry.m_iPivotID);
+			parent.AddChild(entity, pivot, EAddChildFlags.AUTO_TRANSFORM);
+			
+			//--- Cache the child in parent's array
+			if (!parent.m_aChildren)
+				parent.m_aChildren = {};
+			parent.m_aChildren.Insert(entity);
+			
+			//--- Set coordinates local to terrain
+			Math3D.AnglesToMatrix(entry.m_vAnglesTerrain, entity.m_vTerrainTransform);
+			entity.m_fHeightTerrain = entry.m_vHeightTerrain;
+			
+			//--- Make a copy of local transform for use in SetPreviewTransform()
+			Math3D.MatrixCopy(spawnParamsLocal.Transform, entity.m_vLocalTransform);
+			
+			//--- Initialize
+			entity.m_Flags |= entry.m_Flags;
+			entity.m_Entity = entry.m_Entity;
+			
+			entity.EOnPreviewInit(entry, rootEntity);
+		}
+		Print(string.Format("Preview entity created from %1 entries, at %2, using '%3' with material '%4'", entries.Count(), rootTransform, previewPrefab, material), LogLevel.VERBOSE);
+		
+		return rootEntity;
+	}
+	
+	/*!
+	Set transformation of the preview.
+	Entities will be oriented to terrain when when they have the functionality enabled.
+	\param worldTransform Transformation matrix in world space
+	\param verticalMode Type of vertical editing
+	\param heightTerrain Height above terrain
+	\param isUnderwater True when the preview entity is under ocean surface
+	*/
+	void SetPreviewTransform(vector worldTransform[4], EEditorTransformVertical verticalMode, float heightTerrain = 0, bool isUnderwater = false)
+	{
+		//--- Get height difference
+		if (m_fHeightTerrain == -1)
+			m_fHeightTerrain = heightTerrain;
+		heightTerrain -= m_fHeightTerrain;
+		
+		SetWorldTransform(worldTransform);
+		SetChildTransform(verticalMode, heightTerrain, isUnderwater);
+		Update();
+		
+		#ifdef PREVIEW_ENTITY_DEBUG		
+			DbgUI.Begin(this.ToString(), 0, 0);
+			SCR_DbgUI.Matrix("worldTransform", worldTransform);
+			SCR_Global.DrawMatrix(worldTransform, 5, ShapeFlags.ONCE);
+			DbgUI.End();
+		#endif
+	}
+	protected void SetChildTransform(EEditorTransformVertical verticalMode, float heightTerrain, bool isUnderwater = false)
+	{
+		if (GetParent())
+		{
+			//--- Actual preview entity, not root
+			switch (verticalMode)
+			{
+				case EEditorTransformVertical.TERRAIN:
+				{
+					//--- Restore local transformation and convert it to world transformation
+					vector transform[4], surfaceBasis[4];
+					GetParent().GetWorldTransform(transform);
+					Math3D.MatrixMultiply4(transform, m_vLocalTransform, transform);
+					
+					//--- Get surface basis
+					if (!SCR_Global.GetTerrainBasis(transform[3], surfaceBasis, GetWorld(), !isUnderwater))
+						return;
+					
+					vector angles = Math3D.MatrixToAngles(transform);
+					if (SCR_Enum.HasFlag(m_Flags, EPreviewEntityFlag.HORIZONTAL))
+					{
+						//--- Orient to horizontal normal
+						angles[1] = 0;
+						angles[2] = 0;
+						Math3D.AnglesToMatrix(angles, transform);
+					}
+					else
+					{
+						//--- Orient to terrain normal
+						//--- Get identity matrix rotated according to the entity
+						Math3D.AnglesToMatrix(Vector(angles[0], 0, 0), transform);
+						
+						//--- Rotate surface basis
+						Math3D.MatrixMultiply3(surfaceBasis, transform, surfaceBasis);
+						
+						//--- Apply local transformation relative to terrain
+						Math3D.MatrixMultiply3(surfaceBasis, m_vTerrainTransform, transform);
+					}
+					
+					//--- Apply height
+					transform[3][1] = surfaceBasis[3][1] + m_fHeightTerrain + heightTerrain;
+					
+					//--- Apply
+					SetWorldTransform(transform);
+					
+					m_bIsOnOrigTransform = false;
+					break;
+				}
+				default:
+				{
+					//--- Reset transformation
+					if (!m_bIsOnOrigTransform)
+					{
+						SetLocalTransform(m_vLocalTransform);
+						m_bIsOnOrigTransform = true;
+					}
+					break;
+				}
+			}
+		}
+		if (m_aChildren && (!GetParent() || SCR_Enum.HasFlag(m_Flags, EPreviewEntityFlag.ORIENT_CHILDREN)))
+		{
+			//--- Is root, or has children and is allowed to orient them
+			for (int i = 0, count = m_aChildren.Count(); i < count; i++)
+			{
+				m_aChildren[i].SetChildTransform(verticalMode, heightTerrain, isUnderwater);
+			}
+		}
+		
+		#ifdef PREVIEW_ENTITY_DEBUG
+			vector matrix[4];
+			GetWorldTransform(matrix);
+			SCR_Global.DrawMatrix(matrix, 5, ShapeFlags.ONCE, Color.CYAN, Color.MAGENTA, 0xffffff00);
+		#endif
+	}
+	protected void SetPreviewObject(VObject mesh, ResourceName material)
+	{
+		if (!mesh)
+			return;
+		
+		string remap = string.Empty;
+		string materials[256];
+		int numMats = mesh.GetMaterials(materials);
+		for (int i = 0; i < numMats; i++)
+		{
+			remap += string.Format("$remap '%1' '%2';", materials[i], material);
+		}
+		SetObject(mesh, remap);
+	}
+	
+	/*!
+	Get all direct preview entity children.
+	\return Array of children
+	*/
+	array<SCR_BasePreviewEntity> GetPreviewChildren()
+	{
+		return m_aChildren;
+	}
+	/*!
+	Get entity from which the preview was copied from.
+	\return Source entity, or null if the preview was not created from an entity
+	*/
+	IEntity GetSourceEntity()
+	{
+		return m_Entity;
+	}
+	/*!
+	Init event called when the preview is created.
+	To be overriden by child classes
+	*/
+	protected void EOnPreviewInit(SCR_BasePreviewEntry entry, SCR_BasePreviewEntity root)
+	{
+	}
+	void SCR_BasePreviewEntity(IEntitySource src, IEntity parent)
+	{
+		SetFlags(EntityFlags.ACTIVE, false);
+	}
+	void ~SCR_BasePreviewEntity()
+	{
+		while (GetChildren())
+		{
+			delete GetChildren();
+		}
+	}
+	
+#ifdef WORKBENCH
+	override void _WB_GetBoundBox(inout vector min, inout vector max, IEntitySource src)
+	{
+		GetBounds(min, max);
+	}
+	override void _WB_AfterWorldUpdate(float timeSlice)
+	{
+		//--- Show mesh name for easier World Editor debugging
+		if (_WB_GetEditorAPI().IsEntitySelectedAsMain(this))
+		{
+			string text = "<No Mesh>";
+			if (GetVObject())
+				text = FilePath.StripPath(GetVObject().GetResourceName());
+			
+			vector pos = GetOrigin();
+			DebugTextWorldSpace.Create(GetWorld(), text, DebugTextFlags.ONCE | DebugTextFlags.CENTER, pos[0], pos[1], pos[2], 12, Color.WHITE, Color.BLACK);
+		}
+	}
+#endif
+};

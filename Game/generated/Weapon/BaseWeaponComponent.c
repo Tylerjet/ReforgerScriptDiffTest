@@ -1,0 +1,37 @@
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/**
+* \addtogroup Weapon
+* @{
+*/
+
+class BaseWeaponComponent: GameComponent
+{
+	proto external UIInfo GetUIInfo();
+	proto external string GetWeaponSlotType();
+	proto external EWeaponType GetWeaponType();
+	proto external int GetMuzzlesList(out notnull array<BaseMuzzleComponent> outMuzzles);
+	proto external BaseMuzzleComponent GetCurrentMuzzle();
+	//! Returns whether current weapon is able to be reloaded or not.
+	proto external bool IsReloadPossible();
+	proto external bool IsChamberingNecessary();
+	proto external bool IsChamberingPossible();
+	// Magazines
+	proto external BaseMagazineComponent GetCurrentMagazine();
+	proto external string GetCurrentFireModeName();
+	proto external EWeaponFiremodeType GetCurrentFireModeType();
+	proto external float GetCurrentSightsZeroing();
+	proto external bool GetCurrentSightsZeroingTransform(out vector outMat[4]);
+	proto external void SightADSActivated();
+	proto external void SightADSDeactivated();
+	proto external bool IsSightADSActive();
+	proto external BaseSightsComponent GetSights();
+	proto external IEntity GetOwner();
+	proto external float GetInitialProjectileSpeed();
+};
+
+/** @}*/

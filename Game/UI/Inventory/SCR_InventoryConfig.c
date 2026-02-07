@@ -1,0 +1,63 @@
+[BaseContainerProps(), SCR_BaseContainerCustomTitleResourceName("m_sName", true)]
+class SCR_LoadoutArea
+{
+	[Attribute("Name", desc: "")]
+	protected string m_sName;
+	
+	[Attribute( defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Area", enums: ParamEnumArray.FromEnum( ELoadoutArea ) )]
+	ELoadoutArea m_eLoadoutArea;
+	
+	[Attribute( defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Area", enums: ParamEnumArray.FromEnum( ECommonItemType ) )]
+	ECommonItemType m_eCommonType;
+	
+	[Attribute( defvalue: "1", uiwidget: UIWidgets.EditBox, desc: "Row in inventory list" )]
+	private int m_iRow;
+	
+	[Attribute( defvalue: "", uiwidget: UIWidgets.FileNamePicker, desc: "Icon for the Area", params: "edds" )]
+	ResourceName m_sIcon;
+	
+};
+
+[BaseContainerProps(configRoot: true)]
+class SCR_InventoryConfig
+{
+	[Attribute( desc: "Loadout Areas" )]
+	private ref array<ref SCR_LoadoutArea> m_aLoadoutAreas;
+	
+	int GetRowByArea( ELoadoutArea pArea )
+	{ 
+		foreach ( int iIndex , SCR_LoadoutArea pAreaEntry : m_aLoadoutAreas )
+			if ( pAreaEntry.m_eLoadoutArea == pArea )
+				return iIndex; 
+		return -1;
+	}
+	
+	int GetRowByCommonItemType( ECommonItemType pItemType )
+	{ 
+		foreach ( int iIndex , SCR_LoadoutArea pAreaEntry : m_aLoadoutAreas )
+			if ( pAreaEntry.m_eCommonType == pItemType )
+				return iIndex; 
+		return -1;
+	}
+	
+	ResourceName GetIcon( ELoadoutArea pArea )
+	{
+		foreach ( int iIndex , SCR_LoadoutArea pAreaEntry : m_aLoadoutAreas )
+			if ( pAreaEntry.m_eLoadoutArea == pArea )
+				return pAreaEntry.m_sIcon;
+		return ResourceName.Empty;
+	}
+	
+	ResourceName GetIconByRow( int iIndex )
+	{
+		if ( iIndex > m_aLoadoutAreas.Count() -1 )
+			return ResourceName.Empty;
+		return m_aLoadoutAreas[ iIndex ].m_sIcon;
+	}
+	
+	void ~SCR_InventoryConfig()
+	{
+		m_aLoadoutAreas = null;
+	}
+};
+

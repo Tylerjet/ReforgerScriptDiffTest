@@ -1,0 +1,228 @@
+//------------------------------------------------------------------------------------------------
+class SCR_MapUITask : SCR_MapUIElement
+{
+	protected SCR_BaseTask m_Task;
+	protected TextWidget m_wTaskTitle;
+	protected Widget m_wAssignees;
+	protected Widget m_wMapTask;
+			
+	//------------------------------------------------------------------------------
+	SCR_MapUITask InitTask(notnull SCR_BaseTask task)
+	{
+		SCR_MapDescriptorComponent descr = SCR_MapDescriptorComponent.Cast(task.FindComponent(SCR_MapDescriptorComponent));
+		if (descr)
+			m_MapItem = descr.Item();
+		
+		MapDescriptorProps props = m_MapItem.GetProps();
+		props.SetIconVisible(false);
+		props.SetTextVisible(false);
+		props.Activate(true);
+		
+		if (!m_wMapTask)
+			return null;
+		
+		SCR_MapUITask handler = SCR_MapUITask.Cast(m_wMapTask.FindHandler(SCR_MapUITask));
+		if (!handler)
+			return null;
+
+		SetTask(task);
+		SetEvents();
+
+		return handler;
+	}
+
+	//------------------------------------------------------------------------------
+	void SetTask(notnull SCR_BaseTask task)
+	{
+		m_Task = task;
+		SetImage(task.GetTaskMapIconName() + task.GetIconSuffix());
+		
+		if (m_wTaskTitle)
+			m_Task.SetTitleWidgetText(m_wTaskTitle, m_Task.GetTaskListTaskTitle());
+		
+		SetMapMarkerAssigneeCount();
+	}
+	
+	//------------------------------------------------------------------------------
+	SCR_BaseTask GetTask()
+	{
+		return m_Task;
+	}
+	
+	//------------------------------------------------------------------------------
+	Widget GetMapWidget()
+	{
+		return m_wMapTask;
+	}
+
+	//------------------------------------------------------------------------------
+	override bool OnMouseEnter(Widget w, int x, int y)
+	{
+		super.OnMouseEnter(w, x, y);
+		
+		SCR_UITaskManagerComponent utm = SCR_UITaskManagerComponent.GetInstance();
+		if (utm)
+			utm.EnableTaskContext(true);
+
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------
+	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
+	{
+		super.OnMouseLeave(w, enterW, x, y);
+	
+		SCR_UITaskManagerComponent utm = SCR_UITaskManagerComponent.GetInstance();
+		if (utm)
+			utm.EnableTaskContext(false);
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+		
+		m_eIconType = EIconType.TASK;
+		m_wTaskTitle = TextWidget.Cast(w.FindAnyWidget("Title"));
+		m_wImage = ImageWidget.Cast(w.FindAnyWidget("TaskIcon"));
+		m_wAssignees = Widget.Cast(w.FindAnyWidget("Assignee"));
+		m_wMapTask = w;
+		
+		if (GetTaskManager())
+		{
+			SCR_BaseTaskManager.s_OnTaskAssigned.Insert(GetAssignedPlayers);
+			SCR_BaseTaskManager.s_OnTaskUnassigned.Insert(GetAssignedPlayers);
+		}
+	}
+
+	//------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		if (GetTaskManager())
+		{
+			SCR_BaseTaskManager.s_OnTaskAssigned.Remove(GetAssignedPlayers);
+		 	SCR_BaseTaskManager.s_OnTaskUnassigned.Remove(GetAssignedPlayers);
+		}
+	}
+
+	//------------------------------------------------------------------------------
+	void AssignTask()
+	{
+		if (!m_Task)
+			return;
+
+		SCR_TaskNetworkComponent taskNetworkComp = SCR_TaskNetworkComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_TaskNetworkComponent));
+		if (!taskNetworkComp)
+			return;
+
+		int taskId;
+		SCR_BaseTask curTask = SCR_BaseTaskExecutor.GetLocalExecutor().GetAssignedTask();
+		if (curTask)
+		{
+			taskId = curTask.GetTaskID();
+			taskNetworkComp.AbandonTask(taskId);
+			if (curTask != m_Task)
+			{
+				taskId = m_Task.GetTaskID();
+				taskNetworkComp.RequestAssignment(taskId);
+			}
+		}
+		else
+		{
+			taskId = m_Task.GetTaskID();
+			taskNetworkComp.RequestAssignment(taskId);
+		}
+	}
+
+	//------------------------------------------------------------------------------
+	void GetAssignedPlayers(SCR_BaseTask task = null)
+	{
+		if (!task || task != m_Task)
+			return;
+
+		task.UpdateMapTaskIcon();
+				
+		array<SCR_BaseTaskExecutor> assignees = {};
+		m_Task.GetAssignees(assignees);
+		if (assignees.IsEmpty())
+		{
+			m_wAssignees.SetEnabled(false);
+			m_wAssignees.SetOpacity(0);
+			return;
+		}
+		
+		m_wAssignees.SetEnabled(true);
+		m_wAssignees.SetOpacity(1);
+		
+		SetMapMarkerAssigneeCount();
+	}
+	
+	//------------------------------------------------------------------------------
+	void SetMapMarkerAssigneeCount()
+	{
+		TextWidget assigneesCount = TextWidget.Cast(m_wAssignees.FindAnyWidget("AssigneesCount"));
+		if (assigneesCount)
+			assigneesCount.SetText(m_Task.GetAssigneeCount().ToString());
+	}
+	
+	//------------------------------------------------------------------------------
+	void UpdateFocusedTask()
+	{
+		SCR_UITaskManagerComponent utm = SCR_UITaskManagerComponent.GetInstance();
+		if (utm)
+			utm.Action_SelectTask(m_Task);
+	}
+
+	//------------------------------------------------------------------------------
+	void SetEvents()
+	{
+		ButtonWidget assignButton = ButtonWidget.Cast(m_wMapTask.FindAnyWidget("TaskTitleButton"));
+		if (assignButton)
+		{
+			SCR_TaskAssignButton handler = SCR_TaskAssignButton.Cast(assignButton.FindHandler(SCR_TaskAssignButton));
+			if (handler)
+				handler.GetOnMapIconClick().Insert(AssignTask);
+		}
+		
+		ButtonWidget selectButton = ButtonWidget.Cast(m_wMapTask.FindAnyWidget("TaskIconButton"));
+		if (selectButton)
+		{
+			SCR_TaskSelectButton handler = SCR_TaskSelectButton.Cast(selectButton.FindHandler(SCR_TaskSelectButton));
+			if (handler)
+				handler.GetOnMapIconClick().Insert(UpdateFocusedTask);
+		}
+	}
+}
+
+//------------------------------------------------------------------------------
+class SCR_TaskIconNavigationButton : SCR_NavigationButtonComponent
+{
+	protected bool m_bIsHovering;
+
+	//------------------------------------------------------------------------------
+	bool IsHovering()
+	{
+		return m_bIsHovering;
+	}
+	//------------------------------------------------------------------------------
+	override bool OnMouseEnter(Widget w, int x, int y)
+	{
+		super.OnMouseEnter(w, x, y);
+
+		m_bIsHovering = true;
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------
+	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
+	{
+		super.OnMouseLeave(w, enterW, x, y);
+
+		m_bIsHovering = false;
+
+		return false;
+	}
+}

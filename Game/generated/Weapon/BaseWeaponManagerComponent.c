@@ -1,0 +1,52 @@
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/**
+* \addtogroup Weapon
+* @{
+*/
+
+class BaseWeaponManagerComponentClass: GameComponentClass
+{
+};
+
+class BaseWeaponManagerComponent: GameComponent
+{
+	//! performs throwing
+	proto external void Throw(vector vDirection, float fSpeedScale);
+	//! Returns currently selected weapon or null if none. (This can either be a weapon component directly or a slot component.)
+	proto external BaseWeaponComponent GetCurrent();
+	proto external BaseWeaponComponent GetCurrentWeapon();
+	proto external BaseWeaponComponent GetCurrentGrenade();
+	proto external WeaponSlotComponent GetCurrentSlot();
+	proto external GrenadeSlotComponent GetCurrentGrenadeSlot();
+	proto external SightsComponent GetCurrentSights();
+	//! Returns the old weapon entity of the specified weapon slot
+	proto external IEntity SetSlotWeapon(WeaponSlotComponent pSlot, IEntity pWeaponEntity);
+	//! weapons visibility
+	proto external void SetVisibleAllWeapons(bool state);
+	proto external void SetVisibleCurrentWeapon(bool state);
+	/*!
+	Returns the list of slots.
+	\param outSlots The array where all slots will be inserted.
+	\return The number of slots in the list
+	*/
+	proto external int GetWeaponsSlots(out notnull array<WeaponSlotComponent> outSlots);
+	/*!
+	Returns the list of weapons.
+	\param outWeapons The array where all weapons will be inserted.
+	\return The number of weapons in the list
+	*/
+	proto external int GetWeaponsList(out notnull array<IEntity> outWeapons);
+	//! Returns true if current weapon is valid and outputs current weapon's muzzle transformation to the given matrix.
+	proto external bool GetCurrentMuzzleTransform(vector outMatrix[4]);
+	//! Returns true if current weapon is valid and has some sights data, outputs sights transformation and fov
+	proto bool GetCurrentSightsTransform(out vector outWorldMatrix[4], out vector outLocalMatrix[4], out float fov);
+	//! Returns true if current weapon is valid and has some sights data, outputs local sights transformation with adjusted roll angle and fov
+	proto bool GetCurrentSightsCameraTransform(out vector outLocalMatrix[4], out float fov);
+};
+
+/** @}*/

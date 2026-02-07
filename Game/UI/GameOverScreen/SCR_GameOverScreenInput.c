@@ -1,0 +1,72 @@
+class GameOverScreenInput: ChimeraMenuBase
+{	
+	protected InputManager m_InputManager = GetGame().GetInputManager();;
+	protected Widget m_BackButton;
+	protected Widget m_ChatButton;
+	protected SCR_GameOverScreenUIComponent m_GameOverScreenUIComponent;
+	protected SCR_ChatPanel m_ChatPanel;
+	
+	override void OnMenuOpen() 
+	{
+		Widget widgetRoot = GetRootWidget();
+
+		//~ Find Back button
+		m_BackButton = widgetRoot.FindAnyWidget("Back");
+		SCR_NavigationButtonComponent comp = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Back", widgetRoot);
+		if (comp)
+			comp.m_OnActivated.Insert(ReturnToMainMenu);
+		
+		//~ Find Chat button
+		m_ChatButton = widgetRoot.FindAnyWidget("ChatButton");
+		comp = SCR_NavigationButtonComponent.GetNavigationButtonComponent("ChatButton", widgetRoot);
+		if (comp)
+			comp.m_OnActivated.Insert(OnChatToggle);
+		
+		//~ Find chat
+		Widget wChatPanel = GetRootWidget().FindAnyWidget("ChatPanel");
+		if (wChatPanel)
+			m_ChatPanel = SCR_ChatPanel.Cast(wChatPanel.FindHandler(SCR_ChatPanel));
+		
+		//~ Find GameOverScreen UI
+		m_GameOverScreenUIComponent = SCR_GameOverScreenUIComponent.Cast(widgetRoot.FindHandler(SCR_GameOverScreenUIComponent));
+	}
+	
+	override void OnMenuUpdate(float tDelta)
+	{
+		super.OnMenuUpdate(tDelta);
+		
+		if (m_ChatPanel)
+			m_ChatPanel.OnUpdateChat(tDelta);
+	}
+	
+	protected void OnChatToggle()
+	{
+		if (!m_ChatPanel || (m_ChatButton && (!m_ChatButton.IsVisible() || m_ChatButton.GetOpacity() != 1)))
+			return;
+		
+		SCR_ChatPanelManager.GetInstance().ToggleChatPanel(m_ChatPanel);
+	}
+	
+	protected void BackToMainMenuPopupComfirm()
+	{
+		Close();
+		GameStateTransitions.RequestGameplayEndTransition();
+	}
+	
+	protected void OnBackToMainMenu()
+	{
+		DialogUI dlg = DialogUI.CreateOkCancelDialog();
+		if (m_GameOverScreenUIComponent)
+			m_GameOverScreenUIComponent.SetMainMenuPopUpTexts(dlg);
+		
+		dlg.m_OnConfirm.Insert(BackToMainMenuPopupComfirm);
+	}
+	
+	void ReturnToMainMenu()
+	{
+		if (m_BackButton && (!m_BackButton.IsVisible() || m_BackButton.GetOpacity() != 1))
+			return;
+		
+		OnBackToMainMenu();
+	}
+};

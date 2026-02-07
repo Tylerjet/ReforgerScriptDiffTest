@@ -1,0 +1,26 @@
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/**
+* \addtogroup Weapon
+* @{
+*/
+
+class WeaponAnimationComponentClass: BaseItemAnimationComponentClass
+{
+};
+
+class WeaponAnimationComponent: BaseItemAnimationComponent
+{
+	proto external bool GetBipod();
+	proto external bool HasBipod();
+	proto external void SetBipod(bool open);
+	proto external void FoldWeapon(bool fastForwardAnimations = false);
+	proto external void UnfoldWeapon(bool fastForwardAnimations = false);
+	proto external bool IsFolded();
+};
+
+/** @}*/

@@ -1,0 +1,333 @@
+/** @ingroup Editor_UI Editor_UI_Components
+Content Browser Card
+*/
+class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
+{
+	//ToDo: Replace many of these values with automated solutions
+    [Attribute()]
+	private string m_sEntityNameWidgetName;
+	
+	//[Attribute()]
+	//private string m_sTitleBackgroundWidgetName;
+	
+	[Attribute()]
+	private string m_sEnityImageWidgetName;
+	
+	[Attribute()]
+	protected string m_sIconSlotWidgetName;
+	
+	[Attribute("ModOverlay")]
+	protected string m_sModIndicatorWidgetName;
+	
+	[Attribute("ModIndicatorIcon")]
+	protected string m_sModIndicatorIconName;
+	
+	[Attribute("NoBudget")]
+	protected string m_sExceedBudgetLayoutName;
+	
+	[Attribute("BudgetIcon")]
+	protected string m_sExceedBudgetIconName;
+	
+	[Attribute("ImageOverlay")]
+	protected string m_sImageOverlayName;
+	
+	[Attribute("")]
+	protected string m_sAreaName;
+	
+	[Attribute()]
+	protected ref array<string> m_aFactionColorNames;
+	
+	[Attribute(uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityLabelGroup))]
+	protected ref array<EEditableEntityLabelGroup> m_sTraitLabelGroups;
+	
+	[Attribute()]
+	protected ref array<string> m_sTraitNames;
+	
+	[Attribute()]
+	private ref Color m_DisabledColor;
+	
+	[Attribute(params: "edds")]
+	protected ref array<ResourceName> m_ImageOverlayTextures;
+	
+	//ImageWidget entityImageWidget;
+	
+	//Widgets
+	private Widget m_Widget;
+	//protected Widget m_Background;
+	
+	//Grid
+	protected int m_iPrefabIndex;
+	
+	ref ScriptInvoker m_OnHover = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnFocus = new ref ScriptInvoker();
+	
+	//Info Ref
+	private ref SCR_UIInfo m_Info;
+	
+	/*!
+	Init card
+	\param info
+	\param prefab
+	*/
+	void InitCard(int prefabID, SCR_UIInfo info, ResourceName prefab, SCR_EditableEntityCoreBudgetSetting blockingBudget = null)
+	{
+		if (!m_Widget)
+			return;
+		
+		bool canPlace = blockingBudget == null;
+		
+		TextWidget entityNameWidget = TextWidget.Cast(m_Widget.FindAnyWidget(m_sEntityNameWidgetName));
+		//m_Background = m_Widget.FindAnyWidget(m_sBackgroundsName);
+		
+		if (info)
+		{
+			m_Info = info;			
+			//Set the entity name
+			info.SetNameTo(entityNameWidget);
+
+			SCR_EditableEntityUIInfo infoCard = SCR_EditableEntityUIInfo.Cast(info);
+			if (infoCard)
+			{
+				//--- Set faction color (all widgets marked by 'Inherit Color' will use it as well)
+				Faction faction = infoCard.GetFaction();
+				if (faction)
+				{
+					Widget factionColor;
+					foreach (string factionColorName: m_aFactionColorNames)
+					{
+						factionColor = m_Widget.FindAnyWidget(factionColorName);
+						if (factionColor)
+							factionColor.SetColor(faction.GetFactionColor());
+					}
+				}
+				
+				//--- Set icon
+				Widget iconSlotWidget = m_Widget.FindAnyWidget(m_sIconSlotWidgetName);
+				if (iconSlotWidget)
+				{
+					SCR_EditableEntityBaseSlotUIComponent iconSlot = SCR_EditableEntityBaseSlotUIComponent.Cast(iconSlotWidget.FindHandler(SCR_EditableEntityBaseSlotUIComponent));
+					if (iconSlot)
+					{
+						SCR_EditableEntityUIConfig entityUIConfig = SCR_EditableEntityUIConfig.GetConfig();
+						if (entityUIConfig)
+						{
+							array<ref SCR_EntitiesEditorUIRule> entityRules = entityUIConfig.GetRules();
+							foreach (SCR_EntitiesEditorUIRule rule: entityRules)
+							{
+								if (rule.GetStates() & EEditableEntityState.RENDERED)
+								{
+									iconSlot.CreateWidget(infoCard, rule);
+								}
+							}
+						}
+					}
+				}
+				
+				//--- Set entity image
+				ImageWidget entityImageWidget = ImageWidget.Cast(m_Widget.FindAnyWidget(m_sEnityImageWidgetName));
+				if (entityImageWidget) 
+				{
+					infoCard.SetAssetImageTo(entityImageWidget);
+					entityImageWidget.SetSaturation(canPlace);
+				}
+				
+				ImageWidget imageOverlayWidget = ImageWidget.Cast(m_Widget.FindAnyWidget(m_sImageOverlayName));
+				if (imageOverlayWidget && !m_ImageOverlayTextures.IsEmpty()) 
+				{
+					int textureIndex = prefabID % m_ImageOverlayTextures.Count();
+					imageOverlayWidget.LoadImageTexture(0, m_ImageOverlayTextures[textureIndex]);
+				}
+				
+				Widget exceedBudgetLayout = m_Widget.FindAnyWidget(m_sExceedBudgetLayoutName);
+				if (exceedBudgetLayout)
+				{
+					exceedBudgetLayout.SetVisible(!canPlace);
+					
+					ImageWidget exceedBudgetIcon = ImageWidget.Cast(exceedBudgetLayout.FindWidget(m_sExceedBudgetIconName));
+					if (blockingBudget)
+					{
+						blockingBudget.GetInfo().SetIconTo(exceedBudgetIcon);
+					}
+				}
+				
+				//--- Set faction flag
+				int traitIndex;
+				Widget traitWidget;
+				ImageWidget traitIcon;
+				if (faction)
+				{
+					if (FindTraitIcon(traitIndex, traitWidget, traitIcon))
+					{
+						traitWidget.SetVisible(true);
+						traitIcon.LoadImageTexture(0, faction.GetUIInfo().GetIconPath());
+					}
+				}
+				
+				//--- Find traits in labels
+				SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+				if (core)
+				{
+					EEditableEntityLabelGroup labelGroup;
+					array<EEditableEntityLabel> labels = {};
+					SCR_UIInfo labelInfo;
+					for (int i, count = infoCard.GetEntityLabels(labels); i < count; i++)
+					{
+						if (core.GetLabelGroupType(labels[i], labelGroup) && m_sTraitLabelGroups.Contains(labelGroup) && core.GetLabelUIInfo(labels[i], labelInfo) && labelInfo.HasIcon())
+						{
+							if (FindTraitIcon(traitIndex, traitWidget, traitIcon))
+							{
+								traitWidget.SetVisible(true);
+								labelInfo.SetIconTo(traitIcon);
+								
+								SCR_LinkTooltipTargetEditorUIComponent tooltip = SCR_LinkTooltipTargetEditorUIComponent.Cast(traitWidget.FindHandler(SCR_LinkTooltipTargetEditorUIComponent));
+								if (tooltip)
+									tooltip.SetInfo(labelInfo);
+							}
+							else
+							{
+								//--- Out of trait icons
+								break;
+							}
+						}
+					}
+				}
+				
+				//--- Show area image (only for systems)
+				if (m_sAreaName)
+				{
+					Widget areaWidget = m_Widget.FindAnyWidget(m_sAreaName);
+					if (areaWidget)
+						areaWidget.SetVisible(infoCard.HasEntityFlag(EEditableEntityFlag.HAS_AREA));
+				}
+			}
+		}
+		else
+		{
+			if (entityNameWidget && prefab)
+			{
+				string path = prefab.GetPath();
+				array<string> pathNames = new array<string>;
+				path.Split("/", pathNames, true);
+				entityNameWidget.SetText(pathNames[pathNames.Count() - 1]);
+			}
+		}
+		
+		//Check if asset is modded
+		Widget modIndicator = m_Widget.FindAnyWidget(m_sModIndicatorWidgetName);
+		if (modIndicator)
+		{
+			array<string> modList = SCR_AddonTool.GetResourceAddons(prefab, true);
+			if (modList)
+				modIndicator.SetVisible(modList.Count() > 0);
+			else
+				modIndicator.SetVisible(false);
+			
+			//~todo: Get Addon Icon. Use m_sModIndicatorIconName to get the ImageWidget
+		}
+	}
+	protected bool FindTraitIcon(out int outIndex, out Widget traitWidget, out ImageWidget traitIcon)
+	{
+		if (m_sTraitNames && outIndex < m_sTraitNames.Count())
+		{
+			traitWidget = m_Widget.FindAnyWidget(m_sTraitNames[outIndex]);
+			if (traitWidget)
+			{
+				traitIcon = ImageWidget.Cast(traitWidget.FindAnyWidget("Trait"));
+				outIndex++;
+				return true;
+			}
+		}
+		outIndex = int.MAX;
+		return false;
+	}
+	
+	/*!
+	Get Card info
+	\return SCR_UIInfo
+	*/
+	SCR_UIInfo GetInfo()
+	{
+		return m_Info;
+	} 
+	
+	/*!
+	Set faction color of specific widgets
+	\param newColor
+	* /
+	void SetColor(Color newColor)
+	{
+		if (m_Background)
+			m_Background.SetColor(newColor);
+	}
+	*/
+	
+	/*!
+	Get Button Widget
+	\return Widget button
+	*/
+	Widget GetButtonWidget()
+	{
+		return m_Widget;
+	}
+	
+	override bool OnMouseEnter(Widget w, int x, int y)
+	{
+		if (m_Widget)
+			m_OnHover.Invoke(m_Widget, m_iPrefabIndex, true);
+		return false;
+	}
+		
+	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
+	{
+		if (m_Widget)
+			m_OnHover.Invoke(m_Widget, m_iPrefabIndex, false);
+		
+		return false;
+	}
+	
+	/*!
+	Get ScriptInvoker onHover
+	\return ScriptInvoker
+	*/
+	ScriptInvoker GetOnHover()
+	{
+		return m_OnHover;
+	}
+	
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		if (m_Widget)
+			m_OnFocus.Invoke(m_Widget, m_iPrefabIndex, true);
+		return false;
+	}
+		
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		if (m_Widget)
+			m_OnFocus.Invoke(m_Widget, m_iPrefabIndex, false);
+		
+		return false;
+	}
+	
+	/*!
+	Get ScriptInvoker onFocus
+	\return ScriptInvoker
+	*/
+	ScriptInvoker GetOnFocus()
+	{
+		return m_OnFocus;
+	}
+	
+	/*!
+	Set PrefabIndex to check if card was focused when filters is opened
+	*/
+	void SetPrefabIndex(int index)
+	{
+		m_iPrefabIndex = index;
+	}	
+	
+	override void HandlerAttached(Widget w)
+    {
+		m_Widget = w;
+	}
+};

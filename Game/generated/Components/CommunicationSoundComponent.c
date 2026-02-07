@@ -1,0 +1,28 @@
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/**
+* \addtogroup Components
+* @{
+*/
+
+class CommunicationSoundComponentClass: SoundComponentClass
+{
+};
+
+class CommunicationSoundComponent: SoundComponent
+{
+	//! Get list of metadata. Last item in array is 'textFormat'.
+	proto external void GetMetadata(AudioHandle handle, out array<string> metadata);
+	//! Add a soundevent with priority to the priority queue which will be played in order of priority
+	proto external void SoundEventPriority(string eventName, int priority, bool ignoreQueue = false);
+	
+	// callbacks
+	
+	event protected void HandleMetadata(array<string> metadata, int priority, float distance);
+};
+
+/** @}*/

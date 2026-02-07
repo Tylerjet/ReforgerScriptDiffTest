@@ -1,0 +1,46 @@
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/**
+* \addtogroup Containers
+* @{
+*/
+
+sealed class BaseContainer: BaseResourceObject
+{
+	proto static BaseContainer Cast(BaseContainer from);
+	
+	//! This function is for internal script usage
+	static proto bool SafeCastType(out typename type, out BaseContainer to, BaseContainer from);
+	proto external string GetClassName();
+	proto external string GetName();
+	proto external BaseContainer GetAncestor();
+	proto external void SetAncestor(ResourceName ancestor);
+	proto external void ClearVariable(string varName);
+	proto external void ClearVariables();
+	proto external bool IsVariableSet(string varName);
+	proto external bool IsVariableSetDirectly(string varName);
+	proto external bool IsType(string varName, typename type);
+	proto external int GetVarIndex(string varName);
+	proto external string GetVarName(int varIndex);
+	proto external int GetNumVars();
+	proto external DataVarType GetDataVarType(int varIndex);
+	//! Return empty string or value from UIWidgets values
+	proto external string GetUIWidget(int varIndex);
+	//! Return limits from property params, return value indicates how many values was read (0 - none, 1 - min, 2 - min,max, 3 - min,max,step)
+	proto external int GetLimits(int varIndex, out float min, out float max, out float step);
+	proto external void GetEnumValues(int varIndex, out array<string> names, out array<int> values);
+	proto external bool Get(string varName, out void val);
+	proto external BaseContainer GetObject(string varName);
+	proto external bool SetObject(string varName, BaseContainer val);
+	proto external ref BaseContainerList GetObjectArray(string varName);
+	proto external ref BaseContainerList SetObjectArray(string varName);
+	proto external bool Set(string varName, void val);
+	//! Get list of addons where resource is defined or modified
+	proto external int GetSourceAddons(out notnull array<string> addonNames);
+};
+
+/** @}*/

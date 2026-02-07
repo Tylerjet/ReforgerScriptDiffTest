@@ -1,0 +1,52 @@
+//------------------------------------------------------------------------------
+class SCR_CampaignMapUIElement : SCR_MapUIElement
+{
+	// strings for searching in imagesets
+	[Attribute("Armory")]
+	protected string m_sArmory;
+	[Attribute("FuelDepot")]
+	protected string m_sFuelDepot;
+	[Attribute("VehicleWorkshop")]
+	protected string m_sRepairDepot;
+	[Attribute("Medical")]
+	protected string m_sFieldHospital;
+	[Attribute("Barracks")]
+	protected string m_sBarracks;
+	[Attribute("SupplyDepot")]
+	protected string m_sSupplyDepot;
+	[Attribute("VehicleDepot")]
+	protected string m_sVehicleDepot;
+	[Attribute("Unknown")]
+	protected string m_sFactionNeutral;
+	[Attribute("Relay")]
+	protected string m_sRelay;
+	[Attribute("Base")]
+	protected string m_sBase;
+	[Attribute("Mobile")]
+	protected string m_sMobileAssembly;
+	[Attribute("Major")]
+	protected string m_sMajorBase;
+	[Attribute("Minor")]
+	protected string m_sMinorBase;
+	[Attribute("Small")]
+	protected string m_sSmallBase;
+	[Attribute("Respawn")]
+	protected string m_sRespawn;
+	[Attribute("Bg")]
+	protected string m_sRespawnBackground;
+	[Attribute("Select")]
+	protected string m_sSelection;
+
+	//------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+	}
+	
+	//------------------------------------------------------------------------------
+	override bool OnMouseEnter(Widget w, int x, int y)
+	{
+		super.OnMouseEnter(w, x, y);
+		return false;
+	}
+};

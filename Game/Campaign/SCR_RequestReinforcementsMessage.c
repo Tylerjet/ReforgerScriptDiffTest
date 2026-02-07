@@ -1,0 +1,26 @@
+
+//------------------------------------------------------------------------------------------------
+class SCR_RequestReinforcementsMessage : ScriptedRadioMessage
+{
+	protected SCR_CampaignBase m_TargetBase;
+	protected SCR_CampaignFaction m_TargetFaction;
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelivery(BaseRadioComponent radio, int freq, float quality, int transcvIdx)
+	{
+		if (m_TargetBase && m_TargetFaction && radio && radio.GetOwner() == m_TargetFaction.GetMainBase())
+			SCR_CampaignDefendTask.CreateTask(m_TargetBase, m_TargetFaction);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetTargetFaction(SCR_CampaignFaction targetFaction)
+	{
+		m_TargetFaction = targetFaction;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetTargetBase(SCR_CampaignBase targetBase)
+	{
+		m_TargetBase = targetBase;
+	}
+};

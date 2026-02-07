@@ -1,0 +1,538 @@
+[ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
+class SCR_EditableCharacterComponentClass: SCR_EditableEntityComponentClass
+{
+	[Attribute(category: "Character", params: "et")]
+	private ResourceName m_PrefabGroup;
+	
+	ResourceName GetPrefabGroup()
+	{
+		return m_PrefabGroup;
+	}
+};
+
+/** @ingroup Editable_Entities
+*/
+
+/*!
+Special configuration for editable character.
+*/
+class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
+{
+	protected AIAgent m_Agent;
+	protected AIControlComponent m_AgentControlComponent;
+	protected float m_FrameProgress = 1;
+	protected float m_fPlayerDrawDistance;
+	protected ref ScriptInvoker m_OnUIRefresh = new ScriptInvoker();
+	
+	/*!
+	Get AI agent of the character.
+	\return AI agent on server, null on clients
+	*/
+	AIAgent GetAgent()
+	{
+		return m_Agent;
+	}
+	
+	protected SCR_EditableEntityComponent CreateGroupForCharacter()
+	{
+		if (!m_Agent) return null;
+		
+		GenericEntity owner = GetOwner();
+		if (!owner) return null;
+
+		//--- Create group
+		SCR_EditableCharacterComponentClass prefabData = SCR_EditableCharacterComponentClass.Cast(GetEditableEntityData());
+		if (!prefabData) return null;
+		
+		IEntity groupEntity = GetGame().SpawnEntityPrefab(Resource.Load(prefabData.GetPrefabGroup()), owner.GetWorld());
+		if (!groupEntity) return null;
+		
+		AIGroup group = AIGroup.Cast(groupEntity);
+		if (!group)
+		{
+			Print(string.Format("Cannot create group, prefab '%1' is not AIGroup entity!", prefabData.GetPrefabGroup()), LogLevel.ERROR);
+			delete groupEntity;
+			return null;
+		}
+				
+		SCR_EditableEntityComponent groupEditableEntity = SCR_EditableEntityComponent.GetEditableEntity(groupEntity);
+		if (!groupEditableEntity)
+		{
+			Print(string.Format("Cannot create group, prefab '%1' does not contain SCR_EditableEntityComponent!", prefabData.GetPrefabGroup()), LogLevel.ERROR);
+			delete groupEntity;
+			return null;
+		}
+		
+		//--- Set group's faction
+		SCR_AIGroup groupScripted = SCR_AIGroup.Cast(group);
+		if (groupScripted)
+		{
+			FactionAffiliationComponent factionComponent = FactionAffiliationComponent.Cast(owner.FindComponent(FactionAffiliationComponent));
+			if (factionComponent)
+			{
+				Faction faction = factionComponent.GetAffiliatedFaction();
+				if (faction) groupScripted.InitFactionKey(faction.GetFactionKey());
+			}
+		}
+		
+		//--- Add the entity to the group
+		group.AddAgent(m_Agent);
+		
+		return groupEditableEntity;
+	}
+	protected bool IsPlayer(IEntity owner = null)
+	{
+		if (owner)
+		{
+			return SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(owner) > 0;
+		}
+		else if (m_Owner)
+		{
+			return SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(m_Owner) > 0;
+		}
+		else
+		{
+			return m_Owner == SCR_PlayerController.GetLocalMainEntity();
+		}
+	}
+	
+	protected void OnDestroyed(IEntity owner)
+	{
+		m_OnUIRefresh.Invoke();
+	}
+	
+	override bool Delete(bool updateNavmesh = true)
+	{
+		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
+		if (compartmentAccess)
+		{
+		
+			BaseCompartmentSlot slot = compartmentAccess.GetCompartment();
+			if (slot)
+				slot.SetCompartmentAccessible(true);
+			
+		}
+		
+		return super.Delete(updateNavmesh);
+	}
+	
+	/*!
+	Called by SCR_EditableGroupComponent when faction is changed
+	*/
+	void OnFactionChanged()
+	{
+		m_OnUIRefresh.Invoke();
+	}
+	/*
+	override bool CanSetParent(SCR_EditableEntityComponent parentEntity)
+	{
+		if (!parentEntity)
+			return true;
+		
+		EEditableEntityType type = parentEntity.GetEntityType();
+		return type == EEditableEntityType.GROUP || type == EEditableEntityType.CHARACTER || type == EEditableEntityType.VEHICLE;             
+	}
+	*/
+	
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected override void SetTransformOwner(vector transform[4])
+	{
+		super.SetTransformOwner(transform);
+		
+		if (!m_Owner)
+			return;
+		
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		if (!playerManager)
+			return;
+		
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (!playerController)
+			return;
+		
+		if (m_Owner != playerController.GetLocalControlledEntity())
+       		return;
+	
+		SCR_PlayerTeleportedFeedbackComponent playerTeleportedComponent = SCR_PlayerTeleportedFeedbackComponent.Cast(playerController.FindComponent(SCR_PlayerTeleportedFeedbackComponent));
+		if (!playerTeleportedComponent)
+			return;
+		
+		playerTeleportedComponent.TeleportedByEditor(this);
+	}
+	
+	override SCR_EditableEntityComponent SetParentEntity(SCR_EditableEntityComponent parentEntity, bool changedByUser = false)
+	{
+		//--- When moving to root or non-AI-compatible layer, create a group for the character in that layer
+		if (changedByUser && IsServer() && !GetOwner().IsDeleted() && !IsDestroyed())
+		{			
+			AIControlComponent aiControl = AIControlComponent.Cast(GetOwner().FindComponent(AIControlComponent));
+			if (aiControl && aiControl.IsAIActivated())
+			{
+				EEditableEntityType parentType = EEditableEntityType.GENERIC;
+				if (parentEntity)
+					parentType = parentEntity.GetEntityType();
+				
+				if (parentType == EEditableEntityType.GENERIC)
+				{
+					SCR_EditableEntityComponent parentEntityPrev = parentEntity;
+					parentEntity = CreateGroupForCharacter();
+					parentEntity.SetParentEntity(parentEntityPrev);
+					return parentEntity;
+				}
+			}
+		}
+		
+		return super.SetParentEntity(parentEntity);
+	}
+	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev)
+	{		
+		EEditableEntityType parentType;
+		if (parentEntity) parentType = parentEntity.GetEntityType();
+		
+		switch (parentType)
+		{
+			case EEditableEntityType.VEHICLE:
+			{
+				//--- Execute on server, MoveInVehicle handles distribution to clients
+				if (Replication.IsServer())
+				{
+					SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
+					if (compartmentAccess)
+					{
+						// Disabled for 0.95 for AI, AI can not drive [Ticket-22635]
+						GenericEntity parentOwner = parentEntity.GetOwner();
+						bool isAi = m_AgentControlComponent && m_AgentControlComponent.IsAIActivated() && !DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_ENABLE_AI_PILOT_PLACE);
+						
+						//Add vehicle to group
+						if (isAi)
+							AddUsableVehicle(parentEntity.GetOwner());
+							
+						if (!isAi && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Pilot)) break;
+						if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Turret)) break;
+						if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Cargo)) break;
+					}
+				}
+				break;
+			}
+			case EEditableEntityType.GROUP:
+			case EEditableEntityType.CHARACTER:
+			{
+				if (!parentEntity) break;
+
+				SCR_EditableEntityComponent group = parentEntity.GetAIGroup();
+				super.OnParentEntityChanged(group, parentEntityPrev);
+				m_OnUIRefresh.Invoke(); //--- Update GUI when character moves to another group (in case it's a group of a different faction)
+				break;
+			}
+			default:
+			{
+				//--- Register player
+				super.OnParentEntityChanged(null, parentEntityPrev);
+			}
+		}
+		
+		//--- Create a new group (ToDo: Solve together with entity<->entity interaction)
+		//SCR_EditableEntityComponent newGroup = CreateGroupForCharacter();
+		//SetParentEntity(newGroup);
+	}
+	override void SetTransform(vector transform[4])
+	{
+		//--- Move out of a vehicle
+		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(GetOwner().FindComponent(CompartmentAccessComponent));
+		if (compartmentAccess && compartmentAccess.IsInCompartment())
+		{
+			//~Todo: The delay is not ideal. It would need to be checked if all characters are dragged out of the vehicle in some other way
+			//Unregister from vehicle on next frame (checks with delay as all characters might be dragged out at the same time and it would think the vehicle is still occupied)
+			if (IsServer())
+				GetGame().GetCallqueue().CallLater(RemoveUsableVehicle, 100, false, GetVehicle().GetOwner(), true);
+			
+			compartmentAccess.MoveOutVehicle(-1, transform);
+			
+			return;
+		}
+		
+		super.SetTransform(transform);
+	}	
+	override int GetPlayerID()
+	{
+		if (IsDestroyed())
+			return 0;
+		else
+			return SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(GetOwner());
+	}
+	override Faction GetFaction()
+	{
+		//--- Destroyed entities have no faction
+		if (IsDestroyed())
+			return null;
+		
+		//--- Get player faction
+		int playerID = GetPlayerID();
+		if (playerID > 0)
+		{
+			SCR_RespawnSystemComponent respawnSystemComponent = SCR_RespawnSystemComponent.GetInstance();
+			if (respawnSystemComponent)
+			{
+				Faction faction = respawnSystemComponent.GetPlayerFaction(playerID);
+				if (faction)
+					return faction;
+			}
+		}
+		
+		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(m_Owner.FindComponent(FactionAffiliationComponent));
+		if (factionAffiliation)
+			return factionAffiliation.GetAffiliatedFaction();
+		else
+			return null;
+	}
+	override ScriptInvoker GetOnUIRefresh()
+	{
+		return m_OnUIRefresh;
+	}
+	override SCR_EditableEntityComponent GetAIGroup()
+	{
+		return GetParentEntity();
+	}
+	override SCR_EditableEntityComponent GetAIEntity()
+	{
+		return this;
+	}
+	override SCR_EditableEntityComponent GetVehicle()
+	{
+		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
+		if (compartmentAccess)
+			return SCR_EditableEntityComponent.GetEditableEntity(compartmentAccess.GetVehicle());
+		else
+			return null;
+	}
+	override int GetCrew(out notnull array<CompartmentAccessComponent> crewCompartmentAccess, bool ignorePlayers = true)
+	{		
+		//Ignore player
+		if (ignorePlayers)
+		{
+			if (GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(GetOwner()) > 0)
+				return 0;
+		}
+		
+		//Check if is in vehicle
+		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(GetOwner().FindComponent(CompartmentAccessComponent));
+		if (compartmentAccess && compartmentAccess.IsInCompartment())
+			crewCompartmentAccess.Insert(compartmentAccess);
+		
+		return crewCompartmentAccess.Count();
+	}
+	
+	/*!
+	Add useable vehicle to group which registers the vehicle to the group. Call on server.
+	\param vehicle IEntity vehicle
+	*/
+	void AddUsableVehicle(IEntity vehicle)
+	{
+		if (IsPlayer() || !GetAIGroup())
+			return;
+		
+		SCR_EditableGroupComponent group = SCR_EditableGroupComponent.Cast(GetAIGroup());
+		
+		if (!group)
+			return;
+		
+		SCR_AIGroup aiGroup = group.GetAIGroupComponent();
+		if (!aiGroup)
+			return;
+		
+		array<IEntity> usableVehicles = new array<IEntity>;
+		aiGroup.GetUsableVehicles(usableVehicles);
+		
+		if (!usableVehicles.Contains(vehicle))
+		{
+			aiGroup.AddUsableVehicle(vehicle);
+		}
+	}
+	
+	/*!
+	Remove useable vehicle from group which unregisters the vehicle from the group. Call on server.
+	NOTE: If All characters of a group are told to exit the vehicle at the same time and checkIfVehicleStillUsed  is true, then the function will think the vehicle is still in use by the group!
+	\param vehicle IEntity vehicle
+	*/
+	void RemoveUsableVehicle(IEntity vehicle, bool checkIfVehicleStillUsed = true)
+	{
+		if (IsPlayer() || !GetAIGroup())
+			return;
+		
+		SCR_EditableGroupComponent group = SCR_EditableGroupComponent.Cast(GetAIGroup());
+		
+		if (!group)
+			return;
+		
+		SCR_AIGroup aiGroup = group.GetAIGroupComponent();
+		if (!aiGroup)
+			return;
+		
+		array<IEntity> usableVehicles = new array<IEntity>;
+		
+		//Check if vehicle is used by group
+		aiGroup.GetUsableVehicles(usableVehicles);
+		if (!usableVehicles.Contains(vehicle))
+			return;
+		
+		if (checkIfVehicleStillUsed)
+		{
+			set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>;
+			group.GetChildren(entities, true);
+			
+			SCR_EditableVehicleComponent editableVehicle = SCR_EditableVehicleComponent.Cast(vehicle.FindComponent(SCR_EditableVehicleComponent));
+			if (editableVehicle)
+			{
+				SCR_EditableEntityComponent crew;
+				array<CompartmentAccessComponent> crewCompartmentAccess = new array<CompartmentAccessComponent>;
+				editableVehicle.GetCrew(crewCompartmentAccess, true);
+				
+				foreach(CompartmentAccessComponent compartment: crewCompartmentAccess)
+				{
+					crew = SCR_EditableEntityComponent.Cast(compartment.GetOwner().FindComponent(SCR_EditableEntityComponent));
+
+					if (crew == null || crew == this)
+						continue;						
+					
+					//Vehicle is still used by group
+					if (entities.Contains(crew) && !compartment.IsGettingOut())
+						return;
+				}
+			}
+		}
+		
+		//Remove vehicle
+		aiGroup.RemoveUsableVehicle(vehicle);
+	}
+	
+	/*!
+	Remove all useable vehicle from group which unregisters all vehicles from the group. Call on server.
+	*/
+	/*void RemoveAllUsableVehicles()
+	{
+		if (IsPlayer() || !GetAIGroup())
+			return;
+		
+		array<IEntity> usableVehicles = new array<IEntity>;
+		m_Group.GetUsableVehicles(usableVehicles);
+		
+		foreach(IEntity vehicle: usableVehicles)
+			m_Group.RemoveUsableVehicle(vehicle);
+	}*/
+	
+	override float GetMaxDrawDistanceSq()
+	{
+		if (HasEntityState(EEditableEntityState.PLAYER))
+		{
+			if (m_fPlayerDrawDistance == 0)
+			{
+				SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+				m_fPlayerDrawDistance = core.GetPlayerDrawDistanceSq();
+			}
+			return m_fPlayerDrawDistance;
+		}
+		else
+		{
+			return m_fMaxDrawDistance;
+		}
+	}
+	override SCR_EditableEntityComponent EOnEditorPlace(out SCR_EditableEntityComponent parent, SCR_EditableEntityComponent recipient, EEditorPlacingFlags flags, bool isQueue)
+	{
+		GenericEntity owner = GetOwner();
+		
+		//--- Entity is a player, don't activate AI
+		if (IsPlayer())
+			return this;
+		
+		//--- Activate AI
+		m_AgentControlComponent = AIControlComponent.Cast(owner.FindComponent(AIControlComponent));
+		if (m_AgentControlComponent)
+			m_AgentControlComponent.ActivateAI();
+		
+		if (parent && AIGroup.Cast(parent.GetOwner()))
+		{
+			//--- Creating inside of a group - add character to it
+			return this;
+		}
+		else
+		{
+			//--- Creating outside of a group - create one for the character
+			SCR_EditableEntityComponent group = CreateGroupForCharacter();
+			if (group)
+				return group;
+			else
+				return this;
+		}
+	}
+	override void EOnEditorSessionLoad(SCR_EditableEntityComponent parent)
+	{
+		//--- Activate AI
+		AIControlComponent control = AIControlComponent.Cast(GetOwner().FindComponent(AIControlComponent));
+		if (control)
+			control.ActivateAI();
+	}
+	override bool Serialize(out SCR_EditableEntityComponent target = null, out int targetIndex = -1)
+	{
+		if (super.Serialize() && !IsPlayer())
+		{
+			SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
+			if (compartmentAccess)
+				target = SCR_EditableEntityComponent.GetEditableEntity(compartmentAccess.GetVehicle(targetIndex));
+			
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	override void Deserialize(SCR_EditableEntityComponent target, int targetValue)
+	{
+		if (!target)
+			return;
+			
+		BaseCompartmentManagerComponent compartmentManager = BaseCompartmentManagerComponent.Cast(target.GetOwner().FindComponent(BaseCompartmentManagerComponent));
+		array<BaseCompartmentSlot> compartments = {};
+		compartmentManager.GetCompartments(compartments);
+		
+		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));	
+		compartmentAccess.MoveInVehicle(target.GetOwner(), compartments[targetValue]);
+	}
+	override bool GetEntityBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets, IEntity owner = null)
+	{
+		//--- Players do no affect budgets, true returns empty cost array, avoid fallback entityType cost
+		if (IsPlayer(owner))
+			return true;
+		
+		//--- AI characters do affect budgets as usual
+		return super.GetEntityBudgetCost(outBudgets, owner);
+	}
+	
+	override void OnPostInit(IEntity owner)
+	{
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_DISABLE))
+			return;
+		
+		super.OnPostInit(owner);
+		
+		if (SCR_Global.IsEditMode(owner))
+			return;
+		
+		if (Replication.IsServer())
+		{
+			if (GetEntityType() != EEditableEntityType.CHARACTER)
+			{
+				Print(string.Format("SCR_EditableCharacterComponent must have type set to CHARACTER, it's %1!", typename.EnumToString(EEditableEntityType, GetEntityType())), LogLevel.ERROR);
+				return;
+			}
+			
+			m_AgentControlComponent = AIControlComponent.Cast(m_Owner.FindComponent(AIControlComponent));
+			if (m_AgentControlComponent)
+				m_Agent = m_AgentControlComponent.GetControlAIAgent();
+		}
+		
+		EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(owner.FindComponent(EventHandlerManagerComponent));
+		if (eventHandlerManager)
+			eventHandlerManager.RegisterScriptHandler("OnDestroyed", owner, OnDestroyed);
+	}
+};

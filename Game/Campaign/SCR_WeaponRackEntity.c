@@ -1,0 +1,75 @@
+[EntityEditorProps(category: "GameScripted/Campaign", description: "A rack filled with weapons.", color: "0 0 255 255")]
+class SCR_WeaponRackEntityClass: GenericEntityClass
+{
+};
+
+//------------------------------------------------------------------------------------------------
+class SCR_WeaponRackEntity : GenericEntity
+{
+	// Simple timer setup
+	[Attribute("10")]
+	float m_fPeriodTime;
+	
+	protected SCR_ArsenalDisplayComponent m_ArsenalDisplayComponent;
+	protected SCR_FactionControlComponent m_FactionControlComponent;
+	
+	//------------------------------------------------------------------------------------------------
+	float GetPeriodTime()
+	{
+		return m_fPeriodTime;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ClearWeapons()
+	{
+		m_ArsenalDisplayComponent.ClearArsenal();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//Called periodically to spawn weapons in the queue
+	void PeriodicalSpawn(notnull SCR_Faction faction)
+	{
+		Faction assignedFaction;
+		if (m_FactionControlComponent)
+		{
+			assignedFaction = m_FactionControlComponent.GetFaction();
+			if (!assignedFaction || (assignedFaction && assignedFaction.GetFactionKey() != faction.GetFactionKey()))
+			{
+				m_FactionControlComponent.SetFaction(faction.GetFactionKey());
+				// Set new faction on component,FactionChanged callback refreshes items in ArsenalDisplayComponent
+				return;
+			}
+		}
+		
+		m_ArsenalDisplayComponent.RefreshArsenal(faction);
+	}
+	
+	override void EOnInit(IEntity owner)
+	{
+		if (SCR_Global.IsEditMode())
+			return;
+		
+		ClearFlags(EntityFlags.ACTIVE, false);
+		
+		m_ArsenalDisplayComponent = SCR_ArsenalDisplayComponent.Cast(owner.FindComponent(SCR_ArsenalDisplayComponent));
+		
+		if (!m_ArsenalDisplayComponent)
+		{
+			Print("Arsenal display component not found on WeaponRackEntity", LogLevel.ERROR);
+			return;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_WeaponRackEntity(IEntitySource src, IEntity parent)
+	{
+		SetEventMask(EntityEvent.INIT);
+		SetFlags(EntityFlags.ACTIVE, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_WeaponRackEntity()
+	{
+	}
+
+};

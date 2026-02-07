@@ -1,0 +1,37 @@
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/**
+* \addtogroup Base
+* @{
+*/
+
+class BaseCommandHandlerComponentClass: GameComponentClass
+{
+};
+
+class BaseCommandHandlerComponent: GameComponent
+{
+	//! sets the flag for disabling animation update
+	proto external void SetSimulationDisabled(bool pSimulationDisabled);
+	
+	// callbacks
+	
+	/*!
+	Called during EOnInit.
+	\param owner Entity this component is attached to.
+	*/
+	event protected void OnInit(IEntity owner);
+	/*!
+	Overrides the whole native command handling
+	\param pDt Delta time since last call.
+	\param pCurrentCommandID Current command ID.
+	\param pCurrentCommandFinished True if current command is finished.
+	*/
+	event protected void Update(float pDt, int pCurrentCommandID, bool pCurrentCommandFinished);
+};
+
+/** @}*/

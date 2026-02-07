@@ -1,0 +1,233 @@
+[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "Handles client > server communication in Campaign tasks. Should be attached to PlayerController.", color: "0 0 255 255")]
+class SCR_CampaignTaskNetworkComponentClass: SCR_TaskNetworkComponentClass
+{
+};
+
+//------------------------------------------------------------------------------------------------
+class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
+{
+	
+	//------------------------------------------------------------------------------------------------
+	void RequestReinforcements()
+	{
+		int playerID = GetPlayerId();
+		if (playerID == -1)
+			return;
+		
+		Rpc(RPC_RequestReinforcements, playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RequestTransport(vector positionFrom, vector positionTo)
+	{
+		int playerID = GetPlayerId();
+		if (playerID == -1)
+			return;
+		
+		Rpc(RPC_RequestTransport, playerID, positionFrom, positionTo);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RequestRefuel(vector position)
+	{
+		int playerID = GetPlayerId();
+		if (playerID == -1)
+			return;
+		
+		Rpc(RPC_RequestRefuel, playerID, position);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Allows the local player to request evacuation.
+	void RequestEvacuation(vector position)
+	{
+		int playerID = GetPlayerId();
+		if (playerID == -1)
+			return;
+		
+		Rpc(RPC_RequestEvacuation, playerID, position);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Requests refuel for the vehicle local player is currently in
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RPC_RequestReinforcements(int requesterID)
+	{
+		SCR_CampaignBase base;
+		if (!SCR_CampaignDefendTask.CheckDefendRequestConditions(m_PlayerController, base))
+			return;
+		
+		if (!base)
+			return;
+		
+		SCR_CampaignNetworkComponent networkComponent = SCR_CampaignNetworkComponent.Cast(m_PlayerController.FindComponent(SCR_CampaignNetworkComponent));
+		if (!networkComponent)
+			return;
+		
+		networkComponent.SendPlayerMessage(SCR_ERadioMsg.REQUEST_REINFORCEMENTS, base.GetCallsign(), checkHQReached: true);
+		
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(m_PlayerController.GetMainEntity());
+		if (!character)
+		   return;
+		
+		SCR_CampaignFaction requesterFaction = SCR_CampaignFaction.Cast(character.GetFaction());
+		if (!requesterFaction)
+		   return;
+		
+		BaseRadioComponent radioComp = GetRadioComponent(m_PlayerController, character);
+		
+		// send message with requester faction and his ID
+		SCR_RequestReinforcementsMessage msg();
+		msg.SetTargetFaction(requesterFaction);
+		msg.SetTargetBase(base);
+		//msg.SetRequesterID(requesterID);
+		radioComp.Transmit(msg);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RPC_RequestTransport(int requesterID, vector positionFrom, vector positionTo)
+	{
+		if (SCR_BaseTaskManager.HasRequestedTask(requesterID))
+			return;
+		
+		SCR_CampaignNetworkComponent networkComponent = SCR_CampaignNetworkComponent.Cast(m_PlayerController.FindComponent(SCR_CampaignNetworkComponent));
+		if (!networkComponent)
+			return;
+		
+		networkComponent.SendPlayerMessage(SCR_ERadioMsg.REQUEST_TRANSPORT, checkHQReached: true);
+		
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(m_PlayerController.GetMainEntity());
+		if (!character)
+		   return;
+		
+		SCR_CampaignFaction requesterFaction = SCR_CampaignFaction.Cast(character.GetFaction());
+		if (!requesterFaction)
+		   return;
+
+		BaseRadioComponent radioComp = GetRadioComponent(m_PlayerController, character);
+
+		// send message with requester faction and his ID
+		SCR_RequestTransportMessage msg();
+		msg.SetRequesterMainBase(requesterFaction);
+		msg.SetRequesterID(requesterID);
+		msg.SetPosition(positionFrom);
+		msg.SetTargetPosition(positionTo);
+		radioComp.Transmit(msg);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Requests refuel for the vehicle local player is currently in
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RPC_RequestRefuel(int requesterID, vector position)
+	{
+		if (SCR_BaseTaskManager.HasRequestedTask(requesterID))
+			return;
+		
+		SCR_CampaignNetworkComponent networkComponent = SCR_CampaignNetworkComponent.Cast(m_PlayerController.FindComponent(SCR_CampaignNetworkComponent));
+		if (!networkComponent)
+			return;
+		
+		networkComponent.SendPlayerMessage(SCR_ERadioMsg.REQUEST_FUEL, checkHQReached: true);
+		
+		SCR_BaseTaskExecutor taskExecutor = SCR_BaseTaskExecutor.GetTaskExecutorByID(requesterID);
+		if (!taskExecutor)
+			return;
+		
+		Vehicle vehicle = SCR_RefuelTask.GetVehicleExecutorIsIn(taskExecutor);
+		if (!vehicle)
+			return;
+		
+		if (!SCR_RefuelTask.CheckRefuelRequestConditions(taskExecutor))
+			return;
+		
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(m_PlayerController.GetMainEntity());
+		if (!character)
+		   return;
+		
+		SCR_CampaignFaction requesterFaction = SCR_CampaignFaction.Cast(character.GetFaction());
+		if (!requesterFaction)
+		   return;
+
+		BaseRadioComponent radioComp = GetRadioComponent(m_PlayerController, character);
+
+		// send message with requester faction and his ID
+		SCR_RequestRefuelMessage msg();
+		msg.SetRequesterMainBase(requesterFaction);
+		msg.SetRequesterID(requesterID);
+		msg.SetPosition(position);
+		msg.SetRequesterVehicle(vehicle);
+		radioComp.Transmit(msg);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Requests evacuation of the local player
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RPC_RequestEvacuation(int requesterID, vector position)
+	{
+		if (SCR_BaseTaskManager.HasRequestedTask(requesterID))
+			return;
+		
+		SCR_CampaignNetworkComponent networkComponent = SCR_CampaignNetworkComponent.Cast(m_PlayerController.FindComponent(SCR_CampaignNetworkComponent));
+		if (!networkComponent)
+			return;
+
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(m_PlayerController.GetMainEntity());
+		if (!character)
+		   return;
+		
+		SCR_CampaignBase closestBase = SCR_CampaignBaseManager.FindClosestBase(character.GetOrigin());
+		if (closestBase)
+			networkComponent.SendPlayerMessage(SCR_ERadioMsg.REQUEST_EVAC, closestBase.GetCallsign(), checkHQReached: true);
+		
+		SCR_CampaignFaction requesterFaction = SCR_CampaignFaction.Cast(character.GetFaction());
+		if (!requesterFaction)
+		   return;
+
+		BaseRadioComponent radioComp = GetRadioComponent(m_PlayerController, character);
+		if (!radioComp)
+			return;
+		
+		// send message with requester faction and his ID
+		SCR_RequestEvacuationMessage msg();
+		msg.SetRequesterMainBase(requesterFaction);
+		msg.SetRequesterID(requesterID);
+		msg.SetPosition(position);
+		radioComp.Transmit(msg);
+	}
+	//------------------------------------------------------------------------------------------------
+	BaseRadioComponent GetRadioComponent(PlayerController playerController, ChimeraCharacter character)
+	{
+		
+		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.Cast(character.FindComponent(SCR_GadgetManagerComponent));
+		if (!gadgetManager)
+			return null;
+		
+		GenericEntity radio = GenericEntity.Cast(gadgetManager.GetGadgetByType(EGadgetType.RADIO));
+		if (!radio)
+			return null;
+		
+		BaseRadioComponent radioComp = BaseRadioComponent.Cast(radio.FindComponent(BaseRadioComponent));
+		if (!radioComp)
+			return null;
+		
+		return radioComp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetPlayerId()
+	{
+		int playerID = m_PlayerController.GetPlayerId();
+		return playerID;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SCR_CampaignTaskNetworkComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
+	{
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_CampaignTaskNetworkComponent()
+	{
+	}
+};

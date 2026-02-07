@@ -1,0 +1,222 @@
+class DialogUI : ChimeraMenuBase
+{
+	protected SCR_DialogDataComponent m_DialogData;
+
+	protected Widget m_wCancelButton;
+	protected SCR_NavigationButtonComponent m_Cancel;
+	protected SCR_NavigationButtonComponent m_Confirm;
+
+	protected ImageWidget m_wImgTopLine;
+	protected ImageWidget m_wImgTitleIcon;
+
+	protected TextWidget m_wTitle;
+	protected TextWidget m_wContent;
+	ref ScriptInvoker m_OnConfirm = new ScriptInvoker();
+	ref ScriptInvoker m_OnCancel = new ScriptInvoker();
+	protected float m_fAnimationRate = WidgetAnimator.FADE_RATE_FAST;
+
+	protected EDialogType m_iDialogType;
+
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuOpen()
+	{
+		Widget w = GetRootWidget();
+
+		// Cancel button
+		m_wCancelButton = w.FindAnyWidget("Cancel");
+		m_Cancel = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Cancel", w);
+		if (m_Cancel)
+			m_Cancel.m_OnActivated.Insert(OnCancel);
+
+		// Confirm button
+		m_Confirm = SCR_NavigationButtonComponent.GetNavigationButtonComponent("Confirm", w);
+		if (m_Confirm)
+			m_Confirm.m_OnActivated.Insert(OnConfirm);
+
+		// Images
+		m_wImgTopLine = ImageWidget.Cast(w.FindAnyWidget("Separator"));
+		m_wImgTitleIcon = ImageWidget.Cast(w.FindAnyWidget("ImgTitleIcon"));
+
+		// Texts
+		m_wTitle = TextWidget.Cast(w.FindAnyWidget("Title"));
+		m_wContent = TextWidget.Cast(w.FindAnyWidget("Message"));
+
+		// Play animation
+		w.SetOpacity(0);
+		WidgetAnimator.PlayAnimation(w, WidgetAnimationType.Opacity, 1, m_fAnimationRate);
+
+		// Find dialog component
+		m_DialogData = SCR_DialogDataComponent.Cast( w.FindHandler(SCR_DialogDataComponent));
+
+		// Set dialog type
+		if (m_DialogData)
+			SetDialogType(m_DialogData.m_iDialogType);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnConfirm()
+	{
+		m_OnConfirm.Invoke();
+		CloseAnimated();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnCancel()
+	{
+		m_OnCancel.Invoke();
+		CloseAnimated();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Set color based on dialog type
+	protected void SetDialogType(EDialogType type)
+	{
+		m_iDialogType = type;
+
+		// Check widgets
+		if (!m_wImgTopLine || !m_wImgTitleIcon)
+			return;
+
+		// Select color
+		Color color = Color.White;
+
+		switch (m_iDialogType)
+		{
+			case EDialogType.ACTION:
+				color = UIColors.CONTRAST_CLICKED_HOVERED;
+				break;
+
+			case EDialogType.WARNING:
+				color = UIColors.WARNING;
+				break;
+		}
+
+		// Set colors
+		m_wImgTopLine.SetColor(color);
+		m_wImgTitleIcon.SetColor(color);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetTitle(string text)
+	{
+		if (m_wTitle)
+			m_wTitle.SetText(text);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	string GetTitle()
+	{
+		if (!m_wTitle)
+			return string.Empty;
+
+		return m_wTitle.GetText();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetMessage(string text)
+	{
+		if (m_wContent)
+			m_wContent.SetText(text);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	string GetMessage()
+	{
+		if (!m_wContent)
+			return string.Empty;
+
+		return m_wContent.GetText();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetConfirmText(string text)
+	{
+		if (m_Confirm)
+			m_Confirm.SetLabel(text);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetCancelText(string text)
+	{
+		if (m_Cancel)
+			m_Cancel.SetLabel(text);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetType(EDialogType type)
+	{
+		m_iDialogType = type;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Set title icons with custom image
+	void SetTitleIcon(ResourceName image, string imageName)
+	{
+		if (!m_wImgTitleIcon)
+			return;
+
+		//  Set image by input
+		if (image.EndsWith("imageset"))
+			m_wImgTitleIcon.LoadImageFromSet(0, image, imageName);
+		else
+			m_wImgTitleIcon.LoadImageTexture(0, image);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Set title icon by image name from image set in dialog data
+	void SetTitleIcon(string imageName)
+	{
+		if (!m_DialogData)
+			return;
+
+		m_wImgTitleIcon.LoadImageFromSet(0, m_DialogData.m_sIconSet, imageName);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! animates dialog closure
+	void CloseAnimated()
+	{
+		WidgetAnimator.PlayAnimation(GetRootWidget(), WidgetAnimationType.Opacity, 0, m_fAnimationRate);
+		int delay;
+		if (m_fAnimationRate > 0)
+			delay = 1 / m_fAnimationRate * 1000;
+		GetGame().GetCallqueue().CallLater(Close, delay);
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+	// --- Static functions to create common dialog types ----
+	//////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//------------------------------------------------------------------------------------------------
+	//! Dialog with OK and CANCEL buttons
+	static DialogUI CreateConfirmationDialog()
+	{
+		return DialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ConfirmationDialog, DialogPriority.CRITICAL));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static DialogUI CreateOkCancelDialog()
+	{
+		return DialogUI.CreateConfirmationDialog();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Dialog with OK button
+	static DialogUI CreateSimpleDialog()
+	{
+		return DialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.SimpleDialog, DialogPriority.CRITICAL));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static DialogUI CreateOkDialog()
+	{
+		return DialogUI.CreateSimpleDialog();
+	}
+};
+
+enum EDialogType
+{
+	MESSAGE,
+	ACTION,
+	WARNING,
+};

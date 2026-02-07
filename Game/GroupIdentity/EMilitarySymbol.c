@@ -1,0 +1,60 @@
+enum EMilitarySymbolIdentity
+{
+	UNKNOWN,
+	BLUFOR,
+	OPFOR,
+	INDFOR,
+	//ASSUMED_FRIEND,
+	//SUSPECT,
+};
+enum EMilitarySymbolDimension
+{
+	NONE,
+	LAND,
+	INSTALLATION,
+	//AIR,
+	//SPACE,
+	//SEA_SURFACE,
+	//SEA_SUBSURFACE,
+	//EQUIPMENT,
+	//ACTIVITY,
+};
+enum EMilitarySymbolIcon
+{
+	INFANTRY	= 1 << 0,
+	MOTORIZED	= 1 << 1,
+	ARMOR		= 1 << 2,
+	ANTITANK	= 1 << 3,
+	MORTAR		= 1 << 4,
+	ARTILLERY	= 1 << 5,
+	FIXED_WING	= 1 << 6,
+	ROTARY_WING	= 1 << 7,
+	RECON		= 1 << 8,
+	SUPPLY		= 1 << 9,
+	MAINTENANCE	= 1 << 10,
+	MEDICAL		= 1 << 11,
+	GRENADE		= 1 << 12,
+	MACHINEGUN	= 1 << 13,
+	SNIPER		= 1 << 14,
+	LIGHT		= 1 << 15,
+	MOBILEHQ	= 1 << 16,
+	RELAY		= 1 << 17,
+	RESPAWN 	= 1 << 18
+};
+enum EMilitarySymbolAmplifier
+{
+	NONE,
+	TEAM,
+	SQUAD,
+	SECTION,
+	PLATOON,
+	COMPANY,
+	BATTALION,
+	REGIMENT,
+	BRIGADE,
+	DIVISION,
+	CORPS,
+	ARMY,
+	ARMY_GROUP,
+	THEATRE,
+};

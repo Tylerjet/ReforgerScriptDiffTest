@@ -1,0 +1,118 @@
+//------------------------------------------------------------------------------------------------
+class SCR_SubMenuBase : ScriptedWidgetComponent
+{
+	protected SCR_SuperMenuBase m_ParentMenu;
+	protected Widget m_wRoot;
+	protected ref array<SCR_NavigationButtonComponent> m_aNavigationButtons  = new ref array<SCR_NavigationButtonComponent>();
+	protected bool m_bShown;
+
+	//------------------------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		m_wRoot = w;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnMenuUpdate(SCR_SuperMenuBase parentMenu, float tDelta)
+	{
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnMenuOpen(SCR_SuperMenuBase parentMenu)
+	{
+		m_ParentMenu = parentMenu;
+
+		// Add navigation buttons through parent menu and insert into a listener
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnMenuShow(SCR_SuperMenuBase parentMenu)
+	{
+		ShowNavigationButtons(true);
+		m_bShown = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnMenuHide(SCR_SuperMenuBase parentMenu)
+	{
+		ShowNavigationButtons(false);
+		m_bShown = false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnMenuClose(SCR_SuperMenuBase parentMenu)
+	{
+		foreach (SCR_NavigationButtonComponent comp : m_aNavigationButtons)
+		{
+			if (!comp)
+				continue;
+
+			Widget w = comp.GetRootWidget();
+			if (!w)
+				continue;
+
+			w.RemoveFromHierarchy();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	Widget GetRootWidget()
+	{
+		return m_wRoot;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns true when this submenu is shown.
+	bool GetShown()
+	{
+		return m_bShown;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CloseParent()
+	{
+		if (m_ParentMenu)
+			m_ParentMenu.CloseMenu();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ShowNavigationButtons(bool show)
+	{
+		foreach (SCR_NavigationButtonComponent comp : m_aNavigationButtons)
+		{
+			if (!comp)
+				continue;
+
+			Widget w = comp.GetRootWidget();
+			if (!w)
+				continue;
+
+			w.SetVisible(show);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected SCR_ButtonComponent GetButtonComponent(string name, Widget parent = null)
+	{
+		if (parent == null)
+			parent = m_wRoot;
+
+		Widget w = parent.FindAnyWidget(name);
+		if (!w)
+			return null;
+
+		SCR_ButtonComponent comp = SCR_ButtonComponent.Cast(w.FindHandler(SCR_ButtonComponent));
+		return comp;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected SCR_NavigationButtonComponent CreateNavigationButton(string actionName, string label, bool rightFooter = false)
+	{
+		SCR_NavigationButtonComponent comp = m_ParentMenu.AddNavigationButton(actionName, label, rightFooter);
+		if (!comp)
+			return null;
+
+		m_aNavigationButtons.Insert(comp);
+		return comp;
+	}
+};

@@ -1,0 +1,559 @@
+//------------------------------------------------------------------------------------------------
+class SCR_InteractionHandlerComponentClass: InteractionHandlerComponentClass
+{
+};
+
+
+//------------------------------------------------------------------------------------------------
+/*!
+	Provides an identification for SCR_InteractionHandlerComponent which type of input to use.
+	This is added for convenience of quick switching of different methods.
+*/
+enum SCR_NearbyContextDisplayMode
+{
+	//! Nearby display will never be allowed.
+	DISABLED = 0,
+	
+	//! Nearby display will always be on (when possible).
+	ALWAYS_ON = 1,
+	
+	//! Nearby display will show on provided input action.
+	ON_INPUT_ACTION = 2,
+	
+	//! Nearby display will show when controlled entity is in freelook.
+	ON_FREELOOK = 3
+};
+
+/*!
+	This component allows the player to interact with their environment.
+	It collects UserActionContext from ActionsManagerComponent from surrounding entities via queries,
+	filters and finds the most appropriate one and provides script API to work with them.
+	
+	It should always be attached to PlayerController entity and is local only.
+*/
+class SCR_InteractionHandlerComponent : InteractionHandlerComponent
+{
+	/*!
+		Display (action menu) used to show UI to the player regarding collected actions.
+	*/
+	protected SCR_BaseInteractionDisplay m_pDisplay;
+	
+	[Attribute("3", UIWidgets.ComboBox, "Display mode", "", ParamEnumArray.FromEnum(SCR_NearbyContextDisplayMode), category: "Nearby Context Properties" )]
+	SCR_NearbyContextDisplayMode m_eDisplayMode;
+	
+	[Attribute("", UIWidgets.EditBox, "Action to listen for when SCR_NearbyContextDisplayMode is set to ON_INPUT_ACTION", category: "Nearby Context Properties")]
+	string m_sActionName;
+	[Attribute("", UIWidgets.EditBox, "Context to activate when SCR_NearbyContextDisplayMode is set to ON_INPUT_ACTION. Mustn't be empty to be activated.", category: "Nearby Context Properties")]
+	string m_sActionContext;
+	
+	
+	//! Last selected context
+	protected UserActionContext m_pLastContext;
+	//! Last selected user action
+	protected BaseUserAction m_pLastUserAction;
+	//! Currently selected action index
+	protected int m_iSelectedActionIndex;
+	
+
+	private bool m_bIsPerforming;
+	private bool m_bLastInput;
+	private float m_fCurrentProgress;
+
+	//! List of inspected entities (weapon, ...)
+	protected ref array<IEntity> m_aInspectedEntities = {};
+
+	private IEntity m_pControlledEntity;
+
+	
+	//------------------------------------------------------------------------------------------------
+	protected SCR_BaseInteractionDisplay FindDisplay(IEntity owner)
+	{
+		PlayerController playerController = PlayerController.Cast(owner);
+		if (!playerController) 
+		{
+			Print("InteractionHandler must be attached to a PlayerController!", LogLevel.ERROR);
+			return null;
+		}
+		HUDManagerComponent hudManager = HUDManagerComponent.Cast(playerController.FindComponent(HUDManagerComponent));
+		array<BaseInfoDisplay> displayInfos = {};
+		int count = hudManager.GetInfoDisplays(displayInfos);
+		for (int i = 0; i < count; i++)
+		{
+			SCR_BaseInteractionDisplay current = SCR_BaseInteractionDisplay.Cast(displayInfos[i]);
+			if (current)
+				return current;
+		}
+
+		Print("InteractionDisplay not found! InteractionDisplay must be stored in HUDManagerComponent of a PlayerController!", LogLevel.WARNING);
+		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Checks input, compares it to previous states and evaluates what the handler should do next.
+	*/
+	protected void DoProcessInteraction(
+		ChimeraCharacter user, 
+		UserActionContext context, 
+		BaseUserAction action, 
+		bool canPerform, 
+		bool performInput, 
+		float timeSlice,
+		SCR_BaseInteractionDisplay display)
+	{
+		// Can action be performed?
+		bool isOk = action && canPerform && action == m_pLastUserAction;
+		// We want to perform and action is OK
+		if (performInput && isOk)
+		{
+			// We want to be performing, but we're not yet.
+			// Start the action and dispatch events.
+			if (!m_bIsPerforming && !m_bLastInput)
+			{
+				// UI
+				if (display)
+					display.OnActionStart(user, action);
+				
+				// Start callback
+				ScriptedUserAction scriptedAction = ScriptedUserAction.Cast(action);
+				if (scriptedAction)	
+					scriptedAction.OnActionStart(user);
+				
+				// Set state
+				m_bIsPerforming = true;
+				m_fCurrentProgress = 0.0;
+			}
+			// We want to perform and we already started performing,
+			// update continuous handler state until we're finished
+			else if (m_bIsPerforming)
+			{
+				// Tick action
+				if (action.ShouldPerformPerFrame())
+					user.DoPerformContinuousObjectAction(action, timeSlice);
+				
+				// Update elapsed time
+				m_fCurrentProgress += timeSlice;
+				
+				// Get action duration
+				float duration = action.GetActionDuration();
+			
+				// Update UI
+				if (display)
+					display.OnActionProgress(user, action, m_fCurrentProgress, duration);
+				
+				// We are finished, dispatch events and reset state
+				if (m_fCurrentProgress >= duration && duration >= 0)
+				{
+					// Update UI
+					if (display)
+						display.OnActionFinish(user, action, ActionFinishReason.FINISHED);
+					
+					// Finally perform action
+					user.DoPerformObjectAction(action);
+
+					// Reset state
+					m_fCurrentProgress = 0.0;
+					m_bIsPerforming = false;
+				}
+			}
+		}
+		else
+		{
+			// Input was released, we were performing previously,
+			// stop performing and dispatch necessary events.
+			if (m_bIsPerforming)
+			{
+				// Update UI
+				if (display)
+					display.OnActionFinish(user, action, ActionFinishReason.INTERRUPTED);
+				
+				// Cancel the action. Calls action.OnCanceledAction
+				user.DoCancelObjectAction(action);
+				
+				// Reset state
+				m_bIsPerforming = false;
+				m_fCurrentProgress = 0.0;
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool CollectInputs(out bool bPerform, out float fScroll)
+	{
+		InputManager pInputManager = GetGame().GetInputManager();
+		if (!pInputManager)
+			return false;
+
+		pInputManager.ActivateContext("ActionMenuContext");
+		bPerform = pInputManager.GetActionTriggered("PerformAction");
+		fScroll = pInputManager.GetActionValue("SelectAction");
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override bool GetCanInteractScript(IEntity controlledEntity)
+	{		
+		// No interactions when menu is open
+		MenuManager pMenuManager = GetGame().GetMenuManager();
+		if (pMenuManager && pMenuManager.IsAnyMenuOpen())
+			return false;
+		
+		// No interactions when character is dead or in ADS
+		ChimeraCharacter pCharacter = ChimeraCharacter.Cast(controlledEntity);
+		if (pCharacter && pCharacter.IsInVehicleADS())
+			return false;
+		
+		CharacterControllerComponent pController = CharacterControllerComponent.Cast(pCharacter.FindComponent(CharacterControllerComponent));
+		if (pController && (pController.IsDead() || pController.IsClimbing()))
+			return false;
+		
+		// Disable in vehicle 3pp
+		if (pCharacter.IsInVehicle() && pController.IsInThirdPersonView())
+			return false;
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override bool GetIsInteractionAvailableScript()
+	{
+		return IsContextAvailable();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override BaseUserAction GetSelectedActionScript()
+	{
+		return m_pLastUserAction;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override bool DoIntersectCheck(IEntity controlledEntity)
+	{
+		if (!controlledEntity)
+			return false;
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(controlledEntity);
+		if (!character)
+			return false;
+		
+		if (character.IsInVehicle())
+			return true;
+
+		if (character.GetCharacterController().GetIsInspectionMode())
+			return true;
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override void OnContextChanged(UserActionContext previousContext, UserActionContext newContext)
+	{
+		// Changed, so hide previous
+		UserActionContext currentContext = GetCurrentContext();
+		if (!newContext || newContext != currentContext)
+		{
+			m_iSelectedActionIndex = 0;
+			if (m_pDisplay)
+				m_pDisplay.HideDisplay();
+		}
+		// Changed, so show new
+		if (m_pDisplay && newContext)
+			m_pDisplay.ShowDisplay();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override event bool CanContextChange(UserActionContext currentContext, UserActionContext newContext)
+	{
+		// Check whether we are still in range
+		if (currentContext && m_pControlledEntity)
+		{
+			// We will leave a small error threshold
+			const float threshold = 1.1;
+			// Global action visibility range in meters
+			float visRange = GetVisibilityRange();
+			// Maximum sq distance we can interact at
+			float maxSqDistance = (visRange * visRange) * 1.1;
+			// Sq distance to controlled entity
+			float sqDistance = vector.DistanceSq(currentContext.GetOrigin(), m_pControlledEntity.GetOrigin());
+			
+			if (sqDistance > maxSqDistance)
+			{
+				// We are out of range, context can change safely
+				return true;
+			}
+		}
+		
+		// Suppress context changing when we are interacting with one already
+		if (currentContext && m_bIsPerforming)
+		{
+			// TODO: Validate distance to ctx
+			return false;
+		}
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool ShouldBeEnabled(SCR_NearbyContextDisplayMode displayMode, ChimeraCharacter character, bool playerCameraOnly = true)
+	{
+		// Disallow when character is none
+		if (!character)
+			return false;
+		
+		// Disallow out of player camera when true
+		if (playerCameraOnly)
+		{
+			CameraManager cameraManager = GetGame().GetCameraManager();
+			if (cameraManager && !PlayerCamera.Cast(cameraManager.CurrentCamera()))
+				return false;
+		}
+		
+		switch (displayMode)
+		{
+			// Always off
+			case SCR_NearbyContextDisplayMode.DISABLED:
+				return false;
+			
+			// Always on
+			case SCR_NearbyContextDisplayMode.ALWAYS_ON:
+				return true;
+			
+			// On action
+			case SCR_NearbyContextDisplayMode.ON_INPUT_ACTION:
+			{
+				if (m_sActionName.IsEmpty())
+					return false;
+				
+				InputManager inputManager = GetGame().GetInputManager();
+				if (!m_sActionContext.IsEmpty())
+					inputManager.ActivateContext(m_sActionContext);
+				
+				return inputManager.GetActionValue(m_sActionName) > 0;
+			}
+			
+			// When in freelook
+			case SCR_NearbyContextDisplayMode.ON_FREELOOK:
+			{
+				return character.GetCharacterController().IsFreeLookEnabled();
+			}
+		}
+		
+		// Nope, sorry.
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override array<IEntity> GetManualOverrideList(IEntity owner, out vector referencePoint)
+	{
+		CameraBase camera = GetGame().GetCameraManager().CurrentCamera();
+		referencePoint = camera.GetOrigin() + camera.GetWorldTransformAxis(2);
+
+		return m_aInspectedEntities;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void HandleInspection(notnull ChimeraCharacter character, float timeSlice)
+	{
+		if (character.GetCharacterController().GetIsInspectionMode())
+		{
+			SetManualCollectionOverride(true);
+			m_aInspectedEntities.Clear();
+
+			// Insert all items we can be interested in
+			// TODO@AS: Include sights and other attachments
+			BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(character.FindComponent(BaseWeaponManagerComponent));
+			if (weaponManager)
+			{
+				BaseWeaponComponent weapon = weaponManager.GetCurrentWeapon();
+				if (weapon)
+					m_aInspectedEntities.Insert(weapon.GetOwner());
+			}
+		}
+		else
+		{
+			SetManualCollectionOverride(false);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override void OnPostFrame(IEntity owner, IEntity controlledEntity, float timeSlice)
+	{
+		// TODO@AS: Add a reliable init method and get rid of this monstrosity
+		if (!m_pDisplay)
+			m_pDisplay = FindDisplay(owner);
+		
+		m_pControlledEntity = controlledEntity;
+		// Make sure we have a valid character
+		ChimeraCharacter character = ChimeraCharacter.Cast(controlledEntity);
+		
+		// Nearby context collection?
+		bool enableNearbyCollection = ShouldBeEnabled(m_eDisplayMode, character, true);
+		SetNearbyCollectionEnabled(enableNearbyCollection);
+		
+		// Make sure we have a valid character
+		if (!character)
+			return;
+		
+		HandleInspection(character, timeSlice);
+		
+		// Fetch current inputs
+		bool bPerform; float fScroll;
+		
+		UserActionContext currentContext = GetCurrentContext();
+		if (currentContext)
+		{
+			auto cEntity = GetGame().GetPlayerController().GetControlledEntity();
+			array<BaseUserAction> actions = {};
+			array<bool> canPerform = {};
+			int count = GetFilteredActions(actions, canPerform);
+			if (count > 0)
+				CollectInputs(bPerform, fScroll);
+			
+			/*!
+				This is a long-living hack that filters
+				actions with same name. It's awful, but it'll stay for now.
+			*/
+			map<string, bool> mActionFilter = new map<string, bool>();
+			for (int i = count-1; i >= 0; i--)
+			{
+				BaseUserAction pCurrentAction = actions[i];
+				if (!pCurrentAction)
+					continue;
+				
+				if (m_pDisplay)
+					m_pDisplay.OnActionProgress( character, pCurrentAction, pCurrentAction.GetActionProgress(), pCurrentAction.GetActionDuration() );
+				
+				if (pCurrentAction.CanAggregate())
+				{
+					
+					// Filter out actions with duplicite names
+					// This is not a good long term solution
+					string sActionName = pCurrentAction.GetActionName();
+					if (sActionName == "")
+						continue;
+					
+					
+					// Register the action name within the map,
+					// with invalid state
+					if (!mActionFilter.Contains(sActionName))
+					{
+						mActionFilter[sActionName] = false;
+					}
+					
+					
+					// It was registered already, but it did
+					// not return true in CanBePerformed
+					if (!mActionFilter[sActionName])
+					{
+						// If this action is the first we can perform,
+						// prefer it.
+						// If we didn't have any that could be performed
+						// prior to now, so let's use it
+						if (canPerform[i] || (i == 0 && !mActionFilter[sActionName]))
+						{
+							mActionFilter[sActionName] = true;
+							continue;
+						}
+					}
+					
+					// An action of this kind was already available,
+					// lets remove current one from the list
+					actions.Remove(i);
+					canPerform.Remove(i);
+				}
+			}
+			
+			// First of all, prior to doing any destructive changes,
+			// find the previous selected action (if any) and 
+			// update the index, in case it has been shuffled.
+			if (m_pLastUserAction)
+			{
+				BaseUserAction action;
+				for (int i = 0, ac = actions.Count(); i < ac; i++)
+				{
+					action = actions[i];
+					if (action && action == m_pLastUserAction)
+					{
+						m_iSelectedActionIndex = i;
+						break;
+					}
+				}
+			}
+			
+			// Update selection
+			int iScrollAmount = 0;
+			int prevActionIndex = m_iSelectedActionIndex;
+			// But only if player is not performing an action already
+			if (!m_bIsPerforming)
+			{
+				if ( Math.AbsFloat(fScroll) > 0.5 )
+					iScrollAmount = Math.Clamp( fScroll, -1.0, 1.0 );
+	
+				
+				if (iScrollAmount != 0)
+					m_iSelectedActionIndex = m_iSelectedActionIndex - iScrollAmount;
+			}
+
+			// Make sure that selected action is always within bounds
+			int actionsCount = actions.Count();
+			m_iSelectedActionIndex = Math.Clamp(m_iSelectedActionIndex, 0, actionsCount - 1);
+			BaseUserAction selectedAction = null;
+			bool canPerformSelectedAction = false;
+			if (actionsCount > 0)
+			{
+				selectedAction = actions[m_iSelectedActionIndex];
+				canPerformSelectedAction = canPerform[m_iSelectedActionIndex];
+			}
+			
+			// Process interaction
+			DoProcessInteraction(character, currentContext, selectedAction, canPerformSelectedAction, bPerform, timeSlice, m_pDisplay);			
+			m_pLastUserAction = selectedAction;
+
+			// Pass data to display
+			if (m_pDisplay)
+			{
+				ref ActionsTuple pData = new ref ActionsTuple();
+				pData.param1 = actions;
+				pData.param2 = canPerform;
+				
+				ActionDisplayData pDisplayData = new ActionDisplayData();
+				pDisplayData.pUser = cEntity;
+				pDisplayData.pActionsData = pData;
+				pDisplayData.pSelectedAction = selectedAction;
+				pDisplayData.pCurrentContext = currentContext;
+				
+				m_pDisplay.SetDisplayData(pDisplayData);
+			}
+		}
+		// We don't have a context, but we possibly had, thus reset
+		// our current action and make sure to dispatch events.
+		else if (m_pLastContext != currentContext)
+		{
+			// We had valid action
+			if (m_pLastUserAction)
+			{
+				// And we were performing it
+				if (m_bIsPerforming)
+				{
+					// Reset state
+					m_bIsPerforming = false;
+					m_fCurrentProgress = 0.0;
+					
+					// Interruption event
+					ScriptedUserAction scriptedAction = ScriptedUserAction.Cast(m_pLastUserAction);
+					if (scriptedAction)
+						scriptedAction.CancelAction(character);
+				}
+				
+				// Reset state
+				m_pLastUserAction = null;
+			}
+		}
+		
+		
+		// Store last input
+		m_bLastInput = bPerform;
+		// Update last context
+		m_pLastContext = currentContext;
+	}
+};

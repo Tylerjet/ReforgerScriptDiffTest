@@ -1,0 +1,294 @@
+class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
+{
+	protected static const ref Color COLOR_HINT_SELECTED = UIColors.CONTRAST_COLOR;
+	protected static const ref Color COLOR_HINT_DESELECTED = UIColors.WHITE_HOVERED;
+
+	protected SCR_PagingButtonComponent m_ButtonLeft;
+	protected SCR_PagingButtonComponent m_ButtonRight;
+	protected TextWidget m_wText;
+	protected Widget m_wContent;
+	protected Widget m_wCountBar;
+	protected ref array<Widget> m_aHintElements = new ref array<Widget>();
+
+	[Attribute("false", UIWidgets.CheckBox, "use light grey arrows instead of big yellow ones")]
+	protected bool m_bUseLightArrows;
+
+	[Attribute("false", UIWidgets.CheckBox, "On last item and pressing right arrow, it will go to the start of the list")]
+	protected bool m_bCycleMode;
+
+	[Attribute("true", UIWidgets.CheckBox, "Show bar of available elements and which one is selected.")]
+	protected bool m_bShowHints;
+
+	[Attribute("24", UIWidgets.EditBox, "Width of a hint element")]
+	protected float m_fHintElementWidth;
+
+	[Attribute("4", UIWidgets.EditBox, "Height of a hint element")]
+	protected float m_fHintElementHeight;
+
+	[Attribute("1", UIWidgets.EditBox, "How much wider should be the selected hint element")]
+	protected float m_fHintSelectedWidthMultiplier;
+
+	[Attribute("true", UIWidgets.CheckBox, "Should hints fill the available space")]
+	protected bool m_fHintFillMode;
+
+	[Attribute("4", UIWidgets.EditBox, "How large gaps between hints should there be")]
+	protected float m_fHintSpacing;
+
+	[Attribute("", UIWidgets.EditBox, "")]
+	protected ResourceName m_sHintElementTexture;
+
+	[Attribute("", UIWidgets.EditBox, "")]
+	protected ResourceName m_sHintElementImage;
+
+	//------------------------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+		m_wText = TextWidget.Cast(w.FindAnyWidget("SelectionText"));
+		m_wContent = w.FindAnyWidget("Overlay");
+		m_wCountBar = w.FindAnyWidget("HintBar");
+
+		// Buttons
+		Widget left = w.FindAnyWidget("ButtonLeft");
+		Widget right = w.FindAnyWidget("ButtonRight");
+
+		if (left)
+		{
+			m_ButtonLeft = SCR_PagingButtonComponent.Cast(left.FindHandler(SCR_PagingButtonComponent));
+			if (m_ButtonLeft)
+				m_ButtonLeft.m_OnClicked.Insert(OnLeftArrowClick);
+		}
+
+		if (right)
+		{
+			m_ButtonRight = SCR_PagingButtonComponent.Cast(right.FindHandler(SCR_PagingButtonComponent));
+			if (m_ButtonRight)
+				m_ButtonRight.m_OnClicked.Insert(OnRightArrowClick);
+		}
+
+		if (m_wText)
+		{
+			if (m_aElementNames && m_iSelectedItem > -1 && m_iSelectedItem < m_aElementNames.Count())
+				m_wText.SetText(m_aElementNames[m_iSelectedItem]);
+			else
+				m_wText.SetText(string.Empty);
+		}
+
+		SetInitialState();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CreateHintBar()
+	{
+		// Delete any old elements
+		foreach (Widget w : m_aHintElements)
+		{
+			w.RemoveFromHierarchy();
+		}
+		m_aHintElements.Clear();
+
+		m_wCountBar.SetVisible(true);
+		for (int i = 0, len = m_aElementNames.Count(); i < len; i++)
+		{
+			Widget w = GetGame().GetWorkspace().CreateWidget(WidgetType.ImageWidgetTypeID, WidgetFlags.VISIBLE | WidgetFlags.STRETCH | WidgetFlags.BLEND | WidgetFlags.INHERIT_CLIPPING, Color.White, 0, m_wCountBar);
+			ImageWidget img = ImageWidget.Cast(w);
+			if (!img)
+				break;
+
+			SetTexture(img, m_sHintElementTexture, m_sHintElementImage);
+			// Force size only when sizes are more than 0 - automatic sizing
+			if (m_fHintElementWidth >= 0 && m_fHintElementHeight >= 0)
+				img.SetSize(m_fHintElementWidth, m_fHintElementHeight);
+
+			img.SetColor(COLOR_HINT_DESELECTED);
+			HorizontalLayoutSlot.SetPadding(img, m_fHintSpacing * 0.5, 0, m_fHintSpacing * 0.5, 0);
+			HorizontalLayoutSlot.SetHorizontalAlign(img, LayoutHorizontalAlign.Stretch);
+
+			// Use fill instead
+			if (m_fHintFillMode)
+				HorizontalLayoutSlot.SetSizeMode(img, LayoutSizeMode.Fill);
+
+			m_aHintElements.Insert(img);
+		}
+		UpdateHintBar(m_iSelectedItem, -1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateHintBar(int currentIndex, int oldIndex)
+	{
+		if (!m_bShowHints)
+			return;
+
+		bool focused = GetGame().GetWorkspace().GetFocusedWidget() == m_wRoot;
+
+		int count = m_aHintElements.Count();
+		if (oldIndex > -1 && oldIndex < count)
+		{
+			WidgetAnimator.PlayAnimation(m_aHintElements[oldIndex], WidgetAnimationType.Color, COLOR_HINT_DESELECTED, m_fAnimationRate);
+
+			if (m_fHintSelectedWidthMultiplier != 1)
+				WidgetAnimator.PlayAnimation(m_aHintElements[oldIndex], WidgetAnimationType.LayoutFill, 1, m_fAnimationRate);
+		}
+
+		if (currentIndex > -1 && currentIndex < count)
+		{
+			WidgetAnimator.PlayAnimation(m_aHintElements[currentIndex], WidgetAnimationType.Color, COLOR_HINT_SELECTED, m_fAnimationRate);
+
+			if (m_fHintSelectedWidthMultiplier != 1)
+				WidgetAnimator.PlayAnimation(m_aHintElements[currentIndex], WidgetAnimationType.LayoutFill, m_fHintSelectedWidthMultiplier, m_fAnimationRate);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetInitialState()
+	{
+		int realIndex = m_iSelectedItem;
+		if (realIndex < 0 || realIndex >= m_aElementNames.Count())
+			realIndex = 0;
+
+		m_iSelectedItem = int.MIN;
+		SetCurrentItem(realIndex, false, false);
+
+		if (m_bShowHints && m_aElementNames && m_wCountBar)
+			CreateHintBar();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		super.OnFocus(w, x, y);
+
+		GetGame().GetInputManager().AddActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
+		GetGame().GetInputManager().AddActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
+
+		UpdateHintBar(m_iSelectedItem, -1);
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		super.OnFocusLost(w, x, y);
+
+		GetGame().GetInputManager().RemoveActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
+		GetGame().GetInputManager().RemoveActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
+
+		UpdateHintBar(m_iSelectedItem, -1);
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool SetCurrentItem(int i, bool playSound = false, bool animate = false)
+	{
+		int lastIndex = m_iSelectedItem;
+		if (!super.SetCurrentItem(i, playSound, animate))
+			return false;
+
+		if (m_wText)
+			m_wText.SetText(m_aElementNames[i]);
+
+		if (m_bShowHints)
+			UpdateHintBar(i, lastIndex);
+
+		if (m_ButtonLeft && m_ButtonRight)
+		{
+			if (m_bCycleMode)
+			{
+				bool enabled = m_aElementNames.Count() > 1;
+				m_ButtonLeft.SetEnabled(enabled, animate);
+				m_ButtonRight.SetEnabled(enabled, animate);
+			}
+			else
+			{
+				m_ButtonLeft.SetEnabled(i != 0, animate);
+				m_ButtonRight.SetEnabled(i != (m_aElementNames.Count() - 1), animate);
+			}
+		}
+
+		m_OnChanged.Invoke(this, m_iSelectedItem);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnLeftArrowClick()
+	{
+		GetGame().GetWorkspace().SetFocusedWidget(m_wRoot);
+
+		if (m_iSelectedItem <= 0)
+		{
+			if (m_bCycleMode)
+				SetCurrentItem(m_aElementNames.Count() - 1, true, true);
+		}
+		else
+		{
+			SetCurrentItem(m_iSelectedItem - 1, true, true);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnRightArrowClick()
+	{
+		GetGame().GetWorkspace().SetFocusedWidget(m_wRoot);
+
+		if (m_iSelectedItem >= (m_aElementNames.Count() - 1))
+		{
+			if (m_bCycleMode)
+				SetCurrentItem(0, true, true);
+		}
+		else
+		{
+			SetCurrentItem(m_iSelectedItem + 1, true, true);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnMenuLeft()
+	{
+		if (GetGame().GetWorkspace().GetFocusedWidget() != m_wRoot)
+			return;
+
+		if (m_ButtonLeft && m_ButtonLeft.IsEnabled())
+			m_ButtonLeft.OnClick(m_ButtonLeft.m_wRoot, 0, 0, 0); // TODO: Replace with other function, which accepts more params (turn of anims and sounds separately)
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnMenuRight()
+	{
+		if (GetGame().GetWorkspace().GetFocusedWidget() != m_wRoot)
+			return;
+
+		if (m_ButtonRight && m_ButtonRight.IsEnabled())
+			m_ButtonRight.OnClick(m_ButtonRight.m_wRoot, 0, 0, 0); // TODO: Replace with other function, which accepts more params (turn of anims and sounds separately)
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override int AddItem(string item, Managed data = null)
+	{
+		int i = super.AddItem(item, data);
+
+		SetInitialState();
+		return i;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void RemoveItem(int item)
+	{
+		super.RemoveItem(item);
+		SetInitialState();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void ClearAll()
+	{
+		super.ClearAll();
+		SetInitialState();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Static method to easily find component by providing name and parent.
+	//! Searching all children will go through whole hierarchy, instead of immediate chidren
+	static SCR_SpinBoxComponent GetSpinBoxComponent(string name, Widget parent, bool searchAllChildren = true)
+	{
+		return SCR_SpinBoxComponent.Cast(SCR_ScriptedWidgetComponent.GetComponent(SCR_SpinBoxComponent, name, parent, searchAllChildren));
+	}
+};

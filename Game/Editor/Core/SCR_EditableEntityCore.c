@@ -1,0 +1,534 @@
+
+/// @ingroup Editor_Core GameCore Editable_Entities
+
+/*!
+Core component to manage SCR_EditableEntityComponent.
+*/
+[BaseContainerProps(configRoot: true)]
+class SCR_EditableEntityCore: SCR_GameCoreBase
+{	
+	[Attribute(desc: "Settings for every entity type.")]
+	private ref array<ref SCR_EditableEntityCoreTypeSetting> m_TypeSettings;
+	
+	[Attribute("1000", desc: "Draw distance override for player characters.")]
+	protected float m_fPlayerDrawDistance;
+	
+	[Attribute(desc: "Budget settings for every entity type.")]
+	private ref array<ref SCR_EditableEntityCoreBudgetSetting> m_BudgetSettings;
+	
+	[Attribute(desc: "Label Groups")]
+	private ref array<ref SCR_EditableEntityCoreLabelGroupSetting> m_LabelGroupSettings;
+	
+	[Attribute(desc: "Label configs")]
+	private ref array<ref SCR_EditableEntityCoreLabelSetting> m_EntityLabels;
+	
+	private ref map<EEditableEntityType, SCR_EditableEntityCoreTypeSetting> m_TypeSettingsMap = new map<EEditableEntityType, SCR_EditableEntityCoreTypeSetting>;
+	private ref map<EEditableEntityBudget, SCR_EditableEntityCoreBudgetSetting> m_BudgetSettingsMap = new map<EEditableEntityBudget, SCR_EditableEntityCoreBudgetSetting>;
+	
+	private ref map<EEditableEntityLabelGroup, ref array<SCR_EditableEntityCoreLabelSetting>> m_LabelListMap = new map<EEditableEntityLabelGroup, ref array<SCR_EditableEntityCoreLabelSetting>>;
+	private ref map<EEditableEntityLabelGroup, SCR_EditableEntityCoreLabelGroupSetting> m_LabelGroupSettingsMap = new map<EEditableEntityLabelGroup, SCR_EditableEntityCoreLabelGroupSetting>;
+	private ref map<EEditableEntityLabel, SCR_EditableEntityCoreLabelSetting> m_LabelSettingsMap = new map<EEditableEntityLabel, SCR_EditableEntityCoreLabelSetting>;
+	
+	private ref set<SCR_EditableEntityComponent> m_Entities;
+	private SCR_EditableEntityComponent m_CurrentLayer;
+	private bool m_UpdateBudgets;
+	
+	/*! Called when an entity is made editable */
+	ref ScriptInvoker Event_OnEntityRegistered = new ScriptInvoker;
+	/*! Called when an entity is made not editable */
+	ref ScriptInvoker Event_OnEntityUnregistered = new ScriptInvoker;
+	/*! Called when manual refresh of the entity is triggered */
+	ref ScriptInvoker Event_OnEntityRefreshed = new ScriptInvoker;
+	/*! Called when entity is changes parent */
+	ref ScriptInvoker Event_OnParentEntityChanged = new ScriptInvoker;
+	/*! Called when entity access key is modified */
+	ref ScriptInvoker Event_OnEntityAccessKeyChanged = new ScriptInvoker;
+	/*! Called when entity access keys are updated */
+	ref ScriptInvoker Event_OnEntityVisibilityChanged = new ScriptInvoker;
+	/*! Called when entity transformation is changed by the editor */
+	ref ScriptInvoker Event_OnEntityTransformChanged = new ScriptInvoker;
+	/*! Called when entity transformation is changed by the editor only server only. Sends EditableEntity and Prev Transform*/
+	ref ScriptInvoker Event_OnEntityTransformChangedServer = new ScriptInvoker;
+	/*! Called when entity budget is updated */
+	ref ScriptInvoker Event_OnEntityBudgetChanged = new ScriptInvoker;
+	/*! Called when entity is extended or cease to be extended */
+	ref ScriptInvoker Event_OnEntityExtendedChange = new ScriptInvoker;
+	
+	void AddToRoot(SCR_EditableEntityComponent entity)
+	{
+		if (!m_Entities) m_Entities = new set<SCR_EditableEntityComponent>;
+		if (m_Entities.Find(entity) < 0) m_Entities.Insert(entity);
+	}
+	void RemoveFromRoot(SCR_EditableEntityComponent entity)
+	{
+		if (!m_Entities) return;
+		
+		int index = m_Entities.Find(entity);
+		if (index != -1) m_Entities.Remove(index);
+	}
+	void RegisterEntity(SCR_EditableEntityComponent entity)
+	{
+		bool delayBudgetUpdate = false;
+		//--- Get settings for the entity based on its type
+		SCR_EditableEntityCoreTypeSetting setting = null;
+		if (m_TypeSettingsMap.Find(entity.GetEntityType(), setting))
+		{
+			//--- Set default max draw distance
+			if (entity.GetMaxDrawDistanceSq() <= 0)
+				entity.SetMaxDrawDistance(setting.GetMaxDrawDistance());
+			delayBudgetUpdate = setting.GetCanBePlayer();	
+		}
+		else
+		{
+			Print(string.Format("Default type settings not found for '%1'!", Type().EnumToString(EEditableEntityType, entity.GetEntityType())), LogLevel.ERROR);
+		}
+		
+		UpdateBudgets(entity, true, delayBudgetUpdate);	
+		Event_OnEntityRegistered.Invoke(entity);		
+	}
+	void UnRegisterEntity(SCR_EditableEntityComponent entity, IEntity owner = null)
+	{
+		UpdateBudgets(entity, false, false, owner);
+		Event_OnEntityUnregistered.Invoke(entity);
+	}
+	
+	/*!
+	Get all entities.
+	\param[out] entities Array to be filled with child entities
+	\param onlyDirect When true, only the direct descendants are returned, otherwise all children, children of children etc. are returned.
+	\param skipIgnored When true, entities flagged by IGNORE_LAYERS will not be included in the list
+	*/
+	void GetAllEntities(out notnull set<SCR_EditableEntityComponent> entities, bool onlyDirect = false, bool skipIgnored = false)
+	{
+		entities.Clear();
+		if (!m_Entities) return;
+		foreach (SCR_EditableEntityComponent entity: m_Entities)
+		{
+			entities.Insert(entity);
+			if (!onlyDirect) entity.GetChildren(entities, onlyDirect, skipIgnored);
+		}
+	}
+	/*!
+	Get all editable entities with specified access keys.
+	\param[out] entities Array to be filled with editable entities
+	\param accessKey Access key. Only entities with at least one compatible key will be returned.
+	*/
+	void GetAllEntities(out notnull set<SCR_EditableEntityComponent> entities, EEditableEntityAccessKey accessKey)
+	{
+		entities.Clear();
+		if (!m_Entities) return;
+		foreach (SCR_EditableEntityComponent entity: m_Entities)
+		{
+			if (!entity.HasAccessSelf(accessKey)) continue;
+			
+			entities.Insert(entity);
+			
+			if (entity.IsLayer())
+			{
+				set<SCR_EditableEntityComponent> subEntities = new set<SCR_EditableEntityComponent>;
+				entity.GetChildren(subEntities, false, accessKey);
+				foreach (SCR_EditableEntityComponent child: subEntities)
+				{
+					entities.Insert(child);
+				}
+				//entities.InsertAll(subEntities)
+			}
+		}
+	}
+	
+	/*!
+	Find nearest entity to given position.
+	\param pos Position from which the distance is measured
+	\param type Required entity type
+	\param flags Required entity flags
+	\param onlyDirect True to scan only root entities, false to scan all editable entities in the world
+	\return Editable entity
+	*/
+	SCR_EditableEntityComponent FindNearestEntity(vector pos, EEditableEntityType type, EEditableEntityFlag flags = 0, bool onlyDirect = true)
+	{
+		float nearestDis = float.MAX;
+		SCR_EditableEntityComponent nearestEntity;
+		
+		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>();
+		if (onlyDirect)
+			entities = m_Entities;
+		else
+			GetAllEntities(entities);
+		
+		foreach (SCR_EditableEntityComponent entity: m_Entities)
+		{
+			if (entity.GetEntityType() != type || !entity.HasEntityFlag(flags))
+				continue;
+			
+			vector entityPos;
+			if (!entity.GetPos(entityPos))
+				continue;
+			
+			float dis = vector.DistanceSq(entityPos, pos);
+			if (dis > nearestDis)
+				continue;
+			
+			nearestDis = dis;
+			nearestEntity = entity;
+		}
+		return nearestEntity;
+	}
+	
+	/*!
+	Check if entity of given type can be moved inside parent entity.
+	\param type Type of edited entity
+	\param parentEntity Desired parent
+	\params interactionFlags Flags defining details about the interaction (all are enabled if undefined)
+	\return True if it can be moved inside
+	*/
+	bool CanSetParent(EEditableEntityType type, SCR_EditableEntityComponent parentEntity, EEditableEntityInteractionFlag interactionFlags = int.MAX)
+	{		
+		SCR_EditableEntityCoreTypeSetting setting;
+		if (m_TypeSettingsMap.Find(type, setting) && setting.GetInteraction())
+			return setting.GetInteraction().CanSetParent(parentEntity, interactionFlags);
+		else
+			return false;
+	}	
+	/*!
+	Check if entity of given type can be moved inside parent entity type.
+	\param type Type of edited entity
+	\param EEditableEntityType entity type of parent
+	\param EEditableEntityFlag entity flags of parent
+	\params interactionFlags Flags defining details about the interaction (all are enabled if undefined)
+	\return True if it can be moved inside
+	*/
+	bool CanSetParentOfType(EEditableEntityType type, EEditableEntityType parentType, EEditableEntityFlag parentFlags, EEditableEntityInteractionFlag interactionFlags = int.MAX)
+	{
+		SCR_EditableEntityCoreTypeSetting setting;
+	
+		if (m_TypeSettingsMap.Find(type, setting) && setting.GetInteraction())
+			return setting.GetInteraction().CanSetParentOfType(parentType, parentFlags, interactionFlags);
+		else
+			return false;
+	}
+	/*!
+	Check if new layer can be created for entity
+	\param EEditableEntityType type of the entity to wrap in the new layer
+	\param EEditableEntityType new layer type
+	\param newLayerFlags new layer m_Flags
+	\param parentEntity parent entity
+	\param CheckParentEntity if should check if new layer can be added to parent
+	\return bool if the given layer can be created for the entity
+	*/
+	bool CanCreateParentFor(EEditableEntityType type, EEditableEntityType newLayerType, EEditableEntityFlag newLayerFlags, SCR_EditableEntityComponent parentEntity, bool checkParentEntity = true)
+	{
+		SCR_EditableEntityCoreTypeSetting setting;
+	
+		if (m_TypeSettingsMap.Find(type, setting) && setting.GetInteraction())
+			return setting.GetInteraction().CanCreateParentFor(newLayerType, newLayerFlags, parentEntity, checkParentEntity);
+		else
+			return false;
+	}
+	
+	void GetBudgets(out notnull array<ref SCR_EditableEntityCoreBudgetSetting> budgets)
+	{
+		foreach (SCR_EditableEntityCoreBudgetSetting budget : m_BudgetSettings)
+		{
+			budgets.Insert(budget);
+		}
+	}
+	
+	void GetLabelGroups(out notnull array<ref SCR_EditableEntityCoreLabelGroupSetting> labelGroups)
+	{
+		foreach ( SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
+		{
+			int index = labelGroups.Count();
+			
+			for (int i = 0; i < index; i++)
+			{
+				if (labelGroups[i].GetOrder() >= labelGroup.GetOrder())
+				{
+					index = i;
+					break;
+				}
+			}
+			
+			labelGroups.InsertAt(labelGroup, index);
+		}
+	}
+	
+	bool GetLabelGroupType(EEditableEntityLabel label, out EEditableEntityLabelGroup labelGroup)
+	{
+		SCR_EditableEntityCoreLabelSetting labelSettings;
+		if (!m_LabelSettingsMap.Find(label, labelSettings))
+			return false;
+		
+		labelGroup = labelSettings.GetLabelGroupType();
+		return true;
+	}
+	
+	bool GetLabelsOfGroup(EEditableEntityLabelGroup groupType, out notnull array<SCR_EditableEntityCoreLabelSetting> labels)
+	{
+		return m_LabelListMap.Find(groupType, labels);
+	}
+	
+	bool GetLabelUIInfo(EEditableEntityLabel entityLabel, out SCR_UIInfo uiInfo)
+	{
+		SCR_EditableEntityCoreLabelSetting labelSetting = m_LabelSettingsMap.Get(entityLabel);
+		if (labelSetting)
+		{
+			uiInfo = labelSetting.GetInfo();
+		}
+		return uiInfo != null;
+	}
+	
+	
+	/*!
+	Get specific label order. Returns -1 if label not found
+	\return int label order.
+	*/
+	int GetLabelOrder(EEditableEntityLabel entityLabel)
+	{
+		SCR_EditableEntityCoreLabelSetting labelSetting = m_LabelSettingsMap.Get(entityLabel);
+		if (labelSetting)
+			return labelSetting.GetOrder();
+		else 
+			return -1;
+	}
+	
+	/*!
+	Load global settings for given entity.
+	\param entity Affected entity
+	*/
+	void LoadSettings(SCR_EditableEntityComponent entity)
+	{
+		if (!entity) return;
+		
+		//--- Get settings for the entity based on its type
+		SCR_EditableEntityCoreTypeSetting setting = null;
+		if (!m_TypeSettingsMap.Find(entity.GetEntityType(), setting))
+		{
+			Print(string.Format("Default type settings not found for '%1'!", Type().EnumToString(EEditableEntityType, entity.GetEntityType())), LogLevel.ERROR);
+			return;
+		}
+		
+		//--- Set default max draw distance
+		if (entity.GetMaxDrawDistanceSq() <= 0)
+			entity.SetMaxDrawDistance(setting.GetMaxDrawDistance());
+	}
+	/*!
+	Get global settings for given entity.
+	\param entity Editable entity
+	*/
+	SCR_EditableEntityCoreTypeSetting GetSettings(SCR_EditableEntityComponent entity)
+	{
+		SCR_EditableEntityCoreTypeSetting setting = null;
+		if (entity && !m_TypeSettingsMap.Find(entity.GetEntityType(), setting))
+			return setting;
+		
+		return null;
+	}
+	
+	/*!
+	Get draw distance override value for player characters.
+	\return Draw distance value
+	*/
+	float GetPlayerDrawDistanceSq()
+	{
+		return m_fPlayerDrawDistance;
+	}
+	
+	/*!
+	Print out the hierarchy of all editable entities.
+	*/
+	void Log()
+	{
+		if (!m_Entities) return;
+		Print("--------------------------------------------------", LogLevel.DEBUG);
+		Print(string.Format("--- ALL (%1)", m_Entities.Count()), LogLevel.DEBUG);
+		foreach (SCR_EditableEntityComponent entity: m_Entities)
+		{
+			entity.Log();
+		}
+		Print("--------------------------------------------------", LogLevel.DEBUG);
+	}
+	
+	bool GetBudgetSettingsForBudgetType(EEditableEntityBudget budgetType, out SCR_EditableEntityCoreBudgetSetting budgetSettings)
+	{
+		return m_BudgetSettingsMap.Find(budgetType, budgetSettings);
+	}
+	
+	EEditableEntityBudget GetBudgetForEntityType(EEditableEntityType entityType)
+	{
+		EEditableEntityBudget budget;
+		switch (entityType)
+		{
+			case EEditableEntityType.GENERIC:
+			case EEditableEntityType.ITEM:
+				budget = EEditableEntityBudget.PROPS;
+				break;
+			case EEditableEntityType.CHARACTER:
+			case EEditableEntityType.GROUP:
+				budget = EEditableEntityBudget.AI;
+				break;
+			case EEditableEntityType.VEHICLE:
+				budget = EEditableEntityBudget.VEHICLES;
+				break;
+			case EEditableEntityType.WAYPOINT:
+			case EEditableEntityType.COMMENT:
+			case EEditableEntityType.SYSTEM:
+			case EEditableEntityType.TASK:
+				budget = EEditableEntityBudget.SYSTEMS;
+				break;
+			default:
+				budget = EEditableEntityBudget.PROPS;
+				break;
+		}
+		return budget;
+	}
+	
+	protected void UpdateBudgets(SCR_EditableEntityComponent entity, bool added, bool delayUpdate, IEntity owner = null)
+	{
+		if (!m_UpdateBudgets || !entity)
+			return;
+		
+		EEditableEntityType entityType = entity.GetEntityType();
+		if (entity.HasEntityFlag(EEditableEntityFlag.LOCAL) || entity.HasEntityFlag(EEditableEntityFlag.NON_INTERACTIVE))
+			return;
+		
+		if (delayUpdate)
+		{
+			// TODO explain
+			GetGame().GetCallqueue().CallLater(UpdateBudgetForEntity, 1, false, entity, added, owner);
+		}
+		else
+		{
+			UpdateBudgetForEntity(entity, added, owner);	
+		}
+	}
+	
+	protected void UpdateBudgetForEntity(SCR_EditableEntityComponent entity, bool added, IEntity owner = null)
+	{
+		if (!entity)
+		{
+			// Entity was deleted before delayed update could run, ignore entity. Will be ignored for both delayed Register and Unregister, so shouldn't affect total budget
+			return;
+		}
+		
+		array<ref SCR_EntityBudgetValue> entityBudgetCosts = new array<ref SCR_EntityBudgetValue>;
+		if (entity.GetEntityBudgetCost(entityBudgetCosts, owner))
+		{
+			foreach	(SCR_EntityBudgetValue budgetCost : entityBudgetCosts)
+			{
+				UpdateBudget(budgetCost.GetBudgetType(), added, budgetCost);
+			}
+		}
+		else
+		{
+			// Ignore non-ai characters
+			AIControlComponent aiControl = AIControlComponent.Cast(entity.GetOwner().FindComponent(AIControlComponent));
+			if (aiControl && !aiControl.IsAIActivated())
+			{
+				return;
+			}
+			
+			UpdateBudget(GetBudgetForEntityType(entity.GetEntityType(owner)), added);
+		}
+	}
+	
+	protected void UpdateBudget(EEditableEntityBudget budgetType, bool added, SCR_EntityBudgetValue budgetCost = null)
+	{
+		SCR_EditableEntityCoreBudgetSetting budgetSettings;
+		if (!GetBudgetSettingsForBudgetType(budgetType, budgetSettings))
+		{
+			return;
+		}
+		
+		if (added)
+		{
+			budgetSettings.AddToBudget(budgetCost);
+		}
+		else
+		{
+			budgetSettings.SubtractFromBudget(budgetCost);
+		}
+		Event_OnEntityBudgetChanged.Invoke(budgetSettings);
+	}
+	
+	override void OnUpdate(float timeSlice)
+	{
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ALL))
+		{
+			int type = DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_TYPE) - 1;
+			if (type == -1)
+			{
+				Log();
+			}
+			else
+			{
+				SCR_BaseEditableEntityFilter filter = SCR_BaseEditableEntityFilter.GetInstance(Math.Pow(2, type));
+				if (filter)
+					filter.Log();
+			}
+			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ALL, false);
+		}
+	}
+	override void OnGameStart()
+	{
+		typename state = EEditableEntityState;
+		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES, "Editable Entities", "Editor");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ALL, "", "Log All", "Editable Entities");
+		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_TYPE, "", "Log Type", "Editable Entities", string.Format("-1 %1 -1 1", state.GetVariableCount() - 1));
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_DISABLE, "", "Disable entities", "Editable Entities");
+	}
+	override void OnGameEnd()
+	{
+		m_Entities = null;
+		m_CurrentLayer = null;
+		
+		Event_OnEntityRegistered = new ScriptInvoker;
+		Event_OnEntityUnregistered = new ScriptInvoker;
+		Event_OnParentEntityChanged = new ScriptInvoker;
+		Event_OnEntityAccessKeyChanged = new ScriptInvoker;
+		Event_OnEntityVisibilityChanged = new ScriptInvoker;
+		Event_OnEntityBudgetChanged = new ScriptInvoker;
+		Event_OnEntityExtendedChange = new ScriptInvoker;
+		
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES);
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ALL);
+	}
+	
+	void SCR_EditableEntityCore()
+	{
+		foreach (SCR_EditableEntityCoreTypeSetting setting: m_TypeSettings)
+		{
+			m_TypeSettingsMap.Insert(setting.GetType(), setting)
+		}
+		
+		foreach (SCR_EditableEntityCoreBudgetSetting budget : m_BudgetSettings)
+		{
+			m_BudgetSettingsMap.Insert(budget.GetBudgetType(), budget);
+		}
+		
+		foreach (SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
+		{
+			array<SCR_EditableEntityCoreLabelSetting> groupLabels = {};
+			EEditableEntityLabelGroup labelGroupType = labelGroup.GetLabelGroupType();
+			m_LabelGroupSettingsMap.Insert(labelGroupType, labelGroup);
+			
+			foreach (SCR_EditableEntityCoreLabelSetting entityLabel : m_EntityLabels)
+			{
+				if (entityLabel.GetLabelGroupType() == labelGroupType)
+				{
+					groupLabels.Insert(entityLabel);
+				}
+			}
+			m_LabelListMap.Insert(labelGroupType, groupLabels);
+		}
+		
+		foreach (SCR_EditableEntityCoreLabelSetting labelSetting : m_EntityLabels)
+		{
+			m_LabelSettingsMap.Insert(labelSetting.GetLabelType(), labelSetting);
+		}
+		
+		m_UpdateBudgets = RplSession.Mode() != RplMode.Client;
+		
+		//--- Square the value
+		m_fPlayerDrawDistance = m_fPlayerDrawDistance * m_fPlayerDrawDistance;
+	}
+};

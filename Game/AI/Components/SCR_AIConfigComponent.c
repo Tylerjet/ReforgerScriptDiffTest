@@ -1,0 +1,178 @@
+[ComponentEditorProps(category: "GameScripted/AI", description: "Component for utility AI system calculations", color: "0 0 255 255")]
+class SCR_AIConfigComponentClass: ScriptComponentClass
+{
+};
+
+//------------------------------------------------------------------------------------------------
+class SCR_AIConfigComponent : ScriptComponent
+{
+	// @TODO: Implement into the rest of the AI
+	[Attribute( defvalue: "0.5", uiwidget: UIWidgets.Slider, desc: "Unit skill", params: "0 1 0.01" )]
+	float m_Skill;
+	
+	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Alow movement" )]
+	bool m_EnableMovement;
+	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow reacting on danger events" )]
+	bool m_EnableDangerEvents;
+	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow reacting on perceived targets" )]
+	bool m_EnablePerception;
+	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow shooting and attacking in general" )]
+	bool m_EnableAttack;
+	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow finding and taking cover" )]
+	bool m_EnableTakeCover;
+	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow aiming and gestures in general" )]
+	bool m_EnableLooking;
+	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow sending AI messages" )]
+	bool m_EnableCommunication;
+	[Attribute( defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "Allow leader to stop when formation is deformed" )]
+	bool m_EnableLeaderStop;
+	[Attribute( defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Allow artificial aiming error for AI." )]
+	bool m_EnableAimingError;
+	
+	[Attribute("", UIWidgets.Object)]
+	ref array<ref SCR_AIReactionBase> m_aDefaultReactions;
+
+	[Attribute("", UIWidgets.Object)]
+	ref array<ref SCR_AIDangerReaction> m_aDangerReactions;	
+	ref map<EAIDangerEventType, ref SCR_AIDangerReaction> m_mDangerReactions = new map<EAIDangerEventType, ref SCR_AIDangerReaction>();
+	
+	[Attribute("", UIWidgets.Object)]
+	ref array<ref SCR_AIGoalReaction> m_aGoalReactions;	
+	ref array<ref SCR_AIGoalReaction> m_aGoalReactionsPacked = new array<ref SCR_AIGoalReaction>();
+	
+	[Attribute("", UIWidgets.Object)]
+	ref array<ref SCR_AIInfoReaction> m_aInfoReactions;	
+	ref array<ref SCR_AIInfoReaction> m_aInfoReactionsPacked = new array<ref SCR_AIInfoReaction>();	
+
+	[Attribute("", UIWidgets.Object)]
+    ref SCR_AITargetReactionBase m_Reaction_EnemyTarget;
+	
+	[Attribute("", UIWidgets.Object)]
+    ref SCR_AITargetReactionBase m_Reaction_UnknownTarget;
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnPostInit(IEntity owner)
+	{
+		super.OnPostInit(owner);
+		SetEventMask(owner, EntityEvent.INIT);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void EOnInit(IEntity owner)
+	{
+		SCR_AISettingsComponent settings = SCR_AISettingsComponent.GetInstance();
+		if (!settings)
+			return;
+
+		// If the settings component is enabled, overwrite current settings by global ones
+		m_EnableMovement = settings.m_EnableMovement;
+		m_EnableDangerEvents = settings.m_EnableDangerEvents;
+		m_EnablePerception = settings.m_EnablePerception;
+		m_EnableAttack = settings.m_EnableAttack;
+		m_EnableTakeCover = settings.m_EnableTakeCover;
+		m_EnableLooking = settings.m_EnableLooking;
+		m_EnableCommunication = settings.m_EnableCommunication;
+		m_EnableLeaderStop = settings.m_EnableLeaderStop;
+		m_EnableAimingError = settings.m_EnableAimError;
+		
+		typename type_EAIActionType = EAIActionType;
+		
+		foreach (SCR_AIDangerReaction reaction : m_aDangerReactions)
+		{
+			m_mDangerReactions[reaction.m_eType] = reaction;
+		}
+		
+		m_aGoalReactionsPacked.Resize(type_EAIActionType.GetVariableCount());
+		foreach (SCR_AIGoalReaction reaction : m_aGoalReactions)
+		{
+			if(reaction.m_eType != EAIActionType.NONE)
+				m_aGoalReactionsPacked[reaction.m_eType] = reaction;
+		}
+		
+		m_aInfoReactionsPacked.Resize(type_EAIActionType.GetVariableCount());
+		foreach (SCR_AIInfoReaction reaction : m_aInfoReactions)
+		{
+			if(reaction.m_eType != EAIActionType.NONE)
+				m_aInfoReactionsPacked[reaction.m_eType] = reaction;			
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void PerformGoalReaction(SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		SCR_AIMessageGoal goalMessage = SCR_AIMessageGoal.Cast(message);
+		if (!goalMessage)
+		{
+			Debug.Error("Message mismatch");
+			return;
+		}
+		SCR_AIGoalReaction reaction = m_aGoalReactionsPacked[goalMessage.m_MessageType];
+		if (reaction)
+		{
+			reaction.PerformReaction(utility, message);
+			return;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void PerformGoalReaction(SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		SCR_AIMessageGoal goalMessage = SCR_AIMessageGoal.Cast(message);
+		if (!goalMessage)
+		{
+			Debug.Error("Message mismatch");
+			return;
+		}
+		SCR_AIGoalReaction reaction = m_aGoalReactionsPacked[goalMessage.m_MessageType];
+		if (reaction)
+		{
+			reaction.PerformReaction(utility, message);
+			return;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void PerformInfoReaction(SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		SCR_AIMessageInfo infoMessage = SCR_AIMessageInfo.Cast(message);
+		if (!infoMessage)
+		{
+			Debug.Error("Message mismatch");
+			return;
+		}
+		SCR_AIInfoReaction reaction = m_aInfoReactionsPacked[infoMessage.m_MessageType];
+		if (reaction)
+		{
+			reaction.PerformReaction(utility, message);
+			return;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool PerformDangerReaction(SCR_AIUtilityComponent utility, AIDangerEvent dangerEvent)
+	{
+		SCR_AIDangerReaction reaction = m_mDangerReactions[dangerEvent.GetDangerType()];
+		if (reaction)
+		{
+			return reaction.PerformReaction(utility, utility.m_ThreatSystem, dangerEvent);
+		}
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddDefaultBehaviors(SCR_AIUtilityComponent utility)
+	{
+		foreach (SCR_AIReactionBase reaction : m_aDefaultReactions)
+		{
+			reaction.PerformReaction(utility); // @TODO: This has to work for all reactions, now it would work only on default ones
+		}
+	}
+	
+	void AddDefaultActivities(SCR_AIGroupUtilityComponent utility)
+	{
+		foreach (SCR_AIReactionBase reaction : m_aDefaultReactions)
+		{
+			reaction.PerformReaction(utility); // @TODO: This has to work for all reactions, now it would work only on default ones
+		}
+	}
+};

@@ -1,0 +1,186 @@
+//#define PREVIEW_ENTITY_SHOW_REFERENCE
+
+[EntityEditorProps(category: "GameScripted/Preview", description: "")]
+class SCR_RefPreviewEntityClass: SCR_EditablePreviewEntityClass
+{
+};
+/*!
+Reference entity used to position edited entities according to preview.
+*/
+class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
+{
+	protected ref set<SCR_EditableEntityComponent> m_aEditedEntities;
+	
+	/*!
+	Create and apply reference entity used for entity placement once transformation is confirmed.
+	\param pivot Directly edited entity
+	\param param Transformation params
+	*/
+	static void SpawnAndApplyReference(SCR_EditableEntityComponent entity, SCR_EditorPreviewParams param)
+	{
+		//--- Reference offset based on vertical mode (without it, the entity would be always spawned on terrain)
+		vector transformRef[4];
+		param.GetWorldTransform(transformRef);
+		if (param.m_VerticalMode == EEditorTransformVertical.TERRAIN)
+		{
+			float surfaceY = SCR_Global.GetTerrainY(transformRef[3], null, !param.m_bIsUnderwater);
+			transformRef[3][1] = surfaceY + (transformRef[3][1] - surfaceY) / 2;
+		}
+		
+		ResourceName material;
+#ifdef PREVIEW_ENTITY_SHOW_REFERENCE
+		material = "{D0126AF0E6A27141}Common/Materials/Colors/colorRed.emat";
+#endif
+		EPreviewEntityFlag flags = EPreviewEntityFlag.IGNORE_TERRAIN | EPreviewEntityFlag.IGNORE_PREFAB | EPreviewEntityFlag.ONLY_EDITABLE;
+		
+		SCR_RefPreviewEntity refEntity = SCR_RefPreviewEntity.Cast(SCR_RefPreviewEntity.SpawnPreviewFromEditableEntity(entity, "SCR_RefPreviewEntity", GetGame().GetWorld(), null, material, flags));
+		refEntity.ApplyReference(param);
+		
+#ifndef PREVIEW_ENTITY_SHOW_REFERENCE
+		delete refEntity;
+#endif
+	}
+	
+	/*!
+	Apply changes in reference entity to its original entities.
+	\param param Transformation params
+	*/
+	void ApplyReference(SCR_EditorPreviewParams param)
+	{
+		//--- Get navmesh rebuild areas *BEFORE* the change
+		SCR_AIWorld aiWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
+		array<ref Tuple2<vector, vector>> areas = new array<ref Tuple2<vector, vector>>; //--- Min, max
+		if (aiWorld)
+		{
+			foreach (SCR_BasePreviewEntity child: m_aChildren)
+			{			
+				if (child.m_Entity)
+					aiWorld.GetNavmeshRebuildAreas(child.m_Entity, areas);
+			}
+		}
+		
+		//--- Update reference (ToDo: Do it only when needed)
+		vector transform[4];
+		param.GetWorldTransform(transform);
+		UpdateReference(transform, param.m_VerticalMode, param.m_bIsUnderwater);
+		
+		//--- Apply changes on all children, and get navmesh areas *AFTER* the change
+		SCR_RefPreviewEntity childRef;
+		if (aiWorld)
+		{
+			if (m_aChildren)
+			{
+				foreach (SCR_BasePreviewEntity child: m_aChildren)
+				{
+					childRef = SCR_RefPreviewEntity.Cast(child);
+					if (childRef)
+					{
+						childRef.ApplyChild(param, true, m_aEditedEntities);
+						if (child.m_Entity)
+							aiWorld.GetNavmeshRebuildAreas(child.m_Entity, areas);
+					}
+				}
+			}
+			aiWorld.RequestNavmeshRebuildAreas(areas);
+		}
+		else
+		{
+			if (m_aChildren)
+			{
+				foreach (SCR_BasePreviewEntity child: m_aChildren)
+				{
+					childRef = SCR_RefPreviewEntity.Cast(child);
+					if (childRef)
+						childRef.ApplyChild(param, true, m_aEditedEntities);
+				}
+			}
+		}
+	}
+	protected void ApplyChild(SCR_EditorPreviewParams param, bool isDirectChild, set<SCR_EditableEntityComponent> editedEntities)
+	{
+		if (!m_EditableEntity)
+			return;
+
+		vector transform[4];
+		GetWorldTransform(transform);
+		
+		bool changeTransformation = true;
+		if (isDirectChild)
+		{
+			SCR_EditableEntityComponent currentParent = m_EditableEntity.GetParentEntity();
+			SCR_EditableEntityComponent newParent;
+			bool changeParent = false;
+			
+			if (param.m_Target && param.m_TargetInteraction == EEditableEntityInteraction.LAYER)
+			{
+				//--- Hovering over target layer
+				newParent = param.m_Target;
+				changeParent = true;
+				changeTransformation = false;
+			}
+			else if (param.m_Parent != currentParent && param.m_Parent != m_EditableEntity && (param.m_bParentChanged || !currentParent || !currentParent.HasEntityFlag(EEditableEntityFlag.INDIVIDUAL_CHILDREN)))
+			{
+				//--- Entered target layer (and the target is not the entity itself)
+				newParent = param.m_Parent;
+				changeParent = true;
+			}
+			if (changeParent)
+			{
+				//--- Don't change parent of group members when their group is also being edited
+				SCR_EditableEntityComponent editableGroup = m_EditableEntity.GetAIGroup();
+				if (m_EditableEntity == editableGroup || !editableGroup || editedEntities.Find(editableGroup) == -1)
+				{
+					//--- Set the parent, and update the reference so all other entities use it as well (in case it changed, like when moving character to root)
+					param.m_Parent = m_EditableEntity.SetParentEntity(newParent, true);
+				}
+			}
+		}
+		
+		if (changeTransformation)
+		{
+			//--- Don't transform vehicle crew when the vehicle is also being edited
+			SCR_EditableEntityComponent editableVehicle = m_EditableEntity.GetVehicle();
+			if (!editableVehicle || editedEntities.Find(editableVehicle) == -1)
+			{
+				m_EditableEntity.SetTransform(transform);
+			}
+			
+			if (m_aChildren)
+			{
+				SCR_RefPreviewEntity childRef;
+				foreach (SCR_BasePreviewEntity child: m_aChildren)
+				{
+					childRef = SCR_RefPreviewEntity.Cast(child);
+					if (childRef)
+						childRef.ApplyChild(param, false, editedEntities);
+				}
+			}
+		}
+	}
+	protected void UpdateReference(vector transform[4], EEditorTransformVertical verticalMode, bool isUnderwater)
+	{
+		float currentHeight;
+		if (!SCR_Enum.HasFlag(m_Flags, EPreviewEntityFlag.IGNORE_TERRAIN))
+		{
+			vector currentPos = GetWorldTransformAxis(3);
+			currentHeight = currentPos[1] - SCR_Global.GetTerrainY(currentPos, GetWorld(), !SCR_Enum.HasFlag(m_Flags, EPreviewEntityFlag.UNDERWATER));
+		}
+		float height = transform[3][1] - SCR_Global.GetTerrainY(transform[3], GetWorld(), !isUnderwater);
+		
+		m_fHeightTerrain = 0;
+		SetPreviewTransform(transform, verticalMode, height - currentHeight, isUnderwater);
+	}
+	override protected void EOnPreviewInit(SCR_BasePreviewEntry entry, SCR_BasePreviewEntity root)
+	{
+		super.EOnPreviewInit(entry, root);
+		
+		SCR_RefPreviewEntity refRoot = SCR_RefPreviewEntity.Cast(root);
+		if (refRoot)
+		{
+			if (!refRoot.m_aEditedEntities)
+				refRoot.m_aEditedEntities = new set<SCR_EditableEntityComponent>();
+			
+			refRoot.m_aEditedEntities.Insert(m_EditableEntity);
+		}
+	}
+};

@@ -1,0 +1,129 @@
+class SCR_CampaignDeployMobileAssemblyUserAction : ScriptedUserAction
+{
+	protected IEntity m_TruckBed;
+	protected SCR_CampaignMobileAssemblyComponent m_AssemblyComponent;
+	protected DamageManagerComponent m_DamageManagerComponent;
+	
+	//------------------------------------------------------------------------------------------------
+	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
+	{
+		m_TruckBed = pOwnerEntity;
+		
+		if (!m_TruckBed)
+			return;
+		
+		m_AssemblyComponent = SCR_CampaignMobileAssemblyComponent.Cast(m_TruckBed.FindComponent(SCR_CampaignMobileAssemblyComponent));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	DamageManagerComponent GetDamageManagerComponent()
+	{
+		if (m_DamageManagerComponent)
+			return m_DamageManagerComponent;
+		
+		if (!m_TruckBed)
+			return null;
+		
+		IEntity truck = m_TruckBed.GetParent();
+		
+		if (!truck)
+			return null;
+		
+		m_DamageManagerComponent = DamageManagerComponent.Cast(truck.FindComponent(DamageManagerComponent));
+		
+		return m_DamageManagerComponent;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CanBeShownScript(IEntity user)
+	{
+		if (!m_AssemblyComponent)
+			return false;
+
+		Faction f = SCR_RespawnSystemComponent.GetLocalPlayerFaction();
+		
+		if (!f)
+			return false;
+		
+		if (f != m_AssemblyComponent.GetParentFaction())
+			return false;
+		
+		if (GetDamageManagerComponent() && GetDamageManagerComponent().GetState() == EDamageState.DESTROYED)
+			return false;
+		
+		if (m_TruckBed)
+		{
+			IEntity truck = m_TruckBed.GetParent();
+			
+			if (truck)
+			{
+				Physics physicsComponent = truck.GetPhysics();
+				vector vel = physicsComponent.GetVelocity();
+				vel[1] = 0; // Ignore Y velocity
+				
+				if (physicsComponent && vel.LengthSq() > 0.01)
+					return false;
+			}
+		}
+		
+		return !m_AssemblyComponent.IsDeployed();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CanBePerformedScript(IEntity user)
+	{
+		if (!m_AssemblyComponent)
+			return false;
+		
+		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		
+		if (!campaign)
+			return false;
+		
+		SCR_CampaignFaction f = m_AssemblyComponent.GetParentFaction();
+		
+		if (!f)
+			return false;
+		
+		if (campaign.IsMobileAssemblyDeployed(f))
+		{
+			SetCannotPerformReason("#AR-Campaign_Action_AnotherAssemblyActive-UC");
+			return false;
+		}
+		
+		if (campaign.GetBasePlayerPresence())
+		{
+			SetCannotPerformReason("#AR-Campaign_Action_AnotherHQNearby-UC");
+			return false;
+		}
+		
+		bool isInRange = m_AssemblyComponent.IsInRadioRange();
+		
+		if (!isInRange)
+			SetCannotPerformReason("#AR-Campaign_Action_NoSignal-UC");
+		
+		return isInRange;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
+	{
+		PlayerController playerController = GetGame().GetPlayerController();
+		
+		if (!playerController)
+			return;
+		
+		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
+		
+		if (!campaignNetworkComponent)
+			return;
+		
+		campaignNetworkComponent.DeployMobileAsembly(m_AssemblyComponent, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool HasLocalEffectOnlyScript()
+	{
+		return true;
+	}
+};

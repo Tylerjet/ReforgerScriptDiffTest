@@ -1,0 +1,280 @@
+/*!
+Component for a line which indicates addon download state in the download manager.
+*/
+
+class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
+{
+	// Icon setting 
+	protected const string ICONICON_DOWNLOAD = "download";
+	protected const string ICON_UP = "up";
+	protected const string ICON_DOWN = "down";
+	
+	protected const Color ICON_COLORICON_DOWNLOAD = UIColors.CONTRAST_COLOR;
+	protected const Color ICON_COLOR_UP = UIColors.CONFIRM;
+	protected const Color ICON_COLOR_DOWN = UIColors.WARNING;
+	
+	protected ref SCR_DownloadManager_AddonDownloadLineBaseWidgets m_Widgets = new SCR_DownloadManager_AddonDownloadLineBaseWidgets();
+	protected ref SCR_WorkshopItemActionDownload m_Action;
+	
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Imageset resource for icons", "imageset")]
+	protected ResourceName m_IconImageSet;
+	
+	bool m_bHideButtons;
+	protected bool m_bVersionChange = false;
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		m_Widgets.Init(w);
+		
+		m_Widgets.m_PauseResumeButtonComponent.m_OnClicked.Insert(OnPauseButton);
+		m_Widgets.m_CancelButtonComponent.m_OnClicked.Insert(OnCancelButton);
+	}
+	
+	
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		GetGame().GetCallqueue().Remove(Update);
+	}
+	
+	
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	//! Initializes the line in interactive mode.
+	//! It will be able to interact with the download action.
+	void InitForDownloadAction(SCR_WorkshopItemActionDownload action)
+	{
+		m_Action = action;
+		Update();
+		GetGame().GetCallqueue().CallLater(Update, 20, true);
+	}
+	
+	
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	//! Initializes the line in non-interactive mode, shows basic data about a download which is already running
+	void InitForCancelDownloadAction(SCR_WorkshopItemActionDownload action)
+	{
+		m_Action = action;
+		m_bHideButtons = true;
+		
+		Update();
+		GetGame().GetCallqueue().CallLater(Update, 20, true);
+	}
+	
+	
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	//! Initializes the line in passive mode. It will just show basic information once
+	void InitForWorkshopItem(SCR_WorkshopItem item, string overrideTargetVersion = string.Empty, bool showVersionAndSize = true)
+	{
+		string addonName = item.GetName();
+		m_Widgets.m_AddonNameText.SetText(addonName);
+		
+		if (!item.GetRestricted())
+		{
+			m_Widgets.m_RightWidgetGroup.SetVisible(showVersionAndSize);
+			
+			if (showVersionAndSize)
+			{
+				string versionFrom = item.GetCurrentLocalVersion();
+				string versionTo = overrideTargetVersion;
+				if (overrideTargetVersion.IsEmpty())
+					versionTo = item.GetLatestVersion();
+				float downloadSize = item.GetSizeBytes();
+				
+				bool showVersionFrom = !versionFrom.IsEmpty() && versionFrom != versionTo;
+				m_Widgets.m_VersionFromText.SetVisible(showVersionFrom);
+				m_Widgets.m_VersionArrow.SetVisible(showVersionFrom);
+				m_Widgets.m_VersionFromText.SetText(versionFrom);
+				
+				m_Widgets.m_VersionToText.SetText(versionTo);
+				
+				string sizeStr = SCR_ByteFormat.GetReadableSize(downloadSize);
+				m_Widgets.m_AddonSizeText.SetText(sizeStr);
+				
+				// Display what action will be done icon 
+				DisplayActionIcon(versionFrom, versionTo);
+				
+				// Check version change 
+				if (!versionFrom.IsEmpty() && versionFrom != versionTo)
+					m_bVersionChange = true;
+			}
+		}
+		else
+		{
+			// The addon is somehow restricted
+			m_Widgets.m_RightWidgetGroup.SetVisible(false);
+			
+			string errorText = SCR_WorkshopUiCommon.GetRestrictedAddonStateText(item);
+			m_Widgets.m_ErrorText.SetVisible(true);
+			m_Widgets.m_ErrorText.SetText(errorText);
+		}
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	SCR_WorkshopItemActionDownload GetDownloadAction()
+	{
+		return m_Action;
+	}
+		
+	
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	protected void Update()
+	{
+		UpdateAllWidgets();
+	}
+	
+	
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	//! Updates all widgets. Only relevant in the mode InitForDownloadAction
+	protected void UpdateAllWidgets()
+	{
+		if (!m_Action)
+			return;
+		
+		// Name
+		m_Widgets.m_AddonNameText.SetText(m_Action.GetAddonName());
+		
+		// Version from
+		string versionFrom = m_Action.GetStartVersion();
+		m_Widgets.m_VersionArrow.SetVisible(!versionFrom.IsEmpty());
+		m_Widgets.m_VersionFromText.SetText(versionFrom);
+
+		
+		// Version to
+		string versionTo = m_Action.GetTargetVersion();
+		m_Widgets.m_VersionToText.SetText(versionTo);
+		
+		// Progress text
+		if (m_Action.IsCompleted() || m_Action.IsFailed() || m_Action.IsCanceled())
+		{
+			m_Widgets.m_ProgressText.SetText(string.Empty);
+		}
+		else
+		{
+			float progress = m_Action.GetProgress();
+			string progressStr = string.Format("%1%%", Math.Round(progress * 100.0));
+			m_Widgets.m_ProgressText.SetText(progressStr);
+		}
+		
+		// Progress bar
+		if (m_Action.IsCompleted())
+			m_Widgets.m_ProgressBar.SetCurrent(1);
+		else if (m_Action.IsFailed() || m_Action.IsCanceled())
+			m_Widgets.m_ProgressBar.SetCurrent(0);
+		else
+			m_Widgets.m_ProgressBar.SetCurrent(m_Action.GetProgress());
+		
+		// Download size
+		float downloadSize = m_Action.GetSizeBytes();
+		string sizeStr = SCR_ByteFormat.GetReadableSize(downloadSize);
+		m_Widgets.m_AddonSizeText.SetText(sizeStr);
+		
+		// Buttons
+		if (m_bHideButtons)
+		{
+			m_Widgets.m_CancelButton.SetVisible(false);
+			m_Widgets.m_PauseResumeButton.SetVisible(false);
+		}
+		else
+		{
+			m_Widgets.m_PauseResumeButton.SetVisible(false);
+			m_Widgets.m_CancelButton.SetVisible(false);
+			if (!m_Action.IsCompleted() && !m_Action.IsFailed() && !m_Action.IsCanceled())
+			{
+				m_Widgets.m_PauseResumeButton.SetVisible(true);			
+				m_Widgets.m_CancelButton.SetVisible(true);
+				
+				string pauseButtonMode = "running";
+				if (m_Action.IsPaused() || m_Action.IsInactive())
+					pauseButtonMode = "paused";
+				
+				m_Widgets.m_PauseResumeButtonComponent.SetEffectsWithAnyTagEnabled({"all", pauseButtonMode});
+			}
+		}
+		
+		// Icons when the download is over
+		if (m_Action.IsCompleted())
+		{
+			m_Widgets.m_DownloadFailedImage.SetVisible(false);
+			m_Widgets.m_DownloadFinishedImage.SetVisible(true);
+		}
+		else if (m_Action.IsFailed() || m_Action.IsCanceled())
+		{
+			m_Widgets.m_DownloadFailedImage.SetVisible(true);
+			m_Widgets.m_DownloadFinishedImage.SetVisible(false);
+		}
+		else
+		{
+			m_Widgets.m_DownloadFailedImage.SetVisible(false);
+			m_Widgets.m_DownloadFinishedImage.SetVisible(false);			
+		}
+	}
+	
+	
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	protected void OnPauseButton()
+	{	
+		if (!m_Action)
+			return;
+		
+		if (m_Action.IsPaused())
+			m_Action.Resume();
+		else if (m_Action.IsInactive())
+			m_Action.Activate();
+		else
+			m_Action.Pause();
+	}
+	
+	
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	protected void OnCancelButton()
+	{
+		if (!m_Action)
+			return;
+		
+		m_Action.Cancel();
+	}
+	
+	//------------------------------------------------------------------------------------------------------------------------
+	//! Display icon with action that need to done - download, update, downgrade
+	protected void DisplayActionIcon(string vFrom, string vTo)
+	{
+		ImageWidget wIcon = m_Widgets.m_AddonActionIcon;
+		if (!wIcon)
+			return;
+		
+		// Defaul to download
+		string imageName = ICONICON_DOWNLOAD;
+		Color color = ICON_COLORICON_DOWNLOAD;
+		
+		// Is there current verion?
+		if (!vFrom.IsEmpty())
+		{
+			SCR_ComparerOperator result = SCR_AddonManager.DifferenceBetweenVersions(vFrom, vTo);
+			
+			if (result == SCR_ComparerOperator.LESS_THAN)
+			{
+				imageName = ICON_UP;
+				color = ICON_COLOR_UP;
+			}
+			else if (result == SCR_ComparerOperator.GREATER_THAN)
+			{
+				imageName = ICON_DOWN;
+				color = ICON_COLOR_DOWN;
+			}
+		}
+		
+		// Setup action icon widget 
+		wIcon.LoadImageFromSet(0, m_IconImageSet, imageName);
+		wIcon.SetColor(color);
+	}
+};

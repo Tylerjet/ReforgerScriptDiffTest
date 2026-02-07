@@ -1,0 +1,121 @@
+//------------------------------------------------------------------------------------------------
+class SCR_CampaignBaseTaskClass: SCR_BaseTaskClass
+{
+};
+
+//------------------------------------------------------------------------------------------------
+//! This class is meant to be inherited.
+//! Don't use this as your custom task!
+class SCR_CampaignBaseTask : SCR_BaseTask
+{
+	
+	const int MIN_OFFSET = 3;
+	const int MAX_OFFSET = 80;
+	//**************************//
+	//PROTECTED MEMBER VARIABLES//
+	//**************************//
+	
+	protected SCR_CampaignBase m_TargetBase = null;
+	protected AIWaypoint m_AssignedWaypoint = null;
+	
+	//*********************//
+	//PUBLIC MEMBER METHODS//
+	//*********************//
+	
+	//------------------------------------------------------------------------------------------------
+	//! Gets the AI waypoint for this task.
+	AIWaypoint GetAIWaypoint()
+	{
+		if (!m_AssignedWaypoint)
+			SetAIWaypoint();
+
+		return m_AssignedWaypoint;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets the base that is marked as the target of this task.
+	//! For capture, target base should be the base to be captured.
+	//! For defend, target base should be the base to be defended.
+	//! For recon, target base should be the base around which recon should be done.
+	void SetTargetBase(notnull SCR_CampaignBase targetBase)
+	{
+		if (SCR_MapEntity.GetMapInstance())
+		{
+			SCR_MapEntity.GetOnMapZoom().Insert(SetOffset);
+			SCR_MapEntity.GetOnMapOpen().Insert(SetOffset);
+		}
+			
+		m_TargetBase = targetBase;
+		SetOrigin(m_TargetBase.GetOrigin());
+		CreateMapUIIcon();
+		UpdateMapInfo();
+		SetHUDIcon();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Temporary method to set offset of task marker from base marker. Once we have a proper solution for the map, this can be deleted.
+	void SetOffset()
+	{
+		vector newPos = m_TargetBase.GetOrigin();
+		newPos[0] = newPos[0] + CalculateOffset() / 2.5;
+		newPos[2] = newPos[2] - CalculateOffset() / 5;
+		SetOrigin(newPos);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Temporary method to set offset of task marker from base marker. Once we have a proper solution for the map, this can be deleted.
+	float CalculateOffset()
+	{
+		float pixelPerUnit = SCR_MapEntity.GetMapInstance().GetCurrentPixelPerUnit();
+		int max_offset = MAX_OFFSET;
+		int min_offset = MIN_OFFSET;
+		float min_zoom = SCR_MapConstants.MIN_PIX_PER_METER;
+		float max_zoom = (SCR_MapEntity.GetMapInstance().GetMinZoom() / SCR_MapEntity.GetMapInstance().GetMapWidget().PixelPerUnit());
+		
+		float a = max_offset * min_offset * (max_zoom - min_zoom) / (min_offset - max_offset);
+		float b = min_zoom - a / min_offset;
+		
+		return b + a / pixelPerUnit;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetBaseNameWithCallsign()
+	{
+		if (m_TargetBase.GetType() == CampaignBaseType.RELAY)
+			return m_TargetBase.GetBaseNameUpperCase();
+		return string.Format("%1 (%2)", m_TargetBase.GetBaseNameUpperCase(), m_TargetBase.GetCallsignDisplayNameOnlyUC());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns the base that is marked as target of this task.
+	//! For capture, target base should be the base to be captured.
+	//! For defend, target base should be the base to be defended.
+	//! For recon, target base should be the base around which recon should be done.
+	SCR_CampaignBase GetTargetBase()
+	{
+		return m_TargetBase;
+	}
+	
+	//******************************//
+	//PUBLIC OVERRIDE MEMBER METHODS//
+	//******************************//
+	
+	
+	//************************//
+	//PROTECTED MEMBER METHODS//
+	//************************//
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetAIWaypoint()
+	{
+		if (GetTargetBase().GetType() != CampaignBaseType.RELAY)
+			m_AssignedWaypoint = GetTargetBase().GetTaskWaypoint();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void UpdateMapInfo()
+	{
+		//Insert task icon into base's map UI
+		//m_TargetBase cannot be null here
+	}
+};

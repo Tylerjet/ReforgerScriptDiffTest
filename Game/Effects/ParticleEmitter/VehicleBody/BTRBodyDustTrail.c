@@ -1,0 +1,27 @@
+class BTRBodyDustTrailClass: VehicleBodyEffectBaseClass
+{
+};
+
+class BTRBodyDustTrail : VehicleBodyEffectBase
+{
+	void BTRBodyDustTrail(IEntitySource src, IEntity parent)
+	{
+		SetPathToPTC("{21AB2949F7DAD15A}Particles/Vehicle/Vehicle_dust_car_BTR_wheel_default.ptc");
+	}
+	
+	override void UpdateVehicleDustEffect(float speed, float start_speed, float end_speed)
+	{
+		float size_coef = Math.AbsFloat(  0.5 + ( (speed - start_speed)*0.5)  / end_speed );
+		float speed_coef = Math.AbsFloat(  (speed - start_speed)  / end_speed );
+		float gravity_coef = Math.AbsFloat(  (speed - start_speed)  / end_speed );
+		
+		size_coef = Math.Clamp(size_coef , 0, 1);
+		speed_coef = Math.Clamp(speed_coef , 0, 1);
+		gravity_coef = Math.Clamp(gravity_coef , 0, 1);
+		
+		SCR_ParticleAPI.LerpAllEmitters(this, size_coef, EmitterParam.SIZE);
+		SCR_ParticleAPI.LerpAllEmitters(this, gravity_coef, EmitterParam.GRAVITY_SCALE_RND);
+		SCR_ParticleAPI.LerpAllEmitters(this, speed_coef, EmitterParam.VELOCITY);
+		SCR_ParticleAPI.LerpAllEmitters(this, speed_coef, EmitterParam.VELOCITY_RND);
+	}
+};

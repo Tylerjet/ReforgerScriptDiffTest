@@ -1,0 +1,95 @@
+/**
+Daytime Attribute for getting and setting varriables in Editor Attribute window
+*/
+[BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
+class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
+{		
+	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
+	{
+		//If opened in global attributes
+		if (!IsGameMode(item)) 
+			return null;
+		
+		TimeAndWeatherManagerEntity timeManager =  GetGame().GetTimeAndWeatherManager();
+		if (!timeManager) return null;
+	
+		return SCR_BaseEditorAttributeVar.CreateFloat(timeManager.GetTimeOfTheDay() * 3600);
+	}
+	
+	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
+	{
+		if (!var || isInit)
+			return;
+		
+		//If slider moved set all deselected
+		manager.SetAttributeSelected(SCR_TimePresetsEditorAttribute, false, -1);
+	}
+	
+	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
+	{
+		if (!var) return;
+
+		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		if (!timeManager)
+			return;
+		
+		WeatherStateTransitionManager weatherTransitionManager = timeManager.GetTransitionManager();
+		if (!weatherTransitionManager)
+			return;
+		
+		float daytime = var.GetFloat() / 3600;
+		
+		//Preview
+		if (!item)
+		{
+			if (!manager)
+				return;
+			
+			SCR_DateEditorAttribute dateAttribute = SCR_DateEditorAttribute.Cast(manager.GetAttributeRef(SCR_DateEditorAttribute));
+			if (!dateAttribute)
+				return;
+			
+			SCR_BaseEditorAttributeVar dateVar = dateAttribute.GetVariable();
+			if (!dateVar)
+				return;
+			
+			vector date = dateVar.GetVector();
+			weatherTransitionManager.SetDateTimePreview(true, dateAttribute.GetYearByIndex(date[2]), date[1] +1, date[0] +1, daytime / 24);
+			
+			return;
+		}
+		
+		if (weatherTransitionManager.IsPreviewingDateTime())
+			weatherTransitionManager.SetDateTimePreview(false);
+		
+		timeManager.SetTimeOfTheDay(daytime);
+		
+		string time = SCR_Global.GetTimeFormatting(var.GetFloat(), (ETimeFormatParam.DAYS | ETimeFormatParam.SECONDS));
+		
+		//Notification
+		if (item)
+			SCR_NotificationsComponent.SendToGameMasters(ENotification.EDITOR_ATTRIBUTES_TIME_CHANGED, playerID,  time[0].ToInt(), time[1].ToInt(), time[3].ToInt(), time[4].ToInt());
+	}
+	
+	override void PreviewVariable(bool setPreview, SCR_AttributesManagerEditorComponent manager)
+	{
+		if (setPreview)
+		{	
+			WriteVariable(null, GetVariable(), manager, -1);
+		}
+		else 
+		{
+			TimeAndWeatherManagerEntity weatherManager = GetGame().GetTimeAndWeatherManager();
+			if (!weatherManager) 
+				return;
+		
+			WeatherStateTransitionManager weatherTransitionManager = weatherManager.GetTransitionManager();
+			if (!weatherTransitionManager)
+				return;
+			
+			//Remove preview
+			if (weatherTransitionManager.IsPreviewingDateTime())
+				weatherTransitionManager.SetDateTimePreview(false);
+		}
+	}
+};

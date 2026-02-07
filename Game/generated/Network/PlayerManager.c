@@ -1,0 +1,66 @@
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/**
+* \addtogroup Network
+* @{
+*/
+
+class PlayerManager
+{
+	//! Returns the number of connected players
+	proto external int GetPlayerCount();
+	//! Returns the number of all players (both connected and disconnected)
+	proto external int GetAllPlayerCount();
+	//! Returns the number of disconnected players
+	proto external int GetDisconnectedPlayerCount();
+	//! Returns the list of connected players
+	proto external int GetPlayers(out notnull array<int> outPlayers);
+	//! Returns the list of all players (both connected and disconnected)
+	proto external int GetAllPlayers(out notnull array<int> outPlayers);
+	//! Returns the list of disconnected players
+	proto external int GetDisconnectedPlayers(out notnull array<int> outPlayers);
+	//! Returns the name of a given player. Empty is player can't be found
+	proto external string GetPlayerName(int iPlayerId);
+	//! Returns the entity controlled by a given player
+	proto external IEntity GetPlayerControlledEntity(int iPlayerId);
+	/*!
+	Returns respawn component attached to player controller of given player.
+	Note: Only locally owned respawn component is available on remote clients.
+	\return RespawnComponent instance or nullptr if none.
+	*/
+	proto external RespawnComponent GetPlayerRespawnComponent(int iPlayerId);
+	//! Returns the playerId of a player based on a given entity. 0 if not found.
+	proto external int GetPlayerIdFromControlledEntity(IEntity controlled);
+	proto external int GetPlayerIdFromEntityRplId(int entityRplId);
+	//! Returns the PlayerController of a given player.
+	proto external PlayerController GetPlayerController(int iPlayerId);
+	//! Returns the platform kind of a given player.
+	proto external PlatformKind GetPlatformKind(int iPlayerId);
+	//! Returns true if a given player is connected.
+	proto external bool IsPlayerConnected(int iPlayerId);
+	/*!
+	Disconnects a given player with provided reason.
+	Note: Can be executed only by authority.
+	*/
+	proto external void KickPlayer(int iPlayerId, PlayerManagerKickReason reason);
+	//! Returns True if the provided player have given role
+	proto external bool HasPlayerRole(int iPlayerId, EPlayerRole role);
+	//! Returns player's roles as flags
+	proto external EPlayerRole GetPlayerRoles(int iPlayerId);
+	/*!
+	Sets role of specified player. Can be called only by authority.
+	Returns true if completed successfully.
+	*/
+	proto external bool GivePlayerRole(int iPlayerId, EPlayerRole role);
+	/*!
+	Clears role of specified player. Can be called only by authority.
+	Returns true if completed successfully.
+	*/
+	proto external bool ClearPlayerRole(int iPlayerId, EPlayerRole role);
+};
+
+/** @}*/

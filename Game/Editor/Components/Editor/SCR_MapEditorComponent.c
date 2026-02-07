@@ -1,0 +1,155 @@
+[ComponentEditorProps(category: "GameScripted/Editor", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
+class SCR_MapEditorComponentClass: SCR_BaseEditorComponentClass
+{
+};
+
+/** @ingroup Editor_Components
+Manager of editable entities which players control (i.e., their avatars).
+*/
+class SCR_MapEditorComponent : SCR_BaseEditorComponent
+{	
+	[Attribute("{19C76194B21EC3E1}Configs/Map/MapEditor.conf")]
+	protected ResourceName m_MapConfigEditorPrefab;
+	
+	[Attribute("SOUND_HUD_MAP_OPEN", UIWidgets.EditBox)]
+	protected string m_sOpeningEditorMapSfx;
+	
+	[Attribute("SOUND_HUD_MAP_CLOSE", UIWidgets.EditBox)]
+	protected string m_sClosingEditorMapSfx;
+	
+	protected SCR_MapEntity m_MapEntity;
+	protected SCR_EditorManagerEntity m_EditorManager;
+	protected MapItem m_CameraIcon;
+	protected bool m_bWasMapOpened;
+	protected bool m_bIsInit;
+	
+	protected SCR_MapEditorUIComponent m_MapHandler;
+	
+	protected ref Color m_CameraIconColor = Color.White;
+	
+	bool GetMapAvailable()
+	{
+		return m_bIsInit;
+	}
+	
+	void SetMapHandler(SCR_MapEditorUIComponent mapHandler)
+	{
+		m_MapHandler = mapHandler;
+	}
+	
+	ResourceName GetMapConfigPrefab()
+	{
+		return m_MapConfigEditorPrefab;
+	}
+	
+	void ToggleMap()
+	{
+		ShowMap(!IsEditorMapOpen());
+	}
+	
+	void ShowMap(bool show)
+	{
+		if (!m_MapHandler)
+		{
+			return;
+		}
+		
+		if (show)
+			SCR_UISoundEntity.SoundEvent(m_sOpeningEditorMapSfx, true);
+		else
+			SCR_UISoundEntity.SoundEvent(m_sClosingEditorMapSfx, true);
+		
+		m_MapHandler.ToggleMap(show, m_MapConfigEditorPrefab);
+		m_bWasMapOpened = show;
+	}
+	
+	void OnPlacingPreviewCreate()
+	{
+		if (IsEditorMapOpen())
+		{
+			ShowMap(false);
+		}
+	}
+	
+	protected bool IsEditorMapOpen()
+	{
+		if (m_MapHandler)
+		{
+			return m_MapHandler.IsEditorMapOpen();
+		}
+		return false;
+	}
+	
+	protected void OnLimitedChange(bool isLimited)
+	{
+		//--- Close the map when the editor became limited
+		if (isLimited && IsEditorMapOpen())
+		{
+			ShowMap(false);
+		}
+	}
+	
+	protected void OnEditorModeChange(SCR_EditorModeEntity newModeEntity, SCR_EditorModeEntity oldModeEntity)
+	{
+		if (oldModeEntity)
+		{
+			
+		}
+		if (newModeEntity)
+		{
+			
+		}
+		
+		if (newModeEntity && m_MapHandler && m_bWasMapOpened)
+		{
+			ShowMap(true);
+		}
+	}
+	
+	protected SCR_MapEditorUIComponent FindMapHandler()
+	{
+		SCR_MenuEditorComponent menuComponent = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
+		if (!menuComponent || !menuComponent.GetMenu())
+			return null;
+		
+		SCR_MapEditorUIComponent mapEditorComponent = SCR_MapEditorUIComponent.Cast(menuComponent.GetMenu().GetRootComponent().FindComponent(SCR_MapEditorUIComponent, true));
+		return mapEditorComponent;
+	}
+	
+	override void OnPostInit(IEntity owner)
+	{
+		if (SCR_Global.IsEditMode())
+			return;
+		super.OnPostInit(owner);
+		
+		m_MapEntity = SCR_MapEntity.GetMapInstance();
+		if (!m_MapEntity)
+			return;
+		
+		m_EditorManager = SCR_EditorManagerEntity.Cast(owner);
+		if (!m_EditorManager)
+			return;
+		
+		m_EditorManager.GetOnLimitedChange().Insert(OnLimitedChange);
+		m_EditorManager.GetOnModeChange().Insert(OnEditorModeChange);
+		
+		SCR_PreviewEntityEditorComponent previewEntityComponent = SCR_PreviewEntityEditorComponent.Cast(SCR_PreviewEntityEditorComponent.GetInstance(SCR_PreviewEntityEditorComponent));
+		if (previewEntityComponent)
+		{
+			previewEntityComponent.GetOnPreviewCreate().Insert(OnPlacingPreviewCreate);
+		}
+		
+		m_bIsInit = true;
+	}
+	
+	override void EOnDeactivate(IEntity owner)
+	{
+		if (SCR_Global.IsEditMode())
+			return;
+		
+		if (m_CameraIcon)
+		{
+			delete m_CameraIcon;
+		}
+	}
+};
