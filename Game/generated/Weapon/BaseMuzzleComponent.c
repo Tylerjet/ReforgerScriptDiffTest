@@ -28,7 +28,7 @@ class BaseMuzzleComponent: GameComponent
 	proto external bool IsCurrentBarrelChambered();
 	proto external bool IsChamberingPossible();
 	//Deletes the bullet from selected chamber as well as Invoking OnAmmoCountChanged
-	proto external void ClearChamber(int barrelIndex);
+	proto external bool ClearChamber(int barrelIndex);
 	// Disposable
 	proto external bool IsDisposable();
 	// Magazines

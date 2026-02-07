@@ -69,6 +69,9 @@ class SCR_DefenderSpawnerComponent: SCR_SlotServiceComponent
 	//! Set Defender group data from Entity catalog on owning faction
 	protected void AssignDefenderGroupDataFromOwningFaction()
 	{
+		if (!m_CurrentFaction)
+			return;
+		
 		SCR_EntityCatalog catalog = m_CurrentFaction.GetFactionEntityCatalogOfType(EEntityCatalogType.GROUP);
 		if (!catalog)
 		{
@@ -407,8 +410,6 @@ class SCR_DefenderSpawnerComponent: SCR_SlotServiceComponent
 	protected override void OnFactionChanged(Faction faction)
 	{
 		SCR_Faction newFaction = SCR_Faction.Cast(faction);
-		if (!newFaction)
-			return;
 		
 		m_GroupEntry = null;
 		m_AIgroup = null;
@@ -416,9 +417,8 @@ class SCR_DefenderSpawnerComponent: SCR_SlotServiceComponent
 		SCR_Faction oldFaction = m_CurrentFaction;
 		m_CurrentFaction = newFaction;
 		
-		
 		AssignDefenderGroupDataFromOwningFaction();
-		m_OnSpawnerOwningFactionChanged.Invoke(newFaction, m_CurrentFaction);
+		m_OnSpawnerOwningFactionChanged.Invoke(newFaction, oldFaction);
 	}
 	
 	//------------------------------------------------------------------------------------------------

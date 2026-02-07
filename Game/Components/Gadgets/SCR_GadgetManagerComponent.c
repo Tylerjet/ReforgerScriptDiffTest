@@ -469,6 +469,18 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		else
 			SetGadgetMode(gadget, targetMode, doFocus);
 	} 
+	
+	//------------------------------------------------------------------------------------------------
+	//! Clear toggle state for cases where it needs to be done without waiting for animation
+	protected void ClearToggleState()
+	{
+		m_bIsGadgetADS = false;
+		if (m_HeldGadgetComponent)
+		{
+			m_HeldGadgetComponent.ToggleFocused(false);
+			m_Controller.SetGadgetRaisedModeWanted(false); 
+		}
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	// EVENTS
@@ -539,6 +551,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		if (!charController || charController != m_Controller)
 			return;
 				
+		ClearToggleState();
 		m_pInvokersState.Clear(GetOwner());
 		UnregisterInputs();
 		ClearEventMask(GetOwner(), EntityEvent.FRAME);
@@ -638,12 +651,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	//! SCR_EditorManagerEntity event  //TODO we shouldnt need this, probably needs to be dependent on camera instead
 	protected void OnEditorOpened()
 	{
-		m_bIsGadgetADS = false;
-		if (m_HeldGadgetComponent)
-		{
-			m_HeldGadgetComponent.ToggleFocused(false);
-			m_Controller.SetGadgetRaisedModeWanted(false); 
-		}
+		ClearToggleState();
 	}
 
 	//------------------------------------------------------------------------------------------------

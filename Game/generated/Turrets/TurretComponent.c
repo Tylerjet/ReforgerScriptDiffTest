@@ -18,6 +18,7 @@ class TurretComponent: AimingComponent
 	proto external bool HasMoveableBase();
 	proto external PointInfo GetCameraAttachmentSlot();
 	proto external bool IsVehicleMounted();
+	proto external IEntity GetOwner();
 	/*!
 	Calculates aiming angle to target and returns horizontal and vertical excess of target angle compared to aiming limits, in degrees.
 		outExcess[0] - horizontal excess

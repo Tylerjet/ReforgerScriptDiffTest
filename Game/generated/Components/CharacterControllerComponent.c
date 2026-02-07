@@ -228,6 +228,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! Generic item
 	//! Equippes an item in right hand, if swap is true then action performed without animations, accepts optional callback that will be triggered when action is completed
 	proto external bool TryEquipRightHandItem(IEntity item, EEquipItemType type, bool swap = false, BaseUserAction callbackAction = null);
+	proto external bool TryRecoverLastRightHandItem(bool swap = false, BaseUserAction callbackAction = null);
 	//! Returns generic item attached to right hand. Returns null if there's none (or if active item is weapon)
 	proto external IEntity GetRightHandItem();
 	/*!

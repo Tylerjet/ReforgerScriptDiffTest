@@ -23,6 +23,8 @@ class Identity: ScriptAndConfig
 	proto external string GetSurname();
 	//! Set Character surname
 	proto external void SetSurname(string surname);
+	//! Get the Character Name "Alias" Surname in a string. The format is not localized based on the country.
+	proto external string GetFullName();
 	proto external VisualIdentity GetVisualIdentity();
 	proto external void SetVisualIdentity(VisualIdentity id);
 	proto external SoundIdentity GetSoundIdentity();

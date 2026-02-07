@@ -1229,6 +1229,7 @@ class SCR_CampaignBase : GenericEntity
 		
 		LinkBases();
 		FlashBaseIcon(changeToDefault: true);
+		RefreshSpawnerFactions();
 		
 		if (RplSession.Mode() != RplMode.Dedicated)
 		{
@@ -1285,8 +1286,6 @@ class SCR_CampaignBase : GenericEntity
 						campaign.ShowHint(SCR_ECampaignHints.BASE_LOST);
 				}
 			}
-			
-			RefreshSpawnerFactions();
 			
 			m_OnFactionChanged.Invoke();
 		}
@@ -2083,6 +2082,10 @@ class SCR_CampaignBase : GenericEntity
 				
 			}
 			
+			SCR_FactionAffiliationComponent factionControl = SCR_FactionAffiliationComponent.Cast(ent.FindComponent(SCR_FactionAffiliationComponent));
+			if (factionControl)
+				factionControl.SetAffiliatedFaction(GetOwningFaction());
+			
 			return false;
 		}
 		
@@ -2093,6 +2096,7 @@ class SCR_CampaignBase : GenericEntity
 	void RegisterNearbyEntitySpawner(IEntity serviceOwner)
 	{
 		GetGame().GetWorld().QueryEntitiesBySphere(serviceOwner.GetOrigin(), 5, SpawnerSearchCallback);
+		RefreshSpawnerFactions();
 	}
 	
 	//------------------------------------------------------------------------------------------------

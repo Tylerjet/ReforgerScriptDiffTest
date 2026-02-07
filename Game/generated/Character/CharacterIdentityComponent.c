@@ -64,8 +64,8 @@ class CharacterIdentityComponent: GameComponent
 	//! Get identity of this character
 	proto external Identity GetIdentity();
 	/*!
-	Check if given IDs are within bounds of existing identities
-	\return true if All are correct, false if one or more values is wrong or there is no faction component
+	Check if given IDs are within bounds of existing identities in the current faction assigned to the owner.
+	\return true if all parameters are correct, false if one or more values is wrong or there is no faction component
 	*/
 	proto external bool CheckIdentityIDs(int alias, int name, int surname, int soundIdentity, int visualIdentity);
 	/*!
@@ -73,6 +73,7 @@ class CharacterIdentityComponent: GameComponent
 	\returns true on success false on wrong input
 	*/
 	proto external bool SetIdentityFromIDs(int alias, int name, int surname, int soundIdentity, int visualIdentity);
+	//! Set the identity to the player, and replicates the identity to clients
 	proto external void SetIdentity(Identity cfg);
 
 	// callbacks

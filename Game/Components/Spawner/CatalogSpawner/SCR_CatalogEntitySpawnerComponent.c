@@ -148,10 +148,13 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	//! Set Asset Catalog from currently owning faction
 	void SetCurrentFactionCatalog()
 	{
-		if (m_aCatalogTypes.IsEmpty() || !m_CurrentFaction)
-			return;
-
 		m_aAssetList.Clear();
+		
+		if (m_aCatalogTypes.IsEmpty() || !m_CurrentFaction)
+		{
+			AssignUserActions();
+			return;
+		}
 
 		SCR_EntityCatalog catalog;
 		foreach (EEntityCatalogType catalogType : m_aCatalogTypes)
@@ -555,6 +558,9 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 		slot.GetOwner().GetTransform(params.Transform);
 		m_PreviewEntity = SCR_PrefabPreviewEntity.Cast(SCR_PrefabPreviewEntity.SpawnPreviewFromPrefab(resource, "SCR_PrefabPreviewEntity", GetOwner().GetWorld(), params, prefabData.m_sPreviewEntityMaterial));
+		
+		if (m_PreviewEntity)
+			m_PreviewEntity.Update();	
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -756,8 +762,6 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	protected override void OnFactionChanged(Faction faction)
 	{
 		SCR_Faction newFaction = SCR_Faction.Cast(faction);
-		if (!newFaction)
-			return;
 		
 		SCR_Faction oldFaction = m_CurrentFaction;
 		m_CurrentFaction = newFaction;
@@ -867,6 +871,12 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		super.OnPostInit(owner);
 
 		SetEventMask(owner, EntityEvent.INIT);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_CatalogEntitySpawnerComponent()
+	{
+		SCR_EntityHelper.DeleteEntityAndChildren(m_PreviewEntity);
 	}
 };
 

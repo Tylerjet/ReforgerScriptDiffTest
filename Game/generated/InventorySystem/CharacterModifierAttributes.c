@@ -36,6 +36,10 @@ class CharacterModifierAttributes: BaseItemAttributeData
 	*/
 	proto external bool IsOneHandedShootingSupressed();
 	/*!
+	Returns true if you can use gadgets while using right hand
+	*/
+	proto external bool IsGadgetUseAllowed();
+	/*!
 	Returns true if you can equip gadget while being in vehicle
 	*/
 	proto external bool CanBeEquippedInVehicle();

@@ -12,8 +12,8 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 	[Attribute("0", desc: "Penalty score for killing a friendly AI.")]
 	protected int m_iFriendlyAIKillPenalty;
 	
-	//[Attribute("0", desc: "Penalty score limit for a kick from the match.")]
-	//protected int m_iKickPenaltyLimit;
+	[Attribute("0", desc: "Penalty score limit for a kick from the match.")]
+	protected int m_iKickPenaltyLimit;
 	
 	[Attribute("0", desc: "Ban duration after a kick (in seconds, -1 for a session-long ban).")]
 	protected int m_iBanDuration;
@@ -29,7 +29,6 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 	
 	protected RplComponent m_RplComponent;
 	protected ref array<ref SCR_PlayerPenaltyData> m_aPlayerPenaltyData = {};
-	protected ref SCR_PlayerPenaltyDSSessionCallback m_Callback;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerConnected(int playerId)
@@ -89,24 +88,21 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 			return;
 		
 		int victimPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(victimChar);
+		SCR_PlayerPenaltyData playerPenaltyData = GetPlayerPenaltyData(killerPlayerId);
+		
+		if (!playerPenaltyData)
+			return;
 		
 		if (victimPlayerId == 0)
-			AddPenaltyScore(killerPlayerId, m_iFriendlyAIKillPenalty);
+			playerPenaltyData.AddPenaltyScore(m_iFriendlyAIKillPenalty);
 		else
-			AddPenaltyScore(killerPlayerId, m_iFriendlyPlayerKillPenalty);
+			playerPenaltyData.AddPenaltyScore(m_iFriendlyPlayerKillPenalty);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	static SCR_PlayerPenaltyComponent GetInstance()
 	{
 		return s_Instance;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void OnBanResult(int iPlayerId, bool triggered, int currentValue, int triggerValue)
-	{
-		if (triggered)
-			KickPlayer(iPlayerId, m_iBanDuration, SCR_PlayerManagerKickReason.FRIENDLY_FIRE);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -189,9 +185,7 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 				playerPenaltyData.AddPenaltyScore(-forgivenScore);
 			}
 			
-			// Check penalty limit for kick / ban
-			// Moved to backend callback OnBanResult()
-			/*int playerId = playerPenaltyData.GetPlayerId();
+			int playerId = playerPenaltyData.GetPlayerId();
 			
 			// Player is not connected
 			if (!GetGame().GetPlayerManager().GetPlayerController(playerId))
@@ -201,12 +195,13 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 			if (playerId == SCR_PlayerController.GetLocalPlayerId())
 				continue;
 			
+			// Check penalty limit for kick / ban
 			if (m_iKickPenaltyLimit > 0 && playerPenaltyData.GetPenaltyScore() >= m_iKickPenaltyLimit)
 			{
 				// TODO: Use callback from backend instead
 				KickPlayer(playerId, m_iBanDuration, SCR_PlayerManagerKickReason.FRIENDLY_FIRE);
 				continue;
-			}*/
+			}
 		}
 	}
 	
@@ -264,14 +259,6 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 		s_Instance = this;
 		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 		GetGame().GetCallqueue().CallLater(EvaluatePlayerPenalties, EVALUATION_PERIOD, true);
-		
-		BackendApi beApi = GetGame().GetBackendApi();
-		
-		if (beApi)
-		{
-			m_Callback = new SCR_PlayerPenaltyDSSessionCallback(this);
-			beApi.SetSessionCallback(m_Callback);
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

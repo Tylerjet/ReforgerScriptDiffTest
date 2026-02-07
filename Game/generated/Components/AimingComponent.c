@@ -15,6 +15,8 @@ class AimingComponentClass: BaseAimingComponentClass
 
 class AimingComponent: BaseAimingComponent
 {
+	//! Get the init rotation defined in the prefab in degrees
+	proto external vector GetInitAiming();
 	/*!
 	Set the desired aiming rotation. It will move the aiming rotation smoothly to your desired aiming rotation.
 	\param inRotation The rotation wanted in radians

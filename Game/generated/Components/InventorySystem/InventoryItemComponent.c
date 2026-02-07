@@ -68,6 +68,12 @@ class InventoryItemComponent: GameComponent
 	proto external void SetAdditionalVolume(float additionalVolume);
 	//! Returns the volume + the additional volume
 	proto external float GetTotalVolume();
+	/*!
+	*IMPORTANT* This function is heavy in performance because of the multiple traces used inside the function.
+	Place the item on the ground
+	\param callerEntity The entity used for the rotation calculation. Should be kept to null per default
+	*/
+	proto external void PlaceOnGround(IEntity callerEntity = null);
 	//! returns true if item should be hidden
 	proto external bool IsHiddenInVicnity();
 	//! Returns UI info of this item
