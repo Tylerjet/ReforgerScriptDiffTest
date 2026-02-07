@@ -38,6 +38,8 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	// Script invokers sends
 	ref ScriptInvoker m_OnOpened = new ScriptInvoker();
 	ref ScriptInvoker m_OnClosed = new ScriptInvoker();
+	
+	protected float posX, posY;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -252,6 +254,10 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 		m_ModalHandler = new SCR_ComboModalHandler();
 		m_wElementsRoot.AddHandler(m_ModalHandler);
 		m_ModalHandler.m_OnModalClickOut.Insert(CloseList);
+		
+		// Modal owners 
+		ChimeraMenuBase menu = ChimeraMenuBase.GetOwnerMenu(m_wRoot);
+		m_ModalHandler.SetupOwners(this, menu);
 
 		// Set arrow image angle
 		if (m_wArrowImage)
@@ -392,10 +398,49 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 //------------------------------------------------------------------------------------------------
 class SCR_ComboModalHandler : ScriptedWidgetEventHandler
 {
+	protected SCR_ComboBoxComponent m_Owner;
+	protected ChimeraMenuBase m_OwnerMenu;
+	
 	ref ScriptInvoker m_OnModalClickOut = new ScriptInvoker();
+	
     override bool OnModalClickOut(Widget modalRoot, int x, int y, int button)
     {
 		m_OnModalClickOut.Invoke();
         return true;
     }
+
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		if (m_OwnerMenu)
+			m_OwnerMenu.m_OnUpdate.Remove(OnMenuUpdate);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetupOwners(SCR_ComboBoxComponent owner, ChimeraMenuBase menu)
+	{
+		m_Owner = owner;
+		m_OwnerMenu = menu;
+		
+		if (m_OwnerMenu)
+			m_OwnerMenu.m_OnUpdate.Insert(OnMenuUpdate);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnMenuUpdate(float tDelta)
+	{
+		// Scroll input 
+		if (GetGame().GetInputManager().GetActionValue("MenuScrollVertical") != 0)
+		{
+			m_Owner.CloseList();
+			return;
+		}
+		
+		// Visible in hierarchy 
+		if (!m_Owner.GetRootWidget().IsVisibleInHierarchy())
+		{
+			m_Owner.CloseList();
+			return;
+		}
+	}
 };

@@ -57,6 +57,9 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 		if (entity == instigator)
 			return;
 		
+		if (SCR_EntityHelper.GetMainParent(instigator) == SCR_EntityHelper.GetMainParent(entity))
+			return;
+		
 		SCR_ChimeraCharacter victimChar = SCR_ChimeraCharacter.Cast(entity);
 		
 		if (!victimChar)

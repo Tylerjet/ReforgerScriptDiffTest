@@ -93,6 +93,8 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	protected vector m_vScreenScopeCenter;
 	protected float m_fScreenScopeRadiusSq;
 	
+	protected IEntity m_CurrentPlayable;
+	
 	//! Current PIP reticle color
 	protected ref Color m_cReticleColor = Color.Black;
 	
@@ -246,13 +248,14 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			return false;
 		
 		// Check up in hierarchy?
-		auto pParent = pEntity.GetParent();
-		while (pParent)
+		m_CurrentPlayable = pEntity.GetParent();
+
+		while (m_CurrentPlayable)
 		{
-			if (pControlledEntity == pParent)
+			if (pControlledEntity == m_CurrentPlayable)
 				return true;
 			
-			pParent = pParent.GetParent();
+			m_CurrentPlayable = m_CurrentPlayable.GetParent();
 		}
 		
 		return false;
@@ -563,11 +566,8 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		if (!m_Owner)
 			return;
 		
-		// TODO@AS: This nonsense needs to begone,
-		// owner only rpc?
-		if (!IsLocalControlledEntity(m_Owner))
+		if (!m_CurrentPlayable)
 		{
-			// for now we will just make sure PIP is always disabled
 			if (IsPIPEnabled())
 			{
 				// Make sure to revert overlay camera to default
@@ -585,6 +585,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		}
 		
 		s_OnSightsADSChanged.Invoke(false, 0);
+		
 		
 		bool scope2d = SCR_Global.IsScope2DEnabled();
 		if(scope2d)

@@ -16,6 +16,10 @@ class BaseSightsComponentClass: GameComponentClass
 class BaseSightsComponent: GameComponent
 {
 	proto external IEntity GetOwner();
+	//! Allow to override Zeroing via aim modifier (only works in Workbench)
+	proto external void ForceSightsZeroValue(vector offset, vector angles, vector turnOffset);
+	//! Disable forced zeroing data
+	proto external void ForceSightsZeroValueEnablel(bool bOnOff);
 	proto external bool IsSightADSActive();
 	/*!
 	Returns additional sights position used for calculating zeroing

@@ -2135,6 +2135,23 @@ class SCR_CampaignBase : GenericEntity
 		if (!buildingsFaction)
 			return;
 		
+		// Spawn no-slot HQ composition if required
+		if (slotType == ECampaignCompositionType.HQ && !slot)
+		{
+			ResourceName compType = buildingsFaction.GetBuildingPrefabNoSlot(slotType, GetType());
+			Resource compositionRes = Resource.Load(compType);
+			
+			if (!compositionRes.IsValid())
+				return;
+
+			EntitySpawnParams spawnParams = EntitySpawnParams();	
+			spawnParams.TransformMode = ETransformMode.WORLD;		
+			GetWorldTransform(spawnParams.Transform);
+			GetGame().SpawnEntityPrefab(compositionRes, GetGame().GetWorld(), spawnParams);
+			
+			return;
+		}
+		
 		// Build everything on bases without access to a building interface
 		if (noSlotOnly && slot && !GetAssignedSlot(ECampaignCompositionType.HQ))
 			noSlotOnly = false;
