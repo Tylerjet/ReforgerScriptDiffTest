@@ -65,6 +65,8 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void OnActionCanceled(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
+		m_User = null;
+		
 		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
 		if (!character)
 			return;
@@ -81,11 +83,8 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void CancelPlayerAnimation(IEntity entity)
-	{
-		if (!entity)
-			return;
-		
+	void CancelPlayerAnimation(notnull IEntity entity)
+	{		
 		ChimeraCharacter character = ChimeraCharacter.Cast(entity);
 		if (!character)
 			return;
@@ -290,6 +289,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	// Destructor
 	void ~SCR_CampaignBuildingDisassemblyUserAction()
 	{
-		CancelPlayerAnimation(m_User);
+		if (m_User)
+			CancelPlayerAnimation(m_User);
 	}
 }

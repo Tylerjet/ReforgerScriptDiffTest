@@ -2,7 +2,7 @@
 class SCR_FieldManualConfigEntry_Weapon : SCR_FieldManualConfigEntry
 {
 	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Targeted entity", params: "et")]
-	ResourceName m_WeaponEntityPath;
+	ResourceName m_sWeaponEntityPath;
 
 	[Attribute(defvalue: "{C5EBC2B28BC84852}UI/layouts/Menus/FieldManual/Entries/FieldManual_Entry_Weapon.layout", uiwidget: UIWidgets.EditBoxWithButton, params: "layout")]
 	ResourceName m_Layout;
@@ -21,4 +21,4 @@ class SCR_FieldManualConfigEntry_Weapon : SCR_FieldManualConfigEntry
 	{
 		return CreateWidgetFromLayout(m_Layout, parent);
 	}
-};
+}

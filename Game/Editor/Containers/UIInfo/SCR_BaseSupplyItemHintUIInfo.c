@@ -1,6 +1,15 @@
 [BaseContainerProps()]
 class SCR_BaseSupplyItemHintUIInfo : SCR_InventoryItemHintUIInfo
-{		
+{			
+	//------------------------------------------------------------------------------------------------
+	override bool CanBeShown(InventoryItemComponent item, SCR_InventorySlotUI focusedSlot)
+	{
+		if (!item)
+			return false;
+			
+		return super.CanBeShown(item, focusedSlot);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void GetSupplyAmounts(InventoryItemComponent item, out float supplies, out float maxSupplies = -1)
 	{

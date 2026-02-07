@@ -42,7 +42,8 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 			return ENodeResult.FAIL;
 		
 		if (!m_VehicleToTestForCompartments && GetVariableIn(PORT_VEHICLE_IN, m_VehicleToTestForCompartments)) // reading the vehicle to test from outside of the node (another search)
-			GetVariableIn(PORT_SEARCH_PARAMS, m_WaypointParameter);
+			if (!GetVariableIn(PORT_SEARCH_PARAMS, m_WaypointParameter))
+				return ENodeResult.FAIL;
 		
 		if (m_VehicleToTestForCompartments && !HasNoAvailableCompartment(m_VehicleToTestForCompartments)) // the vehicle was found already, does it have available compartment?
 		{
@@ -59,6 +60,9 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 			GetVariableIn(PORT_CENTER_OF_SEARCH, center);
 			GetVariableIn(PORT_RADIUS, radius);
 			GetVariableIn(PORT_SEARCH_PARAMS, m_WaypointParameter);
+			
+			if (!m_WaypointParameter) // waypoint can be deleted in the meantime
+				return ENodeResult.FAIL;
 			
 			m_world.QueryEntitiesBySphere(center, radius, HasNoAvailableCompartment, FilterEntities, EQueryEntitiesFlags.DYNAMIC);
 			if (m_VehicleToTestForCompartments)

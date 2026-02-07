@@ -12,7 +12,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 		SCR_ArsenalManagerComponent arsenalManager;
 		if (SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
 		{
-			string arsenalLoadout;
+			SCR_ArsenalPlayerLoadout arsenalLoadout;
 			return arsenalManager.GetPlayerArsenalLoadout(playerId, arsenalLoadout);
 		}
 		return false;
@@ -29,6 +29,19 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 		return false;
 	}
 	
+	static float GetLoadoutSuppliesCost(int playerId)
+	{
+		SCR_ArsenalManagerComponent arsenalManager;
+		if (SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
+		{
+			SCR_ArsenalPlayerLoadout arsenalLoadout;
+			if (arsenalManager.GetPlayerArsenalLoadout(playerId, arsenalLoadout))
+				return arsenalLoadout.suppliesCost;
+		}
+		
+		return 0.0;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnLoadoutSpawned(GenericEntity pOwner, int playerId)
 	{
@@ -40,7 +53,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 		}
 		
 		GameEntity playerEntity = GameEntity.Cast(pOwner);
-		string playerArsenalItems = string.Empty;
+		SCR_ArsenalPlayerLoadout playerArsenalItems;
 		if (!playerEntity || !arsenalManager.GetPlayerArsenalLoadout(playerId, playerArsenalItems))
 		{
 			return;
@@ -54,7 +67,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 		
 		SCR_JsonLoadContext context = new SCR_JsonLoadContext();
 		bool loadSuccess = true;
-		loadSuccess &= context.ImportFromString(playerArsenalItems);
+		loadSuccess &= context.ImportFromString(playerArsenalItems.loadout);
 		// Read faction key and ensure same faction, otherwise delete saved arsenal loadout
 		string factionKey;
 		loadSuccess &= context.ReadValue(ARSENALLOADOUT_FACTION_KEY, factionKey) && factionKey != ARSENALLOADOUT_FACTIONKEY_NONE;		

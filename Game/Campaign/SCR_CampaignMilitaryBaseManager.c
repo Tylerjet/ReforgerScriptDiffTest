@@ -28,8 +28,6 @@ class SCR_CampaignMilitaryBaseManager
 	protected static const int DEPOT_PLAYER_PRESENCE_CHECK_INTERVAL = 2000;		//ms
 	protected static const float CP_AVG_DISTANCE_TOLERANCE = 0.25;				//highest relative distance tolerance to control points when evaluating main HQs
 	protected static const string ICON_NAME_SUPPLIES = "Slot_Supplies";
-	protected static const float MAX_DIST_TO_BASE = 300;
-	protected static const float PARKED_LIFETIME = 3600;
 
 	protected SCR_GameModeCampaign m_Campaign;
 
@@ -1022,16 +1020,17 @@ class SCR_CampaignMilitaryBaseManager
 	void OnSupplyTruckLeft(IEntity vehicle, BaseCompartmentManagerComponent mgr, IEntity occupant, int managerId, int slotID)
 	{
 		ChimeraWorld world = vehicle.GetWorld();
-		GarbageSystem garbageSystem = world.GetGarbageSystem();
-		if (!garbageSystem || !garbageSystem.IsInserted(vehicle))
+		SCR_CampaignGarbageManager garbageManager = SCR_CampaignGarbageManager.Cast(world.GetGarbageManager());
+
+		if (!garbageManager)
 			return;
 
-		float curLifetime = garbageSystem.GetRemainingLifetime(vehicle);
-		if (curLifetime >= PARKED_LIFETIME)
+		if (!garbageManager.IsInserted(vehicle))
 			return;
 
-		int baseDistanceSq = Math.Pow(MAX_DIST_TO_BASE, 2);
+		int baseDistanceSq = Math.Pow(SCR_CampaignGarbageManager.MAX_BASE_DISTANCE, 2);
 		vector vehPos = vehicle.GetOrigin();
+		float curLifetime = garbageManager.GetRemainingLifetime(vehicle);
 
 		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
 		{
@@ -1040,8 +1039,13 @@ class SCR_CampaignMilitaryBaseManager
 
 			if (vector.DistanceSqXZ(vehPos, base.GetOwner().GetOrigin()) <= baseDistanceSq)
 			{
-				garbageSystem.Bump(vehicle, PARKED_LIFETIME - curLifetime);
-				return;
+				float curLifeTime = garbageManager.GetRemainingLifetime(vehicle);
+
+				if (curLifetime < SCR_CampaignGarbageManager.PARKED_SUPPLY_TRUCK_LIFETIME)
+				{
+					garbageManager.Bump(vehicle, SCR_CampaignGarbageManager.PARKED_SUPPLY_TRUCK_LIFETIME - curLifetime);
+					return;
+				}
 			}
 		}
 	}

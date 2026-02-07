@@ -44,7 +44,7 @@ class SCR_EnableDefendersAction : ScriptedUserAction
 			return false;
 
 		SCR_ChimeraCharacter chimeraCharacter = SCR_ChimeraCharacter.Cast(playerController.GetControlledEntity());
-		if (!chimeraCharacter || chimeraCharacter.GetFaction() != m_DefenderSpawner.GetCurrentFaction())
+		if (!chimeraCharacter || chimeraCharacter.GetFaction() != m_DefenderSpawner.GetFaction())
 			return false;
 
 		return true;

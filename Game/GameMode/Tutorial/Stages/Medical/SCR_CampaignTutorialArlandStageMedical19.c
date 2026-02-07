@@ -11,5 +11,6 @@ class SCR_CampaignTutorialArlandStageMedical19 : SCR_BaseCampaignTutorialArlandS
 	{
 		m_fDuration = 15;
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		m_TutorialComponent.SetStagesComplete(2, true);
 	}
 };

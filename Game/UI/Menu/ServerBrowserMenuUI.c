@@ -2324,9 +2324,11 @@ class ServerBrowserMenuUI : MenuRootBase
 			JoinProcess_ShowJoinDetailsDialog(roomToJoin);
 			return;
 		}
-
-		// Open password dialog
-		JoinProcess_PasswordDialogOpen();
+		
+		m_PasswordVerification.GetOnVerified().Insert(OnPasswordVerified);
+		m_PasswordVerification.GetOnFailVerification().Clear();
+		m_PasswordVerification.GetOnFailVerification().Insert(OnRejoinAuthorizationFailed);
+		m_PasswordVerification.CheckRejoinAuthorization(roomToJoin);
 	}
 
 	//------------------------------------------------------------------------------------------------

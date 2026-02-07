@@ -2,11 +2,6 @@ class SCR_FieldManualEntryScriptedWidgetEventHandler : ScriptedWidgetEventHandle
 {
 	protected SCR_FieldManualUI m_UI;
 
-	void SCR_FieldManualEntryScriptedWidgetEventHandler(notnull SCR_FieldManualUI ui)
-	{
-		m_UI = ui;
-	}
-
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
@@ -15,4 +10,12 @@ class SCR_FieldManualEntryScriptedWidgetEventHandler : ScriptedWidgetEventHandle
 
 		return m_UI != null;
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] ui
+	void SCR_FieldManualEntryScriptedWidgetEventHandler(notnull SCR_FieldManualUI ui)
+	{
+		m_UI = ui;
+	}
+}

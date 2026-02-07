@@ -48,6 +48,12 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	//----------------------------------------------------------------------------------------------
 	int GetLoadoutCost(SCR_BasePlayerLoadout playerLoadout)
 	{
+		if (playerLoadout.IsInherited(SCR_PlayerArsenalLoadout))
+		{
+			if (m_ArsenalManagerComp.m_bLocalPlayerLoadoutData)
+				return m_ArsenalManagerComp.m_bLocalPlayerLoadoutData.LoadoutCost;
+		}
+
 		int cost;
 		
 		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
@@ -147,7 +153,10 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_wSupplies = m_wLoadouty.FindAnyWidget("w_Supplies");
 		
 		if (m_wSupplies)
+		{
 			m_wSuppliesText = RichTextWidget.Cast(m_wSupplies.FindAnyWidget("SuppliesText"));
+			m_wSupplies.SetVisible(true);
+		}
 	}
 	
 	protected override void ToggleCollapsed()

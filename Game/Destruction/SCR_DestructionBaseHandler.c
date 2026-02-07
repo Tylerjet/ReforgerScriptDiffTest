@@ -213,9 +213,6 @@ class SCR_DestructionBaseHandler
 	{
 		if (!m_pOwner || m_pOwner.IsDeleted())
 			return;
-		
-		if (modelName.IsEmpty())
-			return;
 
 		Vehicle vehicle = Vehicle.Cast(m_pOwner);
 		if (vehicle)
@@ -252,11 +249,12 @@ class SCR_DestructionBaseHandler
 		{
 			physics.SetActive(ActiveState.ACTIVE);
 			physics.EnableGravity(true);
+			m_pOwner.SetFlags(EntityFlags.TRACEABLE);
 		}
 		else
 		{
-			//!< TODO Suspicious, possibly use ChangeSimulationState(SimulationState.NONE) instead
-			physics.Destroy(); // No geoms found, destroy physics
+			physics.ChangeSimulationState(SimulationState.NONE);
+			m_pOwner.ClearFlags(EntityFlags.TRACEABLE);
 		}
 	}
 

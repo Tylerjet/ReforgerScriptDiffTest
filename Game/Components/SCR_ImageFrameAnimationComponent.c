@@ -63,8 +63,7 @@ class SCR_ImageFrameAnimationComponent : ScriptedWidgetComponent
 	//-----------------------------------------------------------------------------
 	void Stop()
 	{		
-		ScriptCallQueue queue = GetGame().GetCallqueue();
-		queue.Remove(OnEachFrame);
+		GetGame().GetCallqueue().Remove(OnEachFrame);
 	}
 	
 	
@@ -113,7 +112,9 @@ class SCR_ImageFrameAnimationComponent : ScriptedWidgetComponent
 	//-----------------------------------------------------------------------------
 	override protected void HandlerDeattached(Widget w)
 	{
-		Stop();
+		ArmaReforgerScripted game = GetGame();
+		if (game && game.GetCallqueue())
+			Stop();
 	}
 	
 	//-----------------------------------------------------------------------------

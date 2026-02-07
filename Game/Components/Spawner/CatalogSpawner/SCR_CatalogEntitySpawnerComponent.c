@@ -102,11 +102,9 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	protected SCR_ResourceComponent m_ResourceComponent;
 	protected SCR_CampaignSuppliesComponent m_SupplyComponent
 	protected RplComponent m_RplComponent;
-	protected SCR_Faction m_CurrentFaction;
 
 	protected ref ScriptInvoker m_OnEntitySpawned; //~ Sends Spawned IEntity
 	protected ref ScriptInvoker m_OnSpawnerSuppliesChanged; //~ Sends Spawned prev and new spawn supplies
-	protected ref ScriptInvoker m_OnSpawnerOwningFactionChanged; //Invokes with new and old factions assigned to this spawner
 
 	static const int SLOT_CHECK_INTERVAL = 60;
 
@@ -133,22 +131,6 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	bool IsSuppliesConsumptionEnabled()
 	{
 		return m_bSuppliesConsumptionEnabled;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Returns invoker called on faction change of spawner. Invokes with new assigned faction and previous faction
-	ScriptInvoker GetOnFactionChanged()
-	{
-		if (!m_OnSpawnerOwningFactionChanged)
-			m_OnSpawnerOwningFactionChanged = new ScriptInvoker();
-
-		return m_OnSpawnerOwningFactionChanged;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_Faction GetOwningFaction()
-	{
-		return m_CurrentFaction;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -316,12 +298,13 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Set Asset Catalog from currently owning faction
-	void SetCurrentFactionCatalog()
-	{
+	//! Set Asset Catalog from currently owning faction. If null, asset list will be cleared.
+	protected void SetCurrentFactionCatalog()
+	{	
 		m_aAssetList.Clear();
 		
-		if (m_aCatalogTypes.IsEmpty() || !m_CurrentFaction)
+		SCR_Faction faction = SCR_Faction.Cast(GetFaction());
+		if (!faction || m_aCatalogTypes.IsEmpty())
 		{
 			AssignUserActions();
 			return;
@@ -330,7 +313,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		SCR_EntityCatalog catalog;
 		foreach (EEntityCatalogType catalogType : m_aCatalogTypes)
 		{
-			catalog = m_CurrentFaction.GetFactionEntityCatalogOfType(catalogType);
+			catalog = faction.GetFactionEntityCatalogOfType(catalogType);
 			if (!catalog)
 				continue;
 
@@ -344,7 +327,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	//! Add Assets from entityCatalog.
 	//! \param entityCatalog Entity catalog which should be added
 	//! \param overwriteOld IF true, old entities are overwriten by new ones, thus removing their availability
-	void AddAssetsFromCatalog(notnull SCR_EntityCatalog entityCatalog, bool overwriteOld = false)
+	protected void AddAssetsFromCatalog(notnull SCR_EntityCatalog entityCatalog, bool overwriteOld = false)
 	{
 		array<SCR_EntityCatalogEntry> newAssets = {};
 		array<typename> includedDataClasses = {};
@@ -609,8 +592,9 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 				return SCR_EEntityRequestStatus.NOT_ENOUGH_SUPPLIES;
 		}
 
+		
 		//Do not show anything, if user is of another faction than spawner
-		if (GetRequesterFaction(user) != m_CurrentFaction)
+		if (GetRequesterFaction(user) != GetFaction())
 			return SCR_EEntityRequestStatus.NOT_AVAILABLE;
 
 		// Campaign dependent ranking and cooldowns. To be replaced once stand-alone rank system is present
@@ -764,13 +748,13 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	SCR_Faction GetRequesterFaction(notnull IEntity user)
+	Faction GetRequesterFaction(notnull IEntity user)
 	{
 		SCR_ChimeraCharacter player = SCR_ChimeraCharacter.Cast(user);
 		if (!player)
 			return null;
 
-		return SCR_Faction.Cast(player.GetFaction());
+		return player.GetFaction();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -946,7 +930,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 			AddSpawnerSupplies(-spawnerData.GetSupplyCost());
 
 		if (m_OnEntitySpawned)
-			m_OnEntitySpawned.Invoke(m_SpawnedEntity, user, m_CurrentFaction);
+			m_OnEntitySpawned.Invoke(m_SpawnedEntity, user, SCR_Faction.Cast(GetFaction()));
 
 		//Send notification to player, whom requested entity
 		SCR_EntityCatalog parentCatalog = entityEntry.GetCatalogParent();
@@ -1146,24 +1130,6 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void AssignInitialFaction()
-	{
-		if (!m_FactionControl)
-			return;
-
-		Faction faction = m_FactionControl.GetAffiliatedFaction();
-		if (!faction)
-			faction = m_FactionControl.GetDefaultAffiliatedFaction();
-
-		m_CurrentFaction = SCR_Faction.Cast(faction);
-		if (!m_CurrentFaction)
-			m_CurrentFaction = SCR_Faction.Cast(m_FactionControl.GetDefaultAffiliatedFaction());
-
-		if (m_CurrentFaction)
-			SetCurrentFactionCatalog();
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Returns false if player spawned too recently
 	protected bool CooldownCheck(notnull IEntity user)
 	{
@@ -1199,15 +1165,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	//------------------------------------------------------------------------------------------------
 	protected override void OnFactionChanged(FactionAffiliationComponent owner, Faction previousFaction, Faction faction)
 	{
-		SCR_Faction newFaction = SCR_Faction.Cast(faction);
-
-		SCR_Faction oldFaction = m_CurrentFaction;
-		m_CurrentFaction = newFaction;
-
 		SetCurrentFactionCatalog();
-
-		if (m_OnSpawnerOwningFactionChanged)
-			m_OnSpawnerOwningFactionChanged.Invoke(newFaction, oldFaction);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1427,8 +1385,6 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		m_ActionManager = ActionsManagerComponent.Cast(owner.FindComponent(ActionsManagerComponent));
 		if (!m_ActionManager)
 			Print("No Action Manager detected on owner of Spawner Component!", LogLevel.WARNING);
-
-		AssignInitialFaction();
 
 		if (SCR_GameModeCampaign.GetInstance())
 		{

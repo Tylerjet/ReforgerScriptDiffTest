@@ -88,7 +88,7 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 		m_TaskLayer = GetParentTaskLayer();
 		if (m_TaskLayer)
 		{
-			m_TaskLayer.SetTaskSubject(this);
+			m_TaskLayer.SetSlotTask(this);
 			if (m_Entity)
 				m_TaskLayer.SetEntity(m_Entity);
 		}
@@ -113,17 +113,7 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	//------------------------------------------------------------------------------------------------
 	string GetTaskDescription(int iState = 0)
 	{ 
-		if (!m_Entity)
-			return m_sTaskDescription;
-		
-		if (!m_sOverrideObjectDisplayName.IsEmpty())
-			return string.Format(WidgetManager.Translate(m_sTaskDescription, m_sOverrideObjectDisplayName));
-		
-		string entityDisplayName = GetSpawnedEntityDisplayName();
-		if (entityDisplayName == string.Empty)
-			return m_sTaskDescription;
-		
-		return string.Format(WidgetManager.Translate(m_sTaskDescription, entityDisplayName));
+		return m_sTaskDescription;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
@@ -179,6 +169,16 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 		
 		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
 			return;
+		
+		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
+		{
+			//If just one condition is false, we don't continue and interrupt the init
+			if (!activationCondition.Init(GetOwner()))
+			{
+				InvokeAllChildrenSpawned();
+				return;
+			}
+		}
 		
 		bool tempTerminated = m_bIsTerminated;
 		m_bIsTerminated = false;

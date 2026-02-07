@@ -44,7 +44,7 @@ class SCR_ScenarioFrameworkActionInputOnTaskEventIncreaseCounter : SCR_ScenarioF
 		string sTaskLayerName = "";
 		if (SCR_ScenarioFrameworkTask.Cast(task))
 		{
-			taskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetTaskLayer();
+			taskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetLayerTask();
 			if (taskLayer)
 			{
 				sTaskLayerName = taskLayer.GetOwner().GetName();
@@ -62,9 +62,9 @@ class SCR_ScenarioFrameworkActionInputOnTaskEventIncreaseCounter : SCR_ScenarioF
 			{	
 				if (taskLayer)
 				{
-					SCR_ScenarioFrameworkSlotTask subject = taskLayer.GetTaskSubject();
-					if (subject)
-						subject.OnTaskStateChanged(m_eEventName)
+					SCR_ScenarioFrameworkSlotTask slotTask = taskLayer.GetSlotTask();
+					if (slotTask)
+						slotTask.OnTaskStateChanged(m_eEventName)
 				}
 			}	
 		}

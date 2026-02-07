@@ -19,6 +19,9 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	[Attribute(desc: "Overrides display name of the spawned object for task purposes", category: "Asset")]
 	protected string 	m_sOverrideObjectDisplayName;
 	
+	[Attribute(defvalue: "1", desc: "If spawned entity should be garbage-collected", category: "Asset")]
+	protected bool m_bCanBeGarbageCollected;
+	
 	[Attribute(desc: "Randomize spawned asset(s) per Faction Attribute which needs to be filled as well. Will override Object To Spawn Attribute.", category: "Randomization")]
 	protected bool						m_bRandomizePerFaction;
 	
@@ -80,7 +83,23 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			return;
 		}
 		
-		SetIsTerminated(true);				
+		SetIsTerminated(true);		
+		
+		if (!m_bCanBeGarbageCollected)
+			RemoveEntityFromGarbageCollector(m_Entity);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnInventoryParentChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot)
+	{
+		InventoryItemComponent invComp = InventoryItemComponent.Cast(m_Entity.FindComponent(InventoryItemComponent));
+		if (!invComp)
+			return;
+		
+		SetDynamicDespawnExcluded(true);
+		
+		if (!m_bCanBeGarbageCollected)
+			RemoveEntityFromGarbageCollector(m_Entity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -90,13 +109,73 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	string GetOverridenObjectDisplayName() 
+	{ 
+		return m_sOverrideObjectDisplayName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetOverridenObjectDisplayName(string name) 
+	{ 
+		m_sOverrideObjectDisplayName = name;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	string GetSpawnedEntityDisplayName() 
 	{ 
+		if (!m_Entity)
+			return string.Empty;
+		
+		if (!m_sOverrideObjectDisplayName.IsEmpty())
+			return m_sOverrideObjectDisplayName;
+		
 		SCR_EditableEntityComponent editableEntityComp = SCR_EditableEntityComponent.Cast(m_Entity.FindComponent(SCR_EditableEntityComponent));
 		if (!editableEntityComp)
 			return string.Empty;
 		
 		return editableEntityComp.GetDisplayName();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetCanBeGarbageCollected() 
+	{ 
+		return m_bCanBeGarbageCollected;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCanBeGarbageCollected(bool status) 
+	{ 
+		m_bCanBeGarbageCollected = status;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveEntityFromGarbageCollector(IEntity entity) 
+	{ 
+		if (!entity)
+			return;
+		
+		ChimeraWorld world = entity.GetWorld();
+		if (!world)
+			return;
+		
+		GarbageManager garbageMan = world.GetGarbageManager();
+		if (garbageMan)
+			garbageMan.Withdraw(entity);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddEntityToGarbageCollector(IEntity entity) 
+	{ 
+		if (!entity)
+			return;
+		
+		ChimeraWorld world = entity.GetWorld();
+		if (!world)
+			return;
+		
+		GarbageManager garbageMan = world.GetGarbageManager();
+		if (garbageMan)
+			garbageMan.Insert(entity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -214,7 +293,12 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			return;
 		
 		if (m_Entity)
+		{
 			m_vPosition = m_Entity.GetOrigin();
+			InventoryItemComponent invComp = InventoryItemComponent.Cast(m_Entity.FindComponent(InventoryItemComponent));
+			if (invComp)
+				invComp.m_OnParentSlotChangedInvoker.Remove(OnInventoryParentChanged);
+		}
 		
 		m_bInitiated = false;
 		m_bDynamicallyDespawned = true;
@@ -250,6 +334,16 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	
 		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
 			return;
+		
+		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
+		{
+			//If just one condition is false, we don't continue and interrupt the init
+			if (!activationCondition.Init(GetOwner()))
+			{
+				InvokeAllChildrenSpawned();
+				return;
+			}
+		}
 
 		if (m_Entity && !m_bEnableRepeatedSpawn)
 		{
@@ -303,6 +397,13 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 				ehManager.RegisterScriptHandler("OnCompartmentEntered", this, OnCompartmentEntered, true);
 		}
 		
+		InventoryItemComponent invComp = InventoryItemComponent.Cast(m_Entity.FindComponent(InventoryItemComponent));
+		if (invComp)
+			invComp.m_OnParentSlotChangedInvoker.Insert(OnInventoryParentChanged);
+		
+		if (!m_bCanBeGarbageCollected)
+			RemoveEntityFromGarbageCollector(m_Entity);
+		
 		if (!area)
 		{
 			SCR_GameModeSFManager gameModeComp = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
@@ -324,7 +425,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			plugin.Init(this);
 		}
 		
-		foreach(SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
+		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
 		{
 			activationAction.Init(GetOwner());
 		}
@@ -536,7 +637,8 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 };
 
-[BaseContainerProps()];
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
 class SCR_WaypointSet	
 {
 	[Attribute("Name")]
@@ -547,4 +649,110 @@ class SCR_WaypointSet
 	
 	[Attribute("Cycle the waypoints")]
 	bool m_bCycleWaypoints;	
-};
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
+class SCR_ScenarioFrameworkActivationConditionBase	
+{
+	//------------------------------------------------------------------------------------------------
+	bool Init(IEntity entity);
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
+class SCR_ScenarioFrameworkDayTimeCondition : SCR_ScenarioFrameworkActivationConditionBase
+{
+	[Attribute(defvalue: "1", desc: "If true, this can be activated only during the day. If false, only during the night.", category: "Time")]
+	protected bool m_bOnlyDuringDay;
+	
+	//------------------------------------------------------------------------------------------------
+	override bool Init(IEntity entity)
+	{
+		ChimeraWorld world = ChimeraWorld.CastFrom(entity.GetWorld());
+		if (!world)
+			return true;
+		
+		TimeAndWeatherManagerEntity manager = world.GetTimeAndWeatherManager();
+		if (!manager)
+			return true;
+		
+		TimeContainer timeContainer = manager.GetTime();
+		int currentHour = timeContainer.m_iHours;
+		
+		if (m_bOnlyDuringDay)
+			return manager.IsDayHour(currentHour);
+		else
+			return manager.IsNightHour(currentHour);
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
+class SCR_ScenarioFrameworkDayTimeHourCondition : SCR_ScenarioFrameworkActivationConditionBase
+{
+	[Attribute(defvalue: "0", desc: "Minimal day time hour", params: "0 24 1", category: "Time")]
+	protected int m_iMinHour;
+	
+	[Attribute(defvalue: "24", desc: "Maximal day time hour", params: "0 24 1", category: "Time")]
+	protected int m_iMaxHour;
+	
+	//------------------------------------------------------------------------------------------------
+	override bool Init(IEntity entity)
+	{
+		ChimeraWorld world = ChimeraWorld.CastFrom(entity.GetWorld());
+		if (!world)
+			return true;
+		
+		TimeAndWeatherManagerEntity manager = world.GetTimeAndWeatherManager();
+		if (!manager)
+			return true;
+		
+		TimeContainer timeContainer = manager.GetTime();
+		int currentHour = timeContainer.m_iHours;
+		
+		if (currentHour < m_iMinHour || currentHour > m_iMaxHour)
+			return false;
+		
+		return true;
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
+class SCR_ScenarioFrameworkWeatherCondition : SCR_ScenarioFrameworkActivationConditionBase
+{
+	[Attribute(defvalue: "0", desc: "Minimal wind speed in meters per second", params: "0 100 0.001", precision: 3, category: "Wind")]
+	protected float m_fMinWindSpeed;
+	
+	[Attribute(defvalue: "20", desc: "Maximal wind speed in meters per second", params: "0 100 0.001", precision: 3, category: "Wind")]
+	protected float m_fMaxWindSpeed;
+	
+	[Attribute(defvalue: "0", desc: "Minimal rain intensity", params: "0 1 0.001", precision: 3, category: "Rain")]
+	protected float m_fMinRainIntensity;
+	
+	[Attribute(defvalue: "1", desc: "Maximal rain intensity", params: "0 1 0.001", precision: 3, category: "Rain")]
+	protected float m_fMaxRainIntensity;
+	
+	//------------------------------------------------------------------------------------------------
+	override bool Init(IEntity entity)
+	{
+		ChimeraWorld world = ChimeraWorld.CastFrom(entity.GetWorld());
+		if (!world)
+			return true;
+		
+		TimeAndWeatherManagerEntity manager = world.GetTimeAndWeatherManager();
+		if (!manager)
+			return true;
+		
+		float currentWindSpeed = manager.GetWindSpeed();
+		if (currentWindSpeed < m_fMinWindSpeed || currentWindSpeed > m_fMaxWindSpeed)
+			return false;
+		
+		float currentRainIntensity = manager.GetRainIntensity();
+		if (currentRainIntensity < m_fMinRainIntensity || currentRainIntensity > m_fMaxRainIntensity)
+			return false;
+		
+		return true;
+	}
+}

@@ -526,6 +526,7 @@ class SCR_MilitaryBaseComponent : ScriptComponent
 			if (m_OnServiceRegistered)
 				m_OnServiceRegistered.Invoke(this, service);
 
+			OnServiceStateChanged(service.GetServiceState(), service);
 			SCR_MilitaryBaseManager.GetInstance().OnServiceRegisteredInBase(service, this);
 			service.GetOnServiceStateChanged().Insert(OnServiceStateChanged);
 		}

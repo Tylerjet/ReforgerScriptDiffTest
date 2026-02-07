@@ -18,6 +18,10 @@ class SCR_EditableEntityCoreLabelSetting
 	
 	SCR_UIInfo GetInfo()
 	{
+		//~ Safty as later system want a UIInfo
+		if (!m_Info)
+			return SCR_UIInfo.CreateInfo(typename.EnumToString(EEditableEntityLabel, m_LabelType));
+
 		return m_Info;
 	}
 	
@@ -49,5 +53,21 @@ class SCR_EditableEntityCoreLabelSetting
 	bool IsValid(EEditorMode currentMode)
 	{
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void InitalizeGrouplessLabel(EEditableEntityLabel labelType)
+	{
+		m_LabelType = labelType;
+		m_LabelGroupType = EEditableEntityLabelGroup.GROUPLESS;
+		m_bFilterEnabled = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_EditableEntityCoreLabelSetting CreateGrouplessLabel(EEditableEntityLabel labelType)
+	{
+		SCR_EditableEntityCoreLabelSetting newLabelSetting =  new SCR_EditableEntityCoreLabelSetting();
+		newLabelSetting.InitalizeGrouplessLabel(labelType);
+		return newLabelSetting;
 	}
 };

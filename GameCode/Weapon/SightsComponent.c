@@ -7,28 +7,49 @@ class ZeroingGeneratedData
 
 class SightsComponentClass: BaseSightsComponentClass
 {
+	[Attribute( defvalue: "-1", uiwidget: UIWidgets.Slider, desc: "Distance from eye to the nearby DOF", "-1 500 1")]
+	int m_iOpticDOFDistanceScale;
+	
+	[Attribute( defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "Nearby DOF is forced to be simple, not bokeh DOF. Essential for weapon elements extremely close to camera")]
+	bool m_bForceSimpleDOF;
 };
 
 class SightsComponent : BaseSightsComponent
 {
+	// TODO@AS:
+	// Move this black magic into cpp
+	// And add messages to user when something fails!
+	const string EYE_BONE = "eye";
 	
-
+	//------------------------------------------------------------------------------------------------
 	//! Applies the given recoil angles to the camera transform according to the type of sight
 	//! By default this method is empty. It should be overriden by each sight to make the appropriate adjustments
 	void ApplyRecoilToCamera(inout vector pOutCameraTransform[4], vector aimModAngles)
 	{
 	}
 	
-	bool CanFreelook() { return true; }
+	//------------------------------------------------------------------------------------------------
+	bool CanFreelook()
+	{
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Used by SCR_DepthOfFieldEffect to scale the DOF based on each particular ironsight-distance
+	bool GetDOFRelatedPrefabData(out int opticDOFDistanceScale = -1, out bool forceSimpleDOF = false)
+	{
+		SightsComponentClass prefabData = SightsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!prefabData)
+			return false;
+		
+		opticDOFDistanceScale = prefabData.m_iOpticDOFDistanceScale;
+		forceSimpleDOF = prefabData.m_bForceSimpleDOF;
+		
+		return true;
+	}
 	
 	#ifdef WORKBENCH
-	
-	// TODO@AS:
-	// Move this black magic into cpp
-	// And add messages to user when something fails!
-	
-	const string EYE_BONE = "eye";
-	
+		
 	//------------------------------------------------------------------------------------------------
 	//! Positive weapon angle tilts weapon upwards (muzzle goes up, stock goes down)
 	//! Negative weapon angle tilts weapon downwards (muzzle goes down, stock goes up)
@@ -73,6 +94,7 @@ class SightsComponent : BaseSightsComponent
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Takes front sights position as the anchor around which it rotates both the owner and the parent under desiredAngle
 		(or rather negative desired angle, as we are pivoting around our target) and calculates new transformation

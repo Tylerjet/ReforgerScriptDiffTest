@@ -871,4 +871,7 @@ class SCR_SelectionMenuPreviewAttributes : BaseItemAttributeData
 
 	[Attribute("-1", desc: "Adjust how final render preview size should be big by current icon size multiplicaiton")]
 	float m_fIconSizeXMultiplier;
+	
+	[Attribute(desc: "If true colorize item shadow in Radial Menu to medical color")]
+	bool m_bShowMedicalColor;
 };

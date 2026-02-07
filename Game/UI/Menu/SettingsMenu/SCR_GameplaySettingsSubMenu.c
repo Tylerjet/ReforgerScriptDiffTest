@@ -1,3 +1,7 @@
+	void ScriptInvoker_GameplaySettingsSubMenu(SCR_GameplaySettingsSubMenu menu);
+	typedef func ScriptInvoker_GameplaySettingsSubMenu;
+	typedef ScriptInvokerBase<ScriptInvoker_GameplaySettingsSubMenu> ScriptInvoker_GameplaySettingsSubMenuChanged;
+
 //------------------------------------------------------------------------------------------------
 class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 {
@@ -16,6 +20,8 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		"zh_cn"
 	};
 
+	static ref ScriptInvoker_GameplaySettingsSubMenuChanged m_OnLanguageChanged = new ScriptInvoker_GameplaySettingsSubMenuChanged();
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuHide(SCR_SuperMenuBase parentMenu)
 	{
@@ -147,6 +153,8 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		string currentLang;
 		setting.Set("LanguageCode", m_aLanguages[i]);
 		GetGame().UserSettingsChanged();
+		
+		m_OnLanguageChanged.Invoke(this);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -45,6 +45,9 @@ class SCR_SpawnPoint : SCR_Position
 	[Attribute("100", desc: "Spawn position detection radius, in metres")]
 	protected float m_fSpawnPositionUsageRange;
 
+	[Attribute("0", desc: "Additional respawn time (in seconds) when spawning on this spawn point"), RplProp()]
+	protected float m_fRespawnTime;
+
 	// List of all spawn points
 	private static ref array<SCR_SpawnPoint> m_aSpawnPoints = new ref array<SCR_SpawnPoint>();
 
@@ -105,6 +108,19 @@ class SCR_SpawnPoint : SCR_Position
 			m_OnSetSpawnPointEnabled = new ScriptInvokerBool();
 		
 		return m_OnSetSpawnPointEnabled;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetRespawnTime()
+	{
+		return m_fRespawnTime;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetRespawnTime(float time)
+	{
+		m_fRespawnTime = time;
+		Replication.BumpMe();
 	}
 	
 	//------------------------------------------------------------------------------------------------

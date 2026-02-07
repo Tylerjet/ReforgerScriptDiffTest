@@ -137,7 +137,7 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Check whether the tool isnt currently clicked from top of/under of a button 
-	protected static bool CanBeManipulated(array<Widget> tracedWidgets)
+	static bool CanBeManipulated(array<Widget> tracedWidgets)
 	{
 		foreach ( Widget widget : tracedWidgets )
 		{

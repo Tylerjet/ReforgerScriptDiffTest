@@ -8,6 +8,7 @@ class SCR_CampaignClientData
 	protected float m_fLastSuicideTimestamp;
 	protected float m_fRespawnPenalty;
 	protected float m_fLastPenaltyDeductionTimestamp;
+	protected WorldTimestamp m_fNextTravelAvailableAt;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Setter for client ID
@@ -85,5 +86,17 @@ class SCR_CampaignClientData
 	float GetLastPenaltyDeductionTimestamp()
 	{
 		return m_fLastPenaltyDeductionTimestamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetNextFastTravelTimestamp(WorldTimestamp timestamp)
+	{
+		m_fNextTravelAvailableAt = timestamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	WorldTimestamp GetNextFastTravelTimestamp()
+	{
+		return m_fNextTravelAvailableAt;
 	}
 };

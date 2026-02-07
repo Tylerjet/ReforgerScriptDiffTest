@@ -298,6 +298,10 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		EEditableEntityLabel conditionalLabel;
 		SCR_EditorContentBrowserDisplayConfig contentBrowserConfig = m_ContentBrowserEditorComponent.GetContentBrowserDisplayConfig();
 		
+		//~ Get all valid blacklisted labels
+		array<EEditableEntityLabel> validBlackListLabels = {};
+		m_ContentBrowserEditorComponent.GetValidBlackListedLabels(validBlackListLabels);
+		
 		EEditorMode editorMode = 0;
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
 		if (editorManager) 
@@ -380,8 +384,8 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 				
 				EEditableEntityLabel entityLabel = entityLabelSettings.GetLabelType();
 				
-				//~ Skip labels that cannot be shown
-				if (contentBrowserConfig && !contentBrowserConfig.CanShowLabel(entityLabel))
+				//~ Skip labels that cannot be shown (Is always active or blacklisted label)
+				if ((contentBrowserConfig && !contentBrowserConfig.CanShowLabel(entityLabel)) || validBlackListLabels.Contains(entityLabel))
 					continue;
 				
 				hasAtLeastOneLabelVisible = true;

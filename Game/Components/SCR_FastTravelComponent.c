@@ -222,6 +222,13 @@ class SCR_FastTravelComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void SetNextTransportTimestamp(WorldTimestamp timestamp)
+	{
+		m_fNextTravelAvailableAt = timestamp;
+		Replication.BumpMe();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void RpcDo_FastTravel(vector position)
 	{

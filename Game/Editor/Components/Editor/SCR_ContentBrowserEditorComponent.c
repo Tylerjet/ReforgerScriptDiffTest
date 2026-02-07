@@ -31,6 +31,9 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 
 	[Attribute(desc: "A list of saved states of the content browser such as labels and pagination. Index 0 is the saved hand filters.")]
 	protected ref array<ref SCR_EditorContentBrowserSaveStateDataUI> m_aContentBrowserTabStates;
+	
+	[Attribute(desc: "Entities with blacklisted labels are not displayed in the content browser unless a SCR_EditorContentBrowserDisplayConfig is used when opening the content browser and the label is in the AlwaysActiveLabels", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
+	protected ref array<EEditableEntityLabel> m_eBlackListedLabels;
 
 	//~ Saved content browser state when content browser is opened with config
 	protected ref map<ref SCR_EditorContentBrowserDisplayConfig, ref SCR_EditorContentBrowserSaveStateData> m_mContentBrowserConfigStates = new ref map<ref SCR_EditorContentBrowserDisplayConfig, ref SCR_EditorContentBrowserSaveStateData>;
@@ -160,6 +163,33 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	{
 		return FindExtendedEntityCache(entity.GetPrefab()) != null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Returns a list of lables that are currently blacklisted and any enity with the label will not be displayed in the list nor will the filter show
+	\param[out] validBlackListLabels List of blacklisted labels
+	\return int Count of blacklisted labels
+	*/
+	int GetValidBlackListedLabels(out notnull array<EEditableEntityLabel> validBlackListLabels)
+	{
+		if (m_ContentBrowserConfig)
+		{
+			validBlackListLabels.Clear();
+	
+			foreach (EEditableEntityLabel label : m_eBlackListedLabels)
+			{
+				//~ only add non "always active" labels
+				if (!m_ContentBrowserConfig.IsAlwaysActiveLabel(label))
+					validBlackListLabels.Insert(label);
+			}
+		}
+		else
+		{
+			validBlackListLabels.Copy(m_eBlackListedLabels);
+		}
+	
+		return validBlackListLabels.Count();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected SCR_EditableEntityCache FindExtendedEntityCache(ResourceName extendedEntityResource)
@@ -207,11 +237,16 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		m_aFilteredPrefabIDs.Clear();
 		m_aLocalizationKeys.Clear();
 		array<EEditableEntityLabel> entityLabels = {};
+		
+		array<EEditableEntityLabel> validBlackListLabels = {};
+		GetValidBlackListedLabels(validBlackListLabels);
 
+		bool isBlackListed;
 		SCR_EditableEntityUIInfo info;
 		int count = GetInfoCount();
 		for (int i = 0; i < count; i++)
 		{
+			isBlackListed = false;
 			entityLabels.Clear();
 			info = GetInfo(i);
 
@@ -222,6 +257,20 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 
 			info.GetEntityLabels(entityLabels);
 			if (!IsMatchingToggledLabels(entityLabels))
+				continue;
+			
+			//~ Ignore entities with blacklist labels
+			foreach (EEditableEntityLabel blackListLabel : validBlackListLabels)
+			{
+				if (entityLabels.Contains(blackListLabel))
+				{
+					isBlackListed = true;
+					break;
+				}
+			}
+			
+			//~ Entity has a blacklisted label so don't show it
+			if (isBlackListed)
 				continue;
 
 			m_aFilteredPrefabIDs.Insert(i);
@@ -433,6 +482,9 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 
 		array<SCR_EditableEntityCoreLabelSetting> labelsInGroup = new array<SCR_EditableEntityCoreLabelSetting>;
 		GetLabelsOfGroup(groupLabel, labelsInGroup);
+		if (!labelsInGroup)
+			return -1;
+		
 		int count = labelsInGroup.Count();
 
 		for (int i = 0; i < count; i++)

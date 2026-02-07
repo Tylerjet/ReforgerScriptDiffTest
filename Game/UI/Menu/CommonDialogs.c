@@ -36,6 +36,12 @@ class SCR_CommonDialogs
 		SCR_ServicesStatusDialogUI dialog = new SCR_ServicesStatusDialogUI();
 		return SCR_ServicesStatusDialogUI.Cast(SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "services_status", dialog));
 	}
+	
+	//---------------------------------------------------------------------------------------------
+	static SCR_ConfigurableDialogUi CreateTutorialDialog()
+	{
+		return SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "tutorial");
+	}
 };
 
 

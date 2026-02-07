@@ -99,6 +99,14 @@ class AddonsToolsUI : SCR_TabDialog
 		if (!tabView)
 			return;
 		
+		if (GetGame().IsPlatformGameConsole())
+		{
+			tabView.SetTabVisible(1, false, false);
+			tabView.SetTabVisible(2, false, false);
+			tabView.SetPagingButtonsVisible(false, false);
+			return;
+		}
+		
 		bool enable = (SCR_AddonManager.GetInstance().CountOfEnabledAddons() > 0);
 		
 		tabView.EnableTab(1, enable);

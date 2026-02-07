@@ -71,10 +71,20 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 		if (!trigger)
 			return;
 		
+		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
+		{
+			//If just one condition is false, we don't continue and interrupt the init
+			if (!activationCondition.Init(GetOwner()))
+			{
+				InvokeAllChildrenSpawned();
+				return;
+			}
+		}
+		
 		SCR_TaskDeliver task = SCR_TaskDeliver.Cast(m_TaskLayer.GetTask());
 		if (task)
 		{
-			task.SetTaskLayer(m_TaskLayer);
+			task.SetLayerTask(m_TaskLayer);
 			task.SetDeliveryTrigger(trigger);
 			task.UpdateTaskTitleAndDescription();
 		}
@@ -98,7 +108,7 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 					task = SCR_TaskDeliver.Cast(m_TaskLayer.GetTask());
 					if (task)
 					{
-						task.SetTaskLayer(m_TaskLayer);
+						task.SetLayerTask(m_TaskLayer);
 						task.SetDeliveryTrigger(trigger);
 						task.UpdateTaskTitleAndDescription();
 					}

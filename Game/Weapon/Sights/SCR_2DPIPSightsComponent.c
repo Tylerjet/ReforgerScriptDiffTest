@@ -88,6 +88,12 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	[Attribute("1.05", UIWidgets.Slider, "PIP reticle additional scale to compensate discrepancy between camera and reticle", params: "0.01 10 0.00001", category: "PiPSights", precision: 5)]
 	protected float m_fReticlePIPScale;
 
+	[Attribute("1.025", UIWidgets.Slider, "PIP objective inner edge", params: "0.001 10 0.00001", category: "PiPSights", precision: 5)]
+	protected float m_fObjectivePIPEdgeMin;
+
+	[Attribute("1.075", UIWidgets.Slider, "PIP objective outer edge", params: "0.001 10 0.00001", category: "PiPSights", precision: 5)]
+	protected float m_fObjectivePIPEdgeMax;
+
 	[Attribute("{5366CEDE2A151631}Terrains/Common/Water/UnderWater/oceanUnderwater.emat", UIWidgets.ResourcePickerThumbnail, "Underwater PP material", params: "emat", category: "PiPSights")]
 	protected ResourceName m_sUnderwaterPPMaterial;
 
@@ -162,6 +168,8 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	int			m_iReticleOffsetYIndex	= -1;
 	int			m_iReticleColorIndex	= -1;
 	int			m_iReticleScaleIndex	= -1;
+	int			m_iEdgeMinIndex			= -1;
+	int			m_iEdgeMaxIndex			= -1;
 
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -609,12 +617,15 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		// Smooth adjustment for variable FOV sights
 		if (!fovChanged)
 		{
-			SCR_VariableSightsFOVInfo variableSights = SCR_VariableSightsFOVInfo.Cast(fovInfo);
+			SCR_BaseVariableSightsFOVInfo variableSights = SCR_BaseVariableSightsFOVInfo.Cast(fovInfo);
 			fovChanged = variableSights && variableSights.IsAdjusting();
 		}
 
 		if (fovChanged)
-			m_PIPCamera.SetVerticalFOV(fov * uvScale);
+		{
+			currentFOV = fov * uvScale;
+			m_PIPCamera.SetVerticalFOV(currentFOV);
+		}
 
 		if (fovChanged && m_pMaterial && m_fReticleAngularSize != 0)
 		{
@@ -633,6 +644,19 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 				m_fReticleScale = fovReticle * m_fReticlePortion / m_fReticleAngularSize;
 				m_pMaterial.SetParamByIndex(m_iReticleScaleIndex, m_fReticleScale * uvScale / m_fReticlePIPScale);
 			}
+		}
+
+		// Adjust objective edge
+		if (fovChanged && m_pMaterial && currentFOV > 0)
+		{
+			float edgeScale = m_fObjectiveScale * m_fObjectiveFov / currentFOV;
+
+			SCR_BaseVariableSightsFOVInfo variableSights = SCR_BaseVariableSightsFOVInfo.Cast(fovInfo);
+			if (variableSights)
+				edgeScale *= fov / variableSights.GetBaseFOV();
+
+			m_pMaterial.SetParamByIndex(m_iEdgeMinIndex, edgeScale * edgeScale * m_fObjectivePIPEdgeMin);
+			m_pMaterial.SetParamByIndex(m_iEdgeMaxIndex, edgeScale * edgeScale * m_fObjectivePIPEdgeMax);
 		}
 
 		// Get local tm in relation to actual parent
@@ -846,6 +870,8 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			m_iReticleOffsetYIndex = m_pMaterial.GetParamIndex("ReticleOffsetY");
 			m_iReticleColorIndex = m_pMaterial.GetParamIndex("ReticleColor");
 			m_iReticleScaleIndex = m_pMaterial.GetParamIndex("ReticleScale");
+			m_iEdgeMinIndex = m_pMaterial.GetParamIndex("EdgeMin");
+			m_iEdgeMaxIndex = m_pMaterial.GetParamIndex("EdgeMax");
 		}
 		else
 		{

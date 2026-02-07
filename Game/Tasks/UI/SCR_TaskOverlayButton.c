@@ -37,7 +37,6 @@ class SCR_TaskOverlayButton : ScriptedWidgetComponent
 			iconHover.SetOpacity(0);
 			
 			m_MapUiTask.m_wHorizLayout.SetEnabled(false);
-			GetGame().GetWorkspace().SetFocusedWidget(null);
 		}
 
 		return false;

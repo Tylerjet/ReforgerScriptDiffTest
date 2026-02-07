@@ -22,14 +22,6 @@ class SCR_AIPerformActionBehavior : SCR_AIBehaviorBase
 	{
 		super.OnActionFailed();
 		if (m_SmartActionComponent.m_Value)
-			m_SmartActionComponent.m_Value.ReleaseAction();	
-	}
-	
-	// fail action if deselected example: CoverPost -> AttackBeh removes CoverPost from planner 
-	//------------------------------------------------------------------------------------------------------------------------------------------
-	override void OnActionDeselected()
-	{
-		super.OnActionDeselected();
-		Fail();	
+			m_SmartActionComponent.m_Value.ReleaseAction();
 	}
 };

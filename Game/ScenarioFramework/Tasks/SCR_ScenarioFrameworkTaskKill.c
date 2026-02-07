@@ -21,7 +21,7 @@ class SCR_TaskKill : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void RehookTaskSubject(IEntity object)
+	override void RehookTaskAsset(IEntity object)
 	{
 		if (!object)
 			return;

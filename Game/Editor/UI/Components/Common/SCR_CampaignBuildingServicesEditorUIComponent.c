@@ -115,7 +115,11 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 			if (!editableUIInfo)
 				continue;
 
-			if (editableUIInfo.GetFaction() != SCR_Faction.GetEntityFaction(SCR_EntityHelper.GetPlayer()))
+			IEntity player = EntityUtils.GetPlayer();
+			if (!player)
+				continue;
+			
+			if (editableUIInfo.GetFaction() != SCR_Faction.GetEntityFaction(player))
 				continue;
 
 			FilterServiceLabels(editableUIInfo);
@@ -260,10 +264,11 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 	//------------------------------------------------------------------------------------------------
 	//! Check if any listed service is fully built.
 	bool IsAnyServiceBuilt(EEditableEntityLabel label)
-	{
+	{		
 		foreach (Tuple2<EEditableEntityLabel, SCR_ServicePointComponent> service : m_aServices)
 		{
-			if (service.param1 != label)
+			//ToDo: Find a repro on exiting a game, can be service null and check just tries to run?
+			if (/*!service ||*/ service.param1 != label)
 				continue;
 
 			if (service.param2.GetServiceState() == SCR_EServicePointStatus.ONLINE)

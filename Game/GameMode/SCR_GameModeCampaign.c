@@ -25,7 +25,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	[Attribute("1000", desc: "Supplies will be autoreplenished in bases until this limit is reached.", params: "0 inf 1", category: "Campaign")]
 	protected int m_iSuppliesReplenishThreshold;
 	
-	[Attribute("200", desc: "Supplies will be autoreplenished in bases quickly until this limit is reached.", params: "0 inf 1", category: "Campaign")]
+	[Attribute("200", desc: "Supplies will be autoreplenished in bases quickly until this limit is reached (HQs are not affected).", params: "0 inf 1", category: "Campaign")]
 	protected int m_iQuickSuppliesReplenishThreshold;
 	
 	[Attribute("2", desc: "Supplies income will be multiplied by this number unless the quick replenish threshold has been reached.", params: "1 inf 0.05", category: "Campaign")]
@@ -1247,6 +1247,11 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 		if (comp)
 			comp.AwardXP(playerId, SCR_EXPRewards.UNDEFINED, 1, false, clientData.GetXP() - xp);
+
+		SCR_FastTravelComponent fastTravel = SCR_FastTravelComponent.Cast(pc.FindComponent(SCR_FastTravelComponent));
+
+		if (fastTravel)
+			fastTravel.SetNextTransportTimestamp(clientData.GetNextFastTravelTimestamp());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1544,6 +1549,60 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		WriteClientData(playerId, true);
 		m_BaseManager.OnPlayerDisconnected(playerId)
 	}
+	
+	override bool CanPlayerSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, out SCR_ESpawnResult result = SCR_ESpawnResult.SPAWN_NOT_ALLOWED)
+	{
+		if (!super.CanPlayerSpawn_S(requestComponent, handlerComponent, data, result))
+			return false;
+		
+		SCR_CampaignMilitaryBaseComponent base;
+		SCR_SpawnPointSpawnData spawnPointData = SCR_SpawnPointSpawnData.Cast(data);
+		if (spawnPointData)
+		{
+			IEntity parent = spawnPointData.GetSpawnPoint().GetParent();
+			while (parent)
+			{
+				base = SCR_CampaignMilitaryBaseComponent.Cast(parent.FindComponent(SCR_CampaignMilitaryBaseComponent));
+	
+				if (base)
+					break;
+	
+				parent = parent.GetParent();
+			}
+		}
+		
+		//Base HQ doesn't need to check supplies cost
+		if (!base || base.IsHQ())
+			return true;
+		
+		bool validPersonalLoadout = false;
+		SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(requestComponent.GetPlayerController().FindComponent(SCR_PlayerLoadoutComponent));
+		if (loadoutComp && loadoutComp.GetLoadout())
+		{
+			SCR_PlayerArsenalLoadout playerArsenalLoadout = SCR_PlayerArsenalLoadout.Cast(loadoutComp.GetLoadout());
+			if (playerArsenalLoadout)
+			{
+				validPersonalLoadout = true;
+				
+ 				if (base.GetSupplies() < (playerArsenalLoadout.GetLoadoutSuppliesCost(requestComponent.GetPlayerId()) * base.GetBaseSpawnCostFactor()))
+				{
+					result = SCR_ESpawnResult.NOT_ALLOWED_NOT_ENOUGH_SUPPLIES;
+					return false;
+				}
+			}
+		}
+		
+		if (!validPersonalLoadout)
+		{
+			if (base.GetSupplies() < base.GetBaseSpawnCost())
+			{
+				result = SCR_ESpawnResult.NOT_ALLOWED_NOT_ENOUGH_SUPPLIES;
+				return false;
+			}
+		}
+		
+		return true;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
@@ -1614,10 +1673,21 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 		if (!base)
 			return;
-
+		
+		//Base HQ doesn't take supplies
 		if (!base.IsHQ())
-			base.AddSupplies(-base.GetBaseSpawnCost());
-
+		{
+			SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(requestComponent.GetPlayerController().FindComponent(SCR_PlayerLoadoutComponent));
+			if (loadoutComp)
+			{
+				SCR_PlayerArsenalLoadout playerArsenalLoadout = SCR_PlayerArsenalLoadout.Cast(loadoutComp.GetLoadout());
+				if (playerArsenalLoadout)
+					base.AddSupplies(playerArsenalLoadout.GetLoadoutSuppliesCost(requestComponent.GetPlayerId()) * base.GetBaseSpawnCostFactor() * -1.0);
+				else
+					base.AddSupplies(-base.GetBaseSpawnCost());
+			}
+		}
+		
 		// Location popup for player
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(requestComponent.GetPlayerId());
 
@@ -2022,6 +2092,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		SCR_CampaignSuppliesComponent suppliesComponent;
 		SCR_CampaignMobileAssemblyComponent mobileAssemblyComponent;
 		EventHandlerManagerComponent eventHandlerManager;
+		SCR_CampaignGarbageManager garbageManager = SCR_CampaignGarbageManager.Cast(world.GetGarbageManager());
 
 		// Handle Conflict-specific vehicles
 		foreach (EntitySlotInfo slot : slots)
@@ -2033,6 +2104,17 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 			if (!truckBed)
 				continue;
+
+			suppliesComponent = SCR_CampaignSuppliesComponent.Cast(truckBed.FindComponent(SCR_CampaignSuppliesComponent));
+
+			// Supply truck
+			if (suppliesComponent)
+			{
+				eventHandlerManager = EventHandlerManagerComponent.Cast(spawnedEntity.FindComponent(EventHandlerManagerComponent));
+
+				if (eventHandlerManager && garbageManager)
+					eventHandlerManager.RegisterScriptHandler("OnCompartmentLeft", spawnedEntity, m_BaseManager.OnSupplyTruckLeft);
+			}
 
 			mobileAssemblyComponent = SCR_CampaignMobileAssemblyComponent.Cast(truckBed.FindComponent(SCR_CampaignMobileAssemblyComponent));
 

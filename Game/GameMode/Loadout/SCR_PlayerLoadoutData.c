@@ -14,6 +14,7 @@ class SCR_PlayerLoadoutData
 {
     ref array<ref SCR_ClothingLoadoutData> Clothings = {};
 	ref array<ref SCR_WeaponLoadoutData> Weapons = {};
+	float LoadoutCost;
  
     static bool Extract(SCR_PlayerLoadoutData instance, ScriptCtx ctx, SSnapSerializerBase snapshot)
     {
@@ -40,7 +41,9 @@ class SCR_PlayerLoadoutData
 			string resourceName = instance.Weapons[i].WeaponPrefab;
 			snapshot.SerializeString(resourceName);
 		}
-		
+
+		snapshot.SerializeFloat(instance.LoadoutCost);
+
         return true;
     }
  
@@ -80,6 +83,8 @@ class SCR_PlayerLoadoutData
 			
 			instance.Weapons.Insert(weaponData);
 		}
+
+		snapshot.SerializeFloat(instance.LoadoutCost);
 		
         return true;
     }
@@ -105,6 +110,8 @@ class SCR_PlayerLoadoutData
 			snapshot.EncodeInt(packet);
 			snapshot.EncodeString(packet);
 		}
+
+		snapshot.EncodeFloat(packet);
     }
  
     static bool Decode(ScriptBitSerializer packet, ScriptCtx ctx, SSnapSerializerBase snapshot)
@@ -129,6 +136,8 @@ class SCR_PlayerLoadoutData
 			snapshot.DecodeString(packet);
 		}
 		
+		snapshot.DecodeFloat(packet);
+
         return true;
     }
  

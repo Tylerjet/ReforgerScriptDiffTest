@@ -14,6 +14,7 @@ class SCR_MapMarkerBase
 	protected int m_iColorEntry;			// placed marker color entry id
 	protected int m_iIconEntry;				// placed marker icon entry id
 	protected int m_iRotation;
+	protected string m_sFactionKey;			// marker FactionKey
 	protected string m_sCustomText;
 	
 	// server only
@@ -79,6 +80,18 @@ class SCR_MapMarkerBase
 	void SetMarkerOwnerID(int playerID)
 	{
 		m_MarkerOwnerID = playerID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetMarkerFactionKey()
+	{
+		return m_sFactionKey;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetMarkerFactionKey(string factionKey)
+	{
+		m_sFactionKey = factionKey;
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -165,7 +178,14 @@ class SCR_MapMarkerBase
 			return;
 		
 		m_MapEntity = SCR_MapEntity.GetMapInstance();
-		Widget mapFrame = m_MapEntity.GetMapMenuRoot().FindAnyWidget(SCR_MapConstants.MAP_FRAME_NAME);
+		if (!m_MapEntity)
+			return;
+		
+		Widget mapRoot = m_MapEntity.GetMapMenuRoot();
+		if (!mapRoot)
+			return;
+		
+		Widget mapFrame = mapRoot.FindAnyWidget(SCR_MapConstants.MAP_FRAME_NAME);
 		if (!mapFrame)
 			return;
 		
@@ -242,6 +262,7 @@ class SCR_MapMarkerBase
 		snapshot.SerializeBytes(instance.m_eType, 1);
 		snapshot.SerializeBytes(instance.m_iColorEntry, 1);
 		snapshot.SerializeBytes(instance.m_iIconEntry, 2);
+		snapshot.SerializeString(instance.m_sFactionKey);
 		snapshot.SerializeString(instance.m_sCustomText);
 		return true;
 	}
@@ -258,6 +279,7 @@ class SCR_MapMarkerBase
 		snapshot.SerializeBytes(instance.m_eType, 1);
 		snapshot.SerializeBytes(instance.m_iColorEntry, 1);
 		snapshot.SerializeBytes(instance.m_iIconEntry, 2);
+		snapshot.SerializeString(instance.m_sFactionKey);
 		snapshot.SerializeString(instance.m_sCustomText);
 		return true;
 	}
@@ -267,12 +289,14 @@ class SCR_MapMarkerBase
 	{
 		snapshot.Serialize(packet, SERIALIZED_BYTES);
 		snapshot.EncodeString(packet);
+		snapshot.EncodeString(packet);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	static bool Decode(ScriptBitSerializer packet, ScriptCtx ctx, SSnapSerializerBase snapshot)
 	{
 		snapshot.Serialize(packet, SERIALIZED_BYTES);
+		snapshot.DecodeString(packet);
 		snapshot.DecodeString(packet);
 		return true;
 	}
@@ -281,6 +305,7 @@ class SCR_MapMarkerBase
 	static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs , ScriptCtx ctx)
 	{
 		return lhs.CompareSnapshots(rhs, SERIALIZED_BYTES)	// m_iPosWorldX(4) + m_iPosWorldY(4) + m_iMarkerID(4) + m_MarkerOwnerID(4)  + m_iConfigID(4) + m_iRotation(2) + m_eType(1) + m_iColorEntry(1) + m_iIconEntry(2)
+			&& lhs.CompareStringSnapshots(rhs) // m_sFactionKey
 			&& lhs.CompareStringSnapshots(rhs); // m_sCustomText
 	}
 
@@ -296,6 +321,7 @@ class SCR_MapMarkerBase
 		    && snapshot.Compare(instance.m_eType, 1)
 			&& snapshot.Compare(instance.m_iColorEntry, 1)
 			&& snapshot.Compare(instance.m_iIconEntry, 2)
+			&& snapshot.CompareString(instance.m_sFactionKey)
 			&& snapshot.CompareString(instance.m_sCustomText);
 	}
 };

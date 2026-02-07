@@ -9,7 +9,8 @@ class SCR_CampaignTutorialArlandDrivingAdvanced23 : SCR_BaseCampaignTutorialArla
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		m_fDuration = 20;
+		m_fDuration = 10;
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		m_TutorialComponent.SetStagesComplete(5, true);	
 	}
 };

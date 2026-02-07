@@ -5,23 +5,11 @@ class SCR_DefenderSpawnerComponentClass : SCR_SlotServiceComponentClass
 	[Attribute(defvalue: "{93291E72AC23930F}Prefabs/AI/Waypoints/AIWaypoint_Defend.et", UIWidgets.ResourceNamePicker, desc: "Default waypoint prefab", "et", category: "Defender Spawner")]
 	protected ResourceName m_sDefaultWaypointPrefab;
 
-	[Attribute(defvalue :"{000CD338713F2B5A}Prefabs/AI/Groups/Group_Base.et", UIWidgets.ResourceNamePicker, desc: "Default group to be initially assigned to created units", "et", category: "Defender Spawner")]
-	protected ResourceName m_sDefaultGroupPrefab;
-
-	[Attribute(defvalue: "{FFF9518F73279473}PrefabsEditable/Auto/AI/Waypoints/E_AIWaypoint_Move.et", UIWidgets.ResourceNamePicker, "Move waypoint prefab", "et", category: "Defender Spawner")]
-	protected ResourceName m_sMoveWaypointPrefab;
-	
-	[Attribute(defvalue: "2.5", params: "0 inf", desc: "Completion radius of initial move waypoint", "et", category: "Defender Spawner")]
-	protected float m_fMoveWaypointCompletionRadius;
-	
 	[Attribute(defvalue: "75", params: "0 inf", desc: "Radius of default waypoint", "et", category: "Defender Spawner")]
 	protected float m_fDefaultWaypointCompletionRadius;
-
-	//------------------------------------------------------------------------------------------------
-	ResourceName GetMoveWaypointPrefab()
-	{
-		return m_sMoveWaypointPrefab;
-	}
+	
+	[Attribute(defvalue :"Wedge", UIWidgets.Auto, desc: "Group formation created on rally point. Available formations are found on SCR_AIWorld entity", category: "Defender Spawner")]
+	protected string m_sExitFormation;
 	
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetDefaultWaypointPrefab()
@@ -30,21 +18,15 @@ class SCR_DefenderSpawnerComponentClass : SCR_SlotServiceComponentClass
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ResourceName GetDefaultGroupPrefab()
-	{
-		return m_sDefaultGroupPrefab;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	float GetMoveWaypointCompletionRadius()
-	{
-		return m_fMoveWaypointCompletionRadius;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	float GetDefaultWaypointCompletionRadius()
 	{
 		return m_fDefaultWaypointCompletionRadius;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetExitFormation()
+	{
+		return m_sExitFormation;
 	}
 };
 
@@ -67,7 +49,10 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, category: "Defender Spawner", desc: "Enable spawning"), RplProp()]
 	protected bool m_bEnableSpawning;
-
+	
+	[Attribute(defvalue: "30", params: "0 inf", desc: "Minimum distance to hostile players for spawner to work", "et")]
+	protected float m_fMinHostilePlayerDistance;
+	
 	[Attribute(desc: "Enables supplies usage.", category: "Supplies")]
 	protected bool m_bSuppliesConsumptionEnabled;
 	
@@ -87,33 +72,17 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	protected SCR_AIGroup m_AIgroup;
 	protected AIWaypoint m_Waypoint;
 	protected int m_iDespawnedGroupMembers;
-	protected SCR_Faction m_CurrentFaction;
-	protected ref ScriptInvoker m_OnSpawnerOwningFactionChanged = new ScriptInvoker(); //Invokes with new and old factions assigned to this spawner
-	protected ref array<ref Tuple2<AIWaypoint, SCR_AIGroup>> m_aGroupWaypoints = {};
+	protected ref array<ref Tuple3<SCR_AIActionBase, AIAgent, WorldTimestamp>> m_aUnitsOnMove = {};
 	protected ref array<ResourceName> m_aRefillQueue;
 	protected ref array<SCR_AIGroup> m_aPreviousGroups;
+	protected ref array<IEntity> m_aOldUnits;
 	
 	protected ref OnDefenderGroupSpawnedInvoker m_OnDefenderGroupSpawned;
 
 	protected static const int SPAWN_CHECK_INTERVAL = 1000;
+	protected static const int SPAWN_GROUP_JOIN_TIMEOUT = 20; //Maximum time in seconds for spawned unit to reach waypoint, before it is assigned to group automatically
 	protected static const int SPAWN_RADIUS_MIN = Math.Pow(500, 2);
 	protected static const int SPAWN_RADIUS_MAX = Math.Pow(1000, 2);
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_Faction GetCurrentFaction()
-	{
-		return m_CurrentFaction;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Returns invoker called on faction change of spawner. Invokes with new faction to be assigned and previous faction
-	ScriptInvoker GetOnFactionChanged()
-	{
-		if (!m_OnSpawnerOwningFactionChanged)
-			m_OnSpawnerOwningFactionChanged = new ScriptInvoker();
-
-		return m_OnSpawnerOwningFactionChanged;
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	OnDefenderGroupSpawnedInvoker GetOnDefenderGroupSpawned()
@@ -136,10 +105,11 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	//! Set Defender group data from Entity catalog on owning faction
 	protected void AssignDefenderGroupDataFromOwningFaction()
 	{
-		if (!m_CurrentFaction)
+		SCR_Faction faction = SCR_Faction.Cast(GetFaction());
+		if (!faction)
 			return;
-		
-		SCR_EntityCatalog catalog = m_CurrentFaction.GetFactionEntityCatalogOfType(EEntityCatalogType.GROUP);
+
+		SCR_EntityCatalog catalog = faction.GetFactionEntityCatalogOfType(EEntityCatalogType.GROUP);
 		if (!catalog)
 		{
 			Print("SCR_Faction Config lacks catalog of GROUP type. SCR_DefenderSpawnerComponent won't work without it", LogLevel.ERROR);
@@ -254,7 +224,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 			return;
 
 		SCR_ChimeraCharacter chimeraCharacter = SCR_ChimeraCharacter.Cast(playerController.GetControlledEntity());
-		if (!chimeraCharacter || chimeraCharacter.GetFaction() != m_CurrentFaction)
+		if (!chimeraCharacter || chimeraCharacter.GetFaction() != GetFaction())
 			return;
 
 		m_bEnableSpawning = enable;
@@ -277,6 +247,10 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 			return;
 		
 		if (!m_GroupEntry || !m_AIgroup || !m_AIgroup.m_aUnitPrefabSlots || m_AIgroup.m_aUnitPrefabSlots.IsEmpty())
+			return;
+		
+		AIWorld aiWorld = GetGame().GetAIWorld();
+		if (!aiWorld)
 			return;
 		
 		SCR_EntityCatalogSpawnerData entityData = SCR_EntityCatalogSpawnerData.Cast(m_GroupEntry.GetEntityDataOfType(SCR_EntityCatalogSpawnerData));
@@ -320,32 +294,53 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		if (m_Waypoint)
 			m_AIgroup.RemoveWaypoint(m_Waypoint);
 		
-		SCR_EntityLabelPointComponent rallyPointEntity = slot.GetRallyPoint();
-		if (rallyPointEntity)
-		{
-			// Create temporary group for unit and later rally point waypoint
-			SCR_AIGroup group = CreateTemporaryGroup();
-			if (!group)
-			{
-				m_AIgroup.AddAgent(agent);
-				return;
-			}
+		SCR_DefenderSpawnerComponentClass prefabData = SCR_DefenderSpawnerComponentClass.Cast(GetComponentData(GetOwner()));
 		
-			SCR_AIWaypoint wp = CreateRallyPointWaypoint(rallyPointEntity);
-			if (!wp)
+		SCR_EntityLabelPointComponent rallyPointComponent = slot.GetRallyPoint();
+		if (rallyPointComponent && prefabData)
+		{
+			IEntity rallyPointEntity = rallyPointComponent.GetOwner();
+			
+			// Create temporary group for unit and later rally point waypoint
+			SCR_AIUtilityComponent utilityComponent = SCR_AIUtilityComponent.Cast(agent.FindComponent(SCR_AIUtilityComponent));
+			
+			vector rpTransform[4];
+			rallyPointEntity.GetWorldTransform(rpTransform);
+			
+			AIFormationDefinition formationDefiniton = aiWorld.GetFormation(prefabData.GetExitFormation());
+			vector posLocal;
+			
+			if (m_aUnitsOnMove && formationDefiniton)
+			{
+				vector formationOffset = 0.5 * formationDefiniton.GetOffsetPosition(m_aUnitsOnMove.Count());
+				posLocal = posLocal + formationOffset;
+			}
+			
+			vector posWorld = posLocal.Multiply4(rpTransform);
+			
+			SCR_AIMoveIndividuallyBehavior moveBehavior = new SCR_AIMoveIndividuallyBehavior(utilityComponent, null, posWorld, SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE, SCR_AIActionBase.PRIORITY_LEVEL_GAMEMASTER, radius: 0.5);
+			if (!moveBehavior)
 			{
 				m_AIgroup.AddAgent(agent);
 				return;
 			}
 			
-			if (!m_aGroupWaypoints)
-				m_aGroupWaypoints = {};
+			utilityComponent.AddAction(moveBehavior);
 			
-			group.AddAgent(agent);
-			group.AddWaypoint(wp);
-			m_aGroupWaypoints.Insert(new Tuple2<AIWaypoint, SCR_AIGroup>(wp, group));
-			group.GetOnWaypointCompleted().Insert(OnGroupWaypointFinished);
-			group.GetOnAgentRemoved().Insert(OnAIAgentRemoved);
+			if (!m_aUnitsOnMove)
+				m_aUnitsOnMove = {};
+			
+			ChimeraWorld world = GetOwner().GetWorld();
+			
+			m_aUnitsOnMove.Insert(new Tuple3<SCR_AIActionBase, AIAgent, WorldTimestamp>(moveBehavior, agent, world.GetServerTimestamp()));
+			
+			moveBehavior.m_OnActionCompleted.Insert(OnMoveFinished);
+			
+			SCR_CharacterControllerComponent charController = SCR_CharacterControllerComponent.Cast(ai.FindComponent(SCR_CharacterControllerComponent));
+			if (!charController)
+				return;
+			
+			charController.m_OnPlayerDeathWithParam.Insert(OnMovingCharacterDeath);
 		}
 		else
 		{
@@ -355,98 +350,74 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnAIAgentRemoved(SCR_AIGroup group, AIAgent ai)
+	protected void OnMovingCharacterDeath(SCR_CharacterControllerComponent characterController, IEntity killerEntity, Instigator killer)
 	{
-		foreach (int index, Tuple2<AIWaypoint, SCR_AIGroup> groupWaypoint : m_aGroupWaypoints)
+		if (!characterController)
+			return;
+		
+		IEntity character = characterController.GetOwner();
+		if (!character)
+			return;
+		
+		foreach (int index, Tuple3<SCR_AIActionBase, AIAgent, WorldTimestamp> AIaction : m_aUnitsOnMove)
 		{
-			if (groupWaypoint.param2 != group)
+			if (AIaction.param2.GetControlledEntity() != character)
 				continue;
 			
-			m_aGroupWaypoints.Remove(index);
+			m_aUnitsOnMove.Remove(index);
 			break;
 		}
 		
-		if (m_aGroupWaypoints.IsEmpty())
-			m_aGroupWaypoints = null;
+		if (m_aUnitsOnMove.IsEmpty())
+			m_aUnitsOnMove = null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnGroupWaypointFinished(notnull AIWaypoint wp)
-	{	
-		SCR_AIGroup group;
+	protected void OnMoveFinished(SCR_AIActionBase action)
+	{
+		if (!m_aUnitsOnMove)
+			return;
+		
+		AIAgent agent;
 		int groupIndex;
 		
-		foreach (int i, Tuple2<AIWaypoint, SCR_AIGroup> groupWaypoint : m_aGroupWaypoints)
+		foreach (int i, Tuple3<SCR_AIActionBase, AIAgent, WorldTimestamp> AIaction : m_aUnitsOnMove)
 		{
-			if (groupWaypoint.param1 != wp)
+			if (AIaction.param1 != action)
 				continue;
 			
-			group = groupWaypoint.param2;
+			agent = AIaction.param2;
 			groupIndex = i;
 			break;
 		}
 		
-		if (!group)
-			return;
-
-		group.GetOnAgentRemoved().Remove(OnAIAgentRemoved);
-		
-		array<AIAgent> agents = {};
-		group.GetAgents(agents);
-
-		if (!m_AIgroup)
+		SCR_ChimeraCharacter agentEntity = SCR_ChimeraCharacter.Cast(agent.GetControlledEntity());
+		if (!agentEntity)
 			return;
 		
-		foreach (AIAgent agent : agents)
-		{	
-			m_AIgroup.AddAgent(agent);
-		}
-
-		m_aGroupWaypoints.Remove(groupIndex);
-		if (m_aGroupWaypoints.IsEmpty())
-			m_aGroupWaypoints = null;
+		SCR_CharacterControllerComponent charController = SCR_CharacterControllerComponent.Cast(agentEntity.FindComponent(SCR_CharacterControllerComponent));
+		if (charController)
+			charController.m_OnPlayerDeathWithParam.Remove(OnMovingCharacterDeath);
 		
-		if ((m_AIgroup.GetAgentsCount() == m_AIgroup.m_aUnitPrefabSlots.Count()) || (!m_aGroupWaypoints))
-			m_AIgroup.AddWaypoint(GetWaypoint());
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected SCR_AIGroup CreateTemporaryGroup()
-	{
-		SCR_DefenderSpawnerComponentClass prefabData = SCR_DefenderSpawnerComponentClass.Cast(GetComponentData(GetOwner()));
-		if (!prefabData)
-			return null;
-		
-		Resource groupRes = Resource.Load(prefabData.GetDefaultGroupPrefab());
-		if (!groupRes.IsValid())
-			return null;
+		if (!agent || !m_AIgroup)
+		{
+			if (!m_aOldUnits)
+				m_aOldUnits = {};
 			
-		return SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(groupRes, GetGame().GetWorld()));
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Returns waypoint created as rally point for spawned unit
-	protected SCR_AIWaypoint CreateRallyPointWaypoint(notnull SCR_EntityLabelPointComponent rallyPoint)
-	{
-		SCR_DefenderSpawnerComponentClass prefabData = SCR_DefenderSpawnerComponentClass.Cast(GetComponentData(GetOwner()));
-		if (!prefabData)
-			return null;
-
-		EntitySpawnParams wpParams = new EntitySpawnParams();
-		wpParams.TransformMode = ETransformMode.WORLD;
-		rallyPoint.GetOwner().GetTransform(wpParams.Transform);
-
-		Resource wpRes = Resource.Load(prefabData.GetMoveWaypointPrefab());
-		if (!wpRes.IsValid())
-			return null;
+			m_aOldUnits.Insert(agentEntity);
+			
+			return;
+		}
 		
-		SCR_AIWaypoint wp = SCR_AIWaypoint.Cast(GetGame().SpawnEntityPrefabLocal(wpRes, null, wpParams));
+		if (agentEntity.GetFaction() == m_AIgroup.GetFaction())
+			m_AIgroup.AddAgent(agent);
 		
-		//Set completion radius
-		if (wp)
-			wp.SetCompletionRadius(prefabData.GetMoveWaypointCompletionRadius());
+		m_aUnitsOnMove.Remove(groupIndex);
+		if (m_aUnitsOnMove.IsEmpty())
+			m_aUnitsOnMove = null;
 		
-		return wp;
+		if ((m_AIgroup.GetAgentsCount() == m_AIgroup.m_aUnitPrefabSlots.Count()) || (!m_aUnitsOnMove))
+			m_AIgroup.AddWaypoint(GetWaypoint());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -492,18 +463,18 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 			unitPrefabs.RemoveItem(aiResource);
 		}
 
-		IEntity leader;
-		if (m_aGroupWaypoints)
+		IEntity ent;
+		if (m_aUnitsOnMove)
 		{
-			foreach (Tuple2<AIWaypoint, SCR_AIGroup> groups : m_aGroupWaypoints)
+			foreach (Tuple3<SCR_AIActionBase, AIAgent, WorldTimestamp> groups : m_aUnitsOnMove)
 			{
 				if (groups.param2)
-					leader = groups.param2.GetLeaderEntity();
+					ent = groups.param2.GetControlledEntity();
 				
-				if (!leader)
+				if (!ent)
 					continue;
 				
-				EntityPrefabData prefabData = leader.GetPrefabData();
+				EntityPrefabData prefabData = ent.GetPrefabData();
 				if (!prefabData)
 					continue;
 				
@@ -600,34 +571,53 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns true, if there is player around barracks
-	protected bool PlayerDistanceCheck()
+	//! Returns state according to current players vicinities to DefenderSpawner
+	protected SCR_EDefenderSpawnerState GetPlayerDistanceState()
 	{
 		array<int> players = {};
-		int playersCount = GetGame().GetPlayerManager().GetPlayers(players);
+		GetGame().GetPlayerManager().GetPlayers(players);
 
 		float spawnDistanceSq = Math.Clamp(Math.Pow(GetGame().GetViewDistance() * 0.5, 2), SPAWN_RADIUS_MAX, SPAWN_RADIUS_MIN);
 		float despawnDistanceSq = Math.Clamp(Math.Pow(GetGame().GetViewDistance() * 0.5, 2), SPAWN_RADIUS_MIN, SPAWN_RADIUS_MAX);
-		IEntity playerEntity;
+		float minSpawnDistanceSq = m_fMinHostilePlayerDistance * m_fMinHostilePlayerDistance; //Minimum range for hostile players in vicinity
+		
+		SCR_ChimeraCharacter playerEntity;
 		float dist;
 		vector origin = GetOwner().GetOrigin();
-
-		for (int i = 0; i < playersCount; i++)
+		
+		SCR_EDefenderSpawnerState outState = SCR_EDefenderSpawnerState.DEFENDERS_DESPAWN;
+		
+		foreach (int player : players)
 		{
-			playerEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(players[i]);
-
+			playerEntity = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerManager().GetPlayerControlledEntity(player));
 			if (!playerEntity)
 				continue;
-
+			
 			dist = vector.DistanceSq(playerEntity.GetOrigin(), origin);
-
-			if (dist < spawnDistanceSq)
-				return true;
+			
+			if (outState == SCR_EDefenderSpawnerState.DEFENDERS_DESPAWN) //Do this check only if outstate is set to Despawn, otherwise it is not necessary to repeat it
+			{
+				if (dist < spawnDistanceSq)		//If player is withing the range, enable defenders
+				{
+					outState = SCR_EDefenderSpawnerState.DEFENDERS_ENABLED;
+				}
+				else	//If player is not within range, set to DEFENDER_DESPAWN and skip to next
+				{
+					outState = SCR_EDefenderSpawnerState.DEFENDERS_DESPAWN;
+					continue;
+				}
+			}
+			
+			if (dist < minSpawnDistanceSq && playerEntity.GetFaction() != GetFaction())		//if player in vicinity is hostile and is not in minimum distance, pause spawning
+			{
+				outState = SCR_EDefenderSpawnerState.DEFENDERS_PAUSED_SPAWN;
+				break;
+			}
 		}
 
-		return false;
+		return outState;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Manages automatic group spawning
 	protected void HandleGroup()
@@ -657,10 +647,27 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 			return;
 		}
 		
-		bool distanceCheck = PlayerDistanceCheck();
-
-		if (m_bEnableSpawning && distanceCheck)
+		SCR_EDefenderSpawnerState distanceState = GetPlayerDistanceState();
+		
+		if (m_bEnableSpawning && (distanceState == SCR_EDefenderSpawnerState.DEFENDERS_ENABLED))
 		{
+			// Add any stray or stuck units to group
+			if (m_aUnitsOnMove)
+			{
+				int count = m_aUnitsOnMove.Count()-1;
+				for (int i = count; i >= 0; i--)
+				{
+					if (!m_aUnitsOnMove[i].param2)
+					{
+						m_aUnitsOnMove.Remove(i);
+						continue;
+					}
+					
+					if (!m_aUnitsOnMove[i].param3.PlusSeconds(SPAWN_GROUP_JOIN_TIMEOUT).GreaterEqual(replicationTime))
+						OnMoveFinished(m_aUnitsOnMove[i].param1);
+				}
+			}
+			
 			// Reinforce existing or create new defender group. Also handles respawning of despawned defenders
 			#ifndef AR_DEFENDER_SPAWN_TIMESTAMP
 			if (m_iDespawnedGroupMembers > 0 || (replicationTime > m_fNextRespawnTime))
@@ -694,7 +701,7 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		}
 		
 		//Despawn units that are too far away from players
-		if (!distanceCheck)
+		if (distanceState == SCR_EDefenderSpawnerState.DEFENDERS_DESPAWN)
 		{
 			if (m_AIgroup)
 			{
@@ -713,15 +720,28 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 				m_aPreviousGroups = null;
 			}
 			
-			if (m_aGroupWaypoints)
+			//Delete units from previous owners that were spawning in process of faction change. (edge case, but might happen)
+			if (m_aOldUnits)
 			{
-				foreach (Tuple2<AIWaypoint, SCR_AIGroup> groupWaypoint : m_aGroupWaypoints)
+				int index = m_aOldUnits.Count()-1;
+				for (index; index >= 0; index--)
 				{
-					SCR_EntityHelper.DeleteEntityAndChildren(groupWaypoint.param2);
+					SCR_EntityHelper.DeleteEntityAndChildren(m_aOldUnits[index]);
+				}
+				
+				m_aOldUnits = null;
+			}
+			
+			//Despawn any units that are currently walking to RP
+			if (m_aUnitsOnMove)
+			{
+				foreach (Tuple3<SCR_AIActionBase, AIAgent, WorldTimestamp> groupWaypoint : m_aUnitsOnMove)
+				{
+					SCR_EntityHelper.DeleteEntityAndChildren(groupWaypoint.param2.GetControlledEntity());
 					m_iDespawnedGroupMembers++;
 				}
 				
-				m_aGroupWaypoints = null;
+				m_aUnitsOnMove = null;
 			}
 		}
 	}
@@ -729,9 +749,6 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	//------------------------------------------------------------------------------------------------
 	protected override void OnFactionChanged(FactionAffiliationComponent owner, Faction previousFaction, Faction faction)
 	{
-		if (faction == m_CurrentFaction)
-			return;
-		
 		//if there is already a group from current faction, cache it for despawn
 		if (m_AIgroup)
 		{
@@ -742,33 +759,8 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 			m_AIgroup = null;
 		}
 		
-		SCR_Faction newFaction = SCR_Faction.Cast(faction);
-		
 		m_GroupEntry = null;
-
-		SCR_Faction oldFaction = m_CurrentFaction;
-		m_CurrentFaction = newFaction;
-		
 		AssignDefenderGroupDataFromOwningFaction();
-		m_OnSpawnerOwningFactionChanged.Invoke(newFaction, oldFaction);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void AssignInitialFaction()
-	{
-		if (!m_FactionControl)
-			return;
-
-		Faction faction = m_FactionControl.GetAffiliatedFaction();
-		if (!faction)
-			faction = m_FactionControl.GetDefaultAffiliatedFaction();
-
-		m_CurrentFaction = SCR_Faction.Cast(faction);
-		if (!m_CurrentFaction)
-			m_CurrentFaction = SCR_Faction.Cast(m_FactionControl.GetDefaultAffiliatedFaction());
-
-		if (m_CurrentFaction)
-			AssignDefenderGroupDataFromOwningFaction();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -784,8 +776,6 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		if (!m_RplComponent)
 			return;
 
-		AssignInitialFaction();
-		
 		BaseGameMode gameMode = GetGame().GetGameMode();
 		if (!gameMode)
 			return;	
@@ -821,14 +811,45 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		if (m_AIgroup)
 			SCR_EntityHelper.DeleteEntityAndChildren(m_AIgroup);
 
-		if (m_aGroupWaypoints)
+		//Delete units in process of spawning
+		if (m_aUnitsOnMove)
 		{
-			foreach (Tuple2<AIWaypoint, SCR_AIGroup> groupWaypoint : m_aGroupWaypoints)
+			foreach (Tuple3<SCR_AIActionBase, AIAgent, WorldTimestamp> groupWaypoint : m_aUnitsOnMove)
 			{
-				SCR_EntityHelper.DeleteEntityAndChildren(groupWaypoint.param2);
+				if (!groupWaypoint.param2)
+					continue;
+				
+				SCR_EntityHelper.DeleteEntityAndChildren(groupWaypoint.param2.GetControlledEntity());
 			}
 		}
-			
+		
+		//Delete units from previous owners
+		if (m_aPreviousGroups)
+		{
+			int index = m_aPreviousGroups.Count()-1;
+			for (index; index >= 0; index--)
+			{
+				SCR_EntityHelper.DeleteEntityAndChildren(m_aPreviousGroups[index]);
+			}
+		}
+		
+		//Delete units from previous owners that were spawning in process of faction change. (edge case, but might happen)
+		if (m_aOldUnits)
+		{
+			int index = m_aOldUnits.Count()-1;
+			for (index; index >= 0; index--)
+			{
+				SCR_EntityHelper.DeleteEntityAndChildren(m_aOldUnits[index]);
+			}
+		}
+		
 		GetGame().GetCallqueue().Remove(HandleGroup);
 	}
 };
+
+enum SCR_EDefenderSpawnerState
+{
+	DEFENDERS_ENABLED,
+	DEFENDERS_PAUSED_SPAWN,
+	DEFENDERS_DESPAWN
+}

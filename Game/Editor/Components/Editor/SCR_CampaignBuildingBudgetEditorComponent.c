@@ -419,15 +419,44 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 		if (!IsBudgetCapEnabled() || budgetCosts.IsEmpty()) 
 			return true;
 		
+		array<EEditableEntityBudget> blockingBudgets = {};
+		int initialPriorityOrder = -1;
+		EEditableEntityBudget blockingBudgetCandidate = -1;
+		
 		foreach (SCR_EntityBudgetValue budgetCost : budgetCosts)
 		{
 			if (!CanPlace(budgetCost, blockingBudget))
 			{
 				if (IsBudgetCapEnabled(blockingBudget))
-					return false;
+				{
+					SCR_EditableEntityCoreBudgetSetting budgetSettings = GetBudgetSetting(blockingBudget);
+					if (!budgetSettings)
+						continue;
+				
+					// promote budget to candidate if it's non priority budget, only when there wasn't set any priority budget yet.
+					SCR_BudgetUIInfo budgetUIInfo = SCR_BudgetUIInfo.Cast(budgetSettings.GetInfo());
+					if (!budgetUIInfo && initialPriorityOrder == -1)
+					{
+						blockingBudgetCandidate = blockingBudget;
+						continue;
+					}
+
+					// this budget has higher priority then any other before, promote it as a priority budget.
+					if (initialPriorityOrder < budgetUIInfo.GetPriorityOrder())
+					{
+						blockingBudgetCandidate = blockingBudget;
+						initialPriorityOrder = budgetUIInfo.GetPriorityOrder()
+					}
+				}
 			};
 		}
-		return true;
+		
+		if (blockingBudgetCandidate == -1)
+			return true;
+		
+		blockingBudget = blockingBudgetCandidate;
+
+		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------

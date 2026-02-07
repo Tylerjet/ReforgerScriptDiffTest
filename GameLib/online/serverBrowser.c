@@ -210,7 +210,7 @@ class Room: Managed
 	
 	proto native void LoadDownloadList(BackendCallback callback);
 	
-	[Obsolete("Use WorkshopItem instead!")]
+	[Obsolete("Use WorkshopItem or Dependency instead!")]
 	proto native void DownloadAddons(BackendCallback callback);
 	
 	[Obsolete("Use GetItems instead!")]
@@ -221,6 +221,12 @@ class Room: Managed
 	proto native bool HasBattlEye();
 	
 	proto native void VerifyPassword(string password, BackendCallback callback);
+	
+	/**
+	\brief Check on reconnect for password protected server 
+	- player should be able to rejoin without reentering the password
+	*/
+	proto native void CheckAuthorization(BackendCallback callback);
 	
 	proto native bool IsDownloadListLoaded();
 }

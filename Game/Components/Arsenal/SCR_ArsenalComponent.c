@@ -33,6 +33,9 @@ class SCR_ArsenalComponent : ScriptComponent
 	[Attribute("0", desc: "If false it will get the arsenals current faction and change when the faction is updated. If true it will never check the on faction and use the default faction assigned. Use this if you want the content to never change or if there is never a current faction", category: "Settings")]
 	protected bool m_bAlwaysUseDefaultFaction;
 	
+	[Attribute("1", desc: "If true items within the arsenal use supplies if false than it will only use supplies if the global supply system is enabled", category: "Settings")]
+	protected bool m_bUseSupplies;
+	
 	protected bool m_bArsenalEnabled = true;
 	protected SCR_EArsenalItemMode m_eOnDisableArsenalModes; //~ Saves the arsenal item mode when the arsenal is disabled and the mode is set to 0
 	
@@ -84,6 +87,33 @@ class SCR_ArsenalComponent : ScriptComponent
 	protected void SetArsenalEnabledBroadcast(bool enable)
 	{
 		m_bArsenalEnabled = enable;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsArsenalUsingSupplies()
+	{
+		return m_bUseSupplies;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetArsenalUseSupplies(bool useSupplies)
+	{
+		if (m_bUseSupplies == useSupplies)
+			return;
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if ((gameMode && !gameMode.IsMaster()) || (!gameMode && Replication.IsClient()))
+			return;
+			
+		SetUseSuppliesBroadcast(useSupplies);
+		Rpc(SetUseSuppliesBroadcast, useSupplies);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void SetUseSuppliesBroadcast(bool useSupplies)
+	{
+		m_bUseSupplies = useSupplies;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -501,6 +531,7 @@ class SCR_ArsenalComponent : ScriptComponent
 		writer.WriteInt(m_eSupportedArsenalItemModes);
         writer.WriteInt(GetArsenalSaveType()); 
         writer.WriteBool(m_bArsenalEnabled); 
+        writer.WriteBool(m_bUseSupplies); 
         return true;
     }
 	
@@ -508,16 +539,18 @@ class SCR_ArsenalComponent : ScriptComponent
     override bool RplLoad(ScriptBitReader reader)
     {
 		int itemTypes, itemModes, saveType;
-		bool isArsenalEnabled
+		bool isArsenalEnabled, useSupplies;
 		
 		reader.ReadInt(itemTypes);
 		reader.ReadInt(itemModes);
         reader.ReadInt(saveType);
         reader.ReadBool(isArsenalEnabled);
+        reader.ReadBool(useSupplies);
 		
 		RPC_OnArsenalUpdated(itemTypes, itemModes);
 		RPL_SetArsenalSaveType(saveType);
 		SetArsenalEnabledBroadcast(isArsenalEnabled);
+		SetUseSuppliesBroadcast(useSupplies);
 		
         return true;
 	}

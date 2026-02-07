@@ -1,3 +1,9 @@
+class SCR_ArsenalPlayerLoadout
+{
+	string loadout;
+	float suppliesCost = 0.0;
+};
+
 [ComponentEditorProps(category: "GameScripted/GameMode", description: "")]
 class SCR_ArsenalManagerComponentClass: SCR_BaseGameModeComponentClass
 {
@@ -19,14 +25,24 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 {
 	protected static SCR_ArsenalManagerComponent s_Instance;
 	
+	protected static const ref array<string> ARSENALLOADOUT_COMPONENTS_TO_CHECK = {
+		"SCR_CharacterInventoryStorageComponent",
+		"SCR_UniversalInventoryStorageComponent",
+		"EquipedWeaponStorageComponent",
+		"ClothNodeStorageComponent"
+	};
+	
 	[Attribute("{27F28CF7C6698FF8}Configs/Arsenal/ArsenalSaveTypeInfoHolder.conf", desc: "Holds a list of save types than can be used for arsenals. Any new arsenal save type should be added to the config to allow it to be set by Editor", params: "conf class=SCR_ArsenalSaveTypeInfoHolder")]
 	protected ResourceName m_sArsenalSaveTypeInfoHolder;
 	
 	[Attribute("{183361B6DA2C304F}Configs/Arsenal/ArsenalLoadoutSaveBlacklists.conf", desc: "This is server only, A blacklist of entities that are not allowed to be saved at arsenals if the blacklist the item is in is enabled. Can be null.",params: "conf class=SCR_LoadoutSaveBlackListHolder")]
 	protected ResourceName m_sLoadoutSaveBlackListHolder;
 	
+	[Attribute()]
+	protected bool m_bDisable
+	
 	//=== Authority
-	protected ref map<int, string> m_aPlayerLoadouts = new map<int, string>();
+	protected ref map<int, ref SCR_ArsenalPlayerLoadout> m_aPlayerLoadouts = new map<int, ref SCR_ArsenalPlayerLoadout>();
 	
 	//=== Broadcast
 	protected ref ScriptInvokerBase<SCR_ArsenalManagerComponent_OnPlayerLoadoutChanged> m_OnPlayerLoadoutUpdated = new ScriptInvokerBase<SCR_ArsenalManagerComponent_OnPlayerLoadoutChanged>();
@@ -136,9 +152,9 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//=== Authority
-	bool GetPlayerArsenalLoadout(int playerId, out string jsonCharacter)
+	bool GetPlayerArsenalLoadout(int playerId, out SCR_ArsenalPlayerLoadout playerLoadout)
 	{
-		return m_aPlayerLoadouts.Find(playerId, jsonCharacter) && jsonCharacter != string.Empty;
+		return m_aPlayerLoadouts.Find(playerId, playerLoadout) && playerLoadout.loadout != string.Empty;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -321,7 +337,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			factionKey = factionAffiliation.GetAffiliatedFaction().GetFactionKey();
 		
 		if (!CanSaveLoadout(playerId, characterEntity, factionAffiliation, arsenalComponent, true))
-			return;			
+			return;
 		
 		SCR_JsonSaveContext context = new SCR_JsonSaveContext();
 		if (!context.WriteValue(SCR_PlayerArsenalLoadout.ARSENALLOADOUT_FACTION_KEY, factionKey) || !context.WriteValue(SCR_PlayerArsenalLoadout.ARSENALLOADOUT_KEY, characterEntity))
@@ -404,20 +420,151 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void ComputeSuppliesCost(int playerId, notnull SCR_Faction faction, notnull SCR_ArsenalPlayerLoadout playerLoadout)
+	{
+		playerLoadout.suppliesCost = 0.0;
+		
+		SCR_JsonLoadContext context = new SCR_JsonLoadContext(false);
+		if (!context.ImportFromString(playerLoadout.loadout))
+			return;
+		
+		ComputeEntity(context, faction, playerLoadout, SCR_PlayerArsenalLoadout.ARSENALLOADOUT_KEY);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ComputeStorage(notnull SCR_JsonLoadContext context, notnull SCR_Faction faction, notnull SCR_ArsenalPlayerLoadout playerLoadout, string storageName)
+	{
+		if (!context.StartObject(storageName))
+			return;
+		
+		if (!context.StartObject("Native"))
+		{
+			context.EndObject();
+			return;
+		}
+		
+		if (!context.StartObject("slots"))
+		{
+			context.EndObject();
+			context.EndObject();
+			return;
+		}
+		
+		int itemsCount;
+		if (!context.ReadValue("itemsCount", itemsCount))
+			return;
+		
+		for (int i = 0; i < itemsCount; ++i)
+		{
+			bool valid = false;
+			if (!context.ReadValue("slot-" + i +"-valid", valid))
+				return;
+			
+			if (!valid)
+				continue;
+			
+			if (!context.StartObject("slot-" + i))
+				return;
+			
+			ComputeStorageEntity(context, faction, playerLoadout, "entity");
+			
+			if (!context.EndObject())
+				return;
+		}
+		
+		if (!context.EndObject())
+			return;
+		
+		if (!context.EndObject())
+			return;
+			
+		if (!context.EndObject())
+			return;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ComputeStorageEntity(notnull SCR_JsonLoadContext context, notnull SCR_Faction faction, notnull SCR_ArsenalPlayerLoadout playerLoadout, string entityName)
+	{
+		if (!context.StartObject("entity"))
+			return;
+		
+		ResourceName prefab;
+		if (!context.ReadValue("prefabGUID", prefab))
+			return;
+		
+		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
+		SCR_EntityCatalogEntry entry = entityCatalogManager.GetEntryWithPrefabFromGeneralOrFactionCatalog(EEntityCatalogType.ITEM, prefab, faction);
+		if (entry)
+		{
+			SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
+			if (data)
+				playerLoadout.suppliesCost += data.GetSupplyCost();
+		}
+		
+		ComputeEntity(context, faction, playerLoadout, "entity");
+		
+		if (!context.EndObject())
+			return;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ComputeEntity(notnull SCR_JsonLoadContext context, notnull SCR_Faction faction, notnull SCR_ArsenalPlayerLoadout playerLoadout, string entityName)
+	{
+		if (!context.StartObject(entityName))
+			return;
+		
+		if (!context.StartObject("Native"))
+			return;
+		
+		if (!context.StartObject("components"))
+			return;
+		
+		foreach (string componentName: ARSENALLOADOUT_COMPONENTS_TO_CHECK)
+			ComputeStorage(context, faction, playerLoadout, componentName);
+		
+		if (!context.EndObject())
+			return;
+		
+		if (!context.EndObject())
+			return;
+		
+		if (!context.EndObject())
+			return;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void DoSetPlayerLoadout(int playerId, string loadoutString, GameEntity characterEntity)
 	{
 		bool loadoutValid = !loadoutString.IsEmpty();
-		bool loadoutChanged = loadoutValid && loadoutString != m_aPlayerLoadouts.Get(playerId);
 		
-		m_aPlayerLoadouts.Set(playerId, loadoutString);
+		SCR_ArsenalPlayerLoadout playerLoadout = m_aPlayerLoadouts.Get(playerId);
+		if (!playerLoadout)
+		{
+			playerLoadout = new SCR_ArsenalPlayerLoadout();
+		}
+		bool loadoutChanged = loadoutValid && loadoutString != playerLoadout.loadout;
+		
+		playerLoadout.loadout = loadoutString;
+		
+		m_aPlayerLoadouts.Set(playerId, playerLoadout);
+
+		if (loadoutChanged)
+		{
+			FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(characterEntity.FindComponent(FactionAffiliationComponent));
+			if (factionAffiliation && factionAffiliation.GetAffiliatedFaction())
+			{
+				ComputeSuppliesCost(playerId, SCR_Faction.Cast(factionAffiliation.GetAffiliatedFaction()), playerLoadout);
+			}
+		}
 		
 		if (loadoutValid && loadoutChanged)
 		{
 			SCR_PlayerLoadoutData loadoutData = GetPlayerLoadoutData(characterEntity);
+			loadoutData.LoadoutCost = SCR_PlayerArsenalLoadout.GetLoadoutSuppliesCost(playerId);
 			DoSendPlayerLoadout(playerId, loadoutData);
 			Rpc(DoSendPlayerLoadout, playerId, loadoutData);
 		}
-		
+
 		DoSetPlayerHasLoadout(playerId, loadoutValid, loadoutChanged);
 		Rpc(DoSetPlayerHasLoadout, playerId, loadoutValid, loadoutChanged);
 	}

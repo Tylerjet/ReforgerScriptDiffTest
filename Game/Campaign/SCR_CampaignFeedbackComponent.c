@@ -44,8 +44,8 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	protected WorldTimestamp m_fBaseWithPlayerCaptureEnd;
 	#endif
 
-	protected static const float ICON_FLASH_DURATION = 20;
-	protected static const float ICON_FLASH_PERIOD = 0.5;
+	static const float ICON_FLASH_DURATION = 20;
+	static const float ICON_FLASH_PERIOD = 0.5;
 
 	protected static const int AFTER_RESPAWN_HINT_DELAY_MS = 16500;
 	protected static const int DELAY_BETWEEN_HINTS_MS = 1000;
@@ -1210,40 +1210,6 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 			if (rewardID == SCR_EXPRewards.VETERANCY)
 				ShowHint(EHint.CONFLICT_VETERANCY);
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void FlashBaseIcon(notnull SCR_CampaignMilitaryBaseComponent base, float remainingTime = ICON_FLASH_DURATION, Faction faction = null, bool changeToDefault = false, bool infiniteTimer = false)
-	{
-		GetGame().GetCallqueue().Remove(FlashBaseIcon);
-
-		SCR_CampaignMapUIBase ui = base.GetMapUI();
-
-		if (ui)
-		{
-			SCR_CampaignFaction baseFaction = base.GetCampaignFaction();
-			Faction iconFaction;
-
-			if (changeToDefault)
-			{
-				if (!baseFaction.IsPlayable() || base.IsHQRadioTrafficPossible(baseFaction))
-					iconFaction = baseFaction;
-			}
-			else
-			{
-				if (faction && base.IsHQRadioTrafficPossible(baseFaction))
-					iconFaction = faction;
-				else
-					return;
-			}
-
-			ui.SetBaseIconFactionColor(iconFaction);
-		}
-
-		float remainingTimeReduced = remainingTime - ICON_FLASH_PERIOD;
-
-		if (infiniteTimer || remainingTimeReduced > 0 || !changeToDefault)
-			GetGame().GetCallqueue().CallLater(FlashBaseIcon, ICON_FLASH_PERIOD * 1000, false, base, remainingTimeReduced, faction, !changeToDefault, infiniteTimer);
 	}
 
 	//------------------------------------------------------------------------------------------------

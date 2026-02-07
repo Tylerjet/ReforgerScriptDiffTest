@@ -15,13 +15,21 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	
 	vector m_vMat[4];
 	bool m_bUseTransform = false;
-		
+	
+	protected bool m_bCanBeGarbageCollected;
+	
 	//------------------------------------------------------------------------------------------------
 	// To be overridden, called when placement is done in SCR_ItemPlacementComponent
 	void PlacementDone(notnull IEntity user)
 	{
 	}
-		
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CanBeInserted()
+	{
+		return m_bCanBeGarbageCollected;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoPlaceItem(vector right, vector up, vector forward, vector position)
@@ -44,7 +52,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	//------------------------------------------------------------------------------------------------
 	void PlaceItem(vector right, vector up, vector forward, vector position)
 	{
-		SetCanBeGarbageCollected(false);
+		m_bCanBeGarbageCollected = false;
 		Rpc(RPC_DoPlaceItem, right, up, forward, position);
 		RPC_DoPlaceItem(right, up, forward, position);
 	}
@@ -148,7 +156,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 			return true;
 		}
 		
-		SetCanBeGarbageCollected(true);
+		m_bCanBeGarbageCollected = true;
 		return false;
 	}
 };

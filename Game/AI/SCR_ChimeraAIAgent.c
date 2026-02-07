@@ -116,7 +116,19 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 		}
 		else
 		{
-			if (!EntityUtils.IsPlayer(GetControlledEntity()))
+			bool possesingMainEntity = false;
+			array<int> players = new array<int>;
+			GetGame().GetPlayerManager().GetPlayers(players);
+			foreach (int playerId: players)
+			{
+				if(SCR_PossessingManagerComponent.GetPlayerMainEntity(playerId) == GetControlledEntity())
+				{
+					possesingMainEntity = true;
+					break;
+				}
+			}
+			
+			if (!EntityUtils.IsPlayer(GetControlledEntity()) && !possesingMainEntity)
 				GetControlComponent().ActivateAI();
 			
 			AICommunicationComponent comms = GetCommunicationComponent();

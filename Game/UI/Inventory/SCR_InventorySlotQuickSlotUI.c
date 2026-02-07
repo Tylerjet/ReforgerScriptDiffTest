@@ -57,7 +57,7 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 			}
 			else
 			{
-				SetQuickSlotIndexVisible( m_wTextQuickSlot, true );
+				SetQuickSlotIndexVisible( m_wTextQuickSlot, m_pStorageUI.GetInventoryMenuHandler() != null );
 				SetQuickSlotHintVisible(m_wKeybindText);
 			}
 		}

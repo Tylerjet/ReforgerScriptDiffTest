@@ -39,7 +39,7 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 		if (!scrCharCtrl)
 			return;
 
-		m_CmdLoiter = new SCR_CharacterCommandLoiter(m_CharacterAnimComp, m_OwnerEntity, GetControllerComponent().GetInputContext(), scrCharCtrl.GetScrInputContext(), m_ScrStaticTable);
+		m_CmdLoiter = new SCR_CharacterCommandLoiter(m_CharacterAnimComp, m_OwnerEntity, GetControllerComponent().GetInputContext(), scrCharCtrl.GetScrInputContext(), m_ScrStaticTable, this);
 		m_CharacterAnimComp.SetCurrentCommand(m_CmdLoiter);
 	}
 
@@ -55,9 +55,17 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	//terminateFast should be true when we are going into alerted or combat state.
 	void StopLoitering(bool terminateFast)
 	{
-		SCR_CharacterCommandLoiter cmdLoiter = GetLoiterCommand();
-		if (cmdLoiter)
-			cmdLoiter.StopLoitering(terminateFast);
+		if (m_CmdLoiter)
+			m_CmdLoiter.StopLoitering(terminateFast);
+		
+		Rpc(Rpc_StopLoiter_S, false);
+	}
+	
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void Rpc_StopLoiter_S(bool terminateFast)
+	{
+		if (m_CmdLoiter)
+			m_CmdLoiter.StopLoitering(terminateFast);
 	}
 
 	bool IsLoitering()

@@ -335,9 +335,10 @@ class SCR_NameTagData : Managed
 			
 			if (m_bIsCurrentPlayer)
 				m_NTDisplay.CleanupAllTags();
-			
-			return;
 		}
+		
+		if (m_VehicleParent && m_VehicleParent.m_MainTag == this)	// update vehicle parent as well if this tag is its main tag
+			m_VehicleParent.m_Flags |= ENameTagFlags.NAME_UPDATE;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -444,6 +445,12 @@ class SCR_NameTagData : Managed
 	{
 		m_Flags = ENameTagFlags.DISABLED | ENameTagFlags.NAME_UPDATE;	// this has a default flag because if tag never reaches a visibile state, it needs a disable flag for clean up
 				
+		if (m_GroupManager)
+		{
+			SCR_AIGroup group = m_GroupManager.GetPlayerGroup(m_iPlayerID);
+			SetGroup(group);
+		}
+		
 		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(m_Entity.FindComponent(SCR_CompartmentAccessComponent));	// in vehicle
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
 		{
@@ -463,13 +470,7 @@ class SCR_NameTagData : Managed
 			if (vehicle)
 				AddAsVehicleOccupant(vehicle, compSlot);
 		}	
-		
-		if (m_GroupManager)
-		{
-			SCR_AIGroup group = m_GroupManager.GetPlayerGroup(m_iPlayerID);
-			SetGroup(group);
-		}
-		
+				
 		if (m_CharController && m_CharController.IsUnconscious())
 			ActivateEntityState(ENameTagEntityState.UNCONSCIOUS);
 			

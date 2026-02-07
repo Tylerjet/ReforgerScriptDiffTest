@@ -209,6 +209,16 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		m_aLinkedStorages.Insert(newLinkedStorage);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Check if the given storage is a linked child storage
+	\param storage Storage to check
+	return True if the storage is a linked child of this storage
+	*/
+	bool IsStorageALinkedChild(notnull BaseInventoryStorageComponent storage)
+	{
+		return m_aLinkedStorages.Contains(storage);
+	}
 		
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
 	

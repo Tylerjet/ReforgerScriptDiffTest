@@ -7,13 +7,14 @@ enum ELoiterCommandState
 
 class SCR_CharacterCommandLoiter : CharacterCommandScripted
 {
-	void SCR_CharacterCommandLoiter(BaseAnimPhysComponent pAnimPhysComponent, ChimeraCharacter pCharacter, CharacterInputContext pBaseInputCtx, SCR_ScriptedCharacterInputContext pScrInputCtx, SCR_ScriptedCommandsStaticTable pStaticTable)
+	void SCR_CharacterCommandLoiter(BaseAnimPhysComponent pAnimPhysComponent, ChimeraCharacter pCharacter, CharacterInputContext pBaseInputCtx, SCR_ScriptedCharacterInputContext pScrInputCtx, SCR_ScriptedCommandsStaticTable pStaticTable, SCR_CharacterCommandHandlerComponent pScrCommandHandler)
 	{
 		m_pCharAnimComponent = CharacterAnimationComponent.Cast(pAnimPhysComponent);
 		m_pCharacter = pCharacter;
 		m_pBaseInputCtx = pBaseInputCtx;
 		m_pScrInputCtx = pScrInputCtx;
 		m_pStaticTable = pStaticTable;
+		m_pCommandHandler = pScrCommandHandler;
 	}
 	
 	override void OnActivate()
@@ -64,7 +65,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 				
 				if ((m_bWasTag && !isTag) || cancelLoiterInputs)
 				{
-					SwitchState(ELoiterCommandState.EXITING);
+					m_pCommandHandler.StopLoitering(false);
 				}
 			}
 			break;
@@ -119,6 +120,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	protected CharacterInputContext m_pBaseInputCtx;
 	protected SCR_ScriptedCharacterInputContext m_pScrInputCtx;
 	protected SCR_ScriptedCommandsStaticTable m_pStaticTable;
+	protected SCR_CharacterCommandHandlerComponent m_pCommandHandler;
 	
 	protected ELoiterCommandState m_eState;
 	protected bool m_bWasTag;

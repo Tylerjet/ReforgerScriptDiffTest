@@ -77,6 +77,7 @@ class SCR_AIDefendActivity : SCR_AIActivityBase
 	//-------------------------------------------------------------------------------------------------
 	override void OnActionDeselected()
 	{
+		super.OnActionDeselected();
 		SCR_AIGroup group = SCR_AIGroup.Cast(m_Utility.GetAIAgent());
 		if (group)
 			group.ReleaseCompartments();
@@ -86,6 +87,7 @@ class SCR_AIDefendActivity : SCR_AIActivityBase
 	//-------------------------------------------------------------------------------------------------
 	override void OnActionFailed()
 	{
+		super.OnActionFailed();
 		SCR_AIGroup group = SCR_AIGroup.Cast(m_Utility.GetAIAgent());
 		if (group)
 			group.ReleaseCompartments();
@@ -95,6 +97,7 @@ class SCR_AIDefendActivity : SCR_AIActivityBase
 	//-------------------------------------------------------------------------------------------------
 	override void OnActionCompleted()
 	{
+		super.OnActionCompleted();
 		SendCancelMessagesToAllAgents();
 	}
 };

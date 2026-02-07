@@ -225,10 +225,10 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 
 	//======================================== AUDIO ========================================\\
 	//~ Play SoundEffect
-	protected void PlaySoundEffect(SCR_AudioSourceConfiguration audioConfig, notnull IEntity soundOwner, SCR_BaseUseSupportStationAction action)
+	protected void PlaySoundEffect(SCR_AudioSourceConfiguration audioConfig, IEntity soundOwner, SCR_BaseUseSupportStationAction action)
 	{
-		//~ No audio given so ignore function. It might be that no event name or file name are assigned
-		if (!audioConfig)
+		//~ No sound owner or no audio given so ignore function. It might be that no event name or file name are assigned
+		if (!audioConfig || !soundOwner)
 			return;
 
 		//~ Get sound component
@@ -765,6 +765,9 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	protected void GetPlayerIdsInVehicle(IEntity vehicle, out notnull array<int> playerIds)
 	{
 		playerIds.Clear();
+		
+		if (!vehicle)
+			return;
 
 		SCR_BaseCompartmentManagerComponent compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(vehicle.FindComponent(SCR_BaseCompartmentManagerComponent));
 		if (!compartmentManager)

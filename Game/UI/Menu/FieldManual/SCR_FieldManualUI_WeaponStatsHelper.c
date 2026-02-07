@@ -2,14 +2,14 @@ class SCR_FieldManualUI_WeaponStatsHelper
 {
 	protected string m_sDisplayName;
 	protected string m_sDescription;
-	protected ResourceName m_InventoryIcon;
+	protected ResourceName m_sInventoryIcon; // not set atm
 
-	protected int m_iDefaultZeroing;
+	protected int m_iDefaultSightDistanceSetting;
 	protected ref array<string> m_aFireModes;
 	int m_iMuzzleVelocity;
 	protected int m_iRateOfFire;
-	protected float m_fWeight;
-	protected ref array<int> m_aZeroing;
+	protected float m_fMass;
+	protected ref array<int> m_aSightDistanceSettings;
 
 	//------------------------------------------------------------------------------------------------
 	string GetDisplayName()
@@ -20,7 +20,7 @@ class SCR_FieldManualUI_WeaponStatsHelper
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetInventoryIcon()
 	{
-		return m_InventoryIcon;
+		return m_sInventoryIcon;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -42,114 +42,100 @@ class SCR_FieldManualUI_WeaponStatsHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	float GetWeight()
+	//! in kg
+	float GetMass()
 	{
-		return m_fWeight;
+		return m_fMass;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	array<int> GetZeroing()
+	array<int> GetSightDistanceSettings()
 	{
-		return m_aZeroing;
+		return m_aSightDistanceSettings;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	int GetDefaultZeroing()
+	int GetDefaultSightDistanceSetting()
 	{
-		return m_iDefaultZeroing;
+		return m_iDefaultSightDistanceSetting;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_FieldManualUI_WeaponStatsHelper(ResourceName weaponResource)
 	{
 		if (!weaponResource)
-		{
 			return;
-		}
-
-		m_aFireModes = {};
-		m_aZeroing = {};
 
 		Resource resource = Resource.Load(weaponResource);
 		if (!resource.IsValid())
-		{
 			return;
-		}
 
 		IEntity entity = GetGame().SpawnEntityPrefabLocal(resource, null, null);
 		if (!entity)
-		{
 			return;
-		}
 
 		WeaponComponent weaponComponent = WeaponComponent.Cast(entity.FindComponent(WeaponComponent));
 		if (!weaponComponent)
 		{
+			delete entity;
 			return;
 		}
 
-		WeaponAttachmentsStorageComponent weaponAttachmentsStorageComponent = WeaponAttachmentsStorageComponent.Cast(entity.FindComponent(WeaponAttachmentsStorageComponent));
-
-		MuzzleComponent muzzleComponent = MuzzleComponent.Cast(weaponComponent.FindComponent(MuzzleComponent));
-		WeaponAttachmentsStorageComponent storageComponent = WeaponAttachmentsStorageComponent.Cast(entity.FindComponent(WeaponAttachmentsStorageComponent));
-		BaseSightsComponent sightsComponent = weaponComponent.GetSights();
-
-		// WeaponComponent
-		m_iDefaultZeroing = Math.Round(weaponComponent.GetCurrentSightsZeroing());
+		m_iDefaultSightDistanceSetting = Math.Round(weaponComponent.GetCurrentSightsZeroing()); // NOT zeroing, dammit
 		m_iMuzzleVelocity = weaponComponent.GetInitialProjectileSpeed();
 		UIInfo weaponComponentUIInfo = weaponComponent.GetUIInfo();
-		if (weaponComponentUIInfo != null)
+		if (weaponComponentUIInfo)
 		{
 			m_sDisplayName = weaponComponentUIInfo.GetName();
 			m_sDescription = weaponComponentUIInfo.GetDescription();
 		}
 
-		// WeaponAttachmentsStorageComponent
-		if (weaponAttachmentsStorageComponent != null)
-		{
-			ItemAttributeCollection collection = weaponAttachmentsStorageComponent.GetAttributes();
-			UIInfo uiInfo = collection.GetUIInfo();
-			WeaponUIInfo weaponUIInfo = WeaponUIInfo.Cast(uiInfo);
-			if (weaponUIInfo != null)
-			{
-				//Warka: Hotfix, as the GetWeaponIconPath() was removed from the WeaponUIInfo class
-				//m_InventoryIcon = weaponUIInfo.GetWeaponIconPath();
-				
-				m_InventoryIcon = "";
-			}
-		}
+		m_aFireModes = {};
+		m_aSightDistanceSettings = {};
 
-		// MuzzleComponent
-		if (muzzleComponent != null)
+//		WeaponAttachmentsStorageComponent weaponAttachmentsStorageComponent = WeaponAttachmentsStorageComponent.Cast(entity.FindComponent(WeaponAttachmentsStorageComponent));
+//		if (weaponAttachmentsStorageComponent)
+//		{
+//			ItemAttributeCollection collection = weaponAttachmentsStorageComponent.GetAttributes();
+//			UIInfo uiInfo = collection.GetUIInfo();
+//			WeaponUIInfo weaponUIInfo = WeaponUIInfo.Cast(uiInfo);
+//			if (weaponUIInfo)
+//			{
+				//Warka: Hotfix, as the GetWeaponIconPath() was removed from the WeaponUIInfo class
+				//m_sInventoryIcon = weaponUIInfo.GetWeaponIconPath();
+//			}
+//		}
+
+		MuzzleComponent muzzleComponent = MuzzleComponent.Cast(weaponComponent.FindComponent(MuzzleComponent));
+		if (muzzleComponent)
 		{
 			array<BaseFireMode> fireModes = {};
 			muzzleComponent.GetFireModesList(fireModes);
 
 			foreach (BaseFireMode fireMode : fireModes)
 			{
-				if (fireMode && fireMode.GetBurstSize() != 0)
+				if (fireMode.GetBurstSize() == 0)
+					continue;
+
+				m_aFireModes.Insert(fireMode.GetUIName());
+				float shotSpan = fireMode.GetShotSpan();
+				if (shotSpan > 0)
 				{
-					m_aFireModes.Insert(fireMode.GetUIName());
-					if (fireMode.GetShotSpan() > 0)
-					{
-						int rateOfFire = Math.Round(60 / fireMode.GetShotSpan());
-						if (rateOfFire > m_iRateOfFire)
-						{
-							m_iRateOfFire = rateOfFire;
-						}
-					}
+					int rateOfFire = Math.Round(60 / shotSpan);
+					if (rateOfFire > m_iRateOfFire)
+						m_iRateOfFire = rateOfFire;
 				}
 			}
 		}
 
-		// WeaponAttachmentsStorageComponent
-		if (storageComponent != null)
+		WeaponAttachmentsStorageComponent storageComponent = WeaponAttachmentsStorageComponent.Cast(entity.FindComponent(WeaponAttachmentsStorageComponent));
+		if (storageComponent)
 		{
-			m_fWeight = storageComponent.GetTotalWeight();
+			m_fMass = storageComponent.GetTotalWeight();
 		}
 
-		// BaseSightsComponent
-		if (sightsComponent != null)
+		BaseSightsComponent sightsComponent = weaponComponent.GetSights();
+		if (sightsComponent)
 		{
 			// TODO when API is available
 		}

@@ -22,6 +22,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	protected static const float SPAWN_STAGE_DISTANCE = 10;
 	protected static const float FADE_DURATION = 1;
 	protected static const float FADE_SPEED = 0.4;
+	protected static const int NUMBER_OF_TUTORIALS = 10;
 	static string VEHICLE_MAINTENANCE_PREFAB = "{543C31BC05F032B6}PrefabsEditable/Auto/Compositions/Slotted/SlotFlatSmall/E_VehicleMaintenance_S_US_01.et";
 	static string HELICOPTER_PREFAB = "{70BAEEFC2D3FEE64}Prefabs/Vehicles/Helicopters/UH1H/UH1H.et";
 	static string HUMMER_PREFAB = "{751AFEEA19DDFB04}Prefabs/Vehicles/Wheeled/M998/M998_covered_long_MERDC.et";
@@ -71,6 +72,9 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	protected Vehicle m_Hummer;
 	protected Vehicle m_Jeep;
 	protected Vehicle m_HummerRepairable;
+	protected IEntity m_DrivingRange;
+	protected bool m_bStagesComplete = false;
+	protected ref array<bool> m_aTutorialBool = {};
 	
 	//------------------------------------------------------------------------------------------------
 	protected void RemovePlayerMapMarkers()
@@ -91,6 +95,44 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		for (int index = markerArray.Count()-1; index >= 0; index--)
 		{
 			mapMarkerManager.RemoveStaticMarker(markerArray[index]);
+		}
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	void HandleAchievement()
+	{
+		/* Achievement SWEAT_SAVES_BLOOD */
+		if (m_bStagesComplete)
+		{	
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+			if (!playerController)
+				return;
+			
+			SCR_AchievementsHandler handler = SCR_AchievementsHandler.Cast(playerController.FindComponent(SCR_AchievementsHandler));
+			if (!handler)
+				return;
+		
+			handler.UnlockAchievement(AchievementId.SWEAT_SAVES_BLOOD);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetStagesComplete(int tutorialNumber, bool completed)
+	{
+		if (m_aTutorialBool.IsIndexValid(tutorialNumber))
+			m_aTutorialBool[tutorialNumber] = completed;
+		else
+			return;
+		
+		m_bStagesComplete = true;
+		foreach (bool value : m_aTutorialBool)
+		{
+			if (!value)
+			{
+				m_bStagesComplete = false;
+				break;
+			}
+
 		}
 	}
 	
@@ -678,6 +720,9 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void StageReset_ResetSeizing()
 	{
+		if (m_DrivingRange)
+			SCR_EntityHelper.DeleteEntityAndChildren(m_DrivingRange);
+		
 		SCR_CampaignMilitaryBaseComponent baseBeauregard = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("TownBaseBeauregard").FindComponent(SCR_CampaignMilitaryBaseComponent));
 		if (baseBeauregard)
 		{
@@ -861,8 +906,8 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (vehicleController)
 			vehicleController.GetOnEngineStop().Insert(OnEngineStoppedJeep);
 		
-		IEntity trainingRange = SpawnAsset("TutorialDrivingRange", DRIVING_RANGE_PREFAB);
-		if (!trainingRange)
+		m_DrivingRange = SpawnAsset("TutorialDrivingRange", DRIVING_RANGE_PREFAB);
+		if (!m_DrivingRange)
 			return;
 	}
 	
@@ -1184,7 +1229,8 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
 		ForcePlayerFaction(playerController);
 		
-
+		while (m_aTutorialBool.Count() < NUMBER_OF_TUTORIALS)
+			m_aTutorialBool.Insert(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2059,6 +2105,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		
 		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
+	
 };
 
 //------------------------------------------------------------------------------------------------

@@ -73,14 +73,10 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		}
 
 		m_wPlayerCount = TextWidget.Cast(GetRootWidget().FindAnyWidget("PlayerCount"));
-
-		m_GameMode.GetOnPlayerConnected().Insert(UpdatePlayerCount);
-		m_GameMode.GetOnPlayerDisconnected().Insert(UpdatePlayerCount);
-
 		m_FactionPlayerList = m_MenuHandler.GetFactionPlayerList();
 
 		UpdateElapsedTime();
-		UpdatePlayerCount(0);
+		UpdatePlayerCount();
 
 		FindRequestHandlers();
 		HookEvents();
@@ -204,6 +200,8 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 
 		if (m_wScenarioTimeElapsed)
 			m_wScenarioTimeElapsed.SetText(timeElapsed);
+
+		UpdatePlayerCount();
 	}
 
 	//! Initialize empty map in the background.
@@ -254,7 +252,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 	}
 
 	//! Updates the session's player count.
-	protected void UpdatePlayerCount(int playerId)
+	protected void UpdatePlayerCount()
 	{
 		if (m_iMaxPlayerCount > 0)
 			m_wPlayerCount.SetTextFormat("%1/%2", GetGame().GetPlayerManager().GetPlayerCount().ToString(), m_iMaxPlayerCount);

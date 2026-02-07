@@ -7,109 +7,156 @@ class SCR_ScenarioFrameworkSlotTriggerClass : SCR_ScenarioFrameworkSlotBaseClass
 //------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 {
-	/*
-	[Attribute(defvalue: "5.0", UIWidgets.Slider, params: "1.0 1000.0 0.5", desc: "Radius of the trigger if selected", category: "Trigger")];
-	protected float							m_fAreaRadius;
-	
-	
-	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(TA_EActivationPresence), category: "Trigger")]
-	protected TA_EActivationPresence		m_eActivationPresence;
-	
-	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")];
-	protected bool 							m_bOnce;
-	
-	
-	*/
-	/*
-	//TODO: prepared for dynamic invoker selection
-	protected ref ScriptInvoker m_OnActivate = new ScriptInvoker();
-	protected ref ScriptInvoker m_OnDeactivate = new ScriptInvoker();
-	
-	protected ref array<string> m_aInvokers = { "OnActivate", "OnDeactivate" };
-
-	
-	//------------------------------------------------------------------------------------------------
-	array<string> GetInvokerArray()
-	{
-		return m_aInvokers;
-	}
-	*/
-	
 	[Attribute(desc: "Actions that will be performed after trigger conditions are true and the trigger itself activates (not the slot itself)", category: "OnActivation")];
 	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActions;
 	
 	//------------------------------------------------------------------------------------------------
 	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
-		super.Init(area, activation);
-		foreach(SCR_ScenarioFrameworkActionBase triggerAction : m_aTriggerActions)
-		{
-			triggerAction.Init(m_Entity);
-		}
+		if (m_bIsTerminated)
+			return;
 		
 		if (!m_ParentLayer)
 		{
-			IEntity parentEntity = GetOwner().GetParent();
-			if (!parentEntity)
+			IEntity entity = GetOwner().GetParent();
+			if (!entity)
 				return;
-		
-			m_ParentLayer = SCR_ScenarioFrameworkLayerBase.Cast(parentEntity.FindComponent(SCR_ScenarioFrameworkLayerBase));
-			if (m_ParentLayer)
-				m_ParentLayer.CheckAllChildrenSpawned(this);
-		}
-		/*
-		if (m_eActivationType != activation)
-			return;
-		super.Init(area, activation);
-		if (!BaseGameTriggerEntity.Cast(m_Entity))
-		{
-			Print("ScenarioFramework: SlotTrigger - The selected prefab is not trigger!");
-			return;
-		}
-		BaseGameTriggerEntity.Cast(m_Entity).SetSphereRadius(m_fAreaRadius);
-		SCR_CharacterTriggerEntity trigger = SCR_CharacterTriggerEntity.Cast(m_Entity);
-		if (trigger)
-		{
-			trigger.SetActivationPresence(m_eActivationPresence);
-			trigger.SetOwnerFaction(m_sFaction);
-			ScriptInvoker invoker = trigger.GetOnActivate();
-			invoker.Insert(OnActivate);
-		
 			
+			m_ParentLayer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
 		}
-		*/
-	}
-	/*
-	//------------------------------------------------------------------------------------------------
-	void OnActivate()
-	{
-		if (!m_bOnce)
+	
+		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
 			return;
 		
-		SCR_CharacterTriggerEntity trigger = SCR_CharacterTriggerEntity.Cast(m_Entity);
-		if (trigger)
-			trigger.Deactivate();
-	}
+		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
+		{
+			//If just one condition is false, we don't continue and interrupt the init
+			if (!activationCondition.Init(GetOwner()))
+			{
+				InvokeAllChildrenSpawned();
+				return;
+			}
+		}
+
+		if (m_Entity && !m_bEnableRepeatedSpawn)
+		{
+			IEntity entity = GetOwner().GetParent();
+			if (!entity)
+				return;
+				
+			SCR_ScenarioFrameworkLayerBase layerBase = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+			if (!layerBase)
+				return;
+				
+			if (!layerBase.GetEnableRepeatedSpawn())
+			{
+				Print(string.Format("ScenarioFramework: Object %1 already exists and won't be spawned for %2, exiting...", m_Entity, GetOwner().GetName()), LogLevel.ERROR);
+				return;
+			}
+		}
 		
-	#ifdef WORKBENCH	
-	//------------------------------------------------------------------------------------------------
-	override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
-	{
-		if (m_sObjectToSpawn)
-			super._WB_AfterWorldUpdate(owner, timeSlice);
+		// Handles inheritance of faction settings from parents
+		if (m_sFactionKey.IsEmpty() && m_ParentLayer && !m_ParentLayer.GetFactionKey().IsEmpty())
+			SetFactionKey(m_ParentLayer.GetFactionKey());
+		
+		if (!m_bUseExistingWorldAsset)
+		{
+			m_Entity = SpawnAsset();
+		}
+		else
+		{
+			QueryObjectsInRange();	//sets the m_Entity in subsequent callback
+		}
+		
+		GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawned);
+		
+		if (m_Entity)
+		{
+			BaseGameTriggerEntity trigger = BaseGameTriggerEntity.Cast(m_Entity);
+			if (trigger)
+				trigger.EnablePeriodicQueries(false);
+		}
+		else
+		{
+			InvokeAllChildrenSpawned();
+			return;
+		}
+		
+		if (!m_sID.IsEmpty())
+			m_Entity.SetName(m_sID);	
+		
+		ScriptedDamageManagerComponent objectDmgManager = ScriptedDamageManagerComponent.Cast(m_Entity.FindComponent(ScriptedDamageManagerComponent));
+		if (objectDmgManager)
+			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
+		
+		if (Vehicle.Cast(m_Entity))
+		{
+			EventHandlerManagerComponent ehManager = EventHandlerManagerComponent.Cast(m_Entity.FindComponent(EventHandlerManagerComponent));
+			if (ehManager)
+				ehManager.RegisterScriptHandler("OnCompartmentEntered", this, OnCompartmentEntered, true);
+		}
+		
+		if (!area)
+		{
+			SCR_GameModeSFManager gameModeComp = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
+			if (gameModeComp)
+				area = gameModeComp.GetParentArea(GetOwner());
+		}
+		m_Area = area;
+		
+		InvokeAllChildrenSpawned();
 	}
-	#endif	
 	
-		
 	//------------------------------------------------------------------------------------------------
-	void SCR_ScenarioFrameworkSlotTrigger(IEntityComponentSource src, IEntity ent, IEntity parent)
+	override void AfterAllChildrenSpawned()
 	{
-		//m_sObjectToSpawn = "{698D02E7065F159B}Prefabs/Triggers/TriggerExtraction.et";
-		#ifdef WORKBENCH
-			m_iDebugShapeColor = ARGB(32, 0xFF, 0x00, 0x10);
-			m_fDebugShapeRadius = m_fAreaRadius;
-		#endif
+		m_bInitiated = true;
+		
+		if (m_ParentLayer)
+			m_ParentLayer.CheckAllChildrenSpawned(this);
+		
+		if (!m_Area)
+			m_Area = GetParentArea();
+		
+		if (m_Area)
+		{
+			m_Area.GetOnAllChildrenSpawned().Insert(AfterParentAreaChildrenSpawned);
+			m_Area.CheckAllChildrenSpawned(this);
+		}
+
+		GetOnAllChildrenSpawned().Remove(AfterAllChildrenSpawned);
 	}
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	protected void AfterParentAreaChildrenSpawned()
+	{
+		foreach (SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)
+		{
+			plugin.Init(this);
+		}
+		
+		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
+		{
+			activationAction.Init(GetOwner());
+		}
+		
+		foreach (SCR_ScenarioFrameworkActionBase triggerAction : m_aTriggerActions)
+		{
+			triggerAction.Init(m_Entity);
+		}
+
+		if (m_fRepeatedSpawnTimer >= 0)
+			RepeatedSpawn();
+		
+		if (m_Area)
+			m_Area.GetOnAllChildrenSpawned().Remove(AfterParentAreaChildrenSpawned);
+		
+		if (m_Entity)
+		{
+			BaseGameTriggerEntity trigger = BaseGameTriggerEntity.Cast(m_Entity);
+			if (trigger)
+				trigger.EnablePeriodicQueries(true);
+		}
+	}
 };
 

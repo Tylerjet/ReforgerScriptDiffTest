@@ -104,6 +104,7 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	protected SCR_ConfigurableDialogUi m_DeletePrompt;
 	protected SCR_ConfigurableDialogUi m_LoadBadVersionPrompt;
 	protected SCR_ConfigurableDialogUi m_LoadBadAddonsPrompt;
+	protected SCR_LoadingOverlayDialog m_LoadingOverlay;
 	
 	protected float m_fSliderPosY = -1;
 	protected Widget m_wSelectedWidget;
@@ -242,7 +243,33 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 	{
 		string fileName;
 		if (m_mEntries.Find(m_wLastFocusedEntry, fileName))
-			GetGame().GetSaveManager().RestartAndLoad(fileName);
+		{
+			SCR_SaveManagerCore saveManager = GetGame().GetSaveManager();
+			
+			saveManager.RestartAndLoad(fileName);
+			
+			if (saveManager.GetUploadCallback())
+			{
+				saveManager.GetUploadCallback().GetEventOnResponse().Insert(OnLoadEntryUploadResponse);
+				m_LoadingOverlay = SCR_LoadingOverlayDialog.Create();
+			}
+		}
+	}
+	
+	//----------------------------------------------------------------------------------------
+	protected void OnLoadEntryUploadResponse(SCR_BackendCallback callback)
+	{
+		callback.GetEventOnResponse().Remove(OnLoadEntryUploadResponse);
+		
+		if (callback.GetResponseType() != EBackendCallbackResponse.SUCCESS)
+		{
+			SCR_CommonDialogs.CreateRequestErrorDialog();
+		}
+		
+		if (m_LoadingOverlay)
+			m_LoadingOverlay.Close();
+		
+		CloseMenu();
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////

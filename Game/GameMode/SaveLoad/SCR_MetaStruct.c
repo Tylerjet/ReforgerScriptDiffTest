@@ -11,7 +11,6 @@ class SCR_MetaStruct: SCR_JsonApiStruct
 	{
 		//--- Compare only major version, ignore the build number (otherwise even the slightes build increase would invalidate saves)
 		versionName = GetGame().GetBuildVersion();
-		versionName = versionName.Substring(0, versionName.LastIndexOf("."));
 		
 		return bV.StartsWith(versionName);
 	}

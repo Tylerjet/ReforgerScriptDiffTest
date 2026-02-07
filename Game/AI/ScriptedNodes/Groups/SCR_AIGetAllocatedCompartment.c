@@ -44,7 +44,7 @@ class SCR_AIGetAllocatedCompartment: AITaskScripted
 		
 		for (int index = m_indexOfLastCompartment; index >= 0; index--)
 		{
-			if (IsCompartmentOfSameType(compartments[index].Type(), m_eCompartmentType))
+			if (compartments[index] && IsCompartmentOfSameType(compartments[index].Type(), m_eCompartmentType))
 			{
 				compartmentOut = compartments[index];
 				vehicleOut = compartments[index].GetVehicle();

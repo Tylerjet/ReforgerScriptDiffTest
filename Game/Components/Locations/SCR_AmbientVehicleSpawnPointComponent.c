@@ -154,6 +154,12 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 #ifdef WORKBENCH
 			Print("SCR_AmbientVehicleSpawnPointComponent: FindEmptyTerrainPosition failed at " + GetOwner().GetOrigin().ToString(), LogLevel.WARNING);
 #endif
+
+			// In case this spawnpoint is blocked from the start, don't process it anymore
+			// Prevents unexpected behavior such as vehicles spawning on a spot where a service composition has been built and after a session load dismantled 
+			if (!m_bFirstSpawnDone)
+				m_bDepleted = true;
+
 			return null;
 		}
 

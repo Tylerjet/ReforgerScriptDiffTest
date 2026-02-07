@@ -32,6 +32,10 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 
 	protected float m_fNoRewardSupplies;
 
+	protected int m_iTotalSuppliesDelivered;
+
+	protected static ref ScriptInvokerInt3 s_OnSuppliesDelivered;
+
 	static const float FULL_SUPPLY_TRUCK_AMOUNT = 600.0;
 	static const int SUPPLY_DELIVERY_THRESHOLD_SQ = 100 * 100;
 
@@ -94,7 +98,16 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		m_fLastAssetRequestTimestamp = timestamp;
 		Replication.BumpMe();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerInt3 GetOnSuppliesDelivered()
+	{
+		if (!s_OnSuppliesDelivered)
+			s_OnSuppliesDelivered = new ScriptInvokerInt3();
+
+		return s_OnSuppliesDelivered;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Checks if the session is run as client
 	protected bool IsProxy()
@@ -1262,10 +1275,16 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (difference <= 0)
 			return;
 
+		float finalAmount = Math.Min(difference, amount);
+		m_iTotalSuppliesDelivered += finalAmount;
+
+		if (s_OnSuppliesDelivered)
+			s_OnSuppliesDelivered.Invoke(playerId, (int)finalAmount, m_iTotalSuppliesDelivered);
+
 		SCR_XPHandlerComponent compXP = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
 
 		if (compXP)
-			compXP.AwardXP(playerId, SCR_EXPRewards.SUPPLIES_DELIVERED, Math.Min(difference, amount) / FULL_SUPPLY_TRUCK_AMOUNT);
+			compXP.AwardXP(playerId, SCR_EXPRewards.SUPPLIES_DELIVERED, finalAmount / FULL_SUPPLY_TRUCK_AMOUNT);
 	}
 
 	//------------------------------------------------------------------------------------------------

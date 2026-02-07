@@ -155,11 +155,11 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 		if (!world)
 			return;
 
-		GarbageSystem garbageSystem = world.GetGarbageSystem();
-		if (!garbageSystem)
+		GarbageManager garbageManager = world.GetGarbageManager();
+		if (!garbageManager)
 			return;
 
-		garbageSystem.Withdraw(GetOwner()); // Withdraw owner entity from garbage collection while radio is deployed
+		garbageManager.Withdraw(GetOwner()); // Withdraw owner entity from garbage collection while radio is deployed
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -206,11 +206,11 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 		if (!world)
 			return;
 
-		GarbageSystem garbageSystem = world.GetGarbageSystem();
-		if (!garbageSystem)
+		GarbageManager garbageManager = world.GetGarbageManager();
+		if (!garbageManager)
 			return;
 
-		garbageSystem.Insert(GetOwner()); // Insert owner entity back into garbage collection after item is dismantled
+		garbageManager.Insert(GetOwner()); // Insert owner entity back into garbage collection after item is dismantled
 	}
 	
 	//------------------------------------------------------------------------------------------------

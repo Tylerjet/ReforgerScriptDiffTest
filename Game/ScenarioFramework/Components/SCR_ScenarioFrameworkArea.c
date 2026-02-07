@@ -51,7 +51,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	protected SCR_BaseTask 													m_Task;
 	protected string	 													m_sItemDeliveryPointName;
 	protected SCR_ScenarioFrameworkLayerTask								m_LayerTask;
-	protected SCR_ScenarioFrameworkSlotTask									m_TaskSubject; 				//storing this one in order to get the task title and description
+	protected SCR_ScenarioFrameworkSlotTask									m_SlotTask; 				//storing this one in order to get the task title and description
 	
 #ifdef WORKBENCH
 	[Attribute(defvalue: "0", desc: "Show the debug shapes in Workbench", category: "Debug")];
@@ -89,16 +89,17 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_ScenarioFrameworkSlotTask GetTaskSubject()
+	SCR_ScenarioFrameworkSlotTask GetSlotTask()
 	{
-		return m_TaskSubject;
+		return m_SlotTask;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetTaskSubject(SCR_ScenarioFrameworkSlotTask taskSubject)
+	void SetSlotTask(SCR_ScenarioFrameworkSlotTask slotTask)
 	{
-		m_TaskSubject = taskSubject;
+		m_SlotTask = slotTask;
 	}
+	
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkLayerTask GetLayerTask()
 	{
@@ -606,6 +607,16 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	{
 		if (m_bInitiated)
 			return;
+		
+		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
+		{
+			//If just one condition is false, we don't continue and interrupt the init
+			if (!activationCondition.Init(GetOwner()))
+			{
+				InvokeAllChildrenSpawned();
+				return;
+			}
+		}
 
 		if (m_eActivationType != SCR_ScenarioFrameworkEActivationType.ON_INIT)
 			PrintFormat("ScenarioFramework: Area %1 is set to %2 activation type, but area will always spawn on Init as default", GetOwner().GetName(), activation, LogLevel.WARNING);
@@ -618,7 +629,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		
 		if (m_Trigger)
 		{
-			foreach(SCR_ScenarioFrameworkActionBase triggerAction : m_aTriggerActions)
+			foreach (SCR_ScenarioFrameworkActionBase triggerAction : m_aTriggerActions)
 			{
 				triggerAction.Init(m_Trigger);
 			}

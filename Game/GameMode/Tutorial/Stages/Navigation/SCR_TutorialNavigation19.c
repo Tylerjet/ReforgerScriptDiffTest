@@ -18,6 +18,7 @@ class SCR_TutorialNavigation19 : SCR_BaseCampaignTutorialArlandStage
 			return;
 		
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		m_TutorialComponent.SetStagesComplete(3, true);	
 	}
 	
 	//------------------------------------------------------------------------------------------------

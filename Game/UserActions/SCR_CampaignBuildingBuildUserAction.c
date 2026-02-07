@@ -2,7 +2,10 @@
 class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 {
 	protected SCR_CampaignBuildingLayoutComponent m_LayoutComponent;
+	// entity to whom the user action is just shown but is not actively perfroming the action.
 	protected IEntity m_User;
+	// entity who starts performing the action.
+	protected IEntity m_ActiveUser;
 	protected SCR_GadgetManagerComponent m_GadgetManager;
 	
 	//------------------------------------------------------------------------------------------------
@@ -25,6 +28,7 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void OnActionStart(IEntity pUserEntity)
 	{
+		m_ActiveUser = pUserEntity;
 		super.OnActionStart(pUserEntity);
 		
 		if (!ShouldPerformPerFrame())
@@ -48,6 +52,8 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void OnActionCanceled(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
+		m_ActiveUser = null;
+		
 		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
 		if (!character)
 			return;
@@ -66,6 +72,8 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void OnConfirmed(IEntity pUserEntity)
 	{
+		m_ActiveUser = null;
+		
 		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
 		if (!character)
 			return;
@@ -122,11 +130,8 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 	
 	//------------------------------------------------------------------------------------------------
 	//! Stops player animation
-	protected void CancelPlayerAnimation(IEntity pUserEntity)
-	{
-		if (!pUserEntity)
-			return;
-		
+	protected void CancelPlayerAnimation(notnull IEntity pUserEntity)
+	{		
 		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
 		if (!character)
 			return;
@@ -233,6 +238,7 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 	// Destructor
 	void ~SCR_CampaignBuildingBuildUserAction()
 	{
-		CancelPlayerAnimation(m_User);
+		if (m_ActiveUser)
+			CancelPlayerAnimation(m_ActiveUser);
 	}
 }

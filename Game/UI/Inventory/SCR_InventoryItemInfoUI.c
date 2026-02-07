@@ -81,6 +81,8 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 			m_wHintWidget.RemoveChild(childWidget);
 			childWidget = next;
 		}
+
+		GetGame().GetCallqueue().Remove(ShowInfoWidget);
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -115,13 +117,13 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	void SetItemHints(InventoryItemComponent item, array<SCR_InventoryItemHintUIInfo> itemHintArray )
+	void SetItemHints(InventoryItemComponent item, array<SCR_InventoryItemHintUIInfo> itemHintArray, SCR_InventorySlotUI focusedSlot)
 	{
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		
 		foreach (SCR_InventoryItemHintUIInfo hintUIInfo : itemHintArray)
 		{
-			if (!hintUIInfo.CanBeShown(item))
+			if (!hintUIInfo.CanBeShown(item, focusedSlot))
 				continue;
 			
 			Widget createdWidget = workspace.CreateWidgets(m_sHintLayout, m_wHintWidget);

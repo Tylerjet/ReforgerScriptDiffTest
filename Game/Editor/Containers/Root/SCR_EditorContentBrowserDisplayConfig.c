@@ -141,10 +141,9 @@ class SCR_EditorContentBrowserDisplayConfig
 	/*!
 	Check if given label is always active
 	\param label to check
-	\param ignoreIfCanBeShown will return false even if active label
 	\return true if label is always active (And can be shown if checked
 	*/
-	bool IsAlwaysActiveLabel(EEditableEntityLabel label, bool ignoreIfCanBeShown)
+	bool IsAlwaysActiveLabel(EEditableEntityLabel label)
 	{
 		//~ No always active labels
 		if (m_aAlwaysActiveLabels.IsEmpty())
@@ -332,6 +331,6 @@ class SCR_EditorContentBrowserDisplayLabel
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EEditableEntityLabel, "m_iLabel")]
 class SCR_EditorContentBrowserActiveDisplayLabel: SCR_EditorContentBrowserDisplayLabel
 {	
-	[Attribute("0", desc: "If false then this label will be blacklisted and can never set or unset")]
+	[Attribute("0", desc: "If false then this label will hidden in filters and will always be forced to be active (if enabled)")]
 	bool m_bShowLabel;
 };

@@ -49,7 +49,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	protected bool										m_bEnabled 	= true;
 	protected bool										m_bSelected = false;
 	protected bool										m_bBlocked = false;
-	protected Widget									m_wSelectedEffect, m_wMoveEffect, m_wDimmerEffect, m_wBlockedEffect;
+	protected Widget									m_wSelectedEffect, m_wSelectedIcon , m_wMoveEffect, m_wDimmerEffect, m_wBlockedEffect;
 	protected TextWidget								m_wTextQuickSlot = null;
 	protected TextWidget								m_wTextQuickSlotLarge = null;
 	protected int										m_iQuickSlotIndex;
@@ -271,7 +271,8 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 				m_wVolumeBar = ProgressBarWidget.Cast( m_widget.FindAnyWidget( "VolumeBar" ) );
 				m_wVolumeBar.SetVisible( true );
 			}
-			m_wSelectedEffect = m_widget.FindAnyWidget( "SelectedFrame" );
+			m_wSelectedEffect = m_widget.FindAnyWidget("SelectedOverlay");
+			m_wSelectedIcon = m_widget.FindAnyWidget("SelectedIcon");
 			m_wMoveEffect = m_widget.FindAnyWidget( "IconMove" );
 			m_wDimmerEffect = m_widget.FindAnyWidget( "Dimmer" );
 			m_wBlockedEffect = m_widget.FindAnyWidget("Blocker");
@@ -336,6 +337,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		{
 			m_wPreviewImage = null;
 			m_wSelectedEffect = null;
+			m_wSelectedIcon = null;
 			m_wMoveEffect = null;
 			m_wDimmerEffect = null;
 			m_wButton = null;
@@ -445,18 +447,22 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	void ToggleSelected()
 	{
 		m_bSelected = !m_bSelected;
-		if ( !m_wSelectedEffect )
+		if (!m_wSelectedEffect || !m_wSelectedIcon)
 			return;
 
 		m_wSelectedEffect.SetVisible( m_bSelected );
+		m_wSelectedIcon.SetVisible(false);
 		m_pStorageUI.SetSlotSelected( this, m_bSelected );
 	}
 	//------------------------------------------------------------------------------------------------
 	void SetSelected( bool select )
 	{
 		//TODO: show the selected effect should be done as a component
+		if (!m_pItem)
+			return;
+
 		m_bSelected = select;
-		if ( !m_wSelectedEffect )
+		if (!m_wSelectedEffect || !m_wSelectedIcon)
 			return;
 
 		m_wSelectedEffect.SetVisible(select);
@@ -904,9 +910,10 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	void SetSelectedQuickSlot( bool select )
 	{
 		m_bSelected = select;
-		if ( !m_wSelectedEffect )
+		if (!m_wSelectedEffect || !m_wSelectedIcon)
 			return;
 		m_wSelectedEffect.SetVisible( select );
+		m_wSelectedIcon.SetVisible(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -457,27 +457,50 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		
 		return rootItems.Count();
 	}
-
+	
 	// Callback when item is added (will be performed locally after server completed the Insert/Move operation)
 	override protected void OnItemAdded(BaseInventoryStorageComponent storageOwner, IEntity item)
 	{		
 		super.OnItemAdded(storageOwner, item);
-
+		
 		auto consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
 		if ( consumable && consumable.GetConsumableType() == SCR_EConsumableType.BANDAGE )
 			m_iHealthEquipment++;	//store count of the health components
+		
+		// Withdraw item from gc collection
+		ChimeraWorld world = ChimeraWorld.CastFrom(item.GetWorld());
+		if (world)
+		{
+			GarbageManager garbageManager = world.GetGarbageManager();
+			if (garbageManager)
+			{
+				if (item.FindComponent(InventoryItemComponent))
+					garbageManager.Withdraw(item);
+			}
+		}
 	}
-
+	
 	// Callback when item is removed (will be performed locally after server completed the Remove/Move operation)
 	override protected void OnItemRemoved(BaseInventoryStorageComponent storageOwner, IEntity item)
 	{
 		super.OnItemRemoved(storageOwner, item);
-
+		
 		auto consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
 		if ( consumable && consumable.GetConsumableType() == SCR_EConsumableType.BANDAGE )
 			m_iHealthEquipment--;	//store count of the health components
-	}
 
+		// Insert item into gc collection
+		ChimeraWorld world = ChimeraWorld.CastFrom(item.GetWorld());
+		if (world)
+		{
+			GarbageManager garbageManager = world.GetGarbageManager();
+			if (garbageManager)
+			{
+				if (item.FindComponent(InventoryItemComponent))
+					garbageManager.Insert(item);
+			}
+		}
+	}
 	//------------------------------------------------------------------------------------------------
 	override protected bool ShouldForbidRemoveByInstigator(InventoryStorageManagerComponent instigatorManager, BaseInventoryStorageComponent fromStorage, IEntity item)
 	{
@@ -572,7 +595,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 
 		foreach ( BaseInventoryStorageComponent pStorage : pStorages )
 		{	
-			bool bCanInsert = CanInsertItemInStorage( item, pStorage, -1 ); //split becouse of debug purposes
+			bool bCanInsert = CanInsertItemInStorage( item, pStorage, -1 ); //split because of debug purposes
 			bool bCanMove = CanMoveItemToStorage( item, pStorage, -1 );
 			if ( bCanInsert || bCanMove )
 				return true;
@@ -669,8 +692,34 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 					return;
 				}
 			}
-			if ( FindStorageForInsert( pItem, pStorageTo, EStoragePurpose.PURPOSE_ANY ) )
-				pStorageTo = FindStorageForInsert( pItem, pStorageTo, EStoragePurpose.PURPOSE_ANY );
+			
+			//~ Find a valid storage to insert item in
+			BaseInventoryStorageComponent validStorage = FindStorageForInsert( pItem, pStorageTo, EStoragePurpose.PURPOSE_ANY );
+			if (validStorage)
+			{
+				pStorageTo = validStorage;
+			}
+			//~ Check if item can be inserted in linked storages
+			else 
+			{
+				//~ Find valid storage in linked storages
+				SCR_UniversalInventoryStorageComponent universalStorage = SCR_UniversalInventoryStorageComponent.Cast(pStorageTo);
+				if (universalStorage)
+				{
+					array<BaseInventoryStorageComponent> linkedStorages = {};
+					universalStorage.GetLinkedStorages(linkedStorages);
+					
+					foreach(BaseInventoryStorageComponent linkedStorage : linkedStorages)
+					{
+						//~ Valid linked storage found
+						if (FindStorageForInsert(pItem, linkedStorage, EStoragePurpose.PURPOSE_ANY))
+						{
+							pStorageTo = linkedStorage;
+							break;
+						}
+					}
+				}
+			}
 			
 			if ( !pStorageFrom )
 			{

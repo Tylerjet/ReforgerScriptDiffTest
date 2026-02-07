@@ -23,6 +23,19 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 	protected SCR_ServicePointDelegateComponent m_Delegate;
 
 	//------------------------------------------------------------------------------------------------
+	Faction GetFaction()
+	{
+		if (!m_FactionControl)
+			return null;
+		
+		Faction faction = m_FactionControl.GetAffiliatedFaction();
+		if (!faction)
+			faction = m_FactionControl.GetDefaultAffiliatedFaction();
+		
+		return faction;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	ResourceName GetDelegatePrefab()
 	{
 		return m_sDelegatePrefab;
@@ -132,16 +145,16 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 		m_FactionControl = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
 
 		super.OnPostInit(owner);
-		RegisterService();
 
-		if (s_bSpawnAsOffline)
+		SCR_EditorLinkComponent linkComponent = SCR_EditorLinkComponent.Cast(SCR_EntityHelper.GetMainParent(GetOwner(), true).FindComponent(SCR_EditorLinkComponent));
+		if (linkComponent)
+			linkComponent.GetOnLinkedEntitiesSpawned().Insert(RegisterService);
+		else
+			RegisterService();
+		
+		if (s_bSpawnAsOffline && linkComponent)
 		{
-			s_bSpawnAsOffline = false;
-
-			SCR_EditorLinkComponent linkComponent = SCR_EditorLinkComponent.Cast(SCR_EntityHelper.GetMainParent(GetOwner(), true).FindComponent(SCR_EditorLinkComponent));
-			if (linkComponent)
-				linkComponent.GetOnLinkedEntitiesSpawned().Insert(SetServiceOnline);
-
+			linkComponent.GetOnLinkedEntitiesSpawned().Insert(SetServiceOnline);
 			return;
 		}
 

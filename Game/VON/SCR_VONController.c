@@ -24,6 +24,8 @@ class SCR_VONControllerClass: ScriptGameComponentClass
 //! Scripted VON input and control, attached to SCR_PlayerController
 class SCR_VONController : ScriptComponent
 {
+	protected const string VON_MENU_OPENING_CONTEXT = "VONMenuOpeningContext";
+	
  	// TODO more robust von component selection management
 	
 	[Attribute("", UIWidgets.Object)]
@@ -857,6 +859,7 @@ class SCR_VONController : ScriptComponent
 		if (!m_bIsDisabled && !m_bIsUnconscious)
 		{
 			m_InputManager.ActivateContext("VONContext");
+			m_InputManager.ActivateContext(VON_MENU_OPENING_CONTEXT);
 			
 			if (m_fToggleOffDelay > 0)
 				m_fToggleOffDelay -= timeSlice;

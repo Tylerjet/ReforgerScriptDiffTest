@@ -26,6 +26,20 @@ class SCR_EditableEntityUIInfo: SCR_UIInfo
 	protected EEditableEntityType m_EntityType;
 	protected EEditableEntityFlag m_EntityFlags;
 	
+	//~ Hotfix to make sure Entity names that are not localized get a default fallback name	
+	static const LocalizedString EDITABLE_ENTITY_FALLBACK_NAME = "#AR-AttributesDialog_TitlePage_Entity_Text";
+	
+	//~ Hotfix to make sure Entity names that are not localized get a default fallback name	
+	override LocalizedString GetName()
+	{
+		//~ If empty string, placeholder string it will use the the fallback string so the name at least is localized. 
+		//~ It checks for '(' as all placeholder names check for it as checking for '#' will override the string for modders
+		if (Name.IsEmpty() || Name[0] == "(")
+			return EDITABLE_ENTITY_FALLBACK_NAME;
+		
+		return Name;
+	}
+	
 	ResourceName GetImage()
 	{
 		return m_Image;

@@ -24,13 +24,13 @@ class SCR_CampaignTutorialArlandStageHub : SCR_BaseCampaignTutorialArlandStage
 			RegisterWaypoint(board);
 		}
 		
-		array<IEntity> rootItems = {};
-		
 		GetGame().GetCallqueue().CallLater(DelayedHint, 2000, false);
 		
 		m_AreaCenter = GetGame().GetWorld().FindEntityByName("HUB_AREA_CENTER");
 		if (m_AreaCenter)
 			GetGame().GetCallqueue().CallLater(CheckVicinity, 1000, true);
+
+		m_TutorialComponent.HandleAchievement();
 	}
 	
 	//------------------------------------------------------------------------------------------------

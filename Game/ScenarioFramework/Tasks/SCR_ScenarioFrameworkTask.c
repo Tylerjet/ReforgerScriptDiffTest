@@ -6,12 +6,12 @@ class SCR_ScenarioFrameworkTaskClass : SCR_BaseTaskClass
 //------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkTask : SCR_BaseTask
 {
-	protected SCR_ScenarioFrameworkArea 							m_Area;
 	protected IEntity 												m_Asset;
 	protected SCR_ScenarioFrameworkTaskSupportEntity		 		m_SupportEntity;
-	protected SCR_ScenarioFrameworkLayerTask						m_Layer;
+	protected SCR_ScenarioFrameworkLayerTask						m_LayerTask;
 	protected SCR_ScenarioFrameworkSlotTask							m_SlotTask;
 	protected string 												m_sTaskExecutionBriefing;
+	protected string 												m_sSpawnedEntityName;
 	
 	//------------------------------------------------------------------------------------------------
 	void SetTaskState(SCR_TaskState state)
@@ -20,22 +20,22 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetTaskLayer(SCR_ScenarioFrameworkLayerTask layer)
+	void SetLayerTask(SCR_ScenarioFrameworkLayerTask layer)
 	{
-		m_Layer = layer;
+		m_LayerTask = layer;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	SCR_ScenarioFrameworkLayerTask GetTaskLayer()
+	SCR_ScenarioFrameworkLayerTask GetLayerTask()
 	{
-		return m_Layer;
+		return m_LayerTask;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! An event called when the state of this task has been changed.
 	override void OnStateChanged(SCR_TaskState previousState, SCR_TaskState newState)
 	{
-		if (!m_Layer)
+		if (!m_LayerTask)
 			return;
 		
 		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
@@ -48,14 +48,14 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 		}
 		else
 		{
-			SCR_ScenarioFrameworkSlotTask slotTask = m_Layer.GetTaskSubject();
+			SCR_ScenarioFrameworkSlotTask slotTask = m_LayerTask.GetSlotTask();
 			if (slotTask)
 				slotTask.OnTaskStateChanged(newState);
 			else
 				Print("ScenarioFramework: Task Subject not found for task", LogLevel.ERROR);
 		}
 		
-		m_Layer.OnTaskStateChanged(previousState, newState);
+		m_LayerTask.OnTaskStateChanged(previousState, newState);
 				
 		if (newState == SCR_TaskState.FINISHED)
 			gameModeManager.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFinished-UC", m_TargetFaction.GetFactionKey());
@@ -72,13 +72,13 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetTaskSubject(IEntity object)
+	void SetTaskAsset(IEntity object)
 	{
 		m_Asset = object;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void RehookTaskSubject(IEntity object)
+	void RehookTaskAsset(IEntity object)
 	{
 		m_Asset = object;
 		
@@ -87,7 +87,7 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	IEntity GetTaskSubject()
+	IEntity GetAsset()
 	{
 		return m_Asset;
 	}
@@ -117,11 +117,30 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	string GetTaskExecutionBriefing() 
+	string GetTaskExecutionBriefing()
 	{ 
 		return m_sTaskExecutionBriefing;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	void SetSpawnedEntityName(string name) 
+	{ 
+		m_sSpawnedEntityName = name;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetSpawnedEntityName() 
+	{ 
+		return m_sSpawnedEntityName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//Description fetch for the Task List
+	override string GetTaskListTaskText()
+	{
+		return string.Format(WidgetManager.Translate(m_sDescription, m_sSpawnedEntityName));
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected bool SetSupportEntity()
 	{
@@ -135,7 +154,32 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 
 		return m_SupportEntity != null;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	override void Serialize(ScriptBitWriter writer)
+	{
+		super.Serialize(writer);
+		
+		writer.WriteString(m_sTaskExecutionBriefing);
+		writer.WriteString(m_sSpawnedEntityName);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Deserialize(ScriptBitReader reader)
+	{
+		super.Deserialize(reader);
+		
+		string taskExecutionBriefing;
+		//Reading task execution briefing
+		reader.ReadString(taskExecutionBriefing);
+		SetTaskExecutionBriefing(taskExecutionBriefing);
+		
+		string spawnedEntityName;
+		//Reading spawned entity name
+		reader.ReadString(spawnedEntityName);
+		SetSpawnedEntityName(spawnedEntityName);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void Init()
 	{
@@ -161,7 +205,7 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 			
 			m_SupportEntity.SetTaskEntity(m_Asset);
 		}
-
+		
 		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
 		if (!gameModeManager)
 			return;

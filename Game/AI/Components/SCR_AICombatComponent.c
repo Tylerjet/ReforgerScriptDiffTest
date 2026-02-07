@@ -83,6 +83,7 @@ class SCR_AICombatComponent : ScriptComponent
 	
 	// Cached data about current vehicle and compartment
 	protected IEntity m_CurrentVehicle;								// Current vehicle. It's not always same as compartment owner!
+	protected bool m_bCurrentVehicleEvac;							// True if we're exiting vehicle because of damage/fire
 	protected SCR_BaseCompartmentManagerComponent m_CurrentVehicleCompartmentManager;	// Vehicle's compartment manager
 	protected BaseCompartmentSlot m_CurrentCompartmentSlot;			// Current compartment slot
 	protected TurretControllerComponent m_CurrentTurretController;	// Current turret controller (if we are in a turret)
@@ -705,6 +706,7 @@ class SCR_AICombatComponent : ScriptComponent
 	void Event_OnCompartmentLeft( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
 	{
 		m_CurrentVehicle = null;
+		m_bCurrentVehicleEvac = false;
 		m_CurrentCompartmentSlot = null;
 		m_CurrentTurretController = null;
 	}
@@ -734,11 +736,27 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void Event_OnDamage(EDamageType dType, float dps, HitZone hz)
+	{
+		if (dType != EDamageType.FIRE || !m_Utility || !m_CurrentVehicle || m_bCurrentVehicleEvac)
+			return;
+		
+		// Fire damage inside a vehicle - evac vehicle
+		m_bCurrentVehicleEvac = true;
+		
+		SCR_AIGetOutVehicle behaviorGetOut = new SCR_AIGetOutVehicle(m_Utility, null, m_CurrentVehicle, SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_OUT_VEHICLE_HIGH_PRIORITY);
+		m_Utility.AddAction(behaviorGetOut);
+		
+		SCR_AIMoveFromDangerBehavior behaviorMoveFromDanger = new SCR_AIMoveFromDangerBehavior(m_Utility, null, m_CurrentVehicle.GetOrigin(), m_CurrentVehicle);
+		m_Utility.AddAction(behaviorMoveFromDanger);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void Event_OnDamageOverTimeAdded(EDamageType dType, float dps, HitZone hz)
 	{
 		if (dType != EDamageType.BLEEDING || !m_Utility || !m_Utility.m_AIInfo)
 			return;
-		
+				
 		SCR_AIActionBase currentAction = SCR_AIActionBase.Cast(m_Utility.GetCurrentAction());
 		if (!currentAction)
 			return;
@@ -1066,6 +1084,7 @@ class SCR_AICombatComponent : ScriptComponent
 		if (m_DamageManager)
 		{
 			m_DamageManager.GetOnDamageOverTimeAdded().Insert(Event_OnDamageOverTimeAdded);
+			m_DamageManager.GetOnDamage().Insert(Event_OnDamage);
 		}
 		
 		AIControlComponent ctrl = AIControlComponent.Cast(owner.FindComponent(AIControlComponent));
@@ -1099,6 +1118,7 @@ class SCR_AICombatComponent : ScriptComponent
 		if (m_DamageManager)
 		{
 			m_DamageManager.GetOnDamageOverTimeAdded().Remove(Event_OnDamageOverTimeAdded);
+			m_DamageManager.GetOnDamage().Remove(Event_OnDamage);
 		}
 	}
 	

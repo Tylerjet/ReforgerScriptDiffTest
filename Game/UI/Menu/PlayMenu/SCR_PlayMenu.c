@@ -514,9 +514,13 @@ class SCR_PlayMenu : MenuRootBase
 				GetGame().UserSettingsChanged();
 			}
 
-			DialogUI dialog = ShowTutorialDialog();
+			// Tutorial confirmation dialog
+			SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateTutorialDialog();
 			if (dialog)
+			{
+				dialog.m_OnConfirm.Insert(OnPlayTutorial);
 				dialog.m_OnCancel.Insert(PlayCurrentScenario);
+			}
 		}
 		else
 		{
@@ -608,14 +612,6 @@ class SCR_PlayMenu : MenuRootBase
 		UpdateNavigationButtons(false);
 		
 		tile.m_OnClicked.Remove(OnTileMouseClick);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected DialogUI ShowTutorialDialog()
-	{
-		DialogUI dialog = DialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.TutorialDialog));
-		dialog.m_OnConfirm.Insert(OnPlayTutorial);
-		return dialog;
 	}
 	
 	//------------------------------------------------------------------------------------------------

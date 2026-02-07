@@ -76,13 +76,13 @@ class SCR_WaveRespawnTimerComponent : SCR_RespawnTimerComponent
 	#endif
 
 	//------------------------------------------------------------------------------------------------
-	override bool GetCanPlayerSpawn(int playerID)
+	override bool GetCanPlayerSpawn(int playerID, float additionalTime = 0)
 	{
 		return m_aAllowedPlayers.Contains(playerID);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override int GetPlayerRemainingTime(int playerID)
+	override int GetPlayerRemainingTime(int playerID, float additionalTime = 0)
 	{
 		// Ready to respawn
 		if (m_aAllowedPlayers.Contains(playerID))

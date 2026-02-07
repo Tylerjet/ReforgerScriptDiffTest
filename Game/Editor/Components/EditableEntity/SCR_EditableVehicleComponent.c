@@ -95,7 +95,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 			occupant = SCR_EditableEntityComponent.GetEditableEntity(compartment.GetOccupant());
 			if (occupant)
 			{
-				int playerId = playerManager.GetPlayerIdFromControlledEntity(occupant.GetOwner());
+				int playerId = occupant.GetPlayerID();
 				if (playerId <= 0)
 					continue;
 

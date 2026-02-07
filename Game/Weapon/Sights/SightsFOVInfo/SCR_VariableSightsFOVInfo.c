@@ -67,7 +67,7 @@ class SCR_VariableSightsFOVInfo: SCR_BaseVariableSightsFOVInfo
 	*/
 	protected override void OnUpdate(IEntity owner, BaseSightsComponent sights, float timeSlice)
 	{
-		if (m_iCurrentIndex == -1)
+		if (!m_aFOVs.IsIndexValid(m_iCurrentIndex))
 			return;
 
 		float target = m_aFOVs[m_iCurrentIndex];
@@ -76,12 +76,12 @@ class SCR_VariableSightsFOVInfo: SCR_BaseVariableSightsFOVInfo
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when current FOV of the optic does not match the target FOV.
-	bool IsAdjusting()
+	override bool IsAdjusting()
 	{
-		if (m_iCurrentIndex == -1)
+		if (!m_aFOVs.IsIndexValid(m_iCurrentIndex))
 			return false;
 
-		return float.AlmostEqual(m_fCurrentFOV, m_aFOVs[m_iCurrentIndex]);
+		return !float.AlmostEqual(m_fCurrentFOV, m_aFOVs[m_iCurrentIndex]);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -91,6 +91,21 @@ class SCR_VariableSightsFOVInfo: SCR_BaseVariableSightsFOVInfo
 	*/
 	protected override float GetCurrentFOV()
 	{
+		return m_fCurrentFOV;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Returns max field of view provided by this info.
+		Assumes that first FOV is the largest one.
+		Returns zero if FOVs array is empty.
+		\return Returns field of view in degrees.
+	*/
+	override float GetBaseFOV()
+	{
+		if (!m_aFOVs.IsEmpty())
+			return m_aFOVs[0];
+
 		return m_fCurrentFOV;
 	}
 };

@@ -545,13 +545,26 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (!explosion)
 			return;
 
-		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
-			return;
-
 		// Set instigator on trigger component
 		BaseTriggerComponent trigger = BaseTriggerComponent.Cast(explosion.FindComponent(BaseTriggerComponent));
-		if (trigger)
+		if (!trigger)
+			return;
+
+		if (instigator.GetInstigatorType() == InstigatorType.INSTIGATOR_PLAYER)
 			trigger.GetInstigator().SetInstigatorByPlayerID(instigator.GetInstigatorPlayerID());
+
+		// Ignore own vehicle
+		array<IEntity> ignoreList = {GetOwner().GetRootParent()};
+
+		// Ignore all hierarchy members as well
+		SCR_EntityHelper.GetHierarchyEntityList(GetOwner().GetRootParent(), ignoreList);
+
+		array<BaseProjectileEffect> explosionContainers = {};
+		trigger.GetProjectileEffects(ExplosionDamageContainer, explosionContainers);
+		foreach (BaseProjectileEffect effect : explosionContainers)
+		{
+			ExplosionDamageContainer.Cast(effect).SetIgnoreList(ignoreList);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

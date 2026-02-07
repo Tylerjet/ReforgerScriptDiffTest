@@ -257,7 +257,7 @@ class SCR_CatalogSpawnerUserAction : ScriptedUserAction
 			return false;
 		
 		SCR_ChimeraCharacter chimeraCharacter = SCR_ChimeraCharacter.Cast(user);
-		if (!chimeraCharacter || chimeraCharacter.GetFaction() != m_EntitySpawner.GetOwningFaction())
+		if (!chimeraCharacter || chimeraCharacter.GetFaction() != m_EntitySpawner.GetFaction())
 			return false;
 		
 		m_iRequestStatus = m_EntitySpawner.GetRequestState(m_EntityData, user);

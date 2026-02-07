@@ -76,6 +76,8 @@ class SCR_MapWatchUI : SCR_MapRTWBaseUI
 			m_sPrefabResource = watchComp.GetMapPrefabResource();
 			
 			super.SetVisible(visible);
+			if (!m_RTWorld || !m_RTEntity)
+				return;
 					
 			// Start anim
 			ScriptCallQueue queue = GetGame().GetCallqueue();

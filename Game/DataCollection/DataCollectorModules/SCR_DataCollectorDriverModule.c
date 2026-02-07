@@ -329,9 +329,28 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 				
 				array<IEntity> occupants = {};
 				compartmentManagerComponent.GetOccupants(occupants);
+				int crewSize = occupants.Count();
+
+				//Ignore dead crew
+				foreach (IEntity occupant : occupants)
+				{
+					ChimeraCharacter character = ChimeraCharacter.Cast(occupant);
+
+					if (!character)
+						continue;
+
+					CharacterControllerComponent characterController = character.GetCharacterController();
+
+					if (!characterController || !characterController.IsDead())
+						continue;
+
+					crewSize--;
+				}
 
 				//Give points to driver for driving distanceTraveled meters. Not counting the driver as occupant for points calculation
-				playerData.AddStat(SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS, distanceTraveled * (occupants.Count() - 1) * playerData.GetConfigs().MODIFIER_DRIVER_OF_PLAYERS);
+				//Only if there are some living crewmembers apart from the driver
+				if (crewSize > 1)
+					playerData.AddStat(SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS, distanceTraveled * (crewSize - 1) * playerData.GetConfigs().MODIFIER_DRIVER_OF_PLAYERS);
 			}
 			else
 			{

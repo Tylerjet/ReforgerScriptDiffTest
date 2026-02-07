@@ -193,6 +193,19 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 		if (!entity) return;
 
 		Rpc(OnSpawnOwner, playerID, Replication.FindId(entity));
+		
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+		
+		if (groupManager.IsPlayerInAnyGroup(playerID))
+			return;
+
+		SCR_AIGroup foundGroup = groupManager.GetFirstNotFullForFaction(entity.GetFaction(), null, true);
+		if (!foundGroup)
+			foundGroup = groupManager.CreateNewPlayableGroup(entity.GetFaction());
+
+		foundGroup.AddPlayer(playerID);
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void OnSpawnOwner(int playerID, int entityID)

@@ -110,12 +110,12 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 			if (!weatherStates.IsEmpty())
 			{
 				Math.Randomize(-1);
-				manager.ForceWeatherTo(m_bRandomWeatherChanges, weatherStates.GetRandomElement().GetStateName());
+				manager.ForceWeatherTo(!m_bRandomWeatherChanges, weatherStates.GetRandomElement().GetStateName());
 			}
 		}
 
 		if (!loadedWeatherState.IsEmpty())
-			manager.ForceWeatherTo(m_bRandomWeatherChanges, loadedWeatherState);
+			manager.ForceWeatherTo(!m_bRandomWeatherChanges, loadedWeatherState);
 
 		manager.SetHoursMinutesSeconds(hours, minutes, seconds);
 

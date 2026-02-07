@@ -62,9 +62,9 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 		{
 			m_ToolMenuEntry = m_ToolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 2);
 			m_ToolMenuEntry.m_OnClick.Insert(HandleTaskList);
+			m_ToolMenuEntry.SetButtonSoundsDisabled(true);
 		}
 
-		SCR_UITaskManagerComponent.s_OnTaskListVisible.Insert(ToggleTaskListInvoker);
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		//If there is a OverlayWidget like on the DeployMenu we use that instead of the default one
@@ -117,17 +117,23 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 		m_bTaskListInvoked = false;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	void ToggleTaskListInvoker(bool isVisible)
+	void RefreshTaskList()
 	{
-		if (m_bOnMapClose)
+		if (!m_bOpened)
 			return;
 		
-		if (!m_bTaskListInvoked)
-		{
-			m_bTaskListInvoked = true;
-			HandleTaskList(isVisible);
-		}
+		m_UITaskManager.ClearWidget();
+		if (!m_wTaskListFrame)
+			m_wTaskListFrame = OverlayWidget.Cast(m_RootWidget.FindAnyWidget(TASK_LIST_FRAME));
+			
+		m_wUI = m_UITaskManager.CreateTaskList(m_wTaskListFrame);
+		if (!m_wUI)
+			return;
+
+		m_bOpened = true;
+		m_bTaskListInvoked = true;
+		m_UITaskManager.Action_ShowTasks(m_wUI);
+		m_ToolMenuEntry.SetActive(true);
 	}
 
 	//------------------------------------------------------------------------------------------------

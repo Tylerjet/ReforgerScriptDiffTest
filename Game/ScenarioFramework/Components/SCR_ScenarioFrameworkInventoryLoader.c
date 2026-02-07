@@ -41,6 +41,16 @@ class SCR_ScenarioFrameworkInventoryLoader : SCR_ScenarioFrameworkLayerBase
 		if (m_eActivationType != activation)
 			return;
 		
+		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
+		{
+			//If just one condition is false, we don't continue and interrupt the init
+			if (!activationCondition.Init(GetOwner()))
+			{
+				InvokeAllChildrenSpawned();
+				return;
+			}
+		}
+		
 		super.Init(area, activation);
 		
 		IEntity master = GetGame().GetWorld().FindEntityByName(m_sIDMaster);

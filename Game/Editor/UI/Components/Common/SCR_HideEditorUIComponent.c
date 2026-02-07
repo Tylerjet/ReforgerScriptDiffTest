@@ -44,11 +44,20 @@ class SCR_HideEditorUIComponent: SCR_BaseEditorUIComponent
 		return Event_OnOpacityChange;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void Show()
 	{
 		//--- Use delay, so clicking on hidden button won't activate it instantly
-		GetGame().GetCallqueue().CallLater(m_EditorMenuManager.SetVisible, 1, false, true, false);
+		GetGame().GetCallqueue().CallLater(SetMenuVisible, 1, false, true);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetMenuVisible(bool visible)
+	{
+		if (m_EditorMenuManager)
+			m_EditorMenuManager.SetVisible(visible);
+	}
+	
 	protected void SetWidgetOpacity(Widget widget, float opacity)
 	{
 		if (widget) widget.SetOpacity(opacity);

@@ -606,7 +606,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		if (System.IsConsoleApp())	// hotfix for this being called on DS when other players control their characters
 			return;
 		
-		if (controlled && owner != SCR_PlayerController.Cast(GetGame().GetPlayerController()).GetLocalControlledEntity()) // same as hotfix above but for hosted server, if we get controlled=true for entity which isnt ours, discard
+		if (controlled && owner != SCR_PlayerController.GetLocalControlledEntity()) // same as hotfix above but for hosted server, if we get controlled=true for entity which isnt ours, discard
 			controlled = false;
 		
 		if (!controlled)

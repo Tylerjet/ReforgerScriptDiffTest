@@ -42,12 +42,4 @@ class SCR_AIMedicHealBehavior : SCR_AIBehaviorBase
 		SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, "Failed heal", EAIDebugCategory.INFO, 5);
 #endif
 	}
-	
-	override float CustomEvaluate()
-	{
-		if (m_Utility.m_ThreatSystem.GetThreatMeasure() < MAX_THREAT_THRESHOLD)
-			return GetPriority();
-		else
-			return 0;
-	};
 };

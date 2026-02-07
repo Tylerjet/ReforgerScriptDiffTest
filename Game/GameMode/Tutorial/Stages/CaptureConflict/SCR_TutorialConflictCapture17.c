@@ -101,26 +101,12 @@ class SCR_TutorialConflictCapture17 : SCR_BaseCampaignTutorialArlandStage
 		
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		
-		SCR_CallsignManagerComponent callsignManager = SCR_CallsignManagerComponent.Cast(campaign.FindComponent(SCR_CallsignManagerComponent));
-		
-		if (!callsignManager)
-			return;
-		
 		int baseCallsign = SCR_CampaignMilitaryBaseComponent.Cast(GetGame().GetWorld().FindEntityByName("MainBaseMossHill").FindComponent(SCR_CampaignMilitaryBaseComponent)).GetCallsign();
 		
 		int signalBase = signalComp.AddOrFindSignal("Base");
-		int signalCompanyCaller = signalComp.AddOrFindSignal("CompanyCaller");
-		int signalPlatoonCaller = signalComp.AddOrFindSignal("PlatoonCaller");
-		int signalSquadCaller = signalComp.AddOrFindSignal("SquadCaller");
-		
-		int callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad, callerCallsignCharacter;
-		callsignManager.GetEntityCallsignIndexes(m_Player, callerCallsignCompany, callerCallsignPlatoon, callerCallsignSquad, callerCallsignCharacter);
 		
 		signalComp.SetSignalValue(signalBase, baseCallsign);
-		signalComp.SetSignalValue(signalCompanyCaller, callerCallsignCompany);
-		signalComp.SetSignalValue(signalPlatoonCaller, callerCallsignPlatoon);
-		signalComp.SetSignalValue(signalSquadCaller, callerCallsignSquad);
 		
-		m_PlayedRadio = soundComp.SoundEvent(SCR_SoundEvent.SOUND_SL_SRT);
+		m_PlayedRadio = soundComp.SoundEvent(SCR_SoundEvent.SOUND_SL_SRT + "_US");
 	}
 };

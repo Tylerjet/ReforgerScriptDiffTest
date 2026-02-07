@@ -258,9 +258,6 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 		super.OnMenuOpen();
 		SetupSelectionVisuals();
 
-		// Setup menu center later during open animation to make sure position is calculated
-		GetGame().GetCallqueue().CallLater(SetupMenuCenter, 500 / FADE_IN_SPEED);
-		
 		if (m_wSelectedIndicatorFeedback)
 			m_wSelectedIndicatorFeedback.SetOpacity(0);
 
@@ -274,6 +271,15 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 			ShowCrosshair(radialInputs.m_bShowCrosshair);
 			ShowInnerBackground(radialInputs.m_bShowInnerBackground);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void OnShownFinished(Widget w, float targetOpacity, WidgetAnimationOpacity anim = null)
+	{
+		super.OnShownFinished(w, targetOpacity, anim);
+		
+		if (m_Menu && m_Menu.IsOpened())
+			SetupMenuCenter();
 	}
 	
 	//------------------------------------------------------------------------------------------------

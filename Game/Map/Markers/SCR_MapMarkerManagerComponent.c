@@ -119,7 +119,6 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	void InsertLocalMarker(SCR_MapMarkerBase marker)
 	{
 		marker.SetMarkerOwnerID(GetGame().GetPlayerController().GetPlayerId());
-		
 		m_aLocalMarkers.Insert(marker);
 		marker.OnCreateMarker();
 	}
@@ -337,7 +336,11 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			marker.SetServerDisabled(true);
 		else if (marker.GetMarkerOwnerID() != GetGame().GetPlayerController().GetPlayerId())
 		{
-			Faction markerFaction = SCR_FactionManager.SGetPlayerFaction(marker.GetMarkerOwnerID());	
+			FactionManager factionManager = GetGame().GetFactionManager();
+			if (!factionManager)
+				return;
+
+			Faction markerFaction = factionManager.GetFactionByKey(marker.GetMarkerFactionKey());	
 			Faction localFaction = SCR_FactionManager.SGetLocalPlayerFaction();
 			
 			if (!localFaction || localFaction.IsFactionEnemy(markerFaction))
@@ -438,6 +441,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			writer.Write(marker.GetType(), 8);
 			writer.Write(marker.GetColorEntry(), 8);
 			writer.Write(marker.GetIconEntry(), 16);
+			writer.WriteString(marker.GetMarkerFactionKey());
 			writer.WriteString(marker.GetCustomText());
 		}
 		
@@ -453,10 +457,8 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			return true;
 		
 		int posX, posY, markerID, markerOwnerID, markerConfigID, markerType, colorID, iconID, rotation;
-		string customText;
+		string factionKey, customText;
 		SCR_MapMarkerBase marker;
-		Faction markerFaction;
-		Faction localFaction = SCR_FactionManager.SGetLocalPlayerFaction();
 		
 		for (int i; i < count; i++)
 		{	
@@ -470,6 +472,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			reader.Read(markerType, 8);
 			reader.Read(colorID, 8);
 			reader.Read(iconID, 16);
+			reader.ReadString(factionKey);
 			reader.ReadString(customText);	
 			
 			marker = new SCR_MapMarkerBase();
@@ -481,6 +484,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			marker.SetRotation(rotation);
 			marker.SetColorEntry(colorID);
 			marker.SetIconEntry(iconID);
+			marker.SetMarkerFactionKey(factionKey);
 			marker.SetCustomText(customText);
 						
 			m_aStaticMarkers.Insert(marker);

@@ -40,16 +40,22 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	protected string m_sButton;
 	
 	[Attribute(UIColors.GetColorAttribute(UIColors.EDIT_WIDGET_BACKGROUND), UIWidgets.ColorPicker)]
-	ref Color m_BackgroundDefault;
+	protected ref Color m_BackgroundDefault;
 	
 	[Attribute(UIColors.GetColorAttribute(UIColors.IDLE_DISABLED), UIWidgets.ColorPicker)]
-	ref Color m_BackgroundInteracting;
+	protected ref Color m_BackgroundInteracting;
 
 	[Attribute(UIColors.GetColorAttribute(UIColors.NEUTRAL_ACTIVE_STANDBY), UIWidgets.ColorPicker)]
-	ref Color m_ArrowDefault;
+	protected ref Color m_ArrowDefault;
 	
 	[Attribute(UIColors.GetColorAttribute(UIColors.CONTRAST_COLOR), UIWidgets.ColorPicker)]
-	ref Color m_ArrowInteracting;
+	protected ref Color m_ArrowInteracting;
+	
+	[Attribute(UIColors.GetColorAttribute(UIColors.HIGHLIGHTED), UIWidgets.ColorPicker)]
+	protected ref Color m_ArrowFocused;
+	
+	[Attribute("0", desc: "Should the arrow flip when the Combo box is opened")]
+	protected bool m_bRotateArrow;
 	
 	protected InputManager m_InputManager;
 	protected ref array<Widget> m_aElementWidgets = new ref array<Widget>();
@@ -57,6 +63,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	protected ImageWidget m_wArrowImage;
 	protected TextWidget m_wText;
 	protected VerticalLayoutWidget m_wContent;
+	protected ScrollLayoutWidget m_wScrollLayout;
 	protected Widget m_wElementsRoot;
 	protected Widget m_wContentRoot;
 	protected WorkspaceWidget m_Workspace;
@@ -70,6 +77,8 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	protected float posX, posY;
 	
 	protected Widget m_wTextBackground;
+	
+	protected const int INITIALIZATION_CHECK_FREQUENCY = 10;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -85,6 +94,8 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 			if (comp)
 			{
 				comp.GetOnClick().Insert(OpenList);
+				comp.GetOnMouseEnter().Insert(OnHandlerHovered);
+				comp.GetOnMouseLeave().Insert(OnHandlerUnhovered);
 				comp.GetOnFocus().Insert(OnHandlerFocus);
 				comp.GetOnFocusLost().Insert(OnHandlerFocusLost);
 			}
@@ -123,7 +134,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool OnHandlerClicked()
+	protected bool OnHandlerClicked()
 	{
 		OpenList();
 		if (GetGame().GetWorkspace().GetFocusedWidget() != m_wRoot)
@@ -138,6 +149,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 		// Prevent regular focus, handled by OnHandlerFocus
 		if (m_wContentRoot)
 			GetGame().GetWorkspace().SetFocusedWidget(m_wContentRoot);
+		
 		return false;
 	}
 
@@ -149,7 +161,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnHandlerFocus()
+	protected void OnHandlerFocus()
 	{
 		// Call focus event on parent class
 		super.OnFocus(m_wRoot, 0, 0);
@@ -159,13 +171,34 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnHandlerFocusLost()
+	protected void OnHandlerFocusLost()
 	{
 		// Call focusLost event on parent class
 		super.OnFocusLost(m_wRoot, 0, 0);
 
 		// Make focusable again
 		m_wRoot.ClearFlags(WidgetFlags.NOFOCUS);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnHandlerHovered()
+	{
+		if (m_wArrowImage)
+			AnimateWidget.Color(m_wArrowImage, m_ArrowFocused, m_fAnimationRate);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnHandlerUnhovered()
+	{
+		if (m_wArrowImage)
+		{
+			Color color = m_ArrowDefault;
+			
+			if (m_bOpened)
+				color = m_ArrowInteracting;
+			
+			AnimateWidget.Color(m_wArrowImage, color, m_fAnimationRate);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -219,7 +252,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void CreateEntries()
 	{
-		if (!m_wContent)
+		if (!m_wContent || !m_wElementsRoot)
 			return;
 
 		foreach (Widget w : m_aElementWidgets)
@@ -234,7 +267,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 			if (!w)
 				continue;
 			
-			if (m_wElementsRoot && !m_wElementsRoot.IsVisible())
+			if (!m_wElementsRoot.IsVisible())
 				m_wElementsRoot.SetVisible(true);
 
 			m_aElementWidgets.Insert(w);
@@ -253,15 +286,50 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 				comp.m_OnClicked.Insert(OnElementSelected);
 			}
 		}
-
+		
 		// Set focus on the first one or current index
 		// TODO: fix "Given widget is already modal, not adding again" message
 		if (m_iSelectedItem > -1 && m_iSelectedItem < m_aElementWidgets.Count())
 			GetGame().GetWorkspace().AddModal(m_wElementsRoot, m_aElementWidgets[m_iSelectedItem]);
 		else if (m_aElementWidgets.Count() > 0 && m_aElementWidgets[0])
 			GetGame().GetWorkspace().AddModal(m_wElementsRoot, m_aElementWidgets[0]);
+		
+		// Check until all elements have been initialized, to perform post init setups
+		GetGame().GetCallqueue().Remove(CheckElementsInitialized);
+		GetGame().GetCallqueue().CallLater(CheckElementsInitialized, INITIALIZATION_CHECK_FREQUENCY, true);
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	protected void CheckElementsInitialized()
+	{
+		if (!m_bOpened || m_aElementWidgets.IsEmpty())
+		{
+			GetGame().GetCallqueue().Remove(CheckElementsInitialized);
+			return;
+		}
+		
+		int initializedItems;
+		float totalItems = m_aElementWidgets.Count();
+		
+		foreach (Widget element : m_aElementWidgets)
+		{
+			float x, y;
+			element.GetScreenSize(x, y);
+			
+			if (x > 0 && y > 0)
+				initializedItems++;
+		}
+		
+		if (initializedItems != totalItems)
+			return;
+		
+		// Set slider position to selected element
+		if (m_wScrollLayout)
+			m_wScrollLayout.SetSliderPos(0, m_iSelectedItem / totalItems, true);
+		
+		GetGame().GetCallqueue().Remove(CheckElementsInitialized);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void OpenList()
 	{
@@ -303,6 +371,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 		if (!m_wElementsRoot)
 			return;
 
+		// List Content setup
 		m_wContent = VerticalLayoutWidget.Cast(m_wElementsRoot.FindAnyWidget("Content"));
 		if (!m_wContent)
 			return;
@@ -320,6 +389,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 				separator.SetZOrder(-1);
 		}
 
+		// List Size setup
 		FrameSlot.SetPos(m_wElementsRoot, x + m_fListXOffset, y);
 		SizeLayoutWidget size = SizeLayoutWidget.Cast(m_wElementsRoot.FindAnyWidget("SizeLayout"));
 		if (size)
@@ -338,23 +408,30 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 			}
 		}
 
+		// Cache content scroll layout if present
+		m_wScrollLayout = ScrollLayoutWidget.Cast(m_wElementsRoot.FindAnyWidget("ScrollLayout"));
+		
+		// Create entries
 		CreateEntries();
   
+		// Modal handler
 		m_ModalHandler = new SCR_ComboModalHandler();
 		m_wElementsRoot.AddHandler(m_ModalHandler);
 		m_ModalHandler.m_OnModalClickOut.Insert(CloseList);
 		
-		// Modal owners 
 		ChimeraMenuBase menu = ChimeraMenuBase.GetOwnerMenu(m_wRoot);
 		m_ModalHandler.SetupOwners(this, menu);
 
-		// Set arrow image angle
+		// Update arrow image
 		if (m_wArrowImage)
 		{
-			//m_wArrowImage.SetRotation(m_fArrowDefaultAngle + 180);
+			if (m_bRotateArrow)
+				m_wArrowImage.SetRotation(m_fArrowDefaultAngle + 180);
+			
 			AnimateWidget.Color(m_wArrowImage, m_ArrowInteracting, m_fAnimationRate);
 		}
 
+		// Event
 		m_OnOpened.Invoke(this);
 	}
 
@@ -366,6 +443,8 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void CloseList()
 	{
+		GetGame().GetCallqueue().Remove(CheckElementsInitialized);
+		
 		if (!m_bOpened || !m_wElementsRoot || !m_aElementNames)
 			return;
 		
@@ -401,10 +480,12 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 
 		GetGame().GetWorkspace().SetFocusedWidget(m_wContentRoot);
 
-		// Set arrow image angle
+		// Update arrow image
 		if (m_wArrowImage)
 		{
-			//m_wArrowImage.SetRotation(m_fArrowDefaultAngle);
+			if (m_bRotateArrow)
+				m_wArrowImage.SetRotation(m_fArrowDefaultAngle);
+			
 			AnimateWidget.Color(m_wArrowImage, m_ArrowDefault, m_fAnimationRate);
 		}
 
@@ -502,6 +583,7 @@ class SCR_ComboModalHandler : ScriptedWidgetEventHandler
 	
 	ref ScriptInvoker m_OnModalClickOut = new ScriptInvoker();
 	
+	//------------------------------------------------------------------------------------------------
     override bool OnModalClickOut(Widget modalRoot, int x, int y, int button)
     {
 		m_OnModalClickOut.Invoke();

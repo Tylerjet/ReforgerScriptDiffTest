@@ -23,7 +23,7 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	[Attribute(desc: "Budget settings for every entity type.")]
 	private ref array<ref SCR_EditableEntityCoreBudgetSetting> m_BudgetSettings;
 	
-	[Attribute(desc: "Label Groups")]
+	[Attribute(desc: "Label Groups which will have labels displayed in content browser. Groups are needed for certain functionality. If GROUPLESS group exist then all labels not defined in the EditableEntityCore config will be automatically added to the the groupless list but never displayed as a filter")]
 	private ref array<ref SCR_EditableEntityCoreLabelGroupSetting> m_LabelGroupSettings;
 	
 	[Attribute(desc: "Label configs")]
@@ -829,6 +829,42 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 			m_TypeSettingsMap.Insert(setting.GetType(), setting)
 		}
 		
+		foreach (SCR_EditableEntityCoreLabelSetting labelSetting : m_EntityLabels)
+		{
+			if (!labelSetting)
+				continue;
+			
+			m_LabelSettingsMap.Insert(labelSetting.GetLabelType(), labelSetting);
+		}
+		
+
+		//~ Check if groupless label group exist and create a labelSetting for any label not defined in EntityCore with LabelGroup GROUPLESS
+		foreach (SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
+		{
+			//~ Make sure the groupless label group exists
+			if (labelGroup && labelGroup.GetLabelGroupType() == EEditableEntityLabelGroup.GROUPLESS)
+			{
+				//~ Get all labels that exist in the enum but are not defined in entity core. Add them to the label list under group: Groupless
+				array<int> allLabels = {};
+				int count = SCR_Enum.GetEnumValues(EEditableEntityLabel, allLabels);
+				SCR_EditableEntityCoreLabelSetting labelSetting;
+				
+				//~ Create new groupless labels
+				for (int i = 0; i < count; i++)
+				{
+					//~ Already in m_EntityLabels
+					if (m_LabelSettingsMap.Contains(allLabels[i]))
+						continue;
+					
+					labelSetting = SCR_EditableEntityCoreLabelSetting.CreateGrouplessLabel(allLabels[i]);
+					m_EntityLabels.Insert(labelSetting);
+					m_LabelSettingsMap.Insert(allLabels[i], labelSetting);
+				}
+
+				break;
+			}
+		}
+		
 		foreach (SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
 		{
 			array<SCR_EditableEntityCoreLabelSetting> groupLabels = {};
@@ -837,19 +873,18 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 			
 			foreach (SCR_EditableEntityCoreLabelSetting entityLabel : m_EntityLabels)
 			{
+				if (!entityLabel)
+					continue;
+				
 				if (entityLabel.GetLabelGroupType() == labelGroupType)
 				{
 					groupLabels.Insert(entityLabel);
 				}
 			}
+		
 			m_LabelListMap.Insert(labelGroupType, groupLabels);
 		}
-		
-		foreach (SCR_EditableEntityCoreLabelSetting labelSetting : m_EntityLabels)
-		{
-			m_LabelSettingsMap.Insert(labelSetting.GetLabelType(), labelSetting);
-		}
-		
+
 		//--- Square the value
 		m_fPlayerDrawDistance = m_fPlayerDrawDistance * m_fPlayerDrawDistance;
 	}

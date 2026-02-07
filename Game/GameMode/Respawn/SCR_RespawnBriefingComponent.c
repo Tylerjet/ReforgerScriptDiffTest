@@ -24,19 +24,30 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	protected ref ScriptInvoker m_OnBriefingChanged = new ScriptInvoker(); 
 	
 	protected bool m_bWasShown = false;
-	
-	protected ref array<ref Tuple3<FactionKey, string, string>> m_aBriefingStrings = {};
+	protected ref map<int, ref array<string>> m_BriefingInfo = new map<int, ref array<string>>();
 	
 	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
 	{
-		
-		writer.WriteInt(m_aBriefingStrings.Count());
-		foreach (Tuple3<FactionKey, string, string> briefingString : m_aBriefingStrings)
+		writer.WriteInt(m_BriefingInfo.Count());
+		array<string> temporaryInfo = {};
+		foreach (int entryID, array<string> info : m_BriefingInfo)
 		{
-			writer.WriteString(briefingString.param1);
-			writer.WriteString(briefingString.param2);
-			writer.WriteString(briefingString.param3);
+			temporaryInfo.Copy(info);
+			
+			writer.WriteString(temporaryInfo[0]);
+			writer.WriteInt(entryID);
+			writer.WriteString(temporaryInfo[1]);
+			
+			//We need to remove faction key and text (Which are the first two elements) so only parameters remain
+			temporaryInfo.RemoveOrdered(0);
+			temporaryInfo.RemoveOrdered(0);
+
+			writer.WriteInt(temporaryInfo.Count());
+			foreach (string briefingStringParam : temporaryInfo)
+			{
+				writer.WriteString(briefingStringParam);
+			}
 		}
 		
 		return true;
@@ -47,39 +58,63 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	{
 		int count;
 		FactionKey factionKey;
-		string customEntryName;
+		int entryID;
 		string newText;
+		int paramCount;
+		string paramTemp;
 		
 		reader.ReadInt(count);
 		for (int i = 0; i < count; i++)
 		{
+			ref array<string> param1 = {};
 			reader.ReadString(factionKey);
-			reader.ReadString(customEntryName);
+			reader.ReadInt(entryID);
 			reader.ReadString(newText);
-			RewriteEntry(factionKey, customEntryName, newText);
+			reader.ReadInt(paramCount);
+			for (int j = 0; j < paramCount; j++)
+			{
+				reader.ReadString(paramTemp);
+				param1.Insert(paramTemp);
+			}
+			
+			RewriteEntryMain(factionKey, entryID, newText, param1);
 		}
 		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void RewriteEntryMain(FactionKey factionKey, string customEntryName, string newText)
+	void RewriteEntry_SA(FactionKey factionKey, int entryID, string newText, array<string> param1)
 	{
-		RewriteEntry(factionKey, customEntryName, newText);
-		Rpc(RpcDo_RewriteEntry, factionKey, customEntryName, newText);
-		
-		m_aBriefingStrings.Insert(new Tuple3<FactionKey, string, string>(factionKey, customEntryName, newText));
+		RewriteEntryMain(factionKey, entryID, newText, param1);
+		Rpc(RpcDo_RewriteEntry, factionKey, entryID, newText, param1);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RpcDo_RewriteEntry(FactionKey factionKey, string customEntryName, string newText)
+	void RpcDo_RewriteEntry(FactionKey factionKey, int entryID, string newText, array<string> param1)
 	{
-		RewriteEntry(factionKey, customEntryName, newText);
+		RewriteEntryMain(factionKey, entryID, newText, param1);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void RewriteEntry(FactionKey factionKey, string customEntryName, string newText)
+	void RewriteEntryMain(FactionKey factionKey, int entryID, string newText, array<string> param1)
+	{
+		m_BriefingInfo.Remove(entryID);
+		ref array<string> infoStrings = {};
+		infoStrings.Insert(factionKey);
+		infoStrings.Insert(newText);
+		infoStrings.InsertAll(param1);
+		m_BriefingInfo.Insert(entryID, infoStrings);
+
+		RewriteEntry(factionKey, entryID, newText, param1);
+		
+		SCR_GameplaySettingsSubMenu.m_OnLanguageChanged.Remove(OnLanguageChanged);
+		SCR_GameplaySettingsSubMenu.m_OnLanguageChanged.Insert(OnLanguageChanged);
+	}
+	
+		//------------------------------------------------------------------------------------------------
+	void RewriteEntry(FactionKey factionKey, int entryID, string newText, array<string> param1)
 	{
 		if (!m_JournalConfig)
 			LoadJournalConfig();
@@ -100,15 +135,71 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 		foreach (SCR_JournalEntry journalEntry : journalEntries)
 		{
 
-			if (journalEntry.GetCustomEntryName() != customEntryName)
+			if (journalEntry.GetEntryID() != entryID)
 				continue;
 
 			targetJournalEntry = journalEntry;
 			break;
 		}
 		
-		if (targetJournalEntry)
-			targetJournalEntry.SetEntryText(newText);
+		if (!targetJournalEntry)
+			return;
+		
+		targetJournalEntry.SetEntryText(newText);
+		string stringParam1;
+
+		for (int i = 0; i < (param1.Count() * 2); i +=2)
+		{
+			if (!param1.IsIndexValid(i))
+				break;
+			
+			stringParam1 = stringParam1 + "<br/><br/>" + LocalizedString.Format(WidgetManager.Translate(param1[i], param1[i + 1]));
+			
+		}
+
+		targetJournalEntry.SetEntryTextParam1(stringParam1);
+		
+		Widget widgetToRefresh;
+		widgetToRefresh = targetJournalEntry.GetWidget();
+		if (widgetToRefresh)
+			targetJournalEntry.SetEntryLayoutTo(widgetToRefresh);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnLanguageChanged(SCR_GameplaySettingsSubMenu menu)
+	{
+		array<string> temporaryInfo = {};
+		foreach (int entryID, array<string> info : m_BriefingInfo)
+		{
+			temporaryInfo.Copy(info);
+			FactionKey factionKey = temporaryInfo[0];
+			string newText = temporaryInfo[1];
+			
+			//We need to remove faction key and text (Which are the first two elements) so only parameters remain
+			temporaryInfo.RemoveOrdered(0);
+			temporaryInfo.RemoveOrdered(0);
+		
+			RewriteEntry(factionKey, entryID, newText, temporaryInfo);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<string> GetBriefingStringParamByID(int targetID)
+	{
+		// change it to get last element
+		array<string> strings = {};
+		strings = m_BriefingInfo.Get(targetID);
+		if (!strings || strings.IsEmpty())
+			return null;
+			
+		array<string> stringsCopy = {};
+		stringsCopy.Copy(strings);
+			
+		//We need to remove faction key and text (Which are the first two elements) so only parameters remain
+		stringsCopy.RemoveOrdered(0);
+		stringsCopy.RemoveOrdered(0);
+			
+		return stringsCopy;
 	}
 	
 	//------------------------------------------------------------------------------------------------

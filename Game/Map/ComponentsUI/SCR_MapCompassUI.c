@@ -85,6 +85,8 @@ class SCR_MapCompassUI: SCR_MapRTWBaseUI
 			m_sPrefabResource = compassComp.GetMapPrefabResource();
 			
 			super.SetVisible(visible);
+			if (!m_RTWorld || !m_RTEntity)
+				return;
 					
 			// Start anim
 			ScriptCallQueue queue = GetGame().GetCallqueue();

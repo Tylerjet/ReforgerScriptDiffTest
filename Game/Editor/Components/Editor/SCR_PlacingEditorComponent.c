@@ -1123,6 +1123,8 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	
 	override void EOnEditorDeactivate()
 	{
+		m_SelectedPrefab = ResourceName.Empty;
+		
 		if (m_BudgetManager)
 		{
 			m_BudgetManager.Event_OnBudgetMaxReached.Remove(OnBudgetMaxReached);

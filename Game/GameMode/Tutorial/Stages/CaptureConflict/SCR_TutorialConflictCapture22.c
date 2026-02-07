@@ -12,5 +12,6 @@ class SCR_TutorialConflictCapture22 : SCR_BaseCampaignTutorialArlandStage
 		m_fDuration = 10;
 		
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		m_TutorialComponent.SetStagesComplete(9, true);
 	}
 };

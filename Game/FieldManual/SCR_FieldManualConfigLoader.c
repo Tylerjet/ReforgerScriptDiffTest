@@ -30,9 +30,7 @@ class SCR_FieldManualConfigLoader
 		}
 
 		if (category.m_aEntries)
-		{
 			FillEntries(category.m_aEntries);
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -42,19 +40,17 @@ class SCR_FieldManualConfigLoader
 		{
 			SCR_FieldManualConfigEntry_Weapon weaponEntry = SCR_FieldManualConfigEntry_Weapon.Cast(entry);
 			if (weaponEntry)
-			{
 				FillEntries_Weapon(weaponEntry);
-			}
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected static void FillEntries_Weapon(notnull SCR_FieldManualConfigEntry_Weapon weaponEntry)
 	{
-		if (weaponEntry.m_WeaponEntityPath.IsEmpty())
+		if (weaponEntry.m_sWeaponEntityPath.IsEmpty())
 			return;
 
-		SCR_FieldManualUI_WeaponStatsHelper weaponStatsHelper = new SCR_FieldManualUI_WeaponStatsHelper(weaponEntry.m_WeaponEntityPath);
+		SCR_FieldManualUI_WeaponStatsHelper weaponStatsHelper = new SCR_FieldManualUI_WeaponStatsHelper(weaponEntry.m_sWeaponEntityPath);
 
 		if (weaponEntry.m_sTitle.IsEmpty())
 			weaponEntry.m_sTitle = weaponStatsHelper.GetDisplayName();
@@ -63,15 +59,20 @@ class SCR_FieldManualConfigLoader
 			weaponEntry.m_Image = weaponStatsHelper.GetInventoryIcon();
 
 		if (!weaponEntry.m_aContent)
-		{
 			weaponEntry.m_aContent = {};
-		}
 
-		if (weaponEntry.m_aContent.Count() == 1)
+		if (weaponEntry.m_aContent.IsEmpty())
+			weaponEntry.m_aContent.Insert(new SCR_FieldManualPiece_Text()); // will be auto-filled below
+
+		// fill the first empty text with weapon description
+		foreach (SCR_FieldManualPiece piece : weaponEntry.m_aContent)
 		{
-			SCR_FieldManualPiece_Text piece = SCR_FieldManualPiece_Text.Cast(weaponEntry.m_aContent[0]);
-			if (piece && piece.m_sText.IsEmpty())
-				piece.m_sText = weaponStatsHelper.GetDescription();
+			SCR_FieldManualPiece_Text textPiece = SCR_FieldManualPiece_Text.Cast(weaponEntry.m_aContent[0]);
+			if (textPiece && textPiece.m_sText.IsEmpty())
+			{
+				textPiece.m_sText = weaponStatsHelper.GetDescription();
+				break;
+			}
 		}
 
 		weaponEntry.m_WeaponStatsHelper = weaponStatsHelper;

@@ -125,7 +125,7 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 	/*!
 		Only relevant to server and local player.
 	*/
-	bool GetCanPlayerSpawn(int playerID)
+	bool GetCanPlayerSpawn(int playerID, float additionalTime = 0)
 	{
 		if (!IsPlayerEnqueued(playerID))
 		{
@@ -133,11 +133,11 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 			return false;
 		}
 
-		return m_mRespawnTimers[playerID].IsFinished(GetCurrentTime());
+		return m_mRespawnTimers[playerID].IsFinished(GetCurrentTime(), additionalTime);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	int GetPlayerRemainingTime(int playerID)
+	int GetPlayerRemainingTime(int playerID, float additionalTime = 0)
 	{
 		if (!m_mRespawnTimers.Contains(playerID))
 		{
@@ -145,7 +145,7 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 			return false;
 		}
 
-		float remainingTime = m_mRespawnTimers[playerID].GetRemainingTime(GetCurrentTime());
+		float remainingTime = m_mRespawnTimers[playerID].GetRemainingTime(GetCurrentTime(), additionalTime);
 		return Math.Ceil(remainingTime);
 	}
 
@@ -158,6 +158,9 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 
 		// Invalid playerID
 		if (playerId <= 0)
+			return;
+
+		if (playerEntity.IsDeleted()) //todo(@langepau): remove hack after character event flow rework
 			return;
 
 		// TODO@AS: Propagate change to owner

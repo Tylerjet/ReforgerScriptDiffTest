@@ -252,7 +252,7 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, false))
 		{
-			Debug.Error("Caught request on locked player!");
+			Print("Caught request on locked player!", LogLevel.WARNING);
 			return false;
 		}
 

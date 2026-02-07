@@ -160,6 +160,11 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override bool OnClick(Widget w, int x, int y, int button)
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void SetEnabled(bool enabled, bool animate = true)
 	{
 		m_bShouldBeEnabled = enabled;
@@ -433,17 +438,24 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 		if (!m_sOldActionName.IsEmpty())
 		{
-			m_InputManager.RemoveActionListener(m_sOldActionName, EActionTrigger.DOWN, OnInput);
+			m_InputManager.RemoveActionListener(m_sOldActionName, EActionTrigger.DOWN, OnButtonPressed);
 			m_InputManager.RemoveActionListener(m_sOldActionName, EActionTrigger.UP, OnInput);
 		}
 
 		if (!m_sActionName.IsEmpty())
 		{
-			m_InputManager.AddActionListener(m_sActionName, EActionTrigger.DOWN, OnInput);
+			m_InputManager.AddActionListener(m_sActionName, EActionTrigger.DOWN, OnButtonPressed);
 			m_InputManager.AddActionListener(m_sActionName, EActionTrigger.UP, OnInput);
 		}
 
 		m_sOldActionName = m_sActionName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnButtonPressed(float value, EActionTrigger reason)
+	{
+		PlaySoundClicked();
+		OnInput(value, reason);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -459,7 +471,8 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 		OnInput(1, EActionTrigger.DOWN);
 
-		m_OnClicked.Invoke(this);
+		super.OnClick(w, x, y, button);
+		
 		return false;
 	}
 

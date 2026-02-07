@@ -35,8 +35,11 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override void RefreshSeizingTimer()
+	override void RefreshSeizingTimer()
 	{
+		if (!m_fSeizingStartTimestamp)
+			return;
+
 		int servicesCount;
 
 		if (m_Base)
@@ -45,7 +48,6 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 				SCR_EServicePointType.ARMORY,
 				SCR_EServicePointType.HELIPAD,
 				SCR_EServicePointType.BARRACKS,
-				SCR_EServicePointType.FUEL_DEPOT,
 				SCR_EServicePointType.RADIO_ANTENNA,
 				SCR_EServicePointType.FIELD_HOSPITAL,
 				SCR_EServicePointType.LIGHT_VEHICLE_DEPOT,
@@ -78,6 +80,13 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 		#else
 		m_fSeizingEndTimestamp = m_fSeizingStartTimestamp.PlusSeconds(servicesMultiplier * (m_fMaximumSeizingTime - deduct));
 		#endif
+
+		ChimeraWorld world = GetGame().GetWorld();
+		WorldTimestamp currentTime = world.GetServerTimestamp();
+
+		// Add a tiny delay if removing a service would cause immediate capture
+		if (m_fSeizingEndTimestamp.LessEqual(currentTime))
+			m_fSeizingEndTimestamp = currentTime.PlusMilliseconds(SCR_GameModeCampaign.DEFAULT_DELAY);
 
 		if (m_bGradualTimerReset && m_fInterruptedCaptureDuration != 0)
 			HandleGradualReset();

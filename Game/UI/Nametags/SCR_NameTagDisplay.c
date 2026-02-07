@@ -324,8 +324,8 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 			
 			// init tag & insert into arrays
 			SCR_NameTagData tag = m_aUninitializedTags[0];
-			tag.InitTag(this, entity, s_NametagCfg, true);
 			m_CurrentPlayerTag = tag;
+			tag.InitTag(this, entity, s_NametagCfg, true);
 			
 			m_aNameTags.Insert(tag);
 			m_aNameTagEntities.Insert(entity, tag);

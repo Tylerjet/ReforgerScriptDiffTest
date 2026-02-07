@@ -31,6 +31,7 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 
 	protected bool m_bBleedingEffect;
 	protected bool m_bIsBleeding;
+	protected bool m_bPlayHeartBeat;
 
 	
 	//------------------------------------------------------------------------------------------------
@@ -90,15 +91,16 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 		m_bBleedingEffect = false;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	override void UpdateOpacity(float opacity, float sceneBrightness, float sceneBrightnessRaw)
+	//------------------------------------------------------------------------------------------------	
+	protected override void DisplayOnSuspended()
 	{
-		if (!m_wAdaptiveOpacityBlood)
-			m_wAdaptiveOpacityBlood = m_wRoot.FindAnyWidget("AdaptiveOpacity-Blood");
-
-		//PrintFormat("<Adaptive Opacity - m_wAdaptiveOpacityBlood> %1 | Updating opacity %2 -> %3", this, m_wAdaptiveOpacityBlood.GetOpacity(), opacity);
-		
-		m_wAdaptiveOpacityBlood.SetOpacity(opacity);
+		m_bPlayHeartBeat = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void DisplayOnResumed()
+	{
+		m_bPlayHeartBeat = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -109,7 +111,7 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 		
 		float effectStrength = 1;
 		const float REDUCEDSTRENGTH = 0.7;
-		bool playHeartBeat = true; 
+		bool playHeartBeat = m_bPlayHeartBeat; 
 		
 		if (m_pBloodHZ.GetDamageOverTime(EDamageType.BLEEDING) < 5)
 		{
@@ -136,7 +138,7 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 		}
 
 		BlackoutEffect(effectStrength);
-		
+
 		// Play heartbeat sound
 		if (playHeartBeat && m_pDamageManager.GetDefaultHitZone().GetDamageState() != EDamageState.DESTROYED)
 		{

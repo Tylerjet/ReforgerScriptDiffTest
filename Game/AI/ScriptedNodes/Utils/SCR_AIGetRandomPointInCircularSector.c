@@ -97,7 +97,7 @@ class SCR_AIGetRandomPointInCircularSector: AITaskScripted
 		}	
 		else
 		{		
-			angle += Math.RandomFloat(-range, range) *  Math.DEG2RAD;
+			angle += Math.RandomFloat(-range, range);
 			SCR_Math2D.PolarToCartesian(angle, wantedMaxLength, resX, resZ);
 			resX += sectorOrigin[0];
 			resZ += sectorOrigin[2];

@@ -158,10 +158,16 @@ class SCR_CampaignBuildingGadgetToolComponent : SCR_GadgetComponent
 		world.QueryEntitiesBySphere(GetOwner().GetOrigin(), m_fDistanceToShowPreview, EvaluatePreviewEntity);
 
 		// Delete those preview which are no more on the list of traced one and then copy the array for next iteration cycle.
-		foreach (SCR_CampaignBuildingLayoutComponent component : m_aShownPreviewOld)
+		for (int i = m_aShownPreviewOld.Count() - 1; i >= 0; i--)
 		{
-			if (component && !m_aShownPreview.Contains(component))
-				component.DeletePreview();
+		    if (!m_aShownPreviewOld[i] || !m_aShownPreviewOld[i].HasBuildingPreview())
+			{
+				m_aShownPreviewOld.Remove(i);
+				continue;
+			}
+			
+			if (!m_aShownPreview.Contains(m_aShownPreviewOld[i]))
+				m_aShownPreviewOld[i].DeletePreview();
 		}
 				
 		foreach (SCR_CampaignBuildingLayoutComponent component : m_aShownPreview)

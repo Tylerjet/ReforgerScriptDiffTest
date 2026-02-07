@@ -47,29 +47,54 @@ class SCR_RoomPasswordVerification
 		if (editDialog)
 			editDialog.SetWarningMessage(message);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void InitCheck()
+	{
+		// Show loading
+		if (m_LoadingOverlay)
+			m_LoadingOverlay.SetShown(true);
+		else
+			m_LoadingOverlay = SCR_LoadingOverlay.ShowForWidget(GetGame().GetWorkspace(), string.Empty);
+		
+		m_Callback.GetEventOnResponse().Insert(OnPasswordCheckResponse);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void CheckRejoinAuthorization(Room room)
+	{
+		if (!room)
+		{
+			Debug.Error("Room instance expected! Null found in room");
+			return;
+		}	
+		m_Room = room;
+		
+		InitCheck();
+		m_Room.CheckAuthorization(m_Callback);
+		
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Start password verification on confirming password dialog
 	protected void OnPasswordConfirm()
 	{
 		if (!m_Room)
+		{
+			Debug.Error("Room instance expected! Null found in m_Room");
 			return;
-
+		}	
+	
+		InitCheck();
+		
 		SCR_EditboxDialogUi editboxDialog = SCR_EditboxDialogUi.Cast(m_Dialog);
 
 		// Get edit box value
 		string value = editboxDialog.GetEditbox().GetValue();
 
-		// Show loading
-		if (m_LoadingOverlay)
-			m_LoadingOverlay.SetShown(true);
-		else
-			m_LoadingOverlay = SCR_LoadingOverlay.ShowForWidget(GetGame().GetWorkspace(), string.Empty);
-
 		// Try join with password
 		m_PasswordParam.SetPassword(value);
-
-		m_Callback.GetEventOnResponse().Insert(OnPasswordCheckResponse);
+		
 		m_Room.VerifyPassword(value, m_Callback);
 	}
 

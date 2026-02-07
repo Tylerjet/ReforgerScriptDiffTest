@@ -221,9 +221,6 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		if (!compartmentAccess.IsInCompartment())
 			return;	
 		
-		if (m_AIInfo && m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
-			return;
-		
 		SCR_AIActivityBase relatedActivity;
 		SCR_AIBehaviorBase behavior = SCR_AIBehaviorBase.Cast(action);
 		if (behavior)

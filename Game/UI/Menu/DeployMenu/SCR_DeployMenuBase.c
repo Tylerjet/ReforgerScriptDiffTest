@@ -405,7 +405,10 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		//~ Timer calculation and sound event
 		if (m_ActiveRespawnTimer)
 		{
-			remainingTime = m_ActiveRespawnTimer.GetPlayerRemainingTime(m_iPlayerId);
+			float spawnPointTime = 0;
+			if (SCR_SpawnPoint.GetSpawnPointByRplId(m_iSelectedSpawnPointId))
+				spawnPointTime = SCR_SpawnPoint.GetSpawnPointByRplId(m_iSelectedSpawnPointId).GetRespawnTime();
+			remainingTime = m_ActiveRespawnTimer.GetPlayerRemainingTime(m_iPlayerId, spawnPointTime);
 			
 			if (remainingTime > 0)
 			{
@@ -874,8 +877,12 @@ class SCR_DeployButton : SCR_InputButtonComponent
 	[Attribute("Spinner")]
 	protected string m_sLoadingSpinner;
 	
+	[Attribute("Background")]
+	protected string m_sBackground;
+	
 	protected Widget m_wLoadingSpinner;
 	protected Widget m_wSupplies;
+	protected Widget m_wBackgroundWidget;
 	protected RichTextWidget m_wSuppliesText;
 
 	protected SCR_LoadingSpinner m_LoadingSpinner;
@@ -894,6 +901,10 @@ class SCR_DeployButton : SCR_InputButtonComponent
 		m_wLoadingSpinner = w.FindAnyWidget(m_sLoadingSpinner);
 		m_LoadingSpinner = SCR_LoadingSpinner.Cast(m_wLoadingSpinner.FindHandler(SCR_LoadingSpinner));
 		m_wSupplies = w.FindAnyWidget("w_Supplies");
+		m_wBackgroundWidget = w.FindAnyWidget(m_sBackground);
+		
+		if (m_wBackgroundWidget)
+			GetOnUpdateEnableColor().Insert(UpdateBackground);
 		
 		if (m_wSupplies)
 			m_wSuppliesText = RichTextWidget.Cast(m_wSupplies.FindAnyWidget("SuppliesText"));
@@ -973,5 +984,18 @@ class SCR_DeployButton : SCR_InputButtonComponent
 	{
 		m_wTextHolder.SetVisible(show);
 		m_wLoadingSpinner.SetVisible(!show);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!  Change color of background depending on if button is enabled.
+	void UpdateBackground()
+	{
+		Color color;
+		if (!m_wRoot.IsEnabled())
+			color = m_ActionDisabled;
+		else
+			color = m_ActionDefault;
+
+		m_wBackgroundWidget.SetColor(color);
 	}
 };

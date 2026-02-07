@@ -10,9 +10,9 @@ class SCR_SupplyCostItemHintUIInfo : SCR_InventoryItemHintUIInfo
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanBeShown(InventoryItemComponent item)
+	override bool CanBeShown(InventoryItemComponent item, SCR_InventorySlotUI focusedSlot)
 	{
-		if (!super.CanBeShown(item))
+		if (!super.CanBeShown(item, focusedSlot))
 			return false;
 		
 		return item && m_fItemSupplyCost >= 0;

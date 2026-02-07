@@ -66,7 +66,6 @@ class InventoryItemComponent: GameComponent
 	proto external bool IsHiddenInVicnity();
 	//! Returns UI info of this item
 	proto external UIInfo GetUIInfo();
-	proto external void SetCanBeGarbageCollected(bool canBeGarbageCollected);
 	//! Set external lock on item
 	//! optional caller is entity that manipulates with item and has inventory manager present (usually character)
 	proto external bool RequestUserLock(IEntity caller, bool locked);

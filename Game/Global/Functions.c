@@ -1562,10 +1562,11 @@ class SCR_Global
 
 	//------------------------------------------------------------------------------------------------
 	//! Check if the game is running in edit mode.
-	//! \return True during edit mode in Workbench
+	//! \return true during edit mode in Workbench or if GetGame() is null
 	static bool IsEditMode()
 	{
-		return !GetGame().InPlayMode();
+		ArmaReforgerScripted game = GetGame();
+		return !game || !game.InPlayMode();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1942,19 +1943,23 @@ class SCR_Global
 	*/
 	static ResourceName GetPrefabAttributeResource(notnull IEntity entity, string containerType, string attributeName)
 	{
-		ResourceName resourceName;
 		EntityPrefabData prefabData = entity.GetPrefabData();
 		if (!prefabData)
-			return resourceName;
+			return ResourceName.Empty;
 
-		IEntitySource entitySource = IEntitySource.Cast(prefabData.GetPrefab());
+		BaseContainer prefabSource = prefabData.GetPrefab();
+		if (!prefabSource)
+			return ResourceName.Empty;
+
+		IEntitySource entitySource = prefabSource.ToEntitySource();
 		if (!entitySource)
-			return resourceName;
+			return ResourceName.Empty;
 
 		BaseContainer container = SCR_BaseContainerTools.FindComponentSource(entitySource, containerType);
 		if (!container)
-			return resourceName;
+			return ResourceName.Empty;
 
+		ResourceName resourceName;
 		container.Get(attributeName, resourceName);
 
 		return resourceName;

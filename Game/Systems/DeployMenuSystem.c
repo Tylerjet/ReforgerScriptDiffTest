@@ -1,6 +1,6 @@
 class DeployMenuSystem : GameSystem
 {	
-	protected SCR_PlayerDeployMenuHandlerComponent m_MenuHandler;
+	protected SCR_PlayerDeployMenuHandlerComponent m_LocalMenuHandler;
 	protected bool m_bReady = false;
 
 	protected override ESystemPoint GetSystemPoint()
@@ -19,13 +19,14 @@ class DeployMenuSystem : GameSystem
 
 	void Register(SCR_PlayerDeployMenuHandlerComponent handler)
 	{
-		if (!m_MenuHandler)
-			m_MenuHandler = handler;
+		if (handler.GetPlayerController() == GetGame().GetPlayerController())
+			m_LocalMenuHandler = handler;
 	}
 
 	void Unregister(SCR_PlayerDeployMenuHandlerComponent handler)
 	{
-		m_MenuHandler = null;
+		if (handler.GetPlayerController() == GetGame().GetPlayerController())
+			m_LocalMenuHandler = null;
 	}
 
 	void SetReady(bool ready)
@@ -35,17 +36,17 @@ class DeployMenuSystem : GameSystem
 
 	override protected void OnUpdate(ESystemPoint point)
 	{
-		if (!m_MenuHandler)
+		if (!m_LocalMenuHandler)
 			return;
 
 		float dt = GetWorld().GetTimeSlice();
 
-		if (!m_MenuHandler.UpdateLoadingPlaceholder(dt))
+		if (!m_LocalMenuHandler.UpdateLoadingPlaceholder(dt))
 			return;
 
 		if (!m_bReady)
 			return;
 
-		m_MenuHandler.Update(dt);
+		m_LocalMenuHandler.Update(dt);
 	}
 }

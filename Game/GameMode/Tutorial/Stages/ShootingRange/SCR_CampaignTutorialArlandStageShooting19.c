@@ -24,6 +24,7 @@ class SCR_CampaignTutorialArlandStageShooting19 : SCR_BaseCampaignTutorialArland
 		}
 		
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
+		m_TutorialComponent.SetStagesComplete(1, true);	
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -167,12 +167,14 @@ class SCR_EntityTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
 				ImageWidget imageWidget = ImageWidget.Cast(widget.FindAnyWidget(m_sImageWidgetName));
 				if (imageWidget && editableEntityInfo.GetImage())
 				{
-					imageWidget.LoadImageTexture(0, editableEntityInfo.GetImage());
-					
+					bool foundImage = imageWidget.LoadImageTexture(0, editableEntityInfo.GetImage());
+					imageWidget.SetVisible(foundImage);
+
 					Widget imageOverlay = widget.FindAnyWidget(m_sImageOverlayWidgetName);
 					if (!imageOverlay)
 						imageOverlay = imageWidget;
-					imageOverlay.SetVisible(true);
+					
+					imageOverlay.SetVisible(foundImage);
 				}
 			}
 		}

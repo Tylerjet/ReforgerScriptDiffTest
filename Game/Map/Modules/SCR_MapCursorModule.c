@@ -74,6 +74,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	protected ref map<EMapCursorState, SCR_CursorVisualState> m_aCursorStatesMap = new map<EMapCursorState, SCR_CursorVisualState>;	// used to quickly fetch a desired cursor state from config
 	
 	//static
+	protected static bool m_bRecentlyTraced;		// recently performed widget trace
 	protected static ref array<Widget> s_aTracedWidgets = {};
 	
 	// const
@@ -153,7 +154,14 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	//! Get widgets under cursor
 	static array<Widget> GetMapWidgetsUnderCursor()
 	{	
-		TraceMapWidgets();
+		if (!SCR_MapEntity.GetMapInstance().IsOpen())
+		{	
+			s_aTracedWidgets.Clear();
+			return s_aTracedWidgets;
+		}
+		
+		if (!m_bRecentlyTraced)
+			TraceMapWidgets();
 		
 		return s_aTracedWidgets;
 	}
@@ -1014,6 +1022,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	protected static void TraceMapWidgets()
 	{
 		WidgetManager.TraceWidgets(SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.x), SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.y), SCR_MapEntity.GetMapInstance().GetMapMenuRoot(), s_aTracedWidgets);
+		m_bRecentlyTraced = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1193,6 +1202,8 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	{
 		if (m_bIsDisabled)
 			return;
+		
+		m_bRecentlyTraced = false;
 		
 		// update last pos
 		m_CursorInfo.lastX = m_CursorInfo.x;

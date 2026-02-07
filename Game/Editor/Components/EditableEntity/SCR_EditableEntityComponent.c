@@ -582,12 +582,25 @@ class SCR_EditableEntityComponent : ScriptComponent
 	{
 		if (!IsServer() || !m_Owner)
 			return;
-
+  
+		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(m_Owner);
+		if (resourceComponent)
+		{	
+			SCR_ResourceGrid resourceGrid = GetGame().GetResourceGrid();
+			
+			resourceGrid.IncreaseGridUpdateId();
+			
+			if (resourceComponent.IsDynamic())
+				resourceGrid.UpdateResourceDynamicItem(resourceComponent);
+			else
+				resourceGrid.UpdateResourceStaticItem(resourceComponent);
+		}
+		
 		//Inform Scheduler
 		RplComponent rpl = RplComponent.Cast(m_Owner.FindComponent(RplComponent));
-		vector prevTransform1[4];
+		vector prevTransform[4];
 
-		m_Owner.GetWorldTransform(prevTransform1);
+		m_Owner.GetWorldTransform(prevTransform);
 
 		//--- Entities modified by user are always to be serialized.
 		if (changedByUser)
@@ -605,7 +618,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 			else if (m_Owner.GetPhysics() && m_Owner.IsInherited(Vehicle))
 			{
 				// TODO: Managed by NwkVehicleMovementComponent if teleportation causes chaotic prediction
-				Rpc(SetTransformOwner, transform);
+				if (CanRpc()) Rpc(SetTransformOwner, transform);
 				//--- Execute also on server if Vehicle
 				SetTransformOwner(transform);
 			}
@@ -633,12 +646,10 @@ class SCR_EditableEntityComponent : ScriptComponent
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		if (core)
 		{
-			vector prevTransform[4];
-			m_Owner.GetWorldTransform(prevTransform);
 			core.Event_OnEntityTransformChangedServer.Invoke(this, prevTransform);
 		}
 
-		rpl.ForceNodeMovement(prevTransform1[3]);
+		rpl.ForceNodeMovement(prevTransform[3]);
 	}
 
 	//------------------------------------------------------------------------------------------------

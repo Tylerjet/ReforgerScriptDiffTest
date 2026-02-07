@@ -66,7 +66,7 @@ class SCR_BloodTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
 		{
 			m_UnconsciousBarTop.SetVisible(true);
 			LayoutSlot.SetFillWeight(m_UnconsciousBar, Math.Clamp(unconsciousLevel - m_iUnconsciousBarTopSize, 0, 1));
-			LayoutSlot.SetFillWeight(m_UnconsciousFillerRight, Math.Clamp(100 - unconsciousLevel, 0, 1));
+			LayoutSlot.SetFillWeight(m_UnconsciousFillerRight, Math.Clamp(1 - unconsciousLevel, 0, 1));
 		}
 		else 
 		{
@@ -74,13 +74,13 @@ class SCR_BloodTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
 			{
 				m_UnconsciousBarTop.SetVisible(true);
 				LayoutSlot.SetFillWeight(m_UnconsciousBar, Math.Clamp(bloodLevel - m_iUnconsciousBarTopSize, 0 , 1));
-				LayoutSlot.SetFillWeight(m_UnconsciousFillerRight, Math.Clamp(100 - bloodLevel, 0, 1));
+				LayoutSlot.SetFillWeight(m_UnconsciousFillerRight, Math.Clamp(1 - bloodLevel, 0, 1));
 			}
 			else 
 			{
 				m_UnconsciousBarTop.SetVisible(false);
 				LayoutSlot.SetFillWeight(m_UnconsciousBar, Math.Clamp(bloodLevel, 0 , 1));
-				LayoutSlot.SetFillWeight(m_UnconsciousFillerRight, Math.Clamp(100 - bloodLevel, 0, 1));
+				LayoutSlot.SetFillWeight(m_UnconsciousFillerRight, Math.Clamp(1 - bloodLevel, 0, 1));
 			}
 		}
 	}

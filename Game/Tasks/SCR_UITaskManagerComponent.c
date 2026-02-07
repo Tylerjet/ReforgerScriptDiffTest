@@ -791,6 +791,21 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			}
 		}		
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Don't close task list directly, but request it on mapTaskListUI. To unregister all events and set the variables.
+	void Action_RequestTasksClose()
+	{
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		if (!mapEntity)
+			return;
+
+		SCR_MapTaskListUI taskListUI = SCR_MapTaskListUI.Cast(mapEntity.GetMapUIComponent(SCR_MapTaskListUI));
+		if (!taskListUI)
+			return;
+		
+		taskListUI.HandleTaskList();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void RemoveTaskFromList(SCR_BaseTask task)
@@ -871,7 +886,6 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	void AddActionListeners()
 	{
 		GetGame().GetInputManager().AddActionListener("TasksOpen", EActionTrigger.DOWN, Action_TasksOpen);
-		GetGame().GetInputManager().AddActionListener("TasksClose", EActionTrigger.DOWN, Action_TasksClose);
 		GetGame().GetInputManager().AddActionListener("TasksShowHint", EActionTrigger.DOWN, Action_ShowHint);
 		GetGame().GetInputManager().AddActionListener("TasksExpand", EActionTrigger.DOWN, Action_Expand);
 	}
@@ -880,7 +894,6 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	void RemoveActionListeners()
 	{
 		GetGame().GetInputManager().RemoveActionListener("TasksOpen", EActionTrigger.DOWN, Action_TasksOpen);
-		GetGame().GetInputManager().RemoveActionListener("TasksClose", EActionTrigger.DOWN, Action_TasksClose);
 		GetGame().GetInputManager().RemoveActionListener("TasksShowHint", EActionTrigger.DOWN, Action_ShowHint);
 		GetGame().GetInputManager().RemoveActionListener("TasksExpand", EActionTrigger.DOWN, Action_Expand);
 	}
@@ -974,7 +987,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 		SCR_InputButtonComponent hideTasks = SCR_InputButtonComponent.GetInputButtonComponent("HideTasksButton", m_wUI);
 		if (hideTasks)
-			hideTasks.m_OnActivated.Insert(Action_TasksClose);
+			hideTasks.m_OnActivated.Insert(Action_RequestTasksClose);
 
 		SCR_BaseTaskManager.s_OnTaskDeleted.Insert(RemoveTaskFromList);
 		

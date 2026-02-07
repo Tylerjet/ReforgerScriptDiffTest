@@ -22,6 +22,18 @@ class NavmeshWorldComponent: GenericComponent
 	*/
 	proto external bool IsTileLoaded(vector wPos);
 	/*!
+	Check if navmesh tile is valid for using
+	\param wPos Tile pos in world coord space.
+	\return true if tile is valid, false otherwise
+	*/
+	proto external bool IsTileValid(vector wPos);
+	/*!
+	Check if navmesh tile is requested
+	\param wPos Tile pos in world coord space.
+	\return true if tile is requested, false otherwise
+	*/
+	proto external bool IsTileRequested(vector wPos);
+	/*!
 	WARNING: This can take many (even 100+) frames
 	\param wPos Tile pos in world coord space.
 	\return false when tile cannot be loaded or not using streamable navmesh, true if it can

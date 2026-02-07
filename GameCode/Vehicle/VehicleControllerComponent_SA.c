@@ -71,7 +71,7 @@ class VehicleControllerComponent_SA : BaseVehicleControllerComponent_SA
 		if (!veh)
 			return;
 
-		GarbageSystem garbageMan = world.GetGarbageSystem();
+		GarbageManager garbageMan = world.GetGarbageManager();
 		if (garbageMan)
 			garbageMan.Insert(veh);
 	}
@@ -85,7 +85,7 @@ class VehicleControllerComponent_SA : BaseVehicleControllerComponent_SA
 			if (!world)
 				return;
 
-			GarbageSystem garbageMan = world.GetGarbageSystem();
+			GarbageManager garbageMan = world.GetGarbageManager();
 			if (garbageMan)
 				garbageMan.Withdraw(Vehicle.Cast(vehicle));
 		}
@@ -100,7 +100,7 @@ class VehicleControllerComponent_SA : BaseVehicleControllerComponent_SA
 			if (!world)
 				return;
 
-			GarbageSystem garbageMan = world.GetGarbageSystem();
+			GarbageManager garbageMan = world.GetGarbageManager();
 			if (garbageMan)
 				garbageMan.Insert(Vehicle.Cast(vehicle));
 		}
@@ -281,5 +281,17 @@ class VehicleControllerComponent_SA : BaseVehicleControllerComponent_SA
 		SCR_MotorExhaustEffectGeneralComponent motorExhaust = SCR_MotorExhaustEffectGeneralComponent.Cast(GetOwner().FindComponent(SCR_MotorExhaustEffectGeneralComponent));
 		if (motorExhaust)
 			motorExhaust.OnEngineStop();
+
+		SoundComponent soundComponent = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
+		if (soundComponent)
+		{
+			soundComponent.Terminate(m_iEngineStarterHandle);
+			m_iEngineStarterHandle = AudioHandle.Invalid;
+
+			soundComponent.Terminate(m_iEngineStartHandle);
+			m_iEngineStartHandle = AudioHandle.Invalid;
+
+			soundComponent.SoundEvent(SCR_SoundEvent.SOUND_ENGINE_STOP);
+		}
 	}
 }

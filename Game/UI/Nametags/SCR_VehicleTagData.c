@@ -2,6 +2,7 @@
 class SCR_VehicleTagData : SCR_NameTagData
 {
 	bool m_bIsControlledPresent = false; 			// is player within this vehicle
+	SCR_NameTagData m_MainTag;						// main entity in a vehicle - used to display name
 	ref array<SCR_NameTagData> m_aPassengers = {};	// tracked passangers, meaning those who have their own nametag
 	
 	//------------------------------------------------------------------------------------------------
@@ -41,30 +42,65 @@ class SCR_VehicleTagData : SCR_NameTagData
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Update main tag (usually driver)
+	protected void UpdateMainTag()
+	{
+		m_MainTag = null;
+		
+		if (!m_Entity)
+			return;
+		
+		if (m_aPassengers.IsEmpty())
+			return;
+		
+		IEntity pilot = Vehicle.Cast(m_Entity).GetPilot();
+		if (pilot)
+		{
+			foreach (SCR_NameTagData tagData : m_aPassengers)
+			{
+				if (tagData.m_Entity == pilot)
+				{
+					m_MainTag = tagData;
+					break;
+				}
+			}
+		}
+		
+		
+		if (!m_MainTag)
+			m_MainTag = m_aPassengers[0];
+		
+		if (m_MainTag.m_eEntityStateFlags & ENameTagEntityState.GROUP_MEMBER)
+			ActivateEntityState(ENameTagEntityState.GROUP_MEMBER);
+		else if (m_eEntityStateFlags & ENameTagEntityState.GROUP_MEMBER)
+			DeactivateEntityState(ENameTagEntityState.GROUP_MEMBER);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void GetName(out string name, out notnull array<string> nameParams)
 	{
-		int count = m_aPassengers.Count();
-		if (count <= 0)
-		{
-			m_sName = string.Empty;
-			nameParams.Copy(m_aNameParams);
-			return;
-		}
-		else 
-		{
-			m_aPassengers[0].GetName(m_sName, nameParams);
+		UpdateMainTag();
+		
+		m_sName = string.Empty;
+		m_aNameParams = {};
+		
+		if (m_MainTag)
+		{			
+			m_MainTag.GetName(m_sName, m_aNameParams);
 
 			if (m_sName == string.Empty)	// passenger tag might need entity update in case of lost connection 
 			{
 				m_aPassengers[0].UpdateEntityType();
-				m_aPassengers[0].GetName(m_sName, nameParams);
+				m_aPassengers[0].GetName(m_sName, m_aNameParams);
 			}
 			
+			int count = m_aPassengers.Count();
 			if (count > 1)
 				m_sName = m_sName + "  (+" + (count - 1).ToString() + ")";
 		}
 			
 		name = m_sName;
+		nameParams.Copy(m_aNameParams);
 	}
 	
 	//------------------------------------------------------------------------------------------------

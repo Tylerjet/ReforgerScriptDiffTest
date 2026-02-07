@@ -42,13 +42,13 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	[Attribute(UIWidgets.Auto, desc: "Actions that will be activated after tasks are initialized", category: "Tasks")];
 	protected ref array<ref SCR_ScenarioFrameworkActionBase> m_aAfterTasksInitActions;
 	
-	[Attribute(desc: "Name of the Area which will be only one to spawn", category: "Debug")];
-	protected string m_sForcedArea;
+	[Attribute(desc: "List of Core Areas that are essential for the Scenario to spawn alongside Debug Areas", category: "Debug")];
+	protected ref array<string> m_aCoreAreas;
 	
-	[Attribute(desc: "Name of the task layer to be only one to create", category: "Debug")];
-	protected string m_sForcedTaskLayer;
+	[Attribute(desc: "List of Areas that will be spawned (Optionally with desired Layer Task) as opposed to leaving it to random generation", category: "Debug")];
+	protected ref array<ref SCR_ScenarioFrameworkDebugArea> m_aDebugAreas;
 	
-	[Attribute(desc: "Should the dynamic Spawn/Despawn based on distance from observer cameras be enabled for the whole GameMode?", category: "Dynamic Spawn/Despawn")];
+	[Attribute(desc: "Should the dynamic Spawn/Despawn based on distance from player characters be enabled for the whole GameMode?", category: "Dynamic Spawn/Despawn")];
 	protected bool m_bDynamicDespawn;
 	
 	[Attribute(defvalue: "4", UIWidgets.Slider, params: "0 600 1", desc: "How frequently is dynamic spawn/despawn being checked in seconds", category: "Dynamic Spawn/Despawn")]
@@ -163,7 +163,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		
 		if (task.GetTaskState() == SCR_TaskState.FINISHED)
 		{
-			m_LastFinishedTaskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetTaskLayer(); 
+			m_LastFinishedTaskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetLayerTask(); 
 			m_LastFinishedTask = task;
 		}
 		
@@ -174,8 +174,8 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 			else
 				PopUpMessage(task.GetTitle(), "#AR-Workshop_ButtonUpdate");
 			
-			SCR_ScenarioFrameworkLayerTask taskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetTaskLayer();
-			SCR_ScenarioFrameworkSlotTask subject = taskLayer.GetTaskSubject();
+			SCR_ScenarioFrameworkLayerTask taskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetLayerTask();
+			SCR_ScenarioFrameworkSlotTask subject = taskLayer.GetSlotTask();
 			if (subject)
 				subject.OnTaskStateChanged(SCR_TaskState.UPDATED);
 		}
@@ -474,20 +474,50 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 
 		LoadHeaderSettings();
 		
-		// Spawn everything inside the Area except the task layers
-		foreach(SCR_ScenarioFrameworkArea area : m_aAreas)
+		if (m_aDebugAreas.IsEmpty())
 		{
-			if (m_sForcedArea.IsEmpty())		//for debug purposes
+			foreach (SCR_ScenarioFrameworkArea area : m_aAreas)
 			{
 				if (area.GetDynamicDespawnEnabled())
 					continue;
 				
 				area.Init();
 			}
-			else
+		}
+		else
+		{
+			SCR_ScenarioFrameworkArea area;
+			SCR_ScenarioFrameworkLayerTask layerTask;
+			foreach (SCR_ScenarioFrameworkDebugArea debugArea : m_aDebugAreas)
 			{
-				if (area.GetOwner().GetName() == m_sForcedArea)
-					area.Init(area);
+				area = debugArea.GetForcedArea();
+				if (!area)
+					continue;
+				
+				if (!m_aAreasTasksToSpawn.Contains(area.GetName()))
+					m_aAreasTasksToSpawn.Insert(area.GetName());
+				
+				if (!area.GetDynamicDespawnEnabled())
+					area.Init();
+				
+				layerTask = debugArea.GetForcedLayerTask();
+				if (layerTask && !m_aLayersTaskToSpawn.Contains(layerTask.GetName()))
+					m_aLayersTaskToSpawn.Insert(layerTask.GetName());
+			}
+			
+			IEntity entity;
+			foreach (string coreArea : m_aCoreAreas)
+			{
+				if (SCR_StringHelper.IsEmptyOrWhiteSpace(coreArea))
+					continue;
+			
+				entity = GetGame().GetWorld().FindEntityByName(coreArea);
+				if (!entity)
+					continue;
+				
+				area = SCR_ScenarioFrameworkArea.Cast(entity.FindComponent(SCR_ScenarioFrameworkArea));
+				if (area && !area.GetDynamicDespawnEnabled())
+					area.Init()
 			}
 		}
 		
@@ -506,18 +536,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void PostInit()
 	{
-		if (m_sForcedTaskLayer.IsEmpty())
-			GenerateTasks();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! It allows you to spawn just one selected area out of all the areas you have in your scenario. 
-	//! This is a helpful way for Scenario Creators to quickly test some desired area without having to disable everything else.
-	void SpawnForcedArea(SCR_ScenarioFrameworkArea area)
-	{
-		IEntity entity = GetGame().GetWorld().FindEntityByName(m_sForcedArea);
-		if (entity)
-			area = SCR_ScenarioFrameworkArea.Cast(entity.FindComponent(SCR_ScenarioFrameworkArea));
+		GenerateTasks();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -605,19 +624,42 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 			PrepareLayerTasksAfterInit();
 			Print("ScenarioFramework: ---------------------- Generation of tasks completed -------------------", LogLevel.NORMAL);
 			
-			return;
+			//If counts are not the same, we want randomization to occur
+			if (m_aAreasTasksToSpawn.Count() == m_aLayersTaskToSpawn.Count())
+				return;
 		}
 		
 		//Fetching all Layer Tasks from Areas
 		array<SCR_ScenarioFrameworkLayerTask> layerTasksToRandomize = {};
-		foreach (SCR_ScenarioFrameworkArea area : m_aAreas)
+		array<SCR_ScenarioFrameworkLayerTask> layerTasks = {};
+		if (m_aDebugAreas.IsEmpty())
 		{
-			if (!area)
-				continue;
-			
-			array<SCR_ScenarioFrameworkLayerTask> layerTasks = {};
-			area.GetAllLayerTasks(layerTasks);
-			layerTasksToRandomize.InsertAll(layerTasks);
+			foreach (SCR_ScenarioFrameworkArea area : m_aAreas)
+			{
+				if (!area)
+					continue;
+				
+				area.GetAllLayerTasks(layerTasks);
+				layerTasksToRandomize.InsertAll(layerTasks);
+			}
+		}
+		else
+		{
+			SCR_ScenarioFrameworkArea forcedArea;
+			SCR_ScenarioFrameworkArea forcedLayerTask;
+			foreach (SCR_ScenarioFrameworkDebugArea debugArea : m_aDebugAreas)
+			{
+				forcedArea = debugArea.GetForcedArea();
+				if (!forcedArea)
+					continue;
+				
+				//If debug area has LayerTask set, we don't want to put it for randomization
+				if (debugArea.GetForcedLayerTask())
+					continue;
+				
+				forcedArea.GetAllLayerTasks(layerTasks);
+				layerTasksToRandomize.InsertAll(layerTasks);
+			}
 		}
 		
 		//Fetching available Task Types for generation based on type
@@ -713,7 +755,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 				layerTask.DynamicDespawn();
 		}
 		
-		foreach(SCR_ScenarioFrameworkActionBase afterTasksInitActions : m_aAfterTasksInitActions)
+		foreach (SCR_ScenarioFrameworkActionBase afterTasksInitActions : m_aAfterTasksInitActions)
 		{
 			afterTasksInitActions.Init(m_aAreas.GetRandomElement().GetOwner());
 		}
@@ -722,6 +764,9 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void GenerateSingleTask(int index)
 	{
+		if (!m_aLayersTaskToSpawn.IsIndexValid(index) || !m_aAreasTasksToSpawn.IsIndexValid(index))
+			return;
+		
 		string targetLayer = m_aLayersTaskToSpawn[index];
 		string targetArea = m_aAreasTasksToSpawn[index];
 		
@@ -869,7 +914,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Refreshes array of camera observers and checks which areas should spawn/despawn
+	//! Refreshes array of player characters and checks which areas should spawn/despawn
 	protected void CheckDistance()
 	{
 		m_aObservers.Clear();

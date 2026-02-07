@@ -388,7 +388,6 @@ class SCR_AIGoalReaction_HealWait : SCR_AIGoalReaction
 		
 		auto behavior = new SCR_AIHealWaitBehavior(utility, msg.m_RelatedGroupActivity, msg.m_HealProvider, msg.m_fPriorityLevel);
 		
-		utility.WrapBehaviorOutsideOfVehicle(behavior); // Should we dismount to get healed?
 		utility.AddAction(behavior);
 	}
 };
@@ -466,22 +465,6 @@ class SCR_AIGoalReaction_Cancel : SCR_AIGoalReaction
 //		utility.FailBehaviorsOfActivity(msg.m_RelatedGroupActivity);
 		utility.SetStateOfRelatedAction(msg.m_RelatedGroupActivity, EAIActionState.FAILED);
 	}	
-	
-	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
-	{
-		// This is wrong and unsafe, must be redone
-		/*
-		SCR_AIActivityBase activity = SCR_AIActivityBase.Cast(utility.GetCurrentAction());
-		AIGroup group = utility.m_Owner;
-		array<AIAgent> agents = {};
-		group.GetAgents(agents);
-		foreach (AIAgent agent : agents)
-		{
-			SCR_AISendCancelMsg(utility, activity, group, agent);
-		}
-		activity.Fail();
-		*/
-	}
 };
 
 [BaseContainerProps()]
@@ -553,22 +536,6 @@ class SCR_AIGoalReaction_PickupInventoryItems : SCR_AIGoalReaction
 
 //--------------------------------------------------------------------------------------------------------
 // Helper methods used in above
-
-
-static void SCR_AISendCancelMsg(SCR_AIGroupUtilityComponent utility, SCR_AIActivityBase relatedActivity, AIAgent sender, AIAgent receiver)
-{
-	if (!utility.m_Owner)
-		return;
-	AICommunicationComponent mailbox = utility.m_Owner.GetCommunicationComponent();
-	if (mailbox)
-	{
-		SCR_AIMessage_Cancel msg = new SCR_AIMessage_Cancel;
-		msg.m_RelatedGroupActivity = relatedActivity;
-		msg.SetText("Cancelled activity");
-		msg.SetReceiver(receiver);
-		mailbox.RequestBroadcast(msg, receiver);
-	}	
-};
 
 static void UpdateLastSeenPosition2(BaseTarget baseTarget, SCR_AITargetInfo newTargetInfo)
 {

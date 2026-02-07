@@ -112,7 +112,12 @@ class SCR_ScenarioFrameworkTriggerCountdownDisplay : SCR_InfoDisplayExtended
 	protected void UpdateHUD()
 	{
 		m_fTempTimeSlice = 0;
-		string title = string.Format(WidgetManager.Translate(m_sPlayerActivationNotificationTitle), m_iPlayersCountByFactionInside, Math.Ceil(m_iPlayersCountByFaction * m_fMinimumPlayersNeededPercentage));
+		
+		int neededNumber = Math.Ceil(m_iPlayersCountByFaction * m_fMinimumPlayersNeededPercentage);
+		if (neededNumber == 0)
+			neededNumber = 1;
+		
+		string title = string.Format(WidgetManager.Translate(m_sPlayerActivationNotificationTitle), m_iPlayersCountByFactionInside, neededNumber);
 		string formattedTitle = string.Format("<color rgba=\"226,168,80,255\">%1</color>", title);
 
 		if (!m_bTriggerConditionsStatus)

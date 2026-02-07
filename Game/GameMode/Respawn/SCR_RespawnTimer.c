@@ -37,44 +37,28 @@ class SCR_RespawnTimer
 	
 	/*!
 		\param timeNow Current (synchronized) time to ask at.
+		\param additionalTime Optional additional time to add.
 		\return Returns true in case timer is finished, false otherwise.
 	*/
-	#ifndef AR_RESPAWN_TIMER_TIMESTAMP
-	bool IsFinished(float timeNow)
-	{	
-		return timeNow >= m_fStartTime + m_fDuration;
-	}
-	#else
-	bool IsFinished(WorldTimestamp timeNow)
+	bool IsFinished(WorldTimestamp timeNow, float additionalTime = 0)
 	{
-		return timeNow.GreaterEqual(m_fStartTime.PlusSeconds(m_fDuration));
+		return timeNow.GreaterEqual(m_fStartTime.PlusSeconds(m_fDuration + additionalTime));
 	}
-	#endif
 	
 	/*!
 		\param timeNow Current (synchronized) time to ask at.
+		\param additionalTime Optional additional time to add.
 		\return Returns remaining time in seconds or 0 if finished.
 	*/
-	#ifndef AR_RESPAWN_TIMER_TIMESTAMP
-	float GetRemainingTime(float timeNow)
+	float GetRemainingTime(WorldTimestamp timeNow, float additionalTime = 0)
 	{
-		float rem = (m_fStartTime + m_fDuration) - timeNow;
-		if (rem <= 0)
-			return 0.0;
-	
-		return rem;
-	}
-	#else
-	float GetRemainingTime(WorldTimestamp timeNow)
-	{
-		WorldTimestamp endTime = m_fStartTime.PlusSeconds(m_fDuration);
+		WorldTimestamp endTime = m_fStartTime.PlusSeconds(m_fDuration + additionalTime);
 		float rem = endTime.DiffMilliseconds(timeNow);
 		if (rem <= 0)
 			return 0.0;
 
 		return rem / 1000.0;
 	}
-	#endif
 	
 	/*!
 		Returns duration in seconds of this timer.
@@ -163,7 +147,7 @@ class SCR_RespawnTimer
 		return snapshot.Compare(prop.m_fStartTime, 8)
 		#endif
 			&& snapshot.Compare(prop.m_fDuration, 4);
-			}
+	}
 			
 	//------------------------------------------------------------------------------------------------
 	static bool Extract(SCR_RespawnTimer prop, ScriptCtx ctx, SSnapSerializerBase snapshot) 

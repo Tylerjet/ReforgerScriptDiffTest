@@ -1,4 +1,4 @@
-class SCR_ServerSaveRequestCallback: BackendCallback
+class SCR_ServerSaveRequestCallback: SCR_BackendCallback
 {
 	static const string SESSION_SAVE_NAME = "SCR_SaveFileManager_SessionSave";
 	
@@ -10,6 +10,8 @@ class SCR_ServerSaveRequestCallback: BackendCallback
 	
 	override void OnSuccess(int code)
 	{
+		super.OnSuccess(code);
+		
 		PrintFormat("[SCR_ServerSaveRequestCallback] OnSuccess(): code=%1", code);
 		
 		if (code == 0)
@@ -54,10 +56,12 @@ class SCR_ServerSaveRequestCallback: BackendCallback
 	}
 	override void OnError(int code, int restCode, int apiCode)
 	{
+		super.OnError(code, restCode, apiCode);
 		PrintFormat("[SCR_ServerSaveRequestCallback] OnError: code=%1 ('%4'), restCode=%2, apiCode=%3", code, restCode, apiCode, GetGame().GetBackendApi().GetErrorCode(code));
 	}
 	override void OnTimeout()
 	{
+		super.OnTimeout();
 		Print("[SCR_ServerSaveRequestCallback] OnTimeout");
 	}
 	void SCR_ServerSaveRequestCallback(string fileName)

@@ -62,6 +62,8 @@ class SCR_BaseTourStage : SCR_BaseCampaignTutorialArlandStage
 		SCR_CampaignMilitaryBaseComponent baseComp = SCR_CampaignMilitaryBaseComponent.Cast(base.FindComponent(SCR_CampaignMilitaryBaseComponent));
 		if (baseComp)
 			baseComp.SetSupplies(0);
+		
+		m_TutorialComponent.SetStagesComplete(7, true);	
 	}
 	
 	//------------------------------------------------------------------------------------------------

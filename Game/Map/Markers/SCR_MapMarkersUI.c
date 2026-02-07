@@ -335,13 +335,17 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	protected void CreateStaticMarkers()
 	{
 		array<ref SCR_MapMarkerBase> markersSimple = m_MarkerMgr.GetStaticMarkers();
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (!factionManager)
+			return;
+		
 		for (int i; i < markersSimple.Count(); i++)
 		{
 			if (!markersSimple.IsIndexValid(i))
 				continue;
 			
 			SCR_MapMarkerBase marker = markersSimple[i];
-			Faction markerFaction = SCR_FactionManager.SGetPlayerFaction(marker.GetMarkerOwnerID());
+			Faction markerFaction = factionManager.GetFactionByKey(marker.GetMarkerFactionKey());	
 			Faction localFaction = SCR_FactionManager.SGetLocalPlayerFaction();
 			if ( (marker.GetMarkerOwnerID() != GetGame().GetPlayerController().GetPlayerId()) && (!localFaction || localFaction.IsFactionEnemy(markerFaction)))
 			{
@@ -656,6 +660,9 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	//! Marker select
 	protected void OnInputMapSelect(float value, EActionTrigger reason)
 	{
+		if (!m_PlacedMarkerConfig)
+			return;
+		
 		array<Widget> widgets = SCR_MapCursorModule.GetMapWidgetsUnderCursor();
 		
 		SCR_MapMarkerWidgetComponent markerComp;
@@ -825,6 +832,8 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 
 			float wX, wY;
 			m_MapEntity.ScreenToWorld(GetGame().GetWorkspace().DPIScale(pos[0]), GetGame().GetWorkspace().DPIScale(pos[1]), wX, wY);
+			
+			marker.SetWorldPos(wX, wY); // set the old marker pos here as well because of the delay it takes between client and server to delete it
 			
 			SCR_MapMarkerBase markerNew = new SCR_MapMarkerBase();
 			markerNew.SetType(marker.GetType());

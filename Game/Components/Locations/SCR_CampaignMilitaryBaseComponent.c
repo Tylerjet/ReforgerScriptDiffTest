@@ -88,6 +88,8 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	static const int DEFENDERS_REWARD_MULTIPLIER = 3;
 
 	protected static const int TICK_TIME = 1;
+	protected static const int CONTESTED_RESPAWN_DELAY = 35;
+	protected static const int BASES_IN_RANGE_RESUPPLY_THRESHOLD = 5;	// max bases to be taken into account when calculating supply income
 	protected static const float HQ_VEHICLE_SPAWN_RADIUS = 40;
 	protected static const float HQ_VEHICLE_QUERY_SPACE = 6;
 	protected static const string RADIO_CHATTER_SIGNAL_NAME = "RadioChatter";
@@ -143,6 +145,9 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 	[RplProp(onRplName: "OnInitialized")]
 	protected bool m_bInitialized;
+
+	[RplProp()]
+	protected int m_iSupplyRegenAmount;
 
 	[RplProp(onRplName: "OnHasSignalChanged")]
 	protected SCR_ECampaignHQRadioComms m_eRadioCoverageBLUFOR = SCR_ECampaignHQRadioComms.NONE;
@@ -218,6 +223,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		GetGame().GetCallqueue().Remove(SpawnStartingVehicles);
 		GetGame().GetCallqueue().Remove(EvaluateDefenders);
 		GetGame().GetCallqueue().Remove(SupplyIncomeTimer);
+		GetGame().GetCallqueue().Remove(HandleSpawnPointFaction);
 		//GetGame().GetCallqueue().Remove(SpawnSavedBuildings);
 		DeleteStartingVehicles();
 
@@ -314,11 +320,14 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			seizingComponent.GetOnCaptureInterrupt().Insert(EndCapture);
 		}
 
-		if (IsProxy())
-			return;
-		
-		if (!campaign.IsTutorial())
+		if (m_eType == SCR_ECampaignBaseType.BASE && !campaign.IsTutorial())
+		{
+			// Supplies autoregen loop
 			GetGame().GetCallqueue().CallLater(SupplyIncomeTimer, SCR_GameModeCampaign.UI_UPDATE_DELAY, true, false);
+
+			// Refresh spawnpoint faction after loaded data has been applied
+			GetGame().GetCallqueue().CallLater(HandleSpawnPointFaction, SCR_GameModeCampaign.BACKEND_DELAY);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -381,7 +390,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		bool duringInit = (GetGame().GetWorld().GetWorldTime() <= 0);
 
 		// Delayed call so the composition has time to properly load and register its entire hierarchy on clients as well
-		GetGame().GetCallqueue().CallLater(OnServiceBuilt_AfterInit, 500, false, service);
+		GetGame().GetCallqueue().CallLater(OnServiceBuilt_AfterInit, SCR_GameModeCampaign.MEDIUM_DELAY, false, service);
 
 		EEditableEntityLabel serviceType = service.GetLabel();
 		SCR_ERadioMsg radio = SCR_ERadioMsg.NONE;
@@ -482,6 +491,16 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		if (owner && IsHQRadioTrafficPossible(GetFaction(), SCR_ECampaignHQRadioComms.BOTH_WAYS) && !duringInit)
 			owner.SendHQMessage(radio, m_iCallsign);
+
+		foreach (SCR_MilitaryBaseLogicComponent logic : m_aSystems)
+		{
+			SCR_CampaignSeizingComponent seizingComponent = SCR_CampaignSeizingComponent.Cast(logic);
+
+			if (!seizingComponent)
+				continue;
+
+			seizingComponent.RefreshSeizingTimer();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -490,14 +509,23 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		if (service.GetServiceState() != SCR_EServicePointStatus.ONLINE)
 			return;
 
+		if (IsProxy())
+			return;
+
 		if (service.GetType() == SCR_EServicePointType.RADIO_ANTENNA)
 		{
-			if (!IsProxy())
-			{
-				m_RadioArmory = null;
-				RecalculateRadioRange();
-			}
+			m_RadioArmory = null;
+			RecalculateRadioRange();
+		}
 
+		foreach (SCR_MilitaryBaseLogicComponent logic : m_aSystems)
+		{
+			SCR_CampaignSeizingComponent seizingComponent = SCR_CampaignSeizingComponent.Cast(logic);
+
+			if (!seizingComponent)
+				continue;
+
+			seizingComponent.RefreshSeizingTimer();
 		}
 	}
 
@@ -537,8 +565,9 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			delegateComponent.SetParentBaseId(Replication.FindId(this));
 		}
 
+		// Delayed call so clients know about the new delegate
 		if (RplSession.Mode() != RplMode.Dedicated)
-			m_MapDescriptor.HandleMapInfo();
+			GetGame().GetCallqueue().CallLater(m_MapDescriptor.HandleMapInfo, SCR_GameModeCampaign.DEFAULT_DELAY, false, null);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -808,6 +837,15 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		m_MapDescriptor.HandleMapInfo(SCR_CampaignFaction.Cast(assignedFaction));
 		HideMapLocationLabel();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetBaseSpawnCostFactor()
+	{
+		if (GetServiceDelegateByType(SCR_EServicePointType.BARRACKS))
+			return BARRACKS_REDUCED_DEPLOY_COST;
+		
+		return 1.0;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	int GetBaseSpawnCost()
@@ -818,10 +856,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			return -1;
 
 		//reduce spawning cost if barracks are built
-		if (GetServiceDelegateByType(SCR_EServicePointType.BARRACKS))
-			return campaign.GetSpawnCost() * BARRACKS_REDUCED_DEPLOY_COST;
-		else
-			return campaign.GetSpawnCost();
+		return campaign.GetSpawnCost() * GetBaseSpawnCostFactor();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -992,6 +1027,14 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		m_CapturingFaction = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager()).GetCampaignFactionByIndex(m_iCapturingFaction);
 
+		if (m_SpawnPoint)
+		{
+			if (m_CapturingFaction && m_CapturingFaction != GetFaction())
+				m_SpawnPoint.SetRespawnTime(CONTESTED_RESPAWN_DELAY);
+			else
+				m_SpawnPoint.SetRespawnTime(0);
+		}
+
 		// Play or stop radio tuning SFX
 		if (m_HQRadio)
 		{
@@ -1013,18 +1056,14 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			if (campaign)
 				campaign.GetBaseManager().EvaluateControlPoints();
 		}
-
-		SCR_CampaignFeedbackComponent feedback = SCR_CampaignFeedbackComponent.GetInstance();
-
-		if (!feedback)
-			return;
-
-		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
-
-		if (m_CapturingFaction && GetFaction() == playerFaction && IsHQRadioTrafficPossible(playerFaction))
-			feedback.FlashBaseIcon(this, faction: m_CapturingFaction, infiniteTimer: true);
-		else
-			feedback.FlashBaseIcon(this, changeToDefault: true);
+		
+		if (m_UIElement)
+		{
+			if (m_CapturingFaction && GetFaction() == SCR_FactionManager.SGetLocalPlayerFaction())
+				m_UIElement.FlashBaseIcon(faction: m_CapturingFaction, infiniteTimer: true);
+			else
+				m_UIElement.FlashBaseIcon(changeToDefault: true);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1080,6 +1119,8 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		{
 			EndCapture();
 			m_mDefendersData.Clear();
+			m_iSupplyRegenAmount = 0;
+			Replication.BumpMe();
 
 			// Update signal coverage only if the base was seized during normal play, not at the start
 			if (curTime > 10000)
@@ -1168,10 +1209,8 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		if (RplSession.Mode() != RplMode.Dedicated)
 		{
-			SCR_CampaignFeedbackComponent feedback = SCR_CampaignFeedbackComponent.GetInstance();
-
-			if (feedback)
-				feedback.FlashBaseIcon(this, changeToDefault: true);
+			if (m_UIElement)
+				m_UIElement.FlashBaseIcon(changeToDefault: true);
 
 			if (m_MapDescriptor)
 				m_MapDescriptor.HandleMapInfo();
@@ -1334,10 +1373,14 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	//! \param reset Resets the current timer
 	protected void SupplyIncomeTimer(bool reset = false)
 	{
-		BaseWorld world = GetGame().GetWorld();
+		ChimeraWorld world = GetOwner().GetWorld();
 
 		if (!world)
+		{
+			m_iSupplyRegenAmount = 0;
+			Replication.BumpMe();
 			return;
+		}
 
 		float curTime = world.GetWorldTime();
 
@@ -1349,8 +1392,13 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		Faction owner = GetFaction();
 
-		if (!owner || !IsHQRadioTrafficPossible(owner, SCR_ECampaignHQRadioComms.BOTH_WAYS))
+		// Add supplies only to captured bases in HQ radio range which are not under attack
+		if (!owner || !m_SpawnPoint || !IsHQRadioTrafficPossible(owner, SCR_ECampaignHQRadioComms.BOTH_WAYS) || (m_CapturingFaction && m_CapturingFaction != owner) || world.GetServerTimestamp().Less(m_fRespawnAvailableSince))
+		{
+			m_iSupplyRegenAmount = 0;
+			Replication.BumpMe();
 			return;
+		}
 
 		if (curTime >= m_fSuppliesArrivalTime)
 		{
@@ -1365,10 +1413,20 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	{
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
 		float currentSupplies = GetSupplies();
-		float spaceLimit = campaign.GetSuppliesReplenishThreshold() - currentSupplies;
+		float maxSupplies = GetSuppliesMax();
+		float spaceLimit;
+		
+		if (m_bIsHQ)
+			spaceLimit = float.MAX;
+		else
+			spaceLimit = campaign.GetSuppliesReplenishThreshold() - currentSupplies;
 
-		if (spaceLimit <= 0)
+		if (spaceLimit <= 0 || currentSupplies >= maxSupplies)
+		{
+			m_iSupplyRegenAmount = 0;
+			Replication.BumpMe();
 			return;
+		}
 		
 		int quickReplenishThreshold = campaign.GetQuickSuppliesReplenishThreshold();
 		float quickReplenishMultiplier = campaign.GetQuickSuppliesReplenishMultiplier();
@@ -1405,22 +1463,31 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		int extraBasesCount;
 
-		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBasesInRadioRange)
+		if (!m_bIsHQ)
 		{
-			if (base.GetType() != SCR_ECampaignBaseType.BASE)
-				continue;
-
-			if (base.GetFaction() != faction)
-				continue;
-
-			if (!base.IsHQRadioTrafficPossible(faction))
-				continue;
-
-			extraBasesCount++;
+			foreach (SCR_CampaignMilitaryBaseComponent base : m_aBasesInRadioRange)
+			{
+				if (base.GetType() != SCR_ECampaignBaseType.BASE)
+					continue;
+	
+				if (base.GetFaction() != faction)
+					continue;
+	
+				if (!base.IsHQRadioTrafficPossible(faction))
+					continue;
+	
+				extraBasesCount++;
+	
+				if (extraBasesCount == BASES_IN_RANGE_RESUPPLY_THRESHOLD)
+					break;
+			}
 		}
 
 		toAdd += (SCR_GameModeCampaign.GetInstance().GetRegularSuppliesIncomeExtra() * extraBasesCount);
 		AddSupplies(Math.Min(toAdd, spaceLimit));
+
+		m_iSupplyRegenAmount = toAdd;
+		Replication.BumpMe();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1477,6 +1544,12 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			GetGame().GetResourceGrid().UpdateInteractor(resourceConsumer);
 
 		return resourceConsumer.GetAggregatedMaxResourceValue();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetSuppliesIncome()
+	{
+		return m_iSupplyRegenAmount;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1758,17 +1831,15 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	void OnAttackingFactionChanged()
 	{
 		Faction enemyFaction = GetGame().GetFactionManager().GetFactionByIndex(m_iAttackingFaction);
+		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
 
 		if (!IsProxy())
 			GetGame().GetCallqueue().CallLater(SetAttackingFaction, 1000, false, -1);
 		else
 			m_iAttackingFaction = -1;
 
-		SCR_CampaignFeedbackComponent feedback = SCR_CampaignFeedbackComponent.GetInstance();
-		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
-
-		if (feedback && playerFaction == GetFaction() && IsHQRadioTrafficPossible(playerFaction))
-			feedback.FlashBaseIcon(this, faction: enemyFaction);
+		if (m_UIElement && enemyFaction != playerFaction && GetFaction() == playerFaction)
+			m_UIElement.FlashBaseIcon(SCR_CampaignFeedbackComponent.ICON_FLASH_DURATION, enemyFaction);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2375,6 +2446,16 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		m_MapDescriptor.SetParentBase(this);
 		m_MapDescriptor.Item().SetVisible(true);
+
+		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(GetOwner());
+		if (resourceComponent)
+		{
+			SCR_ResourceConsumer consumerComponent = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+			if (consumerComponent)
+			{
+				consumerComponent.GetOnResourcesChanged().Insert(HandleSpawnPointFaction);
+			}
+		}	
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2415,6 +2496,16 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			campaign.GetOnFactionAssignedLocalPlayer().Remove(OnLocalPlayerFactionAssigned);
 			campaign.GetBaseManager().GetOnAllBasesInitialized().Remove(OnAllBasesInitialized);
 			campaign.GetOnCallsignOffsetChanged().Remove(OnCallsignAssigned);
+		}
+		
+		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(GetOwner());
+		if (resourceComponent)
+		{
+			SCR_ResourceConsumer consumerComponent = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+			if (consumerComponent)
+			{
+				consumerComponent.GetOnResourcesChanged().Remove(HandleSpawnPointFaction);
+			}
 		}
 
 		super.OnDelete(owner);

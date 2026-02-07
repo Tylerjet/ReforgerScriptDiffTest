@@ -102,10 +102,25 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	//! Event called when the editor mode changed to delete the composition preview.
 	void OnEditorModeChanged(SCR_EditorModeEntity currentModeEntity, SCR_EditorModeEntity prevModeEntity)
 	{
-		if (currentModeEntity && currentModeEntity.GetModeType() == EEditorMode.BUILDING)
+		if (currentModeEntity && currentModeEntity.GetModeType() == EEditorMode.BUILDING && IsLayoutInBuildingRange(currentModeEntity))
 			SpawnPreview();
 		else
 			DeletePreview();
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	//! Is this layout in building radius of the provider
+	bool IsLayoutInBuildingRange(notnull SCR_EditorModeEntity editorModeEntity)
+	{
+		SCR_CampaignBuildingEditorComponent buildingEditorComponent = SCR_CampaignBuildingEditorComponent.Cast(editorModeEntity.FindComponent(SCR_CampaignBuildingEditorComponent));
+		if (!buildingEditorComponent)
+			return false;
+		
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(buildingEditorComponent.GetProviderComponent());
+		if (!providerComponent)
+			return false;
+		
+		return vector.DistanceSq(GetOwner().GetOrigin(), providerComponent.GetOwner().GetOrigin()) <= providerComponent.GetBuildingRadius() * providerComponent.GetBuildingRadius();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -286,6 +301,16 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void DeletePreview()
 	{
+		IEntity playerEntity = SCR_PlayerController.GetLocalMainEntity();
+		if (!playerEntity)
+			return;
+		
+		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(playerEntity.FindComponent(SCR_CharacterControllerComponent));
+		if (!characterController)
+			return;
+		
+		characterController.GetOnPlayerDeath().Remove(DeletePreview);
+		
 		// if there was open an editor, remove the invoker
 		SCR_EditorModeEntity modeEntity = GetBuildingModeEntity();
 		if (modeEntity)

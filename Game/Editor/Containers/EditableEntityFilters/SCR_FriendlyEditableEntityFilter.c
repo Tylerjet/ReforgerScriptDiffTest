@@ -41,6 +41,9 @@ class SCR_FriendlyEditableEntityFilter : SCR_BaseEditableEntityFilter
 	}
 	protected void OnSpawn(int playerID, SCR_EditableEntityComponent entity, SCR_EditableEntityComponent entityPrev)
 	{
+		if (playerID != SCR_PlayerController.GetLocalPlayerId())
+			return;
+		
 		CachePlayerFaction(entity.GetOwner());
 		SetFromPredecessor();
 	}

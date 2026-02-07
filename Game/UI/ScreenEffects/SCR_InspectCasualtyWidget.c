@@ -59,9 +59,7 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 
 		UpdateTarget();
 		EnableWidget();
-		
-		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_CHECK_INJURIES_POPUP);
-		
+	
 		return true;
 	}
 

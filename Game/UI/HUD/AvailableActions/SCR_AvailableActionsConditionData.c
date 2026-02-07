@@ -103,6 +103,12 @@ class SCR_AvailableActionsConditionData
 
 	//! Inventory fetching limitation
 	protected bool m_bCanFetchInventory = true;
+	
+	//! Map vars
+	protected SCR_MapEntity m_MapEntity;
+	bool m_bCanRotateMapElement;
+	bool m_bCanActivateMapElement;
+	bool m_bCanDragMapElement;
 
 	//------------------------------------------------------------------------------------------------
 	private void OnItemAddedListener(IEntity item, BaseInventoryStorageComponent storage)
@@ -740,6 +746,10 @@ class SCR_AvailableActionsConditionData
 		
 		// Addition data
 		FetchHealthData(timeSlice);
+		
+		// Map data
+		if (m_MapEntity && m_MapEntity.IsOpen())
+			FetchMapData(timeSlice);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -779,6 +789,34 @@ class SCR_AvailableActionsConditionData
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Fetch 2D map related data
+	protected void FetchMapData(float timeSlice)
+	{
+		m_bCanRotateMapElement = false;
+		m_bCanDragMapElement = false;
+		m_bCanActivateMapElement = false;
+		
+		array<Widget> mapWidgetsUnderCursor = SCR_MapCursorModule.GetMapWidgetsUnderCursor();
+		
+		SCR_MapElementMoveComponent moveComp;
+		foreach (Widget widget : mapWidgetsUnderCursor)
+		{
+			moveComp = SCR_MapElementMoveComponent.Cast(widget.FindHandler(SCR_MapElementMoveComponent));	
+			if (!moveComp)
+				continue;
+			
+			if (moveComp.m_bCanRotate)
+				m_bCanRotateMapElement = true;
+			
+			if (moveComp.m_bCanDrag)
+				m_bCanDragMapElement = true;
+			
+			if (moveComp.m_bCanActivate)
+				m_bCanActivateMapElement = true;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// Contructor 
 	//------------------------------------------------------------------------------------------------
 	
@@ -787,5 +825,6 @@ class SCR_AvailableActionsConditionData
 	void SCR_AvailableActionsConditionData()
 	{
 		m_VONController = SCR_VONController.Cast(GetGame().GetPlayerController().FindComponent(SCR_VONController));
+		m_MapEntity = SCR_MapEntity.GetMapInstance();
 	}
 };

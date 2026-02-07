@@ -2,9 +2,9 @@
 class SCR_SupplyStoredItemHintUIInfo : SCR_BaseSupplyItemHintUIInfo
 {	
 	//------------------------------------------------------------------------------------------------
-	override bool CanBeShown(InventoryItemComponent item)
+	override bool CanBeShown(InventoryItemComponent item, SCR_InventorySlotUI focusedSlot)
 	{
-		if (!item || !super.CanBeShown(item))
+		if (!super.CanBeShown(item, focusedSlot))
 			return false;
 	
 		return GetConsumer(GetResourceComponent(item));

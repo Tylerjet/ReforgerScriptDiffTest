@@ -223,10 +223,32 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
 		if (!world)
 			return;
+		
+		GarbageManager garbageManager = world.GetGarbageManager();
+		if (garbageManager)
+		{
+			garbageManager.Insert(GetCharacter());
 
-		GarbageSystem garbageSystem = world.GetGarbageSystem();
-		if (garbageSystem)
-			garbageSystem.Insert(GetCharacter());
+			BaseWeaponManagerComponent weaponManager = GetWeaponManagerComponent();
+			if (!weaponManager)
+				return;
+
+			BaseWeaponComponent weaponOrSlot = weaponManager.GetCurrentWeapon();
+			if (!weaponOrSlot)
+				return;
+
+			IEntity weaponEntity;
+			WeaponSlotComponent slot = WeaponSlotComponent.Cast(weaponOrSlot);
+			if (slot)
+				weaponEntity = slot.GetWeaponEntity();
+			else
+				weaponEntity = weaponOrSlot.GetOwner();
+
+			if (!weaponEntity)
+				return;
+
+			garbageManager.Insert(weaponEntity);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -868,7 +890,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	protected override void OnControlledByPlayer(IEntity owner, bool controlled)
 	{
 		// Do initialization/deinitialization of character that was given/lost control by plyer here
-		if (controlled)
+		if (controlled && owner == SCR_PlayerController.GetLocalControlledEntity())
 		{
 			GetGame().GetInputManager().AddActionListener("CharacterUnequipItem", EActionTrigger.DOWN, ActionUnequipItem);
 			GetGame().GetInputManager().AddActionListener("CharacterDropItem", EActionTrigger.DOWN, ActionDropItem);

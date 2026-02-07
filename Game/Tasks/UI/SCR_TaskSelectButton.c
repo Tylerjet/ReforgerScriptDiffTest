@@ -20,10 +20,16 @@ class SCR_TaskSelectButton : ScriptedWidgetComponent
 	{
 		if (m_OnMapIconClick)
 			m_OnMapIconClick.Invoke();
+		
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		if (!mapEntity)
+			return false;
 
-		SCR_UITaskManagerComponent utm = SCR_UITaskManagerComponent.GetInstance();
-		if (utm)
-			utm.Action_ShowTasks(null, m_MapUiTask.GetTask());
+		SCR_MapTaskListUI taskListUI = SCR_MapTaskListUI.Cast(mapEntity.GetMapUIComponent(SCR_MapTaskListUI));
+		if (!taskListUI)
+			return false;
+		
+		taskListUI.HandleTaskList();
 
 		return false;
 	}
@@ -47,10 +53,35 @@ class SCR_TaskSelectButton : ScriptedWidgetComponent
 
 		iconHover.SetEnabled(true);
 		iconHover.SetOpacity(VISIBLE);
+		
+		GetGame().GetInputManager().AddActionListener("MenuSelect", EActionTrigger.DOWN, ButtonPressed);
 
 		return false;
 	}
+	
+	//------------------------------------------------------------------------------
+	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
+	{
+		GetGame().GetInputManager().RemoveActionListener("MenuSelect", EActionTrigger.DOWN, ButtonPressed);
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------
+	void ButtonPressed()
+	{
+		if (m_OnMapIconClick)
+			m_OnMapIconClick.Invoke();
 
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		if (!mapEntity)
+			return;
+
+		SCR_MapTaskListUI taskListUI = SCR_MapTaskListUI.Cast(mapEntity.GetMapUIComponent(SCR_MapTaskListUI));
+		if (!taskListUI)
+			return;
+		
+		taskListUI.HandleTaskList();
+	}
 	//------------------------------------------------------------------------------
 	bool HasAssigneeBool()
 	{

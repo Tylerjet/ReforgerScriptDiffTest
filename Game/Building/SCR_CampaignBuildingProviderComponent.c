@@ -22,8 +22,8 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	[Attribute("500", UIWidgets.EditBox, "Max. value for prop budget. if -1 is set, the budget is unlimited. Use with caution, might have a severe performance impact.")]
 	protected int m_iMaxPropValue;
 
-	[Attribute(desc: "Fill in the budgets to be used with this provider", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityBudget))]
-	protected ref array<EEditableEntityBudget> m_aBudgetsToEvaluate;
+	[Attribute(desc: "Fill in the budgets to be used with this provider")]
+	protected ref array<ref SCR_CampaignBuildingBudgetToEvaluateData> m_aBudgetsToEvaluate;
 
 	[Attribute(desc: "Traits this provider will provide. Each trait represents a tab in building interface. The tabs have to be defined in building mode's SCR_ContentBrowserEditorComponent.", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
 	protected ref array<EEditableEntityLabel> m_aAvailableTraits;
@@ -94,6 +94,12 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	int GetCurrentPropValue()
 	{
 		return m_iCurrentPropValue;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetPropValue(int value)
+	{
+		m_iCurrentPropValue = value;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -502,7 +508,16 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	//! Returns true / false if this budget is suppose to be taken into account with this provider.
 	bool IsBudgetToEvaluate(EEditableEntityBudget blockingBudget)
 	{
-		return m_aBudgetsToEvaluate.Contains(blockingBudget);
+		if (!m_aBudgetsToEvaluate)
+			return false;
+		
+		foreach (SCR_CampaignBuildingBudgetToEvaluateData budgetData : m_aBudgetsToEvaluate)
+		{
+			if (budgetData.GetBudget() == blockingBudget && budgetData.CanBeUsed())
+				return true;
+		}
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -103,4 +103,18 @@ class SCR_BaseVariableSightsFOVInfo: ScriptedSightsFOVInfo
 
 		return false;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns true when current FOV of the optic does not match the target FOV.
+	bool IsAdjusting()
+	{
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns true when current FOV of the optic does not match the target FOV.
+	float GetBaseFOV()
+	{
+		return GetCurrentFOV();
+	}
 };

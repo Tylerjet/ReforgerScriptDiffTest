@@ -73,6 +73,10 @@ class SCR_MapMarkerSyncComponent : ScriptComponent
 		
 		markerData.SetMarkerID(m_iID);
 		markerData.SetMarkerOwnerID(SCR_PlayerController.Cast(GetOwner()).GetPlayerId());
+		
+		Faction markerFaction = SCR_FactionManager.SGetPlayerFaction(markerData.GetMarkerOwnerID());
+		if (markerFaction)
+			markerData.SetMarkerFactionKey(markerFaction.GetFactionKey());
 
 		m_OwnedMarkers.Insert(m_iID);
 		markerMgr.OnAddSynchedMarker(markerData);	// add server side

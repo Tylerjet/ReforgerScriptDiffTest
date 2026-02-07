@@ -105,7 +105,6 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 			resourceContainer = resourceComponent.GetContainer(EResourceType.SUPPLIES);
 		
 		UpdateTotalResources(GetTotalResources());
-		m_CostResourceHolder.SetVisible(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -122,8 +121,19 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 	//------------------------------------------------------------------------------------------------
 	void UpdateTotalResources(float totalResources)
 	{
-		if (!m_CostResourceHolderText)
+		if (!m_CostResourceHolderText || !m_CostResourceHolder)
 			return;
+		
+		if (totalResources < 0)
+		{
+			SetItemAvailability(true);
+			m_CostResourceHolder.SetVisible(false);
+			return;
+		}
+		else 
+		{
+			m_CostResourceHolder.SetVisible(true);
+		}
 		
 		m_CostResourceHolderText.SetText(totalResources.ToString());
 		
@@ -152,6 +162,18 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
  	//------------------------------------------------------------------------------------------------
 	float GetTotalResources()
 	{
+		m_fSupplyCost = 0;
+		
+		IEntity storageEnt = GetStorageUI().GetCurrentNavigationStorage().GetOwner();
+		
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(storageEnt.FindComponent(SCR_ArsenalComponent));
+		if (arsenalComponent && !arsenalComponent.IsArsenalUsingSupplies())
+		{
+			m_fSupplyCost = -1;
+			return m_fSupplyCost;
+		}
+		
+		
 		if (!m_pItem || !m_pItem.GetOwner())
 			return 0;
 		
@@ -159,10 +181,7 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 		if (!entityCatalogManager)
 			return 0;
 		
-		IEntity storageEnt = GetStorageUI().GetCurrentNavigationStorage().GetOwner();
-		
 		SCR_Faction faction;
-		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(storageEnt.FindComponent(SCR_ArsenalComponent));
 		if (arsenalComponent)
 			faction = arsenalComponent.GetAssignedFaction();
 		
@@ -181,7 +200,7 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 		if (!data)
 			return 0;
 		
-		m_fSupplyCost = data.GetSupplyCost();;
+		m_fSupplyCost = data.GetSupplyCost();
 		
 		if (!m_ArsenalResourceComponent)
 			return m_fSupplyCost;

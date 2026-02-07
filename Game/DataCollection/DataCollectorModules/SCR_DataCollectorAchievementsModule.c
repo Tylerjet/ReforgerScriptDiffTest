@@ -24,6 +24,13 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		
 		// Achievement IVORY_TICKLER || PIPING_UP
 		SCR_PlayInstrument.GetOnInstrumentPlayed().Insert(InstrumentPlayed);
+
+		// Achievement TRUCKER_JOE
+		if (rplComp.IsMaster())
+		{
+			// Invoke this only as authority
+			SCR_CampaignNetworkComponent.GetOnSuppliesDelivered().Insert(SuppliesDelivered);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -357,11 +364,16 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void SuppliesDelivered(int playerId, int numberOfSupplies)
+	protected void SuppliesDelivered(int playerId, int suppliesDelivered, int totalSuppliesDelivered)
 	{
 		// Achievement TRUCKER_JOE
-		// Delivered 'numberOfSupplies' supplies to captured locations in a single Conflict play session.
-		// Help me Mario!
+		const int TARGET_AMOUNT = 5000;
+
+		if (totalSuppliesDelivered < TARGET_AMOUNT)
+			return;
+
+		Print("Player with id " + playerId + " delivered lots of supplies!", LogLevel.DEBUG);
+		UnlockAchievement(playerId, AchievementId.TRUCKER_JOE);
 	}
 	
 	//------------------------------------------------------------------------------------------------

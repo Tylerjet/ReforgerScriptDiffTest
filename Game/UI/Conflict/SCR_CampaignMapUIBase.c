@@ -138,6 +138,34 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void FlashBaseIcon(float remainingTime = 0, Faction faction = null, bool changeToDefault = false, bool infiniteTimer = false)
+	{
+		GetGame().GetCallqueue().Remove(FlashBaseIcon);
+
+		// Flash the icon only if base faction is known to player's faction
+		// Otherwise just switch to default
+		if (m_Base.IsHQRadioTrafficPossible(SCR_FactionManager.SGetLocalPlayerFaction()))
+		{
+			if (changeToDefault)
+				SetBaseIconFactionColor(m_Base.GetCampaignFaction());
+			else
+				SetBaseIconFactionColor(faction);
+		}
+		else
+		{
+			if (!changeToDefault)
+				return;
+
+			SetBaseIconFactionColor(null);
+		}
+
+		remainingTime -= SCR_CampaignFeedbackComponent.ICON_FLASH_PERIOD;
+
+		if (infiniteTimer || remainingTime > 0 || !changeToDefault)
+			GetGame().GetCallqueue().CallLater(FlashBaseIcon, SCR_CampaignFeedbackComponent.ICON_FLASH_PERIOD * 1000, false, remainingTime, faction, !changeToDefault, infiniteTimer);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		if (m_wImageOverlay && w == m_wImageOverlay && !m_wBaseOverlay.IsEnabled())
@@ -538,6 +566,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		// Compose proper map info based on the base type and ownership
 		LocalizedString suppliesString;
 		string suppliesInfo;
+		int income;
 
 		if (m_Base.GetType() == SCR_ECampaignBaseType.BASE)
 		{
@@ -548,6 +577,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			{
 				suppliesString = "#AR-Campaign_BaseSuppliesAmount";
 				suppliesInfo = m_Base.GetSupplies().ToString();
+				income = m_Base.GetSuppliesIncome();
 
 				if (!m_Base.IsHQ() && !shownRespawnCooldown.IsEmpty())
 				{
@@ -569,7 +599,11 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			suppliesImg.LoadImageFromSet(0, imageset, "SuppliesBig");
 		}
 
-		supplies.SetTextFormat(suppliesString, suppliesInfo, m_Base.GetSuppliesMax());
+		if (income > 0)
+			supplies.SetTextFormat(suppliesString + " (+%3)", suppliesInfo, m_Base.GetSuppliesMax(), income);
+		else
+			supplies.SetTextFormat(suppliesString, suppliesInfo, m_Base.GetSuppliesMax());
+
 		respawn.SetTextFormat(shownRespawnCooldown, m, sStr);
 
 		/*if (m_wSuppliesText)

@@ -20,6 +20,7 @@ class SCR_BuildingTutorialStage18 : SCR_BaseCampaignTutorialArlandStage
 			return;
 		
 		GetGame().GetCallqueue().CallLater(CheckVicinity, 1000, true);
+		m_TutorialComponent.SetStagesComplete(8, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

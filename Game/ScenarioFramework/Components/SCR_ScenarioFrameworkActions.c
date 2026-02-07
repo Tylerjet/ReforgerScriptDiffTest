@@ -429,7 +429,7 @@ class SCR_ScenarioFrameworkActionSetBriefingEntryText : SCR_ScenarioFrameworkAct
 	protected FactionKey m_sFactionKey;
 
 	[Attribute()]
-	protected string m_sCustomEntryName;
+	protected int m_iEntryID;
 
 	[Attribute()]
 	protected string m_sTargetText;
@@ -465,15 +465,17 @@ class SCR_ScenarioFrameworkActionSetBriefingEntryText : SCR_ScenarioFrameworkAct
 		foreach (SCR_JournalEntry journalEntry : journalEntries)
 		{
 
-			if (journalEntry.GetCustomEntryName() != m_sCustomEntryName)
+			if (journalEntry.GetEntryID() != m_iEntryID)
 				continue;
 
 			targetJournalEntry = journalEntry;
 			break;
 		}
+		
+		if (!targetJournalEntry)
+			return;
 
-		if (targetJournalEntry)
-			targetJournalEntry.SetEntryText(WidgetManager.Translate(m_sTargetText));
+		targetJournalEntry.SetEntryText(WidgetManager.Translate(m_sTargetText));
 	}
 }
 
@@ -485,7 +487,7 @@ class SCR_ScenarioFrameworkActionAppendBriefingEntryText : SCR_ScenarioFramework
 	protected FactionKey m_sFactionKey;
 
 	[Attribute()]
-	protected string m_sCustomEntryName;
+	protected int m_iEntryID;
 
 	[Attribute()]
 	protected string m_sTargetText;
@@ -521,16 +523,18 @@ class SCR_ScenarioFrameworkActionAppendBriefingEntryText : SCR_ScenarioFramework
 		foreach (SCR_JournalEntry journalEntry : journalEntries)
 		{
 
-			if (journalEntry.GetCustomEntryName() != m_sCustomEntryName)
+			if (journalEntry.GetEntryID() != m_iEntryID)
 				continue;
 
 			targetJournalEntry = journalEntry;
 			break;
 		}
+		
+		if (!targetJournalEntry)
+			return;
 
 		string finalText = targetJournalEntry.GetEntryText() + "<br/>" + "<br/>" + m_sTargetText;
-		if (targetJournalEntry)
-			targetJournalEntry.SetEntryText(finalText);
+		targetJournalEntry.SetEntryText(finalText);
 	}
 }
 
@@ -542,11 +546,11 @@ class SCR_ScenarioFrameworkActionAppendBriefingEntryTextBasedOnTask : SCR_Scenar
 	protected FactionKey m_sFactionKey;
 
 	[Attribute()]
-	protected string m_sCustomEntryName;
+	protected int m_iEntryID;
 
 	[Attribute(desc: "From which task to fetch text")];
 	protected ref SCR_ScenarioFrameworkGet m_Getter;
-
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
@@ -586,7 +590,7 @@ class SCR_ScenarioFrameworkActionAppendBriefingEntryTextBasedOnTask : SCR_Scenar
 		foreach (SCR_JournalEntry journalEntry : journalEntries)
 		{
 
-			if (journalEntry.GetCustomEntryName() != m_sCustomEntryName)
+			if (journalEntry.GetEntryID() != m_iEntryID)
 				continue;
 
 			targetJournalEntry = journalEntry;
@@ -596,8 +600,16 @@ class SCR_ScenarioFrameworkActionAppendBriefingEntryTextBasedOnTask : SCR_Scenar
 		if (!targetJournalEntry)
 			return;
 		
-		string finalText = targetJournalEntry.GetEntryText() + "<br/><br/>" + task.GetTaskExecutionBriefing();
-		respawnBriefing.RewriteEntryMain(m_sFactionKey, m_sCustomEntryName, finalText);
+		array<string> previousStrings = {};
+		array<string> taskStrings = {};
+		previousStrings = respawnBriefing.GetBriefingStringParamByID(m_iEntryID);
+		if (previousStrings)
+			taskStrings.InsertAll(previousStrings);
+		
+		taskStrings.Insert(task.GetTaskExecutionBriefing());
+		taskStrings.Insert(task.GetSpawnedEntityName());
+
+		respawnBriefing.RewriteEntry_SA(m_sFactionKey, m_iEntryID, targetJournalEntry.GetEntryText(), taskStrings);
 	}
 }
 
@@ -609,7 +621,7 @@ class SCR_ScenarioFrameworkActionSetBriefingEntryTextBasedOnGeneratedTasks : SCR
 	protected FactionKey m_sFactionKey;
 
 	[Attribute()]
-	protected string m_sCustomEntryName;
+	protected int m_iEntryID;
 
 	[Attribute(desc: "Text that you want to use. Leave empty if you want to utilize the one set in config.")]
 	protected string m_sTargetText;
@@ -645,7 +657,7 @@ class SCR_ScenarioFrameworkActionSetBriefingEntryTextBasedOnGeneratedTasks : SCR
 		foreach (SCR_JournalEntry journalEntry : journalEntries)
 		{
 
-			if (journalEntry.GetCustomEntryName() != m_sCustomEntryName)
+			if (journalEntry.GetEntryID() != m_iEntryID)
 				continue;
 
 			targetJournalEntry = journalEntry;
@@ -659,10 +671,17 @@ class SCR_ScenarioFrameworkActionSetBriefingEntryTextBasedOnGeneratedTasks : SCR
 		array<SCR_BaseTask> tasks = {};
 		taskManager.GetTasks(tasks);
 
+		array<string> taskStrings = {};
+		foreach (SCR_BaseTask task : tasks)
+		{
+			taskStrings.Insert(task.GetTitle());
+			taskStrings.Insert("");
+		}
+		
 		string tasksToShow;
 		foreach (SCR_BaseTask task : tasks)
 		{
-			tasksToShow = tasksToShow + "<br/>" + string.Format(WidgetManager.Translate(task.GetTitle()));
+			tasksToShow = tasksToShow + "<br/>" + string.Format(task.GetTitle());
 		}
 		
 		if (!targetJournalEntry)
@@ -671,8 +690,7 @@ class SCR_ScenarioFrameworkActionSetBriefingEntryTextBasedOnGeneratedTasks : SCR
 		if (m_sTargetText.IsEmpty())
 			m_sTargetText = targetJournalEntry.GetEntryText();
 
-		string finalText = string.Format(WidgetManager.Translate(m_sTargetText), tasksToShow);
-		respawnBriefing.RewriteEntryMain(m_sFactionKey, m_sCustomEntryName, finalText);
+		respawnBriefing.RewriteEntry_SA(m_sFactionKey, m_iEntryID, m_sTargetText, taskStrings);
 	}
 }
 
@@ -684,11 +702,11 @@ class SCR_ScenarioFrameworkActionSetExecutionEntryTextBasedOnGeneratedTasks : SC
 	protected FactionKey m_sFactionKey;
 
 	[Attribute()]
-	protected string m_sCustomEntryName;
+	protected int m_iEntryID;
 
 	[Attribute(desc: "Text that you want to use. Leave empty if you want to utilize the one set in config.")]
 	protected string m_sTargetText;
-
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
 	{
@@ -720,12 +738,15 @@ class SCR_ScenarioFrameworkActionSetExecutionEntryTextBasedOnGeneratedTasks : SC
 		foreach (SCR_JournalEntry journalEntry : journalEntries)
 		{
 
-			if (journalEntry.GetCustomEntryName() != m_sCustomEntryName)
+			if (journalEntry.GetEntryID() != m_iEntryID)
 				continue;
 
 			targetJournalEntry = journalEntry;
 			break;
 		}
+		
+		if (!targetJournalEntry)
+			return;
 		
 		SCR_BaseTaskManager taskManager = GetTaskManager();
 		if (!taskManager)
@@ -742,16 +763,17 @@ class SCR_ScenarioFrameworkActionSetExecutionEntryTextBasedOnGeneratedTasks : SC
 		}
 
 		string tasksToShow;
+		array<string> taskStrings = {};
 		foreach (SCR_ScenarioFrameworkTask frameworkTask : frameworkTasks)
 		{
-			tasksToShow = tasksToShow + "<br/><br/>" + frameworkTask.GetTaskExecutionBriefing();
+			taskStrings.Insert(frameworkTask.GetTaskExecutionBriefing());
+			taskStrings.Insert(frameworkTask.GetSpawnedEntityName());
 		}
 
 		if (m_sTargetText.IsEmpty())
 			m_sTargetText = targetJournalEntry.GetEntryText();
 		
-		string finalText = string.Format(WidgetManager.Translate(m_sTargetText), tasksToShow);
-		respawnBriefing.RewriteEntryMain(m_sFactionKey, m_sCustomEntryName, finalText);
+		respawnBriefing.RewriteEntry_SA(m_sFactionKey, m_iEntryID, m_sTargetText, taskStrings);
 	}
 }
 
@@ -1437,6 +1459,44 @@ class SCR_ScenarioFrameworkActionFailTaskIfVehiclesInTriggerDestroyed : SCR_Scen
 		trigger = SCR_CharacterTriggerEntity.Cast(entityFrom);
 		if (trigger)
 			AddListener(object, trigger);
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkActionToggleLights : SCR_ScenarioFrameworkActionBase
+{
+	[Attribute(desc: "Target entity to manipulate lights with")];
+	protected ref SCR_ScenarioFrameworkGet m_Getter;
+	
+	[Attribute(defvalue: ELightType.Head.ToString(), UIWidgets.ComboBox, desc: "Which lights to be toggled", "", ParamEnumArray.FromEnum(ELightType))]
+	protected ELightType m_eLightType;
+	
+	[Attribute(defvalue: "1", desc: "If true, light will be turned on. Otherwise it will turn it off.")]
+	protected bool m_bTurnedOn;
+
+	//------------------------------------------------------------------------------------------------
+	override void OnActivate(IEntity object)
+	{
+		if (!CanActivate())
+			return;
+		
+		if (!m_Getter)
+			return;
+
+		SCR_ScenarioFrameworkParam<IEntity> entityWrapper = SCR_ScenarioFrameworkParam<IEntity>.Cast(m_Getter.Get());
+		if (!entityWrapper)
+			return;
+
+		IEntity entityFrom = IEntity.Cast(entityWrapper.GetValue());
+		if (!entityFrom)
+			return;
+		
+		BaseLightManagerComponent lightManager = BaseLightManagerComponent.Cast(entityFrom.FindComponent(BaseLightManagerComponent));
+		if (!lightManager)
+			return;
+		
+		lightManager.SetLightsState(m_eLightType, m_bTurnedOn);
 	}
 }
 

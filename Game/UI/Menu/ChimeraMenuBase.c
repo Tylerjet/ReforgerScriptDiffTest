@@ -55,7 +55,6 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	ScrollTest,
 	LoadingOverlay,
 	CreateAccountDialog,
-	TutorialDialog,
 	CreditsMenu,
 	WelcomeDialog,
 	AddonPresetDialog,

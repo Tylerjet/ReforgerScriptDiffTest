@@ -1185,7 +1185,14 @@ class SCR_BaseGameMode : BaseGameMode
 			// If player has not been enqueued yet, ignore the spawn timer
 			if (m_RespawnTimerComponent.IsPlayerEnqueued(playerId))
 			{
-				if (!m_RespawnTimerComponent.GetCanPlayerSpawn(playerId))
+				float spawnPointTime = 0;
+				if (data.IsInherited(SCR_SpawnPointSpawnData))
+				{
+					SCR_SpawnPointSpawnData spData = SCR_SpawnPointSpawnData.Cast(data);
+					spawnPointTime = spData.GetSpawnPoint().GetRespawnTime();
+				}
+
+				if (!m_RespawnTimerComponent.GetCanPlayerSpawn(playerId, spawnPointTime))
 				{
 					result = SCR_ESpawnResult.NOT_ALLOWED_TIMER;
 					return false;

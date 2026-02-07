@@ -291,7 +291,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	{
 		int addonsCount = SCR_AddonManager.GetInstance().CountOfEnabledAddons();
 		
-		if(addonsCount == 0)
+		if (addonsCount == 0)
 		{
 			SCR_WorkshopAddonPreset empty = null;
 			if (!CanCreatePreset(empty))

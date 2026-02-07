@@ -17,7 +17,7 @@ class SCR_CampaignBuildingBudgetEditorUIComponent : SCR_BudgetEditorUIComponent
 			if (!m_aVisibleBudgetUI.Contains(budget.GetBudgetType()))
 				continue;
 						
-			int MaxBudgetValue =  GetMaxBudgetValue();
+			int MaxBudgetValue = GetMaxBudgetValue();
 			
 			if (MaxBudgetValue == UNLIMITED_PROP_BUDGET)
 			{

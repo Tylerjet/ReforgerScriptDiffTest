@@ -30,28 +30,20 @@ class SCR_FieldManualUI : MenuRootBase
 	protected bool m_bIsInSearchMode;
 	protected bool m_bOpenedFromOutside;
 
-	protected ResourceName m_ConfigPath;
-
-	protected static const int S_TILES_GRID_WIDTH = 5;
-	protected static const ResourceName S_ENTRY_TITLE_LAYOUT = "{B3656334DE3D701F}UI/layouts/WidgetLibrary/TextWidgets/Text_Heading3.layout";
-	protected static const string S_SEARCH_RESULT_KEY = "#AR-FieldManual_SearchResult";
-	protected static const string S_SEARCH_NO_RESULT_KEY = "#AR-FieldManual_SearchResult_None";
-
 	protected bool m_bArmaWarning;
 
-	//------------------------------------------------------------------------------------------------
-	void SCR_FieldManualUI()
-	{
-		m_aAllEntries = {};
-		m_mWidgetEntryMap = new map<Widget, ref SCR_FieldManualConfigEntry>();
-		m_mWidgetSubCategoryMap = new map<Widget, ref SCR_FieldManualConfigCategory>();
-	}
+	protected static const int TILES_GRID_WIDTH = 5;
+	protected static const string SEARCH_RESULT_KEY = "#AR-FieldManual_SearchResult";
+	protected static const string SEARCH_NO_RESULT_KEY = "#AR-FieldManual_SearchResult_None";
+	protected static const string SCROLL_NAME = "mainScroll";
+	protected static const int ENTRY_INPUT_REFRESH_DELAY = 500;					// min time in ms before KBM/pad entry refreshes
+	protected static const int ENTRY_SCROLL_INPUT_REFRESH_DELAY = 1000 / 60;	// time in ms between KBM/pad entry scroll refreshes
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuOpen()
 	{
 		super.OnMenuOpen();
-		
+
 		Widget rootWidget = GetRootWidget();
 		SCR_ConfigUIComponent component = SCR_ConfigUIComponent.Cast(rootWidget.FindHandler(SCR_ConfigUIComponent));
 		if (!component)
@@ -78,8 +70,9 @@ class SCR_FieldManualUI : MenuRootBase
 		Widget backgroundImage = GetRootWidget().FindAnyWidget("MenuBackground");
 		if (blur && isMainMenu)
 			blur.RemoveFromHierarchy();
+
 		if (backgroundImage && !isMainMenu)
-		    backgroundImage.RemoveFromHierarchy();
+			backgroundImage.RemoveFromHierarchy();
 
 		Widget menuFrame = rootWidget.FindAnyWidget("MenuFrame");
 		TextWidget menuTitle = TextWidget.Cast(menuFrame.FindAnyWidget("Title"));
@@ -129,11 +122,8 @@ class SCR_FieldManualUI : MenuRootBase
 
 		// searchbar functionality is not mandatory
 		m_MenuSearchbar = SCR_EditBoxSearchComponent.Cast(SCR_EditBoxSearchComponent.GetEditBoxComponent("Searchbar", rootWidget));
-		if (m_MenuSearchbar)
-		{
-			if (m_MenuSearchbar.m_OnConfirm)
+		if (m_MenuSearchbar && m_MenuSearchbar.m_OnConfirm)
 				m_MenuSearchbar.m_OnConfirm.Insert(ProcessSearch);
-		}
 
 		m_MenuBtnBack.m_OnActivated.Insert(CloseMenuOrReadingPanel);
 
@@ -144,7 +134,7 @@ class SCR_FieldManualUI : MenuRootBase
 			inputManager.AddActionListener("MenuOpenWB", EActionTrigger.DOWN, CloseMenuOrReadingPanel);
 			inputManager.AddActionListener("MenuBackWB", EActionTrigger.DOWN, CloseMenuOrReadingPanel);
 		}
-#endif
+#endif // WORKBENCH
 
 		m_SubCategoryButtonEventHandler = new SCR_FieldManualSubCategoryScriptedWidgetEventHandler(this);
 		m_EntryButtonEventHandler = new SCR_FieldManualEntryScriptedWidgetEventHandler(this);
@@ -154,11 +144,26 @@ class SCR_FieldManualUI : MenuRootBase
 	protected override void OnMenuShow()
 	{
 		super.OnMenuShow();
-		
+
 		CreateCategoryMenuWidgets();
 		CloseReadingPanel();
 		OpenFirstSubCategory();
 	}
+
+#ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
+	protected override void OnMenuClose()
+	{
+		super.OnMenuClose();
+
+		InputManager inputManager = GetGame().GetInputManager();
+		if (inputManager)
+		{
+			inputManager.RemoveActionListener("MenuOpenWB", EActionTrigger.DOWN, CloseMenuOrReadingPanel);
+			inputManager.RemoveActionListener("MenuBackWB", EActionTrigger.DOWN, CloseMenuOrReadingPanel);
+		}
+	}
+#endif // WORKBENCH
 
 	//------------------------------------------------------------------------------------------------
 	void OnSubCategoryClicked(Widget w)
@@ -173,11 +178,12 @@ class SCR_FieldManualUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] w
 	void OnTileClicked(Widget w)
 	{
 		m_bIsInSearchMode = false;
 		SetCurrentEntryByWidget(w);
-		
+
 		if (m_wLastClickedSubCategory)
 			GetGame().GetWorkspace().SetFocusedWidget(m_wLastClickedSubCategory);
 	}
@@ -197,20 +203,16 @@ class SCR_FieldManualUI : MenuRootBase
 		if (assetImage)
 		{
 			ImageWidget backgroundImageWidget = ImageWidget.Cast(createdWidget.FindAnyWidget("FullBackground"));
-			if (backgroundImageWidget && m_ConfigRoot.m_aTileBackgrounds && m_ConfigRoot.m_aTileBackgrounds.Count())
-				backgroundImageWidget.LoadImageTexture(0, m_ConfigRoot.m_aTileBackgrounds.Get(Math.RandomInt(0, m_ConfigRoot.m_aTileBackgrounds.Count())));
+			if (backgroundImageWidget && m_ConfigRoot.m_aTileBackgrounds && !m_ConfigRoot.m_aTileBackgrounds.IsEmpty())
+				backgroundImageWidget.LoadImageTexture(0, m_ConfigRoot.m_aTileBackgrounds.GetRandomElement());
 
 			ImageWidget imageWidget = ImageWidget.Cast(assetImage.FindAnyWidget("Image"));
 			if (imageWidget)
 			{
 				if (!entry.m_Image.IsEmpty())
-				{
 					imageWidget.LoadImageTexture(0, entry.m_Image);
-				}
 				else
-				{
 					imageWidget.SetVisible(false);
-				}
 			}
 		}
 
@@ -250,7 +252,7 @@ class SCR_FieldManualUI : MenuRootBase
 
 		SCR_WidgetHelper.RemoveAllChildren(m_wMenuGridLayout);
 
-		if (!entries || entries.Count() < 1)
+		if (!entries || entries.IsEmpty())
 			return;
 
 		m_mWidgetEntryMap.Clear();
@@ -268,10 +270,10 @@ class SCR_FieldManualUI : MenuRootBase
 			GridSlot.SetRow(assetCard, line);
 
 			column++;
-			if (column >= S_TILES_GRID_WIDTH)
+			if (column >= TILES_GRID_WIDTH)
 			{
 				column = 0;
-				line += 1;
+				line++;
 			}
 
 			button = ButtonWidget.Cast(SCR_WidgetHelper.GetWidgetOrChild(assetCard, "AssetCard0"));
@@ -281,13 +283,13 @@ class SCR_FieldManualUI : MenuRootBase
 				m_mWidgetEntryMap.Insert(button, entry);
 			}
 		}
-		
+
 		if (m_wGridScrollLayoutWidget)
 			m_wGridScrollLayoutWidget.SetSliderPos(0, 0);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! sets the current entry to read - can be null (leave reading mode) or any SCR_FieldManualConfigEntry
+	//! Sets the current entry to read - can be null (leave reading mode) or any SCR_FieldManualConfigEntry
 	protected void SetCurrentEntry(SCR_FieldManualConfigEntry entry)
 	{
 		if (!m_wPageFrame || !m_wPageEntryTitle)
@@ -317,17 +319,15 @@ class SCR_FieldManualUI : MenuRootBase
 		m_wPageEntryTitle.SetText(entry.m_sTitle);
 
 		// entry tab management - disabled for now
-/*
-		if (m_PageTabView)
-		{
-			while (m_PageTabView.GetTabCount() > 0)
-			{
-				m_PageTabView.RemoveTab(0);
-			}
-			m_PageTabView.AddTab("", entry.m_sTitle);
-			m_PageTabView.ShowTab(0, false, false);
-		}
-// */
+//		if (m_PageTabView)
+//		{
+//			while (m_PageTabView.GetTabCount() > 0)
+//			{
+//				m_PageTabView.RemoveTab(0);
+//			}
+//			m_PageTabView.AddTab("", entry.m_sTitle);
+//			m_PageTabView.ShowTab(0, false, false);
+//		}
 
 		Widget readingWidget = entry.CreateWidget(m_wPageFrame);
 		SCR_FieldManualConfigEntry_Weapon weaponEntry = SCR_FieldManualConfigEntry_Weapon.Cast(entry);
@@ -336,7 +336,58 @@ class SCR_FieldManualUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Add current entry's refresh to callqueue (used by KBM/Gamepad switching event)
+	protected void QueueRefreshCurrentEntry()
+	{
+		if (!m_CurrentEntry || !m_CurrentEntry.CanRefresh())
+			return;
+
+		// safety to not saturate the call queue if someone has fun using pad and kbm at the same time
+		GetGame().GetCallqueue().Remove(RefreshCurrentEntry); // in case it was added
+		GetGame().GetCallqueue().CallLater(RefreshCurrentEntry, ENTRY_INPUT_REFRESH_DELAY, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Re-creates the current entry (called by callqueue added in QueueRefreshCurrentEntry)
+	protected void RefreshCurrentEntry()
+	{
+		if (!m_CurrentEntry.CanRefresh())
+			return;
+
+		float x, y;
+		ScrollLayoutWidget scroll = ScrollLayoutWidget.Cast(m_wPageFrame.FindWidget(SCROLL_NAME)); // a bit ugly?
+		if (scroll)
+			scroll.GetSliderPos(x, y);
+
+		SetCurrentEntry(m_CurrentEntry);
+
+		if (!scroll)
+			return;
+
+		scroll = ScrollLayoutWidget.Cast(m_wPageFrame.FindWidget(SCROLL_NAME));
+		if (scroll)
+			SetScrollAfterRefresh(scroll, x, y);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetScrollAfterRefresh(notnull ScrollLayoutWidget scroll, float x, float y)
+	{
+		float w, h;
+		scroll.GetScreenSize(w, h);
+		if (h <= 0) // ugly, but no other choice as setting scroll right after Widget creation does nothing
+		{
+			GetGame().GetCallqueue().CallLater(SetScrollAfterRefresh, ENTRY_SCROLL_INPUT_REFRESH_DELAY, false, scroll, x, y);
+		}
+		else
+		{
+			GetGame().GetCallqueue().Remove(SetScrollAfterRefresh); // safety, as spam occured
+			scroll.SetSliderPos(x, y);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Opens an entry "from outside", e.g a hint
+	//! \param entryId if EFieldManualEntryId.NONE is used or if the entry is not found, the Field Manual is normally opened
 	void OpenEntry(EFieldManualEntryId entryId)
 	{
 		if (entryId == EFieldManualEntryId.NONE)
@@ -373,9 +424,10 @@ class SCR_FieldManualUI : MenuRootBase
 	protected void FillEntry_Weapon(notnull Widget widget, notnull SCR_FieldManualConfigEntry_Weapon entry)
 	{
 		Widget weaponRender = widget.FindAnyWidget("weaponRender");
-		if (true /* remove later */ || !FillEntry_Weapon_Render(RenderTargetWidget.Cast(weaponRender), entry.m_WeaponEntityPath))
+		if (true /* remove later */ || !FillEntry_Weapon_Render(RenderTargetWidget.Cast(weaponRender), entry.m_sWeaponEntityPath))
 			if (weaponRender)
 				weaponRender.RemoveFromHierarchy();
+
 		FillEntry_Weapon_Statistics(widget.FindAnyWidget("statsLayout"), entry);
 	}
 
@@ -393,7 +445,7 @@ class SCR_FieldManualUI : MenuRootBase
 		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
 		if (!world)
 			return false;
-		
+
 		ItemPreviewManagerEntity manager = world.GetItemPreviewManager();
 		if (!manager)
 			return false;
@@ -419,113 +471,108 @@ class SCR_FieldManualUI : MenuRootBase
 			return;
 		}
 
-		FillEntry_Weapon_Statistics_Weight(statsLayout, weaponStatsHelper);
-		FillEntry_Weapon_Statistics_Zeroing(statsLayout, weaponStatsHelper);
-		FillEntry_Weapon_Statistics_DefaultZeroing(statsLayout, weaponStatsHelper);
+		FillEntry_Weapon_Statistics_Mass(statsLayout, weaponStatsHelper);
+		FillEntry_Weapon_Statistics_SightAdjustments(statsLayout, weaponStatsHelper);
+		FillEntry_Weapon_Statistics_DefaultSightAdjustment(statsLayout, weaponStatsHelper);
 		FillEntry_Weapon_Statistics_RateOfFire(statsLayout, weaponStatsHelper);
 		FillEntry_Weapon_Statistics_MuzzleVelocity(statsLayout, weaponStatsHelper);
 		FillEntry_Weapon_Statistics_FireModes(statsLayout, weaponStatsHelper);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void FillEntry_Weapon_Statistics_Weight(notnull Widget statsLayout, notnull SCR_FieldManualUI_WeaponStatsHelper weaponStatsHelper)
+	protected void FillEntry_Weapon_Statistics_Mass(notnull Widget statsLayout, notnull SCR_FieldManualUI_WeaponStatsHelper weaponStatsHelper)
 	{
-		SCR_FieldManual_StatisticsLineComponent statsWeight = SCR_FieldManual_StatisticsLineComponent.GetComponent(statsLayout, "statsWeight");
-		if (!statsWeight || weaponStatsHelper.GetWeight() < 0)
-		{
-			if (statsWeight)
-				statsWeight.RemoveWidgetFromHierarchy();
-		}
+		SCR_FieldManual_StatisticsLineComponent statsMass = SCR_FieldManual_StatisticsLineComponent.GetComponent(statsLayout, "statsWeight");
+		if (!statsMass)
+			return;
+
+		float mass = weaponStatsHelper.GetMass();
+		if (mass < 0)
+			statsMass.RemoveWidgetFromHierarchy();
 		else
-		{
-			statsWeight.SetTranslatedValue("#AR-ValueUnit_Short_Kilograms", weaponStatsHelper.GetWeight().ToString(-1, 2));
-		}
+			statsMass.SetTranslatedValue("#AR-ValueUnit_Short_Kilograms", mass.ToString(-1, 2));
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void FillEntry_Weapon_Statistics_Zeroing(notnull Widget statsLayout, notnull SCR_FieldManualUI_WeaponStatsHelper weaponStatsHelper)
+	protected void FillEntry_Weapon_Statistics_SightAdjustments(notnull Widget statsLayout, notnull SCR_FieldManualUI_WeaponStatsHelper weaponStatsHelper)
 	{
-		SCR_FieldManual_StatisticsLineComponent statsZeroing = SCR_FieldManual_StatisticsLineComponent.GetComponent(statsLayout, "statsZeroing");
-		if (!statsZeroing || !weaponStatsHelper.GetZeroing() || weaponStatsHelper.GetZeroing().IsEmpty())
+		SCR_FieldManual_StatisticsLineComponent statsSightAdjustments = SCR_FieldManual_StatisticsLineComponent.GetComponent(statsLayout, "statsSightAdjustments");
+		if (!statsSightAdjustments)
+			return;
+
+		array<int> sightDistanceSettings = weaponStatsHelper.GetSightDistanceSettings();
+		if (!sightDistanceSettings || sightDistanceSettings.IsEmpty())
 		{
-			if (statsZeroing)
-				statsZeroing.RemoveWidgetFromHierarchy();
+			statsSightAdjustments.RemoveWidgetFromHierarchy();
+			return;
 		}
-		else
+
+		array<string> settingsStr = {};
+		foreach (int sightDistanceSetting : sightDistanceSettings)
 		{
-			array<string> zeroingStr = {};
-			array<int> zeroing = weaponStatsHelper.GetZeroing();
-			for (int i = 0, size = zeroing.Count(); i < size; i++)
-			{
-				zeroingStr.Insert(WidgetManager.Translate("#AR-ValueUnit_Short_Meters", zeroing[i]));
-			}
-			statsZeroing.SetValue(ArrayJoin(zeroingStr));
+			settingsStr.Insert(WidgetManager.Translate("#AR-ValueUnit_Short_Meters", sightDistanceSetting));
 		}
+
+		statsSightAdjustments.SetValue(ArrayJoin(settingsStr));
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void FillEntry_Weapon_Statistics_DefaultZeroing(notnull Widget statsLayout, notnull SCR_FieldManualUI_WeaponStatsHelper weaponStatsHelper)
+	protected void FillEntry_Weapon_Statistics_DefaultSightAdjustment(notnull Widget statsLayout, notnull SCR_FieldManualUI_WeaponStatsHelper weaponStatsHelper)
 	{
-		SCR_FieldManual_StatisticsLineComponent statsDefaultZeroing = SCR_FieldManual_StatisticsLineComponent.GetComponent(statsLayout, "statsDefaultZeroing");
-		if (!statsDefaultZeroing || weaponStatsHelper.GetDefaultZeroing() < 1)
-		{
-			if (statsDefaultZeroing)
-				statsDefaultZeroing.RemoveWidgetFromHierarchy();
-		}
+		SCR_FieldManual_StatisticsLineComponent statsDefaultSightAdjustment = SCR_FieldManual_StatisticsLineComponent.GetComponent(statsLayout, "statsDefaultSightAdjustment");
+		if (!statsDefaultSightAdjustment)
+			return;
+
+		int defaultSightDistanceSetting = weaponStatsHelper.GetDefaultSightDistanceSetting();
+		if (defaultSightDistanceSetting < 0)
+			statsDefaultSightAdjustment.RemoveWidgetFromHierarchy();
 		else
-		{
-			statsDefaultZeroing.SetTranslatedValue("#AR-ValueUnit_Short_Meters", weaponStatsHelper.GetDefaultZeroing().ToString());
-		}
+			statsDefaultSightAdjustment.SetTranslatedValue("#AR-ValueUnit_Short_Meters", defaultSightDistanceSetting.ToString());
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void FillEntry_Weapon_Statistics_RateOfFire(notnull Widget statsLayout, notnull SCR_FieldManualUI_WeaponStatsHelper weaponStatsHelper)
 	{
 		SCR_FieldManual_StatisticsLineComponent statsRateOfFire = SCR_FieldManual_StatisticsLineComponent.GetComponent(statsLayout, "statsRateOfFire");
-		if (!statsRateOfFire || weaponStatsHelper.GetRateOfFire() < 1)
-		{
-			if (statsRateOfFire)
-				statsRateOfFire.RemoveWidgetFromHierarchy();
-		}
+		if (!statsRateOfFire)
+			return;
+
+		if (weaponStatsHelper.GetRateOfFire() < 1)
+			statsRateOfFire.RemoveWidgetFromHierarchy();
 		else
-		{
 			statsRateOfFire.SetTranslatedValue("#AR-ValueUnit_Short_RoundsPerMinute", weaponStatsHelper.GetRateOfFire().ToString());
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void FillEntry_Weapon_Statistics_MuzzleVelocity(notnull Widget statsLayout, notnull SCR_FieldManualUI_WeaponStatsHelper weaponStatsHelper)
 	{
 		SCR_FieldManual_StatisticsLineComponent statsMuzzleVelocity = SCR_FieldManual_StatisticsLineComponent.GetComponent(statsLayout, "statsMuzzleVelocity");
-		if (!statsMuzzleVelocity || weaponStatsHelper.m_iMuzzleVelocity < 1)
-		{
-			if (statsMuzzleVelocity)
+		if (!statsMuzzleVelocity)
+			return;
+
+		if (weaponStatsHelper.m_iMuzzleVelocity < 1)
 				statsMuzzleVelocity.RemoveWidgetFromHierarchy();
-		}
 		else
-		{
 			statsMuzzleVelocity.SetTranslatedValue("#AR-ValueUnit_Short_MetersPerSeconds", weaponStatsHelper.m_iMuzzleVelocity.ToString());
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void FillEntry_Weapon_Statistics_FireModes(notnull Widget statsLayout, notnull SCR_FieldManualUI_WeaponStatsHelper weaponStatsHelper)
 	{
 		SCR_FieldManual_StatisticsLineComponent statsFireModes = SCR_FieldManual_StatisticsLineComponent.GetComponent(statsLayout, "statsFireModes");
-		if (!statsFireModes || !weaponStatsHelper.GetFireModes() || weaponStatsHelper.GetFireModes().IsEmpty())
-		{
-			if (statsFireModes)
+		if (!statsFireModes)
+			return;
+
+		array<string> fireModes = weaponStatsHelper.GetFireModes();
+		if (!fireModes || fireModes.IsEmpty())
 				statsFireModes.RemoveWidgetFromHierarchy();
-		}
 		else
-		{
-			statsFireModes.SetValue(ArrayJoin(weaponStatsHelper.GetFireModes()));
-		}
+			statsFireModes.SetValue(ArrayJoin(fireModes));
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! one-time call that goes through all categories and entries and adds enabled entries to a one-level array
-	// to do: breakdown in smaller methods?
+	// TODO: break down in smaller methods?
 	protected void SetAllEntriesAndParents()
 	{
 		m_aAllEntries.Clear();
@@ -557,9 +604,11 @@ class SCR_FieldManualUI : MenuRootBase
 						entriesToRemove.Insert(entry);
 						continue;
 					}
+
 					entry.m_Parent = subCategory;
 					m_aAllEntries.Insert(entry);
 				}
+
 				foreach (SCR_FieldManualConfigEntry entry : entriesToRemove)
 				{
 					subCategory.m_aEntries.RemoveItemOrdered(entry);
@@ -573,16 +622,16 @@ class SCR_FieldManualUI : MenuRootBase
 
 				subCategory.m_Parent = category;
 			}
+
 			foreach (SCR_FieldManualConfigCategory subCategory : subCategoriesToRemove)
 			{
 				category.m_aCategories.RemoveItemOrdered(subCategory);
 			}
 
 			if (category.m_aEntries.IsEmpty() && category.m_aCategories.IsEmpty())
-			{
 				categoriesToRemove.Insert(category);
-			}
 		}
+
 		foreach (SCR_FieldManualConfigCategory category : categoriesToRemove)
 		{
 			m_ConfigRoot.m_aCategories.RemoveItemOrdered(category);
@@ -590,7 +639,7 @@ class SCR_FieldManualUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! creates main categories buttons list
+	//! Create main categories buttons list
 	protected void CreateCategoryMenuWidgets()
 	{
 		if (!m_ConfigRoot || !m_ConfigRoot.m_aCategories || !m_wMenuCategoryList)
@@ -601,9 +650,7 @@ class SCR_FieldManualUI : MenuRootBase
 		SCR_WidgetHelper.RemoveAllChildren(m_wMenuCategoryList);
 
 		if (m_wMenuTitle)
-		{
 			m_wMenuTitle.SetText(m_ConfigRoot.m_sTitle);
-		}
 
 		Widget subCategoryWidget;
 		ButtonWidget button;
@@ -628,7 +675,7 @@ class SCR_FieldManualUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! opens the first sub-category, showing its entries
+	//! Open the first sub-category, showing its entries
 	protected void OpenFirstSubCategory()
 	{
 		OnSubCategoryClicked(m_wFirstSubCategoryButton);
@@ -640,7 +687,7 @@ class SCR_FieldManualUI : MenuRootBase
 	// used in SCR_FieldManualSubCategoryScriptedWidgetEventHandler.OnClick
 	protected void ResetLastSearch()
 	{
-		m_sLastSearch = "";
+		m_sLastSearch = string.Empty;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -716,9 +763,9 @@ class SCR_FieldManualUI : MenuRootBase
 		if (m_BreadCrumbsComponent)
 		{
 			if (entries.IsEmpty())
-				m_BreadCrumbsComponent.SetRichFormat(S_SEARCH_NO_RESULT_KEY, originalSearch);
+				m_BreadCrumbsComponent.SetRichFormat(SEARCH_NO_RESULT_KEY, originalSearch);
 			else
-				m_BreadCrumbsComponent.SetRichFormat(S_SEARCH_RESULT_KEY, originalSearch, entries.Count().ToString());
+				m_BreadCrumbsComponent.SetRichFormat(SEARCH_RESULT_KEY, originalSearch, entries.Count().ToString());
 		}
 
 		SetTiles(entries);
@@ -738,13 +785,9 @@ class SCR_FieldManualUI : MenuRootBase
 	protected void CloseMenuOrReadingPanel()
 	{
 		if (m_bIsInEntryViewMode && !m_bOpenedFromOutside)
-		{
 			CloseReadingPanel();
-		}
 		else
-		{
 			Close();
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -779,4 +822,30 @@ class SCR_FieldManualUI : MenuRootBase
 		Print(string.Format("Too many list entries to join as a string - missing #AR-General_List_Short_%1 translation?", count), LogLevel.WARNING);
 		return WidgetManager.Translate("#AR-General_List_Short_5", entries[0], entries[1], entries[2], entries[3], entries[4]);
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	//----- CONSTRUCTOR / DESTRUCTOR
+	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	void SCR_FieldManualUI()
+	{
+		m_aAllEntries = {};
+		m_mWidgetEntryMap = new map<Widget, ref SCR_FieldManualConfigEntry>();
+		m_mWidgetSubCategoryMap = new map<Widget, ref SCR_FieldManualConfigCategory>();
+
+		ScriptInvoker inputDeviceIsGamepadInvoker = GetGame().OnInputDeviceIsGamepadInvoker();
+		if (inputDeviceIsGamepadInvoker)
+			inputDeviceIsGamepadInvoker.Insert(QueueRefreshCurrentEntry);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// destructor
+	void ~SCR_FieldManualUI()
+	{
+		ScriptInvoker inputDeviceIsGamepadInvoker = GetGame().OnInputDeviceIsGamepadInvoker();
+		if (inputDeviceIsGamepadInvoker)
+			inputDeviceIsGamepadInvoker.Remove(QueueRefreshCurrentEntry);
+	}
+}

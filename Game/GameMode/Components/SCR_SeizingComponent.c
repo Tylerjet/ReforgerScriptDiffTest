@@ -412,7 +412,7 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void RefreshSeizingTimer()
+	void RefreshSeizingTimer()
 	{
 		float seizingTimeVar = m_fMaximumSeizingTime - m_fMinimumSeizingTime;
 		float deduct;

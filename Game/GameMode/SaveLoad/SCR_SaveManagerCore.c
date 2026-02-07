@@ -425,8 +425,6 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 		if (!callback)
 			return;
 		
-		Print("UploadToWorkshop: " + fileName);
-		
 		m_UploadCallback = new SCR_ServerSaveRequestCallback(fileName);//, callback.GetStruct());
 	}
 	
@@ -664,6 +662,12 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 	ScriptInvokerString GetOnLatestSave()
 	{
 		return m_OnLatestSave;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	SCR_ServerSaveRequestCallback GetUploadCallback()
+	{
+		return m_UploadCallback;
 	}
 	
 	///@}

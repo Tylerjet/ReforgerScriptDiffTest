@@ -177,10 +177,14 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		int ignoredFilters = 0;
 		SCR_EditorContentBrowserDisplayConfig contentBrowserConfig = m_ContentBrowserComponent.GetContentBrowserDisplayConfig();
 		
+		//~ Get all valid blacklisted labels
+		array<EEditableEntityLabel> validBlackListLabels = {};
+		m_ContentBrowserComponent.GetValidBlackListedLabels(validBlackListLabels);
+		
 		for(int i = 0; i < count; i++)
 		{
-			//~ Ignore if label cannot be shown in active filters
-			if (contentBrowserConfig && !contentBrowserConfig.CanShowLabelInActiveFilters(m_aActiveFilters[i]))
+			//~ Ignore if label cannot be shown in active filters (Is always active and can't be shown or if blacklisted label)
+			if ((contentBrowserConfig && !contentBrowserConfig.CanShowLabelInActiveFilters(m_aActiveFilters[i])) || validBlackListLabels.Contains(m_aActiveFilters[i]))
 			{
 				//~ Make sure the system knows the filter is ignored
 				ignoredFilters++;

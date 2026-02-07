@@ -89,6 +89,16 @@ class SCR_ScenarioFrameworkSlotPick : SCR_ScenarioFrameworkSlotTask
 		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
 			return;
 		
+		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
+		{
+			//If just one condition is false, we don't continue and interrupt the init
+			if (!activationCondition.Init(GetOwner()))
+			{
+				InvokeAllChildrenSpawned();
+				return;
+			}
+		}
+		
 		super.Init(area, activation);
 	}
 	
@@ -100,12 +110,6 @@ class SCR_ScenarioFrameworkSlotPick : SCR_ScenarioFrameworkSlotTask
 		if (!m_Entity)
 			return;
 		
-		ChimeraWorld world = m_Entity.GetWorld();
-		if (!world)
-			return;
-		
-		GarbageSystem garbageSystem = world.GetGarbageSystem();
-		if (garbageSystem)
-			garbageSystem.Withdraw(m_Entity);
+		RemoveEntityFromGarbageCollector(m_Entity);
 	}
 };

@@ -292,23 +292,27 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			if (!resourcesOwner)
 				return;
 			
+			//~ Get Supply cost only if arsenal has supplies enabled
 			SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(resourcesOwner.FindComponent(SCR_ArsenalComponent));
-			SCR_Faction faction;
-			if (arsenalComponent)
-				faction = arsenalComponent.GetAssignedFaction();
-			
-			SCR_EntityCatalogEntry entry;
-			
-			if (faction)
-				 entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceNameItem, faction);
-			else 
-				entry = entityCatalogManager.GetEntryWithPrefabFromCatalog(EEntityCatalogType.ITEM, resourceNameItem);
-			
-			if (entry)
+			if ((arsenalComponent && arsenalComponent.IsArsenalUsingSupplies()) || !arsenalComponent)
 			{
-				SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
-				if (data)
-					resourceCost = data.GetSupplyCost();
+				SCR_Faction faction;
+				if (arsenalComponent)
+					faction = arsenalComponent.GetAssignedFaction();
+				
+				SCR_EntityCatalogEntry entry;
+				
+				if (faction)
+					 entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceNameItem, faction);
+				else 
+					entry = entityCatalogManager.GetEntryWithPrefabFromCatalog(EEntityCatalogType.ITEM, resourceNameItem);
+				
+				if (entry)
+				{
+					SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
+					if (data)
+						resourceCost = data.GetSupplyCost();
+				}
 			}
 		}
 		
@@ -355,26 +359,30 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			if (!resourcesOwner)
 				return;
 			
+			//~ Get Supply cost only if arsenal has supplies enabled
 			SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(resourcesOwner.FindComponent(SCR_ArsenalComponent));
-			SCR_Faction faction;
-			if (arsenalComponent)
-				faction = arsenalComponent.GetAssignedFaction();
-			
-			SCR_EntityCatalogEntry entry;
-			
-			ResourceName resourceNameItem = inventoryItemEntity.GetPrefabData().GetPrefabName();
-			
-			if (faction)
-				 entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceNameItem, faction);
-			else 
-				entry = entityCatalogManager.GetEntryWithPrefabFromCatalog(EEntityCatalogType.ITEM, resourceNameItem);
-			
-			if (!entry)
-				return;
-
-			SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
-			if (data)
-				resourceCost = data.GetSupplyCost();
+			if ((arsenalComponent && arsenalComponent.IsArsenalUsingSupplies()) || !arsenalComponent)
+			{
+				SCR_Faction faction;
+				if (arsenalComponent)
+					faction = arsenalComponent.GetAssignedFaction();
+				
+				SCR_EntityCatalogEntry entry;
+				
+				ResourceName resourceNameItem = inventoryItemEntity.GetPrefabData().GetPrefabName();
+				
+				if (faction)
+					 entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceNameItem, faction);
+				else 
+					entry = entityCatalogManager.GetEntryWithPrefabFromCatalog(EEntityCatalogType.ITEM, resourceNameItem);
+				
+				if (!entry)
+					return;
+	
+				SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
+				if (data)
+					resourceCost = data.GetSupplyCost();
+			}
 		}
 		
 		SCR_ResourceGenerationResponse response = generator.RequestAvailability(resourceCost * generator.GetResourceMultiplier());

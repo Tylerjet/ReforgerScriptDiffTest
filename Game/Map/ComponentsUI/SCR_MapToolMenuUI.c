@@ -5,6 +5,7 @@ class SCR_MapToolEntry : Managed
 	protected bool m_bToolActive;
 	protected bool m_bIsEnabled;
 	
+	bool m_bButtonSoundsDisabled;
 	int m_iSortPriority;
 	ResourceName m_sImageSet;
 	string m_sIconQuad;
@@ -37,6 +38,13 @@ class SCR_MapToolEntry : Managed
 	{
 		m_bIsEnabled = isEnabled;
 		UpdateVisual();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Enable button sounds
+	void SetButtonSoundsDisabled(bool state)
+	{
+		m_bButtonSoundsDisabled = state;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -83,11 +91,14 @@ class SCR_MapToolEntry : Managed
 	//! On click callback
 	protected void OnClick()
 	{
-		if (m_bToolActive)
-			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_HIDE);
-		else
-			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_SHOW);
-		
+		if (!m_bButtonSoundsDisabled)
+		{
+			if (m_bToolActive)
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_HIDE);
+			else
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_GADGET_SHOW);
+		}
+			
 		s_OnEntryToggled.Invoke(this);
 		m_OwnerMenu.SetMenuDisabled();
 	}
@@ -103,7 +114,7 @@ class SCR_MapToolEntry : Managed
 			m_iSortPriority = sortPriority;
 		else
 			m_iSortPriority = 0;
-		
+				
 		m_OnClick.Insert(OnClick);
 	}
 };

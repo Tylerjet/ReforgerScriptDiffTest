@@ -148,7 +148,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 				if (!taskToFind)
 					continue;
 
-				if (taskToFind.GetTaskLayer() == this)
+				if (taskToFind.GetLayerTask() == this)
 				{
 					m_Task = taskToFind;
 					break;

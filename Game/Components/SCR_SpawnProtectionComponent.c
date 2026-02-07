@@ -64,11 +64,16 @@ class SCR_SpawnProtectionComponent : SCR_BaseGameModeComponent
 				meleeComp.GetOnMeleePerformed().Insert(DisablePlayerProtection);
 		}
 
-		//Using protection time parameter as delay for CallLater, DisablePlayerProtection is called to disable protection on specific entity.
-		GetGame().GetCallqueue().CallLater(DisablePlayerProtection, m_fProtectionTime * 1000, false, entity);
 		return true;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
+	{
+		//Using protection time parameter as delay for CallLater, DisablePlayerProtection is called to disable protection on specific entity
+		GetGame().GetCallqueue().CallLater(DisablePlayerProtection, m_fProtectionTime * 1000, false, entity);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnSpawnPlayerEntityFailure_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, IEntity entity, SCR_SpawnData data, SCR_ESpawnResult reason)
 	{
@@ -92,13 +97,13 @@ class SCR_SpawnProtectionComponent : SCR_BaseGameModeComponent
 		if (parent && parent.IsInherited(ChimeraCharacter))
 			DisablePlayerProtection(parent);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void DisablePlayerProtection(IEntity playerEntity)
 	{
 		if (!playerEntity)
 			return;
-
+		
 		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(playerEntity.FindComponent(SCR_DamageManagerComponent));
 		if (!damageManager && damageManager.IsDamageHandlingEnabled())
 			return;
@@ -109,17 +114,17 @@ class SCR_SpawnProtectionComponent : SCR_BaseGameModeComponent
 		PrintFormat("  %1::EnableDamageHandling(true, playerId: %2, entity: %3)", Type().ToString(),
 					GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(playerEntity), playerEntity);
 		#endif
+		
+		if (!m_bDisableOnAttack)
+			return;
+		
+		EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(playerEntity.FindComponent(EventHandlerManagerComponent));
+		if (eventHandlerManager)
+			eventHandlerManager.RemoveScriptHandler("OnAmmoCountChanged", playerEntity, OnPlayerAmmoChangeCallback);
 
-		if (m_bDisableOnAttack)
-		{
-			EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(playerEntity.FindComponent(EventHandlerManagerComponent));
-			if (eventHandlerManager)
-				eventHandlerManager.RemoveScriptHandler("OnAmmoCountChanged", playerEntity, OnPlayerAmmoChangeCallback);
-
-			SCR_MeleeComponent meleeComp = SCR_MeleeComponent.Cast(playerEntity.FindComponent(SCR_MeleeComponent));
-			if (meleeComp)
-				meleeComp.GetOnMeleePerformed().Remove(DisablePlayerProtection);
-		}
+		SCR_MeleeComponent meleeComp = SCR_MeleeComponent.Cast(playerEntity.FindComponent(SCR_MeleeComponent));
+		if (meleeComp)
+			meleeComp.GetOnMeleePerformed().Remove(DisablePlayerProtection);
 	}
 
 	//------------------------------------------------------------------------------------------------

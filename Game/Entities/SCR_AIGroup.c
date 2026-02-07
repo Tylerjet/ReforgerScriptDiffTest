@@ -185,8 +185,8 @@ class SCR_AIGroup : ChimeraAIGroup
 
 		// Spawn a singular AI entity this frame
 		int spawnIndex = m_delayedSpawnList.Count() - 1;
-		SpawnDelayedGroupMember(spawnIndex);
-		m_delayedSpawnList.Remove(spawnIndex);
+		if (SpawnDelayedGroupMember(spawnIndex))
+			m_delayedSpawnList.Remove(spawnIndex);
 		
 		// Notify all delayed spawning is done
 		if (m_delayedSpawnList.IsEmpty() && Event_OnAllDelayedEntitySpawned)
@@ -194,9 +194,13 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SpawnDelayedGroupMember(int spawnIndex)
+	/*
+	Returns false when member couldn't be spawned but we should try again
+	True otherwise
+	*/
+	bool SpawnDelayedGroupMember(int spawnIndex)
 	{
-		SpawnGroupMember(
+		return SpawnGroupMember(
 			m_delayedSpawnList.Get(spawnIndex).snapToTerrain,
 			m_delayedSpawnList.Get(spawnIndex).index,
 			m_delayedSpawnList.Get(spawnIndex).resourceName,
@@ -1216,8 +1220,11 @@ class SCR_AIGroup : ChimeraAIGroup
 		if (m_iNumOfMembersToSpawn == 0)
 			Event_OnInit.Invoke(this);
 	}
-	
-	protected void SpawnGroupMember(bool snapToTerrain, int index, ResourceName res, bool editMode, bool isLast)
+	/*
+	Spawn single Group member. 
+	Returns false when action has to be delayed
+	*/
+	protected bool SpawnGroupMember(bool snapToTerrain, int index, ResourceName res, bool editMode, bool isLast)
 	{
 		if (!GetGame().GetAIWorld().CanLimitedAIBeAdded())
 		{
@@ -1226,7 +1233,7 @@ class SCR_AIGroup : ChimeraAIGroup
 			
 			//Event_OnLastGroupMemberSpawned.Invoke(this);
 			
-			return;
+			return true;
 		}
 		BaseWorld world = GetWorld();
 		AIFormationDefinition formationDefinition;
@@ -1249,8 +1256,27 @@ class SCR_AIGroup : ChimeraAIGroup
 			pos[1] = surfaceY;
 		}
 		
+		
 		//Snap to the nearest navmesh point
 		AIPathfindingComponent pathFindindingComponent = AIPathfindingComponent.Cast(this.FindComponent(AIPathfindingComponent));
+		
+		if (!editMode)
+		{
+			NavmeshWorldComponent navmesh = pathFindindingComponent.GetNavmeshComponent();
+			if (navmesh)
+			{	 
+				if (navmesh.IsTileRequested(pos))
+				{
+					return false;	
+				}
+				if (!navmesh.IsTileLoaded(pos))
+				{
+					navmesh.LoadTileIn(pos);
+					return false;
+				}
+			}
+		}
+		
 		if (pathFindindingComponent && pathFindindingComponent.GetClosestPositionOnNavmesh(pos, "10 10 10", pos))
 		{
 			float groundHeight = world.GetSurfaceY(pos[0], pos[2]);
@@ -1270,7 +1296,7 @@ class SCR_AIGroup : ChimeraAIGroup
 		
 		IEntity member = GetGame().SpawnEntityPrefab(Resource.Load(res), world, spawnParams);
 		if (!member)
-			return;
+			return true;
 		
 		// Move in to vehicle 
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(member.FindComponent(SCR_EditableEntityComponent));
@@ -1287,6 +1313,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	
 		if (isLast)
 			Event_OnInit.Invoke(this);
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -66,6 +66,13 @@ class SCR_OpenVehicleStorageAction : SCR_InventoryAction
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
+		//~ Call one frame later as otherwise client slotted entity does not know yet who the vehicle is on init
+		GetGame().GetCallqueue().CallLater(DelayedInit, param1: pOwnerEntity, param2: pManagerComponent); 
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void DelayedInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
+	{
 		if (!Vehicle.Cast(pOwnerEntity) && pOwnerEntity.GetParent())
 			m_Vehicle = pOwnerEntity.GetParent();
 		else

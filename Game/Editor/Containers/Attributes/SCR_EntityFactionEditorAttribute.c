@@ -10,7 +10,11 @@ class SCR_EntityFactionEditorAttribute : SCR_BaseFactionEditableAttribute
 		SCR_FactionAffiliationComponent factionComponent = SCR_FactionAffiliationComponent.Cast(entity.FindComponent(SCR_FactionAffiliationComponent));
 		if (!factionComponent)
 			return false;
-		
+
+		Vehicle vehicle = Vehicle.Cast(entity);
+		if (vehicle)
+			return false;
+
 		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(entity.FindComponent(SCR_ArsenalComponent));
 		if (arsenalComponent)
 			return false;

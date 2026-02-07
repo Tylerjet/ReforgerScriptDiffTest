@@ -7,11 +7,8 @@ class SCR_FieldManualPiece_Keybind : SCR_FieldManualPiece
 	[Attribute(uiwidget: UIWidgets.LocaleEditBox)]
 	string m_sDescription;
 
-	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EInputTypeCondition.ALL_INPUTS), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EInputTypeCondition))]
-	SCR_EInputTypeCondition m_eInputDisplayCondition;
-
 	[Attribute(defvalue: "{76A21E3BDBC15712}UI/layouts/Menus/FieldManual/Pieces/FieldManual_Piece_Keybind.layout", uiwidget: UIWidgets.EditBoxWithButton, params: "layout")]
-	ResourceName m_Layout;
+	ResourceName m_Layout; // m_s
 
 	//------------------------------------------------------------------------------------------------
 	override void CreateWidget(notnull Widget parent)

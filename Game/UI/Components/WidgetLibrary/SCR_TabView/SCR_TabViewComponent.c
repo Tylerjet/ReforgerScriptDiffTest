@@ -167,6 +167,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		}
 
 		comp.m_OnClicked.Insert(OnSelection);
+		comp.m_OnToggled.Insert(OnTabButtonToggle);
 		comp.SetTextWithParam(content.m_sTabButtonContent, content.m_sTabButtonContentParam1, content.m_sTabButtonContentParam2);
 		content.m_ButtonComponent = comp;
 
@@ -604,17 +605,30 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 			// Deselect the old button, select the new button
 			if (m_aElements[i].m_ButtonComponent != button)
 				continue;
-
+			
 			// Prevent change when clicking same button 
 			if (m_iSelectedTab == i)
 			{
-				m_aElements[i].m_ButtonComponent.SetToggled(true);
+				m_aElements[i].m_ButtonComponent.SetToggled(true);		
 				return;
 			}
 			
 			ShowTab(i);
 			return;
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! React to button toggle and propagete state to modular button 
+	//! This is simplest way in current state but should be changed to not really on tab view forcing the state
+	protected void OnTabButtonToggle(SCR_ButtonBaseComponent button, bool isToggled)
+	{
+		if (!button)
+			return;
+		
+		SCR_ModularButtonComponent modularButton = SCR_ModularButtonComponent.Cast(button.GetRootWidget().FindHandler(SCR_ModularButtonComponent));
+		if (modularButton)
+			modularButton.SetToggled(isToggled);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -836,6 +850,15 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 
 		if (height > 0)
 			m_aElements[index].m_fIconHeight = height;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetPagingButtonsVisible(bool visible, bool animate = true)
+	{
+		if (m_PagingLeft)
+			m_PagingLeft.SetVisible(visible, animate);
+		if (m_PagingRight)
+			m_PagingRight.SetVisible(visible, animate);
 	}
 }
 

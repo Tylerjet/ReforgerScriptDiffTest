@@ -143,9 +143,9 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 			return;
 		
 		ChimeraWorld world = item.GetWorld();
-		GarbageSystem garbageSystem = world.GetGarbageSystem();
-		if (garbageSystem)
-			garbageSystem.Withdraw(item);
+		GarbageManager garbageManager = world.GetGarbageManager();
+		if (garbageManager && garbageManager.IsInserted(item))
+			garbageManager.Withdraw(item);
 		
 		SetState(SCR_TaskState.UPDATED);
 		UpdateTaskTitleAndDescription(0);
@@ -196,10 +196,10 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 			}
 		}
 		
-		if (!m_Layer)
+		if (!m_LayerTask)
 			return;
 								
-		SCR_ScenarioFrameworkSlotTask subject = m_Layer.GetTaskSubject();
+		SCR_ScenarioFrameworkSlotTask subject = m_LayerTask.GetSlotTask();
 		if (!subject)
 			return;
 		
@@ -214,7 +214,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	protected void UpdateDroppedTaskMarker()
 	{
 		m_bTaskPositionUpdated = true;
-		SCR_ScenarioFrameworkLayerTaskDeliver layerTaskDeliver = SCR_ScenarioFrameworkLayerTaskDeliver.Cast(m_Layer);
+		SCR_ScenarioFrameworkLayerTaskDeliver layerTaskDeliver = SCR_ScenarioFrameworkLayerTaskDeliver.Cast(m_LayerTask);
 		if (!layerTaskDeliver)
 		{
 			Print("ScenarioFramework: Task Deliver failed to access LayerTask", LogLevel.ERROR);

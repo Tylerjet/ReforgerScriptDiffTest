@@ -7,6 +7,7 @@ class SCR_EnableArsenalAttribute : SCR_BaseEditorAttribute
 		//Set sub labels
 		if (isInit)
 		{
+			manager.SetAttributeAsSubAttribute(SCR_ArsenalUseSuppliesEditorAttribute);
 			manager.SetAttributeAsSubAttribute(SCR_ArsenalAmmunitionModeAttribute);
 			manager.SetAttributeAsSubAttribute(SCR_ArsenalEquipmentEditorAttribute);
 			manager.SetAttributeAsSubAttribute(SCR_ArsenalOutfitEditorAttribute);
@@ -17,6 +18,7 @@ class SCR_EnableArsenalAttribute : SCR_BaseEditorAttribute
 		
 		bool enabled = var && var.GetBool();
 		
+		manager.SetAttributeEnabled(SCR_ArsenalUseSuppliesEditorAttribute, enabled);
 		manager.SetAttributeEnabled(SCR_ArsenalAmmunitionModeAttribute, enabled);
 		manager.SetAttributeEnabled(SCR_ArsenalEquipmentEditorAttribute, enabled);
 		manager.SetAttributeEnabled(SCR_ArsenalOutfitEditorAttribute, enabled);

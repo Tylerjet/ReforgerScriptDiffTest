@@ -53,6 +53,29 @@ class SCR_ScenarioFrameworkTaskSupportEntity : SCR_BaseTaskSupportEntity
 	
 	//------------------------------------------------------------------------------------------------
 	//This should only be called on the server!
+	void SetSpawnedEntityName(notnull SCR_ScenarioFrameworkTask task, string name)
+	{
+		int taskID = task.GetTaskID();
+		RPC_SpawnedEntityName(taskID, name);
+		Rpc(RPC_SpawnedEntityName, taskID, name);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_SpawnedEntityName(int taskID, string name)
+	{
+		if (!GetTaskManager())
+			return;
+		
+		SCR_ScenarioFrameworkTask task = SCR_ScenarioFrameworkTask.Cast(GetTaskManager().GetTask(taskID));
+		if (!task)
+			return;
+		
+		task.SetSpawnedEntityName(name);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//This should only be called on the server!
 	void SetTaskExecutionBriefing(notnull SCR_ScenarioFrameworkTask task, string description)
 	{
 		int taskID = task.GetTaskID();

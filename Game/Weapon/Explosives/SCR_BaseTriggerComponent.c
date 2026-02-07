@@ -42,9 +42,9 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
 		if (world)
 		{
-			GarbageSystem garbageSystem = world.GetGarbageSystem();
-			if (garbageSystem)
-				garbageSystem.Withdraw(owner); //withdraw from garbage manager to avoid unwanted deletion
+			GarbageManager garbageManager = world.GetGarbageManager();
+			if (garbageManager)
+				garbageManager.Withdraw(owner); //withdraw from garbage manager to avoid unwanted deletion
 		}
 		
 		SetLive();

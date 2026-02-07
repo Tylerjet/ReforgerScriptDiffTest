@@ -277,4 +277,9 @@ class SCR_PlayerDeployMenuHandlerComponent : ScriptComponent
 			m_DeployMenuSystem.Unregister(this);
 		super.OnDelete(owner);
 	}
+
+	SCR_PlayerController GetPlayerController()
+	{
+		return m_PlayerController;
+	}
 };

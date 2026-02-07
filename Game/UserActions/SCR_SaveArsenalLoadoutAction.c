@@ -4,7 +4,6 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 	[Attribute("0", desc: "If true will try and get the Arsenal component from parent if none found. This is to check if saving is allowed. If no arsenal is found then saving is always true")]
 	protected bool m_bAllowGetArsenalFromParent;
 	
-	protected SCR_EArsenalSaveType m_eLastCheckedArsenalSaveType = -1; //~ Keeps track of the last checked save type so the display text is only updated when this is updated
 	protected LocalizedString m_sSaveTypeDisplayName;
 	
 	//~ Ref
@@ -32,8 +31,7 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 	//------------------------------------------------------------------------------------------------
 	override protected bool CanBePerformedScript(IEntity user)
 	{
-		if (m_ArsenalComponent.GetArsenalSaveType() != m_eLastCheckedArsenalSaveType || (m_eLastCheckedArsenalSaveType == SCR_EArsenalSaveType.SAVING_DISABLED && m_sCannotPerformReason.IsEmpty()))
-			UpdateActionDisplayName(user);
+		UpdateActionDisplayName(user);
 		
 		if (m_ArsenalComponent.GetArsenalSaveType() == SCR_EArsenalSaveType.SAVING_DISABLED)
 			return false;
@@ -83,7 +81,7 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 			return;
 		
 		//~ Makes sure it is only updated when needed
-		m_eLastCheckedArsenalSaveType = m_ArsenalComponent.GetArsenalSaveType();
+		SCR_EArsenalSaveType arsenalSaveType = m_ArsenalComponent.GetArsenalSaveType();
 		
 		//~ There is no arsenal manager
 		if (!m_ArsenalManager)
@@ -95,7 +93,7 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 			return;
 		
 		//~ Get the save type UIinfo of the current arsenal save type
-		SCR_ArsenalSaveTypeUIInfo saveTypeUIInfo = saveTypesHolder.GetUIInfoOfType(m_eLastCheckedArsenalSaveType);
+		SCR_ArsenalSaveTypeUIInfo saveTypeUIInfo = saveTypesHolder.GetUIInfoOfType(arsenalSaveType);
 		if (!saveTypeUIInfo)
 		{
 			m_sSaveTypeDisplayName = string.Empty;
@@ -113,14 +111,14 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 		}
 		
 		//~ Action is disabled so show the action name in disabled () and use default
-		if (m_eLastCheckedArsenalSaveType == SCR_EArsenalSaveType.SAVING_DISABLED)
+		if (arsenalSaveType == SCR_EArsenalSaveType.SAVING_DISABLED)
 		{
 			SetCannotPerformReason(m_sSaveTypeDisplayName);
 			m_sSaveTypeDisplayName = string.Empty;
 			return;
 		}
 		
-		if (m_eLastCheckedArsenalSaveType == SCR_EArsenalSaveType.FACTION_ITEMS_ONLY)
+		if (arsenalSaveType == SCR_EArsenalSaveType.FACTION_ITEMS_ONLY)
 		{
 			FactionAffiliationComponent userFactionAffiliation = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
 			if (!userFactionAffiliation)

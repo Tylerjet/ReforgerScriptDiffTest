@@ -70,6 +70,8 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 		
 		float fadeDelay = 0;	
 		
+		Widget lastButtonLayout;
+		
 		// Add Context Action buttons
 		for (int i = 0; i < actions.Count(); i++)
 		{
@@ -83,6 +85,7 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 			SCR_UIInfo info = action.GetInfo();
 			// Create button layout
 			Widget buttonLayout = m_WorkSpace.CreateWidgets(m_ButtonPath, m_VLayout);
+			lastButtonLayout = buttonLayout;
 			
 			SCR_ContextMenuButtonEditorUIComponent contextMenuButtonComponent = SCR_ContextMenuButtonEditorUIComponent.Cast(buttonLayout.FindHandler(SCR_ContextMenuButtonEditorUIComponent));
 			
@@ -102,6 +105,16 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 				fadeDelay += m_fFadeDelayNextButton;
 			}
 		}
+		
+		// Hide the divider for lastButtonLayout
+		if (lastButtonLayout)
+		{
+			Widget divider = lastButtonLayout.FindAnyWidget("Stripe");
+		
+			if (divider)
+				divider.SetVisible(false);
+		}
+		
 		
 		if (m_BottomBarFadeUI)
 			m_BottomBarFadeUI.DelayedFadeIn(fadeDelay * 1000, true);

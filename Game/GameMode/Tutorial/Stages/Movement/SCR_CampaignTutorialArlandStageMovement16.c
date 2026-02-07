@@ -13,5 +13,6 @@ class SCR_CampaignTutorialArlandStageMovement16 : SCR_BaseCampaignTutorialArland
 		m_fWaypointCompletionRadius = 2;
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 		GetGame().GetCallqueue().CallLater(DelayedPopup, 2000, false, "#AR-Tutorial_Popup_Title-UC", "#AR-Tutorial_Popup_Sprint", 12, "", "", "", "");
+		m_TutorialComponent.SetStagesComplete(0, true);
 	}
 };

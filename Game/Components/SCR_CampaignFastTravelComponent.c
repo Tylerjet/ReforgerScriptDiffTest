@@ -81,6 +81,25 @@ class SCR_CampaignFastTravelComponent : SCR_FastTravelComponent
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	override protected void RpcAsk_FastTravel(RplId destinationId)
+	{
+		super.RpcAsk_FastTravel(destinationId);
+
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+
+		if (!campaign)
+			return;
+
+		SCR_CampaignClientData clientData = campaign.GetClientData(m_PlayerController.GetPlayerId());
+
+		if (!clientData)
+			return;
+
+		clientData.SetNextFastTravelTimestamp(m_fNextTravelAvailableAt);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RpcAsk_ReadLeaderPosition()
 	{
 		vector position;
@@ -90,18 +109,18 @@ class SCR_CampaignFastTravelComponent : SCR_FastTravelComponent
 		if (groupsManager)
 		{
 			SCR_AIGroup group = groupsManager.GetPlayerGroup(m_PlayerController.GetPlayerId());
-	
+
 			if (group)
 			{
 				int leaderId = group.GetLeaderID();
-		
+
 				ChimeraCharacter leader = ChimeraCharacter.Cast(GetGame().GetPlayerManager().GetPlayerControlledEntity(leaderId));
-		
+
 				if (leader)
 				{
 					id = Replication.FindId(leader);
 					SCR_CharacterDamageManagerComponent damageManager = SCR_CharacterDamageManagerComponent.Cast(leader.GetDamageManager());
-		
+
 					if (damageManager && !damageManager.IsDestroyed() && !damageManager.GetIsUnconscious())
 						position = leader.GetOrigin();
 				}

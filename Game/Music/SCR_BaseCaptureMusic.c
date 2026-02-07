@@ -10,7 +10,9 @@ class SCR_BaseCaptureMusic : ScriptedMusic
 		if (!pc)
 			return;
 		
-		if (faction != SCR_FactionManager.Cast(GetGame().GetFactionManager()).GetPlayerFaction(pc.GetPlayerId()))
+		SCR_ChimeraCharacter player = SCR_ChimeraCharacter.Cast(pc.GetControlledEntity());
+		
+		if (!player || player.GetFaction() != faction)
 			return;
 		
 		m_MusicManager.Play(SCR_SoundEvent.SOUND_ONBASECAPTURE);	
