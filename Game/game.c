@@ -682,15 +682,11 @@ class ArmaReforgerScripted : ChimeraGame
 		//by default we do not expect console to have keyboard
 		m_bHasKeyboard = false;
 
-		//setup default quality settings for series S and series X xbox
+		//setup default quality settings for consoles
 		if (settingsManager)
 		{
 			SCR_SettingsManagerVideoModule settingsVideoModule = SCR_SettingsManagerVideoModule.Cast(settingsManager.GetModule(ESettingManagerModuleType.SETTINGS_MANAGER_VIDEO));
 			
-			//by default we do not expect console to have keyboard
-			m_bHasKeyboard = false;
-			
-			//setup default quality settings for series S and series X xbox
 			if (settingsVideoModule)
 			{
 				int lastUsedPresetID = -1;
@@ -703,9 +699,9 @@ class ArmaReforgerScripted : ChimeraGame
 					else if (lastUsedPresetID == -1 && System.GetPlatform() == EPlatform.XBOX_SERIES_X)
 						settingsVideoModule.SetConsolePreset(EVideoQualityPreset.SERIES_X_PRESET_QUALITY);
 					else if (lastUsedPresetID == -1 && System.GetPlatform() == EPlatform.PS5)
-						settingsVideoModule.SetConsolePreset(EVideoQualityPreset.PS5_QUALITY);
+						settingsVideoModule.SetConsolePreset(EVideoQualityPreset.PS5_PERFORMANCE);
 					else if (lastUsedPresetID == -1 && System.GetPlatform() == EPlatform.PS5_PRO)
-						settingsVideoModule.SetConsolePreset(EVideoQualityPreset.PS5_PRO_QUALITY);
+						settingsVideoModule.SetConsolePreset(EVideoQualityPreset.PS5_PRO_PERFORMANCE);
 					
 					if (lastUsedPresetID != -1)
 						settingsVideoModule.SetConsolePreset(lastUsedPresetID);

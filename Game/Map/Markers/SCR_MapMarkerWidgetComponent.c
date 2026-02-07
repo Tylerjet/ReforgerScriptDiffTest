@@ -115,9 +115,10 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] text
-	void SetText(string text)
+	//! \param[in] skipProfanityFilter determines whether the marker text should be checked for profanity
+	void SetText(string text, bool skipProfanityFilter = false)
 	{
-		if (text.IsEmpty() || !m_MarkerObject.GetMarkerOwnerID() <= -1)
+		if (skipProfanityFilter || text.IsEmpty() || !m_MarkerObject.GetMarkerOwnerID() <= -1)
 		{
 			OnFilteredCallback({text});
 			return;

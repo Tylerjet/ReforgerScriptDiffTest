@@ -68,7 +68,7 @@ class SCR_MapMarkerEntryConfig
 	//------------------------------------------------------------------------------------------------
 	//! Client side initialization of visuals or other client logic
 	//! Override this in children where wanted
-	void InitClientSettings(SCR_MapMarkerBase marker, SCR_MapMarkerWidgetComponent widgetComp)
+	void InitClientSettings(SCR_MapMarkerBase marker, SCR_MapMarkerWidgetComponent widgetComp, bool skipProfanityFilter = false)
 	{
 		int ownerID = marker.GetMarkerOwnerID();
 		

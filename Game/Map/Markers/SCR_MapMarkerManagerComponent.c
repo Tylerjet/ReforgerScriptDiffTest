@@ -45,16 +45,28 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	array<ref SCR_MapMarkerBase> GetStaticMarkers()
+	array<SCR_MapMarkerBase> GetStaticMarkers()
 	{
-		return m_aStaticMarkers;
+		array<SCR_MapMarkerBase> output = {};
+		foreach (SCR_MapMarkerBase marker: m_aStaticMarkers)
+		{
+			output.Insert(marker);
+		}
+
+		return output;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	array<ref SCR_MapMarkerBase> GetDisabledMarkers()
+	array<SCR_MapMarkerBase> GetDisabledMarkers()
 	{
-		return m_aDisabledMarkers;
+		array<SCR_MapMarkerBase> output = {};
+		foreach (SCR_MapMarkerBase marker: m_aDisabledMarkers)
+		{
+			output.Insert(marker);
+		}
+
+		return output;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -511,25 +523,31 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		{
 			marker.SetServerDisabled(true);
 		}
-		else if (marker.GetMarkerFactionFlags() != 0 && factionManager)
+		else
 		{
-			Faction localFaction = SCR_FactionManager.SGetLocalPlayerFaction();
-			bool isMyFaction = marker.IsFaction(factionManager.GetFactionIndex(localFaction));
-			
-			if (!localFaction || !isMyFaction)
-			{
-				if (Replication.IsServer())				// hosted server 
-					marker.SetServerDisabled(true);
-				else 
-					m_aStaticMarkers.RemoveItem(marker);
+			if (marker.GetMarkerOwnerID() > -1)//player made marker
+				marker.RequestProfanityFilter();
 
-				return;
+			if (factionManager && marker.GetMarkerFactionFlags() != 0)
+			{
+				Faction localFaction = SCR_FactionManager.SGetLocalPlayerFaction();
+				bool isMyFaction = marker.IsFaction(factionManager.GetFactionIndex(localFaction));
+				
+				if (!localFaction || !isMyFaction)
+				{
+					if (Replication.IsServer())				// hosted server 
+						marker.SetServerDisabled(true);
+					else 
+						m_aStaticMarkers.RemoveItem(marker);
+	
+					return;
+				}
 			}
 		}
-		
+
 		SCR_MapEntity mapEnt = SCR_MapEntity.GetMapInstance();
 		if (mapEnt.IsOpen() && mapEnt.GetMapUIComponent(SCR_MapMarkersUI))		
-			marker.OnCreateMarker();
+			marker.OnCreateMarker(true);
 		
 		CheckMarkersUserRestrictions();
 	}
@@ -657,18 +675,45 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	SCR_ScriptProfanityFilterRequestCallback RequestProfanityFilter(string text)
 	{
-		SCR_ScriptProfanityFilterRequestCallback profanityFilter = new SCR_ScriptProfanityFilterRequestCallback();
-		
-		array<string> textToFilter = {};
-		
-		textToFilter.Insert(text);
-		
-		if (!GetGame().GetPlatformService().FilterProfanityAsync(textToFilter, profanityFilter))
+		if (text.IsEmpty())
 			return null;
 		
+		return RequestProfanityFilter({text});
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Profanity filter processing that is intended to do multiple strings at once
+	//! \param[in] textsToFilter
+	SCR_ScriptProfanityFilterRequestCallback RequestProfanityFilter(notnull array<string> textsToFilter)
+	{
+		if (textsToFilter.IsEmpty())
+			return null;
+
+		SCR_ScriptProfanityFilterRequestCallback profanityFilter = new SCR_ScriptProfanityFilterRequestCallback();
+
+		if (!GetGame().GetPlatformService().FilterProfanityAsync(textsToFilter, profanityFilter))
+			return null;
+
 		m_aProfanityCallbacks.Insert(profanityFilter);
-		
+
 		return profanityFilter;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnFilteredCallback(array<string> texts)
+	{
+		int i;
+		foreach (SCR_MapMarkerBase marker: m_aStaticMarkers)
+		{
+			if (marker.GetMarkerOwnerID() == -1)
+				continue;
+
+			if (!texts.IsIndexValid(i))
+				break;
+
+			marker.SetCustomText(texts[i]);
+			i++;
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -744,6 +789,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		int posX, posY, markerID, markerOwnerID, flags, markerConfigID, factionFlags, markerType, colorID, iconID, rotation;
 		string customText;
 		SCR_MapMarkerBase marker;
+		array<string> textsToFilter = {};
 		
 		for (int i; i < count; i++)
 		{	
@@ -775,8 +821,17 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			marker.SetCustomText(customText);
 						
 			m_aStaticMarkers.Insert(marker);
+			if (marker.GetMarkerOwnerID() > -1)
+				textsToFilter.Insert(marker.GetCustomText());
 		}
 		
+		if (!textsToFilter.IsEmpty())
+		{
+			SCR_ScriptProfanityFilterRequestCallback cb = RequestProfanityFilter(textsToFilter);
+			if (cb)
+				cb.m_OnResult.Insert(OnFilteredCallback);
+		}
+
 		return true;
 	}
 	

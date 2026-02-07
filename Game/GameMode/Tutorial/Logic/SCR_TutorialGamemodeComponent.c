@@ -1084,7 +1084,7 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		if (!mapMarkerManager)
 			return;
 		
-		array <ref SCR_MapMarkerBase> markerArray = {};		
+		array <SCR_MapMarkerBase> markerArray = {};		
 		markerArray = mapMarkerManager.GetStaticMarkers();
 		for (int index = markerArray.Count()-1; index >= 0; index--)
 		{

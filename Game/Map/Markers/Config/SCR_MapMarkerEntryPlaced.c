@@ -101,7 +101,7 @@ class SCR_MapMarkerEntryPlaced : SCR_MapMarkerEntryConfig
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void InitClientSettings(SCR_MapMarkerBase marker, SCR_MapMarkerWidgetComponent widgetComp)
+	override void InitClientSettings(SCR_MapMarkerBase marker, SCR_MapMarkerWidgetComponent widgetComp, bool skipProfanityFilter = false)
 	{
 		super.InitClientSettings(marker, widgetComp);
 				
@@ -109,7 +109,7 @@ class SCR_MapMarkerEntryPlaced : SCR_MapMarkerEntryConfig
 		string quad;
 		GetIconEntry(marker.GetIconEntry(), imageset, imagesetGlow, quad);
 		widgetComp.SetImage(imageset, quad);			
-		widgetComp.SetText(marker.GetCustomText());
+		widgetComp.SetText(marker.GetCustomText(), skipProfanityFilter);
 		widgetComp.SetColor(GetColorEntry(marker.GetColorEntry()));
 		if (imagesetGlow)
 			widgetComp.SetGlowImage(imagesetGlow, quad);

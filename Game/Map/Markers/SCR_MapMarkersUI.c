@@ -494,44 +494,39 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	//! Create static markers
 	protected void CreateStaticMarkers()
 	{
-		array<ref SCR_MapMarkerBase> markersSimple = m_MarkerMgr.GetStaticMarkers();
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		
+		Faction localFaction;
+		int localFactionIndex = -1;
+		if (factionManager)
+		{
+			localFaction = factionManager.SGetLocalPlayerFaction();
+			localFactionIndex = factionManager.GetFactionIndex(localFaction);
+		}
+
+		array<SCR_MapMarkerBase> markersSimple = m_MarkerMgr.GetStaticMarkers();
 		foreach(SCR_MapMarkerBase markerDis: m_MarkerMgr.GetDisabledMarkers())
 		{
 			markersSimple.Insert(markerDis);
 		}
-		
-		FactionManager factionManager = GetGame().GetFactionManager();
-		
-		int count = markersSimple.Count();
-		for (int i; i < count; i++)
+
+		foreach (SCR_MapMarkerBase marker: markersSimple)
 		{
-			if (!markersSimple.IsIndexValid(i))
-				continue;
-			
-			SCR_MapMarkerBase marker = markersSimple[i];
-			if (marker.GetMarkerFactionFlags() == 0 || !factionManager)
+			if (!factionManager || marker.GetMarkerFactionFlags() == 0)
 			{
-				marker.OnCreateMarker();
+				marker.OnCreateMarker(true);
 				continue;
 			}
-						
-			Faction localFaction = SCR_FactionManager.SGetLocalPlayerFaction();
-			bool isMyFaction = marker.IsFaction(factionManager.GetFactionIndex(localFaction));
-			
-			if (!isMyFaction || !localFaction)
+
+			if (!localFaction || !marker.IsFaction(localFactionIndex))
 			{
 				if (Replication.IsServer())				// if server, enemy markers have to be kept for sync but are disabled
 					marker.SetServerDisabled(true);
-				else 									// if client, enemy marker can be safely removed
-				{
-					markersSimple.RemoveItem(marker);
-					i--;
-					count--;
+				else
 					continue;
-				}
 			}
 			
-			marker.OnCreateMarker();
+			marker.OnCreateMarker(true);
 		}
 	}
 	

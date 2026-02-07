@@ -118,7 +118,7 @@ class SCR_MapMarkerEntryMilitary : SCR_MapMarkerEntryConfig
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void InitClientSettings(SCR_MapMarkerBase marker, SCR_MapMarkerWidgetComponent widgetComp)
+	override void InitClientSettings(SCR_MapMarkerBase marker, SCR_MapMarkerWidgetComponent widgetComp, bool skipProfanityFilter = false)
 	{
 		super.InitClientSettings(marker, widgetComp);
 		

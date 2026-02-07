@@ -254,6 +254,12 @@ class SCR_MapMarkerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	SCR_MapMarkerWidgetComponent GetMarkerComponent()
+	{
+		return m_MarkerWidgetComp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Test whether the marker is visible on screen
 	bool TestVisibleFrame(vector visibleMin, vector visibleMax)
 	{
@@ -270,10 +276,37 @@ class SCR_MapMarkerBase
 			return true;
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Requests profanity filtering for the text of this marker
+	void RequestProfanityFilter()
+	{
+		SCR_MapMarkerManagerComponent mapMarkerManager = SCR_MapMarkerManagerComponent.GetInstance();
+		if (!mapMarkerManager)
+			return;
+
+		SCR_ScriptProfanityFilterRequestCallback profanityCallback = mapMarkerManager.RequestProfanityFilter(m_sCustomText);
+		if (!profanityCallback)
+			return;
+		
+		profanityCallback.m_OnResult.Insert(OnProfanityFilteredCallback);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnProfanityFilteredCallback(array<string> texts)
+	{
+		if (texts.IsEmpty())
+			return;
+
+		m_sCustomText = texts[0];
+		if (m_MarkerWidgetComp)
+			m_MarkerWidgetComp.SetText(m_sCustomText, true);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Fetch marker definition from config & create widget
-	void OnCreateMarker()
+	//! \param[in] skipProfanityFilter determines whether the marker text should be checked for profanity
+	void OnCreateMarker(bool skipProfanityFilter = false)
 	{
 		if (m_bIsServerSideDisabled)
 			return;
@@ -300,7 +333,7 @@ class SCR_MapMarkerBase
 
 		m_MarkerWidgetComp = SCR_MapMarkerWidgetComponent.Cast(m_wRoot.FindHandler(SCR_MapMarkerWidgetComponent));
 		m_MarkerWidgetComp.SetMarkerObject(this);
-		m_ConfigEntry.InitClientSettings(this, m_MarkerWidgetComp);
+		m_ConfigEntry.InitClientSettings(this, m_MarkerWidgetComp, skipProfanityFilter);
 		m_MarkerWidgetComp.SetRotation(m_iRotation);
 		
 		SCR_MapEntity.GetOnMapClose().Insert(OnMapClosed);
