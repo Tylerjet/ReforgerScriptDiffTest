@@ -40,8 +40,6 @@
 
 		EBREQ_WORKSHOP_GetAssetList,
 		EBREQ_WORKSHOP_CheckAssets,
-		EBREQ_WORKSHOP_GetTags,
-		EBREQ_WORKSHOP_GetAssetTags,
 		EBREQ_WORKSHOP_GetOwnAssetRating,
 		EBREQ_WORKSHOP_PutAssetRating,
 		EBREQ_WORKSHOP_DeleteAssetRating,
@@ -76,6 +74,7 @@
 		EBCRED_PWD,
 		EBCRED_BASEURI,
 		EBCRED_PLATFORMUID,
+		EBCRED_2FA_TOKEN
 	};
 
 	//! State of Dedicated Server box in cloud (regarding Backend connectivity)
@@ -601,7 +600,7 @@ class BackendApi
 
 
 	/**
-	\brief Client is Authenticated - relate requests may procceed 
+	\brief Client is Authenticated - relate requests may procceed
 	*/
 	proto native bool IsAuthenticated();
 	/**
@@ -613,9 +612,17 @@ class BackendApi
 	*/
 	proto native bool IsRunning();
 	/**
-	\brief Is HTTP communication active 
+	\brief Is HTTP communication active
 	*/
 	proto native bool IsActive();
+	/**
+	\brief Refresh status - ping services to obtain response time
+	*/
+	proto native void RefreshCommStatus();
+	/**
+	\brief Read service response time in milliseconds - if value is subzero - test was not executed yet, call RefreshCommStatus()
+	*/
+	proto native float GetCommResponseTime();
 	/**
 	\brief Get current Http error-ratio in range <0 .. 1.0> for last few seconds, where 0.0 == all good or no comm, 1.0 == everything failed
 	*/
@@ -633,7 +640,7 @@ class BackendApi
 	*/
 	proto native float GetCommTimeLastFail();
 	/**
-	\brief Unlink the bi-account and clear credentials 
+	\brief Unlink the bi-account and clear credentials
 	*/
 	proto native void Unlink(BackendCallback callback);
 

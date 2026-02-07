@@ -127,7 +127,6 @@ class SCR_CampaignBase : SCR_BaseCampaignInstallation
 	protected bool m_bRespawnBecameAvailable = true;
 	protected IEntity m_HQRadio;
 	protected IEntity m_GarageBoard;
-	protected int m_iCallsign = INVALID_BASE_INDEX;
 	protected SCR_CampaignMapUIBase m_UIElement;
 	protected bool m_bShowMapLinks = true;
 	protected string m_sCallsign;
@@ -187,7 +186,9 @@ class SCR_CampaignBase : SCR_BaseCampaignInstallation
 	protected bool m_bIsOverrun = false;
 	[RplProp(onRplName: "OnAttackingFactionChanged")]
 	protected int m_iAttackingFaction = -1;
-	
+	[RplProp(onRplName: "OnCallsignAssigned")]
+	protected int m_iCallsign = INVALID_BASE_INDEX;
+		
 	//*********//
 	//CONSTANTS//
 	//*********//
@@ -2828,6 +2829,22 @@ class SCR_CampaignBase : SCR_BaseCampaignInstallation
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void OnCallsignAssigned()
+	{
+		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+
+		if (!campaign)
+			return;
+		
+		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(campaign.GetLastPlayerFaction());
+
+		if (!faction)
+			return;
+		
+		SetCallsign(faction);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void FlashBaseIcon(float remainingTime = ICON_FLASH_DURATION, Faction faction = null, bool changeToDefault = false)
 	{
 		GetGame().GetCallqueue().Remove(FlashBaseIcon);
@@ -3338,6 +3355,8 @@ class SCR_CampaignBase : SCR_BaseCampaignInstallation
 		
 		if (campaign && !IsProxy() && m_bEnabled)
 			InitializeBase();
+		else if (!m_bEnabled)
+			DisableBase();		// Hide unused MapDescriptors
 	}
 	
 	//------------------------------------------------------------------------------------------------

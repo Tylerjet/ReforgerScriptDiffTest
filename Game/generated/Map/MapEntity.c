@@ -20,6 +20,8 @@ class MapEntity: GenericEntity
 	proto external void AbsorbData();
 	//! Terrain dimensions (x, height = maxElevation-minElevation, z)
 	proto external vector Size();
+	//! Terrain unit scale
+	proto external float TerrainUnitScale();
 	//! Set selection to visualise (from -> to)
 	proto external void SetSelection( vector start, vector end );
 	//! Reset selection to visualise (from -> to)

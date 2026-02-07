@@ -6,6 +6,9 @@ class SCR_ItemAttributeCollection: ItemAttributeCollection
 	[Attribute("2", UIWidgets.ComboBox, "Slot size", "", ParamEnumArray.FromEnum(ESlotID))]
 	protected ESlotID m_SlotType;
 
+	[Attribute("1", UIWidgets.CheckBox, "Sets item movable by drag'n'drop")]
+	protected bool m_bDraggable;
+
 	private ItemPhysicalAttributes m_PhysAttributes;
 	
 	//------------------------------------------------------------------------------------------------
@@ -19,6 +22,7 @@ class SCR_ItemAttributeCollection: ItemAttributeCollection
 	}
 
 	
+	//------------------------------------------------------------------------------------------------
 	float GetWeight()
 	{
 		if (m_PhysAttributes != null)
@@ -27,6 +31,12 @@ class SCR_ItemAttributeCollection: ItemAttributeCollection
 		}
 		return 0.0;
 	};
+
+	//------------------------------------------------------------------------------------------------
+	bool IsDraggable()
+	{
+		return m_bDraggable;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetSlotSize( ESlotSize slotSize ) 	

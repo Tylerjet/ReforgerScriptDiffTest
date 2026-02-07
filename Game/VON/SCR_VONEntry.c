@@ -7,6 +7,8 @@ class SCR_VONEntry : Managed
 	protected SCR_VONController m_VONController;	// von controller
 	protected SCR_VoNComponent m_VONComp;			// controlled entity von component
 	BaseRadioComponent m_RadioComp;					// this entry's subject radio component, if there is one
+	
+	bool m_bIsSuspended; // TODO temporary hack
 		
 	//------------------------------------------------------------------------------------------------
 	// Init entry data

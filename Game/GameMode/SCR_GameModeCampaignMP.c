@@ -1410,11 +1410,29 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			presence.SetGroupPrefab(prefab);
 		}
 		
-		vector locationCenter = spawnpoint.GetOrigin();
+		vector locationCenter;
+		array<SCR_CampaignRemnantsSpawnPoint> spawnpoints = {};
+		SCR_CampaignRemnantsSpawnPoint initialSpawnpoint;
+		
+		if (spawnpoint.GetChildren())
+		{
+			SCR_CampaignRemnantsSpawnPoint childSpawnPoint = SCR_CampaignRemnantsSpawnPoint.Cast(spawnpoint.GetChildren());
+			while (childSpawnPoint)
+			{
+				spawnpoints.Insert(childSpawnPoint);
+				childSpawnPoint = SCR_CampaignRemnantsSpawnPoint.Cast(childSpawnPoint.GetSibling());
+			}
+			spawnpoints.Insert(spawnpoint);
+			
+			initialSpawnpoint = spawnpoints.GetRandomElement();
+			locationCenter = initialSpawnpoint.GetOrigin();
+		}
+		else
+			locationCenter = spawnpoint.GetOrigin();
+		
 		presence.SetSpawnpoint(locationCenter);
 		
 		// Spawn waypoints
-		SCR_CampaignRemnantsSpawnPoint child = SCR_CampaignRemnantsSpawnPoint.Cast(spawnpoint.GetChildren());
 		array<AIWaypoint> patrolWaypoints = {};
 		array<int> waypointIndexes = {};
 		int pointsCnt = 1;
@@ -1426,20 +1444,23 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		params.Transform[3] = presence.GetSpawnpoint();
 		AIWaypoint firstWP = AIWaypoint.Cast(GetGame().SpawnEntityPrefabLocal(Resource.Load(GetPatrolWaypointPrefab()), null, params));
 		
-		while (child)
+		foreach (SCR_CampaignRemnantsSpawnPoint sp : spawnpoints)
 		{
-			vector pos = child.GetOrigin();
+			if (sp == initialSpawnpoint)
+				continue;
+			
+			vector pos = sp.GetOrigin();	
 			locationCenter += pos;
 			params = EntitySpawnParams();
 			params.TransformMode = ETransformMode.WORLD;
 			params.Transform[3] = pos;
 			AIWaypoint wp = AIWaypoint.Cast(GetGame().SpawnEntityPrefabLocal(Resource.Load(GetPatrolWaypointPrefab()), null, params));
 			
+			int index = -1;
 			// Sort waypoints by indexes
 			if (wp)
-			{
-				int indexNew = child.GetWaypointIndex();
-				int index = -1;
+			{	
+				int indexNew = sp.GetWaypointIndex();
 				
 				for (int i = 0, cnt = waypointIndexes.Count(); i < cnt; i++)
 				{
@@ -1451,7 +1472,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				}
 				
 				if (index == -1)
-				{
+				{	
 					patrolWaypoints.Insert(wp);
 					waypointIndexes.Insert(indexNew);
 					lowestIndex = indexNew;
@@ -1463,7 +1484,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				}
 			}
 			
-			child = SCR_CampaignRemnantsSpawnPoint.Cast(child.GetSibling());
 			pointsCnt++;
 		}
 		
@@ -1480,8 +1500,24 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		}
 		else
 		{
+			
 			if (!patrolWaypoints.IsEmpty())
-				patrolWaypoints.InsertAt(firstWP, 0);
+			{
+				if (initialSpawnpoint.GetWaypointIndex() != -1)
+				{
+					int initialPos = initialSpawnpoint.GetWaypointIndex();
+					
+					if (initialPos > patrolWaypoints.Count() && initialPos != 0)
+						initialPos = patrolWaypoints.Count()-1;
+					
+					patrolWaypoints.InsertAt(firstWP, initialPos);
+					while (patrolWaypoints[0] != firstWP)
+					{
+						patrolWaypoints.Insert(patrolWaypoints[0]);
+						patrolWaypoints.RemoveOrdered(0);
+					}
+				}
+			}
 			
 			AIWaypointCycle cycleWaypoint = AIWaypointCycle.Cast(GetGame().SpawnEntityPrefabLocal(Resource.Load(GetCycleWaypointPrefab()), null, params));
 			
@@ -3549,17 +3585,22 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 #ifdef ENABLE_BUILDING_DEBUG
 		PrintFormat("Number of all sorted bases is: %1",basesSorted.Count());
 #endif	
-		for(int i = 0; i <= BASE_CALLSIGNS_COUNT-1; i++)
-			allIndexes.Insert(i);
+		
+		if(!IsProxy())
+		{
+			for(int i = 0; i <= BASE_CALLSIGNS_COUNT-1; i++)
+				allIndexes.Insert(i);
+		}
 		
 		foreach (SCR_CampaignBase base: basesSorted)
 		{
 			if (!base)
 				continue;
+			
 			Math.Randomize(-1);
 			baseIndex = allIndexes.GetRandomIndex();
 			
-			if (base.GetType() != CampaignBaseType.RELAY && baseIndex < BASE_CALLSIGNS_COUNT)
+			if (!IsProxy() && base.GetType() != CampaignBaseType.RELAY && baseIndex < BASE_CALLSIGNS_COUNT)
 			{
 				base.SetCallsignIndex(allIndexes[baseIndex]);
 				allIndexes.Remove(baseIndex);

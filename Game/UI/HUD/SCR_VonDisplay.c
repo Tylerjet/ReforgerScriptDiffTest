@@ -29,8 +29,9 @@ class TransmissionData
 	float m_fAlpha;			// opacity
 	float m_fActiveTimeout;	// delay before active element starts fading
 	float m_fFrequency;		// current frequency
+	IEntity m_Entity;		// transmitting character
+	Faction m_Faction;
 	BaseRadioComponent m_RadioComp;
-	GenericEntity m_Entity;
 	
 	//------------------------------------------------------------------------------------------------
 	// Hide transmission, skip animation 
@@ -72,7 +73,6 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	const string LABEL_FREQUENCY_UNITS = "#AR-VON_FrequencyUnits_MHz";
 	const string WIDGET_INCOMING = "VonIncoming";
 	const string WIDGET_TRANSMIT = "VonTransmitting";
-	const string WIDGET_HINT = "RadioMenuHint";
 		
 	const int TRANSMISSION_SLOTS = 4;			// max amount of receiving transmissions
 	const float FADEOUT_TIMER_THRESHOLD = 1;
@@ -83,8 +83,6 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	
 	protected bool m_bIsDirectToggled;			// direct speech toggle state
 	protected bool m_bIsChannelToggled;			// channel toggle EFireState
-
-	protected Widget m_wRadioMenuHint;
 	
 	protected ref Color m_TransmitOrange = Color.FromIntSRGB(0xfff1b352);
 	protected ref TransmissionData m_OutTransmission;												// outgoing transmission data class
@@ -151,12 +149,17 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 			pTransmission = new TransmissionData(baseWidget, playerId);
 			m_aTransmissions.Insert(pTransmission);
 			m_aTransmissionMap.Insert(playerId, pTransmission);
-			baseWidget.SetVisible(true);
 		}
 		
-		// update only when first activation / device changed / frequency changed
-		if ( pTransmission.m_bIsActive == false || pTransmission.m_RadioComp != radio || (radio && m_OutTransmission.m_fFrequency != frequency) )
-			UpdateTransmission(pTransmission, radio, frequency, true);	
+		if ( pTransmission.m_bIsActive == false || pTransmission.m_RadioComp != radio || (radio && m_OutTransmission.m_fFrequency != frequency) )	// update only when first activation / device changed / frequency changed
+		{	
+			bool filtered = UpdateTransmission(pTransmission, radio, frequency, true);	
+			if (!filtered)
+			{
+				pTransmission.HideTransmission();
+				return;
+			}
+		}
 		
 		pTransmission.m_bIsActive = true;
 		pTransmission.m_fActiveTimeout = 0;
@@ -167,17 +170,48 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	//! \param TransmissionData is the subject
 	//! \param BaseRadioComponent is the transmission entity radio component
 	//! \param IsReceiving is true when receiving transmission, false when transmitting
-	protected void UpdateTransmission(TransmissionData data, BaseRadioComponent radioComp, int frequency, bool IsReceiving)
+	//! \return false if the transimission is filtered out to not be visible
+	protected bool UpdateTransmission(TransmissionData data, BaseRadioComponent radioComp, int frequency, bool IsReceiving)
 	{	
-		SCR_RespawnSystemComponent respawnComponent;
-		SCR_MilitaryFaction playerFaction;
-		string sDeviceIcon;
-		int factionHQFrequency;
 		data.m_RadioComp = radioComp;
+		data.m_bForceUpdate = false;
+		
+		PlayerManager playerMgr = GetGame().GetPlayerManager();
+		if (playerMgr)
+		{
+			data.m_Entity = playerMgr.GetPlayerControlledEntity(data.m_iPlayerID);
+			if (data.m_Entity)
+			{
+				FactionAffiliationComponent factionComp = FactionAffiliationComponent.Cast( data.m_Entity.FindComponent( FactionAffiliationComponent ) );
+				if (factionComp)	
+					data.m_Faction = factionComp.GetAffiliatedFaction();
+			}
+		}
+		
+		// own faction
+		Faction playerFaction;
+		IEntity controlledEnt = GetGame().GetPlayerController().GetControlledEntity();
+		if (controlledEnt)
+		{
+			FactionAffiliationComponent factionComp = FactionAffiliationComponent.Cast( controlledEnt.FindComponent( FactionAffiliationComponent ) );
+			if (factionComp)	
+				playerFaction = factionComp.GetAffiliatedFaction();
+		}
+		
+		bool enemyTransmission;
+		if (IsReceiving && playerFaction && playerFaction.IsFactionEnemy(data.m_Faction))	// enemy transmission case
+		{
+			if (!radioComp)
+				return false;		// if direct ignore
+			
+			enemyTransmission = true;
+		}
+
+		string sDeviceIcon;
 		data.m_bIsAnimating = true;		// start anim
+		data.m_wBaseWidget.SetVisible(true);
 		data.m_wIcon.SetVisible(true);
 		data.m_wMicIcon.SetVisible(false);
-		data.m_bForceUpdate = false;
 		
 		// radio
 		if (radioComp)
@@ -211,7 +245,6 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 			data.m_wFrequency.SetVisible(false);
 			data.m_wFrequencyIcon.SetVisible(false);
 			data.m_wPlatoon.SetVisible(false);
-			m_wRadioMenuHint.SetVisible(false);
 		}
 				
 		if (sDeviceIcon != string.Empty)
@@ -225,7 +258,11 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 			data.m_wDirection.SetRotation(180);
 			data.m_wPlatoon.SetVisible(false);
 			
-			data.m_wName.SetText(m_PlayerManager.GetPlayerName(data.m_iPlayerID));
+			if (!enemyTransmission)
+				data.m_wName.SetText(m_PlayerManager.GetPlayerName(data.m_iPlayerID));
+			else 
+				data.m_wName.SetText("Unknown");
+			
 			data.m_wName.SetVisible(true);
 		}
 		else	// outgoing 
@@ -239,23 +276,24 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 				data.m_wName.SetText(string.Empty);
 				data.m_wName.SetVisible(false);
 				data.m_wMicIcon.SetVisible(m_bIsChannelToggled);
-				respawnComponent = SCR_RespawnSystemComponent.GetInstance();
-				m_wRadioMenuHint.SetVisible(true);
-				if (respawnComponent)
-					playerFaction = SCR_MilitaryFaction.Cast(respawnComponent.GetPlayerFaction(GetGame().GetPlayerController().GetPlayerId()));
-				if (playerFaction)
-					factionHQFrequency = playerFaction.GetFactionRadioFrequency();
-				if (factionHQFrequency == frequency)
-					data.m_wPlatoon.SetVisible(true);
+				
+				if (SCR_MilitaryFaction.Cast(playerFaction))	// show platoon
+				{
+					int factionHQFrequency = SCR_MilitaryFaction.Cast(playerFaction).GetFactionRadioFrequency();
+					if (factionHQFrequency == frequency)
+						data.m_wPlatoon.SetVisible(true);
+				}
+
 			}
 			else 
 			{
-				m_wRadioMenuHint.SetVisible(false);
 				data.m_wName.SetText(LABEL_SPEAKING);
 				data.m_wName.SetVisible(true);
 				data.m_wMicIcon.SetVisible(m_bIsDirectToggled);
 			}
 		}
+		
+		return true;
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -286,7 +324,6 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		}
 		
 		data.m_wBaseWidget.SetOpacity(data.m_fAlpha);
-		m_wRadioMenuHint.SetOpacity(data.m_fAlpha);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -354,9 +391,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		m_VONController = SCR_VONController.Cast(playerController.FindComponent(SCR_VONController));
 		m_VONController.m_OnVONActiveToggled.Insert(OnVONActiveToggled);
 		m_VONController.SetDisplay(this);	// we set this from here instead of the other way around to avoid load order issues
-		
-		m_wRadioMenuHint = m_wRoot.FindAnyWidget(WIDGET_HINT);		
-								
+							
 		m_OutTransmission = new TransmissionData(m_wRoot.FindAnyWidget(WIDGET_TRANSMIT), 0);
 				
 		Widget verticalLayout = m_wRoot.FindAnyWidget(WIDGET_INCOMING);
@@ -392,7 +427,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		// update fade
 		if (m_OutTransmission.m_bIsAnimating)	
 			OpacityFade(m_OutTransmission, timeSlice);
-		
+
 		// update incoming transmissions
 		if (m_aTransmissions.IsEmpty())
 			return;

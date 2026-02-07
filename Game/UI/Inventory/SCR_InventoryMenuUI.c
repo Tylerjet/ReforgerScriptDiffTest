@@ -1207,7 +1207,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return;
 
 		m_pNavigationBar.SetButtonEnabled( "ButtonSelect", true );
-		m_pNavigationBar.SetButtonEnabled( "ButtonDrop", true );
+		m_pNavigationBar.SetButtonEnabled( "ButtonDrop", m_pFocusedSlotUI.IsDraggable() );
 
 		if ( m_pFocusedSlotUI.GetStorageUI() == m_pStorageLootUI )
 			m_pNavigationBar.SetButtonActionName( "ButtonDrop", "Inventory_Pickup" );
@@ -1341,7 +1341,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 		m_pNavigationBar.SetButtonEnabled("ButtonDrop",
 			(m_pFocusedSlotUI != null) &&
-			(m_pActiveStorageUI != m_pQuickSlotStorage)
+			(m_pActiveStorageUI != m_pQuickSlotStorage) &&
+			m_pFocusedSlotUI.IsDraggable()
 		);
 
 		if (m_pFocusedSlotUI.GetStorageUI() == m_pStorageLootUI)
@@ -2330,10 +2331,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return;
 		if ( !m_pFocusedSlotUI )
 			return;
-		if (!m_pFocusedSlotUI.GetItem())
-			return;
-		IEntity item = m_pFocusedSlotUI.GetItem().GetOwner();
-		if (Vehicle.Cast(item) || TurretControllerComponent.Cast(item.FindComponent(TurretControllerComponent)))
+		if (!m_pFocusedSlotUI.IsDraggable())
 			return;
 
 		if ( m_pFocusedSlotUI && WidgetManager.GetWidgetUnderCursor() != m_pFocusedSlotUI.GetButtonWidget() )
@@ -2366,6 +2364,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			if ( ( dX < DRAG_THRESHOLD ) && ( dY < DRAG_THRESHOLD ) )
 				return;
 			if ( !m_pFocusedSlotUI )
+				return;
+			if (!m_pFocusedSlotUI.IsDraggable())
 				return;
 
 			m_bDraggingEnabled = true;

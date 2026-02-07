@@ -852,7 +852,9 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void OnVOIPPress()
 	{
-		if (m_Radio.GetFrequency() == DESIRED_FREQUENCY)
+		IEntity unit = m_Radio.GetOwner().GetParent();
+		
+		if (unit == m_Player && m_Radio.GetFrequency() == DESIRED_FREQUENCY && m_Radio.IsPowered())
 		{
 			m_fSavedTime = GetGame().GetWorld().GetWorldTime();
 			m_bIsVOIPDone = false;
@@ -862,12 +864,12 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void OnVOIPRelease()
 	{
-		if (m_Radio.GetFrequency() == DESIRED_FREQUENCY)
+		PlayRadioMsg(true);
+		
+		if (m_Radio.GetFrequency() == DESIRED_FREQUENCY && m_Radio.IsPowered())
 		{
 			if (m_fSavedTime + 6000 >= GetGame().GetWorld().GetWorldTime())
 				m_bIsVOIPDone = true;
-			
-			PlayRadioMsg(true);
 		}
 	}
 	

@@ -853,6 +853,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 	//! Update buoyancy loss rate
 	override void OnDamageStateChanged(EDamageState state)
 	{
+		super.OnDamageStateChanged(state);
 		HitZone defaultHitZone = GetDefaultHitZone();
 		if (!defaultHitZone)
 			return;

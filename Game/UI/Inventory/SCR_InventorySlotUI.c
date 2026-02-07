@@ -118,6 +118,15 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	bool IsDraggable()
+	{
+		if (!m_Attributes)
+			return true;
+
+		return m_Attributes.IsDraggable();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected string SetSlotSize()
 	{
 		string slotLayout = SLOT_LAYOUT_1x1;
@@ -1163,12 +1172,6 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	override void HandlerAttached( Widget w )
 	{
 		Init();	
-	}
-			
-	//------------------------------------------------------------------------------------------------
-	InventoryItemComponent GetItem()
-	{
-		return m_pItem;
 	}
 
 	//------------------------------------------------------------------------------------------------

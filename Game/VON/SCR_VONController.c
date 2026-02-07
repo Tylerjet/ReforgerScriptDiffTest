@@ -245,6 +245,16 @@ class SCR_VONController : ScriptComponent
 		if (!state)
 		{			
 			m_bIsActive = false;
+			m_VONComp.SetCapture(false);
+			
+			foreach (SCR_VONEntry vEntry : m_aEntries)	// TODO temporary hack to avoid sound loopback
+			{
+				if (vEntry != entry && vEntry.m_bIsSuspended )
+				{
+					vEntry.m_bIsSuspended = false;
+					vEntry.ToggleEntry();
+				}
+			}
 			
 			if (m_bIsToggledDirect) // direct toggle is active so ending VON should not end capture
 			{
@@ -256,13 +266,32 @@ class SCR_VONController : ScriptComponent
 				ActivateVON(m_ActiveEntry, m_bIsToggledChannel);
 				m_sActiveHoldAction = string.Empty;
 			}
-			else 
-				m_VONComp.SetCapture(false);	// only set false if we are not switching to another VON type since calling false and true in a single frame seems to break it
 		}
 		else
 		{
 			m_VONComp.SetCapture(true);
 			m_bIsActive = true;
+			
+			FactionAffiliationComponent factionComp = FactionAffiliationComponent.Cast( m_VONEntity.FindComponent( FactionAffiliationComponent ) );	// TODO temp hack against sound loopback
+			if (factionComp && SCR_VONEntryRadio.Cast(entry))
+			{
+				SCR_MilitaryFaction playerFaction = SCR_MilitaryFaction.Cast(factionComp.GetAffiliatedFaction());
+				if (playerFaction)
+				{
+					int factionHQFrequency = playerFaction.GetFactionRadioFrequency();
+					if (factionHQFrequency == entry.m_RadioComp.GetFrequency())
+					{
+						foreach (SCR_VONEntry vEntry : m_aEntries)
+						{
+							if (vEntry != entry && vEntry.m_bIsEnabled )
+							{
+								vEntry.ToggleEntry();
+								vEntry.m_bIsSuspended = true;
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	

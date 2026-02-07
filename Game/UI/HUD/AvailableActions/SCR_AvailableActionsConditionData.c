@@ -74,6 +74,12 @@ class SCR_AvailableActionsConditionData
 	//! How long is vehicle using turbo
 	protected float m_fTurboTime;
 	
+	// Von variables ----------------------
+	//! Is character using radio 
+	protected bool m_bCharacterIsUsingRadio;
+	//! Count of available radios 
+	protected bool m_bCharacterRadiosCount;
+	
 	protected BaseControllerComponent m_pCurrentVehicleController;
 	//! Current controlled vehicle signals
 	protected SignalsManagerComponent m_pCurrentVehicleSignals;
@@ -357,6 +363,18 @@ class SCR_AvailableActionsConditionData
 	{
 		return m_bIsCharacterBleeding;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetIsCharacterUsingRadio()
+	{
+		return m_bCharacterIsUsingRadio;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetCharacterRadiosCount()
+	{
+		return m_bCharacterRadiosCount;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	bool IsInventoryOpen()
@@ -638,7 +656,33 @@ class SCR_AvailableActionsConditionData
 		// Fetch available gadgets
 		GetAvailableGadgets(m_pHeldGadget);
 		
+		VonActions();
+		
 		return;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check character von actions 
+	protected void VonActions()
+	{
+		if (!m_CharacterEntity)
+			return;
+		
+		if (!m_ControllerComponent)
+			return;
+		
+		SCR_VONController vonController = SCR_VONController.Cast(GetGame().GetPlayerController().FindComponent(SCR_VONController));
+		if (!vonController)
+			return;
+		
+		m_bCharacterRadiosCount = vonController.GetVONEntries().Count();
+		
+		// Find von component 
+		SCR_VoNComponent von = SCR_VoNComponent.Cast(m_CharacterEntity.FindComponent(SCR_VoNComponent));
+		if (!von)
+			return;
+		
+		m_bCharacterIsUsingRadio = von.IsTransmiting();
 	}
 	
 	//------------------------------------------------------------------------------------------------

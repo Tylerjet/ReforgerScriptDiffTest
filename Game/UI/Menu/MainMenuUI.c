@@ -86,6 +86,24 @@ class MainMenuUI : ChimeraMenuBase
 		// Opening Last menu
 		SCR_MenuLoadingComponent.LoadLastMenu();
 		SCR_MenuLoadingComponent.ClearLastMenu();
+		
+		// Check playing for the first time, do not show to devs
+		if (Game.IsDev())
+			return;
+
+		bool firstLoad;
+		BaseContainer cont = GetGame().GetGameUserSettings().GetModule("SCR_RecentGames");
+		if (cont)
+			cont.Get("m_bFirstTimePlay", firstLoad);
+
+		if (!firstLoad)
+			return;
+
+		// Complete the first load, show welcome screen
+		cont.Set("m_bFirstTimePlay", false);
+		GetGame().UserSettingsChanged();
+		GetGame().SaveUserSettings();
+		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.WelcomeDialog);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -105,24 +123,6 @@ class MainMenuUI : ChimeraMenuBase
 
 		if (m_FocusedTile)
 			GetGame().GetWorkspace().SetFocusedWidget(m_FocusedTile.GetRootWidget(), true);
-
-		// Check playing for the first time, do not show to devs
-		if (Game.IsDev())
-			return;
-
-		bool firstLoad;
-		BaseContainer cont = GetGame().GetGameUserSettings().GetModule("SCR_RecentGames");
-		if (cont)
-			cont.Get("m_bFirstTimePlay", firstLoad);
-		
-		if (!firstLoad)
-			return;
-
-		// Complete the first load, show welcome screen
-		cont.Set("m_bFirstTimePlay", false);
-		GetGame().UserSettingsChanged();
-		GetGame().SaveUserSettings();
-		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.WelcomeDialog);
 	}
 
 	//------------------------------------------------------------------------------------------------
