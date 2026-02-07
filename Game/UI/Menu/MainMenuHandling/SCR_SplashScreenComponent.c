@@ -19,6 +19,11 @@ class SCR_SplashScreenComponent : ScriptedWidgetComponent
 		TextWidget action = TextWidget.Cast(w.FindAnyWidget("Action"));
 		if (action)
 			action.SetTextFormat("#AR-SplashScreen_Continue", "<color rgba='226, 167, 79, 255'><action name='CloseWarning'/></color>");
+	
+		// Display experimental
+		Widget experimentalTxt = w.FindAnyWidget("Experimental");
+		if (experimentalTxt)
+			experimentalTxt.SetVisible(GetGame().IsExperimentalBuild());
 	}
 
 	//---------------------------------------------------------------------------------------------

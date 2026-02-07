@@ -8,6 +8,8 @@ class ChimeraGame: Game
 {
 	//! returns the particles manager
 	proto external ParticlesManager GetParticlesManager();
+	//! Is the game experimental build
+	proto external bool IsExperimentalBuild();
 	//! Returns the world clock
 	proto external ScriptWorldClock GetClock();
 	//! returns the global signals manager

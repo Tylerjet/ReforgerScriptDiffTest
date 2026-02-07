@@ -26,6 +26,8 @@ class CP_LayerTask : CP_LayerBase
 	
 	protected CP_Task	m_pTask;
 	protected SCR_CP_TaskSupportEntity m_pSupportEntity;
+	
+	static ref ScriptInvoker s_OnTaskSetup = new ref ScriptInvoker();
 		
 	//------------------------------------------------------------------------------------------------
 	CP_Task GetTask() { return m_pTask; }
@@ -199,6 +201,8 @@ class CP_LayerTask : CP_LayerBase
 		{
 			Print( "CP: ->Task: Task Subject not found doesn't exist" );
 		}
+		
+		s_OnTaskSetup.Invoke(m_pTask);
 		
 		PrintFormat( "CP: ->Task: Generating task %1", m_pTask.GetTitleText() );
 	}

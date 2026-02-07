@@ -2,7 +2,7 @@
 //! Used for storing client data to be reapplied for reconnecting clients
 class SCR_CampaignClientData
 {
-	private int m_iID;
+	private string m_sID;
 	private int m_iXP;
 	private vector m_vPos;
 	private bool m_bApplied = true;
@@ -11,16 +11,16 @@ class SCR_CampaignClientData
 	
 	//------------------------------------------------------------------------------------------------
 	//! Setter for client ID
-	void SetID(int ID)
+	void SetID(string ID)
 	{
-		m_iID = ID;
+		m_sID = ID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Getter for client ID
-	int GetID()
+	string GetID()
 	{
-		return m_iID;
+		return m_sID;
 	}
 	
 	//------------------------------------------------------------------------------------------------

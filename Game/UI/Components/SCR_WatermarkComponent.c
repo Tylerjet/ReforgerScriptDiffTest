@@ -74,7 +74,11 @@ class SCR_WatermarkComponent: ScriptedWidgetComponent
 			if (pls)
 				platformName = m_aPlatformStrings[platform];
 
-			text.SetTextFormat("%1 (%2)", GetGame().GetBuildVersion(), platformName);
+			string experimentalNotice = "";
+			if (GetGame().IsExperimentalBuild())
+				experimentalNotice = " - Experimental";
+
+			text.SetTextFormat("%1%2 (%3)", GetGame().GetBuildVersion(), experimentalNotice, platformName);
 		}
 		
 		SCR_EditorManagerCore editorManagerCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));

@@ -70,6 +70,7 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	TutorialDialog,
 	CreditsMenu,
 	WelcomeDialog,
+	ExperimentalDialog,
 	AddonPresetDialog,
 	AddonExportDialog,
 	GroupSettingsDialog,

@@ -572,14 +572,16 @@ class SCR_CampaignRemnantInfoStruct : SCR_JsonApiStruct
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignPlayerStruct : SCR_JsonApiStruct
 {
-	protected int m_iID;
+	static const string LOCAL_PLAYER_IDENTITY_ID = "identitySP";
+	
+	protected string m_sID;
 	protected int m_iFaction = -1;
 	protected int m_iXP;
 	
 	//------------------------------------------------------------------------------------------------
-	int GetID()
+	string GetID()
 	{
-		return m_iID;
+		return m_sID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -595,9 +597,9 @@ class SCR_CampaignPlayerStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetID(int ID)
+	void SetID(string ID)
 	{
-		m_iID = ID;
+		m_sID = ID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -612,6 +614,23 @@ class SCR_CampaignPlayerStruct : SCR_JsonApiStruct
 		m_iXP = xp;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	static string GetPlayerIdentity(int playerId)
+	{
+		if (playerId <= 0)
+			return string.Empty;
+		
+		if (RplSession.Mode() == RplMode.None)
+			return LOCAL_PLAYER_IDENTITY_ID;
+		
+		BackendApi api = GetGame().GetBackendApi();
+		
+		if (!api)
+			return string.Empty;
+		
+		return api.GetPlayerUID(playerId);
+	}
+	
 	//************************//
 	//CONSTRUCTOR & DESTRUCTOR//
 	//************************//
@@ -619,7 +638,7 @@ class SCR_CampaignPlayerStruct : SCR_JsonApiStruct
 	//------------------------------------------------------------------------------------------------
 	void SCR_CampaignPlayerStruct()
 	{
-		RegV("m_iID");
+		RegV("m_sID");
 		RegV("m_iFaction");
 		RegV("m_iXP");
 	}

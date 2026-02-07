@@ -1,8 +1,12 @@
 class MainMenuUI : ChimeraMenuBase
 {
+	protected const string EXPERIMENTAL_LABEL = "#AR-Experimental_WelcomeLabel";
+	protected const string EXPERIMENTAL_MESSAGE = "#AR-Experimental_WelcomeMessage";
+	
 	protected SCR_MenuTileComponent m_FocusedTile;
 	protected SCR_AccountWidgetComponent m_AccountComponent;
 	protected DialogUI m_BannedDetectionDialog;
+	protected DialogUI m_ExperimentalDialog;
 
 	protected ref array<string> m_aBannedItems = {};
 	protected static ref array<ref SCR_NewsEntry> m_aNews = {};
@@ -89,6 +93,8 @@ class MainMenuUI : ChimeraMenuBase
 		// Check ping sites 
 		GetGame().GetBackendApi().GetClientLobby().MeasureLatency(null);
 	}
+	
+	protected bool m_bFirstLoad;
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuOpened()
@@ -97,23 +103,43 @@ class MainMenuUI : ChimeraMenuBase
 		SCR_MenuLoadingComponent.LoadLastMenu();
 		//SCR_MenuLoadingComponent.ClearLastMenu();
 
+		// Show experimental dialog 
+		if (GetGame().IsExperimentalBuild())
+		{
+			m_ExperimentalDialog = DialogUI.Cast(
+				GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ExperimentalDialog, DialogPriority.CRITICAL));
+			m_ExperimentalDialog.m_OnConfirm.Insert(OnExperitementalDialogClose);
+		}
+		
 		// Check playing for the first time, do not show to devs
 		if (Game.IsDev())
 			return;
-
-		bool firstLoad;
+		
+		//bool firstLoad;
 		BaseContainer cont = GetGame().GetGameUserSettings().GetModule("SCR_RecentGames");
 		if (cont)
-			cont.Get("m_bFirstTimePlay", firstLoad);
-
-		if (!firstLoad)
+			cont.Get("m_bFirstTimePlay", m_bFirstLoad);
+		
+		if (!m_bFirstLoad)
 			return;
-
+		
 		// Complete the first load, show welcome screen, save into settings
 		cont.Set("m_bFirstTimePlay", false);
 		GetGame().UserSettingsChanged();
 		GetGame().SaveUserSettings();
-		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.WelcomeDialog);
+		
+		// Prevent opening of welcome dialog - should be displayed on closing experimental dialog 
+		if (!GetGame().IsExperimentalBuild())
+			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.WelcomeDialog);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnExperitementalDialogClose()
+	{
+		m_ExperimentalDialog.m_OnConfirm.Remove(OnExperitementalDialogClose);	
+		
+		if (m_bFirstLoad)
+			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.WelcomeDialog);
 	}
 
 	//------------------------------------------------------------------------------------------------

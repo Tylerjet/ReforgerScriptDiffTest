@@ -630,6 +630,23 @@ class SCR_CampaignBase : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	SCR_SiteSlotEntity GetAssignedSlotByService(ECampaignServicePointType type)
+	{
+		switch (type)
+		{
+			case ECampaignServicePointType.SUPPLY_DEPOT: {return m_SlotSupplies;};
+			case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT: {return m_SlotLightVehicleDepot;};
+			case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT: {return m_SlotHeavyVehicleDepot;};
+			case ECampaignServicePointType.ARMORY: {return m_SlotArmory;};
+			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_SlotHospital;};
+			case ECampaignServicePointType.BARRACKS: {return m_SlotBarracks;};
+			case ECampaignServicePointType.RADIO_ANTENNA: {return m_SlotRadioAntenna;};
+		}
+		
+		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Capturing has been successfully finished
 	void FinishCapture(int playerID = INVALID_PLAYER_INDEX)
 	{
@@ -2340,7 +2357,12 @@ class SCR_CampaignBase : GenericEntity
 				Math3D.AnglesToMatrix(rotation, params.Transform);
 				params.Transform[3] = position;
 				
-				service = GetGame().SpawnEntityPrefab(Resource.Load(prefab), null, params);
+				SCR_SiteSlotEntity slot = GetAssignedSlotByService(type);
+				
+				if (slot && vector.DistanceSq(position, slot.GetOrigin()) == 0)
+					service = slot.SpawnEntityInSlot(Resource.Load(prefab));
+				else
+					service = GetGame().SpawnEntityPrefab(Resource.Load(prefab), null, params);
 				
 				if (!service)
 					continue;
@@ -2352,6 +2374,8 @@ class SCR_CampaignBase : GenericEntity
 				
 				RegisterAsParentBase(serviceComponent, true);
 			}
+			
+			AddSupplies(loadedData.GetSupplies() - GetSupplies());
 			
 			return;
 		}
@@ -3026,6 +3050,7 @@ class SCR_CampaignBase : GenericEntity
 		if (!IsProxy())
 		{
 			ChangeOwner(null, true);
+			GetGame().GetCallqueue().Remove(SpawnBuildings);
 			GetGame().GetCallqueue().Remove(ReinforcementsTimer);
 		}
 		
@@ -3417,9 +3442,9 @@ class SCR_CampaignBase : GenericEntity
 			m_bIsHQ = false;
 		
 		SetCallsignIndex(baseStruct.GetCallsignIndex());
-		AddSupplies(baseStruct.GetSupplies() - GetSupplies());
 		
-		// Delay so we don't spawn stuff during init, and make sure prebuilt structures are already in the scene
+		// Delay so we don't spawn stuff during init, and make sure default buildings are not built
+		GetGame().GetCallqueue().Remove(SpawnBuildings);
 		GetGame().GetCallqueue().CallLater(SpawnBuildings, 1000, false, baseStruct);
 	}
 	
@@ -3437,9 +3462,7 @@ class SCR_CampaignBase : GenericEntity
 		baseStruct.SetOwningFaction(GetGame().GetFactionManager().GetFactionIndex(GetOwningFaction()));
 		baseStruct.SetBuildingsFaction(fManager.GetFactionIndex(GetBuildingsFaction()));
 		baseStruct.SetSupplies(GetSupplies());
-		
-		if (!m_bPrebuilt)
-			baseStruct.SetBuildingsData(this);
+		baseStruct.SetBuildingsData(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------

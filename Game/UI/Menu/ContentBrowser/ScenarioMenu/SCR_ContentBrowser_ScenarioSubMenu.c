@@ -626,8 +626,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 		if (!scenario)
 			return;
 		
-		SCR_WorkshopUiCommon.TryPlayScenario(scenario);
-		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ScenarioMenu);
+		OnContinueButton();
 	}
 	
 	

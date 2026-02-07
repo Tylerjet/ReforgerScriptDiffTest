@@ -62,21 +62,27 @@ class SCR_AIAbortDefendWaypoint: AITaskScripted
 				if (character && character.IsInVehicle())
 				{
 					SCR_AIMessage_GetOut msg2 = SCR_AIMessage_GetOut.Cast(mailbox.CreateMessage(m_aiWorld.GetGoalMessageOfType(EMessageType_Goal.GET_OUT_VEHICLE)));
-					if ( !msg2 )
+					if ( msg2 )
+					{
+						msg2.SetText("Waypoint Defend is completed, leave vehicle");
+						msg2.SetReceiver(receiver);
+						mailbox.RequestBroadcast(msg2,receiver);
+					}
+					else
 						Debug.Error("Unable to create valid message!");
-					msg2.SetText("Waypoint Defend is completed, leave vehicle");
-					msg2.SetReceiver(receiver);
-					mailbox.RequestBroadcast(msg2,receiver);
 				}					
 			}
 		}
 		
 		SCR_AIMessage_Cancel msg3 = SCR_AIMessage_Cancel.Cast(mailbox.CreateMessage(m_aiWorld.GetGoalMessageOfType(EMessageType_Goal.CANCEL)));
-		if ( !msg3 )
+		if ( msg3 )
+		{
+			msg3.SetText("Waypoint Defend is completed");
+			msg3.SetReceiver(myGroup);
+			mailbox.RequestBroadcast(msg3,myGroup);
+		}
+		else
 			Debug.Error("Unable to create valid message!");			
-		msg3.SetText("Waypoint Defend is completed");
-		msg3.SetReceiver(myGroup);
-		mailbox.RequestBroadcast(msg3,myGroup);		
 		m_bAbortDone = true;
 	}
 

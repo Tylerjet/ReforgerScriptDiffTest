@@ -12,6 +12,9 @@ class SCR_SpawnOccupantsContextAction : SCR_SelectedEntitiesContextAction
 	
 	override bool CanBeShown(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
 	{		
+		//~ Disabled until the system is reworked. HasEnoughBudgetForDefaultOccupants should be called here or at least in the budget component and the player Id needs to be send over to get the contentbrowser!
+		return false;
+		
 		SCR_EditableVehicleUIInfo uiInfo = SCR_EditableVehicleUIInfo.Cast(selectedEntity.GetInfo());
 		if (uiInfo && !uiInfo.CanFillWithGivenTypes(m_aCompartmentsTypes))
 			return false;

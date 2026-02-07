@@ -181,7 +181,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		
 		
 		SCR_ContentBrowserEditorComponent contentBrowser = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent, true));
-		return !contentBrowser || contentBrowser.CanPlace(occupantsToSpawn, EEditableEntityType.CHARACTER);
+		return contentBrowser && contentBrowser.CanPlace(occupantsToSpawn, EEditableEntityType.CHARACTER);
 	}
 	
 	/*!

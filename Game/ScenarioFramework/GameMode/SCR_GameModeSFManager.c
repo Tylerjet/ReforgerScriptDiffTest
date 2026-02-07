@@ -249,7 +249,8 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		}
 				
 		SCR_BaseTaskManager.s_OnTaskFinished.Insert( OnTaskFinished );		
-		SCR_BaseTaskManager.s_OnTaskCreated.Insert( OnTaskCreated );	
+		//SCR_BaseTaskManager.s_OnTaskCreated.Insert( OnTaskCreated );
+		CP_LayerTask.s_OnTaskSetup.Insert( OnTaskCreated );	
 		SCR_BaseTaskManager.s_OnTaskCancelled.Insert( OnTaskCancelled );
 		SCR_BaseTaskManager.s_OnTaskFailed.Insert( OnTaskFailed );
 		SCR_BaseTaskManager.s_OnTaskUpdate.Insert( OnTaskUpdate );

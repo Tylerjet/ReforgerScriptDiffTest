@@ -50,8 +50,8 @@ class CP_Task : SCR_BaseTask
 		SCR_GameModeSFManager pGameModeManager = SCR_GameModeSFManager.Cast( GetGame().GetGameMode().FindComponent( SCR_GameModeSFManager ) );
 		if ( !pGameModeManager )
 			return;
-		
-		pGameModeManager.PopUpMessage( GetTitle(), GetTitle() );
+		if (newState == SCR_TaskState.FINISHED)
+			pGameModeManager.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFinished-UC");
 				
 		if ( !pGameModeManager.IsMaster() )
 			return;

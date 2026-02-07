@@ -3074,9 +3074,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void ApplyClientData(int ID)
+	protected void ApplyClientData(int playerId)
 	{
-		SCR_CampaignClientData clientData = GetClientData(ID);
+		SCR_CampaignClientData clientData = GetClientData(playerId);
 		
 		if (!clientData)
 			return;
@@ -3084,7 +3084,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (clientData.GetApplied())
 			return;
 		
-		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(ID);
+		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
 		
 		if (!pc)
 			return;
@@ -3099,7 +3099,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			int forcedFaction = clientData.GetFactionIndex();
 			
 			if (forcedFaction != -1)
-				respawnSystem.DoSetPlayerFaction(ID, forcedFaction);
+				respawnSystem.DoSetPlayerFaction(playerId, forcedFaction);
 		}
 		
 		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(pc.FindComponent(SCR_CampaignNetworkComponent));
@@ -3460,18 +3460,23 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get corresponding client data, create new object if not found
-	protected SCR_CampaignClientData GetClientData(int ID)
+	protected SCR_CampaignClientData GetClientData(int playerId)
 	{
-		if (ID == 0)
+		if (playerId == 0)
+			return null;
+		
+		string playerIdentity = SCR_CampaignPlayerStruct.GetPlayerIdentity(playerId);
+		
+		if (playerIdentity == string.Empty)
 			return null;
 		
 		SCR_CampaignClientData clientData;
 		int clientsCnt = m_aRegisteredClients.Count();
-
+		
 		// Check if the client is reconnecting
 		for (int i = 0; i < clientsCnt; i++)
 		{
-			if (m_aRegisteredClients[i].GetID() == ID)
+			if (m_aRegisteredClients[i].GetID() == playerIdentity)
 			{
 				clientData = m_aRegisteredClients[i];
 				break;
@@ -3481,7 +3486,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (!clientData)
 		{
 			clientData = new SCR_CampaignClientData;
-			clientData.SetID(ID);
+			clientData.SetID(playerIdentity);
 			m_aRegisteredClients.Insert(clientData);
 		}
 
@@ -3709,9 +3714,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				}
 				
 				// Spawn pre-built structures only on server
-				// Delay so we don't spawn stuff during init
+				// Delay so we don't spawn stuff during init, and allow loaded state an override
 				if (base.GetBuildingsFaction())
-					GetGame().GetCallqueue().CallLater(base.SpawnBuildings, 500, false, null);
+					GetGame().GetCallqueue().CallLater(base.SpawnBuildings, 2000, false, null);
 			}
 			
 			// Prepare a list of dedicated Slots
@@ -3878,7 +3883,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	{
 		super.OnPlayerRegistered(playerId);
 		
-		if (!IsProxy())
+		if (RplSession.Mode() == RplMode.None)
 			ApplyClientData(playerId);
 		
 		// See HandleOnFactionAssigned()
@@ -3896,6 +3901,10 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	override void OnPlayerAuditSuccess(int iPlayerID)
 	{
 		super.OnPlayerAuditSuccess(iPlayerID);
+		
+		if (RplSession.Mode() != RplMode.None)
+			ApplyClientData(iPlayerID);
+		
 		/*
 		SCR_PlayerData replaces this, thus this is outdated and we need to remove it
 		SCR_PlayerProfileManagerComponent comp = SCR_PlayerProfileManagerComponent.Cast(FindComponent(SCR_PlayerProfileManagerComponent));

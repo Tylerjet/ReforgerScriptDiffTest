@@ -392,6 +392,9 @@ class SCR_CampaignBaseManager : GenericEntity
 		
 		foreach (SCR_CampaignBase base : s_aBases)
 		{
+			if (!base.GetIsEnabled())
+				continue;
+			
 			if (base.GetCanBeHQ())
 			{
 				candidatesForHQ.Insert(base);
@@ -860,6 +863,7 @@ class SCR_CampaignBaseManager : GenericEntity
 		
 		m_WestHQ = null;
 		m_EastHQ = null;
+		m_aControlPoints = {};
 		m_bBasesInitialized = false;
 		m_iInitializedBasesCount = 0;
 		
