@@ -86,7 +86,6 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		//in case of gamepad just do nothing, because we do not support keybind changes on gamepad
 		if (GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.GAMEPAD)
 			return;
-		s_Binding.ResetDefault(m_sActionName, EInputDeviceType.KEYBOARD, m_sActionPreset);
 		s_Binding.StartCapture(m_sActionName, EInputDeviceType.KEYBOARD, m_sActionPreset);
 
 		KeybindMenu menu = KeybindMenu.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.KeybindChangeDialog , DialogPriority.CRITICAL, 0, true));

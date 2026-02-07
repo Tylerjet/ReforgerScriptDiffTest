@@ -34,6 +34,7 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Clear();
 
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "MouseInvert", "MouseY"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GamepadInvert", "GamepadY"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_HintSettings", "m_bHintsEnabled", "ContextHints"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bControlHints", "ControlHints"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_b2DScopes", "ScopeMode"));
@@ -52,7 +53,7 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("UserInterfaceSettings", "UseSoftwareCursor", "CursorMode"));
 
 		LoadSettings();
-
+		
 		BindFOVSettings();
 		BindSensitivitySettings();
 		BindLanguage();

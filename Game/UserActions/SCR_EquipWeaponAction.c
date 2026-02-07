@@ -161,8 +161,8 @@ class SCR_EquipWeaponAction : SCR_BaseWeaponAction
  	{
 		if ( !super.CanBePerformedScript( user ) )
 			return false;
-		
-		return CanEquipOrReplaceWeapon( user );
+		CharacterControllerComponent controller = CharacterControllerComponent.Cast(user.FindComponent(CharacterControllerComponent));
+		return CanEquipOrReplaceWeapon( user ) && !controller.IsReloading() && controller.CanPlayItemGesture();
 
  	}
 
@@ -274,7 +274,7 @@ class SCR_EquipWeaponHolsterAction : SCR_BaseWeaponAction
 			return;
 		
 		EquipedWeaponStorageComponent weaponStorage = EquipedWeaponStorageComponent.Cast(pUserEntity.FindComponent(EquipedWeaponStorageComponent));
-		
+
 		BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(pUserEntity.FindComponent(BaseWeaponManagerComponent));
 		
 		if (!weaponStorage || !weaponManager)
@@ -345,8 +345,8 @@ class SCR_EquipWeaponHolsterAction : SCR_BaseWeaponAction
  	{
 		if ( !super.CanBePerformedScript( user ) )
 			return false;
-
-		return CanEquipOrReplaceWeapon( user ); 
+		CharacterControllerComponent controller = CharacterControllerComponent.Cast(user.FindComponent(CharacterControllerComponent));
+		return CanEquipOrReplaceWeapon( user ) && controller.CanPlayItemGesture();
  	}
 
 	//------------------------------------------------------------------------------------------------

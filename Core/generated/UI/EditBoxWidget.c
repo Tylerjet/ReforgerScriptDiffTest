@@ -14,6 +14,8 @@ sealed class EditBoxWidget: UIWidget
 	proto external bool IsInWriteMode();
 	proto external void SetText(string str);
 	proto external void SetPlaceholderText(string str);
+	proto external void SetVirtualKeyboardTitle(string str);
+	proto external void SetVirtualKeyboardDesc(string str);
 	proto external void ActivateWriteMode();
 	proto string GetObfuscationChar();
 	/*!

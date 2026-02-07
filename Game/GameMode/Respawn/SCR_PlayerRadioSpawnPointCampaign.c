@@ -63,4 +63,22 @@ class SCR_PlayerRadioSpawnPointCampaign: SCR_PlayerRadioSpawnPoint
 	{
 		super.DeactivateSpawnPoint();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_PlayerRadioSpawnPointCampaign()
+	{
+		// If disconnecting player currently holds a respawn radio, handle it
+		if (!Replication.IsServer())
+			return;
+		
+		if (GetFactionKey().IsEmpty())
+			return;
+		
+		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		
+		if (!campaign)
+			return;
+		
+		campaign.RemoveActiveRespawnRadio(GetFactionKey());
+	}
 };

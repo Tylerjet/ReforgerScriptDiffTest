@@ -256,6 +256,8 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external void SetDisableViewControls(bool other);
 	//------------------------------------------------------------------------
 	proto external void SetAimingSensitivity(float mouse, float gamepad, float ads);
+	//------------------------------------------------------------------------
+	proto external void GetAimingSensivity(out float mouse, out float gamepad, out float ads);
 	// Sets gadget handling into persistent mode
 	proto external void SetStickyGadget(bool enable);
 	// Sets ads and gadget focus into persistent mode

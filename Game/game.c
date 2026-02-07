@@ -139,7 +139,7 @@ class ArmaReforgerScripted : ChimeraGame
 				group = "BATTLEYE_INIT";
 				switch(reasonInt)
 				{
-					case BattlEyeInitError.NOT_INSTALLED: reason = "NOT_INSTALLED"; break;
+					case BattlEyeInitError.LOAD_ERROR: reason = "LOAD_ERROR"; break;
 					case BattlEyeInitError.UNSUPPORTED_VERSION: reason = "UNSUPPORTED_VERSION"; break;
 					case BattlEyeInitError.OTHER_ERROR: reason = "OTHER_ERROR"; break;
 				}

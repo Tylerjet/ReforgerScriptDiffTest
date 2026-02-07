@@ -69,34 +69,5 @@ class SCR_NewsSubMenu : SCR_SubMenuBase
 			return;
 		
 		GetGame().GetPlatformService().OpenBrowser(url);
-		
-		/*
-		if (!m_Gallery)
-			return;
-		
-		array<Widget> widgets = {};
-		m_Gallery.GetWidgets(widgets);
-		if (!widgets)
-			return;
-		
-		m_iCurrentIndex = widgets.Find(comp.m_wRoot);
-		
-		if (m_iCurrentIndex < -1 || m_iCurrentIndex >= m_aEntries.Count())
-			return;
-		
-		NewsDialogUI dialog = NewsDialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.NewsDialog));
-		if (!dialog)
-			return;
-		
-		SCR_NewsEntry entry = m_aEntries[m_iCurrentIndex];
-		if (!entry)
-			return;
-		
-		dialog.SetTitle(entry.m_sTitle);
-		dialog.SetMessage(entry.m_sFullText);
-		dialog.SetAuthor(entry.m_sAuthor);
-		dialog.SetDate(entry.m_sDate);
-		dialog.SetImage(entry.m_sImage);
-		*/
 	}
 };

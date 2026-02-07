@@ -9,7 +9,7 @@ enum ENotification
 	PLAYER_JOINED = 100, ///< A player joined - (Param1 = PlayerID)
 	PLAYER_LEFT = 101, ///< A player left - (Param1 = PlayerID)
 	PLAYER_KICKED = 102, ///< A player was kicked - (Param1 = PlayerID)
-	PLAYER_BANNED = 103, ///< A player was banned - (Param1 = PlayerID)
+	PLAYER_BANNED = 103, ///< A player was banned - (Param1 = PlayerID, Duration)
 	PLAYER_JOINED_FACTION = 104, ///A player joined a faction - (Param1 = PlayerID, Param2 = factionIndex)
 	PLAYER_DIED = 105, ///< Player died - (Param1 = PlayerID)
 	PLAYER_KILLED_PLAYER = 106, ///< Player killed a player - (Param1 = (killer)PlayerID, Param2 = (Killed Player)PlayerID)
@@ -20,6 +20,7 @@ enum ENotification
 	PLAYER_KILLED_POSSESSED_AI = 112, ///> Shown to GM only when player killed a possessed NPC 
 	AI_KILLED_POSSESSED_AI = 113, ///> Shown to GM only when player killed a possessed NPC 
 	POSSESSED_AI_KILLED_POSSESSED_AI = 114, ///> Shown to GM only when possessed NPC killed a player
+	PLAYER_BANNED_NO_TIME = 115, ///< A player was banned for the session - (Param1 = PlayerID)
 	
 	//RIGHTS
 	EDITOR_EDITOR_RIGHTS_ASSIGNED = 200, ///< Player got rights assigned - (Param1 = GameMasterID, Param2 = TargetPlayerID))

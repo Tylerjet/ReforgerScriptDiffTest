@@ -50,24 +50,18 @@ class SCR_AIWaitBehavior : SCR_AIBehaviorBase
 
 class SCR_AIIdleBehavior : SCR_AIBehaviorBase
 {
-	ref SCR_BTParam<vector> m_vPosition = new SCR_BTParam<vector>(SCR_AIActionTask.POSITION_PORT);
-	
-    override float Evaluate()
+	override float Evaluate()
     {
 		return 1;
     }
 
     void SCR_AIIdleBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize)
     {
-		m_vPosition.Init(this, vector.Zero);
-		
 		if (!utility)
 			return;
 		
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Idle.bt";
         m_eType = EAIActionType.IDLE;
-		if(m_Utility.m_OwnerEntity)
-			m_vPosition.m_Value = m_Utility.m_OwnerEntity.GetOrigin();
     }
 };
 

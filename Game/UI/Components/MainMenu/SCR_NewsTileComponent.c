@@ -55,7 +55,7 @@ class SCR_NewsTileComponent : SCR_TileBaseComponent
 			m_Read.m_OnActivated.Insert(OnRead);
 
 		if (!m_wFooter)
-		return;
+			return;
 		
 		m_wFooter.SetOpacity(0);
 		m_wFooter.SetEnabled(false);

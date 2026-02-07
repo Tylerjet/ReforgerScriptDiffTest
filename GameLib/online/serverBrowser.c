@@ -345,6 +345,8 @@ class ClientLobbyApi
 	
 	proto native string GetPreviousRoomId();
 	proto native void ClearPreviousRoomId();
+	
+	proto native Room GetRoomById(string id);
 };
 
 class ServerBrowser

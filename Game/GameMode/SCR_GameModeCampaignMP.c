@@ -1849,6 +1849,25 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	SCR_PlayerSpawnPoint GetPlayerSpawnpoint (int playerId)
+	{
+		array<SCR_SpawnPoint> allSpawnpoints = SCR_SpawnPoint.GetSpawnPoints();
+		
+		foreach (SCR_SpawnPoint sp: allSpawnpoints)
+		{
+			SCR_PlayerSpawnPoint spCast = SCR_PlayerSpawnPoint.Cast(sp);
+			
+			if (!spCast)
+				continue;
+			
+			if (spCast.GetPlayerID() == playerId && !spCast.GetFactionKey().IsEmpty())
+				return spCast;
+		}
+		
+		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void AddActiveRespawnRadio(FactionKey faction)
 	{
 		switch (faction)
@@ -1861,9 +1880,12 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void RemoveActiveRespawnRadio(FactionKey faction)
+	void RemoveActiveRespawnRadio(FactionKey faction, SCR_PlayerRadioSpawnPointCampaign processedSpawnpoint = null)
 	{
 		bool reactivate = false;
+		
+		if (processedSpawnpoint)
+			processedSpawnpoint.DeactivateSpawnPointPublic();
 		
 		switch (faction)
 		{
@@ -1884,6 +1906,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			foreach (SCR_SpawnPoint spawnpoint: allSpawnpoints)
 			{
+				if (spawnpoint == processedSpawnpoint)
+					continue;
+				
 				SCR_PlayerRadioSpawnPointCampaign campaignSpawnpoint = SCR_PlayerRadioSpawnPointCampaign.Cast(spawnpoint);
 				
 				if (!campaignSpawnpoint)
@@ -2049,25 +2074,10 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (!player)
 			return;
 		
-		CharacterControllerComponent controller = CharacterControllerComponent.Cast(player.FindComponent(CharacterControllerComponent));
+		SCR_PlayerRadioSpawnPointCampaign sp = SCR_PlayerRadioSpawnPointCampaign.Cast(GetPlayerSpawnpoint(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(player)));
 		
-		if (!controller)
-			return;
-		
-		if (controller.IsDead())
-			return;
-		
-		BaseLoadoutClothComponent loadoutCloth = BaseLoadoutClothComponent.Cast(item.FindComponent(BaseLoadoutClothComponent));
-		
-		if (loadoutCloth && loadoutCloth.GetArea() == ELoadoutArea.ELA_Backpack && item.FindComponent(SCR_RadioComponent))
-		{
-			SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(player.GetFaction());
-		
-			if (!faction)
-				return;
-			
-			RemoveActiveRespawnRadio(faction.GetFactionKey());
-		}
+		if (sp)
+			RemoveActiveRespawnRadio(sp.GetFactionKey(), sp);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -4131,25 +4141,11 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				}
 			}
 			
-			BaseLoadoutManagerComponent loadoutManager = BaseLoadoutManagerComponent.Cast(character.FindComponent(BaseLoadoutManagerComponent));
+			// Killed player currently holds a respawn radio, handle it			
+			SCR_PlayerRadioSpawnPointCampaign sp = SCR_PlayerRadioSpawnPointCampaign.Cast(GetPlayerSpawnpoint(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(character)));
 		
-			if (loadoutManager)
-			{
-				IEntity backpack = loadoutManager.GetClothByArea(ELoadoutArea.ELA_Backpack);
-			
-				if (backpack)
-				{
-					BaseLoadoutClothComponent loadoutCloth = BaseLoadoutClothComponent.Cast(backpack.FindComponent(BaseLoadoutClothComponent));
-					
-					if (loadoutCloth && loadoutCloth.GetArea() == ELoadoutArea.ELA_Backpack && backpack.FindComponent(SCR_RadioComponent))
-					{
-						Faction faction = character.GetFaction();
-						
-						if (faction)
-							RemoveActiveRespawnRadio(faction.GetFactionKey());
-					}
-				}
-			}
+			if (sp)
+				RemoveActiveRespawnRadio(sp.GetFactionKey(), sp);
 		}
 	}
 

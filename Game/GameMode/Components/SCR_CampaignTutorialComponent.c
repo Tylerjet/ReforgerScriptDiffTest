@@ -390,32 +390,32 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		
 		switch (m_eStage)
 		{
-			case SCR_ECampaignTutorialStage.MAGAZINE_PICK: {};
-			case SCR_ECampaignTutorialStage.WEAPON_RELOAD: {};
-			case SCR_ECampaignTutorialStage.FIREPOZ_1: {};
-			case SCR_ECampaignTutorialStage.SHOOTING: {};
-			case SCR_ECampaignTutorialStage.SHOOTING_CROUCH: {};
-			case SCR_ECampaignTutorialStage.SHOOTING_PRONE: {};
-			case SCR_ECampaignTutorialStage.FIREPOZ_2: {};
+			case SCR_ECampaignTutorialStage.MAGAZINE_PICK:;
+			case SCR_ECampaignTutorialStage.WEAPON_RELOAD:;
+			case SCR_ECampaignTutorialStage.FIREPOZ_1:;
+			case SCR_ECampaignTutorialStage.SHOOTING:;
+			case SCR_ECampaignTutorialStage.SHOOTING_CROUCH:;
+			case SCR_ECampaignTutorialStage.SHOOTING_PRONE:;
+			case SCR_ECampaignTutorialStage.FIREPOZ_2:;
 			case SCR_ECampaignTutorialStage.SHOOTING_LEANING:
 			{
 				SpawnAsset("M16", "{3E413771E1834D2F}Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et");
 				break;
 			}
 			
-			case SCR_ECampaignTutorialStage.DRIVING_1: {};
-			case SCR_ECampaignTutorialStage.DRIVING_2: {};
-			case SCR_ECampaignTutorialStage.DRIVING_3: {};
+			case SCR_ECampaignTutorialStage.DRIVING_1:;
+			case SCR_ECampaignTutorialStage.DRIVING_2:;
+			case SCR_ECampaignTutorialStage.DRIVING_3:;
 			case SCR_ECampaignTutorialStage.DRIVING_4:
 			{
 				SpawnAsset("Jeep", "{5168FEA3054D6D15}Prefabs/Vehicles/Wheeled/M151A2/M151A2_M2HB_MERDC.et", m_CurrentWaypoint.GetName());
 				MoveInVehicle("Jeep", ECompartmentType.Pilot);
 				break;
 			}
-			case SCR_ECampaignTutorialStage.DRIVING_5: {};
-			case SCR_ECampaignTutorialStage.DRIVING_6: {};
-			case SCR_ECampaignTutorialStage.DRIVING_7: {};
-			case SCR_ECampaignTutorialStage.DRIVING_8: {};
+			case SCR_ECampaignTutorialStage.DRIVING_5:;
+			case SCR_ECampaignTutorialStage.DRIVING_6:;
+			case SCR_ECampaignTutorialStage.DRIVING_7:;
+			case SCR_ECampaignTutorialStage.DRIVING_8:;
 			case SCR_ECampaignTutorialStage.DRIVING_9:
 			{
 				SpawnAsset("Jeep", "{5168FEA3054D6D15}Prefabs/Vehicles/Wheeled/M151A2/M151A2_M2HB_MERDC.et", m_CurrentWaypoint.GetName());
@@ -444,11 +444,11 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 				break;
 			}
 			
-			case SCR_ECampaignTutorialStage.DRIVING_10: {};
-			case SCR_ECampaignTutorialStage.DRIVING_11: {};
-			case SCR_ECampaignTutorialStage.DRIVING_12: {};
-			case SCR_ECampaignTutorialStage.DRIVING_13: {};
-			case SCR_ECampaignTutorialStage.DRIVING_14: {};
+			case SCR_ECampaignTutorialStage.DRIVING_10:;
+			case SCR_ECampaignTutorialStage.DRIVING_11:;
+			case SCR_ECampaignTutorialStage.DRIVING_12:;
+			case SCR_ECampaignTutorialStage.DRIVING_13:;
+			case SCR_ECampaignTutorialStage.DRIVING_14:;
 			case SCR_ECampaignTutorialStage.DRIVING_15:
 			{
 				SpawnAsset("SupplyTruck", "{F37113A988304565}Prefabs/MP/Campaign/Assets/CampaignSupplyTruckWest.et", m_CurrentWaypoint.GetName());
@@ -474,9 +474,9 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 				break;
 			}
 			
-			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_START: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_BUILD_SERVICE: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_LOAD_SUPPLY: {};
+			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_START:;
+			case SCR_ECampaignTutorialStage.CONFLICT_BUILD_SERVICE:;
+			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_LOAD_SUPPLY:;
 			case SCR_ECampaignTutorialStage.CONFLICT_BOARD_TRUCK:
 			{
 				SpawnAsset("SupplyTruck", "{F37113A988304565}Prefabs/MP/Campaign/Assets/CampaignSupplyTruckWest.et", "WP_DRIVING_15");
@@ -490,8 +490,9 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 				break;
 			}
 			
-			case SCR_ECampaignTutorialStage.CONFLICT_BUILD_BUNKER: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_QUIT: {};
+			case SCR_ECampaignTutorialStage.CONFLICT_BUILD_BUNKER:;
+			case SCR_ECampaignTutorialStage.CONFLICT_TURN_ON_BUILDING:;
+			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_QUIT:;
 			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_TO_FAR:
 			{
 				SpawnAsset("SupplyTruck", "{F37113A988304565}Prefabs/MP/Campaign/Assets/CampaignSupplyTruckWest.et", "SupplyTruckBunkerPos");
@@ -505,11 +506,11 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 				break;
 			}
 			
-			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_CHECKPOINT: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_QUIT2: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_TASKS_MENU: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_TASKS_INFO: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_VOLUNTEERING: {};
+			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_CHECKPOINT:;
+			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_QUIT2:;
+			case SCR_ECampaignTutorialStage.CONFLICT_TASKS_MENU:;
+			case SCR_ECampaignTutorialStage.CONFLICT_TASKS_INFO:;
+			case SCR_ECampaignTutorialStage.CONFLICT_VOLUNTEERING:;
 			case SCR_ECampaignTutorialStage.CONFLICT_VOLUNTEERING_INFO:
 			{
 				SpawnAsset("SupplyTruck", "{F37113A988304565}Prefabs/MP/Campaign/Assets/CampaignSupplyTruckWest.et", "SupplyTruckCheckpointPos");
@@ -518,8 +519,8 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 				break;
 			}
 			
-			case SCR_ECampaignTutorialStage.DRIVING_16: {};
-			case SCR_ECampaignTutorialStage.DRIVING_17: {};
+			case SCR_ECampaignTutorialStage.DRIVING_16:;
+			case SCR_ECampaignTutorialStage.DRIVING_17:;
 			case SCR_ECampaignTutorialStage.DRIVING_18:
 			{
 				SpawnAsset("SupplyTruck", "{F37113A988304565}Prefabs/MP/Campaign/Assets/CampaignSupplyTruckWest.et", m_CurrentWaypoint.GetName());
@@ -527,16 +528,16 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 				break;
 			}
 			
-			case SCR_ECampaignTutorialStage.CONFLICT_BASE_SEIZING_INFO: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_SHOW_COMPAS: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_COMPAS_DIRECTION_NORTH: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_COMPAS_DIRECTION_2: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_COMPAS_MOVE: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_MAP_MOVE: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_RADIO_PICKUP: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_VOIP_SETUP: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_VOIP_USE: {};
-			case SCR_ECampaignTutorialStage.CONFLICT_VOIP_INFO: {};
+			case SCR_ECampaignTutorialStage.CONFLICT_BASE_SEIZING_INFO:;
+			case SCR_ECampaignTutorialStage.CONFLICT_SHOW_COMPAS:;
+			case SCR_ECampaignTutorialStage.CONFLICT_COMPAS_DIRECTION_NORTH:;
+			case SCR_ECampaignTutorialStage.CONFLICT_COMPAS_DIRECTION_2:;
+			case SCR_ECampaignTutorialStage.CONFLICT_COMPAS_MOVE:;
+			case SCR_ECampaignTutorialStage.CONFLICT_MAP_MOVE:;
+			case SCR_ECampaignTutorialStage.CONFLICT_RADIO_PICKUP:;
+			case SCR_ECampaignTutorialStage.CONFLICT_VOIP_SETUP:;
+			case SCR_ECampaignTutorialStage.CONFLICT_VOIP_USE:;
+			case SCR_ECampaignTutorialStage.CONFLICT_VOIP_INFO:;
 			case SCR_ECampaignTutorialStage.CONFLICT_MHQ_DEPLOY:
 			{
 				SCR_CampaignBase baseLaruns = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseLaruns"));
@@ -552,7 +553,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 				
 				break;
 			}
-			case SCR_ECampaignTutorialStage.CONFLICT_MHQ_INFO: {};
+			case SCR_ECampaignTutorialStage.CONFLICT_MHQ_INFO:;
 			case SCR_ECampaignTutorialStage.CONFLICT_SEIZE_ENEMY_HQ:
 			{
 				SCR_CampaignBase baseLaruns = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseLaruns"));
@@ -1716,7 +1717,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			case SCR_ECampaignTutorialStage.CONFLICT_LOADING_SUPPLIES:
 			{
 				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_SuppliesLoad", duration: -1);
-				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 0.025, true, false, "door_rear", BACK_DOOR_OFFSET);
+				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 250, true, false, "door_rear", BACK_DOOR_OFFSET);
 				StartStageEvaluation(checkWaypointReached: false);
 				break;
 			}
@@ -1788,7 +1789,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 				if (accessComp)
 					accessComp.GetOnCompartmentLeft().Remove(OnSupplyTruckLeft);
 				
-				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 0.025, true, false, "door_rear", BACK_DOOR_OFFSET);
+				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 250, true, false, "door_rear", BACK_DOOR_OFFSET);
 				StartStageEvaluation(checkWaypointReached: false);
 				break;
 			}
@@ -1814,7 +1815,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_LOAD_SUPPLY:
 			{
 				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_SuppliesLoadTruck", duration: -1);
-				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 0.025, true, false, "door_rear", BACK_DOOR_OFFSET);
+				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 250, true, false, "door_rear", BACK_DOOR_OFFSET);
 				StartStageEvaluation(20, 0.25, waypointHeight: 0, checkWaypointReached: false);
 				break;
 			}
@@ -1823,7 +1824,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			{
 				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BoardTruck", duration: -1);
 				GetGame().GetCallqueue().Remove(UpdateSupplyTruckWaypoint);
-				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 0.025, true, true, "door_l01");
+				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 250, true, true, "door_l01");
 				StartStageEvaluation(20, 0.25, waypointHeight: 0, checkWaypointReached: false);
 				break;
 			}
@@ -1833,6 +1834,15 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingBunker" + CreateString("#AR-ControlsHint_BuildingCompositionRotate","BuildingPreviewRotationUp","BuildingPreviewRotationDown"), duration: -1);
 				GetGame().GetCallqueue().Remove(UpdateSupplyTruckWaypoint);
 				GetGame().GetCallqueue().CallLater(DelayedPopup, 20000, false, "#AR-Tutorial_Popup_Title-UC", "#AR-Tutorial_Popup_BlockedSlots", 12, "", "", "", "");
+				StartStageEvaluation(20, 0.25, waypointHeight: 0, checkWaypointReached: false);
+				break;
+			}
+			
+			case SCR_ECampaignTutorialStage.CONFLICT_TURN_ON_BUILDING:
+			{
+				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingTurnOn", duration: -1);
+				GetGame().GetCallqueue().Remove(UpdateSupplyTruckWaypoint);
+				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 250, true, false, "door_rear", BACK_DOOR_OFFSET);
 				StartStageEvaluation(20, 0.25, waypointHeight: 0, checkWaypointReached: false);
 				break;
 			}
@@ -1847,7 +1857,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_TO_FAR:
 			{
 				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildModeOpenTruck", duration: -1);
-				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 0.025, true, false, "door_rear", BACK_DOOR_OFFSET);
+				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 250, true, false, "door_rear", BACK_DOOR_OFFSET);
 				StartStageEvaluation(20, 0.25, waypointHeight: 0, checkWaypointReached: false);
 				break;
 			}
@@ -1863,7 +1873,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			case SCR_ECampaignTutorialStage.CONFLICT_BUILDING_QUIT2:
 			{
 				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildModeClose", duration: -1);
-				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 0.025, true, false, "door_rear", BACK_DOOR_OFFSET);
+				GetGame().GetCallqueue().CallLater(UpdateSupplyTruckWaypoint, 250, true, false, "door_rear", BACK_DOOR_OFFSET);
 				StartStageEvaluation(20, 0.25, waypointHeight: 0, checkWaypointReached: false);
 				break;
 			}
@@ -2518,8 +2528,37 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			
 				case SCR_ECampaignTutorialStage.CONFLICT_BUILD_BUNKER:
 				{
-					SCR_SiteSlotEntity bunker_slot = SCR_SiteSlotEntity.Cast(GetGame().GetWorld().FindEntityByName("buildingSlot"));	
-					stageComplete = bunker_slot.IsOccupied();
+					SCR_SiteSlotEntity bunker_slot = SCR_SiteSlotEntity.Cast(GetGame().GetWorld().FindEntityByName("buildingSlot"));					
+					if (bunker_slot && bunker_slot.IsOccupied())
+					{
+						SetStage(SCR_ECampaignTutorialStage.CONFLICT_BUILDING_QUIT);
+						break;
+					}
+
+					SCR_CampaignBuildingComponent buildComp = SCR_CampaignBuildingComponent.Cast(m_Player.FindComponent(SCR_CampaignBuildingComponent));
+					if (buildComp && !buildComp.IsBuilding())
+						SetStage(SCR_ECampaignTutorialStage.CONFLICT_TURN_ON_BUILDING);
+				
+					break;
+				}
+			
+				case SCR_ECampaignTutorialStage.CONFLICT_TURN_ON_BUILDING:
+				{				
+					SCR_SiteSlotEntity bunker_slot = SCR_SiteSlotEntity.Cast(GetGame().GetWorld().FindEntityByName("buildingSlot"));
+													
+					if (bunker_slot && bunker_slot.IsOccupied())
+					{
+						SetStage(SCR_ECampaignTutorialStage.CONFLICT_BUILDING_QUIT);
+						break;
+					}
+				
+					SCR_CampaignBuildingComponent buildComp = SCR_CampaignBuildingComponent.Cast(m_Player.FindComponent(SCR_CampaignBuildingComponent));
+					
+					if (buildComp && buildComp.IsBuilding())
+					{
+						SetStage(SCR_ECampaignTutorialStage.CONFLICT_BUILD_BUNKER);
+						break;
+					}
 					break;
 				}
 			
@@ -2814,6 +2853,7 @@ enum SCR_ECampaignTutorialStage
 	CONFLICT_BUILDING_LOAD_SUPPLY,
 	CONFLICT_BOARD_TRUCK,
 	CONFLICT_BUILD_BUNKER,
+	CONFLICT_TURN_ON_BUILDING,
 	CONFLICT_BUILDING_QUIT,
 	CONFLICT_BUILDING_TO_FAR,
 	CONFLICT_BUILDING_CHECKPOINT,

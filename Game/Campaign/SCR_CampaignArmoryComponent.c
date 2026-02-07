@@ -45,9 +45,12 @@ class SCR_CampaignArmoryComponent : SCR_BaseCampaignInstallationComponent
 	override void OnBaseOwnerChanged(SCR_CampaignFaction newOwner)
 	{
 		if((!newOwner) || !newOwner.GetFactionKey())
+		{
 			m_bCanSpawnItems = false;
+			return;
+		}
 		
-		if(m_Base.GetStartingBaseOwner() == newOwner.GetFactionKey())
+		if((m_Base == newOwner.GetMainBase()))
 			m_bCanSpawnItems = true;
 	}
 	

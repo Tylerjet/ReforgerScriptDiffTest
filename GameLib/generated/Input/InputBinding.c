@@ -15,7 +15,7 @@ class InputBinding
 	
 	proto external void ResetDefault(string actionName, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string sFilterPreset = string.Empty);
 	proto external bool IsDefault(string actionName, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string sFilterPreset = string.Empty);
-	proto external void StartCapture(string actionName, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string sFilterPreset = string.Empty);
+	proto external void StartCapture(string actionName, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string sFilterPreset = string.Empty, bool bAppend = false);
 	proto external void CancelCapture();
 	proto external void SaveCapture();
 	proto external EInputBindingCaptureState GetCaptureState();

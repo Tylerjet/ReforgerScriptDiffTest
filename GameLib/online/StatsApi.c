@@ -33,9 +33,9 @@ class StatsApi
 	proto native int EditorEvent();
 	
 	/**
-	\brief Allow sending of editor end event
+	\brief Allow sending of editor close event
 	*/
-	proto native int EditorEnd();
+	proto native int EditorClosed();
 
 	/**
 	\brief Allow sending of generic mod related event with custom data
@@ -96,7 +96,7 @@ class StatsApi
 	/**
 	\brief Event generated when Editor is closed
 	*/
-	void OnEditorEnd()
+	void OnEditorClosed()
 	{
 	}
 

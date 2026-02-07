@@ -31,7 +31,7 @@ class KeybindMenu : DialogUI
 	{
 		m_KeybindMenuComponent = keybindMenuComponent;
 		s_Binding = binding;
-		GetGame().GetInputManager().AddActionListener("MenuBack", EActionTrigger.DOWN, CancelCapture);
+		GetGame().GetInputManager().AddActionListener("MenuBackKeybind", EActionTrigger.DOWN, CancelCapture);
 	}
 
 	void CancelCapture()

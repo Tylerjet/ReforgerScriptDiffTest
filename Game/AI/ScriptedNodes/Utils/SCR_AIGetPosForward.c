@@ -16,22 +16,15 @@ class SCR_AIGetPosForward: AITaskScripted
 		if (GetVariableIn(PORT_DISTANCE, m_Distance) && (GetVariableType(true, PORT_DISTANCE) != int && GetVariableType(true, PORT_DISTANCE) != float) )
 		{
 			NodeError(this, owner, PORT_DISTANCE + " type should be number");
-		}	
-		
-		if (GetVariableType(true, PORT_TARGET) != IEntity)
-		{
-			NodeError(this, owner, PORT_TARGET + " should be IEntity");
-		}		
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------	
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{			
 		if (!GetVariableIn(PORT_TARGET,m_Target))
-		{
-			NodeError(this, owner, PORT_TARGET + " can't be NULL entity");			
-		}	
-			
+			m_Target = owner;
+		
 		AIAgent agent = AIAgent.Cast(m_Target);
 		if (agent)
 			m_Target = agent.GetControlledEntity();
@@ -68,7 +61,7 @@ class SCR_AIGetPosForward: AITaskScripted
 	//------------------------------------------------------------------------------------------------	
 	protected override string GetOnHoverDescription()
 	{
-		return "It will return world position of forward vector of provided target entity multiplied by distance.";
+		return "It will return world position of forward vector of provided target entity multiplied by distance. If no target specified, owner will be used.";
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -724,7 +724,7 @@ class BackendApi
 	}
 
 	/**
-	\brief Get player UID (Bohemia Account)
+	\brief Get player UID (Bohemia player UID)
 	\param iPlayerId Is Player Id used on player identity
 	*/
 	proto native string GetPlayerUID( int iPlayerId );
@@ -793,6 +793,9 @@ class BackendApi
 	*/
 	proto native void VerifyCredentials(BackendCallback callback, bool storeCredentials);
 	
+	/**
+	\brief Return true if BI Account is linked to local Identity
+	*/
 	proto native bool IsBIAccountLinked();
 };
 

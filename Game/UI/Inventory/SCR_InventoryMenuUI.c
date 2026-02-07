@@ -69,7 +69,7 @@ class SCR_InvCallBack : ScriptedInventoryOperationCallback
 				{
 					m_pMenu.ShowStoragesList();
 					m_pMenu.ShowAllStoragesInList();
-			
+
 				}
 				else
 				{
@@ -2287,6 +2287,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if ( m_bDraggingEnabled )
 			return;
 		if ( !m_pFocusedSlotUI )
+			return;
+
+		IEntity item = m_pFocusedSlotUI.GetItem().GetOwner();
+		if (Vehicle.Cast(item) || TurretControllerComponent.Cast(item.FindComponent(TurretControllerComponent)))
 			return;
 
 		if ( m_pFocusedSlotUI && WidgetManager.GetWidgetUnderCursor() != m_pFocusedSlotUI.GetButtonWidget() )

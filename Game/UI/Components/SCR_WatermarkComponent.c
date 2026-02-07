@@ -12,6 +12,24 @@ class SCR_WatermarkComponent: ScriptedWidgetComponent
 	[Attribute("40")]
 	private float m_fEditorOffsetY;
 
+	[Attribute("#AR-Watermark_Development")]
+	private string m_sWatermarkNameWorkbench;
+		
+	[Attribute("#AR-Watermark_EarlyAccess_Steam")]
+	private string m_sWatermarkNamePC;
+	
+	[Attribute("#AR-Watermark_EarlyAccess_Xbox")]
+	private string m_sWatermarkNameXbox;
+	
+	[Attribute("#AR-Watermark_Development")]
+	private string m_sWatermarkNamePlaystation;
+
+	[Attribute("WatermarkText")]
+	private string m_sWatermarkWidgetName;
+
+	[Attribute("VersionText")]
+	private string m_sVersionTextWidgetName;
+		
 	private Widget m_wRoot;
 
 	private ref array <string> m_aPlatformStrings = {
@@ -26,15 +44,35 @@ class SCR_WatermarkComponent: ScriptedWidgetComponent
 	{
 		m_wRoot = w;
 		w.SetZOrder(1000); // Show it above everything
+
+		// Select the correct watermark name for current platform
+		PlatformService pls = GetGame().GetPlatformService();
+		PlatformKind platform;
+		if (pls)
+			platform = pls.GetLocalPlatformKind();
+		
+		TextWidget watermarkText = TextWidget.Cast(w.FindAnyWidget("WatermarkText"));
+		if (watermarkText)
+		{
+			array<string> names = 
+			{
+				m_sWatermarkNameWorkbench, 
+				m_sWatermarkNameXbox, 
+				m_sWatermarkNamePlaystation, 
+				m_sWatermarkNamePC
+			};
+			
+			if (platform >= 0 && platform < names.Count())
+				watermarkText.SetTextFormat("%1", names[pls.GetLocalPlatformKind()]);
+		}
 		
 		// Set current game version
 		TextWidget text = TextWidget.Cast(w.FindAnyWidget("VersionText"));
 		if (text)
 		{
-			string platformName = "";	
-			PlatformService pls = GetGame().GetPlatformService();
+			string platformName = "";
 			if (pls)
-				platformName = m_aPlatformStrings[pls.GetLocalPlatformKind()];
+				platformName = m_aPlatformStrings[platform];
 
 			text.SetTextFormat("%1 (%2)", GetGame().GetBuildVersion(), platformName);
 		}

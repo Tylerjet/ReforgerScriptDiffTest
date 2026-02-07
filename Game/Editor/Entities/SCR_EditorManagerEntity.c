@@ -185,7 +185,7 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			if (m_bIsOpened)
 				statsApi.EditorStart();
 			else
-				statsApi.EditorEnd();
+				statsApi.EditorClosed();
 		}
 
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_IS_OPENED, m_bIsOpened);

@@ -1158,6 +1158,12 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	}
 			
 	//------------------------------------------------------------------------------------------------
+	InventoryItemComponent GetItem()
+	{
+		return m_pItem;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void SCR_InventorySlotUI( InventoryItemComponent pComponent = null, SCR_InventoryStorageBaseUI pStorageUI = null, bool bVisible = true, int iSlotIndex = -1, SCR_ItemAttributeCollection pAttributes = null )
 	{
 		m_pStorageUI = pStorageUI;	

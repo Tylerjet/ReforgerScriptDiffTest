@@ -216,24 +216,3 @@ class SCR_AIGetMoveIndividuallyBehaviorParameters : SCR_AIGetActionParameters
 	
 	override bool VisibleInPalette() { return true; }
 };
-
-class SCR_AIGetIdleBehaviorParameters : SCR_AIGetActionParameters
-{
-	static ref TStringArray s_aVarsOut = (new SCR_AIIdleBehavior(null, false)).GetPortNames();
-	override TStringArray GetVariablesOut() { return s_aVarsOut; }
-	
-	override bool VisibleInPalette() { return true; }
-	
-	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
-	{
-		SCR_AIIdleBehavior behavior = SCR_AIIdleBehavior.Cast(m_Action);
-		
-		if (behavior)
-		{
-			if (behavior.m_vPosition.m_Value == vector.Zero)
-				behavior.m_vPosition.m_Value = behavior.m_Utility.GetOrigin();
-		}
-		
-		return super.EOnTaskSimulate(owner, dt);
-	}
-};

@@ -100,10 +100,18 @@ sealed class Physics: NativeComponent
 	\brief Apply constant torque on a rigidbody
 	*/
 	proto external void ApplyTorque(vector torque);
-	/**
+	/*!
 	\brief Clear forces and torques on a rigidbody
 	*/
 	proto external void ClearForces();
+	/*!
+	\brief Returns total force currently applied to a rigidbody.
+	*/
+	proto external vector GetTotalForce();
+	/*!
+	\brief Returns total torque currently applied to a rigidbody
+	*/
+	proto external vector GetTotalTorque();
 	/*!
 	Changes index to response matrix, see project settings/physics/interactions/response matrix
 	Usually this index is set by physics component property, but can be override in runtime
@@ -117,10 +125,22 @@ sealed class Physics: NativeComponent
 	proto external int GetGeom(string name);
 	//! returns number of geometries of the entity
 	proto external int GetNumGeoms();
+	//! returns world space transformation of a geometry element
 	proto external void GetGeomWorldTransform(int index, out vector mat[4]);
+	//! returns entity space transformation of a geometry element
 	proto external void GetGeomTransform(int index, out vector mat[4]);
+	//! returns internal physics space transformation of a geometry element
+	proto external void GetGeomDirectTransform(int index, out vector mat[4]);
+	//! returns world space position of a geometry element
 	proto external vector GetGeomWorldPosition(int index);
+	//! returns entity space position of a geometry element
 	proto external vector GetGeomPosition(int index);
+	//! returns internal physics space position of a geometry element
+	proto external vector GetGeomDirectPosition(int index);
+	//! returns world bounds of a geometry element
+	proto external void GetGeomWorldBounds(int index, out vector min, out vector max);
+	//! returns internal physics bounds of a geometry element (at scale 1)
+	proto external void GetGeomDirectBounds(int index, out vector min, out vector max);
 	proto external void GetGeomSurfaces(int index, notnull out array<SurfaceProperties> surfaces);
 	/*!
 	Creates CollisionObject from geometry embedded in attached VObject. If there is not any, false is returned
