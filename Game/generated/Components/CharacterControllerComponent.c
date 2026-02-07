@@ -127,6 +127,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! 2 - right, 1 - left
 	proto external void SetRoll(int val);
 	proto external bool IsRoll();
+	proto external bool CanRoll(int val);
 	proto external bool ShouldHoldInputForRoll();
 	proto external void EnableHoldInputForRoll(bool enable);
 	proto external void SetJump(float val);

@@ -442,27 +442,21 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 				}
 			}
 		}
+		
 		if (GetStance() == ECharacterStance.PRONE)
 		{
 			float value = am.GetActionValue("CharacterRoll");
 			int rollValue = 0;
-			if (value < -0.0)
-			{
+			if (value < -0.5)
 				rollValue = 1;
-			}
-			else if (value > 0.0)
-			{
+			else if (value > 0.5)
 				rollValue = 2;
-			}
+			
 			// If one wants to use hold action - it needs too be allowed on CharacterControllerComponent at character prefab or by calling EnableHoldInputForRoll(true) during construction/initialization
 			if (ShouldHoldInputForRoll())
-			{
 				SetRoll(rollValue);
-			}
 			else if (rollValue != 0)
-			{
 				SetRoll(rollValue);
-			}
 		}
 	}
 

@@ -27,14 +27,6 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		
 		m_bMatchOver = campaign.GetIsMatchOver();
 		
-		SCR_CampaignTutorialComponent tutorial = SCR_CampaignTutorialComponent.Cast(campaign.FindComponent(SCR_CampaignTutorialComponent));
-		
-		if (tutorial)
-		{
-			m_iTutorialStage = tutorial.GetStage();
-			return true;
-		}
-		
 		Clear();
 		
 		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
@@ -43,6 +35,15 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 			timeManager.GetHoursMinutesSeconds(m_iHours, m_iMinutes, m_iSeconds);
 		
 		baseManager.StoreBasesStates(m_aBasesStructs);
+		
+		SCR_CampaignTutorialComponent tutorial = SCR_CampaignTutorialComponent.Cast(campaign.FindComponent(SCR_CampaignTutorialComponent));
+		
+		if (tutorial)
+		{
+			m_iTutorialStage = tutorial.GetStage();
+			return true;
+		}
+		
 		campaign.StoreRemnantsStates(m_aRemnantsStructs);
 		
 		SCR_CampaignFaction factionBLUFOR = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_BLUFOR));
@@ -95,6 +96,13 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		if (m_bMatchOver)
 			return false;
 		
+		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		
+		if (timeManager && m_iHours >= 0 && m_iMinutes >= 0)
+			GetGame().GetCallqueue().CallLater(campaign.SetupDaytime, 500, false, m_iHours, m_iMinutes, m_iSeconds);
+		
+		baseManager.LoadBasesStates(m_aBasesStructs);
+		
 		SCR_CampaignTutorialComponent tutorial = SCR_CampaignTutorialComponent.Cast(campaign.FindComponent(SCR_CampaignTutorialComponent));
 		
 		if (tutorial)
@@ -103,12 +111,6 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 			return true;
 		}
 		
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
-		
-		if (timeManager && m_iHours >= 0 && m_iMinutes >= 0)
-			GetGame().GetCallqueue().CallLater(campaign.SetupDaytime, 500, false, m_iHours, m_iMinutes, m_iSeconds);
-		
-		baseManager.LoadBasesStates(m_aBasesStructs);
 		campaign.LoadRemnantsStates(m_aRemnantsStructs);
 		
 		SCR_CampaignFaction factionBLUFOR = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_BLUFOR));

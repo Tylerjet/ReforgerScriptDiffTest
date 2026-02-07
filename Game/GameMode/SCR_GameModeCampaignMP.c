@@ -2796,7 +2796,8 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	//------------------------------------------------------------------------------------------------
 	void OnMapClose()
 	{
-		m_wMapRoot.SetVisible(false);
+		if (m_wMapRoot)
+			m_wMapRoot.SetVisible(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -89,6 +89,9 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	[Attribute("0.0", UIWidgets.Slider, "Radius of PIP scope from the center", category: "PiPSights", precision: 5)]
 	protected float m_fScopeRadius;
 	
+	[Attribute("{5366CEDE2A151631}Terrains/Common/Water/UnderWater/oceanUnderwater.emat", UIWidgets.ResourcePickerThumbnail, "Underwater PP material", params: "emat", category: "PiPSights")]
+	protected ResourceName m_sUnderwaterPPMaterial;
+	
 	protected int m_iLastProjectionFrame = -1;
 	protected vector m_vScreenScopeCenter;
 	protected float m_fScreenScopeRadiusSq;
@@ -434,6 +437,9 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 				GetGame().GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 10, PostProcessEffectType.HDR, m_rScopeHDRMatrial);
 			}
 			
+			if (m_sUnderwaterPPMaterial != string.Empty)
+				GetGame().GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 2, PostProcessEffectType.UnderWater, m_sUnderwaterPPMaterial);
+			
 			s_bIsPIPActive = true;
 			m_bPIPIsEnabled = true;
 			return;
@@ -458,6 +464,8 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			if (cameraParent)
 				cameraParent.RemoveChild(camera);
 			
+			camera.GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 10, PostProcessEffectType.HDR, string.Empty);
+			camera.GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 2, PostProcessEffectType.UnderWater, string.Empty);
 			camera.GetWorld().SetCameraLensFlareSet(m_iCameraIndex, CameraLensFlareSetType.None, string.Empty);
 
 			delete camera;

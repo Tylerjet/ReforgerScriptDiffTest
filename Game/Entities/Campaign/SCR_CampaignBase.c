@@ -3567,13 +3567,14 @@ class SCR_CampaignBase : GenericEntity
 		if (Replication.IsServer())
 		{
 			SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
-			SCR_MissionHeaderCampaign header = SCR_MissionHeaderCampaign.Cast(GetGame().GetMissionHeader());
+			SCR_MissionHeader header = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
+			SCR_MissionHeaderCampaign headerCampaign = SCR_MissionHeaderCampaign.Cast(header);
 			
-			if (header)
+			if (headerCampaign)
 			{
 				// Disable this base if it's been blacklisted in header
-				array<ref SCR_CampaignCustomBase> baseList = header.m_aCampaignCustomBaseList;
-				bool whitelist = header.m_bCustomBaseWhitelist;
+				array<ref SCR_CampaignCustomBase> baseList = headerCampaign.m_aCampaignCustomBaseList;
+				bool whitelist = headerCampaign.m_bCustomBaseWhitelist;
 				bool found = false;
 				
 				foreach (SCR_CampaignCustomBase base: baseList)
@@ -3599,7 +3600,7 @@ class SCR_CampaignBase : GenericEntity
 				
 				if (m_bEnabled)
 				{
-					if (!SCR_SaveLoadComponent.IsLoadOnStart(header) && (m_bCanBeHQ || m_bIsControlPoint))
+					if (!SCR_SaveLoadComponent.IsLoadOnStart(headerCampaign) && (m_bCanBeHQ || m_bIsControlPoint))
 						baseManager.SelectHQs();	
 				}
 				else
@@ -3610,7 +3611,7 @@ class SCR_CampaignBase : GenericEntity
 			}
 			else
 			{
-				if (m_bCanBeHQ || m_bIsControlPoint)
+				if (!SCR_SaveLoadComponent.IsLoadOnStart(header) && (m_bCanBeHQ || m_bIsControlPoint))
 					baseManager.SelectHQs();
 			}
 		}
