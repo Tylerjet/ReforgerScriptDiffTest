@@ -33,6 +33,8 @@ class SCR_TurnOnAction : TurnOnUserAction
 	override bool GetActionNameScript(out string outName)
 	{
 		RadioBroadcastComponent broadcastComponent = GetRadioBCComponent();
+		if (!broadcastComponent)
+		 return false;
 
 		if (broadcastComponent.GetState())
 			outName = "#AR-UserAction_TurnOff";

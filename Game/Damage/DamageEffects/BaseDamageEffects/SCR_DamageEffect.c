@@ -5,7 +5,17 @@
 
 class SCR_DamageEffect : BaseDamageEffect
 {
-
+	/*!
+	\deprecated Used to check if you are a proxy or not
+	\param SCR_ExtendedDamageManagerComponent dmgManager: manager containing this DamageEffect
+	\return true if this DamageEffect is a proxy
+	*/
+	[Obsolete("Use BaseDamageEffect.IsProxy() instead")]
+	bool IsProxy(SCR_ExtendedDamageManagerComponent dmgManager)
+	{
+		return IsProxy();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Called from ApplyEffect
 	protected event override void HandleConsequences(SCR_ExtendedDamageManagerComponent dmgManager, DamageEffectEvaluator evaluator)

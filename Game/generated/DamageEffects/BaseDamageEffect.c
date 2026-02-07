@@ -53,7 +53,13 @@ class BaseDamageEffect: ScriptAndConfig
 	Settor for the affected HitZone of the damage effect
 	\param HitZone hitZone: new HitZone for this DamageEffect
 	*/
-	proto external void SetAffectedHitZone(HitZone hitZone);
+	proto external void SetAffectedHitZone(notnull HitZone hitZone);
+	/*!
+	Once this effect gets added to a manager, some of its values shouldn't change, as their change doesn't get replicated (instigator, damage type, affected hitzone)
+	and it can lead to desync.
+	\return true if the effect hasnt been added to a manager yet (and therefore its values can still change)
+	*/
+	proto external bool IsValueChangeAllowed();
 	/*!
 	Used to check if you are a proxy or not
 	\return true if this DamageEffect is a proxy
