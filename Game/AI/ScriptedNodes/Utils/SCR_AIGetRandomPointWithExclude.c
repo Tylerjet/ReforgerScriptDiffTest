@@ -80,7 +80,7 @@ class SCR_AIGetRandomPointWithExclude: AITaskScripted
 		
 		if (!FindPosition2D(result, searchPos, searchRadius, exclusionPos, exclusionRadius, m_iIterationCount))
 			return ENodeResult.FAIL;
-			
+		
 		SetVariableOut(PORT_RESULT_VECTOR,result);		
 		return ENodeResult.SUCCESS;
     }	
@@ -91,14 +91,14 @@ class SCR_AIGetRandomPointWithExclude: AITaskScripted
 	{
 		if (randomSphereOrigin == excludeSphereOrigin || excludeRadius < 1.0e-8)
 		{
-			randomPos = s_AIRandomGenerator.GenerateRandomPointInRadius(excludeRadius, randomSphereRadius, randomSphereOrigin, true);		
+			randomPos = s_AIRandomGenerator.GenerateRandomPointInRadius(excludeRadius, randomSphereRadius, randomSphereOrigin, true);	
+			randomPos[1] = randomSphereOrigin[1];
 			return true;
 		}	
 		else
 		{
 			float excludeRadiusSq = excludeRadius * excludeRadius;
 			float randomRadiusSq = randomSphereRadius * randomSphereRadius;	
-			randomPos[1] = randomSphereOrigin[1];	
 			for (int i = iterationCount; i > 0; i--)
 			{
 				randomPos = s_AIRandomGenerator.GenerateRandomPointInRadius(0, randomSphereRadius, randomSphereOrigin, true);
@@ -107,6 +107,7 @@ class SCR_AIGetRandomPointWithExclude: AITaskScripted
 				if (excludeRadius > 0 && vector.DistanceSqXZ(randomPos, excludeSphereOrigin) < excludeRadiusSq)
 					continue;
 			
+				randomPos[1] = randomSphereOrigin[1];
 				return true;
 			}
 		}
@@ -116,6 +117,6 @@ class SCR_AIGetRandomPointWithExclude: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override protected string GetOnHoverDescription()
 	{
-		return "Returns random position in circle or sphere that does not lie inside an exclusion circle or sphere. Center is taken from Entity variable or from SearchCenter variable";
+		return "Returns random position in circle that does not lie inside an exclusion circle. Center is taken from Entity variable or from SearchCenter variable";
 	}
 };

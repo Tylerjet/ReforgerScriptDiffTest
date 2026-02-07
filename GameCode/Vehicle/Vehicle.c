@@ -56,6 +56,18 @@ class Vehicle : BaseVehicle
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	Faction GetDefaultFaction()
+	{
+		if (!m_pFactionComponent)
+			m_pFactionComponent = SCR_VehicleFactionAffiliationComponent.Cast(FindComponent(SCR_VehicleFactionAffiliationComponent));
+		
+		if (m_pFactionComponent)
+			return m_pFactionComponent.GetDefaultAffiliatedFaction();
+		
+		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	bool IsOccupied()
 	{
 		if (!m_pFactionComponent)

@@ -21,7 +21,8 @@ class CharacterCameraDebug extends CharacterCameraBase
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
 		pOutResult.m_bUpdateWhenBlendOut	= false;
-		pOutResult.m_bWSCameraSmoothing = false;
+		pOutResult.m_bWSCameraSmoothing 	= false;
+		pOutResult.m_pOwner 				= m_OwnerCharacter;
 
 		int debugView = DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_CHARACTER_DEBUG_VIEW);
 		if( debugView == CharacterCameraSet.DEBUGVIEW_FACE )

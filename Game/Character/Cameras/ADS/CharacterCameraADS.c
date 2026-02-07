@@ -242,6 +242,7 @@ class CharacterCameraADS extends CharacterCameraBase
 		// Use as intended
 		Math3D.AnglesToMatrix( aimingAnglesMS, sightsMS );
 		
+		const float alphaEpsilon = 0.0005;
 		// Stabilize camera in certain cases
 		vector resultPosition = sightsMS[3];
 		bool isUnstable = false;
@@ -264,20 +265,20 @@ class CharacterCameraADS extends CharacterCameraBase
 		}
 
 		float obstructedAlpha = m_ControllerComponent.GetObstructionAlpha();
-		if (m_fStabilizerAlpha > 0 || obstructedAlpha > 0)
+		float lerpToCameraT = Math.Max(m_fStabilizerAlpha, obstructedAlpha);
+		bool shouldStabilize = lerpToCameraT > alphaEpsilon;
+		if (shouldStabilize)
 		{
-			float t = Math.Max(m_fStabilizerAlpha, obstructedAlpha);
-			resultPosition = vector.Lerp(resultPosition, cameraBoneMS[3], t);
+			resultPosition = vector.Lerp(resultPosition, cameraBoneMS[3], lerpToCameraT);
 		}
 
-		if (!isUnstable && obstructedAlpha < 0.001)
+		if (!isUnstable && obstructedAlpha < alphaEpsilon)
 		{
 			m_lastStablePos = resultPosition;
 		}
 		
 		// Last but not least, blend FOV based on aiming vs. freelook angles
 		// If in freelook or not fully blended out yet, update
-		const float alphaEpsilon = 0.0005;
 		if (cameraData.m_bFreeLook || m_fFreelookBlendAlpha > alphaEpsilon)
 		{
 			vector weaponAimingDir = m_AimingComponent.GetAimingRotation().AnglesToVector();
@@ -307,18 +308,28 @@ class CharacterCameraADS extends CharacterCameraBase
 		}
 
 		// Get transformation to parent
-		Math3D.MatrixInvMultiply4( propBoneMS, sightsMS, pOutResult.m_CameraTM );
-		
-		
+		if (!shouldStabilize)
+		{
+			Math3D.MatrixInvMultiply4( propBoneMS, sightsMS, pOutResult.m_CameraTM );
+			pOutResult.m_iDirectBone = m_iHandBoneIndex;
+			pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativeTransform;
+		}
+		else
+		{
+			pOutResult.m_bAllowInterpolation = false;
+			Math3D.MatrixCopy( sightsMS, pOutResult.m_CameraTM );
+		}
+			
 		pOutResult.m_fFOV = Math.Lerp( cameraData.m_fFOV, GetBaseFOV(), m_fFreelookBlendAlpha );
 		pOutResult.m_fDistance = 0;
 		pOutResult.m_fNearPlane = 0.0125;
-		pOutResult.m_bAllowInterpolation = allowInterpolation;
+		pOutResult.m_bAllowInterpolation = allowInterpolation && (shouldStabilize == m_bWasStabilizedLastFrame);
 		pOutResult.m_fUseHeading = 1.0;
 		pOutResult.m_bUpdateWhenBlendOut = true;
-		pOutResult.m_iDirectBone = m_iHandBoneIndex;
-		pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativeTransform;
 		pOutResult.m_fPositionModelSpace = 0.0;
+		
+		m_bWasStabilizedLastFrame = shouldStabilize;
+		
 		return;
 	}
 
@@ -562,6 +573,8 @@ class CharacterCameraADS extends CharacterCameraBase
 			if (!pip || SCR_Global.IsScope2DEnabled())
 			{
 				SolveCamera2DSight(cameraData, pOutResult);
+				pOutResult.m_pOwner 				= m_OwnerCharacter;
+				pOutResult.m_pWSAttachmentReference = null;
 				return;
 			}
 			
@@ -577,8 +590,6 @@ class CharacterCameraADS extends CharacterCameraBase
 		
 		// Store freelook state
 		cameraData.m_bFreeLook = canFreelook && (m_ControllerComponent.IsFreeLookEnabled() || m_bForceFreeLook);
-		
-		super.OnUpdate(pDt, pOutResult);
 	
 		int solveMethod = 0;
 		#ifdef ENABLE_DIAG
@@ -607,6 +618,9 @@ class CharacterCameraADS extends CharacterCameraBase
 			GetGame().GetCameraManager().SetOverlayCamera(overlayCamera);
 		}
 		
+		pOutResult.m_pOwner 				= m_OwnerCharacter;
+		pOutResult.m_pWSAttachmentReference = null;
+		
 		// Apply shake
 		if (m_CharacterCameraHandler)
 			m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
@@ -630,6 +644,8 @@ class CharacterCameraADS extends CharacterCameraBase
 
 	protected	float	m_fStabilizerAlpha = 0.0;
 	protected	float	m_fStabilizerAlphaVel = 0.0;
+	
+	protected	bool	m_bWasStabilizedLastFrame = false;
 	
 	protected 	float	m_fFreelookBlendAlpha;
 	

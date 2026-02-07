@@ -134,12 +134,13 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		m_fBobScale = m_CharacterCameraHandler.AddViewBobToTransform(pOutResult.m_CameraTM, 1, true);
 		
 		//! store distance 
-		pOutResult.m_fDistance 			= m_fDistance;
-		
-		pOutResult.m_iDirectBoneMode	= EDirectBoneMode.None;
-		pOutResult.m_fUseHeading 		= 1.0;
-		pOutResult.m_fNearPlane	 		= 0.04;
-		pOutResult.m_fPositionModelSpace = 1.0;
+		pOutResult.m_fDistance 				= m_fDistance;
+		pOutResult.m_iDirectBoneMode		= EDirectBoneMode.None;
+		pOutResult.m_fUseHeading 			= 1.0;
+		pOutResult.m_fNearPlane	 			= 0.04;
+		pOutResult.m_fPositionModelSpace 	= 1.0;
+		pOutResult.m_pWSAttachmentReference = null;
+		pOutResult.m_pOwner 				= m_OwnerCharacter;
 
 		m_fFOVFilter = Math.SmoothCD(m_fFOVFilter, pOutResult.m_fFOV, m_fFOVFilterVel, 0.2, 1000, pDt);
 		pOutResult.m_fFOV = m_fFOVFilter;

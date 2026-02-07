@@ -214,7 +214,7 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 		GetGame().GetPlayerManager().KickPlayer(playerId, reason);
 		
 		if (showNotification)
-			SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_KICKED, playerId);
+			SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_KICKED, playerId, reason);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -241,7 +241,7 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 		playerPenaltyData.SetWasKicked(true);
 		
 		if (duration < 0)
-			SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED_NO_TIME, playerId);
+			SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED_NO_DURATION, playerId);
 		else 
 			SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED, playerId, duration);
 		

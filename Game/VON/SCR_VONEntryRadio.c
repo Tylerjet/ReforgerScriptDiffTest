@@ -3,6 +3,7 @@
 class SCR_VONEntryRadio : SCR_VONEntry
 {	
 	const string LABEL_FREQUENCY_UNITS = "#AR-VON_FrequencyUnits_MHz";
+	const string LABEL_DEACTIVATED = "#AR-Radio_TurnedOff";
 	
 	protected int m_iFrequency;		// current frequency
 	
@@ -14,7 +15,7 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		if (m_bIsEnabled)
 			AdjustEntry(0);
 		else 
-			m_sText = "OFF";
+			m_sText = LABEL_DEACTIVATED;
 	}
 	
 	//------------------------------------------------------------------------------------------------ 
@@ -60,7 +61,7 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		m_RadioComp.TogglePower(m_bIsEnabled);
 		
 		if (!m_bIsEnabled)
-			m_sText = "OFF";
+			m_sText = LABEL_DEACTIVATED;
 		else 
 			AdjustEntry(0);	
 	}

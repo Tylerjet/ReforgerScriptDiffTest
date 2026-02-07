@@ -230,7 +230,7 @@ class ContentBrowserDetailsMenu : SCR_SuperMenuBase
 	static bool GetConnectionState()
 	{	
 		auto backend = GetGame().GetBackendApi();
-		bool connected = backend.IsRunning() && backend.IsAuthenticated();
+		bool connected = backend.IsActive() && backend.IsAuthenticated();
 		return connected;
 	}
 };

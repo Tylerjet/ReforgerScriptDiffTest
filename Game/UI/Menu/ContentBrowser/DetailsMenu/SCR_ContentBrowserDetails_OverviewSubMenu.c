@@ -510,6 +510,9 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 	//! updated widgets which depend on state of the mod (so everything except for description, gallery)
 	protected void UpdateButtons()
 	{
+		if (!GetShown())
+			return;
+		
 		SCR_WorkshopItem item = m_WorkshopItem;
 		
 		auto actionThisItem = item.GetDownloadAction();

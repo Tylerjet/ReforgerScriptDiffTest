@@ -117,7 +117,8 @@ class SCR_AIGoalReaction_GroupAttack : SCR_AIGoalReaction
 				float searchRadius = 10.0;
 				if (!utility.IsInvestigationRelevant(msg.m_LastSeenPosition, searchRadius * searchRadius))
 					return;
-				
+				// Correction to surface
+				msg.m_LastSeenPosition[1] = GetGame().GetWorld().GetSurfaceY(msg.m_LastSeenPosition[0],msg.m_LastSeenPosition[2]);
 				// Enemy was never seen by this soldier
 				// Add investigate behavior
 				SCR_AIMoveAndInvestigateBehavior behavior = new SCR_AIMoveAndInvestigateBehavior(utility, false, msg.m_LastSeenPosition, isDangerous: true, radius: searchRadius);

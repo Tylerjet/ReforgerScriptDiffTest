@@ -80,7 +80,7 @@ class SCR_BackendImageComponentBase : ScriptedWidgetComponent
 		
 		m_iPreferedWidth = preferedWidth; // Store for debug text
 		auto backend = GetGame().GetBackendApi();
-		bool connected = backend.IsRunning() && backend.IsAuthenticated();		
+		bool connected = backend.IsActive() && backend.IsAuthenticated();		
 		if (connected)
 		{
 			// We are connected, download image

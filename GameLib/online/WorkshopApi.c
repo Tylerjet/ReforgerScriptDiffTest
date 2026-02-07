@@ -216,6 +216,43 @@ class Revision
 	proto native void ComputePatchSize(BackendCallback callback);
 }
 
+class WorkshopCatalogue
+{
+	proto native void RequestPage(BackendCallback callback, notnull JsonApiStruct params, bool clearCache);
+	
+	/**
+	\brief Get current page number
+	*/
+	proto native int GetPage();
+
+	/**
+	\brief Get page content, returns current count of items on active page
+	\param item items Array of Workshop Items
+	*/
+	proto native int GetPageItems( out array<WorkshopItem> items );
+
+	/**
+	\brief Get total item count on all pages
+	*/
+	proto native int GetTotalItemCount();
+
+	/**
+	\brief Get item count on actual page
+	*/
+	proto native int GetPageItemCount();
+
+	/**
+	\brief Get page count
+	*/
+	proto native int GetPageCount();
+	
+	//OBSOLETE
+	/**
+	\brief Set number of items per page
+	*/
+	proto native void SetPageItems( int count );
+}
+
 class Dependency
 {
 	private void Dependency(){}
@@ -243,6 +280,16 @@ class Dependency
 	
 	proto native float TotalFileSize();
 }
+
+
+class WorkshopAuthor extends WorkshopCatalogue
+{
+	proto native string Name();
+	proto native bool IsBlocked();
+	proto native void AddBlock(BackendCallback callback);
+	proto native void RemoveBlock(BackendCallback callback);
+}
+
 
 class BaseWorkshopItem
 {
@@ -289,7 +336,7 @@ class WorkshopItem extends BaseWorkshopItem
 	/**
 	\brief Get name of the author
 	*/
-	proto native string AuthorName();
+	proto native WorkshopAuthor Author();
 	/**
 	\brief Subscribe this Item 
 	*/
@@ -317,7 +364,7 @@ class WorkshopItem extends BaseWorkshopItem
 	/**
 	\brief Request delete of this item from the backend storage
 	*/
-	proto native void DeleteFromBackend();
+	proto native void DeleteFromBackend(BackendCallback callback);
 	/**
 	\brief Cancel upload or download
 	*/
@@ -487,6 +534,8 @@ class WorkshopItem extends BaseWorkshopItem
 	proto native void NotifyPlay();
 	
 	proto native static void SetThumbnailGridScale(int scale);
+	
+	proto native string GetBackendEnv();
 };
 
 
@@ -566,7 +615,7 @@ class WorkshopCallback : Managed
 
 // -------------------------------------------------------------------------
 // Workshop API access
-class WorkshopApi
+class WorkshopApi extends WorkshopCatalogue
 {
 
 	private void WorkshopApi()
@@ -608,38 +657,6 @@ class WorkshopApi
 	\brief Discard existing item
 	*/
 	proto native bool Discard( WorkshopItem item );
-
-	//OBSOLETE
-	/**
-	\brief Set number of items per page
-	*/
-	proto native void SetPageItems( int count );
-
-	/**
-	\brief Get current page number
-	*/
-	proto native int GetPage();
-
-	/**
-	\brief Get page content, returns current count of items on active page
-	\param item items Array of Workshop Items
-	*/
-	proto native int GetPageItems( out array<WorkshopItem> items );
-
-	/**
-	\brief Get total item count on all pages
-	*/
-	proto native int GetTotalItemCount();
-
-	/**
-	\brief Get item count on actual page
-	*/
-	proto native int GetPageItemCount();
-
-	/**
-	\brief Get page count
-	*/
-	proto native int GetPageCount();
 
 	/**
 	\brief Get workshop quota (local storage) size in bytes
@@ -698,8 +715,6 @@ class WorkshopApi
 	\brief Create a workshop item. DEBUG API
 	*/
 	proto native ref WorkshopItem GetWorkshopItem(string id);
-	
-	proto native void RequestPage(BackendCallback callback, notnull PageParams params, bool clearCache);
 };
 
 // -------------------------------------------------------------------------

@@ -180,6 +180,7 @@ class ArmaReforgerScripted : ChimeraGame
 					case PlayerManagerKickReason.KICK_VOTED: reason = "KICK_VOTED"; break;
 					case PlayerManagerKickReason.DUPLICATE_PLAYER_IDENTITY: reason = "DUPLICATE_PLAYER_IDENTITY"; break;
 					case SCR_PlayerManagerKickReason.KICKED_BY_GM: reason = "KICKED_BY_GM"; break;
+					case SCR_PlayerManagerKickReason.BANNED_BY_GM: reason = "BANNED_BY_GM"; break;
 					case SCR_PlayerManagerKickReason.FRIENDLY_FIRE: reason = "FRIENDLY_FIRE"; break;
 					case SCR_PlayerManagerKickReason.DISRUPTIVE_BEHAVIOUR: reason = "DISRUPTIVE_BEHAVIOUR"; break;
 				}
@@ -198,7 +199,7 @@ class ArmaReforgerScripted : ChimeraGame
 			dialogTag = "DEFAULT_ERROR";
 
 		// Set msg
-		ServerBrowserMenuUI.SetErrorMessage(dialogTag, strDetail);
+		ServerBrowserMenuUI.SetErrorMessage(dialogTag, group, strDetail);
 	}
 
 	//------------------------------------------------------------------------------------------------

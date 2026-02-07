@@ -1,74 +1,33 @@
+/**
+Arsenal Faction Attribute for getting and setting varriables in Editor Attribute window
+*/
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
-class SCR_ArsenalFactionEditorAttribute : SCR_BasePresetsEditorAttribute
+class SCR_ArsenalFactionEditorAttribute : SCR_BaseFactionEditableAttribute
 {	
-	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
+	protected override bool ValidEntity(GenericEntity entity)
 	{
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (!factionManager)
-			return null;
+		SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.Cast(entity.FindComponent(SCR_ArsenalComponent));
+		if (!arsenalComponent)
+			return false;
 		
-		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
-		if (!editableEntity)
-			return null;
-		
-		SCR_FactionControlComponent factionComponent = SCR_FactionControlComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_FactionControlComponent));
+		SCR_FactionControlComponent factionComponent = SCR_FactionControlComponent.Cast(entity.FindComponent(SCR_FactionControlComponent));
 		if (!factionComponent)
-			return null;
+			return false;
 		
-		Faction faction = factionComponent.GetFaction();
-		if (!faction)
-			return null;
-		
-		return SCR_BaseEditorAttributeVar.CreateInt(factionManager.GetFactionIndex(faction));
+		return true;
 	}
 	
-	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
+	protected override Faction GetFaction(GenericEntity entity)
 	{
-		if (!var)
-			return;
-		
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (!factionManager)
-			return;
-		
-		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
-		if (!editableEntity)
-			return;
-		
-		SCR_FactionControlComponent factionComponent = SCR_FactionControlComponent.Cast(editableEntity.GetOwner().FindComponent(SCR_FactionControlComponent));
+		return SCR_FactionControlComponent.Cast(entity.FindComponent(SCR_FactionControlComponent)).GetFaction();
+	}
+	
+	protected override void SetFaction(GenericEntity entity, Faction faction)
+	{
+		SCR_FactionControlComponent factionComponent = SCR_FactionControlComponent.Cast(entity.FindComponent(SCR_FactionControlComponent));
 		if (!factionComponent)
 			return;
 		
-		factionComponent.SetFaction(factionManager.GetFactionByIndex(var.GetInt()));
-	}
-	
-	protected override void CreatePresets()
-	{			
-		SCR_DelegateFactionManagerComponent delegateFactionManager = SCR_DelegateFactionManagerComponent.GetInstance();		
-		if (!delegateFactionManager)
-			return;
-		
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (!factionManager)
-			return;
-		
-		m_aValues.Clear();	
-		
-		SCR_SortedArray<SCR_EditableFactionComponent> factionDelegates = new SCR_SortedArray<SCR_EditableFactionComponent>;
-		int count = delegateFactionManager.GetSortedFactionDelegates(factionDelegates);
-			
-		SCR_Faction scrFaction;
-		
-		for(int i = 0; i < count; ++i)
-		{
-			scrFaction = SCR_Faction.Cast(factionDelegates.Get(i).GetFaction());
-			
-			if (!scrFaction)
-				continue;
-
-			SCR_EditorAttributeFloatStringValueHolder value = new SCR_EditorAttributeFloatStringValueHolder();
-			value.SetWithUIInfo(scrFaction.GetUIInfo(), factionManager.GetFactionIndex(factionDelegates.Get(i).GetFaction()));
-			m_aValues.Insert(value);
-		}
+		factionComponent.SetFaction(faction);
 	}
 };

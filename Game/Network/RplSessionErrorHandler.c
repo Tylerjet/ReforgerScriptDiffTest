@@ -1,6 +1,8 @@
 //-----------------------------------------------------------------------------
 class RplSessionErrorHandler : RplSessionCallbacks
 {
+	protected const string ERROR_GROUP = "REPLICATION";
+	
 	//-----------------------------------------------------------------------------
 	void RplSessionErrorHandler()
 	{
@@ -15,7 +17,7 @@ class RplSessionErrorHandler : RplSessionCallbacks
 		
 		if (serverBrowser)
 		{
-			serverBrowser.SetErrorMessage(msg);
+			serverBrowser.SetErrorMessage(msg, ERROR_GROUP);
 		}
 	}
 

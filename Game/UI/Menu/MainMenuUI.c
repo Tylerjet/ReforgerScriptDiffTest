@@ -78,6 +78,9 @@ class MainMenuUI : ChimeraMenuBase
 		SCR_ButtonImageComponent logo = SCR_ButtonImageComponent.GetButtonImage("LogoButton", w);
 		if (logo)
 			logo.m_OnClicked.Insert(OnLogoClicked);
+		
+		// Check ping sites 
+		GetGame().GetBackendApi().GetClientLobby().MeasureLatency(null);
 	}
 
 	//------------------------------------------------------------------------------------------------

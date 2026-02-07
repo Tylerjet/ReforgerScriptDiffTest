@@ -7,6 +7,7 @@ class CharacterCameraSet : ScriptedCameraSet
 	static const int	CHARACTERCAMERA_1ST_VEHICLE_TRANSITION	= 4;		//!< vehicle 1st person
 	static const int	CHARACTERCAMERA_1ST_TURRET				= 5;		//!< turret in 1st person
 	static const int	CHARACTERCAMERA_1ST_READY				= 6;		//!< weapon ready in 1st person
+	static const int	CHARACTERCAMERA_1ST_DEATH				= 7;
 	
 	static const int 	CHARACTERCAMERA_3RD_ERC 				= 10;		//!< 3rd - standing
 	static const int 	CHARACTERCAMERA_3RD_ERC_SPR 			= 11;		//!< 3rd - standing sprint
@@ -59,6 +60,7 @@ class CharacterCameraSet : ScriptedCameraSet
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_VEHICLE_TRANSITION, CharacterCamera1stPersonVehicleTransition);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_TURRET, CharacterCamera1stPersonTurret);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_READY, CharacterCamera1stPersonReady);
+		RegisterCameraCreator(CHARACTERCAMERA_1ST_DEATH, CharacterCamera1stPersonDeath);
 
 		//
 		// 3PV

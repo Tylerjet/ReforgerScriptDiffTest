@@ -13,7 +13,7 @@ class SCR_EquipGadgetAction: SCR_InventoryAction
 		SCR_EquipmentStorageComponent storageComp = SCR_EquipmentStorageComponent.Cast(pInventoryManager.FindStorageForItem(m_Item.GetOwner(), EStoragePurpose.PURPOSE_EQUIPMENT_ATTACHMENT));
 		if (!storageComp)
 		{
-			SetCannotPerformReason("No available slot");
+			SetCannotPerformReason("#AR-Inventory_NoSlot");
 			return false;
 		}
 		

@@ -23,7 +23,10 @@ enum ECampaignClientNotificationID
 //------------------------------------------------------------------------------------------------
 //! Takes care of Campaign-specific server <> client communication and requests
 class SCR_CampaignNetworkComponent : ScriptComponent
-{
+{	
+	[Attribute("{8A318497A6062E3E}Prefabs/MP/Campaign/CampaignBuildingServerTriggerEntity.et", UIWidgets.ResourceNamePicker, "", "et")]
+	protected ResourceName m_sBuildingAreaTrigger;
+
 	// Member variables 
 	protected SCR_PlayerController m_PlayerController;
 	protected ECharacterRank m_ePlayerRank = ECharacterRank.PRIVATE;
@@ -209,7 +212,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	{
 		return (m_RplComponent && m_RplComponent.IsProxy());
 	}
-		
+	
 	//------------------------------------------------------------------------------------------------
 	//! Send server request to build object - requested on truck
 	//! \param player slotEnt is a slot where to build
@@ -537,12 +540,13 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		IEntity controlledEnt = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
 		campaign.AwardXP(controlledEnt, CampaignXPRewards.CHEAT, reqXP);
 	}
-			
+
 	//------------------------------------------------------------------------------------------------
 	//! Build composition - Vehicle
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RpcAsk_BuildVehicle(EntityID slotID, RplId suppliesComponentID, int compIndex, int compValue, vector slotAngles)
 	{
+		
 		if (compIndex  == -1|| compValue  == -1)
 			return;
 		
@@ -554,28 +558,20 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!suppliesComponent || suppliesComponent.GetSupplies() < compValue)
 			return;
 
-		IEntity truck = IEntity.Cast(suppliesComponent.GetOwner().GetParent());
+		Vehicle truck = Vehicle.Cast(suppliesComponent.GetOwner().GetParent());
 		if (!truck)
 		    return;
 		
-		FactionAffiliationComponent factionAffiliationComponent = FactionAffiliationComponent.Cast(truck.FindComponent(FactionAffiliationComponent));
-		if (!factionAffiliationComponent)
-		    return;
-
-		SCR_CampaignFaction owningFaction = SCR_CampaignFaction.Cast(factionAffiliationComponent.GetDefaultAffiliatedFaction());
+		SCR_CampaignFaction owningFaction = SCR_CampaignFaction.Cast(truck.GetDefaultFaction());
 		if (!owningFaction)
 		    return;
 
-		BuildComposition(slotEnt, owningFaction, compIndex, slotAngles);
+		// Spawn a trigger which handles the area of composition on server. Once it's clear, the composition is spawned.		
+		SCR_CampaignBuildingServerTrigger trigger = CreateBuildingAreaTrigger(slotEnt);
+		if (trigger)
+			SetBuildingTrigger(trigger, slotEnt, owningFaction, compIndex, slotAngles);
 		
-		suppliesComponent.AddSupplies(-compValue);
-
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		if (!campaign)
-			return;
-		
-		// Notify campaign about event
-		campaign.OnStructureBuilt(slotEnt, this);
+		suppliesComponent.AddSupplies(-compValue);			
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -603,23 +599,30 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!composition.IsValid())
 			return;
 		
-		// Spawn composition, reduce supplies in base
-		BuildComposition(slotEnt, owningFaction, compIndex, slotAngles);
-		
 		base.AddSupplies(-compValue);
-		base.HandleMapInfo();	//Update map info for host
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
-		if (!campaign)
-			return;
-		
-		// Notify campaign about event
-		campaign.OnStructureBuilt(slotEnt, this);
+		// Spawn a trigger which handles the area of composition on server. Once it's clear, the composition is spawned.
+		SCR_CampaignBuildingServerTrigger trigger = CreateBuildingAreaTrigger(slotEnt);
+		if (trigger)
+			SetBuildingTrigger(trigger, slotEnt, owningFaction, compIndex, slotAngles, base);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Setup of the spawned trigger.
+	protected void SetBuildingTrigger(notnull SCR_CampaignBuildingServerTrigger trigger, notnull SCR_SiteSlotEntity slotEnt, notnull SCR_CampaignFaction owningFaction, int compIndex, vector slotAngles, SCR_CampaignBase base = null)
+	{
+		trigger.SetSlot(slotEnt);
+		trigger.SetOwningFaction(owningFaction);
+		trigger.SetCompositionIndex(compIndex);
+		trigger.SetSlotAngle(slotAngles);
+		if (base)
+			trigger.SetBase(base);
+		trigger.SetNetworkComponent(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Core of the composition building - create a queue of phases if exist, or spawn composition directly. 
-	private void BuildComposition(notnull SCR_SiteSlotEntity slotEnt, notnull SCR_CampaignFaction campaignFaction, int compIndex, vector slotAngles)
+	void BuildComposition(notnull SCR_SiteSlotEntity slotEnt, notnull SCR_CampaignFaction campaignFaction, int compIndex, vector slotAngles)
 	{
 		// Adjust the slot angle
 		slotEnt.SetAngles(slotAngles);
@@ -657,8 +660,29 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 			
 		// Final phase of composition
 		GetGame().GetCallqueue().CallLater(buildingQueue.BuildPhase, completeBuildingTime, false, slotEnt, resName, true);
+		
+		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		if (!campaign)
+			return;
+		
+		campaign.OnStructureBuilt(slotEnt, this);
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	//! Spawn a trigger to force AI leave the area
+	SCR_CampaignBuildingServerTrigger CreateBuildingAreaTrigger(notnull IEntity ent)
+	{
+		Resource res = Resource.Load(m_sBuildingAreaTrigger);
+		if (!res.IsValid())
+			return null;
+			
+		EntitySpawnParams params = EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;				
+		params.Transform[3] = ent.GetOrigin();
+		SCR_CampaignBuildingServerTrigger trigger = SCR_CampaignBuildingServerTrigger.Cast(GetGame().SpawnEntityPrefab(res, GetGame().GetWorld(), params));
+		return trigger;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Disassemble composition - Vehicle
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]

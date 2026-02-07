@@ -216,7 +216,7 @@ sealed class BaseWorld: pointer
 	\param height Viewport height
 	\param outDir Returned direction vector
 	*/
-	proto external vector ProjectViewportToWorld(float x, float y, int cam, int width, int height);
+	proto external vector ProjectViewportToWorld(float x, float y, int cam, int width, int height, out vector outDir);
 	proto external bool TraceLineToEntity(notnull IEntity ent, vector start, vector end, out TraceContact contact);
 	/*!
 	traces shape collision at start position, return <0 if we hit something

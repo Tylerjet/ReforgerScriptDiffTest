@@ -19,7 +19,7 @@ class SCR_BanPlayerContextAction: SCR_KickPlayerContextAction
 		foreach (SCR_EditableEntityComponent entity: selectedEntities)
 		{
 			playerDelegate = SCR_EditablePlayerDelegateComponent.Cast(entity);
-			playerPenaltyComponent.BanPlayer(playerDelegate.GetPlayerID(), m_iBanDuration, SCR_PlayerManagerKickReason.KICKED_BY_GM);
+			playerPenaltyComponent.BanPlayer(playerDelegate.GetPlayerID(), m_iBanDuration, SCR_PlayerManagerKickReason.BANNED_BY_GM);
 		}
 	}
 };

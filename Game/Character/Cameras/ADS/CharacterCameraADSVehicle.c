@@ -104,7 +104,6 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 			pOutResult.m_fUseHeading 			= 0;
 			pOutResult.m_fNearPlane				= 0.025;
 			pOutResult.m_bAllowInterpolation	= true;
-			pOutResult.m_bUseAsWSAttachment 	= true;
 			pOutResult.m_pWSAttachmentReference = cameraSlot;
 			
 			// Apply shake
@@ -135,6 +134,8 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 		pOutResult.m_fUseHeading 			= 0;
 		pOutResult.m_fNearPlane				= 0.025;
 		pOutResult.m_bAllowInterpolation	= true;
+		pOutResult.m_pOwner 				= m_OwnerCharacter;
+		pOutResult.m_pWSAttachmentReference = null;
 		
 		// Apply shake
 		if (m_CharacterCameraHandler)

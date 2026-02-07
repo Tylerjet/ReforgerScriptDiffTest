@@ -198,6 +198,9 @@ class SCR_VONController : ScriptComponent
 		}
 		else 
 		{
+			if (!m_ActiveEntry)
+				return;
+			
 			m_bIsToggledDirect = false;
 			m_bIsToggledChannel = !m_bIsToggledChannel;
 			ActivateVON(m_ActiveEntry, m_bIsToggledChannel);
@@ -367,7 +370,23 @@ class SCR_VONController : ScriptComponent
 		{
 			if (m_aEntries[i].m_RadioComp == radioComp)
 			{
-				RemoveEntry(m_aEntries[i]);
+				if (m_aEntries[i] == m_ActiveEntry)	// if the radio being removed is active 
+				{
+					if (m_bIsToggledChannel)
+						OnVONToggle(2, 0);
+					else 
+						ActivateVON(m_ActiveEntry, false);
+					
+					RemoveEntry(m_aEntries[i]);
+					
+					if (!m_aEntries.IsEmpty())
+						m_ActiveEntry = m_aEntries[0]; // cycle active entry
+					else 
+						m_ActiveEntry = null;
+				}
+				else 
+					RemoveEntry(m_aEntries[i]);
+				
 				return;
 			}
 		}

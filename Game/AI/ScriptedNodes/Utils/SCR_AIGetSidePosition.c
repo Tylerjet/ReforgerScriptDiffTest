@@ -1,6 +1,7 @@
 class SCR_AIGetSidePosition: AITaskScripted
 {
 	static const string PORT_ENEMY			= "Enemy";
+	static const string PORT_ENEMY_POSITION	= "EnemyPosition";
 	static const string PORT_KEEP_SIDE		= "KeepSide";
 	static const string PORT_POSITION		= "PositionOut";
 	
@@ -28,16 +29,22 @@ class SCR_AIGetSidePosition: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
+		vector direction, enemyPos, origin = m_OwnerEntity.GetOrigin();
 		IEntity enemy;
-		vector direction, origin = m_OwnerEntity.GetOrigin();
 		bool keepSide;
 		if (!GetVariableIn(PORT_KEEP_SIDE, keepSide) || !keepSide) // if parameter keepSide == true, it will not change side from previous run
 			m_iSide = Math.RandomInt(0,2);
 		// get direction of enemy
-		if (enemy)
+		if (GetVariableIn(PORT_ENEMY, enemy))
 		{
-			direction = vector.Direction(enemy.GetOrigin(), origin);
+			direction = vector.Direction(enemy.GetOrigin(), origin);			
 			direction.Normalize();
+		}		
+		else if (GetVariableIn(PORT_ENEMY_POSITION, enemyPos))	
+		{
+			direction = vector.Direction(enemyPos, origin);
+			direction.Normalize();
+			
 		}
 		else
 			direction = m_OwnerEntity.GetYawPitchRoll().AnglesToVector(); // gets normalized forward vector of m_OwnerEntity
@@ -72,12 +79,13 @@ class SCR_AIGetSidePosition: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override protected string GetOnHoverDescription()
 	{
-		return "Returns position from owner entity that is either on random side of the direction towards enemy or the keeps the same side as previously if KeepSide is true";
+		return "Returns position from owner entity that is either on random side of the direction towards enemy pos or the keeps the same side as previously if KeepSide is true";
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
 		PORT_ENEMY,
+		PORT_ENEMY_POSITION,
 		PORT_KEEP_SIDE
 	};
 	override TStringArray GetVariablesIn()

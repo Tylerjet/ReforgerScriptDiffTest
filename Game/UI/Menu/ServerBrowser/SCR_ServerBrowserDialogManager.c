@@ -157,9 +157,15 @@ class SCR_ServerBrowserDialogManager
 	
 	//------------------------------------------------------------------------------------------------
 	//! Create and setup error dialog when ending multiplayer game
-	void DisplayKickErrorDialog(string tag, string strDetail)
+	void DisplayKickErrorDialog(string tag, string group, string strDetail)
 	{
 		SCR_ConfigurableDialogUi dialogUi = SCR_ConfigurableDialogUi.CreateFromPreset(CONFIG_DIALOGS_ERROR, tag);
+		
+		// Use group as fallback if no dialog found 
+		if (!dialogUi)
+		{
+			dialogUi = SCR_ConfigurableDialogUi.CreateFromPreset(CONFIG_DIALOGS_ERROR, group);
+		}
 		
 		// Show default error if tag is not found
 		if (!dialogUi)

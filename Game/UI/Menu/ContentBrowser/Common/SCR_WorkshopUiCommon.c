@@ -134,7 +134,7 @@ class SCR_WorkshopUiCommon
 	static bool GetConnectionState()
 	{	
 		auto backend = GetGame().GetBackendApi();
-		bool connected = backend.IsRunning() && backend.IsAuthenticated();
+		bool connected = backend.IsActive() && backend.IsAuthenticated();
 		return connected;
 	}
 	

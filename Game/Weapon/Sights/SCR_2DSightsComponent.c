@@ -16,8 +16,11 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	[Attribute("0", UIWidgets.CheckBox, "Should reticle be scaled with current zoom", category: "2DSights")]
 	protected bool m_bDynamicReticle;
 	
-	[Attribute("0 0 0", UIWidgets.EditBox, "Camera offset when looking through scope", category: "2DSights", params: "inf inf 0 purposeCoords spaceEntity")]
+	[Attribute("0 0 0", UIWidgets.EditBox, "Camera offset when looking through scope", category: "PiPSights", params: "inf inf 0 purposeCoords spaceEntity")]
 	protected vector m_vCameraPoint;
+	
+	[Attribute("0 0 0", UIWidgets.EditBox, "Camera angles when looking through scope", category: "PiPSights", params: "inf inf 0 purposeAngles spaceEntity")]
+	protected vector m_vCameraAngles;
 	
 	[Attribute("1.4", UIWidgets.Slider, "Scale mult. of scope when target recoil is applied.", category: "2DSights", params: "1 3 0.01")]
 	protected float m_fRecoilScaleMax;

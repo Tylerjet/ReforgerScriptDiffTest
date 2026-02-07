@@ -55,7 +55,7 @@ class CameraHandlerComponent: ScriptComponent
 	//! before camera update
 	event void OnBeforeCameraUpdate(float pDt, bool pIsKeyframe);
 	//! after camera update
-	event void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4]);
+	event void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4], inout vector transformWS[4]);
 	//! collision solver
 	event void CollisionSolver(float pDt, inout ScriptedCameraItemResult pOutResult);
 	//! when we switch between FPP and TPP

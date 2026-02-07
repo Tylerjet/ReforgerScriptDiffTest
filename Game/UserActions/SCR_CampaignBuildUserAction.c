@@ -6,8 +6,7 @@ class SCR_CampaignBuildUserAction : ScriptedUserAction
 	protected SCR_CampaignBuildingControllerComponent m_BuildingController;
 	protected SCR_CampaignSuppliesComponent m_SuppliesComponent;
 	protected IEntity m_SuppliesProvider;
-	protected SCR_CampaignBuildingTrigger m_Trigger;
-	protected float m_fSearchDistance = 5;
+	protected SCR_CampaignBuildingClientTrigger m_Trigger;
 	
 	private const string SOUND_BUILD = "SOUND_BUILD";
 		
@@ -72,6 +71,10 @@ class SCR_CampaignBuildUserAction : ScriptedUserAction
 			campaignNetworkComponent.BuildBase(m_SlotEnt.GetID(), m_Base, compIndex, compValue, m_BuildingController.GetAngle());
 		
 		SCR_UISoundEntity.SoundEvent(SOUND_BUILD);
+		
+		m_BuildingController.DeactivateController();
+		m_BuildingController.DeactivateActionListeners();	
+		m_Trigger.SetToBeBuilt(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -88,7 +91,7 @@ class SCR_CampaignBuildUserAction : ScriptedUserAction
 			return false;
 		}
 		
-		if (m_Trigger.IsBlocked())
+		if (m_Trigger.IsToBeBuilt())
 		{
 			SetCannotPerformReason("#AR-Campaign_Action_BuildBlocked-UC");
 			return false;

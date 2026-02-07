@@ -21,6 +21,7 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 	protected SCR_TooltipAreaEditorUIComponent m_TooltipArea;
 	protected SCR_CursorEditorUIComponent m_Cursor;
 	protected SCR_BaseTooltipEditorUIComponent m_Tooltip;
+	protected SCR_BaseContextMenuEditorUIComponent m_ContextMenu;
 	protected SCR_UIInfo m_Info;
 	protected Managed m_InfoInstance;
 	protected bool m_bTooltipShown;
@@ -140,8 +141,7 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 			return;
 		
 		//--- Entity tooltip not available when context menu is opened
-		SCR_ContextMenuActionsEditorUIComponent contextMenu = SCR_ContextMenuActionsEditorUIComponent.Cast(GetRootComponent().FindComponent(SCR_ContextMenuActionsEditorUIComponent));
-		if (contextMenu && contextMenu.IsContextMenuOpen())
+		if (m_ContextMenu && m_ContextMenu.IsContextMenuOpen())
 			return;
 		
 		if (entitiesRemove && !entitiesRemove.IsEmpty())
@@ -185,6 +185,12 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 			SCR_BaseEditableEntityFilter hoverFilter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.HOVER);
 			if (hoverFilter) ShowEntityTooltip(hoverFilter.GetFirstEntity());
 		}
+	}
+	protected void OnContextMenuToggle(bool isOpened)
+	{
+		//--- Hide entity tooltip when context menu is opened
+		if (isOpened)
+			ResetInfo();
 	}
 	protected void OnMenuUpdate(float tDelta)
 	{
@@ -288,6 +294,10 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 			radialMenuHost.GetEditorRadialMenuOpened().Insert(OnRadialMenuToggle);
 		}
 		
+		m_ContextMenu = SCR_ContextMenuActionsEditorUIComponent.Cast(GetRootComponent().FindComponent(SCR_ContextMenuActionsEditorUIComponent));
+		if (m_ContextMenu)
+			m_ContextMenu.GetOnContextMenuToggle().Insert(OnContextMenuToggle);
+		
 		m_TooltipArea = SCR_TooltipAreaEditorUIComponent.Cast(menuRoot.FindComponent(SCR_TooltipAreaEditorUIComponent, true));
 		if (!m_TooltipArea) return;
 		
@@ -299,6 +309,8 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		m_LayersManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent));
 		
 		m_fInertiaStrength = 1 / Math.Max(m_fInertiaStrength, 0.001);
+		
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_GUI_TOOLTIP_DEBUG, "", "Show debug in tooltips", "Editor GUI");
 	}
 	override void HandlerDeattached(Widget w)
 	{
@@ -322,6 +334,11 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 		{
 			radialMenuHost.GetEditorRadialMenuOpened().Remove(OnRadialMenuToggle);
 		}
+		
+		if (m_ContextMenu)
+			m_ContextMenu.GetOnContextMenuToggle().Remove(OnContextMenuToggle);
+		
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_GUI_TOOLTIP_DEBUG);
 	}
 };
 

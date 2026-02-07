@@ -505,7 +505,7 @@ class SCR_WorkshopItem
 	string GetAuthorName()
 	{
 		if (m_Item)
-			return m_Item.AuthorName();
+			return m_Item.Author().Name();
 		else
 			return string.Empty;
 	}

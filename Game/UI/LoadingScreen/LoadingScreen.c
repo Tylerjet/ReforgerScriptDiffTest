@@ -4,7 +4,7 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 	const string PERCENT_STRING = "#AR-ValueUnit_Percentage";
 	const string LAYOUT = "{67DDD8A66C5FC5D3}UI/layouts/Menus/loadingScreen.layout";
 	protected const float PERCENT_COUNTING_TIMEOUT = 1;
-	protected const string AUTHOR_FORMAT = "#AR-Workshop_MadeBy";
+	protected const string AUTHOR_FORMAT = "#AR-AuthorLoadingScreen" + " ";
 	protected const string AUTHOR_UNKNOWN = "#AR-Author_Unknown";
 
 	protected Widget m_wBasicScreen;
@@ -159,7 +159,7 @@ class ArmaReforgerLoadingAnim: BaseLoadingAnim
 			if (header.m_sAuthor.IsEmpty())
 				m_wAuthor.SetText(AUTHOR_UNKNOWN);
 			else
-				m_wAuthor.SetTextFormat(AUTHOR_FORMAT, string.Empty, header.m_sAuthor);
+				m_wAuthor.SetTextFormat(AUTHOR_FORMAT +  header.m_sAuthor);
 		}
 		
 		if (m_wMissionImage)

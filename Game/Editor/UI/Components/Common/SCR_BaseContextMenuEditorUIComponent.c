@@ -45,6 +45,8 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 	
 	protected int m_ActionFlagsOnOpen;
 	
+	protected ref ScriptInvoker m_OnContextMenuToggle = new ScriptInvoker();
+	
 	void CloseContextMenu()
 	{
 		if (m_ContextMenu) m_ContextMenu.SetVisible(false);
@@ -55,7 +57,14 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 			GetMenu().GetOnMenuUpdate().Remove(OnHoveredEntityCheck);
 			m_HoveredEntityReference = null;
 		}
+		
+		m_OnContextMenuToggle.Invoke(false);
 	}
+	ScriptInvoker GetOnContextMenuToggle()
+	{
+		return m_OnContextMenuToggle;
+	}
+	
 	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
 	{
 		if (SCR_Global.IsChangedMouseAndKeyboard(oldDevice, newDevice))
@@ -166,6 +175,7 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 		if (m_ButtonActions.Count() > 0)
 		{
 			m_ContextMenu.SetVisible(true);	
+			m_OnContextMenuToggle.Invoke(true);
 		}
 	}
 	

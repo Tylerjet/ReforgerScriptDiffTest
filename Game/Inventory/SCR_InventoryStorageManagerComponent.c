@@ -624,6 +624,10 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		// Quit ADS
 		m_pCharacterController.SetWeaponADS(false);
 		
+		// Pin grenade
+		if(m_pCharacterController.GetInputContext() && m_pCharacterController.GetInputContext().GetThrow())
+			m_pCharacterController.SetThrow(false, true);
+				
 		// Inspection or lowered weapon stance
 		m_bWasRaised = m_pCharacterController.IsWeaponRaised();
 		m_pCharacterController.SetWeaponRaised(false);

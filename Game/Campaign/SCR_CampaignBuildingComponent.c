@@ -16,77 +16,72 @@ class SCR_CampaignBuildingComponent : ScriptComponent
 	
 	//! Prefab used for creating a ghost composition
 	[Attribute("", UIWidgets.ResourceNamePicker, "Preview Entity Prefab", "et")]
-	private ResourceName m_PreviewEntityPrefab;
+	protected ResourceName m_PreviewEntityPrefab;
 	
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Preview entity material", "et")]
-	private ResourceName m_PreviewMaterial;
+	protected ResourceName m_PreviewMaterial;
 	
 	//! Prefab used for interaction with composition Preview 
 	[Attribute("", UIWidgets.ResourceNamePicker, "Building Entity Prefab", "et")]
-	private ResourceName m_BuildingEntityPrefab;
+	protected ResourceName m_BuildingEntityPrefab;
 			
 	// array of slots
-	private ref array<SCR_SiteSlotEntity> m_aSlotEntities = new array<SCR_SiteSlotEntity>();	
+	protected ref array<SCR_SiteSlotEntity> m_aSlotEntities = new array<SCR_SiteSlotEntity>();	
 	
 	// array of all created preview entities
-	private ref array<SCR_BasePreviewEntity> m_aPreviewEntities;
+	protected ref array<SCR_BasePreviewEntity> m_aPreviewEntities;
 	
 	// array of all controllers of preview Entities
-	private ref map<SCR_SiteSlotEntity, IEntity> m_mControllerEntities;
+	protected ref map<SCR_SiteSlotEntity, IEntity> m_mControllerEntities;
 	
 	// array of all prefabs which can't be dismounted
-	private ref array<ResourceName> m_aUndismountablePrefabs = new array<ResourceName>();
+	protected ref array<ResourceName> m_aUndismountablePrefabs = new array<ResourceName>();
 	
 	// array of all building HUD icons
 	protected ref array<ImageWidget> m_aHUDIcons = new array<ImageWidget>;
 	
-	private bool m_bInBuildingMode = false;
-	private bool m_bPreviewUpdateLoop = false;
-	private bool m_bAwayFromAreaCheckRunning;
-	private vector m_vBuildingAreaCenter;
-	private SCR_CampaignFaction m_OwningFaction;
-	private SCR_GameModeCampaignMP m_GameModeCampaignMP;
-	private SCR_CampaignBase m_ParentBase;
+	protected bool m_bInBuildingMode = false;
+	protected bool m_bPreviewUpdateLoop = false;
+	protected bool m_bAwayFromAreaCheckRunning;
+	protected vector m_vBuildingAreaCenter;
+	protected SCR_CampaignFaction m_OwningFaction;
+	protected SCR_GameModeCampaignMP m_GameModeCampaignMP;
+	protected SCR_CampaignBase m_ParentBase;
 	
 	// composition cost multiplier
-	private float m_fCostMultiplier = 1;
+	protected float m_fCostMultiplier = 1;
 	
 	// composition return cost multiplier 
-	private float m_fRefundMultiplier = 1;
+	protected float m_fRefundMultiplier = 1;
 	
-	private IEntity m_BuildComposition;
+	protected IEntity m_BuildComposition;
 
 	// vehicle on which the action was executed
-	private IEntity m_VehicleInstance;
-	private DamageManagerComponent m_DamageManagerVehicle;
-	private bool m_bPlayerInHisSupplyTruck = false;
-	
-	//used in search loop when deleting the preview.
-	private SCR_CampaignBuildingControllerComponent m_BuldingControllerComponent;
+	protected IEntity m_VehicleInstance;
+	protected DamageManagerComponent m_DamageManagerVehicle;
+	protected bool m_bPlayerInHisSupplyTruck = false;
 		
 	//distance in which the list of composition is updated again (moving vehicle)
-	private const int UPDATE_DISTANCE = 10000; //100 m (value is squared) 
+	protected const int UPDATE_DISTANCE = 10000; //100 m (value is squared) 
 	
 	//A time in which the update loop is running. 
 	// Each x sec the loop checks the distance between the player and the location where he initiates the building mode. This one is set for a building in base.
-	private const int UPDATE_TIME_LOCATION = 4000; // 4 sec
+	protected const int UPDATE_TIME_LOCATION = 4000; // 4 sec
 	
 	//A time in which the update loop is running. 
 	//Each x sec the loop checks the distance between player and the location where he initiates the building mode. This one is set for the Truck
-	private const int UPDATE_TIME_TRUCK = 4000; // 4 sec
-	private const int SEARCH_DISTANCE = 5;
+	protected const int UPDATE_TIME_TRUCK = 4000; // 4 sec
+	protected const int SEARCH_DISTANCE = 2;
 		
 	// How far away from the player will the HUD icons get drawn (squared to be usable by distance measurements)
-	static const int MAX_HUD_ICON_DISTANCE = Math.Pow(100, 2);
-	static const int DEFAULT_HUD_ICON_SIZE = 64;
+	protected const int MAX_HUD_ICON_DISTANCE = Math.Pow(100, 2);
+	protected const int DEFAULT_HUD_ICON_SIZE = 64;
 	
 	//------------------------------------------------------------------------------------------------
 	// executed locally when player dies
 	private void OnDeath()
 	{	
-		// Hotfix to prevent missing user action after the spawn of the character if he is killed once progressing a building action.
-		GetGame().GetCallqueue().CallLater(QuitBuilding, 1000, false); 
-		//QuitBuilding();
+		QuitBuilding();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -324,7 +319,7 @@ class SCR_CampaignBuildingComponent : ScriptComponent
 			if (m_aSlotEntities[i].IsOccupied())
 			{				
 				world.QueryEntitiesBySphere(m_aSlotEntities[i].GetOrigin(), SEARCH_DISTANCE, FindComposition, null, EQueryEntitiesFlags.ALL);
-				 if (!m_BuildComposition)
+				if (!m_BuildComposition)
 					continue;
 								
 				EntityPrefabData prefabData = m_BuildComposition.GetPrefabData();
@@ -339,6 +334,7 @@ class SCR_CampaignBuildingComponent : ScriptComponent
 				if (m_aUndismountablePrefabs.Find(res) == -1)
 					SpawnController(slotData, m_aSlotEntities[i], pOwnerEntity, null);
 				
+				m_BuildComposition = null;
 				continue;
 			}
 			
@@ -448,6 +444,8 @@ class SCR_CampaignBuildingComponent : ScriptComponent
 		buildingController.SetUsedSlot(slot);
 		buildingController.SetSuppliesProvider(suppliesProvider);
 		buildingController.SetMarker();
+		if (!buildingController.GetTrigger())
+			buildingController.SpawnTrigger();
 			
 		// If we can get a buildingManagerEntity set the cost multipliers
 		SCR_CampaignBuildingManagerEntity buildingManagerEnt = SCR_CampaignBuildingManagerEntity.GetInstance();
@@ -552,11 +550,19 @@ class SCR_CampaignBuildingComponent : ScriptComponent
 	{					
 		IEntity parent = SCR_Global.GetMainParent(ent, true);
 			
-		if (!parent.FindComponent(SCR_EditableEntityComponent))
+		if (!parent.FindComponent(SCR_SlotCompositionComponent))
 		    return true;
 		
 		SCR_SiteSlotEntity slotEnt = SCR_SiteSlotEntity.Cast(ent);
 		if (slotEnt)
+			return true;
+		
+		EntityPrefabData prefabData = ent.GetPrefabData();
+		if (!prefabData)
+			return true;
+		
+		ResourceName res = prefabData.GetPrefabName();			
+		if (!res.IsEmpty())
 			return true;
 				
 		m_BuildComposition = ent;
@@ -638,15 +644,13 @@ class SCR_CampaignBuildingComponent : ScriptComponent
 		m_bInBuildingMode = value;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	// Returns true, if the player is in building mode
 	bool IsBuilding()
 	{
 		return m_bInBuildingMode;
 	}
-	
-			
+		
 	//------------------------------------------------------------------------------------------------
 	//Get the list of all slots in given radius executed ether from spawning previews method or from user action to check if is the user action still valid.
 	void GetSlotsNearby(IEntity ent, int radius)
@@ -677,7 +681,7 @@ class SCR_CampaignBuildingComponent : ScriptComponent
 	{
 		for (int i = m_aPreviewEntities.Count()- 1; i >= 0; i--)
 		{			
-			SCR_Global.DeleteEntityAndChildren(GetPreviewEntities()[i]);
+			SCR_EntityHelper.DeleteEntityAndChildren(GetPreviewEntities()[i]);
 		}
 		
 		m_aPreviewEntities.Clear();
@@ -699,7 +703,7 @@ class SCR_CampaignBuildingComponent : ScriptComponent
 		
 		for (int i = m_mControllerEntities.Count()- 1; i >= 0; i--)
 		{			
-			SCR_Global.DeleteEntityAndChildren(GetControllerEntities().GetElement(i));
+			SCR_EntityHelper.DeleteEntityAndChildren(GetControllerEntities().GetElement(i));
 		}
 		
 		m_mControllerEntities.Clear();
@@ -724,11 +728,10 @@ class SCR_CampaignBuildingComponent : ScriptComponent
 		}
 		
 		// Delete preview
-		SCR_Global.DeleteEntityAndChildren(component.GetPreviewEntity());
+		SCR_EntityHelper.DeleteEntityAndChildren(component.GetPreviewEntity());
 		// If it's a service composition, delete the controller too.
 		if (component.IsServiceComposition())
-			SCR_Global.DeleteEntityAndChildren(component.GetOwner());
-			
+			SCR_EntityHelper.DeleteEntityAndChildren(component.GetOwner());
 	}	
 	
 	//------------------------------------------------------------------------------------------------

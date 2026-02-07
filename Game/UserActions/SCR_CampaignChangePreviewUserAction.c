@@ -8,6 +8,7 @@ class SCR_CampaignChangePreviewUserAction : ScriptedUserAction
 	protected IEntity m_Owner;
 	protected SCR_CampaignBuildingControllerComponent m_BuildingControllerComponent;
 	protected SCR_CampaignBuildingComponent m_BuildingComponent;
+	protected SCR_CampaignBuildingClientTrigger m_Trigger;
 	protected ref array<ref SCR_CampaignSlotComposition> m_aSlotData = new array<ref SCR_CampaignSlotComposition>();
 	//------------------------------------------------------------------------------------------------
 	//! Translates action ID to asset ID (its index in asset list)
@@ -35,6 +36,10 @@ class SCR_CampaignChangePreviewUserAction : ScriptedUserAction
 		m_SuppliesProvider = m_BuildingControllerComponent.GetSuppliesProvider();
 		if (!m_SuppliesProvider)
     		return;
+		
+		m_Trigger = m_BuildingControllerComponent.GetTrigger();
+		if (!m_Trigger)
+			return;
 		
 		// Check if it's a base and get a faction
 		SCR_CampaignBase base = SCR_CampaignBase.Cast(m_SuppliesProvider);
@@ -84,6 +89,12 @@ class SCR_CampaignChangePreviewUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{				
+		if (m_Trigger.IsToBeBuilt())
+		{
+			SetCannotPerformReason("#AR-Campaign_Action_BuildBlocked-UC");
+			return false;
+		}
+		
 		return true;		
 	}
 	

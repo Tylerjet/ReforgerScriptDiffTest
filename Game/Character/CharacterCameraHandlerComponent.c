@@ -171,6 +171,11 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		{
 			return CharacterCameraSet.CHARACTERCAMERA_ADS;
 		}
+
+		if (m_ControllerComponent.IsDead() && !IsInThirdPerson())
+		{
+			return CharacterCameraSet.CHARACTERCAMERA_1ST_DEATH;
+		}
 		
 		if (m_ControllerComponent.IsGadgetRaisedModeWanted() && !m_OwnerCharacter.IsInVehicle())
 			return CharacterCameraSet.CHARACTERCAMERA_1ST;
@@ -385,12 +390,17 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4])
+	override void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4], inout vector transformWS[4])
 	{
+		if (m_ControllerComponent.IsDead())
+			return;
 		//! update head visibility
 		vector headBoneMat[4];
 		m_OwnerCharacter.GetBoneMatrix(m_iHeadBoneIndex, headBoneMat);
-		OnAlphatestChange(255 - Math.Clamp((vector.Distance(transformMS[3], headBoneMat[3]) - 0.2) / 0.15, 0.0, 1.0)*255);
+		vector charMat[4];
+		m_OwnerCharacter.GetWorldTransform(charMat);
+		Math3D.MatrixMultiply4(charMat, headBoneMat, headBoneMat);
+		OnAlphatestChange(255 - Math.Clamp((vector.Distance(transformWS[3], headBoneMat[3]) - 0.2) / 0.15, 0.0, 1.0)*255);
 		
 		//! aiming update
 		if( pIsKeyframe )

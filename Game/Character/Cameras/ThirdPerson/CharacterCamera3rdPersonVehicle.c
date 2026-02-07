@@ -191,9 +191,11 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			SCR_Math3D.RotateAround(pOutResult.m_CameraTM, pOutResult.m_CameraTM[3], pOutResult.m_CameraTM[0], m_fAngleThirdPerson, pOutResult.m_CameraTM);
 		
 		// other parameters
-		pOutResult.m_fUseHeading = 0.0;
-		pOutResult.m_fFOV = m_fFOV + speedScale * m_fFOV_SpeedAdjustMax;
-		pOutResult.m_fDistance = camDist;
+		pOutResult.m_fUseHeading 			= 0.0;
+		pOutResult.m_fFOV 					= m_fFOV + speedScale * m_fFOV_SpeedAdjustMax;
+		pOutResult.m_fDistance 				= camDist;
+		pOutResult.m_pWSAttachmentReference = null;
+		pOutResult.m_pOwner 				= m_OwnerCharacter;
 		
 		// Apply shake
 		if (m_CharacterCameraHandler)

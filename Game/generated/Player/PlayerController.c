@@ -68,6 +68,7 @@ class PlayerController: GenericController
 	proto external PermissionState GetPlayerMutedState(int playerId);
 	//! Returns True if the user has given role assigned
 	proto external bool HasRole(EPlayerRole role);
+	proto external void SetCharacterCameraRenederActive(bool active);
 	proto external int GetPlayerId();
 	proto external int GetRplIdentity();
 	

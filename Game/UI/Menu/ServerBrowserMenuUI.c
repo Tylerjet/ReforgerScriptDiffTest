@@ -49,6 +49,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected ESBWidgetFocus m_iFocusedWidgetState = ESBWidgetFocus.SERVER_LIST;
 	
 	protected static string m_sErrorMessage = "";
+	protected static string m_sErrorMessageGroup = "";
 	protected static string m_sErrorMessageDetail = "";
 	
 	// Lobby Rooms handling
@@ -230,8 +231,8 @@ class ServerBrowserMenuUI: MenuRootBase
 	//! Start looking for servers once backend is runnig 
 	protected void WaitingForRunningBackend()
 	{		
-		bool backendRunning = GetGame().GetBackendApi().IsRunning();
-		if (!backendRunning)
+		bool backendActive = GetGame().GetBackendApi().IsActive();
+		if (!backendActive)
 			return;
 		
 		ClearConnectionTimeoutWaiting();
@@ -718,7 +719,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void DisplayKick()
 	{
-		m_Dialogs.DisplayKickErrorDialog(m_sErrorMessage, m_sErrorMessageDetail);
+		m_Dialogs.DisplayKickErrorDialog(m_sErrorMessage, m_sErrorMessageGroup, m_sErrorMessageDetail);
 
 		// Find last 
 		string lastId = m_Lobby.GetPreviousRoomId();
@@ -891,8 +892,6 @@ class ServerBrowserMenuUI: MenuRootBase
 	//! Call this later to prevent too many request 
 	protected void ReceiveRoomContent_Mods(Room room)
 	{
-		//Print("Room: " + room.Name() + " gets mods: " + room);
-		
 		if (!m_ModsManager || !room || m_LastFocusedRoom != room)
 			return;
 		
@@ -1151,7 +1150,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		m_ParamsFilter.SetSorting(sortElementName, sortAscending);
 
 		if (!m_bFirstRoomLoad)
-		OnActionRefresh();
+			OnActionRefresh();
 
 		SwitchFocus(null, ESBWidgetFocus.SORTING);
 	}
@@ -1836,9 +1835,10 @@ class ServerBrowserMenuUI: MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	//! Set message for error dialog
 	//! Error is display if message has text, message is cleared after displaying dialog  
-	static void SetErrorMessage(string msg, string details = "") 
+	static void SetErrorMessage(string msg, string group, string details = "") 
 	{
 		m_sErrorMessage = msg;
+		m_sErrorMessageGroup = group;
 		m_sErrorMessageDetail = details;
 	}
 	
@@ -1846,6 +1846,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected void ClearErrorMessage()
 	{
 		m_sErrorMessage = "";
+		m_sErrorMessageGroup = "";
 		m_sErrorMessageDetail = "";
 	}
 	

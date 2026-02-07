@@ -57,6 +57,9 @@
 		EBREQ_WORKSHOP_GetAssetScenarios,
 		EBREQ_WORKSHOP_GetDownloadList,
 		EBREQ_WORKSHOP_GetDownloadListS2S,
+	
+		EBREQ_WORKSHOP_AddProfileBlock,
+		EBREQ_WORKSHOP_RemoveProfileBlock,
 
 		EBREQ_WORKSHOP_UploadAsset,
 		EBREQ_WORKSHOP_StatusAsset,
@@ -608,11 +611,15 @@ class BackendApi
 	*/
 	proto native bool IsAuthInProgress();
 	/**
-	\brief Client is ready to send HTTP requests
+	\brief True if HTTP communication enabled (initialization, runtime or shutdown may be pending at same time)
 	*/
 	proto native bool IsRunning();
 	/**
-	\brief Is HTTP communication active
+	\brief True if HTTP communication is being activated (initializing yet)
+	*/
+	proto native bool IsInitializing();
+	/**
+	\brief True if HTTP communication active (initialized)
 	*/
 	proto native bool IsActive();
 	/**
@@ -808,6 +815,11 @@ class BackendApi
 	\brief Return true if BI Account is linked to local Identity
 	*/
 	proto native bool IsBIAccountLinked();
+	
+	/**
+	\brief Get target backend environment
+	*/
+	proto native string GetBackendEnv();
 };
 
 // -------------------------------------------------------------------------

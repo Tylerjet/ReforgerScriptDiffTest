@@ -20,7 +20,7 @@ enum ENotification
 	PLAYER_KILLED_POSSESSED_AI = 112, ///> Shown to GM only when player killed a possessed NPC 
 	AI_KILLED_POSSESSED_AI = 113, ///> Shown to GM only when player killed a possessed NPC 
 	POSSESSED_AI_KILLED_POSSESSED_AI = 114, ///> Shown to GM only when possessed NPC killed a player
-	PLAYER_BANNED_NO_TIME = 115, ///< A player was banned for the session - (Param1 = PlayerID)
+	PLAYER_BANNED_NO_DURATION = 115, ///< A player was banned for the session - (Param1 = PlayerID)
 	
 	//RIGHTS
 	EDITOR_EDITOR_RIGHTS_ASSIGNED = 200, ///< Player got rights assigned - (Param1 = GameMasterID, Param2 = TargetPlayerID))

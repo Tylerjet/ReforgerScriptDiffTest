@@ -69,12 +69,14 @@ class CharacterCamera1stPerson extends CharacterCameraBase
 		if( m_ApplyHeadBob )
 			m_CharacterCameraHandler.AddViewBobToTransform(pOutResult.m_CameraTM, 1, false);
 
-		pOutResult.m_iDirectBone 		= GetCameraBoneIndex();
-		pOutResult.m_fFOV		 		= m_fFOV;
-		pOutResult.m_fNearPlane	 		= 0.0125;
-		pOutResult.m_bUpdateWhenBlendOut = true;
-		pOutResult.m_fPositionModelSpace = 0.0;
-		pOutResult.m_bAllowInterpolation = true;
+		pOutResult.m_iDirectBone 			= GetCameraBoneIndex();
+		pOutResult.m_fFOV		 			= m_fFOV;
+		pOutResult.m_fNearPlane	 			= 0.0125;
+		pOutResult.m_bUpdateWhenBlendOut 	= true;
+		pOutResult.m_fPositionModelSpace 	= 0.0;
+		pOutResult.m_bAllowInterpolation 	= true;
+		pOutResult.m_pOwner 				= m_OwnerCharacter;
+		pOutResult.m_pWSAttachmentReference = null;
 		
 		// Apply shake
 		if (m_CharacterCameraHandler)
@@ -94,4 +96,32 @@ class CharacterCamera1stPerson extends CharacterCameraBase
 
 	protected bool m_bCameraTransition = false;
 	protected CompartmentAccessComponent m_pCompartmentAccess;
+};
+
+
+class CharacterCamera1stPersonDeath extends CharacterCamera1stPerson
+{
+	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
+	{
+		vector lookAngles;
+		lookAngles[0] = 180.0;
+		lookAngles[1] = 0;
+		lookAngles[2] = 0;
+
+		//! apply to rotation matrix
+		Math3D.AnglesToMatrix(lookAngles, pOutResult.m_CameraTM);
+		// position
+		pOutResult.m_CameraTM[3]			= m_OffsetLS;
+		pOutResult.m_iDirectBone 			= GetCameraBoneIndex();
+		pOutResult.m_fUseHeading 			= 0.0;
+		pOutResult.m_fDistance 				= 0;
+		pOutResult.m_iDirectBoneMode 		= EDirectBoneMode.RelativeTransform;
+		pOutResult.m_fFOV		 			= m_fFOV;
+		pOutResult.m_fNearPlane	 			= 0.0125;
+		pOutResult.m_bUpdateWhenBlendOut 	= true;
+		pOutResult.m_fPositionModelSpace 	= 0.0;
+		pOutResult.m_bAllowInterpolation 	= true;
+		pOutResult.m_pOwner 				= m_OwnerCharacter;
+		pOutResult.m_pWSAttachmentReference = null;
+	}
 };

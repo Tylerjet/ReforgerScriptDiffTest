@@ -18,12 +18,8 @@ class SCR_DebugTooltipDetail: SCR_EntityTooltipDetail
 	}
 	override bool InitDetail(SCR_EditableEntityComponent entity, Widget widget)
 	{
-#ifdef WORKBENCH
 		m_Text = TextWidget.Cast(widget);
 		m_Text.SetColor(Color.Pink);
-		return m_Text != null;
-#else
-		return false;
-#endif
+		return m_Text && DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_GUI_TOOLTIP_DEBUG);
 	}
 };

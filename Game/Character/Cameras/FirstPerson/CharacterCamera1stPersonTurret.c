@@ -77,101 +77,54 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
 		// no super for now, will calculate angle based on turret aiming (HeadAngles not supported when turret compartment attachment)
-		//super.OnUpdate(pDt, pOutResult);
-		
 		if (!m_pControlledTurret)
 			return;
+		
+		pOutResult.m_pWSAttachmentReference = null;
+		pOutResult.m_pOwner 				= m_OwnerCharacter;
+		pOutResult.m_fPositionModelSpace 	= 1.0;
+		pOutResult.m_fFOV 					= m_fFOV;
+		pOutResult.m_fNearPlane 			= 0.04;
+		pOutResult.m_bAllowInterpolation 	= true;
+		pOutResult.m_bUpdateWhenBlendOut 	= true;
+		pOutResult.m_fUseHeading 			= 0.0;
+		pOutResult.m_iDirectBoneMode 		= EDirectBoneMode.None;
+		pOutResult.m_iDirectBone 			= -1;
 
-		// Check for transition to ADS
-		if (m_pTurretController.IsWeaponADS())
+		vector aimingAngles = m_pControlledTurret.GetAimingRotation();
+		vector offset = m_OffsetLS;
+		if (m_pCompartment && m_pCompartment.IsDirectAimMode() && m_pTurretController.GetCanAimOnlyInADS())
 		{
-			//! sights transformation
-			vector sightLocalMat[4];
-			m_pTurretController.GetCurrentSightsCameraTransform(sightLocalMat, pOutResult.m_fFOV);
+			offset = "0 0 0";
+		}
+		vector aimChange = m_Input.GetAimChange();
+		bool freeLook = m_bForceFreeLook || m_pTurretController.IsFreeLookEnabled() || m_ControllerComponent.IsTrackIREnabled();
 
-			// character matrix
-			vector charMat[4];
-			m_OwnerCharacter.GetTransform(charMat);
-
-			// we need to account for turrets that rotating character itself (BTR gunner)	
-			vector charRotation = Math3D.MatrixToAngles(charMat);
-			vector lookAngles = Math3D.MatrixToAngles(sightLocalMat);
-
-			// Reset LeftRight lookAngles if freelook is forced when not in ADS 
-			if (m_pTurretController.GetCanAimOnlyInADS())
-			{
-				lookAngles[0] = 0;
-				lookAngles[1] = lookAngles[1] - charRotation[1];
-				lookAngles[2] = 0;	
-			}
-			else
-			{
-				lookAngles -= charRotation;
-			}
-
-			//! apply to rotation matrix
-			Math3D.AnglesToMatrix(lookAngles, pOutResult.m_CameraTM);
-
-			vector posDiffWS = sightLocalMat[3] - charMat[3];
-			pOutResult.m_CameraTM[3] = posDiffWS.InvMultiply3(charMat);
-			pOutResult.m_iDirectBone = -1;
-			pOutResult.m_iDirectBoneMode = EDirectBoneMode.None;
-			pOutResult.m_bUpdateWhenBlendOut = false;
-			pOutResult.m_fDistance = 0;
-			pOutResult.m_fUseHeading = 0;
-			pOutResult.m_fNearPlane = 0.025;
-			pOutResult.m_bAllowInterpolation = true;
-
-			// Set angles
-			m_fLeftRightAngle = lookAngles[0];
-			m_fUpDownAngle = lookAngles[1];
+		float lrAngle = 0.0;
+		float udAngle = 0.0;
+		
+		// Freelook is using specific angles and is not very compatible with the UpdateAngleWithTarget method
+		if (freeLook)
+		{
+			lrAngle = UpdateLRAngle(m_fLeftRightAngle, CONST_LR_MIN, CONST_LR_MAX, pDt);
+			udAngle = UpdateUDAngle(m_fUpDownAngle, CONST_UD_MIN, CONST_UD_MAX, pDt);
 		}
 		else
 		{
-			pOutResult.m_fPositionModelSpace = 1.0;
-			pOutResult.m_fFOV = m_fFOV;
-			pOutResult.m_fNearPlane = 0.04;
-			pOutResult.m_bAllowInterpolation = true;
-			pOutResult.m_bUpdateWhenBlendOut = false;
-			vector aimingAngles = m_pControlledTurret.GetAimingRotation();
-			vector offset = m_OffsetLS;
-			if (m_pCompartment && m_pCompartment.IsDirectAimMode() && m_pTurretController.GetCanAimOnlyInADS())
-			{
-				offset = "0 0 0";
-			}
-			vector aimChange = m_Input.GetAimChange();
-			bool freeLook = m_bForceFreeLook || m_pTurretController.IsFreeLookEnabled() || m_ControllerComponent.IsTrackIREnabled();
-
-			float lrAngle = 0.0;
-			float udAngle = 0.0;
-			
-			// Freelook is using specific angles and is not very compatible with the UpdateAngleWithTarget method
-			if (freeLook)
-			{
-				lrAngle = UpdateLRAngle(m_fLeftRightAngle, CONST_LR_MIN, CONST_LR_MAX, pDt);
-				udAngle = UpdateUDAngle(m_fUpDownAngle, CONST_UD_MIN, CONST_UD_MAX, pDt);
-			}
-			else
-			{
-				lrAngle = UpdateAngleWithTarget(m_fLeftRightAngle, m_fLRAngleAdd, m_fLRAngleVel, m_vHorAimLimits, pDt, aimingAngles[0], aimChange[0], freeLook);
-				udAngle = UpdateAngleWithTarget(m_fUpDownAngle, m_fUpDownAngleAdd, m_fUDAngleVel, m_vVertAimLimits, pDt, aimingAngles[1], aimChange[1], freeLook);
-			}
-
-			if(m_pTurretController.GetCanAimOnlyInADS() || freeLook)
-			{
-				aimingAngles[0] = lrAngle;
-				aimingAngles[1] = udAngle;
-			}
-			//! apply to rotation matrix
-			Math3D.AnglesToMatrix(aimingAngles, pOutResult.m_CameraTM);
-			//! lerp eye position to prevent nosiating shake when character walks around deployed turret
-			m_vPrevEyePosition = vector.Lerp(m_vPrevEyePosition, m_OwnerCharacter.EyePositionModel(), 0.25);
-			pOutResult.m_CameraTM[3] = m_vPrevEyePosition + offset;
-			pOutResult.m_fUseHeading = 0.0;
-			pOutResult.m_iDirectBoneMode = EDirectBoneMode.None;
-			pOutResult.m_iDirectBone = -1;
-			
+			lrAngle = UpdateAngleWithTarget(m_fLeftRightAngle, m_fLRAngleAdd, m_fLRAngleVel, m_vHorAimLimits, pDt, aimingAngles[0], aimChange[0], freeLook);
+			udAngle = UpdateAngleWithTarget(m_fUpDownAngle, m_fUpDownAngleAdd, m_fUDAngleVel, m_vVertAimLimits, pDt, aimingAngles[1], aimChange[1], freeLook);
 		}
+
+		if(m_pTurretController.GetCanAimOnlyInADS() || freeLook)
+		{
+			aimingAngles[0] = lrAngle;
+			aimingAngles[1] = udAngle;
+		}
+		//! apply to rotation matrix
+		Math3D.AnglesToMatrix(aimingAngles, pOutResult.m_CameraTM);
+		//! lerp eye position to prevent nosiating shake when character walks around deployed turret
+		m_vPrevEyePosition = vector.Lerp(m_vPrevEyePosition, m_OwnerCharacter.EyePositionModel(), 0.25);
+		pOutResult.m_CameraTM[3] = m_vPrevEyePosition + offset;
 		
 		// Apply shake
 		if (m_CharacterCameraHandler)

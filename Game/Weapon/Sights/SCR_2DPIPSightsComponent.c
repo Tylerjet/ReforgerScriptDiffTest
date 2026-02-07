@@ -136,7 +136,8 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	protected ref Widget m_wPIPRoot;
 	
 	//! Is PIP currently enabled?
-	protected static bool s_bPIPIsEnabled;
+	protected bool m_bPIPIsEnabled;
+	protected static int s_bIsPIPActive;
 
 	//! The render target texture found within our layout
 	protected RTTextureWidget m_wRenderTargetTextureWidget;
@@ -167,6 +168,15 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	/*!
+		Returns the camera index used by this component when enabled.
+	*/
+	int GetPIPCameraIndex()
+	{
+		return m_iCameraIndex;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override float GetADSActivationPercentage()
 	{
 		if (SCR_Global.IsScope2DEnabled())
@@ -185,9 +195,18 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static bool IsPIPEnabled()
+	bool IsPIPEnabled()
 	{
-		return s_bPIPIsEnabled;
+		return m_bPIPIsEnabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Returns true if any sights PIP is active.
+	*/
+	static bool IsPIPActive()
+	{
+		return s_bIsPIPActive;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -238,6 +257,72 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		
 		return false;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*! 
+		Return actual parent (weapon) with calculated transformation in relation to it.
+		\paran parent Direct parent entity which coords are provided in relation to
+		\param position offset in relation to original parent
+		\param angles rotation in degrees in relation to original parent
+		\param matrix Out rotation in relation to new parent
+		\return Returns new parent to use, usually the weapon
+	*/
+	IEntity GetPIPCameraLocalTransform(IEntity parent, vector position, vector angles, out vector matrix[4])
+	{
+		// Construct the local matrix in relation to original parent
+		vector yawPitchRoll = Vector(angles[1], angles[0], angles[2]);
+		Math3D.AnglesToMatrix(yawPitchRoll, matrix);
+		matrix[3] = position;
+		
+		// Now additionally we will browse the hierarchy until we hit our weapon
+		vector temp[4];
+		Math3D.MatrixCopy(matrix, temp);
+		IEntity lastNode = parent;
+		
+		BaseWeaponComponent weaponRoot;
+		while (lastNode)
+		{
+			// Stop on weapon, that is final node
+			weaponRoot = BaseWeaponComponent.Cast(lastNode.FindComponent(BaseWeaponComponent));
+			if (weaponRoot)
+				break;
+			
+			/// These multiplications will run even if we have no weapon,
+			/// but it shouldn't be that big of a deal for now, weapon should exist regardless
+			vector localTransform[4];
+			lastNode.GetLocalTransform(localTransform);
+			
+			// If using a pivot, we need to apply the pivot transformation
+			TNodeId pivotIndex = lastNode.GetPivot();
+			if (pivotIndex > 0)
+			{
+				// Multiply pivot * local TM = model TM
+				IEntity parentNode = lastNode.GetParent();
+				if (parentNode)
+				{
+					vector pivotTM[4];
+					parentNode.GetBoneMatrix(pivotIndex, pivotTM);
+					
+					// This should not be happening - there should
+					// rather be no pivot, yet it triggers at times.
+					// ??? TODO@AS: See if we can have better API for pivoting like this
+					if (!SCR_Math3D.IsMatrixEmpty(pivotTM))	
+						Math3D.MatrixMultiply4(pivotTM, localTransform, localTransform);
+				}
+			}
+			Math3D.MatrixMultiply4( temp, localTransform, temp );
+			lastNode = lastNode.GetParent();
+		}
+		
+		// Only use calculated matrix+parent if its valid
+		if (weaponRoot != null)
+		{
+			Math3D.MatrixCopy( temp, matrix );
+			parent = lastNode;
+		}
+		
+		return parent;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \param parent Parent entity this camera should be attached to
@@ -246,57 +331,30 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	//! \param fov The field of view of camera 0-89
 	//! \param nearPlane Near clipping plane of the camera in metres
 	//! \param farPlane Far clipping plane of the camera in metres
-	protected CameraBase CreateCamera(IEntity parent, vector position, int cameraIndex, float fov, float nearPlane, float farPlane)
+	protected CameraBase CreateCamera(IEntity parent, vector position, vector angles, int cameraIndex, float fov, float nearPlane, float farPlane)
 	{
 		// Spawn camera
 		BaseWorld baseWorld = parent.GetWorld();
-		SCR_PIPCamera pipCamera = SCR_PIPCamera.Cast(GetGame().SpawnEntity(SCR_PIPCamera, baseWorld));
-
-		// Since we use autotransform,
-		// we set camera matrix to "local" coordinates
+		
+		// Spawn it close
+		EntitySpawnParams params = new EntitySpawnParams();
+		parent.GetWorldTransform(params.Transform);
+		SCR_PIPCamera pipCamera = SCR_PIPCamera.Cast(GetGame().SpawnEntity(SCR_PIPCamera, baseWorld, params));
+		
 		vector mat[4];
-		Math3D.MatrixIdentity3(mat);
-		mat[3] = position;
+		parent = GetPIPCameraLocalTransform(parent, position, angles, mat);
 		
-		// Now additionally we will browse the hierarchy until we hit our weapon
-		// TODO@AS: This deserves a bit of love
-		vector temp[4];
-		Math3D.MatrixCopy(mat, temp);
-		IEntity lastNode = parent;
-		
-		BaseWeaponComponent weaponRoot;
-		while (lastNode)
-		{
-			weaponRoot = BaseWeaponComponent.Cast(lastNode.FindComponent(BaseWeaponComponent));
-			if (weaponRoot)
-				break;
-			
-			/// These multiplications will run even if we have no weapon,
-			/// but it shouldn't be that big of a deal for now, weapon should exist regardless
-			vector localTransform[4];
-			lastNode.GetLocalTransform( localTransform );
-			
-			Math3D.MatrixMultiply4( temp, localTransform, temp );
-			lastNode = lastNode.GetParent();
-		}
-		
-		// Only use calculated matrix+parent if its valid
-		if (weaponRoot != null)
-		{
-			Math3D.MatrixCopy( temp, mat );
-			parent = lastNode;
-		}
 
-		pipCamera.SetTransform(mat);
+		
 		pipCamera.SetVerticalFOV(fov);
 		pipCamera.SetNearPlane(nearPlane);
-		pipCamera.SetFarPlane(farPlane);
-		
+		pipCamera.SetFarPlane(farPlane);		
 		pipCamera.ApplyProps(m_iCameraIndex);
 		baseWorld.SetCameraLensFlareSet(cameraIndex, CameraLensFlareSetType.FirstPerson, string.Empty);
 
 		// Set camera to hierarchy
 		parent.AddChild(pipCamera, -1, EAddChildFlags.AUTO_TRANSFORM);
+		pipCamera.SetLocalTransform(mat);
 		pipCamera.UpdatePIPCamera(1.0, m_iCameraIndex);
 		return pipCamera;
 	}
@@ -332,7 +390,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	{
 		// disabled->enabled
 		// Create neccessary items
-		if (enabled && !s_bPIPIsEnabled)
+		if (enabled && !m_bPIPIsEnabled)
 		{
 			m_iDisableVignetteFrames = 5;
 			
@@ -350,7 +408,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	
 			// Create PIP camera
 			if (!m_PIPCamera)
-				m_PIPCamera = CreateCamera(m_Owner, m_vCameraPoint, m_iCameraIndex, GetFOV(), m_fNearPlane, m_fFarPlane);
+				m_PIPCamera = CreateCamera(m_Owner, m_vCameraPoint, m_vCameraAngles, m_iCameraIndex, GetFOV(), m_fNearPlane, m_fFarPlane);
 			
 			if (!m_PIPCamera)
 			{
@@ -372,17 +430,18 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			{
 				GetGame().GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 10, PostProcessEffectType.HDR, m_rScopeHDRMatrial);
 			}
-
 			
-			s_bPIPIsEnabled = true;
+			s_bIsPIPActive = true;
+			m_bPIPIsEnabled = true;
 			return;
 		}
 
 		// enabled -> disabled
-		if (!enabled && s_bPIPIsEnabled)
+		if (!enabled && m_bPIPIsEnabled)
 		{
 			Destroy();
-			s_bPIPIsEnabled = false;
+			s_bIsPIPActive = false;
+			m_bPIPIsEnabled = false;
 			return;
 		}
 	}
@@ -478,7 +537,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		
 		if(scope2d)
 		{
-			if(s_bPIPIsEnabled)
+			if(m_bPIPIsEnabled)
 			{
 				SetPIPEnabled(false);
 			}
@@ -548,13 +607,12 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			if (fovInfo)
 				pipCamera.SetVerticalFOV(fovInfo.GetFOV());
 			
+			// Get local tm in relation to actual parent
+			vector mat[4];
+			vector angles = m_vCameraAngles + Vector(m_fCurrentCameraPitch, 0.0, 0.0);
+			GetPIPCameraLocalTransform(m_pOwner, m_vCameraPoint, angles, mat);
 			
 			// Apply zero angles to default rot
-			vector mat[4];
-			pipCamera.GetLocalTransform(mat);
-			vector ypr = Math3D.MatrixToAngles(mat);
-			ypr[1] = m_fCurrentCameraPitch;
-			Math3D.AnglesToMatrix(ypr, mat);
 			pipCamera.SetLocalTransform(mat);
 			
 			// Finally update camera props
@@ -565,10 +623,16 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	//------------------------------------------------------------------------------------------------	
 	void UpdateHDR()
 	{
-		const int MainCameraID = 0;
-		
+		int mainCameraIndex = 0;
+		CameraManager manager = GetGame().GetCameraManager();
+		if (manager)
+		{
+			CameraBase cam = manager.CurrentCamera();
+			if (cam)
+				mainCameraIndex = cam.GetCameraIndex();
+		}
 		//don't forget to disable preexposure on scope material !
-		float hdrBrightness = m_pOwner.GetWorld().GetCameraHDRBrightness(MainCameraID);
+		float hdrBrightness = m_pOwner.GetWorld().GetCameraHDRBrightness(mainCameraIndex);
 		m_pOwner.GetWorld().SetCameraHDRBrightness(m_iCameraIndex, hdrBrightness);
 	}
 
@@ -705,7 +769,17 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	{
 		super.OnSightADSPostFrame(owner, timeSlice);
 		
-		if (s_bPIPIsEnabled)
+		
+		// Before any updates make sure that we are in target state
+		bool use2D = SCR_Global.IsScope2DEnabled();
+		if ((m_bPIPIsEnabled && use2D) || (!m_bPIPIsEnabled && !use2D))
+		{
+			// Reactivate on change
+			OnSightADSDeactivated();
+			OnSightADSActivated();
+		}
+
+		if (m_bPIPIsEnabled)
 		{
 			UpdateCamera(timeSlice);
 			UpdateHDR();
@@ -755,7 +829,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	//------------------------------------------------------------------------------------------------
 	protected override void ApplyRecoilToCamera(inout vector pOutCameraTransform[4], vector aimModAngles)
 	{	
-		if(s_bPIPIsEnabled)
+		if(m_bPIPIsEnabled)
 			return;
 		
 		vector weaponAnglesMat[3];
@@ -766,7 +840,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	//------------------------------------------------------------------------------------------------
 	protected override bool CanFreelook()
 	{
-		if (s_bPIPIsEnabled)
+		if (m_bPIPIsEnabled)
 			return true;
 		
 		return super.CanFreelook();
@@ -848,5 +922,11 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			m_pMaterial.Release();
 			m_pMaterial = null;
 		}
+		
+		/*
+			This should prevent some static leakness.
+		*/
+		if (IsPIPEnabled())
+			SetPIPEnabled(false);
 	}
 };

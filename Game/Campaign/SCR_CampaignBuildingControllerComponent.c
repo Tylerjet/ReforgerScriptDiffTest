@@ -14,11 +14,15 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Preview material can't be build", "emat")]
 	private ResourceName m_CannotBuildMaterial;
 	
+	//! Prefab of the trigger used to detect a obstruction / player presence in building area.
+	[Attribute("", UIWidgets.ResourceNamePicker, "Building trigger", "et")]
+	protected ResourceName m_BuildingTrigger;
+	
 	private SCR_CampaignBase m_Base;	
 	private SCR_CampaignSuppliesComponent m_SuppliesComponent;
 	private SCR_CampaignBuildingComponent m_BuildingComponent;
 	private SCR_CampaignSlotComposition m_SlotData;
-	private SCR_CampaignBuildingTrigger m_Trigger;
+	private SCR_CampaignBuildingClientTrigger m_Trigger;
 	private SCR_BasePreviewEntity m_PreviewEntity;
 	private InputManager m_InputManager;
 	private SCR_SiteSlotEntity m_UsedSlot;
@@ -30,9 +34,10 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 	static const int ROTATION_STEP_BASE = 1;
 	static const int ROTATION_KEYBOARD_MULTIPLIER = 8;
 	static const string BUILDING_CONTEXT = "BuildingContext";
-	static const int SLOT_SMALL_RADIUS = 7;
-	static const int SLOT_MEDIUM_RADIUS = 15;
-	static const int SLOT_LARGE_RADIUS = 22;
+	// Radiuses for all slots has been reduce as we spawn only the small compositions in all types of slots.
+	static const int SLOT_SMALL_RADIUS = 5;
+	static const int SLOT_MEDIUM_RADIUS = 5;
+	static const int SLOT_LARGE_RADIUS = 5;
 	static const int SLOT_ROAD_SMALL_RADIUS = 4;
 	static const int SLOT_ROAD_MEDIUM_RADIUS = 7;
 	static const int SLOT_ROAD_LARGE_RADIUS = 9;
@@ -57,18 +62,31 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 		IEntity playerEnt = SCR_PlayerController.GetLocalControlledEntity();
 		if (playerEnt)
 			m_BuildingComponent = SCR_CampaignBuildingComponent.Cast(playerEnt.FindComponent(SCR_CampaignBuildingComponent));
-				
-		// Search for the m_Trigger
-		IEntity child = owner.GetChildren();
-		while (child)
-		{
-			m_Trigger = SCR_CampaignBuildingTrigger.Cast(child);
-			if (m_Trigger)
-				return;
-				
-			child = child.GetSibling();
-		}		
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SpawnTrigger()
+	{
+		//Origin of the slot has to be used, because controller is spawned with an offset.
+		if (!m_UsedSlot)
+			return;
+		
+		Resource resource = Resource.Load(m_BuildingTrigger);
+		if (!resource.IsValid())
+			return;
+		
+		EntitySpawnParams params = EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		params.Transform[3] = m_UsedSlot.GetOrigin(); 
+			
+		m_Trigger = SCR_CampaignBuildingClientTrigger.Cast(GetGame().SpawnEntityPrefab(resource, GetGame().GetWorld(), params));
+		if (!m_Trigger)
+			return;
+		
+		m_Trigger.SetBuildingController(this);
+		m_Trigger.SetOrigin(GetOwner().GetOrigin());
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void SetMarker()
 	{
@@ -110,14 +128,22 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 	{
 		if (!m_PreviewEntity || !GetTrigger())
 			return;
-		
-		if (HasAvailableResources() && !GetTrigger().IsBlocked())
+				
+		// has no resources, can't build
+		if (!HasAvailableResources())
 		{
-			SCR_Global.SetMaterial(m_PreviewEntity.GetChildren(), m_CanBuildMaterial);
+			SCR_Global.SetMaterial(m_PreviewEntity.GetChildren(), m_CannotBuildMaterial);
 			return;
 		}
-			
-		SCR_Global.SetMaterial(m_PreviewEntity.GetChildren(), m_CannotBuildMaterial);	
+				
+		// Build action was executed but the area is blocked. (vehicle, AI...)
+		if (GetTrigger().IsBlocked() && GetTrigger().IsToBeBuilt())
+		{
+			SCR_Global.SetMaterial(m_PreviewEntity.GetChildren(), m_CannotBuildMaterial);
+			return;
+		}
+
+		SCR_Global.SetMaterial(m_PreviewEntity.GetChildren(), m_CanBuildMaterial);
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -211,7 +237,7 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 	void SetUsedSlot(notnull SCR_SiteSlotEntity usedSlot)
 	{
 		m_UsedSlot = usedSlot;
-		SetTriggerSize(usedSlot)
+		SetTriggerSize(usedSlot);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -324,7 +350,7 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_CampaignBuildingTrigger GetTrigger()
+	SCR_CampaignBuildingClientTrigger GetTrigger()
 	{
 		return m_Trigger;
 	}
@@ -380,15 +406,12 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 		if (m_BuildingComponent)
 			m_BuildingComponent.UpdateCompositionOrientation(m_PreviewEntity);
 	}
-			
-	//------------------------------------------------------------------------------------------------
-	void SCR_CampaignBuildingControllerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
-	{
-	}
 
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_CampaignBuildingControllerComponent()
 	{
+		SCR_EntityHelper.DeleteEntityAndChildren(m_Trigger);
+		
 		// Remove EH to change color
 		if (m_Base)
 		{
@@ -406,6 +429,6 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 		}
 		
 		if (m_SuppliesComponent)
-			m_SuppliesComponent.m_OnSuppliesChanged.Remove(SetCompositionColor);
+			m_SuppliesComponent.m_OnSuppliesChanged.Remove(SetCompositionColor);	
 	}
 };

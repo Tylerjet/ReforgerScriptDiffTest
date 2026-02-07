@@ -2,24 +2,9 @@
 //! Data class for transmissions
 class TransmissionData
 {
-	const string WIDGET_TRANSMIT_ICON = "Transmit_Icon";
-	const string WIDGET_TRANSMIT_ICON_BGRND = "Transmit_Icon_Bgrnd";
-	const string WIDGET_TRANSMIT_FREQ = "Transmit_Freq_Text";
-	const string WIDGET_TRANSMIT_FREQ_ICON = "Transmit_Freq_Icon";
-	const string WIDGET_TRANSMIT_DIRECTION = "Transmit_Direction";
-	const string WIDGET_TRANSMIT_NAME = "Transmit_Name";
-	const string WIDGET_TRANSMIT_ICON_MIC = "Transmit_Mic_Icon";
-	const string WIDGET_TRANSMIT_PLATOON_TEXT = "Transmit_Platoon_Text";
-	
+	// Widgets
+	ref SCR_VoNOverlay_ElementWidgets m_Widgets;
 	Widget m_wBaseWidget;
-	TextWidget m_wFrequency;
-	TextWidget m_wName;
-	RichTextWidget m_wPlatoon;
-	ImageWidget m_wIcon;
-	ImageWidget m_wIconBackground;
-	ImageWidget m_wFrequencyIcon;
-	ImageWidget m_wDirection;
-	ImageWidget m_wMicIcon;
 	
 	bool m_bForceUpdate;	// when transmission update is required
 	bool m_bVisible;		// element visible, false if widget not visible
@@ -49,15 +34,10 @@ class TransmissionData
 	void TransmissionData(Widget base, int iPlayerID)
 	{
 		m_wBaseWidget = base;
-		m_wFrequency = TextWidget.Cast(m_wBaseWidget.FindAnyWidget(WIDGET_TRANSMIT_FREQ));
-		m_wName = TextWidget.Cast(m_wBaseWidget.FindAnyWidget(WIDGET_TRANSMIT_NAME));
-		m_wPlatoon = RichTextWidget.Cast(m_wBaseWidget.FindAnyWidget(WIDGET_TRANSMIT_PLATOON_TEXT));
-		m_wIcon = ImageWidget.Cast(m_wBaseWidget.FindAnyWidget(WIDGET_TRANSMIT_ICON));
-		m_wIconBackground = ImageWidget.Cast(m_wBaseWidget.FindAnyWidget(WIDGET_TRANSMIT_ICON_BGRND));
-		m_wFrequencyIcon = ImageWidget.Cast(m_wBaseWidget.FindAnyWidget(WIDGET_TRANSMIT_FREQ_ICON));
-		m_wDirection = ImageWidget.Cast(m_wBaseWidget.FindAnyWidget(WIDGET_TRANSMIT_DIRECTION));
-		m_wMicIcon = ImageWidget.Cast(m_wBaseWidget.FindAnyWidget(WIDGET_TRANSMIT_ICON_MIC));
 		m_wBaseWidget.SetOpacity(0);
+		
+		m_Widgets = new SCR_VoNOverlay_ElementWidgets();
+		m_Widgets.Init(m_wBaseWidget);
 		
 		m_iPlayerID = iPlayerID;
 	}
@@ -67,24 +47,31 @@ class TransmissionData
 //! VON display of active outgoing and incoming transmissions
 class SCR_VonDisplay : SCR_InfoDisplayExtended
 {	
-	const string ICON_DIRECT_SPEECH = "{B75D5EC834500027}UI/Textures/VON/speech-radius-8pt-64px_ui.edds";
+	const string IMAGESET = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
+	const string IMAGESET_GLOW = "{ABC6B36856013403}UI/Textures/Icons/icons_wrapperUI-64-glow.imageset";
+	
+	const string ICON_DIRECT_SPEECH = "VON_directspeech";
+	const string ICON_RADIO = "VON_frequency";
+
+	
 	const string VON_RECEIVING_TRANSMISSION_PATH = "{25221F619214A722}UI/layouts/HUD/VON/VoNOverlay_Element.layout";
-	const string LABEL_SPEAKING = "#AR-VON_Speaking";
 	const string LABEL_FREQUENCY_UNITS = "#AR-VON_FrequencyUnits_MHz";
+	const string LABEL_UNKNOWN_SOURCE = "#AR-VON_UnknownSource";
+	const string LABEL_CHANNEL_PLATOON = "#AR-VON_ChannelPlatoon-UC";
 	const string WIDGET_INCOMING = "VonIncoming";
 	const string WIDGET_TRANSMIT = "VonTransmitting";
-		
+
+	const ref Color COLOR_WHITE = Color.FromSRGBA(255, 255, 255, 255);
+	const ref Color COLOR_ORANGE = Color.FromSRGBA(226, 167, 79, 255);	
+			
 	const int TRANSMISSION_SLOTS = 4;			// max amount of receiving transmissions
 	const float FADEOUT_TIMER_THRESHOLD = 1;
 	const float FADEIN_SPEED = 10;
 	const float FADEOUT_SPEED = 5;	
-	const float BGRND_ALPHA_OUTGOING = 0.3;
-	const float BGRND_ALPHA_INCOMING = 0.5;
 	
 	protected bool m_bIsDirectToggled;			// direct speech toggle state
 	protected bool m_bIsChannelToggled;			// channel toggle EFireState
 	
-	protected ref Color m_TransmitOrange = Color.FromIntSRGB(0xfff1b352);
 	protected ref TransmissionData m_OutTransmission;												// outgoing transmission data class
 	protected ref array<Widget> m_aWidgetsIncomingVON = {};											// available widgets for receiving transmission display
 	protected ref array<ref TransmissionData> m_aTransmissions = {}; 								// array of existing incoming transmission data classes
@@ -210,86 +197,74 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		string sDeviceIcon;
 		data.m_bIsAnimating = true;		// start anim
 		data.m_wBaseWidget.SetVisible(true);
-		data.m_wIcon.SetVisible(true);
-		data.m_wMicIcon.SetVisible(false);
+		data.m_Widgets.m_wIcon.SetVisible(true);
+		data.m_Widgets.m_wMicFrame.SetVisible(false);
+		data.m_Widgets.m_wChannelFrame.SetVisible(false);
+		data.m_Widgets.m_wFrequency.SetVisible(false);
+		data.m_Widgets.m_wSeparator.SetVisible(false);
 		
 		// radio
 		if (radioComp)
 		{			
-			// frequency
+			sDeviceIcon = ICON_RADIO;
+			
 			float adjustedFreq;
 			data.m_fFrequency = frequency;
 			adjustedFreq = Math.Round(data.m_fFrequency / 10) / 100;
-			data.m_wFrequency.SetText(adjustedFreq.ToString() + " " + LABEL_FREQUENCY_UNITS);
-			data.m_wFrequency.SetVisible(true);
-			data.m_wFrequencyIcon.SetVisible(true);
-			data.m_wPlatoon.SetVisible(false);
-			
-			// icon
-			IEntity item = radioComp.GetOwner();			
-			InventoryItemComponent pInvItemComponent = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
-			if (pInvItemComponent)
-			{		
-				ItemAttributeCollection pInvItemAttributes = pInvItemComponent.GetAttributes();
-				if (pInvItemAttributes)
-				{
-					UIInfo uiInfo = pInvItemAttributes.GetUIInfo();
-					if (uiInfo)
-						sDeviceIcon = uiInfo.GetIconPath();
-				}
-			}
+			data.m_Widgets.m_wFrequency.SetText(adjustedFreq.ToString() + " " + LABEL_FREQUENCY_UNITS);
+			data.m_Widgets.m_wFrequency.SetVisible(true);
 		}
-		else	// direct speech
+		// direct speech
+		else
 		{
 		 	sDeviceIcon = ICON_DIRECT_SPEECH;
-			data.m_wFrequency.SetVisible(false);
-			data.m_wFrequencyIcon.SetVisible(false);
-			data.m_wPlatoon.SetVisible(false);
 		}
 				
 		if (sDeviceIcon != string.Empty)
-			data.m_wIcon.LoadImageTexture(0, sDeviceIcon);	
+		{
+			data.m_Widgets.m_wIcon.LoadImageFromSet(0, IMAGESET, sDeviceIcon);
+			data.m_Widgets.m_wIconBackground.LoadImageFromSet(0, IMAGESET_GLOW, sDeviceIcon);
+		}			
 		 
 		// incoming
 		if (IsReceiving)
 		{
-			data.m_wIconBackground.SetColor(Color.Black);
-			data.m_wIconBackground.SetOpacity(BGRND_ALPHA_INCOMING);
-			data.m_wDirection.SetRotation(180);
-			data.m_wPlatoon.SetVisible(false);
+			data.m_Widgets.m_wIcon.SetColor(COLOR_WHITE);
 			
 			if (!enemyTransmission)
-				data.m_wName.SetText(m_PlayerManager.GetPlayerName(data.m_iPlayerID));
+				data.m_Widgets.m_wName.SetText(m_PlayerManager.GetPlayerName(data.m_iPlayerID));
 			else 
-				data.m_wName.SetText("Unknown");
+				data.m_Widgets.m_wName.SetText(LABEL_UNKNOWN_SOURCE);
 			
-			data.m_wName.SetVisible(true);
+			data.m_Widgets.m_wName.SetVisible(true);
+			
+			if (radioComp)
+				data.m_Widgets.m_wSeparator.SetVisible(false);
 		}
 		else	// outgoing 
 		{
-			data.m_wIconBackground.SetColor(m_TransmitOrange);
-			data.m_wIconBackground.SetOpacity(BGRND_ALPHA_OUTGOING);
-			data.m_wDirection.SetRotation(0);
-			
+			data.m_Widgets.m_wIcon.SetColor(COLOR_ORANGE);
+			data.m_Widgets.m_wName.SetText(string.Empty);
+			data.m_Widgets.m_wName.SetVisible(false);
+						
 			if (radioComp)	// direct vs radio
 			{
-				data.m_wName.SetText(string.Empty);
-				data.m_wName.SetVisible(false);
-				data.m_wMicIcon.SetVisible(m_bIsChannelToggled);
+				data.m_Widgets.m_wMicFrame.SetVisible(m_bIsChannelToggled);
 				
 				if (SCR_MilitaryFaction.Cast(playerFaction))	// show platoon
 				{
 					int factionHQFrequency = SCR_MilitaryFaction.Cast(playerFaction).GetFactionRadioFrequency();
 					if (factionHQFrequency == frequency)
-						data.m_wPlatoon.SetVisible(true);
+					{
+						data.m_Widgets.m_wChannelText.SetText(LABEL_CHANNEL_PLATOON);
+						data.m_Widgets.m_wChannelFrame.SetVisible(true);
+					}
 				}
 
 			}
 			else 
 			{
-				data.m_wName.SetText(LABEL_SPEAKING);
-				data.m_wName.SetVisible(true);
-				data.m_wMicIcon.SetVisible(m_bIsDirectToggled);
+				data.m_Widgets.m_wMicFrame.SetVisible(m_bIsDirectToggled);
 			}
 		}
 		

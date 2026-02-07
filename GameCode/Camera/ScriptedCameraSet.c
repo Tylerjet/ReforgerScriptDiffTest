@@ -113,7 +113,7 @@ class ScriptedCameraItemResult
 	EDirectBoneMode m_iDirectBoneMode;
 	bool		m_bUpdateWhenBlendOut;	//!< true - camera is updated when blending to new camera (Ironsights == false)
 	bool		m_bAllowInterpolation;	//!< true - camera interpolation is allowed (switching to/from head bone == false)
-
+	bool		m_bAllowCollisionSolver; //!< true - camera collision solver is called
 	vector		m_vBaseAngles;			//!< Freelook angles
 	float		m_fHeading;				//!< main person heading (used to check for collision - don't change in script)
 	bool		m_bNoParent = false;	//!< when enabled, camera hierarchy autoTransform is disabled for more freedom
@@ -121,9 +121,8 @@ class ScriptedCameraItemResult
 	bool 		m_bWSCameraSmoothing = true;
 	float 		m_fSmoothingTranslationSpeed = 5.0; //!< max camera smoothing translation speed m/s
 	float 		m_fSmoothingRotationSpeed = Math.PI; //!< max camera smoothing rotation speed rad/s
-	bool 		m_bUseAsWSAttachment = false;
-	ref PointInfo m_pWSAttachmentReference = null; //!< used with WSAttachment property it is either reference point info...
-	ref Managed m_pWSEntityReference = null;//!< or entity, if both provided PointInfo will be used
+	IEntity 	m_pOwner = null;
+	ref PointInfo m_pWSAttachmentReference = null; //!< used with WSAttachment property it is either reference point info... It takes priority over m_pOwner. The owner of the PointInfo will be the new owner of the camera
 
 	//! cannot be instanced from script (always created from C++)
 	private void ScriptedCameraItemResult()

@@ -7,6 +7,7 @@ class SCR_CampaignDisassembleCompositionUserAction : ScriptedUserAction
 	protected ResourceName m_SlotResName;
 	protected SCR_CampaignBase m_Base;
 	protected SCR_CampaignSuppliesComponent m_SuppliesComponent;
+	protected SCR_CampaignBuildingClientTrigger m_Trigger;
 	
 	protected IEntity m_SuppliesProvider;
 	protected ref array<ref SCR_CampaignSlotComposition> m_aSlotData = new array<ref SCR_CampaignSlotComposition>();
@@ -23,6 +24,10 @@ class SCR_CampaignDisassembleCompositionUserAction : ScriptedUserAction
 		m_SuppliesProvider = m_BuildingController.GetSuppliesProvider();
 		if (!m_SuppliesProvider)
     		return;
+		
+		m_Trigger = m_BuildingController.GetTrigger();
+		if (!m_Trigger)
+			return;
 		
 		// Register parent base
 		if (m_SuppliesProvider.Type() == SCR_CampaignBase)
@@ -125,6 +130,8 @@ class SCR_CampaignDisassembleCompositionUserAction : ScriptedUserAction
 				//As a default we will spawn the 1st composition from the list of all available.
 				slotData = m_aSlotData[0];
 			}
+		
+		m_Trigger.SetToBeBuilt(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

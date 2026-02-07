@@ -125,7 +125,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	static const int RESPAWN_TICKETS_REPLENISH_AMOUNT = 2;
 	static const int BASE_CALLSIGNS_COUNT = 40;
 	static const int ENDING_TIMEOUT = 15000;
-	static const int BUILDING_CONTROLLER_SEARCH_DISTANCE = 5;
+	static const int BUILDING_CONTROLLER_SEARCH_DISTANCE = 7;
 	static const int SKILL_LEVEL_MAX = 10;
 	static const float SKILL_LEVEL_XP_BONUS = 0.1;
 	static const int SKILL_LEVEL_XP_COST = 1000;		// how much XP is needed for new level
@@ -3483,9 +3483,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		SCR_CampaignBuildingControllerComponent buildContComp = SCR_CampaignBuildingControllerComponent.Cast(m_BuildingController.FindComponent(SCR_CampaignBuildingControllerComponent));
 		if (!buildContComp)
 			return;
-		
-		
-		
+
 		IEntity suppliesProvider =  buildContComp.GetSuppliesProvider();
 		if (!suppliesProvider)
 			return;

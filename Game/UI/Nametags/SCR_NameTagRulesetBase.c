@@ -427,17 +427,22 @@ class SCR_NameTagRulesetBase : Managed
 	//! \param data is the subject nametag
 	protected void CalculateScreenPos(SCR_NameTagData data)
 	{			
-		if (!SCR_2DPIPSightsComponent.IsPIPEnabled())	// PIP support
+		if (!SCR_2DPIPSightsComponent.IsPIPActive())	// PIP support
 		{
 			data.m_vTagScreenPos = m_Workspace.ProjWorldToScreen( data.m_vTagWorldPos, m_World );	// no PIP
 		}
 		else
 		{		
 			if (!m_PIPSightsComp)
+			{
 				m_PIPSightsComp = ArmaReforgerScripted.GetCurrentPIPSights();
+				if (!m_PIPSightsComp)	// IsPIPActive() will return active for an extra frame while this cant be fetched anymore
+					return;
+			}
 						
-			int camID = m_PIPSightsComp.GetPIPCamera().GetCameraIndex(); // returns 0 for now (buge), TODO
-			camID = 8;
+			//int camID = m_PIPSightsComp.GetPIPCamera().GetCameraIndex(); // returns 0 for now (buge), TODO
+			int camID = m_PIPSightsComp.GetPIPCameraIndex();
+			//camID = 8;
 			data.m_vTagScreenPos = m_Workspace.ProjWorldToScreen( data.m_vTagWorldPos, m_World, camID);
 			
 			if (!m_PIPSightsComp.IsScreenPositionInSights(data.m_vTagScreenPos))

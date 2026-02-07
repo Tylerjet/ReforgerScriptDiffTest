@@ -81,6 +81,7 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 	{
 		if (!m_pControlledTurret)
 			return;
+		
 		// character matrix
 		vector charMat[4];
 		m_OwnerCharacter.GetWorldTransform(charMat);
@@ -138,10 +139,12 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 		const float camDist = 2.0;
 		
 		// other parameters
-		pOutResult.m_fUseHeading = 0.0;
-		pOutResult.m_fFOV = m_fFOV;
-		pOutResult.m_fDistance = camDist;
-		pOutResult.m_bAllowInterpolation = true;
+		pOutResult.m_fUseHeading 			= 0.0;
+		pOutResult.m_fFOV 					= m_fFOV;
+		pOutResult.m_fDistance 				= camDist;
+		pOutResult.m_bAllowInterpolation 	= true;
+		pOutResult.m_pWSAttachmentReference = null;
+		pOutResult.m_pOwner 				= m_OwnerCharacter;
 		
 		// Apply shake
 		if (m_CharacterCameraHandler)

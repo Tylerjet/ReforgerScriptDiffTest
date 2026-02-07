@@ -1,25 +1,30 @@
 class SCR_AILookAtPosition: AITaskScripted
 {
-
-	[Attribute("5", UIWidgets.EditBox, "Random position from the center" )]
-	float m_RandomRadius;
+	[Attribute("1", UIWidgets.CheckBox, "Succeed when requested looking too close" )]
+	protected bool m_bSuccessWhenClose;
+	
+	[Attribute("1.5", UIWidgets.EditBox, "Vertical offset to add to position" )]
+	protected float m_fVerticalOffset;
+	
+	[Attribute("1.5", UIWidgets.EditBox, "DistSQ below look is ignored" )]
+	protected float m_fIgnoreLookDistSq;
 
 	[Attribute("20", UIWidgets.EditBox, "Priority of the look" )]
-	float m_fPriority;
+	protected float m_fPriority;
 
-	static const float MINIMUM_AIM_DISTANCE_SQ = 2; // This will work only for infantry, not for tanks
-	SCR_AIBehaviorBase m_Behavior;
-	SCR_AIUtilityComponent m_Utility;
-	vector m_vPosition;
+	protected static const string POSITION_PORT = "PositionIn";
+	protected static const string POSITION_CORRECTION_PORT = "PositionOut";
+	protected static const string PRIORITY_PORT = "PriorityIn";
+	
+	protected SCR_AIUtilityComponent m_Utility;	
 	
 	//-----------------------------------------------------------------------------------------------
 	override bool VisibleInPalette() {return true;}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
-		"Position",
-		"RandomRadius",
-		"Priority"
+		POSITION_PORT,
+		PRIORITY_PORT
 	};
 	override array<string> GetVariablesIn()
 	{
@@ -27,7 +32,7 @@ class SCR_AILookAtPosition: AITaskScripted
 	}
 	
 	protected static ref TStringArray s_aVarsOut = {
-		"LookPosition"
+		POSITION_CORRECTION_PORT
 	};
 	override array<string> GetVariablesOut()
 	{
@@ -37,41 +42,55 @@ class SCR_AILookAtPosition: AITaskScripted
 	//-----------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if (!m_Behavior)
+		vector lookPosition;
+		float priority;
+		
+		if (!m_Utility)
 		{
 			m_Utility = SCR_AIUtilityComponent.Cast(owner.FindComponent(SCR_AIUtilityComponent));
 			if (!m_Utility)
+			{
+				NodeError(this, owner, "This character does not have UtilityComponent!");
 				return ENodeResult.FAIL;
-			m_Behavior = SCR_AIBehaviorBase.Cast(m_Utility.m_CurrentBehavior);
-			if (!m_Behavior)
-				return ENodeResult.FAIL;
-		}
-
-		if (!GetVariableIn("Position",m_vPosition) || m_vPosition == vector.Zero)
+			}
+		}	
+		
+		if (!GetVariableIn(PRIORITY_PORT,priority))
+			priority = m_fPriority;
+		
+		if (!GetVariableIn(POSITION_PORT,lookPosition))
 			return ENodeResult.FAIL;
+		
+		if (lookPosition == vector.Zero)
+		{
+			NodeError(this,owner, "Provided zero vector!");
+			return ENodeResult.FAIL;
+		}
 
 		if (!m_Utility.m_LookAction)
 			return ENodeResult.FAIL;
 
-		if (vector.DistanceSq(m_vPosition, m_Utility.GetOrigin()) < MINIMUM_AIM_DISTANCE_SQ)
+		lookPosition[1] = lookPosition[1] + m_fVerticalOffset;
+		
+		if (vector.DistanceSq(lookPosition, m_Utility.GetOrigin()) < m_fIgnoreLookDistSq)
 		{
-			// distance is too close to look at 
-			return ENodeResult.SUCCESS;
-		}	
+			// distance is too close to look at
+			ClearVariable(POSITION_CORRECTION_PORT);
+			if (m_bSuccessWhenClose)
+				return ENodeResult.SUCCESS;
+			else 
+				return ENodeResult.FAIL;
+		}
 		
-		vector newPosition = s_AIRandomGenerator.GenerateRandomPointInRadius(0, m_RandomRadius, m_vPosition, true);
-		newPosition[1] = m_vPosition[1] + 1; // Don't look at ground
-		
-		m_vPosition = newPosition;
-		m_Utility.m_LookAction.LookAt(m_vPosition, m_fPriority);
-		SetVariableOut("LookPosition",m_vPosition);
+		m_Utility.m_LookAction.LookAt(lookPosition, priority);
+		SetVariableOut(POSITION_CORRECTION_PORT,lookPosition);
 		return ENodeResult.SUCCESS;
     }
 	
 	//-----------------------------------------------------------------------------------------------
 	protected override string GetOnHoverDescription()
 	{
-		return "Look at position in radius of given position";
+		return "Look at position setter for execution inside tree LookAction.bt, the position may be corrected by terrain";
 	}
 };
 

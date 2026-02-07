@@ -56,7 +56,7 @@ class Backend_Test_Storage
 			Print( aItems[i].Name() );
 			
 			// print results
-			Print( "  AuthorName:" + aItems[i].AuthorName() );
+			Print( "  AuthorName:" + aItems[i].Author().Name() );
 		}
 		
 		

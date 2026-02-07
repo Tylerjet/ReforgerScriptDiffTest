@@ -211,6 +211,9 @@ class SCR_MapEntity: MapEntity
 		m_bIsOpen = true;
 		
 		s_OnMapInit.Invoke(config);
+		auto plc = GetGame().GetPlayerController();
+		if (plc)
+			plc.SetCharacterCameraRenederActive(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -223,6 +226,9 @@ class SCR_MapEntity: MapEntity
 		m_bIsOpen = false;
 		m_DefaultsCfg = null;
 		m_iDelayCounter = FRAME_DELAY;
+		auto plc = GetGame().GetPlayerController();
+		if (plc)
+			plc.SetCharacterCameraRenederActive(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

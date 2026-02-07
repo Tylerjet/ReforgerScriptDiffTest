@@ -64,7 +64,7 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		{
 			if (m_Scenario.GetOwner())
 			{
-				string author = m_Scenario.GetOwner().AuthorName();
+				string author = m_Scenario.GetOwner().Author().Name();
 				m_Widgets.m_AuthorNameText.SetText(author);
 			}
 			else
