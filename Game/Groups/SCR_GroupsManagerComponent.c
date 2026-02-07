@@ -605,7 +605,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 				m_mUsedFrequenciesMap.Remove(frequency);
 			else 
 			{
-				factions.Remove(factions.Find(faction));
+				int factionIdx = factions.Find(faction);
+				if (factionIdx >= 0 && factionIdx < factions.Count())
+					factions.Remove(factionIdx);
 			}
 		}	
 	}

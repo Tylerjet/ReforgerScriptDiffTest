@@ -237,7 +237,7 @@ class SCR_CampaignTaskManager : SCR_BaseTaskManager
 	
 	//------------------------------------------------------------------------------------------------
 	//! An event called when a base has been captured.
-	void OnBaseCaptured(SCR_CampaignBase capturedBase)
+	void OnBaseCaptured(notnull SCR_CampaignBase capturedBase)
 	{
 #ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EXECUTE_TASKS))
@@ -246,6 +246,9 @@ class SCR_CampaignTaskManager : SCR_BaseTaskManager
 		
 		m_aCheckedBases.Clear();
 		GenerateNewTask(capturedBase);
+		
+		if (capturedBase.GetType() != CampaignBaseType.SMALL)
+			return;
 		
 		if (capturedBase.GetAllBaseServices(builtOnly: true) < 3) 
 			GenerateNewBuildingTask(capturedBase);

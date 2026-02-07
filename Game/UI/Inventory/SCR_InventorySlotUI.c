@@ -110,6 +110,14 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void UpdateInventorySlot(InventoryItemComponent comp, int stackNumber)
+	{
+		m_pItem = comp;
+		m_iStackNumber = stackNumber;
+		Refresh();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected string SetSlotSize()
 	{
 		string slotLayout = SLOT_LAYOUT_1x1;
@@ -172,7 +180,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	void SetStackNumber( int i ) { m_iStackNumber = i; }
 	void IncreaseStackNumber() { m_iStackNumber++; }
 	void IncreaseStackNumber( int i ) { m_iStackNumber = m_iStackNumber + i; }
-	
+
 	//------------------------------------------------------------------------------------------------	
 	//!
 	protected void SetAmmoCount()
@@ -1161,6 +1169,20 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	InventoryItemComponent GetItem()
 	{
 		return m_pItem;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetItemResource()
+	{
+		if (!m_pItem)
+			return ResourceName.Empty;
+		return m_pItem.GetOwner().GetPrefabData().GetPrefabName();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsStacked()
+	{
+		return (m_iStackNumber > 1);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -39,8 +39,9 @@ class SCR_InvCallBack : ScriptedInventoryOperationCallback
 	SCR_InventoryStorageBaseUI m_pStorageToFocus;
 	IEntity m_pItem;
 	SCR_InventoryMenuUI m_pMenu;
-	string m_sItemToFocus;
+	ResourceName m_sItemToFocus;
 	bool m_bShouldEquip;
+	bool m_bUpdateSlotOnly;
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnFailed()
@@ -73,7 +74,14 @@ class SCR_InvCallBack : ScriptedInventoryOperationCallback
 				}
 				else
 				{
-					m_pStorageFrom.Refresh();
+					if (m_bUpdateSlotOnly)
+					{
+						m_pStorageFrom.UpdateSlotUI(m_sItemToFocus);
+						m_bUpdateSlotOnly = false;
+
+					}
+					else
+						m_pStorageFrom.Refresh();
 				}
 			}
 		}
@@ -1327,12 +1335,13 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 		if (!m_pFocusedSlotUI)
 			return;
-		
+
 		if (m_CloseButton)
 			m_CloseButton.SetLabel("#AR-Menu_Back");
+
 		m_pNavigationBar.SetButtonEnabled("ButtonDrop",
-			m_pSelectedSlotUI == null &&
-			m_pActiveStorageUI != m_pQuickSlotStorage
+			(m_pFocusedSlotUI != null) &&
+			(m_pActiveStorageUI != m_pQuickSlotStorage)
 		);
 
 		if (m_pFocusedSlotUI.GetStorageUI() == m_pStorageLootUI)
@@ -1934,8 +1943,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			
 		if (!m_InventoryManager.CanMoveItem(pItem))
 			return;
-		 
-		m_pCallBack.m_pStorageFrom = m_pSelectedSlotUI.GetStorageUI();
+		
+		m_pCallBack.m_pStorageFrom = GetStorageUIByBaseStorageComponent(pStorageFrom);
 		m_pCallBack.m_pStorageTo = m_pStorageLootUI;
 		auto storage = m_pStorageLootUI.GetCurrentNavigationStorage();
 		if ( storage )
@@ -1963,6 +1972,13 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_pCallBack.m_pStorageFrom = m_pStorageLootUI;
 		m_pCallBack.m_pStorageTo = m_pActiveHoveredStorageUI;
 
+		if (ShouldSpawnItem())
+		{
+			m_pCallBack.m_bUpdateSlotOnly = true;
+			m_InventoryManager.TrySpawnPrefabToStorage(pItem.GetPrefabData().GetPrefabName(), m_pActiveHoveredStorageUI.GetStorage(), -1, EStoragePurpose.PURPOSE_ANY, m_pCallBack);
+			return;
+		}
+
 		m_InventoryManager.InsertItem( pItem, m_pActiveHoveredStorageUI.GetCurrentNavigationStorage(), m_pStorageLootUI.GetCurrentNavigationStorage(), m_pCallBack ); 			//a storage is already opened, try to move it there
 	}
 
@@ -1977,10 +1993,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_pCallBack.m_pItem = pItem;
 		m_pCallBack.m_pMenu = this;
 
-		m_pCallBack.m_pStorageFrom = m_pStorageLootUI;
+		m_pCallBack.m_pStorageFrom = GetStorageUIFromVicinity(m_pStorageLootUI.GetCurrentNavigationStorage());
 		m_pCallBack.m_pStorageTo = m_pStorageListUI;
 		m_pCallBack.m_pStorageToFocus = m_pStorageLootUI;
-		m_pCallBack.m_sItemToFocus = m_pSelectedSlotUI.GetItemName();
+		m_pCallBack.m_sItemToFocus = m_pSelectedSlotUI.GetItemResource();
+		m_pCallBack.m_bUpdateSlotOnly = m_pSelectedSlotUI.IsStacked();
 
 		BaseInventoryStorageComponent pStorageTo = m_StorageManager;
 		if ( pItem.FindComponent( SCR_GadgetComponent ) )
@@ -1996,14 +2013,37 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			}
 		}
 
+		if (ShouldSpawnItem())
+		{
+			m_pCallBack.m_bUpdateSlotOnly = true;
+			m_InventoryManager.TrySpawnPrefabToStorage(pItem.GetPrefabData().GetPrefabName(), null, -1, EStoragePurpose.PURPOSE_ANY, m_pCallBack);
+			return;
+		}
+
 		if ( !m_InventoryManager.EquipAny( pStorageTo , pItem, 0, m_pCallBack ) )
 			m_InventoryManager.InsertItem( pItem, null, m_pStorageLootUI.GetCurrentNavigationStorage(), m_pCallBack );
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void EquipDraggedItem(bool forceEquip = false)
+	protected bool ShouldSpawnItem()
 	{
 		if (!m_pSelectedSlotUI)
+			return false;
+		if (!m_pSelectedSlotUI.GetStorageUI())
+			return false;
+
+		BaseInventoryStorageComponent currStorage = m_pSelectedSlotUI.GetStorageUI().GetCurrentNavigationStorage();
+		if (!currStorage)
+			return false;
+
+		return (currStorage.GetOwner().FindComponent(SCR_CampaignArmoryStorageComponent) ||
+				currStorage.GetOwner().FindComponent(SCR_ArsenalComponent)));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void EquipDraggedItem(bool forceEquip = false)
+	{
+		if (!m_pSelectedSlotUI || !m_pSelectedSlotUI.GetInventoryItemComponent())
 			return;
 
 		IEntity pItem = m_pSelectedSlotUI.GetInventoryItemComponent().GetOwner();
@@ -2015,7 +2055,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_pCallBack.m_pStorageFrom = m_pSelectedSlotUI.GetStorageUI();
 
 		m_pCallBack.m_pStorageToFocus = m_pSelectedSlotUI.GetStorageUI();
-		m_pCallBack.m_sItemToFocus = m_pSelectedSlotUI.GetItemName();
+		m_pCallBack.m_sItemToFocus = m_pSelectedSlotUI.GetItemResource();
 		m_pCallBack.m_bShouldEquip = forceEquip;
 
 		BaseInventoryStorageComponent pStorageTo = m_StorageManager;
@@ -2069,8 +2109,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 		m_pCallBack.m_pItem = pItem;
 		m_pCallBack.m_pMenu = this;
-		m_pCallBack.m_pStorageToFocus = m_pSelectedSlotUI.GetStorageUI();
-		m_pCallBack.m_sItemToFocus = m_pSelectedSlotUI.GetItemName();
+
+		m_pCallBack.m_pStorageToFocus = GetStorageUIByBaseStorageComponent(m_pSelectedSlotUI.GetStorageUI().GetCurrentNavigationStorage());
+		m_pCallBack.m_sItemToFocus = m_pSelectedSlotUI.GetItemResource();
+		m_pCallBack.m_bUpdateSlotOnly = m_pSelectedSlotUI.IsStacked();
 
 		MoveToVicinity( pItem );
 	}
@@ -2288,7 +2330,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			return;
 		if ( !m_pFocusedSlotUI )
 			return;
-
+		if (!m_pFocusedSlotUI.GetItem())
+			return;
 		IEntity item = m_pFocusedSlotUI.GetItem().GetOwner();
 		if (Vehicle.Cast(item) || TurretControllerComponent.Cast(item.FindComponent(TurretControllerComponent)))
 			return;

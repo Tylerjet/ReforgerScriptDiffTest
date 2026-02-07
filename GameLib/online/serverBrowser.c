@@ -347,6 +347,9 @@ class ClientLobbyApi
 	proto native void ClearPreviousRoomId();
 	
 	proto native Room GetRoomById(string id);
+	
+	proto native void MeasureLatency(BackendCallback callback);
+	proto native bool IsPingAvailable();
 };
 
 class ServerBrowser

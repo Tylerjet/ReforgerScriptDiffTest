@@ -178,15 +178,6 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			StartEvents(EEditorEventOperation.OPEN);
 		else
 			StartEvents(EEditorEventOperation.CLOSE);
-		
-		StatsApi statsApi = GetGame().GetStatsApi();
-		if (statsApi)
-		{
-			if (m_bIsOpened)
-				statsApi.EditorStart();
-			else
-				statsApi.EditorClosed();
-		}
 
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_IS_OPENED, m_bIsOpened);
 	}
@@ -194,7 +185,13 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	protected void ToggleOwnerServerCallback(bool open)
 	{
 		if (open)
+		{
 			Event_OnOpenedServerCallback.Invoke();
+
+			StatsApi statsApi = GetGame().GetStatsApi();
+			if (statsApi)
+				statsApi.IncrementEditorCounter(GetPlayerID());
+		}
 		else
 			Event_OnClosedServerCallback.Invoke();
 	}

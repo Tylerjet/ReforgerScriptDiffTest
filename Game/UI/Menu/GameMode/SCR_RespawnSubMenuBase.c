@@ -268,14 +268,16 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 		
 		// select a group
 		// Currently doesn't do anything, player is in group automagically
-		/*SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupsManager.IsPlayerInAnyGroup(GetGame().GetPlayerController().GetPlayerId()))
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		if (groupsManager && playerGroupController && !groupsManager.IsPlayerInAnyGroup(m_iPlayerId))
 		{
-			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 			SCR_AIGroup group = groupsManager.GetFirstNotFullForFaction(faction);
 			if (!group)
-				playerController.RequestJoinGroup(group.GetGroupID());
-		}*/
+				playerGroupController.RequestCreateGroup(); //requestCreateGroup automatically puts player to the newly created group
+			else
+				playerGroupController.RequestJoinGroup(group.GetGroupID());
+		}
 		
 		// select a loadout
 		SCR_BasePlayerLoadout loadout = m_RespawnSystemComponent.GetPlayerLoadout(m_iPlayerId);
@@ -375,6 +377,7 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 			{
 				pc.RequestRespawn();
 				m_bDeployRequestSent = true;
+				CloseParent();
 			}
 		}
 		else

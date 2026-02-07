@@ -83,7 +83,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		else
 			consumableModel = SCR_Global.GetPrefabAttributeResource(GetOwner(), "MeshObject", "Object");
 
-		Resource resource = Resource.Load(consumableModel.GetPath());
+		Resource resource = Resource.Load(consumableModel);
 		if (!resource)
 			return;
 

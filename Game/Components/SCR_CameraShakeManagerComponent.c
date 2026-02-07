@@ -110,12 +110,17 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
+		Math3D.MatrixIdentity4(m_mShakeMatrix);
+		
+		// Skip the initialization of shake manager on headless
+		// clients and dedicated server, as the visual can be ommitted completely.
+		if (System.IsConsoleApp())
+			return;
+		
 		s_Instance = this;
 		SetEventMask(owner, EntityEvent.FRAME);
 		GenericEntity.Cast(owner).Activate();
-
-		Math3D.MatrixIdentity4(m_mShakeMatrix);
-
+		
 		// Pre-cache instances
 		for (int i = 0; i < CAMERA_SHAKE_INSTANCES; i++)
 			m_aShakeInstances[i] = new ref SCR_CustomCameraShakeProgress();

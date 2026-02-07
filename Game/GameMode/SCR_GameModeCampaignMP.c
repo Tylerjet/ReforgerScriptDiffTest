@@ -1289,9 +1289,12 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			title.SetTextFormat("#AR-Campaign_RewardBonus_Volunteer", GetXPRewardName(rewardID));
 		else
 			title.SetTextFormat(GetXPRewardName(rewardID));
-
-		m_wXPInfo.SetVisible(true);
-		m_fHideXPInfo = GetWorld().GetWorldTime() + XP_INFO_DURATION;
+		
+		if (rewardID != CampaignXPRewards.ENEMY_KILL && rewardID != CampaignXPRewards.ENEMY_KILL_VEH)
+		{
+			m_wXPInfo.SetVisible(true);
+			m_fHideXPInfo = GetWorld().GetWorldTime() + XP_INFO_DURATION;
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -3509,6 +3512,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		
 		int baseIndex = 0;
 		
+		array<int> allIndexes = {};
 		array<int> suppliesBufferWest = new array<int>();
 		array<int> suppliesBufferEast = new array<int>();
 		int intervalMultiplier = Math.Floor((STARTING_SUPPLIES_MAX - STARTING_SUPPLIES_MIN) / STARTING_SUPPLIES_INTERVAL);
@@ -3545,16 +3549,20 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 #ifdef ENABLE_BUILDING_DEBUG
 		PrintFormat("Number of all sorted bases is: %1",basesSorted.Count());
 #endif	
+		for(int i = 0; i <= BASE_CALLSIGNS_COUNT-1; i++)
+			allIndexes.Insert(i);
 		
 		foreach (SCR_CampaignBase base: basesSorted)
 		{
 			if (!base)
 				continue;
+			Math.Randomize(-1);
+			baseIndex = allIndexes.GetRandomIndex();
 			
 			if (base.GetType() != CampaignBaseType.RELAY && baseIndex < BASE_CALLSIGNS_COUNT)
 			{
-				base.SetCallsignIndex(baseIndex);
-				baseIndex++;
+				base.SetCallsignIndex(allIndexes[baseIndex]);
+				allIndexes.Remove(baseIndex);
 			}
 			
 			if (RplSession.Mode() != RplMode.Dedicated)

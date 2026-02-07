@@ -551,6 +551,8 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		if ( m_pSelectedSlot )
 			m_pSelectedSlot.Refresh();
 	}	
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateOwnedSlots(notnull array<IEntity> pItemsInStorage)
 	{
 		// TODO: optimize? ( the existing slots must be deleted. The previous algorithm doesn't work any more, since the number of slots is unknown due to the aggregation-stacking of the items of the same type )
@@ -581,7 +583,51 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			}
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	void UpdateSlotUI(ResourceName item)
+	{
+		int id = GetSlotIdForItem(item);
+
+		array<IEntity> pItemsInStorage = {};
+
+		if (ClothNodeStorageComponent.Cast(m_Storage))
+		{
+			array<BaseInventoryStorageComponent> storages = {};
+			array<IEntity> items = {};
+			m_Storage.GetOwnedStorages(storages, 1, false);
+			foreach (BaseInventoryStorageComponent storage : storages)
+			{
+				if (!storage)
+					continue;
+				storage.GetAll(items);
+				pItemsInStorage.Copy(items);
+			}
+		}
+		else
+		{
+			if (GetCurrentNavigationStorage())
+				GetCurrentNavigationStorage().GetAll(pItemsInStorage);
+			else
+				GetAllItems(pItemsInStorage);
+		}
+
+		int count = pItemsInStorage.Count();
+		int newStackCount = 0;
+		InventoryItemComponent comp;
+
+		for (int i = 0; i < count; ++i)
+		{
+			if (pItemsInStorage[i].GetPrefabData().GetPrefabName() == item)
+			{
+				comp = GetItemComponentFromEntity(pItemsInStorage[i]);
+				newStackCount++;
+			}
+		}
+		
+		m_aSlots[id].UpdateInventorySlot(comp, newStackCount);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// !
 	protected void UpdateOwnedSlots(notnull array<BaseInventoryStorageComponent> pItemsInStorage)
@@ -1236,7 +1282,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	int GetSlotIdForItem(string itemName)
+	int GetSlotIdForItem(ResourceName itemName)
 	{
 		int slotCount = m_aSlots.Count();
 		SCR_InventorySlotUI slot;
@@ -1244,7 +1290,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		for (int slotId = 0; slotId < slotCount; ++slotId)
 		{
 			slot = m_aSlots[slotId];
-			if (slot && slot.GetItemName() == itemName)
+			if (slot && slot.GetItemResource() == itemName)
 			{
 				return slotId;
 			}

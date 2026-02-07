@@ -425,14 +425,14 @@ class ArmaReforgerScripted : ChimeraGame
 		if (m_wWatermark)
 			m_wWatermark.RemoveFromHierarchy();
 
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGameMode());
+		if (gameMode)
+			gameMode.OnGameEnd();
+
 		ShutdownBackend();
 
 		if (m_CoresManager)
 			m_CoresManager.OnGameEnd();
-
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGameMode());
-		if (gameMode)
-			gameMode.OnGameEnd();
 	}
 
 	//------------------------------------------------------------------------------------------------

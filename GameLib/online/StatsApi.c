@@ -38,6 +38,11 @@ class StatsApi
 	proto native int EditorClosed();
 
 	/**
+	\brief Increment Editor usage counter for a specific Player
+	*/
+	proto native void IncrementEditorCounter(int iPlayerID);
+
+	/**
 	\brief Allow sending of generic mod related event with custom data
 	*/
 	proto native int ModEvent();

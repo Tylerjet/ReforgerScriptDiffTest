@@ -140,6 +140,21 @@ class SCR_GameModeEditor : SCR_BaseGameMode
 		SCR_EditorManagerEntity localEditorManager = SCR_EditorManagerEntity.GetInstance();
 		if (localEditorManager)
 			OnEditorManagerCreatedServer(localEditorManager);
+
+		StatsApi statsApi = GetGame().GetStatsApi();
+		if (statsApi)
+			statsApi.EditorStart();
+	}
+	override void OnGameEnd()
+	{
+		if (RplSession.Mode() != RplMode.Client)
+		{
+			StatsApi statsApi = GetGame().GetStatsApi();
+			if (statsApi)
+				statsApi.EditorClosed();
+		}
+
+		super.OnGameEnd();
 	}
 	void SCR_GameModeEditor(IEntitySource src, IEntity parent)
 	{

@@ -185,7 +185,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		m_iPlayerXP += (XPToAdd + XPToAddBySkill);
 		Replication.BumpMe();
 		UpdatePlayerRank();
-
+		
 		Rpc(RpcDo_OnPlayerXPChanged, m_iPlayerXP, XPToAdd, volunteer, rewardID, profileUsed, skillLevel);
 	}
 	
@@ -1556,16 +1556,13 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!campaign)
 			return;
 		
-		if (rewardID != CampaignXPRewards.ENEMY_KILL && rewardID != CampaignXPRewards.ENEMY_KILL_VEH)
-			campaign.ShowXPInfo(currentXP, rewardID, XPToAdd, volunteer, profileUsed, skillLevel);
-		else
+		campaign.ShowXPInfo(currentXP, rewardID, XPToAdd, volunteer, profileUsed, skillLevel);
+
+		if (!m_bXPInfoOnKillsHintShown)
 		{
-			if (!m_bXPInfoOnKillsHintShown)
-			{
-				m_bXPInfoOnKillsHintShown = true;
-				GetGame().GetCallqueue().CallLater(XPInfoOnKillsHint, 30000 + Math.RandomIntInclusive(0, 30000));
-			}
-		}	
+			m_bXPInfoOnKillsHintShown = true;
+			GetGame().GetCallqueue().CallLater(XPInfoOnKillsHint, 30000 + Math.RandomIntInclusive(0, 30000));
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

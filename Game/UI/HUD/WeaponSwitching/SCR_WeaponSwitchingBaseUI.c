@@ -29,11 +29,12 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 	protected void Init( IEntity owner )
 	{
 		m_Owner = owner;
+
 		if ( !m_Owner || !m_wRoot )
 			return;
 		
 		m_pInventoryManager = InventoryStorageManagerComponent.Cast( owner.FindComponent( InventoryStorageManagerComponent ) );
-		
+
 		//instantiate the preview manager
 		if (!GetGame().GetItemPreviewManager())
 		{
@@ -114,7 +115,9 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 		if ( wBlur ) 
 			wBlur.SetVisible( true );
 		
-		SCR_InventoryStorageManagerComponent.Cast(m_pInventoryManager).m_OnQuickBarOpenInvoker.Invoke(true);
+		SCR_InventoryStorageManagerComponent invMan = SCR_InventoryStorageManagerComponent.Cast(m_pInventoryManager);
+		if (invMan)
+			invMan.m_OnQuickBarOpenInvoker.Invoke(true);
     }
 	
     //------------------------------------------------------------------------------------------------
@@ -133,7 +136,9 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 		else
 			Show( false, WidgetAnimator.FADE_RATE_DEFAULT, true );
 		
-		SCR_InventoryStorageManagerComponent.Cast(m_pInventoryManager).m_OnQuickBarOpenInvoker.Invoke(false);
+		SCR_InventoryStorageManagerComponent invMan = SCR_InventoryStorageManagerComponent.Cast(m_pInventoryManager);
+		if (invMan)
+			invMan.m_OnQuickBarOpenInvoker.Invoke(false);
     }
 	
 	//------------------------------------------------------------------------------------------------
