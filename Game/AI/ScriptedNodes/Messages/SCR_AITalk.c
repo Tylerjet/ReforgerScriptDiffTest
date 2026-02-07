@@ -37,7 +37,7 @@ class SCR_AITalk: AITaskScripted
 	private SCR_AIInfoComponent m_targetInfoComponent;
 	private SCR_CallsignCharacterComponent m_CallsignComponent;
 	private SCR_AIInfoComponent m_agentInfoComponent;
-	private AudioHandle m_audioHandle;
+	private AudioHandle m_audioHandle = AudioHandle.Invalid;
 	private VoNComponent m_vonComponent;
 	private ref array<float> m_signals = new array<float>();
 	

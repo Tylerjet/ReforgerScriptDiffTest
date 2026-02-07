@@ -4,7 +4,7 @@ class SCR_PlayInstrument : ScriptedUserAction
 	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Sound project (acp)")]
 	private ResourceName m_SoundProject;
 	
-	protected AudioHandle m_AudioHandle;
+	protected AudioHandle m_AudioHandle = AudioHandle.Invalid;
 	
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 

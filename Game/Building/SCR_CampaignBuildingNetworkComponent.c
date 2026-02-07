@@ -5,319 +5,73 @@ class SCR_CampaignBuildingNetworkComponentClass : ScriptComponentClass
 	
 class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 {	
-	RplComponent m_test;
 	//------------------------------------------------------------------------------------------------
-	 void CreateEditorMode(int playerID, notnull SCR_FreeCampaignBuildingTrigger trigger)
-	{
-		RplComponent comp = RplComponent.Cast(trigger.FindComponent(RplComponent));
-		if (!comp)
-			return;
-
-		Rpc(RpcAsk_CreateEditorMode, playerID, comp.Id());
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void RemoveEditorMode(int playerID)
-	{
-		Rpc(RpcAsk_RemoveEditorMode, playerID);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void AddProviderEditorMode(int playerID, notnull IEntity provider)
+	void RemoveEditorMode(int playerID, IEntity provider)
 	{
 		RplComponent comp = RplComponent.Cast(provider.FindComponent(RplComponent));
 		if (!comp)
 			return;
 		
-		Rpc(RpcAsk_AddProviderEditorMode, playerID,  comp.Id());
+		Rpc(RpcAsk_RemoveEditorMode, playerID, comp.Id());
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void AddForcedProviderEditorMode(int playerID, notnull IEntity forcedProvider)
+	void RequestEnterBuildingMode(IEntity provider, int playerID, bool UserActionActivationOnly, bool UserActionUsed)
 	{
-		RplComponent comp = RplComponent.Cast(forcedProvider.FindComponent(RplComponent));
-		if (!comp)
+		RplComponent providerRplComp = RplComponent.Cast(provider.FindComponent(RplComponent));
+		if (!providerRplComp)
 			return;
 		
-		Rpc(RpcAsk_AddForcedProviderEditorMode, playerID,  comp.Id());
+		Rpc(RpcAsk_RequestEnterBuildingMode, providerRplComp.Id(), playerID, UserActionActivationOnly, UserActionUsed);
 	}
-	
+					
 	//------------------------------------------------------------------------------------------------
-	void RemoveForcedProviderEditorMode(int playerID)
-	{		
-		Rpc(RpcAsk_RemoveForcedProviderEditorMode, playerID);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void RemoveProviderEditorMode(int playerID, notnull IEntity provider)
-	{
-		RplComponent comp = RplComponent.Cast(provider.FindComponent(RplComponent));
-		if (!comp)
-			return;
-		
-		Rpc(RpcAsk_RemoveProviderEditorMode, playerID,  comp.Id());
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ChangeSupply(int supplyValue, IEntity provider, IEntity entityOwner)
-	{
-		RplComponent comp = RplComponent.Cast(provider.FindComponent(RplComponent));
-		if (!comp)
-			return;
-		
-		RplComponent compEntityOwner = RplComponent.Cast(entityOwner.FindComponent(RplComponent));
-		if (!compEntityOwner)
-			return;
-		
-		Rpc(RpcAsk_ChangeSupply, supplyValue, comp.Id(), compEntityOwner.Id());
-	}
-	
-	//------------------------------------------------------------------------------------------------
+	//! Delete given player building mode.
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_AddProviderEditorMode(int playerID, RplId rplCompId)
-	{
-		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(rplCompId));
-		if (!rplComp)
-			return;
-		
-		IEntity provider = rplComp.GetEntity();
-		if (!provider)
-			return;
-
-		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-		if (!core)
-			return;
-		
-		SCR_EditorManagerEntity editorManager = core.GetEditorManager(playerID);
-		if (!editorManager)
-			return;
-		
-		SCR_EditorModeEntity modeEntity = SCR_EditorModeEntity.Cast(editorManager.FindModeEntity(EEditorMode.BUILDING));
-		if (!modeEntity)
-			return;
-		
-		SCR_CampaignBuildingEditorComponent editorComponent = SCR_CampaignBuildingEditorComponent.Cast(modeEntity.FindComponent(SCR_CampaignBuildingEditorComponent));
-		if (!editorComponent)
-			return;
-		
-		editorComponent.AddProviderEntityEditorComponent(provider);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_AddForcedProviderEditorMode(int playerID, RplId rplCompId)
-	{
-		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(rplCompId));
-		if (!rplComp)
-			return;
-		
-		IEntity provider = rplComp.GetEntity();
-		if (!provider)
-			return;
-
-		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-		if (!core)
-			return;
-		
-		SCR_EditorManagerEntity editorManager = core.GetEditorManager(playerID);
-		if (!editorManager)
-			return;
-		
-		SCR_EditorModeEntity modeEntity = SCR_EditorModeEntity.Cast(editorManager.FindModeEntity(EEditorMode.BUILDING));
-		if (!modeEntity)
-			return;
-		
-		SCR_CampaignBuildingEditorComponent editorComponent = SCR_CampaignBuildingEditorComponent.Cast(modeEntity.FindComponent(SCR_CampaignBuildingEditorComponent));
-		if (!editorComponent)
-			return;
-		
-		editorComponent.SetForcedProvider(provider);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_RemoveForcedProviderEditorMode(int playerID)
-	{
-		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-		if (!core)
-			return;
-		
-		SCR_EditorManagerEntity editorManager = core.GetEditorManager(playerID);
-		if (!editorManager)
-			return;
-		
-		SCR_EditorModeEntity modeEntity = SCR_EditorModeEntity.Cast(editorManager.FindModeEntity(EEditorMode.BUILDING));
-		if (!modeEntity)
-			return;
-		
-		SCR_CampaignBuildingEditorComponent editorComponent = SCR_CampaignBuildingEditorComponent.Cast(modeEntity.FindComponent(SCR_CampaignBuildingEditorComponent));
-		if (!editorComponent)
-			return;
-		
-		editorComponent.SetForcedProvider(null);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_RemoveProviderEditorMode(int playerID, RplId rplCompId)
-	{
-		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(rplCompId));
-		if (!rplComp)
-			return;
-		
-		IEntity provider = rplComp.GetEntity();
-		if (!provider)
-			return;
-
-		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-		if (!core)
-			return;
-		
-		SCR_EditorManagerEntity editorManager = core.GetEditorManager(playerID);
-		if (!editorManager)
-			return;
-		
-		SCR_EditorModeEntity modeEntity = SCR_EditorModeEntity.Cast(editorManager.FindModeEntity(EEditorMode.BUILDING));
-		if (!modeEntity)
-			return;
-		
-		SCR_CampaignBuildingEditorComponent editorComponent = SCR_CampaignBuildingEditorComponent.Cast(modeEntity.FindComponent(SCR_CampaignBuildingEditorComponent));
-		if (!editorComponent)
-			return;
-		
-		editorComponent.RemoveProviderEntityEditorComponent(provider);
-		
-		// if it was a last provider, remove the mode completely. 
-		if (editorComponent.GetProviderEntitiesCount() == 0)
-			RpcAsk_RemoveEditorMode(playerID);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Enable building mode
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_CreateEditorMode(int playerID, RplId rplCompId)
-	{
-		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(rplCompId));
-		if (!rplComp)
-			return;
-		
-		IEntity trigger = rplComp.GetEntity();
-		if (!trigger)
-			return;
-		
-		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-		if (!core)
-			return;
-		
-		SCR_EditorManagerEntity editorManager = core.GetEditorManager(playerID);
-		if (!editorManager)
-			return;
-		
-		SCR_EditorModeEntity editorMode = editorManager.CreateEditorMode(EEditorMode.BUILDING, false);
-		if (!editorMode)
-			return;
-				
-		SCR_CampaignBuildingEditorComponent buildingComponent = SCR_CampaignBuildingEditorComponent.Cast(editorMode.FindComponent(SCR_CampaignBuildingEditorComponent));
-		if (!buildingComponent)
-			return;
-		
-		IEntity provider = trigger.GetParent();
+	protected void RpcAsk_RemoveEditorMode(int playerID, RplId compId)
+	{			
+		IEntity provider = GetProviderFormRplId(compId);
 		if (!provider)
 			return;
 		
-		buildingComponent.AddProviderEntityEditorComponent(provider);
+		BaseGameMode gameMode = GetGame().GetGameMode();
 		
-		if (!editorManager.IsOpened())
-			editorManager.SetCurrentMode(EEditorMode.BUILDING);
-
-		SCR_PlayerController playerControler = SCR_PlayerController.Cast(GetOwner());
-		if (!playerControler)
+		SCR_CampaignBuildingManagerComponent buildingManagerComponent = SCR_CampaignBuildingManagerComponent.Cast(gameMode.FindComponent(SCR_CampaignBuildingManagerComponent));
+		if (!buildingManagerComponent)
 			return;
 		
-		IEntity ent = playerControler.GetControlledEntity();
-		if (!ent)
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (!providerComponent)
 			return;
 		
-		SCR_CharacterControllerComponent comp = SCR_CharacterControllerComponent.Cast(ent.FindComponent(SCR_CharacterControllerComponent));
-		if (!comp)
-			return;
-		
-		comp.m_OnPlayerDeath.Insert(OnPlayerDeath);
-		
-		SCR_CampaignSuppliesComponent supplyComp = SCR_CampaignSuppliesComponent.Cast(trigger.GetParent().FindComponent(SCR_CampaignSuppliesComponent));
-		if (!supplyComp)
-			return;
-		supplyComp.m_OnSuppliesTruckDeleted.Insert(OnProviderDeleted);
+		bool isActiveUser = buildingManagerComponent.RemovePlayerIdFromProvider(playerID, providerComponent);
+		buildingManagerComponent.RemoveProvider(playerID, providerComponent, isActiveUser);
 	}
-			
+		
 	//------------------------------------------------------------------------------------------------
-	//! Disable building mode
+	//! Spawn a trigger as a child of the provider entity.
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_RemoveEditorMode(int playerID)
-	{	
- 		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-		if (!core)
-			return;
-		
-		SCR_EditorManagerEntity editorManager = core.GetEditorManager(playerID);
-		if (!editorManager)
-			return;
-		
-		SCR_EditorModeEntity editorModeEntity = editorManager.FindModeEntity(EEditorMode.BUILDING);
-		if (!editorModeEntity)
-			return;
-		
-		SCR_EntityHelper.DeleteEntityAndChildren(editorModeEntity);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Change a supply value on proivder
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RpcAsk_ChangeSupply(int supply, RplId rplCompId, RplId rplCompEntityOwnerId)
+	protected void RpcAsk_RequestEnterBuildingMode(RplId rplProviderId, int playerID, bool UserActionActivationOnly, bool UserActionUsed)
 	{
-		RplComponent rplCompEntityOwner = RplComponent.Cast(Replication.FindItem(rplCompEntityOwnerId));
-		if (!rplCompEntityOwnerId)
-			return;
-		
-		// if we already send an RPC with this entity to change budget, drop it.
-		if (m_test != rplCompEntityOwner)
-			m_test = rplCompEntityOwner;
-		else
-			return;
-		
-		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(rplCompId));
-		if (!rplComp)
-			return;
-		
-		IEntity provider = rplComp.GetEntity();
+		IEntity provider = GetProviderFormRplId(rplProviderId);
 		if (!provider)
 			return;
 		
-		SCR_CampaignSuppliesComponent supplyComp = SCR_CampaignSuppliesComponent.Cast(provider.FindComponent(SCR_CampaignSuppliesComponent));
-		if (!supplyComp)	
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		SCR_CampaignBuildingManagerComponent buildingManagerComponent = SCR_CampaignBuildingManagerComponent.Cast(gameMode.FindComponent(SCR_CampaignBuildingManagerComponent));
+		if (!buildingManagerComponent)
 			return;
 		
-		supplyComp.AddSupplies(supply);
+		buildingManagerComponent.GetEditorMode(playerID, provider, UserActionActivationOnly, UserActionUsed);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnPlayerDeath()
+	IEntity GetProviderFormRplId(RplId rplProviderId)
 	{
-		SCR_PlayerController playerControler = SCR_PlayerController.Cast(GetOwner());
-		if (!playerControler)
-			return;
+		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(rplProviderId));
+		if (!rplComp)
+			return null;
 		
-		RpcAsk_RemoveEditorMode(playerControler.GetPlayerId());
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//ToDo: Don't remove the mode completely, just a provider from the array.
-	protected void OnProviderDeleted(IEntity owner)
-	{		
-		SCR_PlayerController playerControler = SCR_PlayerController.Cast(GetOwner());
-		if (!playerControler)
-			return;
-		
-		RpcAsk_RemoveEditorMode(playerControler.GetPlayerId());
+		return rplComp.GetEntity();
 	}
 }

@@ -619,6 +619,22 @@ class SCR_RespawnComponent : RespawnComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// ! HOTFIX for getting stuck in deploy menu when spawn killed
+	void NotifyOnPlayerKilled()
+	{
+		Rpc(Rpc_NotifyOnPlayerKilled);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void Rpc_NotifyOnPlayerKilled()
+	{
+		SCR_RespawnSuperMenu menu = SCR_RespawnSuperMenu.GetInstance();
+		if (menu)
+			menu.ResetDeployRequest();
+	} // HOTFIX end
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 		Acknowledge that player was enqueued for respawn to owner client. Server only.
 	*/

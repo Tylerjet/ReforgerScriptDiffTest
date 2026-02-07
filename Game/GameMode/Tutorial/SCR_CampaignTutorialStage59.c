@@ -40,10 +40,7 @@ class SCR_CampaignTutorialStage59 : SCR_BaseCampaignTutorialStage
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		//return IsBuildingModeOpen();
-		
-		SCR_CampaignBuildingComponent buildComp = SCR_CampaignBuildingComponent.Cast(m_Player.FindComponent(SCR_CampaignBuildingComponent));		
-		return (buildComp && buildComp.IsBuilding());
+		return IsBuildingModeOpen();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -12,8 +12,8 @@ class SCR_CP_TaskSupportEntity : SCR_BaseTaskSupportEntity
 	//------------------------------------------------------------------------------------------------
 	override void FinishTask(notnull SCR_BaseTask task)
 	{
-		PrintFormat( "CP: ->Task: Task %1 accomplished.", task.GetTitleText()  );
-		super.FinishTask( task );
+		PrintFormat("CP: ->Task: Task %1 accomplished.", task.GetTitle() );
+		super.FinishTask(task);
 	}
 	
 	
@@ -21,14 +21,14 @@ class SCR_CP_TaskSupportEntity : SCR_BaseTaskSupportEntity
 	IEntity GetTaskEntity() { return m_pEntity; }
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_BaseTask CreateTask( CP_LayerTask pLayer )
+	SCR_BaseTask CreateTask(CP_LayerTask pLayer)
 	{
 		m_pEntity = pLayer.GetSpawnedEntity();
 		return super.CreateTask();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetTaskPrefab( ResourceName sTaskPrefab )
+	void SetTaskPrefab(ResourceName sTaskPrefab)
 	{
 		m_sTaskPrefab = sTaskPrefab;
 	}

@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------------------------
 class SCR_FlushToilet : ScriptedUserAction
 {	
-	protected AudioHandle m_AudioHandle;
+	protected AudioHandle m_AudioHandle = AudioHandle.Invalid;
 	
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 

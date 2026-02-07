@@ -368,6 +368,14 @@ class SCR_RespawnSuperMenu : SCR_SuperMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void ResetDeployRequest()
+	{
+		SCR_RespawnSubMenuBase submenu = SCR_RespawnSubMenuBase.Cast(GetOpenedSubMenu());
+		if (submenu)	
+			submenu.ResetDeployRequest();
+	}	
+
+	//------------------------------------------------------------------------------------------------
 	SCR_RespawnMenuHandlerComponent GetRespawnMenuHandler()
 	{
 		return m_RespawnMenuHandler;

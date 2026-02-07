@@ -61,7 +61,7 @@ class SCR_BaseTaskManager : GenericEntity
 	
 	protected RplComponent m_RplComponent;
 	
-	protected ref map<SCR_BaseTask, SCR_ETaskEventMask> m_mTaskEventMaskMap = new map<SCR_BaseTask, SCR_ETaskEventMask>();
+	ref map<SCR_BaseTask, SCR_ETaskEventMask> m_mTaskEventMaskMap = new map<SCR_BaseTask, SCR_ETaskEventMask>();
 	
 	protected ref array<SCR_BaseTask> m_aTasksToDelete = {};
 	
@@ -133,8 +133,7 @@ class SCR_BaseTaskManager : GenericEntity
 	//! An event called when a new task is created.
 	void OnTaskCreated(SCR_BaseTask task)
 	{
-		if (!m_aTaskList.Contains(task))
-			m_aTaskList.Insert(task);
+
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -269,6 +268,20 @@ class SCR_BaseTaskManager : GenericEntity
 		}
 		
 		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Registers Tasks and based on their State it inserts them to proper list.
+	void RegisterTask(SCR_BaseTask task)
+	{
+		if (task.GetTaskState() == SCR_TaskState.OPENED && !m_aTaskList.Contains(task))
+			m_aTaskList.Insert(task);
+			
+		if (task.GetTaskState() == SCR_TaskState.FINISHED && !m_aFinishedTaskList.Contains(task))
+		{
+			m_aFinishedTaskList.Insert(task);
+			m_aTaskList.RemoveItem(task);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -699,14 +712,14 @@ class SCR_BaseTaskManager : GenericEntity
 	//***********//
 	
 	//------------------------------------------------------------------------------------------------
-	override bool RplSave(ScriptBitWriter writer)
+	void SaveTasksForRpl(ScriptBitWriter writer, array<SCR_BaseTask> taskArray)
 	{
-		int count = m_aTaskList.Count();
+		int count = taskArray.Count();
 		writer.WriteInt(count);
 		
 		for (int i = 0; i < count; i++)
 		{
-			SCR_BaseTask task = m_aTaskList[i];
+			SCR_BaseTask task = taskArray[i];
 			if (!task || task.FindComponent(RplComponent)) //--- Assume that tasks with their own replication will sync data themselves
 			{
 				writer.WriteBool(false);
@@ -724,14 +737,21 @@ class SCR_BaseTaskManager : GenericEntity
 			
 			task.Serialize(writer);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool RplSave(ScriptBitWriter writer)
+	{
+		
+		SaveTasksForRpl(writer, m_aTaskList);
+		SaveTasksForRpl(writer, m_aFinishedTaskList);
 		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool RplLoad(ScriptBitReader reader)
+	void LoadTasksForRpl(ScriptBitReader reader, int count)
 	{
-		int count;
 		reader.ReadInt(count);
 		
 		ResourceName resourceName;
@@ -756,6 +776,14 @@ class SCR_BaseTaskManager : GenericEntity
 			
 			task.Deserialize(reader);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool RplLoad(ScriptBitReader reader)
+	{
+		int count;
+		LoadTasksForRpl(reader, count);
+		LoadTasksForRpl(reader, count);
 		
 		//Let the game mode know, the tasks are ready
 		SCR_BaseGameMode gamemode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
@@ -795,14 +823,6 @@ class SCR_BaseTaskManager : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_BaseTaskManager()
 	{
-		if (m_aCachedTaskAssignments)
-		{
-			m_aCachedTaskAssignments.Clear();
-			m_aCachedTaskAssignments = null;
-		}
-		
-		m_aTaskList.Clear();
-		m_aTaskList = null;
 		
 		//Unregister from Script Invokers
 		s_OnTaskCreated.Remove(OnTaskCreated);

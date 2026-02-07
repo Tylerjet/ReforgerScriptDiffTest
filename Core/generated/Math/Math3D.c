@@ -45,6 +45,15 @@ sealed class Math3D
 	*/
 	static proto bool IntersectionWholeSphereCone(vector origin, float radius, vector conepos, vector axis, float angle);
 	/*!
+	Tests whether is sphere intersecting AABB
+	\param origin Origin of sphere
+	\param radius Radius of sphere
+	\param mins2 \p vector minimum point of bounding box
+	\param maxs2 \p vector maximum point of bounding box
+	\return True when intersects
+	*/
+	static proto bool IntersectionSphereAABB(vector origin, float radius, vector mins, vector maxs);
+	/*!
 	\brief Returns True, when bounding boxes intersects
 	\param mins1 \p vector minimum point of first bounding box
 	\param maxs1 \p vector maximum point of first bounding box

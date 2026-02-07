@@ -430,15 +430,23 @@ class SCR_CampaignBase : GenericEntity
 			
 			// If the other base is in range of this one (or the other way around), add it to the m_aInRangeOf array
 			if (distanceSq <= Math.Pow(signalRange, 2))
+			{
 				m_aInRangeOf.Insert(bases[i]);
-			
+				bases[i].AddBaseInRange(this, false);
+			}
 			
 			if (distanceSq <= Math.Pow(GetSignalRange(), 2))
+			{
 				m_aInMyRange.Insert(bases[i]);
+				bases[i].AddBaseInRange(this, true);
+			}
 		}
 		
 		CalculateSignal();
 		baseManager.UpdateBasesSignalCoverage();
+		
+		foreach (SCR_CampaignBase base : m_aInMyRange)
+			base.CalculateSignal();
 		
 		if (refreshTasks && !IsProxy())
 		{
@@ -446,8 +454,29 @@ class SCR_CampaignBase : GenericEntity
 			
 			if (supportClass)
 				supportClass.GenerateCaptureTasks(this);
+			
+			HandleSpawnPointFaction();
 		}
+		
 		SCR_GameModeCampaignMP.s_OnSignalChanged.Invoke(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddBaseInRange(notnull SCR_CampaignBase base, bool inRangeOf)
+	{
+		if (inRangeOf)
+		{
+			if (!m_aInRangeOf.Contains(base))
+				m_aInRangeOf.Insert(base);
+		}
+		else
+		{
+			if (!m_aInMyRange.Contains(base))
+				m_aInMyRange.Insert(base);
+		}
+		
+		if (base.GetOwningFaction() == GetOwningFaction())
+			CalculateSignal();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -458,22 +487,35 @@ class SCR_CampaignBase : GenericEntity
 			m_bCanAnswerHQ = true;
 			return;
 		}
-		
-		foreach (SCR_CampaignBase inRange: m_aInMyRange)
+		else
 		{
-			if (m_aInRangeOf.Contains(inRange))
+			foreach (SCR_CampaignBase inRange: m_aInMyRange)
 			{
-				if (inRange.GetIsHQ() || inRange.GetIsLinkedToHQ())
+				if (m_aInRangeOf.Contains(inRange))
 				{
-					m_bCanAnswerHQ = true;
-					return;
+					if (inRange.GetOwningFaction() == GetOwningFaction() && (inRange.GetIsHQ() || inRange.GetIsLinkedToHQ()))
+					{
+						m_bCanAnswerHQ = true;
+						
+						if (!IsProxy())
+							HandleSpawnPointFaction();
+						
+						return;
+					}
+					else
+					{
+						m_bCanAnswerHQ = false;
+					}
 				}
 				else
+				{
 					m_bCanAnswerHQ = false;
+				}
 			}
-			else
-				m_bCanAnswerHQ = false;
 		}
+		
+		if (!IsProxy())
+			HandleSpawnPointFaction();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2821,7 +2863,6 @@ class SCR_CampaignBase : GenericEntity
 				SetSignalRange(GetSignalRange() - m_iAntennaSignalBoost);
 			
 			LinkBases(true);
-			
 		}
 		else
 		{

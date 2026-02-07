@@ -39,13 +39,21 @@ class GroupSettingsDialogUI: DialogUI
 		if (!m_GroupStatus)
 			return;
 		
+		PlatformService platform = GetGame().GetPlatformService();
+		if (!platform)
+			return;
+		
 		m_GroupName = SCR_EditBoxComponent.GetEditBoxComponent("Name", w);
 		if (!m_GroupName)
 			return;
 		
+		m_GroupName.SetEnabled(platform.GetPrivilege(UserPrivilege.USER_GEN_CONTENT));
+		
 		m_GroupDescription = SCR_EditBoxComponent.GetEditBoxComponent("Description", w);
 		if (!m_GroupDescription)
 			return;
+		
+		m_GroupDescription.SetEnabled(platform.GetPrivilege(UserPrivilege.USER_GEN_CONTENT));
 		
 		m_GroupName.SetValue(m_PlayerGroup.GetCustomName());
 		m_GroupDescription.SetValue(m_PlayerGroup.GetCustomDescription());

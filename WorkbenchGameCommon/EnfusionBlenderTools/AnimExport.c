@@ -34,7 +34,7 @@ class AnimExportRequest: JsonApiStruct
 		RegV("frameCounts");
 		RegV("parents");
 	}
-};
+}
 
 class AnimExportResponse: JsonApiStruct
 {
@@ -45,7 +45,7 @@ class AnimExportResponse: JsonApiStruct
 		RegV("Output");
 		RegV("Export");
 	}
-};
+}
 
 class AnimExportUtils : AnimExporterAcc{
 	
@@ -160,7 +160,7 @@ class AnimExportUtils : AnimExporterAcc{
 		}
 	}
 	
-};
+}
 
 
 class AnimExport: NetApiHandler

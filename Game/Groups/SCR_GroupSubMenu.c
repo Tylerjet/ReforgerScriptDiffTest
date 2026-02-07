@@ -181,8 +181,14 @@ class SCR_GroupSubMenu : SCR_RespawnSubMenuBase
 		
 		for (int i = 0; i < groupCount; i++)
 		{ 
-			Widget groupTile = GetGame().GetWorkspace().CreateWidgets(buttonWidgetLayout, gridWidget);
-			ButtonWidget buttonWidget = ButtonWidget.Cast( groupTile.FindAnyWidget("Button"));
+			Widget groupTile = GetGame().GetWorkspace().CreateWidgets(buttonWidgetLayout, gridWidget);	
+			if (!groupTile)
+				continue;
+					
+			ButtonWidget buttonWidget = ButtonWidget.Cast(groupTile.FindAnyWidget("Button"));
+			if (!buttonWidget)
+				continue;
+			
 			SCR_GroupTileButton buttonComponent = SCR_GroupTileButton.Cast(buttonWidget.FindHandler(SCR_GroupTileButton));
 			if (buttonComponent)
 			{

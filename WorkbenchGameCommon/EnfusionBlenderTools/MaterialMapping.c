@@ -15,12 +15,14 @@ class MaterialPreviewGetMapping : JsonApiStruct
 	string source_mat;
 	string emat_rel_path;
 	string mat_class;
+	string issue;
 	
 	void MaterialPreviewGetMapping()
 	{
 		RegV("source_mat");
 		RegV("emat_rel_path");
 		RegV("mat_class");
+		RegV("issue");
 	}
 };
 
@@ -43,6 +45,11 @@ class MaterialPreviewUtils
 
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
 		MetaFile meta = resourceManager.GetMetaFile(xob);
+		if(meta == false)
+		{
+			mapping.issue = "Missing XOB";
+			return;
+		}
 		BaseContainerList configurations = meta.GetObjectArray("Configurations");
 		BaseContainer cfg = configurations.Get(0);
 
@@ -97,7 +104,6 @@ class MaterialMapping: NetApiHandler
 
 		//Input to variable
 		ResourceName xob = req.name;
-				
 		matutils.ReadXOB(xob, mapping);
 		//mapping.SaveToFile("material_mapping.json");
 		return mapping;

@@ -166,9 +166,19 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		Rpc(ToggleOwner, m_bIsOpened);
 		
 		if (m_bIsOpened)
+		{
+			if (m_CurrentModeEntity)
+				m_CurrentModeEntity.ActivateModeServer();
+			
 			Event_OnOpenedServer.Invoke();
+		}
 		else
+		{
+			if (m_CurrentModeEntity)
+				m_CurrentModeEntity.DeactivateModeServer();
+			
 			Event_OnClosedServer.Invoke();
+		}
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void ToggleOwner(bool open)
@@ -193,7 +203,9 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 				statsApi.IncrementEditorCounter(GetPlayerID());
 		}
 		else
+		{
 			Event_OnClosedServerCallback.Invoke();
+		}
 	}
 	
 	protected int GetEnumSum(typename enumType)
@@ -704,9 +716,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			return null;
 		}
 		
+		modeEntity.InitServer(this); //--- Called before AddMode, so events invoked from there can already work with variables defined in init
+		
 		AddMode(modeEntity, isInit);
 		
-		modeEntity.InitServer(this);
 		Rpc(CreateEditorModeOwner, mode, Replication.FindId(modeEntity), isInit);
 		SetCanOpen(true, EEditorCanOpen.MODES);
 		
@@ -1058,14 +1071,14 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			}
 		}
 		
-		if (m_CurrentModeEntity)
+		if (m_CurrentModeEntity && m_bIsOpened)
 			m_CurrentModeEntity.DeactivateModeServer();
 		
 		Rpc(SetCurrentModeOwner, mode);
 		m_CurrentMode = mode;
 		m_CurrentModeEntity = modeEntity;
 		
-		if (m_CurrentModeEntity)
+		if (m_CurrentModeEntity && m_bIsOpened)
 			m_CurrentModeEntity.ActivateModeServer();
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
@@ -1817,6 +1830,9 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			else
 				m_Modes.RemoveOrdered(0);	
 		}
+		
+		if (m_CurrentModeEntity)
+			m_CurrentModeEntity.DeactivateModeServer();
 		
 		if (Replication.IsServer() && IsOpened())
 			Event_OnClosedServer.Invoke();

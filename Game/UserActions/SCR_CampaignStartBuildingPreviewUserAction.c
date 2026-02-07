@@ -97,6 +97,8 @@ class SCR_CampaignStartBuildingPreviewUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
+		return false;
+		
 		//first time player interact with this, decide what kind of the interaction source it is. Vehicle or the base?
 		if (!m_SuppliesComponent && !m_Base || !m_SuppliesComponent && m_BuildingComponent && m_BuildingComponent.GetSlots().IsEmpty())
 			InitializeActionOwner();

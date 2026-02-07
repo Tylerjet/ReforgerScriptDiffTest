@@ -6,7 +6,7 @@ class RegisterFbxRequest: JsonApiStruct
 	{
 		RegV("Fbx");
 	}
-};
+}
 
 class RegisterFbxResponse: JsonApiStruct
 {
@@ -16,7 +16,7 @@ class RegisterFbxResponse: JsonApiStruct
 	{
 		RegV("Output");
 	}
-};
+}
 
 class RegisterFbxUtils
 {
@@ -37,7 +37,7 @@ class RegisterFbxUtils
 		resourceManager.RebuildResourceFile(absPath,"PC", true);
 		return;
 	}
-};
+}
 
 class RegisterFbx: NetApiHandler
 {

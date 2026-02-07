@@ -17,6 +17,7 @@ class AIBaseMovementComponent: AIComponentEntity
 {
 	proto external bool HasCompletedRequest(bool bTakeTimeIntoAccount);
 	proto external bool ForceFollowPathOfEntity(IEntity other);
+	proto external AIPathfindingComponent GetPathfindingComponent();
 };
 
 /** @}*/

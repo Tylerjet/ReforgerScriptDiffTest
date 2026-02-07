@@ -8,17 +8,17 @@ class CP_SlotExtractionClass : CP_SlotTaskClass
 class CP_SlotExtraction : CP_SlotTask
 {
 	//------------------------------------------------------------------------------------------------
-	override void Init( CP_Area pArea = null, CP_EActivationType EActivation = CP_EActivationType.SAME_AS_PARENT, bool bInit = true )
+	override void Init(CP_Area pArea = null, CP_EActivationType EActivation = CP_EActivationType.SAME_AS_PARENT, bool bInit = true)
     {
-        if ( m_EActivationType != EActivation )
+        if (m_EActivationType != EActivation)
 			return;
-		super.Init( pArea, EActivation );
+		super.Init(pArea, EActivation);
 		FactionManager pFactionManager = GetGame().GetFactionManager();
-		if ( !pFactionManager )
+		if (!pFactionManager)
 			return;
-		if ( !SCR_PlayersPresentTriggerEntity.Cast( m_pEntity ) )
+		if (!SCR_PlayersPresentTriggerEntity.Cast(m_pEntity))
 			return;
-		SCR_PlayersPresentTriggerEntity.Cast( m_pEntity ).SetOwnerFaction( pFactionManager.GetFactionByKey( m_sFaction ) );
+		SCR_PlayersPresentTriggerEntity.Cast(m_pEntity).SetOwnerFaction(pFactionManager.GetFactionByKey(m_sFaction));
     }
 	
 	//------------------------------------------------------------------------------------------------

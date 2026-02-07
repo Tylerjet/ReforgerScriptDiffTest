@@ -91,6 +91,9 @@ class SCR_EntityHelper
 	//! \param self Return itself if there is no parent, default = false
 	static IEntity GetMainParent(IEntity ent, bool self = false)
 	{
+		if (!ent)
+			return ent;
+		
 		IEntity parent = ent.GetParent();
 		if (!parent)
 		{

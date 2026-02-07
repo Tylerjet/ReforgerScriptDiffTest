@@ -10,7 +10,7 @@ class PrefabToWERequest: JsonApiStruct
 		RegV("numObjects");
 		RegV("transformations");
 	}
-};
+}
 
 class PrefabToWEResponse: JsonApiStruct
 {
@@ -20,7 +20,7 @@ class PrefabToWEResponse: JsonApiStruct
 	{
 		RegV("Output");
 	}
-};
+}
 
 class PrefabToWEUtils
 {
@@ -88,7 +88,7 @@ class PrefabToWEUtils
 		api.AddToEntitySelection(entity);
 		return;
 	}
-};
+}
 
 class PrefabToWE: NetApiHandler
 {

@@ -211,6 +211,7 @@ class Room: Managed
 	
 	proto native void LoadDownloadList(BackendCallback callback);
 	
+	[Obsolete("Use WorkshopItem instead!")]
 	proto native void DownloadAddons(BackendCallback callback);
 	
 	proto native void AllItems(out notnull array<Dependency> items);

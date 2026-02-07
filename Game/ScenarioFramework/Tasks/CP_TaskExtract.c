@@ -10,6 +10,6 @@ class CP_TaskExtract : CP_TaskArea
 	override void OnTriggerActivated()
 	{
 		//TODO: task related things
-		m_pSupportEntity.FinishTask( this );	
+		m_pSupportEntity.FinishTask(this);	
 	}
 }

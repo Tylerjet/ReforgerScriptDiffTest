@@ -5,7 +5,7 @@ class SCR_CampaignTutorialStage67Class: SCR_BaseCampaignTutorialStageClass
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignTutorialStage67 : SCR_BaseCampaignTutorialStage
 {
-	//protected int m_iTruckSupplies;
+	protected int m_iTruckSupplies;
 	
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
@@ -13,17 +13,17 @@ class SCR_CampaignTutorialStage67 : SCR_BaseCampaignTutorialStage
 		RegisterWaypoint("WP_CONFLICT_BUILDING_CHECKPOINT");
 		m_fWaypointHeightOffset = 0;
 		m_bCheckWaypoint = false;
-		/*m_fConditionCheckPeriod = 1;
+		m_fConditionCheckPeriod = 1;
 		
 		GetGame().GetCallqueue().Remove(OverrideGMHint);
-		GetGame().GetCallqueue().CallLater(OverrideGMHint, 250, true);*/
+		GetGame().GetCallqueue().CallLater(OverrideGMHint, 250, true);
 		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingCheckpointActual", duration: -1);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		/*SCR_CampaignSuppliesComponent comp = m_TutorialComponent.GetSupplyTruckComponent();
+		SCR_CampaignSuppliesComponent comp = m_TutorialComponent.GetSupplyTruckComponent();
 		
 		if (!comp)
 			return false;
@@ -31,10 +31,7 @@ class SCR_CampaignTutorialStage67 : SCR_BaseCampaignTutorialStage
 		if (m_iTruckSupplies == 0)
 			m_iTruckSupplies = comp.GetSupplies();
 		
-		return comp.GetSupplies() < m_iTruckSupplies;*/
-		
-		SCR_SiteSlotEntity checkpoint_slot = SCR_SiteSlotEntity.Cast(GetGame().GetWorld().FindEntityByName("buildingSlotCheckpoint"));	
-		return checkpoint_slot.IsOccupied();
+		return comp.GetSupplies() < m_iTruckSupplies;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -45,7 +42,7 @@ class SCR_CampaignTutorialStage67 : SCR_BaseCampaignTutorialStage
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*void OverrideGMHint()
+	void OverrideGMHint()
 	{
 		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingCheckpointActual", duration: -1, isSilent: true);
 	}
@@ -54,5 +51,5 @@ class SCR_CampaignTutorialStage67 : SCR_BaseCampaignTutorialStage
 	void ~SCR_CampaignTutorialStage67()
 	{
 		GetGame().GetCallqueue().Remove(OverrideGMHint);
-	}*/
+	}
 };

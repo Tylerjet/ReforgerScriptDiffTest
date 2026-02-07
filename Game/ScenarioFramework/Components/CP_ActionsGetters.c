@@ -11,7 +11,7 @@ class CP_Param<Class T> : CP_ParamBase
 		return m_pValue;	
 	}
 	
-	void CP_Param( T value )
+	void CP_Param(T value)
 	{
 		m_pValue = value;
 	}
@@ -22,11 +22,15 @@ class CP_Param<Class T> : CP_ParamBase
 class CP_Get
 {
 	private CP_ParamBase m_pValue;
-	protected void SetValue( CP_ParamBase pValue ) 
+	protected void SetValue(CP_ParamBase pValue) 
 	{
 		m_pValue = pValue;
 	}
-	CP_ParamBase Get() { return m_pValue; }
+	
+	CP_ParamBase Get()
+	{ 
+		return m_pValue; 
+	}
 }
 
 
@@ -37,11 +41,11 @@ class CP_GetLastFinishedTaskLayer : CP_Get
 	//------------------------------------------------------------------------------------------------
 	override CP_ParamBase Get()
 	{
-		SCR_GameModeSFManager pManager = SCR_GameModeSFManager.Cast( GetGame().GetGameMode().FindComponent( SCR_GameModeSFManager ) );
-		if ( !pManager )
+		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
+		if (!gameModeManager)
 			return null;
-		CP_Param<CP_LayerTask> param = new CP_Param<CP_LayerTask>( CP_LayerTask.Cast( pManager.GetLastFinishedTaskLayer() ) );
-		return param;
+		
+		return new CP_Param<CP_LayerTask>(CP_LayerTask.Cast(gameModeManager.GetLastFinishedTaskLayer()));
 	}
 }
 
@@ -52,11 +56,11 @@ class CP_GetLastFinishedTaskEnity : CP_Get
 	//------------------------------------------------------------------------------------------------
 	override CP_ParamBase Get()
 	{
-		SCR_GameModeSFManager pManager = SCR_GameModeSFManager.Cast( GetGame().GetGameMode().FindComponent( SCR_GameModeSFManager ) );
-		if ( !pManager )
+		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
+		if (!gameModeManager)
 			return null;
-		CP_Param<IEntity> param = new CP_Param<IEntity>( pManager.GetLastFinishedTask() );
-		return param;
+		
+		return new CP_Param<IEntity>(gameModeManager.GetLastFinishedTask());
 	}
 }
 
@@ -70,10 +74,10 @@ class CP_GetEntityByName: CP_Get
 	//------------------------------------------------------------------------------------------------
 	override CP_ParamBase Get()
 	{
-		if ( !GetGame().GetWorld() )
+		if (!GetGame().GetWorld())
 			return null;
-		CP_Param<IEntity> param = new CP_Param<IEntity>( GetGame().GetWorld().FindEntityByName( m_sEntityName ) );
-		return param;
+		
+		return new CP_Param<IEntity>(GetGame().GetWorld().FindEntityByName(m_sEntityName));
 	}
 }
 
@@ -88,16 +92,93 @@ class CP_GetTask: CP_Get
 	//------------------------------------------------------------------------------------------------
 	override CP_ParamBase Get()
 	{
-		if ( !GetGame().GetWorld() )
+		if (!GetGame().GetWorld())
 			return null;
-		IEntity pEnt = GetGame().GetWorld().FindEntityByName( m_sLayerTaskName );
-		if ( !pEnt )
+		
+		IEntity entity = GetGame().GetWorld().FindEntityByName(m_sLayerTaskName);
+		if (!entity)
 			return null;
-		CP_LayerTask pLayer = CP_LayerTask.Cast( pEnt.FindComponent( CP_LayerTask ) );
-		if ( !pLayer )
+		
+		CP_LayerTask layer = CP_LayerTask.Cast(entity.FindComponent(CP_LayerTask));
+		if (!layer)
 			return null;
-		CP_Param<IEntity> param = new CP_Param<IEntity>( pLayer.GetTask() );
-		return param;
+		
+		return new CP_Param<IEntity>(layer.GetTask());
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class CP_GetLayerTask: CP_Get
+{
+	[Attribute()];
+	protected string 		m_sLayerTaskName;
+	
+	//------------------------------------------------------------------------------------------------
+	override CP_ParamBase Get()
+	{
+		if (!GetGame().GetWorld())
+			return null;
+		
+		IEntity entity = GetGame().GetWorld().FindEntityByName(m_sLayerTaskName);
+		if (!entity)
+			return null;
+		
+		CP_LayerTask layer = CP_LayerTask.Cast(entity.FindComponent(CP_LayerTask));
+		if (!layer)
+			return null;
+
+		return new CP_Param<IEntity>(entity);
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class CP_GetLayerBase: CP_Get
+{
+	[Attribute()];
+	protected string 		m_sLayerBaseName;
+	
+	//------------------------------------------------------------------------------------------------
+	override CP_ParamBase Get()
+	{
+		if (!GetGame().GetWorld())
+			return null;
+		
+		IEntity entity = GetGame().GetWorld().FindEntityByName(m_sLayerBaseName);
+		if (!entity)
+			return null;
+		
+		CP_LayerBase layer = CP_LayerBase.Cast(entity.FindComponent(CP_LayerBase));
+		if (!layer)
+			return null;
+
+		return new CP_Param<IEntity>(entity);
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class CP_GetArea: CP_Get
+{
+	[Attribute()];
+	protected string 		m_sAreaName;
+	
+	//------------------------------------------------------------------------------------------------
+	override CP_ParamBase Get()
+	{
+		if (!GetGame().GetWorld())
+			return null;
+		
+		IEntity entity = GetGame().GetWorld().FindEntityByName(m_sAreaName);
+		if (!entity)
+			return null;
+		
+		CP_Area area = CP_Area.Cast(entity.FindComponent(CP_Area));
+		if (!area)
+			return null;
+
+		return new CP_Param<IEntity>(entity);
 	}
 }
 
@@ -112,21 +193,23 @@ class CP_GetListEntitiesInTrigger : CP_Get
 	//------------------------------------------------------------------------------------------------
 	override CP_ParamBase Get()
 	{
-		if ( !GetGame().GetWorld() )
-			return null;	
+		if (!GetGame().GetWorld())
+			return null;
+			
 		array<IEntity> aEntities = {};
-		GetEntitiesInTrigger( aEntities );
+		GetEntitiesInTrigger(aEntities);
 
-		return new CP_Param<array<IEntity>>( aEntities );
+		return new CP_Param<array<IEntity>>(aEntities);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void GetEntitiesInTrigger( out notnull array<IEntity> aEntities )
+	protected void GetEntitiesInTrigger(out notnull array<IEntity> aEntities)
 	{
-		BaseGameTriggerEntity pTrig = BaseGameTriggerEntity.Cast( GetGame().GetWorld().FindEntityByName( m_sTriggerName ) );
-		if ( !pTrig )
+		BaseGameTriggerEntity trigger = BaseGameTriggerEntity.Cast(GetGame().GetWorld().FindEntityByName(m_sTriggerName));
+		if (!trigger)
 			return;
-		pTrig.GetEntitiesInside( aEntities );	
+		
+		trigger.GetEntitiesInside(aEntities);	
 	}
 }
 
@@ -138,13 +221,14 @@ class CP_GetCountEntitiesInTrigger : CP_GetListEntitiesInTrigger
 	//------------------------------------------------------------------------------------------------
 	override CP_ParamBase Get()
 	{
-		if ( !GetGame().GetWorld() )
+		if (!GetGame().GetWorld())
 			return null;
+		
 		array<IEntity> aEntities = {};
-		GetEntitiesInTrigger( aEntities );
+		GetEntitiesInTrigger(aEntities);
 		
 		
-		return new CP_Param<int>( aEntities.Count() );
+		return new CP_Param<int>(aEntities.Count());
 	}
 }
 
@@ -155,14 +239,14 @@ class CP_GetPlayerEntity: CP_Get
 	//------------------------------------------------------------------------------------------------
 	override CP_ParamBase Get()
 	{
-		if ( !GetGame().GetWorld() )
+		if (!GetGame().GetWorld())
 			return null;
-			SCR_PlayerController pc = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		
-		if (!pc)
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		
+		if (!playerController)
 			return null;
 				
-		CP_Param<IEntity> param = new CP_Param<IEntity>( pc.GetMainEntity() );
-		return param;
+		return new CP_Param<IEntity>(playerController.GetMainEntity());
 	}
 }

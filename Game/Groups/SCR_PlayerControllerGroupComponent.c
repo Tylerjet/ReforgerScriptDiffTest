@@ -459,12 +459,12 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void RequestSetCustomGroupDescription(int groupID, string desc)
 	{
-		Rpc(RPC_AskSetCustomDescription, groupID, desc);
+		Rpc(RPC_AskSetCustomDescription, groupID, desc, SCR_PlayerController.GetLocalPlayerId());
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskSetCustomDescription(int groupID, string desc)
+	void RPC_AskSetCustomDescription(int groupID, string desc, int authorID)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 
@@ -475,18 +475,18 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!group)
 			return;
 		
-		group.SetCustomDescription(desc);
+		group.SetCustomDescription(desc, authorID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void RequestSetCustomGroupName(int groupID, string name)
 	{
-		Rpc(RPC_AskSetCustomName, groupID, name);
+		Rpc(RPC_AskSetCustomName, groupID, name, SCR_PlayerController.GetLocalPlayerId());
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskSetCustomName(int groupID, string name)
+	void RPC_AskSetCustomName(int groupID, string name, int authorID)
 	{
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupsManager)
@@ -496,7 +496,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!group)
 			return;
 		
-		group.SetCustomName(name);
+		group.SetCustomName(name, authorID);
 	}
 	
 		//------------------------------------------------------------------------------------------------

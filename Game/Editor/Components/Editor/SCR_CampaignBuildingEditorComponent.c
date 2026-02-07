@@ -6,77 +6,98 @@ class SCR_CampaignBuildingEditorComponentClass : SCR_BaseEditorComponentClass
 //------------------------------------------------------------------------------------------------
 
 class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
-{	
-	protected ref array<IEntity> m_aProviderEntities = {};
+{
+	protected ref array<SCR_CampaignBuildingProviderComponent> m_aProvidersComponents = {};
 	protected ref array<RplId> m_aProvidersRplIds = {};
-	protected SCR_FreeCampaignBuildingTrigger m_Trigger;
 	protected SCR_ContentBrowserEditorComponent m_ContentBrowserManager;
-	protected IEntity m_ForcedProvider;
+	protected SCR_CampaignBuildingProviderComponent m_ForcedProviderComponent;
 	protected int m_PlayerId;
-	
-	protected ref ScriptInvoker m_OnProviderSet;
-	
+
+	protected ref ScriptInvoker m_OnProviderChanged;
+
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnProviderSet()
+	ScriptInvoker GetOnProviderChanged()
 	{
-		if (!m_OnProviderSet)
-			m_OnProviderSet = new ScriptInvoker();
-		
-		return m_OnProviderSet;
+		if (!m_OnProviderChanged)
+			m_OnProviderChanged = new ScriptInvoker();
+
+		return m_OnProviderChanged;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
- 	void AddProviderEntityEditorComponent(IEntity provider)
+	void AddProviderEntityEditorComponent(SCR_CampaignBuildingProviderComponent providerComponent)
 	{
-		if (!provider)
+		if (!providerComponent || m_aProvidersComponents.Contains(providerComponent))
 			return;
-		
-		SCR_CampaignBase baseEnt = SCR_CampaignBase.Cast(provider);
+
+		SCR_CampaignBase baseEnt = SCR_CampaignBase.Cast(providerComponent.GetOwner());
 		if (baseEnt)
-			m_aProviderEntities.InsertAt(provider, 0);
+			m_aProvidersComponents.InsertAt(providerComponent, 0);
 		else
-			m_aProviderEntities.Insert(provider);
-			
-		GetOnProviderSet().Invoke(m_aProviderEntities[0]);
+			m_aProvidersComponents.Insert(providerComponent);
+
+		GetOnProviderChanged().Invoke(m_aProvidersComponents[0]);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void RemoveProviderEntityEditorComponent(IEntity provider)
-	{		
-		m_aProviderEntities.RemoveItemOrdered(provider);			
-	}
-			
-	//------------------------------------------------------------------------------------------------
-	IEntity GetProviderEntity()
+	void RemoveProviderEntityEditorComponent(SCR_CampaignBuildingProviderComponent providerComponent)
 	{
-		if (m_ForcedProvider)
-			return m_ForcedProvider;
-		
-		if (m_aProviderEntities.IsEmpty())
-			return null;
-		
-		return m_aProviderEntities[0];
+		if (m_ForcedProviderComponent == providerComponent)
+			SetForcedProvider(null);
+
+		m_aProvidersComponents.RemoveItemOrdered(providerComponent);
+
+		if (!m_aProvidersComponents.IsEmpty())
+			GetOnProviderChanged().Invoke(m_aProvidersComponents[0]);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	SCR_CampaignBuildingProviderComponent GetProviderComponent()
+	{
+		if (m_ForcedProviderComponent)
+			return m_ForcedProviderComponent;
+
+		if (m_aProvidersComponents.IsEmpty())
+			return null;
+
+		return m_aProvidersComponents[0];
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// Used when player initiate a building mode via user action - forced provider is an entity owning the user action
-	void SetForcedProvider(IEntity ent = null)
+	void SetForcedProvider(SCR_CampaignBuildingProviderComponent forcedProviderComponent = null)
 	{
-		m_ForcedProvider = ent;
+		m_ForcedProviderComponent = forcedProviderComponent;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	int GetProviderEntitiesCount()
 	{
-		return m_aProviderEntities.Count();	
+		return m_aProvidersComponents.Count();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	bool IsActiveProvider(notnull SCR_CampaignBuildingProviderComponent providerComponent)
+	{
+		if (providerComponent == m_ForcedProviderComponent)
+			return true;
+
+		// there exist a forced provider and it's not a tested entity, then it can't be an active provider. ToDo: Zamyslet se a zeptat
+		if (m_ForcedProviderComponent)
+			return false;
+
+		if (!m_aProvidersComponents.IsEmpty() && m_aProvidersComponents[0] == providerComponent)
+			return true;
+
+		return false;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	bool GetProviderSuppliesComponent(out SCR_CampaignSuppliesComponent suppliesComponent)
 	{
-		if (m_aProviderEntities.IsEmpty())
+		if (m_aProvidersComponents.IsEmpty())
 			return false;
-		
+
 		suppliesComponent = SCR_CampaignSuppliesComponent.Cast(GetProviderEntity().FindComponent(SCR_CampaignSuppliesComponent));
 		if (suppliesComponent)
 			return true;
@@ -87,21 +108,21 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			suppliesComponent = SCR_CampaignSuppliesComponent.Cast(parent.FindComponent(SCR_CampaignSuppliesComponent));
 			if (suppliesComponent)
 				return true;
-			
+
 			parent = parent.GetParent();
 		}
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	SCR_FactionAffiliationComponent GetProviderFactionComponent()
 	{
-		if (m_aProviderEntities.IsEmpty())
+		if (m_aProvidersComponents.IsEmpty())
 			return null;
-		
+
 		SCR_FactionAffiliationComponent factionComp = SCR_FactionAffiliationComponent.Cast(GetProviderEntity().FindComponent(SCR_FactionAffiliationComponent));
 		if (factionComp)
-				return factionComp;
+			return factionComp;
 
 		IEntity parent = GetProviderEntity();
 		while (parent)
@@ -109,151 +130,209 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			factionComp = SCR_FactionAffiliationComponent.Cast(parent.FindComponent(SCR_FactionAffiliationComponent));
 			if (factionComp)
 				return factionComp;
-			
+
 			parent = parent.GetParent();
 		}
 
 		return null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void SetTrigger()
+	SCR_FreeRoamBuildingClientTriggerEntity GetTrigger()
 	{
-		if (!m_aProviderEntities.IsEmpty())
+		if (m_aProvidersComponents.IsEmpty())
+			return null;
+
+		//ToDo: Is it still needed?
+		// clear possible null, better solution - some invoker when the value in array change to null?
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
+		if (!providerComponent)
 		{
-			IEntity child = GetProviderEntity().GetChildren();
-			while (child)
-			{
-				SCR_FreeCampaignBuildingTrigger trg = SCR_FreeCampaignBuildingTrigger.Cast(child);
-				if (trg)
-				{
-					m_Trigger = trg;
-					break;
-				}
-				
-				child = child.GetSibling();
-			};
+			RemoveProviderEntityEditorComponent(providerComponent);
+			return null;
 		}
+
+		IEntity child = GetProviderEntity().GetChildren();
+		while (child)
+		{
+			SCR_FreeRoamBuildingClientTriggerEntity trg = SCR_FreeRoamBuildingClientTriggerEntity.Cast(child);
+			if (trg)
+				return trg;
+
+			child = child.GetSibling();
+		}
+
+		return null;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_FreeCampaignBuildingTrigger GetTrigger()
-	{		
-		return m_Trigger;
-	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//~  This function will add/remove the faction label of the saved editor state. Thus displaying the correct faction entities in the menu
 	protected void AddRemoveFactionLabel(SCR_CampaignFaction faction, bool addLabel)
 	{
 		if (!faction)
 			return;
-		
+
 		m_ContentBrowserManager.AddRemoveLabelOfPersistentBrowserState(faction.GetFactionLabel(), addLabel);
 	}
-	
-	//! Get the trigger on server too as it's needed to get a temporary provider for supplies changes
-	override protected void EOnEditorActivateServer()
-	{
-		SetTrigger();
-	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//! Make the area around where is possibel to build composition visible for player
+	ScriptedGameTriggerEntity SpawnClientTrigger()
+	{
+		BaseGameMode gameMode = GetGame().GetGameMode();
+
+		SCR_CampaignBuildingManagerComponent buildingManagerComponent = SCR_CampaignBuildingManagerComponent.Cast(gameMode.FindComponent(SCR_CampaignBuildingManagerComponent));
+		if (!buildingManagerComponent)
+			return null;
+
+		IEntity provider = GetProviderEntity();
+		if (!provider)
+			return null;
+
+		Resource resource = Resource.Load(buildingManagerComponent.GetClientTriggerResourceName());
+		if (!resource || !resource.IsValid())
+			return null;
+
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		params.Parent = provider;
+
+		return ScriptedGameTriggerEntity.Cast(GetGame().SpawnEntityPrefab(resource, provider.GetWorld(), params));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Make the area around where is possible to build composition visible for player
 	override protected void EOnEditorActivate()
 	{
-		SetTrigger();
-		
-		if (m_Trigger)
-			m_Trigger.SetFlags(EntityFlags.VISIBLE, false);
-		
+		if (!System.IsConsoleApp() && GetGame().GetPlayerController())
+		{
+			ScriptedGameTriggerEntity trigger = SpawnClientTrigger();
+
+			if (trigger)
+			{
+				SCR_CampaignBuildingProviderComponent providerComponenet = GetProviderComponent();
+				if (providerComponenet)
+					trigger.SetSphereRadius(providerComponenet.GetBuildingRadius());
+				
+				SCR_CampaignBuildingAreaMeshComponent areaMeshComponent = SCR_CampaignBuildingAreaMeshComponent.Cast(trigger.FindComponent(SCR_CampaignBuildingAreaMeshComponent));
+				if (areaMeshComponent && areaMeshComponent.ShouldEnableFrameUpdateDuringEditor())
+				{
+					areaMeshComponent.ActivateEveryFrame();
+					areaMeshComponent.GenerateAreaMesh();
+				}
+
+				trigger.SetFlags(EntityFlags.VISIBLE, false);
+
+			}
+		}
+
 		m_ContentBrowserManager = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent));
-		
+
 		FactionAffiliationComponent factionComponent = GetProviderFactionComponent();
 		if (factionComponent)
 		{
 			// here we have to check both Affiliated faction and Default affiliated faction in case of vehicles. It's because vehicles can't have set a affiliated faction if no one is sitting inside (to prevent AI to shoot at empty vehicles)
 			Faction buildingFaction = factionComponent.GetAffiliatedFaction();
-			
+
 			if (!buildingFaction)
 				buildingFaction = factionComponent.GetDefaultAffiliatedFaction();
-			
+
 			if (buildingFaction)
 				AddRemoveFactionLabel(SCR_CampaignFaction.Cast(buildingFaction), true);
 		}
-		
+
 		//~ Todo: Fix first tab being broken
 		//~ Hotfix for first tab being broken
 		m_ContentBrowserManager.SetStateTabVisible(0, false);
-		
+
 		//~ Hide services in base show if outside base. Make sure given index is 0 if above hotfix is removed
 		m_ContentBrowserManager.SetStateTabVisible(1, SCR_CampaignBase.Cast(GetProviderEntity()) != null);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorOpenServer()
 	{
 		SCR_CampaignBase base = SCR_CampaignBase.Cast(GetProviderEntity());
-		if (!base && m_Trigger)
-			GetGame().GetWorld().QueryEntitiesBySphere(GetProviderEntity().GetOrigin(), m_Trigger.GetSphereRadius(), AssociateCompositionsToProvider, null, EQueryEntitiesFlags.ALL);
+		if (base)
+			return;
+
+		GetGame().GetWorld().QueryEntitiesBySphere(GetProviderEntity().GetOrigin(), GetProviderComponent().GetBuildingRadius(), AssociateCompositionsToProvider, null, EQueryEntitiesFlags.ALL);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorCloseServer()
 	{
+		// In case the provider of the building was the base, don't remove it's stamp from component. So the composition can't be build from another providers
 		SCR_CampaignBase base = SCR_CampaignBase.Cast(GetProviderEntity());
-		if (!base && m_Trigger)
-			GetGame().GetWorld().QueryEntitiesBySphere(GetProviderEntity().GetOrigin(), m_Trigger.GetSphereRadius(), UnassignCompositionProvider, null, EQueryEntitiesFlags.ALL);
+		if (base)
+			return;
+
+		GetGame().GetWorld().QueryEntitiesBySphere(GetProviderEntity().GetOrigin(), GetProviderComponent().GetBuildingRadius(), UnassignCompositionProvider, null, EQueryEntitiesFlags.ALL);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	bool AssociateCompositionsToProvider(IEntity ent)
 	{
 		SCR_CampaignBuildingCompositionComponent comp = SCR_CampaignBuildingCompositionComponent.Cast(ent.FindComponent(SCR_CampaignBuildingCompositionComponent));
 		if (!comp)
 			return true;
-		
+
 		// compositioni has no owner, set one.
 		if (comp.GetProviderEntity() == null)
 			comp.SetProviderEntityServer(GetProviderEntity());
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	bool UnassignCompositionProvider(IEntity ent)
 	{
 		SCR_CampaignBuildingCompositionComponent comp = SCR_CampaignBuildingCompositionComponent.Cast(ent.FindComponent(SCR_CampaignBuildingCompositionComponent));
 		if (!comp)
 			return true;
-		
+
 		if (comp.GetProviderEntity() == GetProviderEntity())
-			comp.SetProviderEntityServer(null); 
-		
+			comp.SetProviderEntityServer(null);
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Hide the area of building and remove the active faction
 	override protected void EOnEditorDeactivate()
 	{
-		if (m_Trigger)
-			m_Trigger.ClearFlags(EntityFlags.VISIBLE, false);
-		
+		SCR_FreeRoamBuildingClientTriggerEntity trigger = GetTrigger();
+		if (trigger)
+		{
+			trigger.ClearFlags(EntityFlags.VISIBLE, false);
+
+			SCR_CampaignBuildingAreaMeshComponent areaMeshComponent = SCR_CampaignBuildingAreaMeshComponent.Cast(trigger.FindComponent(SCR_CampaignBuildingAreaMeshComponent));
+			if (areaMeshComponent && areaMeshComponent.ShouldEnableFrameUpdateDuringEditor())
+			{
+				areaMeshComponent.DeactivateEveryFrame();
+			}
+		}
+
 		FactionAffiliationComponent factionComponent = GetProviderFactionComponent();
 		if (factionComponent)
 		{
 			// here we have to check both Affiliated faction and Default affiliated faction in case of vehicles. It's because vehicles can't have set a affiliated faction if no one is sitting inside (to prevent AI to shoot at empty vehicles)
 			Faction buildingFaction = factionComponent.GetAffiliatedFaction();
-			
+
 			if (!buildingFaction)
 				buildingFaction = factionComponent.GetDefaultAffiliatedFaction();
-			
+
 			if (buildingFaction)
 				AddRemoveFactionLabel(SCR_CampaignFaction.Cast(buildingFaction), false);
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	// Return the entity which belongs to currently active provider componenet.
+	IEntity GetProviderEntity()
+	{
+		return GetProviderComponent().GetOwner();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Set a provider, loaded from RPL ID
 	void SetProviderFromRplID()
@@ -264,64 +343,80 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			RplComponent rplComp = RplComponent.Cast(Replication.FindItem(m_aProvidersRplIds[i]));
 			if (!rplComp)
 				continue;
-			
-			AddProviderEntityEditorComponent(rplComp.GetEntity());
+
+			IEntity provider = rplComp.GetEntity();
+			if (!provider)
+				continue;
+
+			SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+			if (!providerComponent)
+				continue;
+
+			AddProviderEntityEditorComponent(providerComponent);
 			m_aProvidersRplIds.RemoveOrdered(i);
 			count--;
 		}
-		
+
 		if (m_aProvidersRplIds.IsEmpty())
-			SCR_FreeCampaignBuildingTrigger.GetOnProviderCreated().Remove(SetProviderFromRplID);	
+			SCR_CampaignBuildingProviderComponent.GetOnProviderCreated().Remove(SetProviderFromRplID);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override protected bool RplSave(ScriptBitWriter writer)
 	{
 		RplId entityRplID;
-		int count = m_aProviderEntities.Count();  
-		
+		int count = m_aProvidersComponents.Count();
+
 		writer.WriteInt(count);
 		for (int i = 0; i < count; i++)
 		{
-			RplComponent rplCmp = RplComponent.Cast(m_aProviderEntities[i].FindComponent(RplComponent));
+			IEntity provider = m_aProvidersComponents[i].GetOwner();
+			if (!provider)
+				continue;
+
+			RplComponent rplCmp = RplComponent.Cast(provider.FindComponent(RplComponent));
 			entityRplID = rplCmp.Id();
 			writer.WriteRplId(entityRplID);
 		}
-		
-		return true; 
+
+		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override protected bool RplLoad(ScriptBitReader reader)
 	{
 		RplId entityRplID;
 		IEntity ent;
- 		int count;
+		int count;
 		reader.ReadInt(count);
-		
+
 		for (int i = 0; i < count; i++)
 		{
 			reader.ReadRplId(entityRplID);
 			if (!entityRplID.IsValid())
 				continue;
-			
+
 			RplComponent rplComp = RplComponent.Cast(Replication.FindItem(entityRplID));
 			if (!rplComp)
 			{
 				m_aProvidersRplIds.Insert(entityRplID);
 				continue;
 			}
-				
+
 			ent = IEntity.Cast(rplComp.GetEntity());
-			m_aProviderEntities.Insert(ent);
+			if (!ent)
+				continue;
+
+			SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(ent.FindComponent(SCR_CampaignBuildingProviderComponent));
+			AddProviderEntityEditorComponent(providerComponent);
 		}
 
 		if (!m_aProvidersRplIds.IsEmpty())
-			SCR_FreeCampaignBuildingTrigger.GetOnProviderCreated().Insert(SetProviderFromRplID);
-		
-		if (!m_aProviderEntities.IsEmpty())
-			GetOnProviderSet().Invoke(m_aProviderEntities[0]);
-		
+			SCR_CampaignBuildingProviderComponent.GetOnProviderCreated().Insert(SetProviderFromRplID);
+
+		if (!m_aProvidersComponents.IsEmpty())
+			GetOnProviderChanged().Invoke(m_aProvidersComponents[0]);
+
 		return true;
 	}
-}
+};

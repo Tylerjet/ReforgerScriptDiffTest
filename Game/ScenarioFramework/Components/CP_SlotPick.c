@@ -12,74 +12,74 @@ class CP_SlotPick : CP_SlotTask
 {
 	
 	//TODO: make title and description as Tuple2
-	[Attribute( defvalue: "", desc: "Name of the task in list of tasks ( item picked up  )", category: "Task" )]		
+	[Attribute(defvalue: "", desc: "Name of the task in list of tasks (item picked up )", category: "Task")]		
 	protected string 		m_sTaskTitleUpdated1;
 	
-	[Attribute( defvalue: "", desc: "Description of the task ( item picked up )", category: "Task",  )]			//TODO: make config, memory
+	[Attribute(defvalue: "", desc: "Description of the task (item picked up)", category: "Task", )]			//TODO: make config, memory
 	protected string 		m_sTaskDescriptionUpdated1;
 	
-	[Attribute( defvalue: "", desc: "Name of the task in list of tasks ( item dropped )", category: "Task" )]		
+	[Attribute(defvalue: "", desc: "Name of the task in list of tasks (item dropped)", category: "Task")]		
 	protected string 		m_sTaskTitleUpdated2;
 	
-	[Attribute( defvalue: "", desc: "Description of the task ( item dropped )", category: "Task",  )]
+	[Attribute(defvalue: "", desc: "Description of the task (item dropped)", category: "Task", )]
 	protected string 		m_sTaskDescriptionUpdated2;
 	
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetTaskTitle( int iState = 0 ) 
+	override string GetTaskTitle(int iState = 0) 
 	{ 
-		if ( iState == 0 )
+		if (iState == 0)
 			return super.GetTaskTitle();
-		else if ( iState == 1 )
+		else if (iState == 1)
 			return m_sTaskTitleUpdated1;	
-		else if ( iState == 2 )
+		else if (iState == 2)
 			return m_sTaskTitleUpdated2;
-		else if ( iState == 4 )
+		else if (iState == 4)
 			return super.GetTaskTitle();
-		else if ( iState == 5 )
+		else if (iState == 5)
 			return m_sTaskTitleUpdated1;
-		else if ( iState == 6 )
+		else if (iState == 6)
 			return m_sTaskTitleUpdated2; 
 		return string.Empty;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetTaskDescription( int iState = 0 )	
+	override string GetTaskDescription(int iState = 0)	
 	{ 
-		if ( iState == 0 )
+		if (iState == 0)
 			return super.GetTaskDescription();
-		else if ( iState == 1 )
+		else if (iState == 1)
 			return m_sTaskDescriptionUpdated1;	
-		else if ( iState == 2 )
+		else if (iState == 2)
 			return m_sTaskDescriptionUpdated2;
-		else if ( iState == 4 )
+		else if (iState == 4)
 			return super.GetTaskDescription();
-		else if ( iState == 5 )
+		else if (iState == 5)
 			return m_sTaskDescriptionUpdated1;
-		else if ( iState == 6 )
+		else if (iState == 6)
 			return m_sTaskDescriptionUpdated2; 
 		return string.Empty;
 	}	
 	
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init( CP_Area pArea = null, CP_EActivationType EActivation = CP_EActivationType.SAME_AS_PARENT, bool bInit = true )
+	override void Init(CP_Area pArea = null, CP_EActivationType EActivation = CP_EActivationType.SAME_AS_PARENT, bool bInit = true)
 	{
-		if ( m_EActivationType != EActivation )
+		if (m_EActivationType != EActivation)
 			return;
-		super.Init( pArea, EActivation );
-		CP_LayerTaskDeliver pLayer = CP_LayerTaskDeliver.Cast( GetParentTaskLayer() );
-		if ( !pLayer )
+		super.Init(pArea, EActivation);
+		CP_LayerTaskDeliver pLayer = CP_LayerTaskDeliver.Cast(GetParentTaskLayer());
+		if (!pLayer)
 			return;
 		string sTaskName;
 		CP_Task pTask = pLayer.GetTask();
-		if ( !pTask )
+		if (!pTask)
 			sTaskName = pLayer.GetOwner().GetName();
 		else
-			sTaskName = pTask.GetTitleText();
+			sTaskName = pTask.GetTitle();
 		
-		if ( m_pEntity && m_pEntity.GetPrefabData() )
-			PrintFormat( "CP: ->Task: The %1 is set as the subject of delivery for task %2.", m_pEntity.GetPrefabData().GetPrefabName(), sTaskName );
+		if (m_pEntity && m_pEntity.GetPrefabData())
+			PrintFormat("CP: ->Task: The %1 is set as the subject of delivery for task %2.", m_pEntity.GetPrefabData().GetPrefabName(), sTaskName);
 	}
 					
 	//------------------------------------------------------------------------------------------------

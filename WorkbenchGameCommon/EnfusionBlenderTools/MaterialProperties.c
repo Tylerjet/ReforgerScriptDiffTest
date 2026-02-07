@@ -33,7 +33,7 @@ class MaterialPropertiesUtils
 				
 				
 		ematCont = resource.GetResource().ToBaseContainer();
-		
+
 		
 		//Main loop for props		
 		for(int i = 0; i < ematCont.GetNumVars(); i++)
@@ -64,7 +64,14 @@ class MaterialPropertiesUtils
 				if(temp.Contains(".edds"))
 				{
 					//If texture
-					props.mat_props += tUtils.GetEdds(temp, false);
+					if(tUtils.GetEdds(temp, false) == "")
+					{
+						props.mat_props += ("InvalidGUID" + "|" + "PBRBasic" + "|" + "TosRGB" + "|" + "RedGreenHQCompression" + " ");
+					}
+					else
+					{
+						props.mat_props += tUtils.GetEdds(temp, false);
+					}
 				}
 				else if(temp.Contains(" "))
 				{

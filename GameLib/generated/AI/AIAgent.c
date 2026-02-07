@@ -40,7 +40,6 @@ class AIAgent: GenericController
 	proto external AIControlComponent GetControlComponent();
 	proto external AIBaseMovementComponent GetMovementComponent();
 	proto external AIBaseAimingComponent GetAimingComponent();
-	proto external AIPathfindingComponent GetPathfindingComponent();
 	
 	// callbacks
 	

@@ -12,12 +12,10 @@ class SCR_CampaignTutorialStage62 : SCR_BaseCampaignTutorialStage
 		m_fWaypointHeightOffset = 0;
 		m_bCheckWaypoint = false;
 		
-		/*if (IsBuildingModeOpen())
+		if (IsBuildingModeOpen())
 			SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingCheckpoint" + CreateString("#AR-KeybindEditor_Interface", "EditorToggle"), duration: -1);
 		else
-			SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingCheckpoint", duration: -1);*/
-		
-		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BoardTruck", duration: -1);
+			SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_BuildingCheckpoint", duration: -1);
 		
 		m_TutorialComponent.SetWaypointTruckPosition(SCR_ETutorialSupplyTruckWaypointMode.DRIVER);
 	}

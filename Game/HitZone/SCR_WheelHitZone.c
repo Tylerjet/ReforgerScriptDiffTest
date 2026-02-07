@@ -3,7 +3,7 @@ enum EWheelDamageState: EDamageState
 	PUNCTURED = 3
 };
 
-class SCR_WheelHitZone : ScriptedHitZone
+class SCR_WheelHitZone : SCR_DestructibleHitzone
 {
 	[Attribute( defvalue: "-1", uiwidget: UIWidgets.Auto, desc: "Wheel ID", category: "Wheel Damage")]
 	protected int m_iWheelId;
@@ -38,13 +38,25 @@ class SCR_WheelHitZone : ScriptedHitZone
 		super.OnInit(pOwnerEntity, pManagerComponent);
 		
 		UpdateWheelState();
+		UpdateSound();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void OnDamageStateChanged()
 	{
 		super.OnDamageStateChanged();
 	
 		UpdateWheelState();
+		UpdateSound();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetWheelIndex(int index)
+	{
+		m_iWheelId = index;
+	
+		UpdateWheelState();
+		UpdateSound();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -94,14 +106,25 @@ class SCR_WheelHitZone : ScriptedHitZone
 		simulation.WheelSetRollingDrag(m_iWheelId, drag);
 		
 		// Need to wake physics up when wheel becomes destroyed
-		float damageSignalValue;
 		if (state == EWheelDamageState.PUNCTURED || state == EWheelDamageState.DESTROYED)
-		{
 			WakeUpPhysics();
-			damageSignalValue = 1;
-		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Update sound effects based on damage state changes
+	void UpdateSound()
+	{
+		IEntity owner = GetOwner();
+		if (!owner)
+			return;
+		
+		IEntity parent = SCR_EntityHelper.GetMainParent(owner, true);
 		
 		// Set TireDamage signal
+		float damageSignalValue;
+		if (GetDamageState() == EWheelDamageState.PUNCTURED)
+			damageSignalValue = 1;
+		
 		SignalsManagerComponent signalManager = SignalsManagerComponent.Cast(parent.FindComponent(SignalsManagerComponent));
 		if (signalManager)
 		{
@@ -109,10 +132,6 @@ class SCR_WheelHitZone : ScriptedHitZone
 			if (damageSignal != -1)
 				signalManager.SetSignalValue(damageSignal, damageSignalValue);
 		}
-		
-		// Sound only makes sense when there is a collider assigned
-		if (!HasColliderNodes())
-			return;
 		
 		// Tire puncture sound
 		SoundComponent soundComponent = SoundComponent.Cast(parent.FindComponent(SoundComponent));
@@ -130,28 +149,38 @@ class SCR_WheelHitZone : ScriptedHitZone
 		}
 		else if (!soundComponent.IsHandleValid(m_iDamagedAudioHandle))
 		{
-			// TODO: Sort position offset also for slotted wheel entity
-			Physics physics = parent.GetPhysics();
+			Physics physics = owner.GetPhysics();
 			if (!physics)
 				return;
 			
-			// Get collider geometry
-			int colliderID = -1;
-			array<string> colliderNames = {};
-			GetAllColliderNames(colliderNames);
-			foreach (string colliderName: colliderNames)
+			vector offset;
+			if (!HasColliderNodes())
 			{
-				colliderID = physics.GetGeom(colliderNames[0]);
-				if (colliderID != -1)
-					break;
+				// Use center of mass of whole entity
+				offset = physics.GetCenterOfMass();
+				offset = owner.CoordToParent(offset);
+			}
+			else
+			{
+				// Get collider geometry
+				int colliderID = -1;
+				array<string> colliderNames = {};
+				GetAllColliderNames(colliderNames);
+				foreach (string colliderName: colliderNames)
+				{
+					colliderID = physics.GetGeom(colliderNames[0]);
+					if (colliderID != -1)
+						break;
+				}
+				
+				if (colliderID == -1)
+					return;
+				
+				offset = physics.GetGeomWorldPosition(colliderID);
 			}
 			
-			if (colliderID == -1)
-				return;
-			
-			vector transform[4] = {};
-			physics.GetGeomTransform(colliderID, transform);
-			m_iDamagedAudioHandle = soundComponent.SoundEventOffset(SCR_SoundEvent.SOUND_TIRE_PUNCTURE, transform[3]);
+			offset = parent.CoordToLocal(offset);
+			m_iDamagedAudioHandle = soundComponent.SoundEventOffset(SCR_SoundEvent.SOUND_TIRE_PUNCTURE, offset);
 		}
 	}
 	

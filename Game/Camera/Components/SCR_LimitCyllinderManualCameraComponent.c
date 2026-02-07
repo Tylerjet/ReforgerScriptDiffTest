@@ -8,10 +8,10 @@ Limit camera movement within specific cyllindrical area
 class SCR_LimitCylinderManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute(defvalue: "1")]
-	private float m_fRadius;
+	protected float m_fRadius;
 	
 	[Attribute(defvalue: "2")]
-	private float m_fHeightMinor;
+	protected float m_fHeightMinor;
 	
 	private float m_fRadiusSq;
 	private vector m_vPos;

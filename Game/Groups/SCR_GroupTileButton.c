@@ -127,14 +127,20 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		if (!m_GroupComponent)
 			return;
 		
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (!playerController)
+			return;
+		
+		
 		SCR_AIGroup group = m_GroupManager.FindGroup(m_iGroupID);
 		if (!group)
 			return;
 		
 		m_BaseTaskManager = GetTaskManager();
+		if (m_BaseTaskManager)
+			m_BaseTaskManager.s_OnTaskUpdate.Insert(RefreshPlayers);		
 		
 		group.GetOnMemberStateChange().Insert(RefreshPlayers);
-		m_BaseTaskManager.s_OnTaskUpdate.Insert(RefreshPlayers);
 		
 		RichTextWidget squadName = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("Callsign"));
 		if (squadName)
@@ -142,11 +148,11 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			string groupName = group.GetCustomNameWithOriginal();
 			string company, platoon, squad, character, format;
 			group.GetCallsigns(company, platoon, squad, character, format);
-			if (groupName.IsEmpty())
+			if (groupName.IsEmpty() || !playerController.CanViewContentCreatedBy(group.GetNameAuthorID()))
 			{
 				squadName.SetTextFormat(format, company, platoon, squad, character);
 			}
-			else
+			else 
 			{
 				company = WidgetManager.Translate(company);
 				groupName = group.GetCustomName() + " (" + string.Format(format, company, platoon, squad, character) + ")";
@@ -170,7 +176,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		if (background)
 			background.SetVisible(m_GroupComponent.GetSelectedGroupID() == m_iGroupID);
 		
-		if (group.IsPlayerInGroup(GetGame().GetPlayerController().GetPlayerId()))
+		if (group.IsPlayerInGroup(playerController.GetPlayerId()))
 			squadName.SetColor(m_PlayerNameSelfColor);
 		
 		ImageWidget privateIcon = ImageWidget.Cast(GetRootWidget().FindAnyWidget("PrivateIcon"));
@@ -186,6 +192,10 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	{
 		PlayerManager playerManager = GetGame().GetPlayerManager();
 		if (!m_GroupFaction || !m_GroupManager || !playerManager)
+			return;
+		
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (!playerController)
 			return;
 		
 		if (m_ParentSubMenu == null)
@@ -229,7 +239,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		if (!s_PlayerGroupController)
 			return;
 		
-		if (!s_PlayerGroupController.CanPlayerJoinGroup(GetGame().GetPlayerController().GetPlayerId() , m_GroupManager.FindGroup(m_iGroupID)) )
+		if (!s_PlayerGroupController.CanPlayerJoinGroup(playerController.GetPlayerId() , m_GroupManager.FindGroup(m_iGroupID)) )
 			m_JoinGroupButton.SetEnabled(false);
 		else
 			m_JoinGroupButton.SetEnabled(true);
@@ -237,7 +247,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		string groupName = group.GetCustomNameWithOriginal();
 		string company, platoon, squad, character, format;
 		group.GetCallsigns(company, platoon, squad, character, format);
-		if (groupName.IsEmpty())
+		if (groupName.IsEmpty() || !playerController.CanViewContentCreatedBy(group.GetNameAuthorID()))
 		{
 			squadName.SetTextFormat(format, company, platoon, squad, character);
 		}

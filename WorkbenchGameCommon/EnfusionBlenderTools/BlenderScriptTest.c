@@ -6,7 +6,7 @@ class BlenderScriptTestRequest: JsonApiStruct
 	{
 		RegV("Input");
 	}
-};
+}
 
 class BlenderScriptTestResponse: JsonApiStruct
 {
@@ -16,7 +16,7 @@ class BlenderScriptTestResponse: JsonApiStruct
 	{
 		RegV("Output");
 	}
-};
+}
 
 class BlenderScriptTest: NetApiHandler
 {

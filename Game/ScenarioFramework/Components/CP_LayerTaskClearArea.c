@@ -9,12 +9,12 @@ class CP_LayerTaskClearArea : CP_LayerTask
 	//------------------------------------------------------------------------------------------------
 	override bool SetSupportEntity()
 	{
-		if ( !GetTaskManager().FindSupportEntity( SCR_CP_TaskClearAreaSupportEntity ) )
+		if (!GetTaskManager().FindSupportEntity(SCR_CP_TaskClearAreaSupportEntity))
 		{
-			Print( "CP: Task Destroy support entity not found in the world, task won't be created!" );
+			Print("CP: Task Destroy support entity not found in the world, task won't be created!");
 			return false;
 		}
-		m_pSupportEntity = SCR_CP_TaskClearAreaSupportEntity.Cast( GetTaskManager().FindSupportEntity( SCR_CP_TaskClearAreaSupportEntity ) );
+		m_pSupportEntity = SCR_CP_TaskClearAreaSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CP_TaskClearAreaSupportEntity));
 		return m_pSupportEntity != null;	
 	}
 	

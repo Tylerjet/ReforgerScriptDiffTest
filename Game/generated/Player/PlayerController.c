@@ -69,6 +69,10 @@ class PlayerController: GenericController
 	Determine if the specified player is able to communicate with this PC using voice.
 	*/
 	proto external PermissionState GetPlayerMutedState(int playerId);
+	/*!
+	Determine if this PC can view content created by specified player.
+	*/
+	proto external bool CanViewContentCreatedBy(int playerId);
 	
 	// callbacks
 	

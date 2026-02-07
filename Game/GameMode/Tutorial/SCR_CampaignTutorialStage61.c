@@ -11,8 +11,7 @@ class SCR_CampaignTutorialStage61 : SCR_BaseCampaignTutorialStage
 		RegisterWaypoint("WP_CONFLICT_BUILDING_LOAD_SUPPLY");
 		m_fWaypointHeightOffset = 0;
 		m_bCheckWaypoint = false;
-		//SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_SuppliesLoadTruck" + CreateString("#AR-KeybindEditor_Interface", "EditorToggle"), duration: -1);
-		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_SuppliesLoadTruck", duration: -1);
+		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_SuppliesLoadTruck" + CreateString("#AR-KeybindEditor_Interface", "EditorToggle"), duration: -1);
 		m_TutorialComponent.SetWaypointTruckPosition(SCR_ETutorialSupplyTruckWaypointMode.BACK);
 	}
 	

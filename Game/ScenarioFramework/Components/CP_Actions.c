@@ -2,23 +2,23 @@
 //------------------------------------------------------------------------------------------------
 class SCR_ContainerActionTitle : BaseContainerCustomTitle
 {
-	override bool _WB_GetCustomTitle( BaseContainer source, out string title )
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		title = source.GetClassName();
-		title.Replace( "CP_Action", "" );
+		title.Replace("CP_Action", "");
 		string sOriginal = title;
-		SplitStringByUpperCase( sOriginal, title );
+		SplitStringByUpperCase(sOriginal, title);
 		return true;
 	}
 	
-	protected void SplitStringByUpperCase( string sInput, out string sOutput )
+	protected void SplitStringByUpperCase(string sInput, out string sOutput)
 	{
 		sOutput = "";
 		int m;
-		for ( int i = 0; i < sInput.Length(); i++ )
+		for (int i = 0; i < sInput.Length(); i++)
 		{
-			m = sInput.ToAscii( i );
-			if ( m < 97 )	// lower case 
+			m = sInput.ToAscii(i);
+			if (m < 97)	// lower case 
 				sOutput += " ";
 			sOutput += m.AsciiToString();
 		}
@@ -28,52 +28,52 @@ class SCR_ContainerActionTitle : BaseContainerCustomTitle
 //------------------------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------------------------
-//TODO: make this a generic action which can be used anywhere anytime ( i.e. on task finished, etc )
+//TODO: make this a generic action which can be used anywhere anytime (i.e. on task finished, etc)
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class CP_ActionBase
 {	
 	protected IEntity				m_pEntity;
 	
 	//------------------------------------------------------------------------------------------------
-	void Init( IEntity pEnt )
+	void Init(IEntity pEnt)
 	{
-		if ( !SCR_BaseTriggerEntity.Cast( pEnt ) )
+		if (!SCR_BaseTriggerEntity.Cast(pEnt))
 			return;
 		
 		m_pEntity = pEnt;
-		ScriptInvoker pOnActivateInvoker = SCR_BaseTriggerEntity.Cast( pEnt ).GetOnActivate();
-		if ( pOnActivateInvoker )
-			pOnActivateInvoker.Insert( OnActivate );
+		ScriptInvoker pOnActivateInvoker = SCR_BaseTriggerEntity.Cast(pEnt).GetOnActivate();
+		if (pOnActivateInvoker)
+			pOnActivateInvoker.Insert(OnActivate);
 		
-		ScriptInvoker pOnDeactivateInvoker = SCR_BaseTriggerEntity.Cast( pEnt ).GetOnDeactivate();
-		if ( pOnDeactivateInvoker )
-			pOnDeactivateInvoker.Insert( OnActivate );		//registering OnDeactivate to OnActivate - we need both changes 
+		ScriptInvoker pOnDeactivateInvoker = SCR_BaseTriggerEntity.Cast(pEnt).GetOnDeactivate();
+		if (pOnDeactivateInvoker)
+			pOnDeactivateInvoker.Insert(OnActivate);		//registering OnDeactivate to OnActivate - we need both changes 
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	void OnActivate( IEntity pObject );
+	void OnActivate(IEntity pObject);
 	
 	//------------------------------------------------------------------------------------------------
-	protected void SpawnObjects( notnull array<string> aObjectsNames, CP_EActivationType eActivationType )
+	protected void SpawnObjects(notnull array<string> aObjectsNames, CP_EActivationType eActivationType)
 	{ 
 		IEntity pObj;
 		CP_LayerBase pLayer;
 		
-		foreach ( string sObjectName : aObjectsNames )
+		foreach (string sObjectName : aObjectsNames)
 		{
-			pObj = GetGame().GetWorld().FindEntityByName( sObjectName );
-			if ( !pObj )
+			pObj = GetGame().GetWorld().FindEntityByName(sObjectName);
+			if (!pObj)
 			{
-				PrintFormat( "CP: Can't spawn object set in slot %1. Slot doesn't exist", sObjectName );
+				PrintFormat("CP: Can't spawn object set in slot %1. Slot doesn't exist", sObjectName);
 				continue;
 			}
-			pLayer = CP_LayerBase.Cast( pObj.FindComponent( CP_LayerBase ) );
-			if ( !pLayer )
+			pLayer = CP_LayerBase.Cast(pObj.FindComponent(CP_LayerBase));
+			if (!pLayer)
 			{
-				PrintFormat( "CP: Can't spawn object - the slot doesn't have CP_LayerBase component", sObjectName );
+				PrintFormat("CP: Can't spawn object - the slot doesn't have CP_LayerBase component", sObjectName);
 				continue;
 			}
-			pLayer.Init( null, eActivationType, false );
+			pLayer.Init(null, eActivationType, false);
 		}
 	}
 }	
@@ -82,25 +82,25 @@ class CP_ActionBase
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class CP_ActionIncrementCounter : CP_ActionBase
 {
-	[Attribute( defvalue: "", UIWidgets.EditBox, desc: "Counter to increment", category: "")];
+	[Attribute(defvalue: "", UIWidgets.EditBox, desc: "Counter to increment", category: "")];
 	protected string				m_sCounterName;
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init( IEntity pEnt )
+	override void Init(IEntity pEnt)
 	{
-		if ( !m_sCounterName )
+		if (!m_sCounterName)
 			return;
-		super.Init( pEnt );		
+		super.Init(pEnt);		
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnActivate( IEntity pObject )
+	override void OnActivate(IEntity pObject)
 	{
-		IEntity pEnt = GetGame().GetWorld().FindEntityByName( m_sCounterName );
-		if ( !pEnt )
+		IEntity pEnt = GetGame().GetWorld().FindEntityByName(m_sCounterName);
+		if (!pEnt)
 			return;
-		CP_Logic pCounter = CP_Logic.Cast( pEnt.FindComponent( CP_Logic ) );
-		if ( !pCounter )
+		CP_Logic pCounter = CP_Logic.Cast(pEnt.FindComponent(CP_Logic));
+		if (!pCounter)
 		{
 			string className = pEnt.ClassName();
 			if (className == "CP_LogicCounter")
@@ -114,7 +114,7 @@ class CP_ActionIncrementCounter : CP_ActionBase
 				return;
 			}
 		}
-		pCounter.OnInput( 1 );
+		pCounter.OnInput(1);
 	}	
 }
 
@@ -122,13 +122,13 @@ class CP_ActionIncrementCounter : CP_ActionBase
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class CP_ActionSpawnObjects : CP_ActionBase
 {
-	[Attribute( defvalue: "", UIWidgets.EditComboBox, desc: "These objects will spawn once the trigger becomes active.", category: "")];
+	[Attribute(defvalue: "", UIWidgets.EditComboBox, desc: "These objects will spawn once the trigger becomes active.", category: "")];
 	protected ref array<string> 	m_sNameOfObjectsToSpawnOnActivation;
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnActivate( IEntity pObject )
+	override void OnActivate(IEntity pObject)
 	{
-		SpawnObjects( m_sNameOfObjectsToSpawnOnActivation, CP_EActivationType.ON_TRIGGER_ACTIVATION );
+		SpawnObjects(m_sNameOfObjectsToSpawnOnActivation, CP_EActivationType.ON_TRIGGER_ACTIVATION);
 	}
 }
 
@@ -137,10 +137,10 @@ class CP_ActionSpawnObjects : CP_ActionBase
 class CP_ActionEndMission : CP_ActionBase
 {
 	//------------------------------------------------------------------------------------------------
-	override void OnActivate( IEntity pObject )
+	override void OnActivate(IEntity pObject)
 	{
-		SCR_GameModeSFManager pManager = SCR_GameModeSFManager.Cast( GetGame().GetGameMode().FindComponent( SCR_GameModeSFManager ) );
-		if ( !pManager )
+		SCR_GameModeSFManager pManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
+		if (!pManager)
 			return;
 		pManager.Finish();
 	}
@@ -157,7 +157,7 @@ class CP_ActionCompareCounterAndExecute : CP_ActionBase
 	[Attribute(desc: "Value")];
 	protected int							m_iValue;
 
-	[Attribute( defvalue: "", UIWidgets.EditBox, desc: "Counter to increment", category: "")];
+	[Attribute(defvalue: "", UIWidgets.EditBox, desc: "Counter to increment", category: "")];
 	protected string						m_sCounterName;
 	
 	[Attribute(defvalue: "1", desc: "What to do once counter is reached", UIWidgets.Auto, category: "OnActivate")];
@@ -179,13 +179,13 @@ class CP_ActionCompareCounterAndExecute : CP_ActionBase
 			counterValue = logicCounter.m_iCnt;
 		}	
 		
-		if ( 
-				(( m_EOperatorCompare == CP_EOperatorCompare.LESS_THAN) 			&& (counterValue < m_iValue )) 	||
-				(( m_EOperatorCompare == CP_EOperatorCompare.LESS_OR_EQUAL) 		&& (counterValue <= m_iValue )) ||
-				(( m_EOperatorCompare == CP_EOperatorCompare.EQUAL) 				&& (counterValue == m_iValue )) ||
-				(( m_EOperatorCompare == CP_EOperatorCompare.GREATER_OR_EQUAL) 		&& (counterValue >= m_iValue )) ||
-				(( m_EOperatorCompare == CP_EOperatorCompare.GREATER_THEN) 			&& (counterValue > m_iValue )) 
-			)
+		if (
+				((m_EOperatorCompare == CP_EOperatorCompare.LESS_THAN) 			&& (counterValue < m_iValue)) 	||
+				((m_EOperatorCompare == CP_EOperatorCompare.LESS_OR_EQUAL) 		&& (counterValue <= m_iValue)) ||
+				((m_EOperatorCompare == CP_EOperatorCompare.EQUAL) 				&& (counterValue == m_iValue)) ||
+				((m_EOperatorCompare == CP_EOperatorCompare.GREATER_OR_EQUAL) 		&& (counterValue >= m_iValue)) ||
+				((m_EOperatorCompare == CP_EOperatorCompare.GREATER_THEN) 			&& (counterValue > m_iValue)) 
+		)
 		{
 			foreach (CP_ActionBase actions : m_aActions)
 				actions.OnActivate(null);
@@ -223,14 +223,14 @@ class CP_ActionShowHint : CP_ActionBase
 	protected string		m_sText;
 	
 		
-	[Attribute( defvalue: "15" )];
+	[Attribute(defvalue: "15")];
 	protected int			m_iTimeout;
 	
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnActivate( IEntity pObject )
+	override void OnActivate(IEntity pObject)
 	{
-		SCR_HintManagerComponent.ShowCustomHint( m_sText, m_sTitle, m_iTimeout );
+		SCR_HintManagerComponent.ShowCustomHint(m_sText, m_sTitle, m_iTimeout);
 	}
 }
 
@@ -239,25 +239,25 @@ class CP_ActionShowHint : CP_ActionBase
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class CP_ActionSpawnClosestObjectFromList : CP_ActionBase
 {
-	[Attribute( desc: "Closest to what - use getter" )];
+	[Attribute(desc: "Closest to what - use getter")];
 	protected ref CP_Get		m_pGetter;
 	
-	[Attribute( defvalue: "", UIWidgets.EditComboBox, desc: "The closest one from the list will be spawned", category: "")];
+	[Attribute(defvalue: "", UIWidgets.EditComboBox, desc: "The closest one from the list will be spawned", category: "")];
 	protected ref array<string> 	m_sListOfObjects;
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnActivate( IEntity pObject )
+	override void OnActivate(IEntity pObject)
 	{
 		float fDistance = float.MAX;
-		if ( !m_pGetter )
+		if (!m_pGetter)
 		{
-			Print( "CP: The object the distance is calculated from is missing!" );
+			Print("CP: The object the distance is calculated from is missing!");
 			return;
 		}
-		CP_Param<IEntity> pEntWrapper =  CP_Param<IEntity>.Cast( m_pGetter.Get() );
-		if ( !pEntWrapper )
+		CP_Param<IEntity> pEntWrapper =  CP_Param<IEntity>.Cast(m_pGetter.Get());
+		if (!pEntWrapper)
 			return;
-		IEntity pEntityFrom = IEntity.Cast( pEntWrapper.GetValue() );
+		IEntity pEntityFrom = IEntity.Cast(pEntWrapper.GetValue());
 		IEntity pClosestEntity; 
 		IEntity pEntityInList;
 		CP_LayerBase pSelectedLayer;
@@ -278,37 +278,37 @@ class CP_ActionSpawnClosestObjectFromList : CP_ActionBase
 			return;
 		}
 		
-		foreach ( string sObjectName : m_sListOfObjects )
+		foreach (string sObjectName : m_sListOfObjects)
 		{
-			pEntityInList = GetGame().GetWorld().FindEntityByName( sObjectName );
-			if ( !pEntityInList )
+			pEntityInList = GetGame().GetWorld().FindEntityByName(sObjectName);
+			if (!pEntityInList)
 			{
-				PrintFormat( "CP: Object %1 doesn't exist", sObjectName );
+				PrintFormat("CP: Object %1 doesn't exist", sObjectName);
 				continue;
 			}
 			
-			float fActualDistance = Math.AbsFloat( vector.Distance( pEntityFrom.GetOrigin(), pEntityInList.GetOrigin() ) );
-			PrintFormat( "CP: actual distance: %1", fActualDistance );
+			float fActualDistance = Math.AbsFloat(vector.Distance(pEntityFrom.GetOrigin(), pEntityInList.GetOrigin()));
+			PrintFormat("CP: actual distance: %1", fActualDistance);
 		
-			if (  fActualDistance < fDistance )
+			if ( fActualDistance < fDistance)
 			{
 				pClosestEntity = pEntityInList;
 				fDistance = fActualDistance;				
 			}
 		}
 		
-		if ( !pClosestEntity )
+		if (!pClosestEntity)
 			return;
 
-		pSelectedLayer = CP_LayerBase.Cast( pClosestEntity.FindComponent( CP_LayerBase ) );
+		pSelectedLayer = CP_LayerBase.Cast(pClosestEntity.FindComponent(CP_LayerBase));
 		
-		if ( pSelectedLayer )
+		if (pSelectedLayer)
 		{
-			pSelectedLayer.Init( null, CP_EActivationType.ON_TRIGGER_ACTIVATION, false );
+			pSelectedLayer.Init(null, CP_EActivationType.ON_TRIGGER_ACTIVATION, false);
 		}
 		else
 		{
-			PrintFormat( "CP: Can't spawn slot %1 - the slot doesn't have CP_LayerBase component", pClosestEntity.GetName() );
+			PrintFormat("CP: Can't spawn slot %1 - the slot doesn't have CP_LayerBase component", pClosestEntity.GetName());
 		}
 	}
 }
@@ -317,17 +317,17 @@ class CP_ActionSpawnClosestObjectFromList : CP_ActionBase
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class CP_ActionPlaySound : CP_ActionBase
 {
-	[Attribute( defvalue: "", desc: "Sound to play.", category: "Action" )]		
+	[Attribute(defvalue: "", desc: "Sound to play.", category: "Action")]		
 	protected string 			m_sSound;
 			
 	//------------------------------------------------------------------------------------------------
-	override void OnActivate( IEntity pObject )
+	override void OnActivate(IEntity pObject)
 	{
-		SCR_GameModeSFManager pManager = SCR_GameModeSFManager.Cast( GetGame().GetGameMode().FindComponent( SCR_GameModeSFManager ) );
-		if ( !pManager )
+		SCR_GameModeSFManager pManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
+		if (!pManager)
 			return;
 		
-		GetGame().GetCallqueue().CallLater( pManager.PlaySoundOnEntity, 2000, false, null, m_sSound );		
+		GetGame().GetCallqueue().CallLater(pManager.PlaySoundOnEntity, 2000, false, null, m_sSound);		
 	}
 }
 
@@ -335,22 +335,22 @@ class CP_ActionPlaySound : CP_ActionBase
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class CP_ActionPlaySoundOnEntity : CP_ActionBase
 {
-	[Attribute( desc: "Entity to play the sound on" )];
+	[Attribute(desc: "Entity to play the sound on")];
 	protected ref CP_Get		m_pGetter;
 	
-	[Attribute( defvalue: "", desc: "Sound to play.", category: "Action" )]		
+	[Attribute(defvalue: "", desc: "Sound to play.", category: "Action")]		
 	protected string 			m_sSound;
 			
 	//------------------------------------------------------------------------------------------------
-	override void OnActivate( IEntity pObject )
+	override void OnActivate(IEntity pObject)
 	{
-		SCR_GameModeSFManager pManager = SCR_GameModeSFManager.Cast( GetGame().GetGameMode().FindComponent( SCR_GameModeSFManager ) );
-		if ( !pManager )
+		SCR_GameModeSFManager pManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
+		if (!pManager)
 			return;
-		CP_Param<IEntity> pEntWrapper =  CP_Param<IEntity>.Cast( m_pGetter.Get() );
-		if ( !pEntWrapper )
+		CP_Param<IEntity> pEntWrapper =  CP_Param<IEntity>.Cast(m_pGetter.Get());
+		if (!pEntWrapper)
 			return;
-		GetGame().GetCallqueue().CallLater( pManager.PlaySoundOnEntity, 2000, false, IEntity.Cast( pEntWrapper.GetValue() ), m_sSound );		
+		GetGame().GetCallqueue().CallLater(pManager.PlaySoundOnEntity, 2000, false, IEntity.Cast(pEntWrapper.GetValue()), m_sSound);		
 	}
 }
 
@@ -360,12 +360,12 @@ class CP_ActionPlaySoundOnEntity : CP_ActionBase
 class CP_ActionResetCounter : CP_ActionBase
 {	
 	//------------------------------------------------------------------------------------------------
-	override void OnActivate( IEntity pObject )
+	override void OnActivate(IEntity pObject)
 	{
-		if ( !pObject )
+		if (!pObject)
 			return;
-		CP_LogicCounter pCounter = CP_LogicCounter.Cast( pObject.FindComponent( CP_LogicCounter ) );
-		if ( pCounter )
+		CP_LogicCounter pCounter = CP_LogicCounter.Cast(pObject.FindComponent(CP_LogicCounter));
+		if (pCounter)
 			pCounter.Reset();
 	}
 }
@@ -374,23 +374,34 @@ class CP_ActionResetCounter : CP_ActionBase
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class CP_ActionExecuteFunction : CP_ActionBase
 {
-	[Attribute( desc: "Object the method will be called" )];
+	[Attribute(desc: "Object the method will be called")];
 	protected ref CP_Get		m_pObjectToCallTheMethodFrom;
 	
-	[Attribute( desc: "Method to call" )];
+	[Attribute(desc: "Method to call")];
 	protected string			m_sMethodToCall;
 	
-	[Attribute( desc: "Parameter to pass (string only)" )];
+	[Attribute(desc: "Parameter to pass (string only)")];
 	protected string		m_sParameter;
 
 			
 	//------------------------------------------------------------------------------------------------
-	override void OnActivate( IEntity pObject )
+	override void OnActivate(IEntity pObject)
 	{
-		CP_Param<IEntity> pEntWrapper =  CP_Param<IEntity>.Cast( m_pObjectToCallTheMethodFrom.Get() );
-		if ( !pEntWrapper )
+		CP_Param<IEntity> pEntWrapper =  CP_Param<IEntity>.Cast(m_pObjectToCallTheMethodFrom.Get());
+		if (!pEntWrapper)
 			return;
-		GetGame().GetCallqueue().CallByName( pEntWrapper.GetValue(), m_sMethodToCall, m_sParameter );
+		
+		CP_Area area = CP_Area.Cast(pEntWrapper.GetValue().FindComponent(CP_Area));
+		CP_LayerBase layerBase = CP_LayerBase.Cast(pEntWrapper.GetValue().FindComponent(CP_LayerBase));
+		CP_LayerTask layer = CP_LayerTask.Cast(pEntWrapper.GetValue().FindComponent(CP_LayerTask));
+		if (layer)
+			GetGame().GetCallqueue().CallByName(layer, m_sMethodToCall, m_sParameter);
+		else if (layerBase)
+			GetGame().GetCallqueue().CallByName(layerBase, m_sMethodToCall, m_sParameter);
+		else if (area)
+			GetGame().GetCallqueue().CallByName(area, m_sMethodToCall, m_sParameter);
+		else
+			GetGame().GetCallqueue().CallByName(pEntWrapper.GetValue(), m_sMethodToCall, m_sParameter);
 	}
 }
 

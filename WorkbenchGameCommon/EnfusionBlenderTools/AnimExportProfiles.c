@@ -6,7 +6,7 @@ class AnimExportProfilesRequest: JsonApiStruct
 	{
 		RegV("ExportProfileAbsPath");
 	}
-};
+}
 
 class AnimExportProfilesResponse: JsonApiStruct
 {
@@ -18,7 +18,7 @@ class AnimExportProfilesResponse: JsonApiStruct
 		RegV("ProfileNames");
 		RegV("PathToExportProfiles");
 	}
-};
+}
 
 
 class AnimExportProfilesUtils{
@@ -41,7 +41,7 @@ class AnimExportProfilesUtils{
 		profileNames += "]";
 		return profileNames;
 	}
-};
+}
 
 
 class AnimExportProfiles: NetApiHandler

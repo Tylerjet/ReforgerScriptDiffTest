@@ -16,7 +16,7 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	[Attribute(desc: "Faction which is used for area control calculation. Leave empty for any faction.", category: "Trigger")]
 	protected FactionKey 		m_sOwnerFactionKey;
 	
-	[Attribute( "0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum( TA_EActivationPresence ), category: "Trigger") ]
+	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(TA_EActivationPresence), category: "Trigger") ]
 	protected TA_EActivationPresence	m_EActivationPresence;
 	
 	[Attribute(desc: "If SPECIFIC_CLASS is selected, fill the class name here.", category: "Trigger")]	//TODO: do array of classes
@@ -25,7 +25,7 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	[Attribute(desc: "If SPECIFIC_PREFAB_NAME is selected, fill the class name here.", category: "Trigger")]	//TODO: do array of classes
 	protected ResourceName 	m_sSpecificPrefabName;
 	
-	[Attribute( defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")];
+	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")];
 	protected bool		m_bOnce;
 	
 	[Attribute(defvalue: "0", UIWidgets.CheckBox, desc: "Whether or not the notification is allowed to be displayed", category: "Trigger")]
@@ -52,20 +52,20 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	[Attribute("", UIWidgets.EditBox, desc: "Audio sound that will be playing when countdown is active.", category: "Trigger")]
 	protected string 	m_sCountdownAudio;
 	
-	protected ref ScriptInvoker m_OnChange;
+	protected ref ScriptInvoker 	m_OnChange;
 	
-	protected Faction 			m_OwnerFaction;
-	protected int 				m_iEntitiesInside = 0;
-	protected bool				m_bInitSequenceDone = false;
-	protected bool 				m_bCountdownMusicPlaying;
+	protected Faction 				m_OwnerFaction;
+	protected int 					tempWaitTime = m_iActivationCountdownTimer;
+	protected int					m_iPlayerCountInsideTrigger;
+	protected int 					m_iCharCountInsideTrigger;
+	protected int 					m_iSpecificClassCountInsideTrigger;
+	protected int 					m_iSpecificPrefabCountInsideTrigger;
+	protected bool					m_bInitSequenceDone = false;
+	protected bool 					m_bCountdownMusicPlaying;
+	protected bool 					m_bTriggerCountdownOverlap;
 	protected ref array<IEntity> 	m_aEntitiesInside = {};
-	protected bool 				bNotificationCanPopUp = true;
-	MusicManager 				m_MusicManager;
-
-	protected int tempWaitTime = m_iActivationCountdownTimer;
-	
-	//------------------------------------------------------------------------------------------------
-	int GetCountEntitiesInside() { return m_iEntitiesInside; }		
+	protected bool 					bNotificationCanPopUp = true;
+	protected MusicManager 			m_MusicManager;
 	
 	//------------------------------------------------------------------------------------------------
 	void SetActivationPresence(TA_EActivationPresence EActivationPresence)
@@ -74,19 +74,19 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetSpecificClass( string sClassName )
+	void SetSpecificClass(string sClassName)
 	{
 		m_sSpecificClassName = sClassName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetSpecificPrefabName( string sPrefabName )
+	void SetSpecificPrefabName(string sPrefabName)
 	{
 		m_sSpecificPrefabName = sPrefabName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetOnce( bool bOnce )
+	void SetOnce(bool bOnce)
 	{
 		m_bOnce = bOnce;
 	}
@@ -146,11 +146,11 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetOwnerFaction( FactionKey sFaction )
+	void SetOwnerFaction(FactionKey sFaction)
 	{
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (factionManager)
-			m_OwnerFaction = factionManager.GetFactionByKey( sFaction );
+			m_OwnerFaction = factionManager.GetFactionByKey(sFaction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -161,24 +161,31 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	int GetCountEntitiesInside()
+	{
+		GetEntitiesInside(m_aEntitiesInside);
+		return m_aEntitiesInside.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected int GetPlayersCountByFaction()
 	{
 		int iCnt = 0;
 		array<int> aPlayerIDs = {};
 		SCR_PlayerController pPlayerCtrl;
-		GetGame().GetPlayerManager().GetPlayers( aPlayerIDs );
-		foreach ( int iPlayerID: aPlayerIDs )
+		GetGame().GetPlayerManager().GetPlayers(aPlayerIDs);
+		foreach (int iPlayerID: aPlayerIDs)
 		{
-			if ( !m_OwnerFaction ) 
+			if (!m_OwnerFaction) 
 			{
 				iCnt++;			//Faction not set == ANY faction
 			}
 			else
 			{
-				pPlayerCtrl = SCR_PlayerController.Cast( GetGame().GetPlayerManager().GetPlayerController( iPlayerID ) );
-				if ( !pPlayerCtrl )
+				pPlayerCtrl = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(iPlayerID));
+				if (!pPlayerCtrl)
 					continue;
-				if ( pPlayerCtrl.GetLocalControlledEntityFaction() == m_OwnerFaction )
+				if (pPlayerCtrl.GetLocalControlledEntityFaction() == m_OwnerFaction)
 					iCnt++;
 			}
 		}
@@ -186,23 +193,85 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected int GetPlayersCountByFactionInsideTrigger()
+	protected int GetSpecificClassCountInsideTrigger()
+	{
+		int iCnt = 0;
+		GetEntitiesInside(m_aEntitiesInside);
+		foreach (IEntity entity: m_aEntitiesInside)
+		{
+			if (entity.IsInherited(m_sSpecificClassName.ToType()))
+				iCnt++;
+		}
+		return iCnt;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected int GetSpecificPrefabCountInsideTrigger()
+	{
+		int iCnt = 0;
+		GetEntitiesInside(m_aEntitiesInside);
+		foreach (IEntity entity: m_aEntitiesInside)
+		{
+			EntityPrefabData pPrefabData = entity.GetPrefabData();
+			if (!pPrefabData)
+				continue;
+			
+			ResourceName sPrefabName = pPrefabData.GetPrefabName();
+			if (sPrefabName.IsEmpty() || sPrefabName != m_sSpecificPrefabName)
+				continue;
+			
+			iCnt++;
+		}
+		return iCnt;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetCharacterCountByFactionInsideTrigger(Faction faction)
+	{
+		int iCnt = 0;
+		SCR_ChimeraCharacter pChimeraChar;
+		GetEntitiesInside(m_aEntitiesInside);
+		foreach (IEntity entity: m_aEntitiesInside)
+		{
+			if (!faction) 
+			{
+				pChimeraChar = SCR_ChimeraCharacter.Cast(entity);
+				if (!pChimeraChar)
+					continue;
+				
+				iCnt++;			//Faction not set == ANY faction
+			}
+			else
+			{
+				pChimeraChar = SCR_ChimeraCharacter.Cast(entity);
+				if (!pChimeraChar)
+					continue;
+				
+				if (pChimeraChar.GetFaction() == faction)
+					iCnt++;
+			}
+		}
+		return iCnt;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetPlayersCountByFactionInsideTrigger(Faction faction)
 	{
 		int iCnt = 0;
 		SCR_PlayerController pPlayerCtrl;
 		GetEntitiesInside(m_aEntitiesInside);
-		foreach ( IEntity entity: m_aEntitiesInside )
+		foreach (IEntity entity: m_aEntitiesInside)
 		{
-			if ( !m_OwnerFaction ) 
+			if (!faction) 
 			{
 				iCnt++;			//Faction not set == ANY faction
 			}
 			else
 			{
 				pPlayerCtrl = SCR_PlayerController.Cast(entity);
-				if ( !pPlayerCtrl )
+				if (!pPlayerCtrl)
 					continue;
-				if ( pPlayerCtrl.GetLocalControlledEntityFaction() == m_OwnerFaction )
+				if (pPlayerCtrl.GetLocalControlledEntityFaction() == faction)
 					iCnt++;
 			}
 		}
@@ -245,57 +314,95 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void GetPlayersByFaction( notnull out array<IEntity> aOut )
+	protected void GetPlayersByFaction(notnull out array<IEntity> aOut)
 	{
 		array<int> aPlayerIDs = {};
 		SCR_PlayerController pPlayerCtrl;
-		GetGame().GetPlayerManager().GetPlayers( aPlayerIDs );
-		foreach ( int iPlayerID: aPlayerIDs )
+		GetGame().GetPlayerManager().GetPlayers(aPlayerIDs);
+		foreach (int iPlayerID: aPlayerIDs)
 		{
-			pPlayerCtrl = SCR_PlayerController.Cast( GetGame().GetPlayerManager().GetPlayerController( iPlayerID ) );
-			if ( !pPlayerCtrl )
+			pPlayerCtrl = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(iPlayerID));
+			if (!pPlayerCtrl)
 				continue;
-			if ( pPlayerCtrl.GetLocalControlledEntityFaction() == m_OwnerFaction )
-				aOut.Insert( pPlayerCtrl.GetLocalMainEntity() );
+			if (pPlayerCtrl.GetLocalControlledEntityFaction() == m_OwnerFaction)
+				aOut.Insert(pPlayerCtrl.GetLocalMainEntity());
 		}
 	}
 	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Override this method in inherited class to define a new filter.
-	override bool ScriptedEntityFilterForQuery( IEntity ent )
+	override bool ScriptedEntityFilterForQuery(IEntity ent)
 	{
- 		if ( ChimeraCharacter.Cast( ent ) && !IsAlive( ent ) )
+ 		if (ChimeraCharacter.Cast(ent) && !IsAlive(ent))
 			return false;
 		
 		// take only players
-		if ( m_EActivationPresence == TA_EActivationPresence.PLAYER )
+		if (m_EActivationPresence == TA_EActivationPresence.PLAYER)
 		{
-			if ( !EntityUtils.IsPlayer( ent ) )
+			if (!EntityUtils.IsPlayer(ent))
 				return false;
 		}
-		else if ( m_EActivationPresence == TA_EActivationPresence.SPECIFIC_CLASS )
+		else if (m_EActivationPresence == TA_EActivationPresence.SPECIFIC_CLASS)
 		{
-			if ( !ent.IsInherited( m_sSpecificClassName.ToType() ) )
+			if (!ent.IsInherited(m_sSpecificClassName.ToType()))
 				return false;
 		}
 			
-		else if ( m_EActivationPresence == TA_EActivationPresence.SPECIFIC_PREFAB_NAME )
+		else if (m_EActivationPresence == TA_EActivationPresence.SPECIFIC_PREFAB_NAME)
 		{
 			EntityPrefabData pPrefabData = ent.GetPrefabData();
-			if ( !pPrefabData )
+			if (!pPrefabData)
 				return false;
 			ResourceName sPrefabName = pPrefabData.GetPrefabName();
-			if ( sPrefabName.IsEmpty() || sPrefabName != m_sSpecificPrefabName )
+			if (sPrefabName.IsEmpty() || sPrefabName != m_sSpecificPrefabName)
 				return false;
 		}
 				
-		if ( !m_OwnerFaction )
+		if (!m_OwnerFaction)
 			return true;	//if faction is not specified, any faction can (de)activate the trigger
-		FactionAffiliationComponent pFaciliation = FactionAffiliationComponent.Cast( ent.FindComponent( FactionAffiliationComponent ) );
-		if ( !pFaciliation )
+		FactionAffiliationComponent pFaciliation = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
+		if (!pFaciliation)
 			return false;
 		return pFaciliation.GetAffiliatedFaction() == m_OwnerFaction;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void DecreaseCountdown()
+	{
+		if (m_bNotificationEnabled)
+		{
+			string title = "";
+			if ((tempWaitTime % 5) == 0)
+				title = string.Format(m_sActivationCountdownTimerNotification, tempWaitTime);
+								
+			if (((tempWaitTime - 1) % 5) == 0)
+				title = string.Format(m_sActivationCountdownTimerNotification, (tempWaitTime - 1));
+								
+			if (tempWaitTime <= 0)
+				title = string.Format(m_sActivationCountdownTimerNotification, 0);
+								
+			if (title != "")
+				PopUpMessage(title, -1, "", 1, 0, 0);
+		}
+		//This is because the trigger is querried every 2 seconds
+		tempWaitTime -= 2;
+		m_bTriggerCountdownOverlap = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void FinishTrigger(IEntity ent)
+	{
+		if (m_sCountdownAudio != "" && m_bEnableAudio)
+		{
+			StopMusic(m_sCountdownAudio);
+			m_bCountdownMusicPlaying = false;
+		}
+		if (m_bOnce)
+			Deactivate();
+		
+		m_OnActivate.Invoke(ent);
+		OnChange(ent);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -306,38 +413,33 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 		
 		if (m_EActivationPresence == TA_EActivationPresence.PLAYER)
 		{
-			int playersCountByFactionInsideTrigger = GetPlayersCountByFactionInsideTrigger();
+			int playersCountByFactionInsideTrigger = GetPlayersCountByFactionInsideTrigger(m_OwnerFaction);
 			float minPlayersNeeded = Math.Ceil(GetPlayersCountByFaction() * m_fMinimumPlayersNeededPercentage);
+			
+			if (!m_bTriggerCountdownOverlap)
+			{
+				m_iPlayerCountInsideTrigger = playersCountByFactionInsideTrigger;
+				m_bTriggerCountdownOverlap = true;
+			}
 			
 			if (playersCountByFactionInsideTrigger >= minPlayersNeeded)
 			{
 				if (m_bInitSequenceDone)
 				{
-					if (tempWaitTime <= 0)
+					if (tempWaitTime <= -1)
 					{
-						if (m_sCountdownAudio != "" && m_bEnableAudio)
-						{
-							m_MusicManager.Stop(m_sCountdownAudio);
-							m_bCountdownMusicPlaying = false;
-						}
-						if (m_bOnce)
-							Deactivate();
-		
-						m_OnActivate.Invoke(ent);
-						OnChange(ent);
+						FinishTrigger(ent);
 					}
 					else
 					{
-						if (m_bNotificationEnabled)
-						{
-							string title = string.Format(m_sActivationCountdownTimerNotification, tempWaitTime);
-							PopUpMessage(title, -1, "", 1, 0, 0);
-						}
-						tempWaitTime--;
-						PopUpMessage("", 1, "", 1, 0, 0);
+						if (m_iPlayerCountInsideTrigger <= 1)
+							DecreaseCountdown();
+						else
+							m_iPlayerCountInsideTrigger--;
+						
 						if (!m_bCountdownMusicPlaying && m_bEnableAudio)
 						{
-							m_MusicManager.Play(m_sCountdownAudio);
+							PlayMusic(m_sCountdownAudio);
 							m_bCountdownMusicPlaying = true;	
 						}
 					}	
@@ -349,7 +451,7 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 				PopUpMessage("", 1, "", 1, 0, 0);
 				if (m_sCountdownAudio != "" || m_bEnableAudio)
 				{
-					m_MusicManager.Stop(m_sCountdownAudio);
+					StopMusic(m_sCountdownAudio);
 					m_bCountdownMusicPlaying = false;
 				}
 				if (m_bNotificationEnabled && playersCountByFactionInsideTrigger > 0 && bNotificationCanPopUp)
@@ -366,41 +468,116 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 				}
 			}
 		}
-		else if (m_EActivationPresence == TA_EActivationPresence.ANY_CHARACTER || 
-				 m_EActivationPresence == TA_EActivationPresence.SPECIFIC_CLASS ||
-				 m_EActivationPresence == TA_EActivationPresence.SPECIFIC_PREFAB_NAME 
-				)
+		else if (m_EActivationPresence == TA_EActivationPresence.ANY_CHARACTER)
 		{
-			if (m_bInitSequenceDone)
+			int countInsideTrigger = GetCharacterCountByFactionInsideTrigger(m_OwnerFaction);
+			if (!m_bTriggerCountdownOverlap)
 			{
-				if (tempWaitTime <= 0)
-				{
-					if (m_sCountdownAudio != "" && m_bEnableAudio)
-					{
-						m_MusicManager.Stop(m_sCountdownAudio);
-						m_bCountdownMusicPlaying = false;
-					}
-					if (m_bOnce)
-						Deactivate();
+				m_iCharCountInsideTrigger = countInsideTrigger;
+				m_bTriggerCountdownOverlap = true;
+			}
 			
-					m_OnActivate.Invoke(ent);
-					OnChange(ent);
-				}
-				else
+			if (countInsideTrigger > 0)
+			{
+				if (m_bInitSequenceDone)
 				{
-					if (m_bNotificationEnabled)
+					if (tempWaitTime <= -1)
 					{
-						string title = string.Format(m_sActivationCountdownTimerNotification, tempWaitTime);
-						PopUpMessage(title, -1, "", 1, 0, 0);
+						FinishTrigger(ent);
 					}
-					tempWaitTime--;
-					PopUpMessage("", 1, "", 1, 0, 0);
-					if (!m_bCountdownMusicPlaying && m_bEnableAudio)
+					else
 					{
-						m_MusicManager.Play(m_sCountdownAudio);
-						m_bCountdownMusicPlaying = true;
+						if (m_iCharCountInsideTrigger <= 1)
+							DecreaseCountdown();
+						else
+							m_iCharCountInsideTrigger--;
+						
+						if (!m_bCountdownMusicPlaying && m_bEnableAudio)
+						{
+							PlayMusic(m_sCountdownAudio);
+							m_bCountdownMusicPlaying = true;
+						}
+					}	
+				}
+			}
+			else
+			{
+				tempWaitTime = m_iActivationCountdownTimer;
+				PopUpMessage("", 1, "", 1, 0, 0);
+			}	
+		}
+		else if (m_EActivationPresence == TA_EActivationPresence.SPECIFIC_CLASS)
+		{
+			int countInsideTrigger = GetSpecificClassCountInsideTrigger();
+			if (!m_bTriggerCountdownOverlap)
+			{
+				m_iSpecificClassCountInsideTrigger = countInsideTrigger;
+				m_bTriggerCountdownOverlap = true;
+			}
+			if (countInsideTrigger > 0)
+			{
+				if (m_bInitSequenceDone)
+				{
+					if (tempWaitTime <= -1)
+					{
+						FinishTrigger(ent);
 					}
-				}	
+					else
+					{
+						if (m_iSpecificClassCountInsideTrigger <= 1)
+							DecreaseCountdown();
+						else
+							m_iSpecificClassCountInsideTrigger--;
+						
+						if (!m_bCountdownMusicPlaying && m_bEnableAudio)
+						{
+							PlayMusic(m_sCountdownAudio);
+							m_bCountdownMusicPlaying = true;
+						}
+					}	
+				}
+			}
+			else
+			{
+				tempWaitTime = m_iActivationCountdownTimer;
+				PopUpMessage("", 1, "", 1, 0, 0);
+			}	
+		}
+		else if (m_EActivationPresence == TA_EActivationPresence.SPECIFIC_PREFAB_NAME)
+		{
+			int countInsideTrigger = GetSpecificPrefabCountInsideTrigger();
+			if (!m_bTriggerCountdownOverlap)
+			{
+				m_iSpecificPrefabCountInsideTrigger = countInsideTrigger;
+				m_bTriggerCountdownOverlap = true;
+			}
+			if (countInsideTrigger > 0)
+			{
+				if (m_bInitSequenceDone)
+				{
+					if (tempWaitTime <= -1)
+					{
+						FinishTrigger(ent);
+					}
+					else
+					{
+						if (m_iSpecificPrefabCountInsideTrigger <= 1)
+							DecreaseCountdown();
+						else
+							m_iSpecificPrefabCountInsideTrigger--;
+						
+						if (!m_bCountdownMusicPlaying && m_bEnableAudio)
+						{
+							PlayMusic(m_sCountdownAudio);
+							m_bCountdownMusicPlaying = true;
+						}
+					}	
+				}
+			}
+			else
+			{
+				tempWaitTime = m_iActivationCountdownTimer;
+				PopUpMessage("", 1, "", 1, 0, 0);
 			}
 		}	
 		else
@@ -409,38 +586,102 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 			PopUpMessage("", 1, "", 1, 0, 0);
 			if (m_sCountdownAudio != "" || !m_bEnableAudio)
 			{
-				m_MusicManager.Stop(m_sCountdownAudio);
+				StopMusic(m_sCountdownAudio);;
 				m_bCountdownMusicPlaying = false;
 			}
 		}
-		//OnChange(ent);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected event void OnDeactivate(IEntity ent)
 	{
-		m_iEntitiesInside--;
+		m_bTriggerCountdownOverlap = false;
 		
-		if ( 	m_EActivationPresence == TA_EActivationPresence.PLAYER || 
+		if (	m_EActivationPresence == TA_EActivationPresence.PLAYER || 
 				m_EActivationPresence == TA_EActivationPresence.ANY_CHARACTER || 
 				m_EActivationPresence == TA_EActivationPresence.SPECIFIC_CLASS ||
 				m_EActivationPresence == TA_EActivationPresence.SPECIFIC_PREFAB_NAME 
-		   )
+		  )
 		{
-			if ( m_bInitSequenceDone )
+			if (m_bInitSequenceDone)
 			{
 				PopUpMessage("", 1, "", 1, 0, 0);
 				if (m_sCountdownAudio != "" || !m_bEnableAudio)
 				{
-					m_MusicManager.Stop(m_sCountdownAudio);
+					StopMusic(m_sCountdownAudio);
 					m_bCountdownMusicPlaying = false;
 				}
 				
 				m_OnDeactivate.Invoke();
-				OnChange( ent );
+				OnChange(ent);
 			}
 		}
 		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void PlayMusic(string sAudio)
+	{
+		
+		if(!m_MusicManager)
+		{
+			ChimeraWorld world = GetGame().GetWorld();
+			if (world)
+				m_MusicManager = world.GetMusicManager();
+		}
+		
+		if (m_MusicManager)
+			m_MusicManager.Play(sAudio);
+		
+		Rpc(RpcDo_PlayMusic, sAudio);
+		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_PlayMusic(string sAudio)
+	{
+		if(!m_MusicManager)
+		{
+			ChimeraWorld world = GetGame().GetWorld();
+			if (world)
+				m_MusicManager = world.GetMusicManager();
+		}
+		
+		if (m_MusicManager)
+			m_MusicManager.Play(sAudio);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void StopMusic(string sAudio)
+	{
+		if(!m_MusicManager)
+		{
+			ChimeraWorld world = GetGame().GetWorld();
+			if (world)
+				m_MusicManager = world.GetMusicManager();
+		}
+		
+		if (m_MusicManager)
+			m_MusicManager.Stop(sAudio);
+		
+		Rpc(RpcDo_StopMusic, sAudio);
+		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_StopMusic(string sAudio)
+	{
+		if(!m_MusicManager)
+		{
+			ChimeraWorld world = GetGame().GetWorld();
+			if (world)
+				m_MusicManager = world.GetMusicManager();
+		}
+		
+		if (m_MusicManager)
+			m_MusicManager.Stop(sAudio);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -465,19 +706,19 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnChange( IEntity ent )
+	void OnChange(IEntity ent)
 	{
-		if ( m_OnChange )
+		if (m_OnChange)
 		{
-			CP_Param<IEntity> param = new CP_Param<IEntity>( ent );
-			m_OnChange.Invoke( param );
+			CP_Param<IEntity> param = new CP_Param<IEntity>(ent);
+			m_OnChange.Invoke(param);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnChange()
 	{
-		if ( !m_OnChange )
+		if (!m_OnChange)
 			m_OnChange = new ScriptInvoker();
 		return m_OnChange;
 	}
@@ -493,8 +734,8 @@ class SCR_CharacterTriggerEntity : SCR_BaseTriggerEntity
 	{
 		//TODO: we need a time to spawn entities inside the trigger, but we don't want to activate the trigger yet. 
 		//It will be done better by knowing the entities inside the trigger on its creation
-		GetGame().GetCallqueue().CallLater( SetInitSequenceDone, 1000 );	
-		SetOwnerFaction( m_sOwnerFactionKey );
+		GetGame().GetCallqueue().CallLater(SetInitSequenceDone, 1000);	
+		SetOwnerFaction(m_sOwnerFactionKey);
 		
 		ChimeraWorld world = GetGame().GetWorld();
 		if (world)

@@ -109,7 +109,7 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected SCR_ChimeraCharacter GetInstigatorFromVehicle(IEntity veh, bool gunner = false)
+	static SCR_ChimeraCharacter GetInstigatorFromVehicle(IEntity veh, bool gunner = false)
 	{
 		BaseCompartmentManagerComponent compartmentManager = BaseCompartmentManagerComponent.Cast(veh.FindComponent(BaseCompartmentManagerComponent));
 			

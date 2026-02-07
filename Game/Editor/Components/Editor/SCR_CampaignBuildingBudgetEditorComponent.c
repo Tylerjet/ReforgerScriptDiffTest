@@ -23,14 +23,14 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 			return;
 
 		RefreshBudgetSettings();
-		m_CampaignBuildingComponent.GetOnProviderSet().Insert(OnTargetBaseChanged);
+		m_CampaignBuildingComponent.GetOnProviderChanged().Insert(OnTargetBaseChanged);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnEditorDeactivate()
 	{
 		if (m_CampaignBuildingComponent)
-			m_CampaignBuildingComponent.GetOnProviderSet().Remove(OnTargetBaseChanged);
+			m_CampaignBuildingComponent.GetOnProviderChanged().Remove(OnTargetBaseChanged);
 	}
 
 	//------------------------------------------------------------------------------------------------

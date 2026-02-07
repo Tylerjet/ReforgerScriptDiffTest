@@ -68,7 +68,7 @@ class SCR_DynamicSimulationEditorComponent : SCR_BaseEditorComponent
 			EnableStreamingForEntity(entity, true);
 	}
 	
-	override void EOnEditorOpenServer()
+	override void EOnEditorActivateServer()
 	{
 		EnableStreaming(false);
 		
@@ -76,7 +76,7 @@ class SCR_DynamicSimulationEditorComponent : SCR_BaseEditorComponent
 		if (core)
 			core.Event_OnEntityRegistered.Insert(OnEntityRegistered);
 	}
-	override void EOnEditorCloseServer()
+	override void EOnEditorDeactivateServer()
 	{
 		EnableStreaming(true);
 		

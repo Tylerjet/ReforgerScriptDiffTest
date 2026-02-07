@@ -990,6 +990,8 @@ class SCR_BaseTask : GenericEntity
 		int factionIndex = factionManager.GetFactionIndex(m_TargetFaction);
 		writer.Write(factionIndex, 4);
 		writer.WriteInt(m_iTaskID);
+		writer.WriteInt(GetTaskState());
+		writer.WriteInt(GetTaskManager().m_mTaskEventMaskMap.Get(this));
 		writer.WriteBool(m_bIndividualTask);
 		writer.WriteFloat(GetLastAssigneeAddedTimestamp());
 		writer.WriteString(GetTitle());
@@ -1022,6 +1024,16 @@ class SCR_BaseTask : GenericEntity
 
 		// Reading m_iTaskID
 		reader.ReadInt(m_iTaskID);
+		
+		// Reading Task State
+		int taskState;
+		reader.ReadInt(taskState);
+		SetState(taskState);
+		
+		// Reading Task Mask
+		int taskMask;
+		reader.ReadInt(taskMask);
+		GetTaskManager().m_mTaskEventMaskMap.Set(this, taskMask);
 
 		// Reading m_bIndividualTask
 		reader.ReadBool(m_bIndividualTask);
@@ -1055,6 +1067,8 @@ class SCR_BaseTask : GenericEntity
 		vector origin;
 		reader.ReadVector(origin);
 		SetOrigin(origin);
+
+		GetTaskManager().RegisterTask(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1068,6 +1082,8 @@ class SCR_BaseTask : GenericEntity
 			m_iTaskID = s_iCurrentTaskID;
 			s_iCurrentTaskID++;
 		}
+		
+		GetTaskManager().RegisterTask(this);
 		
 		SCR_BaseTaskManager.s_OnTaskCreated.Invoke(this);
 		

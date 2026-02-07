@@ -22,23 +22,30 @@ class TextureResponse: JsonApiStruct
 
 class TextureUtils
 {
-	string GetEdds(ResourceName path, bool guidFormat, TextureResponse response = null)
+	string GetEdds(ResourceName path, bool guidFormat)
 	{
 		string textureType;	
 		string colorSpace;
 		string conversion;
 		BaseContainer eddsCont;
 		
+
 		if(!(FilePath.IsAbsolutePath(path)))
 		{
-			Workbench.GetAbsolutePath(path.GetPath(), path);
+			Workbench.GetAbsolutePath(path.GetPath(), path, true);
+			//If GUID wont be found
+			//It will find the resource by its RelPath and add " 0" to it, so remove the 0 and use the path
+			if(path.EndsWith(" 0"))
+			{
+				path = path.Substring(0, path.Length() - 2);
+			}
 		}
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-		
 		MetaFile meta = resourceManager.GetMetaFile(path);
+		
+		//If it won't find the meta anyways, Add Missing texture 
 		if(meta == false)
 		{
-			response.Issue = true;
 			return "";
 		}
 		
@@ -133,10 +140,14 @@ class TextureInfo: NetApiHandler
 		
 		ResourceName edds = req.Edds;	
 		//Format: Color_Space Conversion GUID
-		string output = textureUtils.GetEdds(edds, true, response);
-		if(response.Issue != true)
+		string output = textureUtils.GetEdds(edds, true);
+		if(output != "")
 		{
 			response.Output = textureUtils.ArrayToString(textureUtils.TextureFormat(output));
+		}
+		else
+		{
+			response.Issue = true;
 		}
 		return response;
 	}

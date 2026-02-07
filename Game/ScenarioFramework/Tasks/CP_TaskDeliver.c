@@ -33,7 +33,7 @@ class SCR_TaskDeliver : CP_Task
 	protected bool								m_bDeliveryItemFound;
 		
 	//------------------------------------------------------------------------------------------------
-	// return 0 if item is not possesed and 1 if possesed ( someone has it in his possesion )
+	// return 0 if item is not possesed and 1 if possesed (someone has it in his possesion)
 	int GetTaskDeliverState()
 	{
 		return m_iObjectState;
@@ -42,25 +42,25 @@ class SCR_TaskDeliver : CP_Task
 	//------------------------------------------------------------------------------------------------
 	void SetDeliveryTrigger()
 	{
-		if ( !GetGame().GetWorld() )
+		if (!GetGame().GetWorld())
 			return;
-		IEntity pEnt = GetGame().GetWorld().FindEntityByName( m_sDeliveryTriggerName );
-		if ( !pEnt )
+		IEntity pEnt = GetGame().GetWorld().FindEntityByName(m_sDeliveryTriggerName);
+		if (!pEnt)
 			return;
-		SetDeliveryTrigger( SCR_BaseTriggerEntity.Cast( pEnt ) );
+		SetDeliveryTrigger(SCR_BaseTriggerEntity.Cast(pEnt));
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetDeliveryTrigger( SCR_BaseTriggerEntity pTrigger )
+	void SetDeliveryTrigger(SCR_BaseTriggerEntity pTrigger)
 	{
-		if ( !pTrigger )
+		if (!pTrigger)
 			return;
 		m_pTriggerDeliver = pTrigger;
-		pTrigger.GetOnActivate().Insert( OnDeliveryTriggerActivated );
+		pTrigger.GetOnActivate().Insert(OnDeliveryTriggerActivated);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetTriggerNameToDeliver( string pTriggerName )
+	void SetTriggerNameToDeliver(string pTriggerName)
 	{
 		m_sDeliveryTriggerName = pTriggerName;
 	}
@@ -72,25 +72,25 @@ class SCR_TaskDeliver : CP_Task
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	void OnDeliveryTriggerActivated( IEntity pEnt )
+	void OnDeliveryTriggerActivated(IEntity pEnt)
 	{
-		if ( pEnt == m_pAsset )
+		if (pEnt == m_pAsset)
 		{
-			m_pSupportEntity.FinishTask( this );
+			m_pSupportEntity.FinishTask(this);
 		}
 		else
 		{
-			InventoryStorageManagerComponent pInventoryComponent = InventoryStorageManagerComponent.Cast( pEnt.FindComponent( InventoryStorageManagerComponent ) );
-			if ( !pInventoryComponent )
+			InventoryStorageManagerComponent pInventoryComponent = InventoryStorageManagerComponent.Cast(pEnt.FindComponent(InventoryStorageManagerComponent));
+			if (!pInventoryComponent)
 				return;
 			array<IEntity> aItems = {};
-			pInventoryComponent.GetItems( aItems );
-			if ( !aItems.IsEmpty() )
+			pInventoryComponent.GetItems(aItems);
+			if (!aItems.IsEmpty())
 			{
-				foreach ( IEntity pEntity : aItems )
+				foreach (IEntity pEntity : aItems)
 				{
-					if ( pEntity == m_pAsset )
-						m_pSupportEntity.FinishTask( this );		
+					if (pEntity == m_pAsset)
+						m_pSupportEntity.FinishTask(this);		
 				}
 			}
 		}
@@ -98,29 +98,29 @@ class SCR_TaskDeliver : CP_Task
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnObjectPossessed( IEntity pItem, BaseInventoryStorageComponent pStorageOwner )
+	void OnObjectPossessed(IEntity pItem, BaseInventoryStorageComponent pStorageOwner)
 	{
-		if( !pItem )
+		if(!pItem)
 			return;
-		if ( pItem != m_pAsset )
+		if (pItem != m_pAsset)
 			return;			
 		
-		UpdateTaskTitleAndDescription( 1 );
+		UpdateTaskTitleAndDescription(1);
 		if (!m_bDeliveryItemFound)
 		{
 			m_bDeliveryItemFound = true;
 			SetState(SCR_TaskState.PROGRESSED);
 		}
 		
-		PrintFormat( "CP: ->Task: Item %1 was taken by %2. Task %3 updated.", pItem.GetPrefabData().GetPrefabName(), pStorageOwner.GetOwner(), m_pLayer.GetTask().GetTitleText() );	
+		PrintFormat("CP: ->Task: Item %1 was taken by %2. Task %3 updated.", pItem.GetPrefabData().GetPrefabName(), pStorageOwner.GetOwner(), m_pLayer.GetTask().GetTitle());	
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnObjectDropped( IEntity pItem, BaseInventoryStorageComponent pStorageOwner )
+	void OnObjectDropped(IEntity pItem, BaseInventoryStorageComponent pStorageOwner)
 	{
-		if( !pItem )
+		if(!pItem)
 			return;
-		if ( pItem != m_pAsset )
+		if (pItem != m_pAsset)
 			return;
 		
 		GarbageManager garbageMan = GetGame().GetGarbageManager();
@@ -128,28 +128,28 @@ class SCR_TaskDeliver : CP_Task
 			garbageMan.Withdraw(pItem);
 		
 		SetState(SCR_TaskState.UPDATED);
-		UpdateTaskTitleAndDescription( 0 );
-		PrintFormat( "CP: ->Task: Item %1 was dropped by %2. Task %3 updated.", pItem.GetPrefabData().GetPrefabName(), pStorageOwner.GetOwner(), m_pLayer.GetTask().GetTitleText() );
+		UpdateTaskTitleAndDescription(0);
+		PrintFormat("CP: ->Task: Item %1 was dropped by %2. Task %3 updated.", pItem.GetPrefabData().GetPrefabName(), pStorageOwner.GetOwner(), m_pLayer.GetTask().GetTitle());
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void UpdateTaskTitleAndDescription( int iPossessed = -1 )
+	void UpdateTaskTitleAndDescription(int iPossessed = -1)
 	{
-		if ( iPossessed == -1 )
+		if (iPossessed == -1)
 		{
-			//the request comes from outside ( most likely the Delivery point has been created )
+			//the request comes from outside (most likely the Delivery point has been created)
 			//check if the item has been already possessed or not
-			if ( m_iObjectState & 0x01 )
+			if (m_iObjectState & 0x01)
 				iPossessed = 1;
 			else 
 				iPossessed = 0;
 		}
 		
 		//Decide based on the task state - see the table on top of the class
-		if ( !m_pTriggerDeliver ) 
+		if (!m_pTriggerDeliver) 
 		{
 			//delivery point still doesn't exist
-			if ( iPossessed == 1 )
+			if (iPossessed == 1)
 			{
 				m_iObjectState = 1;		
 			}
@@ -162,7 +162,7 @@ class SCR_TaskDeliver : CP_Task
 		}
 		else
 		{
-			if ( iPossessed == 1 )
+			if (iPossessed == 1)
 			{
 				m_iObjectState = 5;			
 				m_pSupportEntity.MoveTask(m_pTriggerDeliver.GetOrigin(), this.GetTaskID());
@@ -176,13 +176,13 @@ class SCR_TaskDeliver : CP_Task
 		}
 								
 		CP_SlotTask pSubject = m_pLayer.GetTaskSubject();
-		if ( !pSubject )
+		if (!pSubject)
 			return;
 		
-		m_pSupportEntity.SetTaskTitle( this, pSubject.GetTaskTitle( m_iObjectState ) );
-		m_pSupportEntity.SetTaskDescription( this, pSubject.GetTaskDescription( m_iObjectState ) );	
+		m_pSupportEntity.SetTaskTitle(this, pSubject.GetTaskTitle(m_iObjectState));
+		m_pSupportEntity.SetTaskDescription(this, pSubject.GetTaskDescription(m_iObjectState));	
 		
-		//m_pLayer.OnTaskStateChanged( GetTaskState(), GetTaskState() );			
+		//m_pLayer.OnTaskStateChanged(GetTaskState(), GetTaskState());			
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -191,15 +191,15 @@ class SCR_TaskDeliver : CP_Task
 		super.UpdateMapTaskIcon();
 		if (!GetTaskIconkWidget())
 			return;
-		if ( m_iObjectState == 1 )
+		if (m_iObjectState == 1)
 		{
-			GetTaskIconkWidget().SetOpacity( 0 );	//hide the icon on map until the delivery point isn't created
-			GetTaskIconkWidget().SetVisible( false );
+			GetTaskIconkWidget().SetOpacity(0);	//hide the icon on map until the delivery point isn't created
+			GetTaskIconkWidget().SetVisible(false);
 		}
 		else
 		{
-			GetTaskIconkWidget().SetOpacity( 1 );
-			GetTaskIconkWidget().SetVisible( true );
+			GetTaskIconkWidget().SetOpacity(1);
+			GetTaskIconkWidget().SetVisible(true);
 		}
 	}
 	
@@ -236,7 +236,7 @@ class SCR_TaskDeliver : CP_Task
 		if (!parentSlot)
 			return;
 		
-		InventoryStorageManagerComponent pInventoryComponent = InventoryStorageManagerComponent.Cast(destroyedEntity.FindComponent( InventoryStorageManagerComponent ) );
+		InventoryStorageManagerComponent pInventoryComponent = InventoryStorageManagerComponent.Cast(destroyedEntity.FindComponent(InventoryStorageManagerComponent));
 		if (!pInventoryComponent)
 			return;
 		
@@ -267,17 +267,17 @@ class SCR_TaskDeliver : CP_Task
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	protected void RegisterPlayer( int iPlayerID )
+	protected void RegisterPlayer(int iPlayerID)
 	{
-		IEntity pPlayer = GetGame().GetPlayerManager().GetPlayerControlledEntity( iPlayerID );
+		IEntity pPlayer = GetGame().GetPlayerManager().GetPlayerControlledEntity(iPlayerID);
 		if (!pPlayer)
 			return;
-		PrintFormat( "CP: player %1 registered", iPlayerID );
-		SCR_InventoryStorageManagerComponent pInventoryComponent = SCR_InventoryStorageManagerComponent.Cast( pPlayer.FindComponent( SCR_InventoryStorageManagerComponent ) );
-		if ( !pInventoryComponent )
+		PrintFormat("CP: player %1 registered", iPlayerID);
+		SCR_InventoryStorageManagerComponent pInventoryComponent = SCR_InventoryStorageManagerComponent.Cast(pPlayer.FindComponent(SCR_InventoryStorageManagerComponent));
+		if (!pInventoryComponent)
 			return;
-		pInventoryComponent.m_OnItemAddedInvoker.Insert( OnObjectPossessed );
-		pInventoryComponent.m_OnItemRemovedInvoker.Insert( OnObjectDropped );
+		pInventoryComponent.m_OnItemAddedInvoker.Insert(OnObjectPossessed);
+		pInventoryComponent.m_OnItemRemovedInvoker.Insert(OnObjectDropped);
 			
 		EventHandlerManagerComponent EventHandlerMgr = EventHandlerManagerComponent.Cast(pPlayer.FindComponent(EventHandlerManagerComponent));
 		if (EventHandlerMgr)
@@ -287,12 +287,12 @@ class SCR_TaskDeliver : CP_Task
 	//------------------------------------------------------------------------------------------------
 	override bool SetSupportEntity()
 	{
-		if ( !GetTaskManager().FindSupportEntity( SCR_CP_TaskDeliverSupportEntity ) )
+		if (!GetTaskManager().FindSupportEntity(SCR_CP_TaskDeliverSupportEntity))
 		{
-			Print( "CP: Task Destroy support entity not found in the world, task won't be created!" );
+			Print("CP: Task Destroy support entity not found in the world, task won't be created!");
 			return false;
 		}
-		m_pSupportEntity = SCR_CP_TaskDeliverSupportEntity.Cast( GetTaskManager().FindSupportEntity( SCR_CP_TaskDeliverSupportEntity ) );
+		m_pSupportEntity = SCR_CP_TaskDeliverSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CP_TaskDeliverSupportEntity));
 		return m_pSupportEntity != null;	
 	}
 	
@@ -304,7 +304,7 @@ class SCR_TaskDeliver : CP_Task
 		//Register all players to invoke the callback when any of them takes or drop the items from the inventory
 		//TODO: add event to players on JIP
 		
-		if ( !m_pAsset )
+		if (!m_pAsset)
 			return;
 		InventoryItemComponent pInvComp = InventoryItemComponent.Cast(m_pAsset.FindComponent(InventoryItemComponent));
 		if (!pInvComp)
@@ -313,10 +313,10 @@ class SCR_TaskDeliver : CP_Task
 		pInvComp.m_OnParentSlotChangedInvoker.Insert(OnItemCarrierChanged);
 			
 		array<int> aPlayerIDs = {};
-		int iNrOfPlayersConnected = GetGame().GetPlayerManager().GetPlayers( aPlayerIDs ); 
+		int iNrOfPlayersConnected = GetGame().GetPlayerManager().GetPlayers(aPlayerIDs); 
 					
-		foreach ( int i : aPlayerIDs )
-			RegisterPlayer( i );
+		foreach (int i : aPlayerIDs)
+			RegisterPlayer(i);
 		SetDeliveryTrigger();
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (!gameMode)

@@ -18,6 +18,5 @@ class SCR_CampaignBuildingCameraEditorComponent : SCR_CameraEditorComponent
 		SCR_CampaignBuildingEditorComponent buildingComp = SCR_CampaignBuildingEditorComponent.Cast(FindEditorComponent(SCR_CampaignBuildingEditorComponent, true, true));
 		if (buildingComp)
 			attachComponent.AttachTo(buildingComp.GetTrigger());
-
 	}
 };

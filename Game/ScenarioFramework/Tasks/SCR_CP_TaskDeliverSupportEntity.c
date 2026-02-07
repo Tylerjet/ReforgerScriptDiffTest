@@ -10,7 +10,7 @@ class SCR_CP_TaskDeliverSupportEntity : SCR_CP_TaskSupportEntity
 	//------------------------------------------------------------------------------------------------
 	override void FinishTask(notnull SCR_BaseTask task)
 	{
-		PrintFormat( "CP: ->Task: Item was delivered to trigger %1.", SCR_TaskDeliver.Cast( task ).GetTriggerNameToDeliver() );
-		super.FinishTask( task );
+		PrintFormat("CP: ->Task: Item was delivered to trigger %1.", SCR_TaskDeliver.Cast(task).GetTriggerNameToDeliver());
+		super.FinishTask(task);
 	}	
 }

@@ -335,6 +335,12 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void ResetDeployRequest()
+	{
+		m_bDeployRequestSent = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// disable deploy button if there are no factions or spawn points available
 	protected void SetDeployAvailable()
 	{

@@ -92,6 +92,16 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnWorldPostProcess(World world)
+	{
+		SCR_CampaignBase chotain = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain"));
+		chotain.SpawnComposition(ECampaignCompositionType.RADIO_ANTENNA);
+		chotain.SpawnComposition(ECampaignCompositionType.HOSPITAL);
+		chotain.SpawnComposition(ECampaignCompositionType.ARMORY);
+		chotain.SpawnComposition(ECampaignCompositionType.SUPPLIES);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void FiringRangeInit()
 	{
 		typename stages = SCR_ECampaignTutorialStage;
@@ -764,12 +774,6 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			while (m_CampaignGamemode.GetActiveRespawnRadiosCount(m_CampaignGamemode.FACTION_BLUFOR) < m_CampaignGamemode.GetMaxRespawnRadios())
 				m_CampaignGamemode.AddActiveRespawnRadio(m_CampaignGamemode.FACTION_BLUFOR);
 			
-			SCR_CampaignBase chotain = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain"));
-			chotain.SpawnComposition(ECampaignCompositionType.RADIO_ANTENNA);
-			//chotain.SpawnComposition(ECampaignCompositionType.HOSPITAL);
-			chotain.SpawnComposition(ECampaignCompositionType.ARMORY);
-			chotain.SpawnComposition(ECampaignCompositionType.SUPPLIES);
-			
 			m_wFadeOut = ImageWidget.Cast(GetGame().GetHUDManager().CreateLayout("{265245C299401BF6}UI/layouts/Menus/ContentBrowser/DownloadManager/ScrollBackground.layout", EHudLayers.OVERLAY));
 			m_wFadeOut.SetOpacity(0);
 			int stage = m_eStage;
@@ -1205,7 +1209,7 @@ enum SCR_ECampaignTutorialStage
 	DISMOUNTING,
 	CONFLICT_TOUR_ARMORY,
 	CONFLICT_TOUR_BARRACKS,
-	//CONFLICT_TOUR_FIELDHOSPITAL,
+	CONFLICT_TOUR_FIELDHOSPITAL,
 	CONFLICT_TOUR_ANTENNA,
 	CONFLICT_TOUR_HQ,
 	CONFLICT_HQ_INFO,
@@ -1224,10 +1228,9 @@ enum SCR_ECampaignTutorialStage
 	CONFLICT_UNLOADING_SUPPLIES,
 	CONFLICT_BUILDING_START,
 	CONFLICT_BUILD_SERVICE,
+	CONFLICT_BUILD_BUNKER,
 	CONFLICT_BUILDING_LOAD_SUPPLY,
 	CONFLICT_BOARD_TRUCK,
-	CONFLICT_BUILD_BUNKER,
-	CONFLICT_TURN_ON_BUILDING,
 	CONFLICT_BUILDING_QUIT,
 	CONFLICT_BUILDING_TO_FAR,
 	CONFLICT_BUILDING_CHECKPOINT,

@@ -116,6 +116,12 @@ class SCR_AIGroup: ChimeraAIGroup
 
 	protected int m_iGroupID = -1;
 	protected int m_iLeaderID = -1;
+	
+	//gamecode uses 0 as invalid playerID
+	protected int m_iDescriptionAuthorID = 0;
+	protected int m_iNameAuthorID = 0;
+	
+	
 	protected string m_sCustomName = "";
 	protected string m_sCustomDescription = "";
 	protected ref array<int> m_aPlayerIDs = {};
@@ -181,61 +187,80 @@ class SCR_AIGroup: ChimeraAIGroup
 
 	//------------------------------------------------------------------------------------------------
 	//! called on server only
-	void SetCustomName(string name)
+	void SetCustomName(string name, int authorID)
 	{
-		RPC_DoSetCustomName(name);
-		Rpc(RPC_DoSetCustomName, name);
+		RPC_DoSetCustomName(name, authorID);
+		Rpc(RPC_DoSetCustomName, name, authorID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RPC_DoSetCustomName(string name)
+	void RPC_DoSetCustomName(string name, int authorID)
 	{
 		m_sCustomName = name;
+		m_iNameAuthorID = authorID;
 		s_OnCustomNameChanged.Invoke();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! called on server only
-	void SetCustomDescription(string desc)
+	void SetCustomDescription(string desc, int authorID)
 	{
-		RPC_DoSetCustomDescription(desc);
-		Rpc(RPC_DoSetCustomDescription, desc);
+		RPC_DoSetCustomDescription(desc, authorID);
+		Rpc(RPC_DoSetCustomDescription, desc, authorID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RPC_DoSetCustomDescription(string desc)
+	void RPC_DoSetCustomDescription(string desc, int authorID)
 	{
 		m_sCustomDescription = desc;
+		m_iDescriptionAuthorID = authorID;
 		s_OnCustomDescChanged.Invoke();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	string GetCustomDescription()
 	{
+		if (!GetGame().GetPlayerController().CanViewContentCreatedBy(m_iDescriptionAuthorID))
+			return string.Empty;
+		
 		return m_sCustomDescription;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	string GetCustomName()
 	{
+		if (!GetGame().GetPlayerController().CanViewContentCreatedBy(m_iNameAuthorID))
+			return string.Empty;
+		
 		return m_sCustomName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetDescriptionAuthorID()
+	{
+		return m_iDescriptionAuthorID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetNameAuthorID()
+	{
+		return m_iNameAuthorID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	string GetCustomNameWithOriginal()
 	{
-		if (m_sCustomName.IsEmpty())
-			return m_sCustomName;
-		
 		string company, platoon, squad, character, format;
 		GetCallsigns(company, platoon, squad, character, format);
 		string originalName, newName;
 		originalName = string.Format(format, company, platoon, squad, character);
 		
-		newName = m_sCustomName + " ( " + originalName + " )";
-		return newName;
+		if (m_sCustomName.IsEmpty() || !GetGame().GetPlayerController().CanViewContentCreatedBy(m_iNameAuthorID))
+			return originalName;
+				
+		return m_sCustomName + " ( " + originalName + " )";
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1498,6 +1523,9 @@ class SCR_AIGroup: ChimeraAIGroup
 		writer.WriteRplId(groupID);
 		groupID = Replication.FindId(m_SlaveGroup);
 		writer.WriteRplId(groupID);
+		
+		writer.WriteInt(m_iDescriptionAuthorID);
+		writer.WriteInt(m_iNameAuthorID);
 
 		//do rpcs for players join/leave
 		//add invokers for players join/leave
@@ -1546,6 +1574,9 @@ class SCR_AIGroup: ChimeraAIGroup
 		m_MasterGroup = SCR_AIGroup.Cast(Replication.FindItem(groupID));
 		reader.ReadRplId(groupID);
 		m_SlaveGroup = SCR_AIGroup.Cast(Replication.FindItem(groupID));
+		
+		reader.ReadInt(m_iDescriptionAuthorID);
+		reader.ReadInt(m_iNameAuthorID);
 
 
 		return true;

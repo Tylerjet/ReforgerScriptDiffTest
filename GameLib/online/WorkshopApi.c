@@ -271,8 +271,6 @@ class Dependency
 	
 	proto native string GetName();
 	
-	proto native void Subscribe(BackendCallback callback);
-	
 	/**
 	\brief Loads WorkshopItem from backend into cache
 	*/
@@ -284,6 +282,8 @@ class Dependency
 	proto native WorkshopItem GetCachedItem();
 	
 	proto native float TotalFileSize();
+	
+	proto native Revision GetRevision();
 }
 
 
@@ -322,7 +322,7 @@ class DownloadableItem extends BaseWorkshopItem
 	/**
 	\brief Request download of this item
 	*/
-	proto native void Download(BackendCallback callback, Revision revision);
+	proto native void Download(BackendCallback callback, notnull Revision revision);
 	
 	/**
 	\brief Request detail info
@@ -360,6 +360,8 @@ class DownloadableItem extends BaseWorkshopItem
 	\brief Delete local copy of an asset
 	*/
 	proto native void DeleteLocally();
+	
+	proto native Revision GetPendingDownload();
 }
 
 

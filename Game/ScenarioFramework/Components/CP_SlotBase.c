@@ -7,11 +7,14 @@ class CP_SlotBaseClass : CP_LayerBaseClass
 //------------------------------------------------------------------------------------------------
 class CP_SlotBase : CP_LayerBase
 {
-	[Attribute("", category: "Asset" )]
+	[Attribute("", category: "Asset")]
 	protected ResourceName 		m_rObjectToSpawn;
 	
 	[Attribute("This won't spawn new object, but it will rather use the object already existing in the world", category: "Asset")]
  	protected bool 		m_bUseExistingWorldAsset;
+	
+	[Attribute("",desc: "Overrides display name of the spawned object for task purposes", category: "Asset")]
+	protected string 	m_sOverrideObjectDisplayName;
 	
 	[Attribute("", category: "Asset")]
  	protected FactionKey 		m_sFaction;
@@ -37,19 +40,19 @@ class CP_SlotBase : CP_LayerBase
 
 	//------------------------------------------------------------------------------------------------
 	//! Get objects of type defined in m_rObjectToSpawn in the range
-	protected void QueryObjectsInRange( float fRange = 2.5 )
+	protected void QueryObjectsInRange(float fRange = 2.5)
 	{
 		BaseWorld pWorld = GetGame().GetWorld();
-		if ( !pWorld )
+		if (!pWorld)
 			return;
-		pWorld.QueryEntitiesBySphere( GetOwner().GetOrigin(), fRange, GetEntity, null, EQueryEntitiesFlags.ALL);
+		pWorld.QueryEntitiesBySphere(GetOwner().GetOrigin(), fRange, GetEntity, null, EQueryEntitiesFlags.ALL);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get object of type defined in m_rObjectToSpawn
-	protected bool GetEntity(notnull IEntity pEnt)
+	protected bool GetEntity(notnull IEntity entity)
 	{
-		IEntity pParent = SCR_EntityHelper.GetMainParent(pEnt, true);
+		IEntity pParent = SCR_EntityHelper.GetMainParent(entity, true);
 		EntityPrefabData pPrefabData = pParent.GetPrefabData();
 		if (!pPrefabData)
 			return true;
@@ -62,7 +65,7 @@ class CP_SlotBase : CP_LayerBase
 			{
 				if (!m_sID.IsEmpty())
 				{
-					if (pEnt.GetName() != m_sID)
+					if (entity.GetName() != m_sID)
 						return true;
 				}
 				else
@@ -85,7 +88,7 @@ class CP_SlotBase : CP_LayerBase
 				
 				if (pResourceName == pResourceObject)
 				{
-					m_pEntity = pEnt;
+					m_pEntity = entity;
 					return false;
 				}
 				else
@@ -100,7 +103,7 @@ class CP_SlotBase : CP_LayerBase
 				return true;
 		}
 		
-		m_pEntity = pEnt;
+		m_pEntity = entity;
 		return false;
 	}
 	
@@ -109,14 +112,14 @@ class CP_SlotBase : CP_LayerBase
 	CP_Area GetAreaWB() 
 	{ 
 		CP_Area pArea;
-		IEntity pEnt = GetOwner().GetParent();
-		while ( pEnt )
+		IEntity entity = GetOwner().GetParent();
+		while (entity)
 		{
-			pArea = CP_Area.Cast( pEnt.FindComponent( CP_Area ) );
-			if ( pArea )
+			pArea = CP_Area.Cast(entity.FindComponent(CP_Area));
+			if (pArea)
 				return pArea;
 			
-			pEnt = pEnt.GetParent();
+			entity = entity.GetParent();
 		}
 		
 		return pArea;
@@ -129,20 +132,31 @@ class CP_SlotBase : CP_LayerBase
 	ResourceName GetObjectToSpawn() { return m_rObjectToSpawn; }
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init( CP_Area pArea = null, CP_EActivationType EActivation = CP_EActivationType.SAME_AS_PARENT, bool bInit = true )
+	override void Init(CP_Area pArea = null, CP_EActivationType EActivation = CP_EActivationType.SAME_AS_PARENT, bool bInit = true)
 	{
 	
-		if ( m_EActivationType != EActivation )
+		if (m_EActivationType != EActivation)
 			return;
-		if ( m_pEntity )
+		if (m_pEntity && !m_bEnableRepeatedSpawn)
 		{
-			PrintFormat( "CP: Object %1 already exists and won't be spawned, exiting...", m_pEntity );
-			return;
+			IEntity entity = GetOwner().GetParent();
+			if (!entity)
+				return;
+				
+			CP_LayerBase pLayerBase = CP_LayerBase.Cast(entity.FindComponent(CP_LayerBase));
+			if (!pLayerBase)
+				return;
+				
+			if (!pLayerBase.GetEnableRepeatedSpawn())
+			{
+				PrintFormat("CP: Object %1 already exists and won't be spawned, exiting...", m_pEntity);
+				return;
+			}
 		}
 		
 		SelectRandomSlot();		//if subSlots exists select one
 		
-		if ( !m_bUseExistingWorldAsset )
+		if (!m_bUseExistingWorldAsset)
 		{
 			m_pEntity = SpawnAsset();
 		}
@@ -151,12 +165,12 @@ class CP_SlotBase : CP_LayerBase
 			QueryObjectsInRange();	//sets the m_pEntity in subsequent callback
 		}
 		
-		if ( !m_pEntity )
+		if (!m_pEntity)
 			return;
-		m_pEntity.SetName( m_sID );	
+		m_pEntity.SetName(m_sID);	
 		
-		foreach( CP_Plugin pPlugin : m_aPlugins )
-			pPlugin.Init( this );
+		foreach(CP_Plugin pPlugin : m_aPlugins)
+			pPlugin.Init(this);
 		
 	}
 	
@@ -164,11 +178,11 @@ class CP_SlotBase : CP_LayerBase
 	ScriptInvoker GetOnAllAreasInitiatedInvoker()
 	{
 		BaseGameMode pGameMode = GetGame().GetGameMode();
-		if ( !pGameMode )
+		if (!pGameMode)
 			return null;
 		
-		SCR_GameModeSFManager pGameModeMgr = SCR_GameModeSFManager.Cast( pGameMode.FindComponent( SCR_GameModeSFManager ) );
-		if ( !pGameModeMgr )
+		SCR_GameModeSFManager pGameModeMgr = SCR_GameModeSFManager.Cast(pGameMode.FindComponent(SCR_GameModeSFManager));
+		if (!pGameModeMgr)
 			return null;
 		
 		return pGameModeMgr.GetOnAllAreasInitiated();
@@ -176,66 +190,66 @@ class CP_SlotBase : CP_LayerBase
 	
 	//------------------------------------------------------------------------------------------------
 	// Slot cannot have children
-	override void SpawnChildren( bool bInit = true ) {}
+	override void SpawnChildren(bool bInit = true) {}
 	
 	//------------------------------------------------------------------------------------------------
 	IEntity SpawnAsset()
 	{
-		Resource resource = Resource.Load( m_rObjectToSpawn );
-		if ( !resource )
+		Resource resource = Resource.Load(m_rObjectToSpawn);
+		if (!resource)
 			return null;
 		
 		//--- Get slot transformation
 		vector mat[4];
-		GetOwner().GetWorldTransform( mat );
+		GetOwner().GetWorldTransform(mat);
 		
 		m_pSpawnParams.TransformMode = ETransformMode.WORLD;
 		//m_pSpawnParams.Transform = mat;
 		
 		//--- Apply rotation
-		vector angles = Math3D.MatrixToAngles( m_pSpawnParams.Transform );
+		vector angles = Math3D.MatrixToAngles(m_pSpawnParams.Transform);
 		Math3D.AnglesToMatrix(angles, m_pSpawnParams.Transform);
 		
 		//--- Spawn the prefab
 		BaseResourceObject pResourceObject = resource.GetResource();
-		if ( !pResourceObject )
+		if (!pResourceObject)
 			return null;
 		string resourceName = pResourceObject.GetResourceName();
-		IEntity pEnt = GetGame().SpawnEntityPrefab( resource, GetGame().GetWorld(), m_pSpawnParams );
+		IEntity entity = GetGame().SpawnEntityPrefab(resource, GetGame().GetWorld(), m_pSpawnParams);
 		SCR_AIWorld aiWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
 		if(aiWorld)
-			aiWorld.RequestNavmeshRebuildEntity(pEnt);
-		return pEnt;
+			aiWorld.RequestNavmeshRebuildEntity(entity);
+		return entity;
 	}
 		
 	//------------------------------------------------------------------------------------------------
 	void SelectRandomSlot()
 	{
 		array<ref EntitySpawnParams> aPosOut = {};
-		GetSubSlots( aPosOut );
+		GetSubSlots(aPosOut);
 		
-		if ( aPosOut.IsEmpty() )
+		if (aPosOut.IsEmpty())
 		{
-			GetOwner().GetWorldTransform( m_pSpawnParams.Transform );
+			GetOwner().GetWorldTransform(m_pSpawnParams.Transform);
 		}
 		else
 		{
 			Math.Randomize(-1);
-			m_pSpawnParams = aPosOut[ Math.RandomInt(0, aPosOut.Count() )];
+			m_pSpawnParams = aPosOut[ Math.RandomInt(0, aPosOut.Count())];
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void GetSubSlots( out notnull array<ref EntitySpawnParams> aPosOut )
+	void GetSubSlots(out notnull array<ref EntitySpawnParams> aPosOut)
 	{
 		GenericEntity pSlot;
 		IEntity child = GetOwner().GetChildren();
 		
-		while ( child )	
+		while (child)	
 		{
 			ref EntitySpawnParams pParams = new EntitySpawnParams;
-			child.GetWorldTransform( pParams.Transform );
-			aPosOut.Insert( pParams );
+			child.GetWorldTransform(pParams.Transform);
+			aPosOut.Insert(pParams);
 			child = child.GetSibling();			
 		}
 	}
@@ -252,7 +266,7 @@ class CP_SlotBase : CP_LayerBase
 	void CP_SlotBase(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		#ifdef WORKBENCH
-			m_fDebugShapeColor = ARGB( 100, 0x99, 0x10, 0xF2 );
+			m_fDebugShapeColor = ARGB(100, 0x99, 0x10, 0xF2);
 		#endif
 	}
 

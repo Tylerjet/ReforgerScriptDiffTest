@@ -220,6 +220,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected GridLayoutWidget								m_wStoragesContainer;
 	protected const int										STORAGE_AREA_COLUMNS			= 2;
 	protected int											m_iStorageListCounter			= 0;
+	protected int											m_iVicinityDiscoveryRadius		= 0;
 	//protected static bool									m_bColdStart = true;			// uncomment to enable the expand / collapse feature of storages
 
 	protected ref SCR_InventorySlotUI						m_pInspectedSlot				= null;
@@ -796,6 +797,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				if (m_pVicinity)
 				{
 					m_pVicinity.OnVicinityUpdateInvoker.Insert(RefreshLootUIListener);
+					m_iVicinityDiscoveryRadius = m_pVicinity.GetDiscoveryRadius();
 				}
 
 				m_wStoragesContainer = GridLayoutWidget.Cast( m_widget.FindAnyWidget( "StorageGrid" ) );
@@ -1181,9 +1183,25 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	void RefreshLootUIListener()
 	{
-		if (m_pVicinity && m_pStorageLootUI)
+		if (!m_pVicinity || !m_pStorageLootUI)
+			return;
+		
+		m_pStorageLootUI.Refresh();
+		if (m_aOpenedStoragesUI.IsEmpty())
+			return;
+		
+		vector playerOrigin = m_Player.GetOrigin();
+		vector entityBoundsMaxs, entityBoundsMins;
+		SCR_InventoryOpenedStorageUI storageUI
+		for (int index = m_aOpenedStoragesUI.Count() - 1; index >= 0; index--)
 		{
-			m_pStorageLootUI.Refresh();
+			storageUI = m_aOpenedStoragesUI.Get(index);
+			if (!storageUI)
+				continue;
+			
+			storageUI.GetStorage().GetOwner().GetWorldBounds(entityBoundsMins, entityBoundsMaxs);
+			if (!Math3D.IntersectionSphereAABB(playerOrigin, m_iVicinityDiscoveryRadius, entityBoundsMins, entityBoundsMaxs))
+				RemoveOpenStorage(storageUI);
 		}
 	}
 
@@ -1989,6 +2007,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (m_pVicinity)
 		{
 			m_pVicinity.ManipulationComplete();
+			m_iVicinityDiscoveryRadius = 0;
 		}
 		
 		/*

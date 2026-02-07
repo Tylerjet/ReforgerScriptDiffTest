@@ -170,27 +170,15 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		
 		if (!radioComp && m_bIsVONDirectDisabled && IsReceiving)	// can happen when existing RADIO transmission switches to direct
 			return false;
-		
-		PlayerManager playerMgr = GetGame().GetPlayerManager();
-		if (playerMgr)
-		{
-			data.m_Entity = playerMgr.GetPlayerControlledEntity(data.m_iPlayerID);
-			if (data.m_Entity)
-			{
-				FactionAffiliationComponent factionComp = FactionAffiliationComponent.Cast( data.m_Entity.FindComponent( FactionAffiliationComponent ) );
-				if (factionComp)	
-					data.m_Faction = factionComp.GetAffiliatedFaction();
-			}
-		}
-		
-		// own faction
+						
+		// faction
 		Faction playerFaction;
-		IEntity controlledEnt = GetGame().GetPlayerController().GetControlledEntity();
-		if (controlledEnt)
+		int controlledID = GetGame().GetPlayerController().GetPlayerId();
+		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
+		if (controlledID && respawnSystem)
 		{
-			FactionAffiliationComponent factionComp = FactionAffiliationComponent.Cast( controlledEnt.FindComponent( FactionAffiliationComponent ) );
-			if (factionComp)	
-				playerFaction = factionComp.GetAffiliatedFaction();
+			playerFaction = respawnSystem.GetPlayerFaction(controlledID);
+			data.m_Faction = respawnSystem.GetPlayerFaction(data.m_iPlayerID);
 		}
 		
 		bool enemyTransmission;

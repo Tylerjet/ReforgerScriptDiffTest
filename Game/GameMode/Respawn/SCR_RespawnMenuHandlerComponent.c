@@ -260,6 +260,14 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
+	{
+		SCR_RespawnComponent rc = SCR_RespawnComponent.Cast(GetGame().GetPlayerManager().GetPlayerRespawnComponent(playerId));
+		if (rc)
+			rc.NotifyOnPlayerKilled();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void RequestRespawn(int playerId)
 	{
 		if (!m_pGameMode.IsMaster())

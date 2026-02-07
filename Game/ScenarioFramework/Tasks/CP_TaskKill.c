@@ -10,25 +10,25 @@ class SCR_TaskKill : CP_Task
 	//------------------------------------------------------------------------------------------------
 	void OnObjectDamage(EDamageState state)
 	{
-		if ( state != EDamageState.DESTROYED )
+		if (state != EDamageState.DESTROYED)
 			return;
 		
-		ScriptedDamageManagerComponent pObjectDmgManager = ScriptedDamageManagerComponent.Cast( m_pAsset.FindComponent( ScriptedDamageManagerComponent ) );
-		if ( pObjectDmgManager )
+		ScriptedDamageManagerComponent pObjectDmgManager = ScriptedDamageManagerComponent.Cast(m_pAsset.FindComponent(ScriptedDamageManagerComponent));
+		if (pObjectDmgManager)
 	 		pObjectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
 				
-		m_pSupportEntity.FinishTask( this );				
+		m_pSupportEntity.FinishTask(this);				
 	}
 		
 	//------------------------------------------------------------------------------------------------
 	override bool SetSupportEntity()
 	{
-		if ( !GetTaskManager().FindSupportEntity( SCR_CP_TaskKillSupportEntity ) )
+		if (!GetTaskManager().FindSupportEntity(SCR_CP_TaskKillSupportEntity))
 		{
-			Print( "CP: Task Kill support entity not found in the world, task won't be created!" );
+			Print("CP: Task Kill support entity not found in the world, task won't be created!");
 			return false;
 		}
-		m_pSupportEntity = SCR_CP_TaskKillSupportEntity.Cast( GetTaskManager().FindSupportEntity( SCR_CP_TaskKillSupportEntity ) );
+		m_pSupportEntity = SCR_CP_TaskKillSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CP_TaskKillSupportEntity));
 		return m_pSupportEntity != null;	
 	}
 	
@@ -37,10 +37,10 @@ class SCR_TaskKill : CP_Task
 	{
 		super.Init();
 					
-		if ( !m_pAsset )
+		if (!m_pAsset)
 			return;		
-		ScriptedDamageManagerComponent pObjectDmgManager = ScriptedDamageManagerComponent.Cast( m_pAsset.FindComponent( ScriptedDamageManagerComponent ) );
-		if ( pObjectDmgManager )
-			pObjectDmgManager.GetOnDamageStateChanged().Insert( OnObjectDamage );
+		ScriptedDamageManagerComponent pObjectDmgManager = ScriptedDamageManagerComponent.Cast(m_pAsset.FindComponent(ScriptedDamageManagerComponent));
+		if (pObjectDmgManager)
+			pObjectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
 	}
 }

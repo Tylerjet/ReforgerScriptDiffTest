@@ -2551,7 +2551,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		Faction left;
 		Faction right;
 		Color yellow = Color.FromRGBA(194,100,20,210);
-		Color white = Color.White;
+		Color white = Color.FromRGBA(255,255,255,255);
 		
 		if (!m_wRoot || !m_wMapRoot)
 		{
@@ -2591,9 +2591,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			m_wFlavourMap = RichTextWidget.Cast(m_wMapRoot.FindAnyWidget("FlavourText"));
 			m_wWinScoreSideLeftMap = ImageWidget.Cast(m_wMapRoot.FindAnyWidget("ObjectiveLeft"));
 			m_wWinScoreSideRightMap = ImageWidget.Cast(m_wMapRoot.FindAnyWidget("ObjectiveRight"));
-			
-			yellow = Color.FromRGBA(194,100,20,210);
-			white = Color.White;
 			
 			if (!m_wInfoOverlay || !m_wCountdownOverlay)
 				return;
@@ -2671,6 +2668,12 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				m_wWinScoreSideLeftMap.SetColor(white);
 				m_wWinScoreSideRight.SetColor(white);
 				m_wWinScoreSideLeft.SetColor(white);
+				m_wRightScoreMap.SetColor(white);
+				m_wRightScore.SetColor(white);
+				m_wLeftScoreMap.SetColor(white);
+				m_wLeftScore.SetColor(white);
+				m_wWinScoreMap.SetColor(white);
+				m_wWinScore.SetColor(white);
 			}
 			else
 			{
@@ -4119,126 +4122,102 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			SCR_PopUpNotification.GetInstance().HideCurrentMsg();
 		}
 		
-		if (!IsProxy())
+		if (IsProxy())
+			return;
+		
+		// Handle remnants respawn
+		AIControlComponent control = AIControlComponent.Cast(character.FindComponent(AIControlComponent));
+		
+		if (control)
 		{
-			// Handle remnants respawn
-			AIControlComponent control = AIControlComponent.Cast(character.FindComponent(AIControlComponent));
+			AIAgent agent = control.GetControlAIAgent();
 			
-			if (control)
+			if (agent)
 			{
-				AIAgent agent = control.GetControlAIAgent();
+				SCR_AIGroup group = SCR_AIGroup.Cast(agent.GetParentGroup());
 				
-				if (agent)
+				if (group)
 				{
-					SCR_AIGroup group = SCR_AIGroup.Cast(agent.GetParentGroup());
+					int respawnPeriod;
 					
-					if (group)
+					foreach (SCR_CampaignRemnantsPresence remnantPresence : m_aRemnantsPresence)
 					{
-						int respawnPeriod;
+						if (group != remnantPresence.GetSpawnedGroup())
+							continue;
 						
-						foreach (SCR_CampaignRemnantsPresence remnantPresence : m_aRemnantsPresence)
-						{
-							if (group != remnantPresence.GetSpawnedGroup())
-								continue;
-							
-							// If this was not the last member alive, do nothing
-							if (group.GetAgentsCount() > 1)
-								break;
-							
-							respawnPeriod = remnantPresence.GetRespawnPeriod();
-							
-							// Set up respawn timestamp, convert s to ms, reset original group size
-							if (respawnPeriod > 0)
-							{
-								remnantPresence.SetRespawnTimestamp(Replication.Time() + (respawnPeriod * 1000));
-								remnantPresence.SetMembersAlive(-1);
-								remnantPresence.SetIsSpawned(false);
-							}
-							
+						// If this was not the last member alive, do nothing
+						if (group.GetAgentsCount() > 1)
 							break;
+						
+						respawnPeriod = remnantPresence.GetRespawnPeriod();
+						
+						// Set up respawn timestamp, convert s to ms, reset original group size
+						if (respawnPeriod > 0)
+						{
+							remnantPresence.SetRespawnTimestamp(Replication.Time() + (respawnPeriod * 1000));
+							remnantPresence.SetMembersAlive(-1);
+							remnantPresence.SetIsSpawned(false);
 						}
+						
+						break;
 					}
 				}
 			}
+		}
+		
+		// Handle XP for kill
+		if (!instigator)
+			return;
+		
+		SCR_ChimeraCharacter instigatorChar;
 	
-			AIAgent agent = control.GetControlAIAgent();
+		// Instigator is a vehicle, find the driver
+		if (instigator.IsInherited(Vehicle))
+		{
+			instigatorChar = SCR_PlayerPenaltyComponent.GetInstigatorFromVehicle(instigator);
+		}
+		else
+		{
+			// Check if the killer is a regular soldier on foot
+			instigatorChar = SCR_ChimeraCharacter.Cast(instigator);
 			
-			SCR_ChimeraCharacter instigatorChar;
-			
-			// Handle XP for kill
-			if (instigator)
+			// If all else fails, check if the killer is in a vehicle turret
+			if (!instigatorChar)
+				instigatorChar = SCR_PlayerPenaltyComponent.GetInstigatorFromVehicle(instigator, true);
+		}
+		
+		if (!instigatorChar)
+			return;
+		
+		auto foundComponentVictim = character.FindComponent(FactionAffiliationComponent);
+		auto foundComponentKiller = instigatorChar.FindComponent(FactionAffiliationComponent);
+
+		if (!foundComponentKiller || !foundComponentVictim)
+			return;
+
+		auto castedComponent = FactionAffiliationComponent.Cast(foundComponentKiller);
+		Faction killerFaction = castedComponent.GetAffiliatedFaction();
+		castedComponent = FactionAffiliationComponent.Cast(foundComponentVictim);
+		Faction victimFaction = castedComponent.GetAffiliatedFaction();
+		
+		if (killerFaction && victimFaction)
+		{
+			if (killerFaction == victimFaction)
 			{
-				// Instigator is a vehicle, find the driver
-				if (instigator.IsInherited(Vehicle))
-				{
-					GenericEntity instigatorGeneric = GenericEntity.Cast(instigator);
-					
-					if (!instigatorGeneric)
-						return;
-					
-					auto compartmentManager = instigatorGeneric.FindComponent(BaseCompartmentManagerComponent);
-					
-					if (!compartmentManager)
-						return;
-					
-					BaseCompartmentManagerComponent compartmentManagerCast = BaseCompartmentManagerComponent.Cast(compartmentManager);
-					array<BaseCompartmentSlot> compartments = new array <BaseCompartmentSlot>();
-					int cnt = compartmentManagerCast.GetCompartments(compartments);
-					BaseCompartmentSlot slot;
-					
-					for (int i = 0; i < cnt; i++)
-					{
-						slot = compartments[i];
-						
-						if (slot.Type() == PilotCompartmentSlot)
-						{
-							instigatorChar = SCR_ChimeraCharacter.Cast(slot.GetOccupant());
-							break;
-						}
-					}
-					
-					if (!instigatorChar)
-						return;
-				}
+				if (instigatorChar != character)
+					AwardXP(instigatorChar, CampaignXPRewards.FRIENDLY_KILL);
+			}
+			else
+			{
+				float multiplier = 1;
+				
+				if (SCR_CampaignDefendTask.IsCharacterInAnyDefendTaskRange(instigatorChar))
+					multiplier = 1.25;
+				
+				if (instigatorChar.IsInVehicle())
+					AwardXP(instigatorChar, CampaignXPRewards.ENEMY_KILL_VEH);
 				else
-				{
-					instigatorChar = SCR_ChimeraCharacter.Cast(instigator);
-				}
-				
-				if (!instigatorChar)
-					return;
-				
-				auto foundComponentVictim = character.FindComponent(FactionAffiliationComponent);
-				auto foundComponentKiller = instigatorChar.FindComponent(FactionAffiliationComponent);
-	
-				if (!foundComponentKiller || !foundComponentVictim)
-					return;
-	
-				auto castedComponent = FactionAffiliationComponent.Cast(foundComponentKiller);
-				Faction killerFaction = castedComponent.GetAffiliatedFaction();
-				castedComponent = FactionAffiliationComponent.Cast(foundComponentVictim);
-				Faction victimFaction = castedComponent.GetAffiliatedFaction();
-				
-				if (killerFaction && victimFaction)
-				{
-					if (killerFaction == victimFaction)
-					{
-						if (instigatorChar != character)
-							AwardXP(instigatorChar, CampaignXPRewards.FRIENDLY_KILL);
-					}
-					else
-					{
-						float multiplier = 1;
-						
-						if (SCR_CampaignDefendTask.IsCharacterInAnyDefendTaskRange(instigatorChar))
-							multiplier = 1.25;
-						
-						if (instigatorChar.IsInVehicle())
-							AwardXP(instigatorChar, CampaignXPRewards.ENEMY_KILL_VEH);
-						else
-							AwardXP(instigatorChar, CampaignXPRewards.ENEMY_KILL);
-					}
-				}
+					AwardXP(instigatorChar, CampaignXPRewards.ENEMY_KILL);
 			}
 		}
 	}

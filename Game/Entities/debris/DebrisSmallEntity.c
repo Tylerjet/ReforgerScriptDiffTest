@@ -40,7 +40,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 	//! Minimum entity lifetime to play sound
 	private static const float MINIMAL_AGE = 0.25;
 	//! Stores last sound
-	private AudioHandle m_AudioHandle;
+	private AudioHandle m_AudioHandle = AudioHandle.Invalid;
 	//! Sound threshold
 	private float m_fSoundThreshold;
 	//! Kinetic energy delta needed to trigger impact sound
@@ -167,6 +167,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 	    if (soundComponent.IsFinishedPlaying(m_AudioHandle))
 		{
 			soundComponent.Terminate(m_AudioHandle);
+			m_AudioHandle = AudioHandle.Invalid;
 		}
 		
 		// Set signals

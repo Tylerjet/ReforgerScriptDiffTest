@@ -16,7 +16,7 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 	[Attribute(desc: "Faction which is used for area control calculation. Leave empty for any faction.", category: "Trigger")]
 	protected FactionKey 		m_sOwnerFactionKey;
 	
-	[Attribute( "0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum( TA_EActivationPresence ), category: "Trigger") ]
+	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(TA_EActivationPresence), category: "Trigger") ]
 	protected TA_EActivationPresence	m_EActivationPresence;
 	
 	/*
@@ -46,50 +46,50 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 		int iCnt = 0;
 		array<int> aPlayerIDs = {};
 		SCR_PlayerController pPlayerCtrl;
-		GetGame().GetPlayerManager().GetPlayers( aPlayerIDs );
-		foreach ( int iPlayerID: aPlayerIDs )
+		GetGame().GetPlayerManager().GetPlayers(aPlayerIDs);
+		foreach (int iPlayerID: aPlayerIDs)
 		{
-			pPlayerCtrl = SCR_PlayerController.Cast( GetGame().GetPlayerManager().GetPlayerController( iPlayerID ) );
-			if ( !pPlayerCtrl )
+			pPlayerCtrl = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(iPlayerID));
+			if (!pPlayerCtrl)
 				continue;
-			if ( pPlayerCtrl.GetLocalControlledEntityFaction() == m_OwnerFaction )
+			if (pPlayerCtrl.GetLocalControlledEntityFaction() == m_OwnerFaction)
 				iCnt++;
 		}
 		return iCnt;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void GetPlayersByFaction( notnull out array<IEntity> aOut )
+	protected void GetPlayersByFaction(notnull out array<IEntity> aOut)
 	{
 		array<int> aPlayerIDs = {};
 		SCR_PlayerController pPlayerCtrl;
-		GetGame().GetPlayerManager().GetPlayers( aPlayerIDs );
-		foreach ( int iPlayerID: aPlayerIDs )
+		GetGame().GetPlayerManager().GetPlayers(aPlayerIDs);
+		foreach (int iPlayerID: aPlayerIDs)
 		{
-			pPlayerCtrl = SCR_PlayerController.Cast( GetGame().GetPlayerManager().GetPlayerController( iPlayerID ) );
-			if ( !pPlayerCtrl )
+			pPlayerCtrl = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(iPlayerID));
+			if (!pPlayerCtrl)
 				continue;
-			if ( pPlayerCtrl.GetLocalControlledEntityFaction() == m_OwnerFaction )
-				aOut.Insert( pPlayerCtrl.GetLocalMainEntity() );
+			if (pPlayerCtrl.GetLocalControlledEntityFaction() == m_OwnerFaction)
+				aOut.Insert(pPlayerCtrl.GetLocalMainEntity());
 		}
 	}
 	
 	
 	//! Override this method in inherited class to define a new filter.
-	override bool ScriptedEntityFilterForQuery( IEntity ent )
+	override bool ScriptedEntityFilterForQuery(IEntity ent)
 	{
-		if ( !ChimeraCharacter.Cast( ent ) )
+		if (!ChimeraCharacter.Cast(ent))
 			return false;
 		// take only players
-		if ( m_EActivationPresence == TA_EActivationPresence.PLAYER )
+		if (m_EActivationPresence == TA_EActivationPresence.PLAYER)
 		{
-			if ( !EntityUtils.IsPlayer( ent ) )
+			if (!EntityUtils.IsPlayer(ent))
 				return false;
 		}
-		if ( m_sOwnerFactionKey.IsEmpty() )
+		if (m_sOwnerFactionKey.IsEmpty())
 			return true;	//if faction is not specified, any faction can (de)activate the trigger
-		FactionAffiliationComponent pFaciliation = FactionAffiliationComponent.Cast( ent.FindComponent( FactionAffiliationComponent ) );
-		if ( !pFaciliation )
+		FactionAffiliationComponent pFaciliation = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
+		if (!pFaciliation)
 			return false;
 		return pFaciliation.GetAffiliatedFaction() == m_OwnerFaction;
 	}
@@ -97,11 +97,11 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 	//------------------------------------------------------------------------------------------------
 	override protected event void OnActivate(IEntity ent)
 	{
-		Print( "CP: entered" );
-		if ( !IsMaster() )
+		Print("CP: entered");
+		if (!IsMaster())
 			return;
 		m_iEntitiesInside++;
-		if ( m_EActivationPresence == TA_EActivationPresence.PLAYER || m_EActivationPresence == TA_EActivationPresence.ANY_CHARACTER )
+		if (m_EActivationPresence == TA_EActivationPresence.PLAYER || m_EActivationPresence == TA_EActivationPresence.ANY_CHARACTER)
 		{
 			m_OnActivate.Invoke(ent);
 		}
@@ -110,7 +110,7 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 	//------------------------------------------------------------------------------------------------
 	override protected event void OnDeactivate(IEntity ent)
 	{
-		Print( "CP: left" );
+		Print("CP: left");
 		m_iEntitiesInside--;
 		m_OnDeactivate.Invoke();
 	}

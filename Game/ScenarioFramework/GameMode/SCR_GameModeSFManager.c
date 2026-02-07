@@ -23,6 +23,7 @@ enum ESFTaskType
 	NONE,
 	DELIVER,
 	DESTROY,
+	DEFEND,
 	KILL,
 	CLEAR_AREA,
 	LAST,
@@ -32,12 +33,15 @@ enum ESFTaskType
 
 class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 {	
-	[Attribute( "Available Tasks for the Scenario", category: "Tasks" )];
+	[Attribute("Available Tasks for the Scenario", category: "Tasks")];
 	protected ref array<ref CP_TaskType> m_aTaskTypesAvailable;
 	
-	[Attribute( desc: "Name of the Area which will be only one to spawn", category: "Debug" )];
+	[Attribute( defvalue: "3", desc: "Maximal number of tasks that can be generated", category: "Tasks" )];
+	protected int 				m_iMaxNumberOfTasks;
+	
+	[Attribute(desc: "Name of the Area which will be only one to spawn", category: "Debug")];
 	protected string			m_sForcedArea;
-	[Attribute( desc: "Name of the task layer to be only one to create", category: "Debug" )];
+	[Attribute(desc: "Name of the task layer to be only one to create", category: "Debug")];
 	protected string			m_sForcedTaskLayer;
 	
 	protected ref array<CP_Area> m_aAreas = {};		//all areas will be registered into this array
@@ -47,39 +51,41 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	protected SCR_BaseTask		m_pLastFinishedTask;
 	protected CP_LayerBase		m_pLastFinishedTaskLayer;
 	protected bool				m_bInitialized = false;
+	protected int 				m_iNumberOfTasksSpawned;
+	protected int 				m_iNumberOfSelectedAreas;
 	protected EGameOverTypes m_eGameOverType = EGameOverTypes.COMBATPATROL_DEFEAT;
 	
 	//------------------------------------------------------------------------------------------------
-	[RplRpc( RplChannel.Reliable, RplRcver.Broadcast )]
-	void RpcDo_PlaySoundOnEntity( EntityID pEntID, string sSndName )
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_PlaySoundOnEntity(EntityID pEntID, string sSndName)
 	{
-		if ( !pEntID )
+		if (!pEntID)
 			return;		
-		IEntity pEnt = GetGame().GetWorld().FindEntityByID( pEntID );
-		if ( !pEnt )
+		IEntity pEnt = GetGame().GetWorld().FindEntityByID(pEntID);
+		if (!pEnt)
 			return;
-		SCR_CommunicationSoundComponent pSndComp = SCR_CommunicationSoundComponent.Cast( pEnt.FindComponent( SCR_CommunicationSoundComponent ) );
-		if ( !pSndComp )
+		SCR_CommunicationSoundComponent pSndComp = SCR_CommunicationSoundComponent.Cast(pEnt.FindComponent(SCR_CommunicationSoundComponent));
+		if (!pSndComp)
 			return;
-		pSndComp.PlayStr( sSndName );
+		pSndComp.PlayStr(sSndName);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void PlaySoundOnEntity( IEntity pEnt, string sSndName )
+	void PlaySoundOnEntity(IEntity pEnt, string sSndName)
 	{
-		if ( !pEnt )
+		if (!pEnt)
 			pEnt = GetOwner();		//play it on game mode if any entity is passed
 
-		if ( !pEnt )
+		if (!pEnt)
 			return;
-		if ( IsMaster() )
-			Rpc( RpcDo_PlaySoundOnEntity, pEnt.GetID(), sSndName );
+		if (IsMaster())
+			Rpc(RpcDo_PlaySoundOnEntity, pEnt.GetID(), sSndName);
 		
-		RpcDo_PlaySoundOnEntity( pEnt.GetID(), sSndName );		
+		RpcDo_PlaySoundOnEntity(pEnt.GetID(), sSndName);		
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void PlaySoundOnPlayer( string sSndName )
+	void PlaySoundOnPlayer(string sSndName)
 	{
 		SCR_PlayerController pc = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		
@@ -90,7 +96,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		if (!player)
 			return;
 		
-		PlaySoundOnEntity( player, sSndName );
+		PlaySoundOnEntity(player, sSndName);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -100,40 +106,40 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	CP_LayerBase GetLastFinishedTaskLayer() { return m_pLastFinishedTaskLayer; }
 	
 	//------------------------------------------------------------------------------------------------
-	void OnTaskFinished( SCR_BaseTask pTask )
+	void OnTaskFinished(SCR_BaseTask pTask)
 	{
-		//CP_Task.Cast( pTask ).ShowPopUpMessage( "#AR-Tasks_StatusFinished-UC" );
-		//GetOnTaskStateChanged().Invoke( pTask ); 
+		//CP_Task.Cast(pTask).ShowPopUpMessage("#AR-Tasks_StatusFinished-UC");
+		//GetOnTaskStateChanged().Invoke(pTask); 
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnTaskCreated( SCR_BaseTask pTask )
+	void OnTaskCreated(SCR_BaseTask pTask)
 	{
-		PopUpMessage( pTask.GetTitle(), "#AR-CampaignTasks_NewObjectivesAvailable-UC" );
-		//GetOnTaskStateChanged().Invoke( pTask );
+		PopUpMessage(pTask.GetTitle(), "#AR-CampaignTasks_NewObjectivesAvailable-UC");
+		//GetOnTaskStateChanged().Invoke(pTask);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnTaskCancelled( SCR_BaseTask pTask )
+	void OnTaskCancelled(SCR_BaseTask pTask)
 	{
-		//GetOnTaskStateChanged().Invoke( pTask );
+		//GetOnTaskStateChanged().Invoke(pTask);
 	}
 	
 	
 	//------------------------------------------------------------------------------------------------
-	void OnTaskFailed( SCR_BaseTask pTask )
+	void OnTaskFailed(SCR_BaseTask pTask)
 	{
-		//GetOnTaskStateChanged().Invoke( pTask );
+		//GetOnTaskStateChanged().Invoke(pTask);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void OnTaskUpdate(SCR_BaseTask pTask, SCR_ETaskEventMask mask)
 	{
-		if ( !pTask ) 
+		if (!pTask) 
 			return;
-		if ( pTask.GetTaskState() == SCR_TaskState.FINISHED )
+		if (pTask.GetTaskState() == SCR_TaskState.FINISHED)
 		{
-			m_pLastFinishedTaskLayer = CP_Task.Cast( pTask ).GetTaskLayer(); 
+			m_pLastFinishedTaskLayer = CP_Task.Cast(pTask).GetTaskLayer(); 
 			m_pLastFinishedTask = pTask;
 		}
 		
@@ -147,7 +153,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 				pSubject.OnTaskStateChanged(SCR_TaskState.UPDATED)
 		}
 		
-		//CP_Task.Cast( pTask ).ShowPopUpMessage( "#AR-Tasks_Objective" + " " + "#AR-Workshop_ButtonUpdate" );		//TODO: localize properly
+		//CP_Task.Cast(pTask).ShowPopUpMessage("#AR-Tasks_Objective" + " " + "#AR-Workshop_ButtonUpdate");		//TODO: localize properly
 		GetOnTaskStateChanged().Invoke(pTask, mask);
 	}
 	
@@ -161,10 +167,10 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	{
 		SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(m_eGameOverType, 0,0);
 		
-		SCR_BaseGameMode.Cast( GetOwner() ).EndGameMode( endData );
+		SCR_BaseGameMode.Cast(GetOwner()).EndGameMode(endData);
 		if (RplSession.Mode() == RplMode.Dedicated)
 		{
-			GetGame().GetCallqueue().CallLater( QuitGameMode, 12000 );	
+			GetGame().GetCallqueue().CallLater(QuitGameMode, 12000);	
 		}
 	}
 	
@@ -177,7 +183,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnAllAreasInitiated()
 	{
-		if ( !m_pOnAllAreasInitiated )
+		if (!m_pOnAllAreasInitiated)
 			m_pOnAllAreasInitiated = new ScriptInvoker();
 		
 		return m_pOnAllAreasInitiated;
@@ -186,30 +192,30 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnTaskStateChanged()
 	{
-		if ( !m_pOnTaskStateChanged )
+		if (!m_pOnTaskStateChanged)
 			m_pOnTaskStateChanged = new ScriptInvoker();
 		
 		return m_pOnTaskStateChanged;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	CP_Area SelectNearestAreaByTaskType( ESFTaskType eTaskType )
+	CP_Area SelectNearestAreaByTaskType(ESFTaskType eTaskType)
 	{
-		if ( m_aAreas.IsEmpty() )
+		if (m_aAreas.IsEmpty())
 			return null;
 		CP_Area pSelectedArea = null;
-		if ( !m_pLastFinishedTask )
+		if (!m_pLastFinishedTask)
 			return null;
 		vector vTaskPos = m_pLastFinishedTask.GetOrigin();
 		float fMinDistance = float.MAX;
 		float fDistance = 0;
-		for ( int i = 0; i < m_aAreas.Count(); i++ )
+		for (int i = 0; i < m_aAreas.Count(); i++)
 		{
-			if ( !m_aAreas[i].GetIsTaskSuitableForArea( eTaskType ) )
+			if (!m_aAreas[i].GetIsTaskSuitableForArea(eTaskType))
 				continue;
 			
-			fDistance = vector.Distance( vTaskPos, m_aAreas[i].GetOwner().GetOrigin() );
-			if ( fDistance < fMinDistance )
+			fDistance = vector.Distance(vTaskPos, m_aAreas[i].GetOwner().GetOrigin());
+			if (fDistance < fMinDistance)
 			{
 				fMinDistance = fDistance;
 				pSelectedArea = m_aAreas[i];
@@ -223,48 +229,54 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	bool IsMaster()// IsServer
 	{
 		RplComponent comp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-		if ( !comp )
+		if (!comp)
 			return false;			//by purpose - debug
 		return !comp.IsProxy();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void RegisterArea( CP_Area pArea )
+	void RegisterArea(CP_Area pArea)
 	{
-		if ( m_aAreas.Find( pArea ) == -1 )
-			m_aAreas.Insert( pArea );
+		if (m_aAreas.Find(pArea) == -1)
+			m_aAreas.Insert(pArea);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void LoadHeaderSettings();
 	
 	//------------------------------------------------------------------------------------------------
 	protected bool Init()
 	{
-		Print( "CP: ------------------ player connected ---------------" );
+		Print("CP: ------------------ player connected ---------------");
 		if (!IsMaster())
 			return false;
-		Print( "CP: ------------------ server only exec ---------------" );
+		Print("CP: ------------------ server only exec ---------------");
+		
+		LoadHeaderSettings();
+		
 		// Spawn everything inside the Area except the task layers
-		foreach( CP_Area pArea : m_aAreas )
+		foreach(CP_Area pArea : m_aAreas)
 		{
-			if ( m_sForcedArea.IsEmpty() )		//for debug purposes
+			if (m_sForcedArea.IsEmpty())		//for debug purposes
 			{
 				pArea.Init();	
 			}
 			else
 			{
-				if ( pArea.GetOwner().GetName() == m_sForcedArea )
-					pArea.Init( pArea );
+				if (pArea.GetOwner().GetName() == m_sForcedArea)
+					pArea.Init(pArea);
 			}
 		}
 				
-		SCR_BaseTaskManager.s_OnTaskFinished.Insert( OnTaskFinished );		
-		//SCR_BaseTaskManager.s_OnTaskCreated.Insert( OnTaskCreated );
-		CP_LayerTask.s_OnTaskSetup.Insert( OnTaskCreated );	
-		SCR_BaseTaskManager.s_OnTaskCancelled.Insert( OnTaskCancelled );
-		SCR_BaseTaskManager.s_OnTaskFailed.Insert( OnTaskFailed );
-		SCR_BaseTaskManager.s_OnTaskUpdate.Insert( OnTaskUpdate );
+		SCR_BaseTaskManager.s_OnTaskFinished.Insert(OnTaskFinished);		
+		//SCR_BaseTaskManager.s_OnTaskCreated.Insert(OnTaskCreated);
+		CP_LayerTask.s_OnTaskSetup.Insert(OnTaskCreated);	
+		SCR_BaseTaskManager.s_OnTaskCancelled.Insert(OnTaskCancelled);
+		SCR_BaseTaskManager.s_OnTaskFailed.Insert(OnTaskFailed);
+		SCR_BaseTaskManager.s_OnTaskUpdate.Insert(OnTaskUpdate);
 		
 		//if someone registered for the event, then call it
-		if ( m_pOnAllAreasInitiated )
+		if (m_pOnAllAreasInitiated)
 			m_pOnAllAreasInitiated.Invoke();
 		
 		PostInit();
@@ -286,16 +298,16 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get parent area the object is nested into
-	CP_Area GetParentArea( IEntity pChild ) 
+	CP_Area GetParentArea(IEntity pChild) 
 	{ 
-		if ( !pChild )
+		if (!pChild)
 			return null;
 		CP_Area pLayer;
 		IEntity pEnt = pChild.GetParent();
-		while ( pEnt )
+		while (pEnt)
 		{
-			pLayer = CP_Area.Cast( pEnt.FindComponent( CP_Area ) );
-			if ( pLayer )
+			pLayer = CP_Area.Cast(pEnt.FindComponent(CP_Area));
+			if (pLayer)
 				return pLayer;
 			
 			pEnt = pEnt.GetParent();
@@ -312,7 +324,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	{
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
 		owner.SetFlags(EntityFlags.ACTIVE,false);
-		GetGame().GetCallqueue().CallLater(Init,1000,false); //TODO: make the init order properly ( the init should start after all Areas are registered )
+		GetGame().GetCallqueue().CallLater(Init,1000,false); //TODO: make the init order properly (the init should start after all Areas are registered)
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -322,20 +334,20 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void PopUpMessage( string sTitle, string sSubtitle )
+	void PopUpMessage(string sTitle, string sSubtitle)
 	{
-		if ( IsMaster() )
-			SCR_PopUpNotification.GetInstance().PopupMsg( sTitle, text2: sSubtitle );
+		if (IsMaster())
+			SCR_PopUpNotification.GetInstance().PopupMsg(sTitle, text2: sSubtitle);
 		
-		Rpc( RpcDo_PopUpMessage, sTitle, sSubtitle );
+		Rpc(RpcDo_PopUpMessage, sTitle, sSubtitle);
 		
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	[RplRpc( RplChannel.Reliable, RplRcver.Broadcast )]
-	void RpcDo_PopUpMessage( string sTitle, string sSubtitle )
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_PopUpMessage(string sTitle, string sSubtitle)
 	{
-		SCR_PopUpNotification.GetInstance().PopupMsg( sTitle, text2: sSubtitle );
+		SCR_PopUpNotification.GetInstance().PopupMsg(sTitle, text2: sSubtitle);
 	}
 	
 		

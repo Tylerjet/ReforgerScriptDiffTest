@@ -24,6 +24,7 @@ class CharacterVicinityComponent: GameComponent
 	proto external void SetItemOfInterest(IEntity item);
 	proto external void ManipulationComplete();
 	proto external IEntity GetItemOfInterest();
+	proto external float GetDiscoveryRadius();
 };
 
 /** @}*/

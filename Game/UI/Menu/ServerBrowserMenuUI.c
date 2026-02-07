@@ -792,20 +792,21 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected void SetupFilteringUI(FilteredServerParams filterParams)
 	{
 		// Search
+		/*
 		if (m_SearchEditBox)
 		{
 			string searchStr = filterParams.GetSearchText();
 			m_SearchEditBox.SetValue(searchStr);
-		}
+		}*/
 		
 		// Sort
-		if (m_SortBar)
+		/*if (m_SortBar)
 		{
 			string sortName = filterParams.GetSortOrder();
 			int sortId = m_SortBar.FindElement(sortName);
 			if (sortId != -1)
 				m_SortBar.SetCurrentSortElement(sortId, ESortOrder.ASCENDING, useDefaultSortOrder: true);
-		}
+		}*/
 		
 		// Tabview
 		if (m_TabView)

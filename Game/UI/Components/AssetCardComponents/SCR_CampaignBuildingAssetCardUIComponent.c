@@ -16,7 +16,7 @@ class SCR_CampaignBuildingAssetCardUIComponent : ScriptedWidgetComponent
 		
 		IEntity targetEntity = buildingEditorComponent.GetProviderEntity();
 		if (!targetEntity)
-			return;	
+			return;
 		
 		m_Base = SCR_CampaignBase.Cast(targetEntity);
 		if (!m_Base)
@@ -56,41 +56,58 @@ class SCR_CampaignBuildingAssetCardUIComponent : ScriptedWidgetComponent
 			return;
 		
 		array<EEditableEntityLabel> entityLabels = {};
-		array<SCR_CampaignServiceComponent> baseServices = {};
 		editableUIInfo.GetEntityLabels(entityLabels);
+		
+		// The composition is not a service don't need to continue.
+		if (!entityLabels.Contains(EEditableEntityLabel.TRAIT_SERVICE))
+			return;
+		
+		array<SCR_CampaignServiceComponent> baseServices = {};
 		int count = m_Base.GetAllBaseServices(baseServices);
+		bool disableCard = false;
 		
 		for (int i = 0; i < count; i++)
 		{
 			if (entityLabels.Contains(baseServices[i].GetLabel()))
-			{
-				SCR_AssetCardFrontUIComponent assetCardUI = SCR_AssetCardFrontUIComponent.Cast(m_wRootWidget.FindHandler(SCR_AssetCardFrontUIComponent));
-				if (!assetCardUI)
-					return;
-				
-				SetUI(assetCardUI, editableUIInfo);
-				return;
-			}
+				disableCard = true;
 		}
+
+		SCR_UIInfo blockingBudgetInfo;
+		array<ref SCR_EntityBudgetValue> entityBudgetCosts = {};
+				
+		if (m_ContentBrowserManager.CanPlace(prefabID, entityBudgetCosts, blockingBudgetInfo))
+		{
+			SCR_AssetCardFrontUIComponent assetCard = SCR_AssetCardFrontUIComponent.Cast(m_wRootWidget.FindHandler(SCR_AssetCardFrontUIComponent));
+			if (!assetCard)
+				return;
+			
+			assetCard.UpdateBlockingBudget(blockingBudgetInfo);
+		}
+		if (!disableCard)
+			return;
+		
+		SCR_AssetCardFrontUIComponent assetCardUI = SCR_AssetCardFrontUIComponent.Cast(m_wRootWidget.FindHandler(SCR_AssetCardFrontUIComponent));
+		if (!assetCardUI)
+			return;
+		
+		SetUI(assetCardUI, editableUIInfo, disableCard);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	// Set the icon and saturation of the asset card.
-	void SetUI(notnull SCR_AssetCardFrontUIComponent assetCardUI, notnull SCR_EditableEntityUIInfo editableUIInfo)
+	void SetUI(notnull SCR_AssetCardFrontUIComponent assetCardUI, notnull SCR_EditableEntityUIInfo editableUIInfo, bool disableCard)
 	{
-		// dissable regular reresh of budget UI
-		assetCardUI.SetEvaluateBlockingBudget(false);
 		Widget budgetW = Widget.Cast(m_wRootWidget.FindAnyWidget("NoBudget"));
 		if (!budgetW)
 			return;
-		
+
 		ImageWidget widgetImage = ImageWidget.Cast(m_wRootWidget.FindAnyWidget("Image"));
 		ImageWidget budgetIcon = ImageWidget.Cast(budgetW.FindAnyWidget("BudgetIcon"));
 		if (!widgetImage || !budgetIcon)
 			return;
 		
-		budgetW.SetVisible(true);
-		widgetImage.SetSaturation(false);
+		budgetW.SetVisible(disableCard);
+		widgetImage.SetSaturation(!disableCard);
 		editableUIInfo.SetIconTo(budgetIcon);
 	}
 	

@@ -844,16 +844,21 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			default:
 			{	
 				spawnPoint = m_Base.GetBaseSpawnPoint();
-				m_wAntennaImg.SetVisible(false);
+				if (strs.Get(0) != "Unknown")
+				{
+					if (!m_Base.GetIsLinkedToHQ() && m_Base.GetOwningFaction() == m_PlayerFaction)
+					{
+						m_wAntennaImg.SetVisible(true);
+					}	
+					else
+					{
+						m_wAntennaImg.SetVisible(false);
+					}
+				}
 				if (strs.Get(2) == "Small")
 				{
 					m_wImageOverlay.SetWidthOverride(38);
 					m_wImageOverlay.SetHeightOverride(38);
-					if (strs.Get(0) != "Unknown")
-						if (!m_Base.GetIsLinkedToHQ() && m_Base.GetOwningFaction() == m_PlayerFaction)
-							m_wAntennaImg.SetVisible(true);
-						else
-							m_wAntennaImg.SetVisible(false);
 				}	
 			}
 		}

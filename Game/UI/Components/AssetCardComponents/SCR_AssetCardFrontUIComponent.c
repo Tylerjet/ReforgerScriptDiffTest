@@ -59,7 +59,6 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	
 	protected Widget m_BudgetCostLayout;
 	protected Widget m_ExceedBudgetLayout;
-	protected bool m_bEvaluateBlockingBudget = true;
 	protected ref ScriptInvoker Event_OnCardInit = new ScriptInvoker();
 	
 	//Widgets
@@ -79,12 +78,6 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	ScriptInvoker GetOnCardInit()
 	{		
 		return Event_OnCardInit;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetEvaluateBlockingBudget(bool val)
-	{
-		m_bEvaluateBlockingBudget = val;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -193,10 +186,8 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 				
 				m_ExceedBudgetLayout = m_Widget.FindAnyWidget(m_sExceedBudgetLayoutName);
 				
-				UpdateBudgetCost();
-				
-				if (m_bEvaluateBlockingBudget)
-					UpdateBlockingBudget(blockingBudgetInfo);
+				UpdateBudgetCost();	
+				UpdateBlockingBudget(blockingBudgetInfo);
 				
 				//--- Set faction flag
 				int traitIndex;

@@ -6,7 +6,7 @@ class LayerPresetsRequest: JsonApiStruct
 	{
 		RegV("Input");
 	}
-};
+}
 
 class LayerPresetsResponse: JsonApiStruct
 {
@@ -16,7 +16,7 @@ class LayerPresetsResponse: JsonApiStruct
 	{
 		RegV("Layers");
 	}
-};
+}
 
 class LayerPresetsUtils
 {

@@ -19,12 +19,25 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	[Attribute(desc: "Material mapped on outside and inside of the mesh. Inside mapping is mirrored.", uiwidget: UIWidgets.ResourcePickerThumbnail, params: "emat", category: "Virtual Area")]
 	protected ResourceName m_Material;
 	
-	[Attribute(desc: "When enabled, the mesh will update itself when owner entity position or direction changes.", category: "Virtual Area")]
-	protected bool m_bUpdateEveryFrame;
+	[Attribute("false", desc: "When enabled, the component will be active from init", category: "Virtual Area")]
+	protected bool m_bActiveEveryFrameOnInit;
 	
-	protected bool m_bInit;
 	protected vector m_vLastPos;
 	protected vector m_vLastDir;
+	
+	//! Activate the area so it could be updated every frame
+	void ActivateEveryFrame()
+	{
+		IEntity owner = GetOwner();
+		owner.SetFlags(EntityFlags.ACTIVE, false);
+		SetEventMask(owner, EntityEvent.FRAME);
+	}
+	
+	//! Deactivate the area
+	void DeactivateEveryFrame()
+	{
+		ClearEventMask(GetOwner(), EntityEvent.FRAME);
+	}
 	
 	/*!
 	Get radius of the area.
@@ -34,6 +47,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	float GetRadius()
 	{
 	}
+	
 	/*!
 	Generate area mesh based on its settings.
 	*/
@@ -83,23 +97,25 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 		{
 			owner.SetObject(meshObject, "");
 			
-			if (m_bUpdateEveryFrame)
-			{
-				owner.SetFlags(EntityFlags.ACTIVE, true);
-				SetEventMask(owner, EntityEvent.FRAME);
-				m_vLastPos = owner.GetOrigin();
-				m_vLastDir = owner.GetAngles();
-			}
+			m_vLastPos = owner.GetOrigin();
+			m_vLastDir = owner.GetAngles();
 		}
 		
 	}
+	
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		if (vector.DistanceSq(m_vLastPos, owner.GetOrigin()) > 0.1 || vector.DistanceSq(m_vLastDir, owner.GetAngles()) > 0.1)
 			GenerateAreaMesh();
 	}
+	
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
+		
+		if (m_bActiveEveryFrameOnInit)
+		{
+			ActivateEveryFrame();
+		}
 	}
 };

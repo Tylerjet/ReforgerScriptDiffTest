@@ -3,7 +3,6 @@ class SCR_CampaignBuildingCompositionComponentClass : ScriptComponentClass
 {
 };
 
-	
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 {
@@ -53,7 +52,8 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	void RemoveProviderEntityServer()
 	{
 		RemoveProviderEntity();
-		m_EditorModeEntity.GetOnClosedServer().Remove(RemoveProviderEntityServer);
+		if (m_EditorModeEntity)
+			m_EditorModeEntity.GetOnClosedServer().Remove(RemoveProviderEntityServer);
 		Rpc(RpcDo_RemoveProviderEntity);
 	}
 	
@@ -73,7 +73,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 		if (!rplComp)
 			return;
 		
-		SCR_FreeCampaignBuildingTrigger.GetOnProviderCreated().Remove(SetProviderFromRplID);
+		SCR_CampaignBuildingProviderComponent.GetOnProviderCreated().Remove(SetProviderFromRplID);	
 		SetProviderEntity(rplComp.GetEntity());
 	}
 	
@@ -130,7 +130,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(m_RplCompId));
 		if (!rplComp)
 		{
-			SCR_FreeCampaignBuildingTrigger.GetOnProviderCreated().Insert(SetProviderFromRplID);
+			SCR_CampaignBuildingProviderComponent.GetOnProviderCreated().Insert(SetProviderFromRplID);	
 			return true;
 		}
 		

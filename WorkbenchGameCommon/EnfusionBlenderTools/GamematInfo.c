@@ -6,7 +6,7 @@ class GamematInfoRequest: JsonApiStruct
 	{
 		RegV("Input");
 	}
-};
+}
 
 class GamematInfoResponse: JsonApiStruct
 {
@@ -16,7 +16,7 @@ class GamematInfoResponse: JsonApiStruct
 	{
 		RegV("Gamemat");
 	}
-};
+}
 
 class GamematInfoUtils
 {

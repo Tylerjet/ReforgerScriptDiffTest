@@ -6,7 +6,7 @@ class SCR_CampaignTutorialStage86Class: SCR_BaseCampaignTutorialStageClass
 class SCR_CampaignTutorialStage86 : SCR_BaseCampaignTutorialStage
 {
 	protected float m_fSavedTime;
-	protected AudioHandle m_PlayedRadio;
+	protected AudioHandle m_PlayedRadio = AudioHandle.Invalid;
 	
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
